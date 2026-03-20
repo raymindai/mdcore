@@ -90,7 +90,19 @@ This has a footnote[^1]. And another[^2].
 
 type ViewMode = "split" | "preview" | "editor";
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 export default function MdEditor() {
+  const isMobile = useIsMobile();
   const [markdown, setMarkdown] = useState(SAMPLE_MD);
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
@@ -106,9 +118,19 @@ export default function MdEditor() {
   >("idle");
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [isSharedDoc, setIsSharedDoc] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Set default view mode based on screen size
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode("preview");
+    }
+  }, [isMobile]);
 
   const doRender = useCallback(async (md: string) => {
     try {
@@ -198,6 +220,19 @@ export default function MdEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Close menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener("mousedown", handler);
+      return () => document.removeEventListener("mousedown", handler);
+    }
+  }, [showMenu]);
+
   // Debounced render
   const handleChange = useCallback(
     (value: string) => {
@@ -208,6 +243,39 @@ export default function MdEditor() {
     [doRender]
   );
 
+  // File drop handler
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith(".md") || file.name.endsWith(".markdown") || file.name.endsWith(".txt") || file.type === "text/markdown" || file.type === "text/plain")) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = ev.target?.result as string;
+          if (text) {
+            setMarkdown(text);
+            setIsSharedDoc(false);
+            doRender(text);
+            if (!isMobile) setViewMode("split");
+          }
+        };
+        reader.readAsText(file);
+      }
+    },
+    [doRender, isMobile]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
   // Share
   const handleShare = useCallback(async () => {
     if (!markdown.trim()) return;
@@ -215,7 +283,6 @@ export default function MdEditor() {
     try {
       const url = await createShareUrl(markdown);
       await copyToClipboard(url);
-      // Update browser URL without reload
       window.history.replaceState(null, "", url.split(window.location.origin)[1]);
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 3000);
@@ -228,6 +295,7 @@ export default function MdEditor() {
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
     await copyToClipboard(html);
+    setShowMenu(false);
   }, [html]);
 
   // Download .md file
@@ -239,6 +307,7 @@ export default function MdEditor() {
     a.download = `${title || "document"}.md`;
     a.click();
     URL.revokeObjectURL(url);
+    setShowMenu(false);
   }, [markdown, title]);
 
   // Clear
@@ -247,37 +316,34 @@ export default function MdEditor() {
     setIsSharedDoc(false);
     window.history.replaceState(null, "", "/");
     doRender("");
+    setShowMenu(false);
   }, [doRender]);
 
   // Edit shared doc
   const handleEditShared = useCallback(() => {
     setIsSharedDoc(false);
-    setViewMode("split");
-  }, []);
+    setViewMode(isMobile ? "editor" : "split");
+  }, [isMobile]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      // Cmd+S → Share
       if (mod && e.key === "s") {
         e.preventDefault();
         handleShare();
       }
-      // Cmd+Shift+C → Copy HTML
       if (mod && e.shiftKey && e.key === "c") {
         e.preventDefault();
         handleCopyHtml();
       }
-      // Cmd+\ → Toggle view mode
       if (mod && e.key === "\\") {
         e.preventDefault();
         setViewMode((prev) =>
           prev === "split" ? "preview" : prev === "preview" ? "editor" : "split"
         );
       }
-      // Escape → Focus textarea
       if (e.key === "Escape" && textareaRef.current) {
         textareaRef.current.focus();
       }
@@ -290,17 +356,33 @@ export default function MdEditor() {
   const shareButtonLabel = {
     idle: "Share",
     sharing: "...",
-    copied: "Link copied!",
+    copied: "Copied!",
     error: "Failed",
   }[shareState];
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100">
+    <div
+      className="flex flex-col h-screen bg-zinc-950 text-zinc-100"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/90 border-2 border-dashed border-orange-400/50 rounded-lg m-2">
+          <div className="text-center">
+            <div className="text-4xl mb-3 opacity-60">📄</div>
+            <p className="text-lg text-orange-400 font-medium">Drop your .md file</p>
+            <p className="text-sm text-zinc-500 mt-1">Supports .md, .markdown, .txt</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-2.5 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-sm">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <h1
-            className="text-lg font-bold tracking-tight cursor-pointer"
+            className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
             onClick={handleClear}
             title="mdfy.cc — New document"
           >
@@ -309,20 +391,20 @@ export default function MdEditor() {
             <span className="text-zinc-600">.cc</span>
           </h1>
           {title && (
-            <span className="text-sm text-zinc-500 border-l border-zinc-800 pl-3 hidden sm:inline truncate max-w-[200px]">
+            <span className="text-xs sm:text-sm text-zinc-500 border-l border-zinc-800 pl-2 sm:pl-3 hidden sm:inline truncate max-w-[200px]">
               {title}
             </span>
           )}
           {isSharedDoc && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono shrink-0">
               SHARED
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          {/* Flavor badges */}
-          <div className="flex items-center gap-1.5 hidden lg:flex">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
+          {/* Flavor badges — desktop only */}
+          <div className="items-center gap-1.5 hidden lg:flex">
             <span className="px-2 py-0.5 rounded-md bg-orange-400/15 text-orange-400 font-mono font-medium">
               {flavor}
             </span>
@@ -338,8 +420,8 @@ export default function MdEditor() {
               ))}
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-2 text-zinc-600 font-mono hidden md:flex">
+          {/* Stats — desktop only */}
+          <div className="items-center gap-2 text-zinc-600 font-mono hidden md:flex">
             <span>{charCount.toLocaleString()} chars</span>
             <span className="text-zinc-800">·</span>
             <span>{renderTime.toFixed(1)}ms</span>
@@ -347,7 +429,10 @@ export default function MdEditor() {
 
           {/* View mode toggle */}
           <div className="flex items-center rounded-md bg-zinc-800/50 p-0.5">
-            {(["editor", "split", "preview"] as ViewMode[]).map((mode) => (
+            {(isMobile
+              ? (["editor", "preview"] as ViewMode[])
+              : (["editor", "split", "preview"] as ViewMode[])
+            ).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -367,7 +452,7 @@ export default function MdEditor() {
             <button
               onClick={handleShare}
               disabled={shareState === "sharing"}
-              className={`px-2.5 py-1 rounded-md font-mono transition-colors ${
+              className={`px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs ${
                 shareState === "copied"
                   ? "bg-green-500/20 text-green-400"
                   : "bg-orange-400/15 hover:bg-orange-400/25 text-orange-400"
@@ -376,39 +461,43 @@ export default function MdEditor() {
             >
               {shareButtonLabel}
             </button>
-            <div className="relative group">
-              <button className="px-2 py-1 rounded-md bg-zinc-800/50 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors font-mono">
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="px-2 py-1 rounded-md bg-zinc-800/50 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors font-mono"
+              >
                 ···
               </button>
-              {/* Dropdown */}
-              <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                <div className="py-1">
-                  <button
-                    onClick={handleCopyHtml}
-                    className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                  >
-                    Copy HTML
-                    <span className="float-right text-zinc-600">⌘⇧C</span>
-                  </button>
-                  <button
-                    onClick={handleDownloadMd}
-                    className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                  >
-                    Download .md
-                  </button>
-                  <hr className="border-zinc-800 my-1" />
-                  <button
-                    onClick={handleClear}
-                    className="w-full text-left px-3 py-2 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-                  >
-                    New document
-                  </button>
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={handleCopyHtml}
+                      className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                    >
+                      Copy HTML
+                      <span className="float-right text-zinc-600 hidden sm:inline">⌘⇧C</span>
+                    </button>
+                    <button
+                      onClick={handleDownloadMd}
+                      className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                    >
+                      Download .md
+                    </button>
+                    <hr className="border-zinc-800 my-1" />
+                    <button
+                      onClick={handleClear}
+                      className="w-full text-left px-3 py-2 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+                    >
+                      New document
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Engine badge */}
+          {/* Engine badge — xl only */}
           <span className="px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-500/70 font-mono text-[10px] tracking-wide hidden xl:inline">
             RUST→WASM
           </span>
@@ -424,15 +513,15 @@ export default function MdEditor() {
               viewMode === "split" ? "w-1/2" : "w-full"
             } border-r border-zinc-800/60 flex flex-col`}
           >
-            <div className="flex items-center justify-between px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
               <span>Markdown</span>
-              <span className="text-zinc-700">
+              <span className="text-zinc-700 hidden sm:inline">
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
             <textarea
               ref={textareaRef}
-              className="flex-1 p-5 bg-transparent text-zinc-300 font-mono text-[13px] resize-none outline-none leading-relaxed placeholder:text-zinc-700"
+              className="flex-1 p-3 sm:p-5 bg-transparent text-zinc-300 font-mono text-[13px] resize-none outline-none leading-relaxed placeholder:text-zinc-700"
               value={markdown}
               onChange={(e) => handleChange(e.target.value)}
               spellCheck={false}
@@ -448,7 +537,7 @@ export default function MdEditor() {
               viewMode === "split" ? "w-1/2" : "w-full"
             } flex flex-col bg-zinc-950`}
           >
-            <div className="flex items-center justify-between px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
               <span>Preview</span>
               <div className="flex items-center gap-2">
                 {isSharedDoc && (
@@ -459,7 +548,7 @@ export default function MdEditor() {
                     Edit →
                   </button>
                 )}
-                <span className="text-zinc-700">rendered</span>
+                <span className="text-zinc-700 hidden sm:inline">rendered</span>
               </div>
             </div>
             <div className="flex-1 overflow-auto" ref={previewRef}>
@@ -474,20 +563,25 @@ export default function MdEditor() {
                 <article
                   className={`mdcore-rendered max-w-none ${
                     viewMode === "preview"
-                      ? "p-8 mx-auto max-w-3xl"
-                      : "p-6"
+                      ? "p-4 sm:p-8 mx-auto max-w-3xl"
+                      : "p-3 sm:p-6"
                   }`}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700">
-                  <div className="text-5xl opacity-30">⬅</div>
-                  <p className="text-sm">
-                    Type or paste Markdown on the left
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700 px-4">
+                  <div className="text-4xl sm:text-5xl opacity-30">📝</div>
+                  <p className="text-sm text-center">
+                    {isMobile ? "Tap MD to start writing" : "Type or paste Markdown on the left"}
                   </p>
-                  <p className="text-xs text-zinc-800">
+                  <p className="text-xs text-zinc-800 text-center">
                     Supports GFM · Obsidian · MDX · Pandoc · KaTeX · Mermaid
                   </p>
+                  {!isMobile && (
+                    <p className="text-xs text-zinc-800 mt-2">
+                      or drag & drop a .md file anywhere
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -496,9 +590,9 @@ export default function MdEditor() {
       </div>
 
       {/* Footer */}
-      <footer className="flex items-center justify-between px-5 py-1.5 border-t border-zinc-800/50 text-[10px] text-zinc-700 font-mono">
-        <span>mdcore engine v0.1.0 · Rust → WASM · comrak + highlight.js</span>
-        <div className="flex items-center gap-4">
+      <footer className="flex items-center justify-between px-3 sm:px-5 py-1.5 border-t border-zinc-800/50 text-[10px] text-zinc-700 font-mono">
+        <span className="truncate">mdcore v0.1.0 · Rust → WASM</span>
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <span className="text-zinc-800 hidden sm:inline">
             ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
           </span>
