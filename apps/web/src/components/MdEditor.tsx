@@ -497,13 +497,13 @@ export default function MdEditor() {
 
       {/* Footer */}
       <footer className="flex items-center justify-between px-5 py-1.5 border-t border-zinc-800/50 text-[10px] text-zinc-700 font-mono">
-        <span>mdcore engine v0.1.0 · Rust → WASM · comrak + syntect</span>
+        <span>mdcore engine v0.1.0 · Rust → WASM · comrak + highlight.js</span>
         <div className="flex items-center gap-4">
           <span className="text-zinc-800 hidden sm:inline">
             ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
           </span>
           <a
-            href="https://github.com/mdcore-dev/mdcore"
+            href="https://github.com/raymindai/mdcore"
             className="hover:text-zinc-500 transition-colors"
             target="_blank"
             rel="noopener noreferrer"
