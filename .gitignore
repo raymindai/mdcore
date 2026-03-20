@@ -34,3 +34,4 @@ npm-debug.log*
 # NOTE: WASM bindings in apps/web/src/lib/wasm/ are intentionally committed.
 # They are pre-built from packages/engine/ via wasm-pack.
 # Rebuild with: npm run build:wasm (from apps/web/)
+.vercel

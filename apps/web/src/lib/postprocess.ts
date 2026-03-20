@@ -1,14 +1,19 @@
 import katex from "katex";
+import hljs from "highlight.js";
 
 /**
  * Post-process HTML rendered by the Rust engine.
  * Handles client-side rendering of:
+ * - Syntax highlighting (highlight.js) — since syntect can't compile to WASM
  * - Math (KaTeX) — comrak wraps math in <math> tags
  * - Mermaid diagrams — rendered via mermaid.js
  * - Copy buttons on code blocks
  */
 export function postProcessHtml(html: string): string {
   let result = html;
+
+  // Syntax highlight code blocks
+  result = highlightCode(result);
 
   // Process KaTeX math
   result = processKatex(result);
@@ -20,6 +25,31 @@ export function postProcessHtml(html: string): string {
   result = addCodeCopyButtons(result);
 
   return result;
+}
+
+/**
+ * Syntax highlight code blocks using highlight.js
+ */
+function highlightCode(html: string): string {
+  return html.replace(
+    /<pre[^>]*><code(?:\s+class="language-(\w+)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g,
+    (match, lang, code) => {
+      // Skip mermaid blocks — handled separately
+      if (lang === "mermaid") return match;
+      // Skip math blocks
+      if (lang === "math") return match;
+
+      const decoded = decodeHtmlEntities(code);
+      try {
+        const highlighted = lang && hljs.getLanguage(lang)
+          ? hljs.highlight(decoded, { language: lang }).value
+          : hljs.highlightAuto(decoded).value;
+        return `<pre><code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
+      } catch {
+        return match;
+      }
+    }
+  );
 }
 
 /**

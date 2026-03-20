@@ -1,7 +1,4 @@
-use comrak::{
-    markdown_to_html_with_plugins, plugins::syntect::SyntectAdapterBuilder, ExtensionOptions,
-    Options, ParseOptions, Plugins, RenderOptions,
-};
+use comrak::{markdown_to_html, ExtensionOptions, Options, ParseOptions, RenderOptions};
 use serde::{Deserialize, Serialize};
 
 /// Table of contents entry
@@ -59,16 +56,8 @@ pub fn to_html(markdown: &str) -> (String, Option<String>, Vec<TocEntry>) {
         ..Default::default()
     };
 
-    // Set up syntect for syntax highlighting
-    let adapter = SyntectAdapterBuilder::new()
-        .theme("base16-ocean.dark")
-        .build();
-
-    let mut plugins = Plugins::default();
-    plugins.render.codefence_syntax_highlighter = Some(&adapter);
-
-    // Render
-    let html = markdown_to_html_with_plugins(&content, &options, &plugins);
+    // Render (syntax highlighting handled by frontend via highlight.js/shiki)
+    let html = markdown_to_html(&content, &options);
 
     // Extract title (first h1)
     let title = extract_title(&content);
