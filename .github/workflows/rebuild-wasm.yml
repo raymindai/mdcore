@@ -1,0 +1,53 @@
+name: Rebuild WASM Bindings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/engine/src/**'
+      - 'packages/engine/Cargo.toml'
+      - 'packages/engine/Cargo.lock'
+
+jobs:
+  rebuild:
+    name: Rebuild & Commit WASM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Run tests
+        working-directory: packages/engine
+        run: cargo test
+
+      - name: Build WASM
+        working-directory: packages/engine
+        run: wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release
+
+      - name: Remove generated .gitignore
+        run: rm -f apps/web/src/lib/wasm/.gitignore
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --exit-code apps/web/src/lib/wasm/ || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit updated WASM bindings
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/lib/wasm/
+          git commit -m "chore: rebuild WASM bindings from engine changes"
+          git push

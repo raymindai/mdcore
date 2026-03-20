@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel/
+
+# Debug
+npm-debug.log*
+
+# Turbo
+.turbo/
+
+# NOTE: WASM bindings in apps/web/src/lib/wasm/ are intentionally committed.
+# They are pre-built from packages/engine/ via wasm-pack.
+# Rebuild with: npm run build:wasm (from apps/web/)

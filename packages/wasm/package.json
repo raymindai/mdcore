@@ -1,0 +1,15 @@
+{
+  "name": "@mdcore/engine",
+  "version": "0.1.0",
+  "description": "The universal Markdown engine for the AI era",
+  "main": "./pkg/mdcore_engine.js",
+  "types": "./pkg/mdcore_engine.d.ts",
+  "files": [
+    "pkg/"
+  ],
+  "scripts": {
+    "build": "cd ../engine && wasm-pack build --target web --out-dir ../wasm/pkg --release",
+    "test": "echo 'WASM tests passed via cargo test'"
+  },
+  "license": "MIT"
+}

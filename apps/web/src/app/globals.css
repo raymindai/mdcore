@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+:root {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --accent: #fb923c;
+  --accent-dim: rgba(251, 146, 60, 0.15);
+  --surface: #18181b;
+  --border: #27272a;
+  --border-dim: rgba(39, 39, 42, 0.6);
+  --text-primary: #fafafa;
+  --text-secondary: #d4d4d8;
+  --text-tertiary: #a1a1aa;
+  --text-muted: #71717a;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ========================================
+   mdcore rendered output styles
+   ======================================== */
+.mdcore-rendered {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  word-wrap: break-word;
+}
+
+/* Headings */
+.mdcore-rendered h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: -0.025em;
+}
+
+.mdcore-rendered h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #e4e4e7;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: -0.015em;
+}
+
+.mdcore-rendered h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #e4e4e7;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.mdcore-rendered h4, .mdcore-rendered h5, .mdcore-rendered h6 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e4e4e7;
+  margin: 1.25rem 0 0.5rem;
+}
+
+/* Paragraphs */
+.mdcore-rendered p {
+  margin: 0.75rem 0;
+}
+
+.mdcore-rendered strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.mdcore-rendered em {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Links */
+.mdcore-rendered a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.mdcore-rendered a:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+/* Blockquotes */
+.mdcore-rendered blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-radius: 0 8px 8px 0;
+}
+
+.mdcore-rendered blockquote p {
+  margin: 0.25rem 0;
+}
+
+/* Nested blockquotes */
+.mdcore-rendered blockquote blockquote {
+  border-left-color: #71717a;
+  margin: 0.5rem 0;
+}
+
+/* Inline code */
+.mdcore-rendered code {
+  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: var(--border);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+/* Code blocks */
+.mdcore-rendered pre {
+  margin: 1rem 0;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.mdcore-rendered pre:hover .code-copy-btn {
+  opacity: 1 !important;
+}
+
+.mdcore-rendered pre code {
+  display: block;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* Tables */
+.mdcore-rendered table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.mdcore-rendered th {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.625rem 1rem;
+  border-bottom: 2px solid var(--border);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.mdcore-rendered td {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.mdcore-rendered tr:last-child td {
+  border-bottom: none;
+}
+
+.mdcore-rendered tr:hover td {
+  background: rgba(251, 146, 60, 0.03);
+}
+
+/* Lists */
+.mdcore-rendered ul, .mdcore-rendered ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.mdcore-rendered li {
+  margin: 0.3rem 0;
+}
+
+.mdcore-rendered li::marker {
+  color: var(--text-muted);
+}
+
+/* Task lists */
+.mdcore-rendered ul li input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--accent);
+  transform: scale(1.1);
+}
+
+/* Description lists */
+.mdcore-rendered dt {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 1rem;
+}
+
+.mdcore-rendered dd {
+  margin-left: 1.5rem;
+  color: var(--text-tertiary);
+}
+
+/* Strikethrough */
+.mdcore-rendered del {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Horizontal rule */
+.mdcore-rendered hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+/* KaTeX math — overrides for dark theme */
+.mdcore-rendered .katex {
+  font-size: 1.05em;
+  color: #c4b5fd;
+}
+
+.mdcore-rendered .katex-display {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.mdcore-rendered .katex-display > .katex {
+  color: #ddd6fe;
+}
+
+/* Mermaid diagrams */
+.mdcore-rendered .mermaid-container,
+.mdcore-rendered .mermaid-rendered {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  text-align: center;
+}
+
+.mdcore-rendered .mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Images */
+.mdcore-rendered img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+}
+
+/* Footnotes */
+.mdcore-rendered section.footnotes {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+}
+
+.mdcore-rendered .footnote-ref a,
+.mdcore-rendered .footnote-backref {
+  color: var(--accent);
+  font-size: 0.75em;
+  vertical-align: super;
+}
+
+/* Superscript / Subscript */
+.mdcore-rendered sup {
+  font-size: 0.75em;
+  vertical-align: super;
+}
+
+.mdcore-rendered sub {
+  font-size: 0.75em;
+  vertical-align: sub;
+}
+
+/* Alerts / Callouts (Obsidian-style) */
+.mdcore-rendered blockquote p:first-child strong:first-child {
+  color: var(--accent);
+}
+
+/* ========================================
+   Scrollbar styling
+   ======================================== */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

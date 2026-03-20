@@ -1,0 +1,17 @@
+{
+  "name": "mdcore",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build:wasm && npm run build --workspace=apps/web",
+    "build:wasm": "npm run build --workspace=packages/wasm",
+    "test": "npm test --workspace=packages/wasm"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

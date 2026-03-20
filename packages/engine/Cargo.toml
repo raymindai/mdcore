@@ -1,0 +1,29 @@
+[package]
+name = "mdcore-engine"
+version = "0.1.0"
+edition = "2021"
+description = "The universal Markdown engine for the AI era"
+license = "MIT"
+repository = "https://github.com/mdcore-dev/mdcore"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+comrak = { version = "0.36", default-features = false, features = ["syntect"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+
+[features]
+default = ["syntect"]
+syntect = []
+wasm = []
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

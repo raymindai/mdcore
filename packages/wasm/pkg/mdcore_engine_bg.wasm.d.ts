@@ -1,0 +1,35 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_flavorinfo_free: (a: number, b: number) => void;
+export const __wbg_get_flavorinfo_confidence: (a: number) => number;
+export const __wbg_get_flavorinfo_frontmatter: (a: number) => [number, number];
+export const __wbg_get_flavorinfo_jsx: (a: number) => number;
+export const __wbg_get_flavorinfo_math: (a: number) => number;
+export const __wbg_get_flavorinfo_mermaid: (a: number) => number;
+export const __wbg_get_flavorinfo_primary: (a: number) => [number, number];
+export const __wbg_get_flavorinfo_wikilinks: (a: number) => number;
+export const __wbg_get_renderresult_flavor: (a: number) => number;
+export const __wbg_get_renderresult_html: (a: number) => [number, number];
+export const __wbg_get_renderresult_title: (a: number) => [number, number];
+export const __wbg_get_renderresult_toc_json: (a: number) => [number, number];
+export const __wbg_renderresult_free: (a: number, b: number) => void;
+export const __wbg_set_flavorinfo_confidence: (a: number, b: number) => void;
+export const __wbg_set_flavorinfo_frontmatter: (a: number, b: number, c: number) => void;
+export const __wbg_set_flavorinfo_jsx: (a: number, b: number) => void;
+export const __wbg_set_flavorinfo_math: (a: number, b: number) => void;
+export const __wbg_set_flavorinfo_mermaid: (a: number, b: number) => void;
+export const __wbg_set_flavorinfo_primary: (a: number, b: number, c: number) => void;
+export const __wbg_set_flavorinfo_wikilinks: (a: number, b: number) => void;
+export const __wbg_set_renderresult_flavor: (a: number, b: number) => void;
+export const __wbg_set_renderresult_html: (a: number, b: number, c: number) => void;
+export const __wbg_set_renderresult_title: (a: number, b: number, c: number) => void;
+export const __wbg_set_renderresult_toc_json: (a: number, b: number, c: number) => void;
+export const detectFlavor: (a: number, b: number) => any;
+export const render: (a: number, b: number) => number;
+export const renderWithOptions: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_externrefs: WebAssembly.Table;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __wbindgen_start: () => void;

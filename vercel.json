@@ -1,0 +1,37 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd apps/web && npm run build",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "cd apps/web && npm install",
+  "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/(.*).wasm",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Powered-By",
+          "value": "mdcore-engine/0.1.0"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!_next|api|favicon.ico|.*\\.wasm).*)",
+      "destination": "/"
+    }
+  ]
+}
