@@ -76,6 +76,8 @@ export default function MdCanvas({
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showImport, setShowImport] = useState(false);
+  const [rawCodeMode, setRawCodeMode] = useState(false);
+  const [rawCode, setRawCode] = useState("");
   const [importCode, setImportCode] = useState("");
   const [showCode, setShowCode] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
@@ -90,7 +92,8 @@ export default function MdCanvas({
 
   // Render live Mermaid preview
   useEffect(() => {
-    if (!previewPanelRef.current || !liveCode || !showCode) return;
+    const codeToRender = rawCodeMode ? rawCode : liveCode;
+    if (!previewPanelRef.current || !codeToRender || !showCode) return;
     const container = previewPanelRef.current.querySelector(".mermaid-preview-render");
     if (!container) return;
 
@@ -120,28 +123,36 @@ export default function MdCanvas({
 
       try {
         const id = `mermaid-preview-${Date.now()}`;
-        const { svg } = await mermaid.render(id, liveCode);
+        const { svg } = await mermaid.render(id, codeToRender);
         container.innerHTML = svg;
       } catch {
         container.innerHTML = `<span style="color:var(--text-faint);font-size:11px">Invalid diagram</span>`;
       }
     });
-  }, [liveCode, showCode]);
+  }, [liveCode, rawCode, rawCodeMode, showCode]);
 
   // Load initial mermaid code
   useEffect(() => {
     if (initialMermaid) {
       const result = mermaidToCanvas(initialMermaid);
-      if (result) {
+      if (result && result.nodes.length > 0) {
         setNodes(result.nodes);
         setEdges(result.edges);
         setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
         nextId = result.nodes.length + 1;
+        setRawCodeMode(false);
+      } else {
+        // Can't parse as flowchart (sequence, pie, etc) → raw code edit mode
+        setRawCodeMode(true);
+        setRawCode(initialMermaid);
+        setNodes([]);
+        setEdges([]);
       }
     } else {
-      // Fresh canvas
       setNodes([]);
       setEdges([]);
+      setRawCodeMode(false);
+      setRawCode("");
       nextId = 1;
     }
     setSelectedId(null);
@@ -321,10 +332,15 @@ export default function MdCanvas({
   }, [deleteSelected, duplicateSelected, editingId, editingEdge]);
 
   const handleGenerate = useCallback(() => {
-    const mermaidCode = canvasToMermaid(nodes, edges, direction);
-    const md = wrapInCodeBlock(mermaidCode);
-    onGenerate(md);
-  }, [nodes, edges, direction, onGenerate]);
+    if (rawCodeMode) {
+      const md = wrapInCodeBlock(rawCode);
+      onGenerate(md);
+    } else {
+      const mermaidCode = canvasToMermaid(nodes, edges, direction);
+      const md = wrapInCodeBlock(mermaidCode);
+      onGenerate(md);
+    }
+  }, [nodes, edges, direction, onGenerate, rawCodeMode, rawCode]);
 
   const handleImport = useCallback(() => {
     // Strip code fences if present
@@ -359,23 +375,6 @@ export default function MdCanvas({
           <span className="font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
             Mermaid Editor
           </span>
-          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            {(["LR", "TD"] as Direction[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDirection(d)}
-                className="px-2 py-0.5 text-[10px] font-mono"
-                style={{
-                  background: direction === d ? "var(--accent-dim)" : "transparent",
-                  color: direction === d ? "var(--accent)" : "var(--text-muted)",
-                }}
-              >
-                {d === "LR" ? "→" : "↓"}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="px-2 py-1 rounded-md font-mono text-[11px]"
@@ -384,8 +383,27 @@ export default function MdCanvas({
               color: showGuide ? "var(--accent)" : "var(--text-muted)",
             }}
           >
-            ?
+            Help
           </button>
+          {!rawCodeMode && (
+            <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              {(["LR", "TD"] as Direction[]).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDirection(d)}
+                  className="px-2 py-0.5 text-[10px] font-mono"
+                  style={{
+                    background: direction === d ? "var(--accent-dim)" : "transparent",
+                    color: direction === d ? "var(--accent)" : "var(--text-muted)",
+                  }}
+                >
+                  {d === "LR" ? "→" : "↓"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCode(!showCode)}
             className="px-2 py-1 rounded-md font-mono text-[11px]"
@@ -495,7 +513,25 @@ export default function MdCanvas({
       {/* Main area: canvas + code panel */}
       <div className="flex flex-1 min-h-0">
 
-      {/* Canvas */}
+      {/* Raw code mode for non-flowchart diagrams (sequence, pie, etc) */}
+      {rawCodeMode ? (
+        <div className="flex-1 flex flex-col">
+          <div
+            className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+          >
+            Code Editor (sequence, pie, gantt, etc.)
+          </div>
+          <textarea
+            value={rawCode}
+            onChange={(e) => setRawCode(e.target.value)}
+            className="flex-1 p-4 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+            style={{ color: "var(--editor-text)" }}
+            spellCheck={false}
+          />
+        </div>
+      ) : (
+      /* Canvas */
       <div
         ref={canvasRef}
         className={`${showCode && nodes.length > 0 ? "w-2/3" : "w-full"} relative overflow-auto cursor-crosshair select-none`}
@@ -770,9 +806,10 @@ export default function MdCanvas({
           </div>
         )}
       </div>
+      )}{/* end rawCodeMode conditional */}
 
       {/* Code + Preview panel */}
-      {showCode && nodes.length > 0 && (
+      {showCode && (nodes.length > 0 || rawCodeMode) && (
         <div
           className="w-1/3 flex flex-col"
           style={{ borderLeft: "1px solid var(--border-dim)" }}
@@ -790,7 +827,7 @@ export default function MdCanvas({
               className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed"
               style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0 }}
             >
-              {liveCode}
+              {rawCodeMode ? rawCode : liveCode}
             </pre>
           </div>
 
@@ -803,7 +840,7 @@ export default function MdCanvas({
               <span>Preview</span>
             </div>
             <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
-              {liveCode ? (
+              {(rawCodeMode ? rawCode : liveCode) ? (
                 <div className="mermaid-preview-render" style={{ textAlign: "center", width: "100%" }} />
               ) : (
                 <span className="text-xs" style={{ color: "var(--text-faint)" }}>Add nodes to see preview</span>

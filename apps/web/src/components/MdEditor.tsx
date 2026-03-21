@@ -326,7 +326,42 @@ function useTheme() {
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
-  const [markdown, setMarkdown] = useState(SAMPLE_MD);
+  const [markdown, setMarkdownRaw] = useState(SAMPLE_MD);
+  const undoStack = useRef<string[]>([SAMPLE_MD]);
+  const redoStack = useRef<string[]>([]);
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Wrapper that tracks undo history
+  const setMarkdown = useCallback((val: string) => {
+    setMarkdownRaw(val);
+    // Debounce undo snapshots (don't save every keystroke)
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => {
+      const last = undoStack.current[undoStack.current.length - 1];
+      if (val !== last) {
+        undoStack.current.push(val);
+        if (undoStack.current.length > 100) undoStack.current.shift(); // cap at 100
+        redoStack.current = []; // clear redo on new change
+      }
+    }, 500);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length <= 1) return;
+    const current = undoStack.current.pop()!;
+    redoStack.current.push(current);
+    const prev = undoStack.current[undoStack.current.length - 1];
+    setMarkdownRaw(prev);
+    doRender(prev);
+  }, []);
+
+  const redo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    const next = redoStack.current.pop()!;
+    undoStack.current.push(next);
+    setMarkdownRaw(next);
+    doRender(next);
+  }, []);
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
   const [flavorDetails, setFlavorDetails] = useState<Record<string, boolean>>(
@@ -492,6 +527,15 @@ export default function MdEditor() {
                 style="position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;font-family:ui-monospace,monospace;background:var(--accent-dim);color:var(--accent);border:none;border-radius:6px;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:5;"
               >Edit in Mermaid</button>
             </div>`;
+          // Double-click mermaid diagram → open in Mermaid editor
+          wrapper.addEventListener("dblclick", (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            setCanvasMermaid(code);
+            setViewMode("mermaid");
+          });
+          wrapper.style.cursor = "pointer";
+
           pre.replaceWith(wrapper);
         } catch {
           // Leave as-is on error
@@ -1416,6 +1460,16 @@ export default function MdEditor() {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (mod && e.key === "z" && e.shiftKey) {
+        e.preventDefault();
+        redo();
+        return;
+      }
       if (mod && e.key === "s") {
         e.preventDefault();
         handleShare();
@@ -1437,7 +1491,7 @@ export default function MdEditor() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleShare, handleCopyHtml]);
+  }, [handleShare, handleCopyHtml, undo, redo]);
 
   const shareButtonLabel = {
     idle: "Share",
