@@ -265,9 +265,44 @@ body {
 .mdcore-rendered ul li input[type="checkbox"] {
   margin-right: 0.5rem;
   accent-color: var(--accent);
-  transform: scale(1.1);
+  transform: scale(1.2);
   cursor: pointer;
   pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+/* Unchecked checkbox: visible border */
+.mdcore-rendered ul li input[type="checkbox"]:not(:checked) {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--text-muted);
+  border-radius: 3px;
+  background: transparent;
+  position: relative;
+}
+
+/* Checked checkbox */
+.mdcore-rendered ul li input[type="checkbox"]:checked {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  background: var(--accent);
+  position: relative;
+}
+
+.mdcore-rendered ul li input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: solid #000;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* Table cells editable hint */

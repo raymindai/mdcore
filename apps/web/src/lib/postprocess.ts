@@ -23,6 +23,9 @@ export function postProcessHtml(html: string): string {
   // Add copy buttons to code blocks
   result = addCodeCopyButtons(result);
 
+  // Remove disabled from checkboxes so they're clickable
+  result = result.replace(/ disabled=""/g, "");
+
   // NOTE: Mermaid is handled via DOM in useEffect (MdEditor.tsx),
   // not here. This avoids fragile regex matching on HTML strings.
 

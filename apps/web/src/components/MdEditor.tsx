@@ -197,8 +197,6 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
-  const [highlightLines, setHighlightLines] = useState<[number, number] | null>(null);
-  const highlightRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -388,34 +386,13 @@ export default function MdEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Preview hover → highlight source lines in editor
+  // Preview click → scroll to source line in editor
   useEffect(() => {
     if (!previewRef.current || viewMode !== "split") return;
     const preview = previewRef.current;
 
-    const handleHover = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest("button,input")) return;
-
-      const blockEl = target.closest("h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ul,ol,hr,.mermaid-container,.mermaid-rendered,.katex-display") as HTMLElement | null;
-      if (!blockEl) {
-        setHighlightLines(null);
-        return;
-      }
-
-      const blockIdx = matchElementToBlock(blockEl, sourceBlocks);
-      if (blockIdx >= 0 && blockIdx < sourceBlocks.length) {
-        const block = sourceBlocks[blockIdx];
-        setHighlightLines([block.startLine, block.endLine]);
-      } else {
-        setHighlightLines(null);
-      }
-    };
-
-    const handleLeave = () => setHighlightLines(null);
-
-    // Click → scroll + cursor
     const handleClick = (e: MouseEvent) => {
+      // Don't interfere with buttons, links, checkboxes
       const target = e.target as HTMLElement;
       if (target.closest("button,a,input")) return;
 
@@ -425,8 +402,15 @@ export default function MdEditor() {
       const blockIdx = matchElementToBlock(blockEl, sourceBlocks);
       if (blockIdx >= 0 && blockIdx < sourceBlocks.length) {
         const block = sourceBlocks[blockIdx];
+
+        // Scroll textarea to the source line
         if (textareaRef.current) {
           const ta = textareaRef.current;
+          const lineHeight = ta.scrollHeight / (markdown.split("\n").length || 1);
+          const targetScroll = block.startLine * lineHeight - ta.clientHeight / 3;
+          ta.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+
+          // Also set cursor position
           const lines = markdown.split("\n");
           let charPos = 0;
           for (let i = 0; i < block.startLine && i < lines.length; i++) {
@@ -434,31 +418,13 @@ export default function MdEditor() {
           }
           ta.focus();
           ta.setSelectionRange(charPos, charPos);
-          const lineHeight = ta.scrollHeight / (lines.length || 1);
-          ta.scrollTo({ top: Math.max(0, block.startLine * lineHeight - ta.clientHeight / 3), behavior: "smooth" });
         }
       }
     };
 
-    preview.addEventListener("mousemove", handleHover);
-    preview.addEventListener("mouseleave", handleLeave);
     preview.addEventListener("click", handleClick);
-    return () => {
-      preview.removeEventListener("mousemove", handleHover);
-      preview.removeEventListener("mouseleave", handleLeave);
-      preview.removeEventListener("click", handleClick);
-    };
+    return () => preview.removeEventListener("click", handleClick);
   }, [sourceBlocks, viewMode, markdown]);
-
-  // Sync highlight overlay scroll with textarea scroll
-  useEffect(() => {
-    const ta = textareaRef.current;
-    const hl = highlightRef.current;
-    if (!ta || !hl) return;
-    const syncScroll = () => { hl.scrollTop = ta.scrollTop; };
-    ta.addEventListener("scroll", syncScroll);
-    return () => ta.removeEventListener("scroll", syncScroll);
-  }, [viewMode]);
 
   // Mermaid edit button click handler
   useEffect(() => {
@@ -1185,46 +1151,20 @@ export default function MdEditor() {
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
-            <div className="flex-1 relative">
-              {/* Highlight overlay — behind textarea, scrolls in sync */}
-              {highlightLines && viewMode === "split" && (
-                <div
-                  ref={highlightRef}
-                  className="absolute inset-0 overflow-hidden pointer-events-none p-3 sm:p-5"
-                  style={{ zIndex: 0 }}
-                >
-                  <div style={{ position: "relative", fontFamily: "ui-monospace, monospace", fontSize: "13px", lineHeight: "1.65" }}>
-                    {markdown.split("\n").map((_, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          height: "1.65em",
-                          background: i >= highlightLines[0] && i <= highlightLines[1] ? "var(--accent-dim)" : "transparent",
-                          borderLeft: i >= highlightLines[0] && i <= highlightLines[1] ? "2px solid var(--accent)" : "2px solid transparent",
-                          marginLeft: "-2px",
-                          transition: "background 0.1s",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-              <textarea
-                ref={textareaRef}
-                className="absolute inset-0 w-full h-full p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none"
-                style={{
-                  color: "var(--editor-text)",
-                  caretColor: "var(--accent)",
-                  lineHeight: "1.65",
-                  zIndex: 1,
-                }}
-                value={markdown}
-                onChange={(e) => handleChange(e.target.value)}
-                onPaste={handlePaste}
-                spellCheck={false}
-                placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
-              />
-            </div>
+            <textarea
+              ref={textareaRef}
+              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none"
+              style={{
+                color: "var(--editor-text)",
+                caretColor: "var(--accent)",
+                lineHeight: "1.65",
+              }}
+              value={markdown}
+              onChange={(e) => handleChange(e.target.value)}
+              onPaste={handlePaste}
+              spellCheck={false}
+              placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
+            />
           </div>
         )}
 
