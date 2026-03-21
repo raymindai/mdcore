@@ -266,6 +266,7 @@ body {
 /* Task lists */
 .mdcore-rendered ul li input[type="checkbox"] {
   margin-right: 0.5rem;
+  margin-left: 0.25rem;
   accent-color: var(--accent);
   transform: scale(1.2);
   cursor: pointer;
@@ -273,6 +274,11 @@ body {
   width: 16px;
   height: 16px;
   vertical-align: middle;
+}
+
+/* Task list items: extra left padding so outline doesn't overlap checkbox */
+.mdcore-rendered li:has(input[type="checkbox"]) {
+  padding-left: 4px;
 }
 
 /* Unchecked checkbox: visible border */
