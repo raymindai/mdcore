@@ -34,7 +34,7 @@
       "destination": "/d/:id"
     },
     {
-      "source": "/((?!_next|api|d|favicon.ico|.*\\.wasm).*)",
+      "source": "/((?!_next|api|d|about|embed|favicon.ico|.*\\.wasm).*)",
       "destination": "/"
     }
   ]

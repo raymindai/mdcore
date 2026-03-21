@@ -888,6 +888,13 @@ export default function MdEditor() {
             ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
           </span>
           <a
+            href="/about"
+            className="transition-colors"
+            style={{ color: "var(--text-muted)" }}
+          >
+            About
+          </a>
+          <a
             href="https://github.com/raymindai/mdcore"
             className="transition-colors"
             style={{ color: "var(--text-muted)" }}
