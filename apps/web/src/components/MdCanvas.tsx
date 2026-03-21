@@ -58,6 +58,171 @@ function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: nu
   }
 }
 
+// Form-based editor for sequence diagrams, pie charts, etc.
+function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: string) => void }) {
+  const type = code.startsWith("sequenceDiagram") ? "sequence"
+    : code.startsWith("pie") ? "pie"
+    : "raw";
+
+  if (type === "pie") {
+    // Parse pie chart
+    const titleMatch = code.match(/pie\s+title\s+(.+)/);
+    const pieTitle = titleMatch?.[1] || "";
+    const items = [...code.matchAll(/"([^"]+)"\s*:\s*(\d+)/g)].map(m => ({ label: m[1], value: parseInt(m[2]) }));
+    if (items.length === 0) items.push({ label: "Item", value: 50 });
+
+    const rebuild = (t: string, itms: { label: string; value: number }[]) => {
+      let c = `pie title ${t}\n`;
+      itms.forEach(i => { c += `    "${i.label}" : ${i.value}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-4 space-y-3">
+        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Pie Chart Editor</div>
+        <div className="flex gap-2 items-center">
+          <span className="text-xs" style={{ color: "var(--text-faint)" }}>Title:</span>
+          <input value={pieTitle} onChange={(e) => rebuild(e.target.value, items)}
+            className="flex-1 px-2 py-1.5 text-sm rounded outline-none"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          />
+        </div>
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2 items-center">
+            <input value={item.label} onChange={(e) => {
+              const next = [...items]; next[i] = { ...next[i], label: e.target.value }; rebuild(pieTitle, next);
+            }}
+              className="flex-1 px-2 py-1.5 text-sm rounded outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              placeholder="Label"
+            />
+            <input type="number" value={item.value} onChange={(e) => {
+              const next = [...items]; next[i] = { ...next[i], value: parseInt(e.target.value) || 0 }; rebuild(pieTitle, next);
+            }}
+              className="w-20 px-2 py-1.5 text-sm rounded outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            />
+            <button onMouseDown={() => { const next = items.filter((_, j) => j !== i); rebuild(pieTitle, next); }}
+              className="px-2 py-1 rounded text-xs" style={{ color: "#ef4444" }}>×</button>
+          </div>
+        ))}
+        <button onClick={() => rebuild(pieTitle, [...items, { label: "New", value: 10 }])}
+          className="text-xs px-3 py-1.5 rounded"
+          style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+        >+ Add Item</button>
+      </div>
+    );
+  }
+
+  if (type === "sequence") {
+    // Parse sequence diagram
+    const lines = code.split("\n").filter(l => l.trim());
+    const participants = [...code.matchAll(/participant\s+(\w+)/g)].map(m => m[1]);
+    const messages = [...code.matchAll(/(\w+)([-=]>>?[-|>]*)(\w+)\s*:\s*(.+)/g)].map(m => ({
+      from: m[1], arrow: m[2], to: m[3], text: m[4].trim()
+    }));
+
+    const arrows = ["-->>", "->>", "--)", "->)", "-->", "->"];
+
+    const rebuild = (parts: string[], msgs: { from: string; arrow: string; to: string; text: string }[]) => {
+      let c = "sequenceDiagram\n";
+      parts.forEach(p => { c += `    participant ${p}\n`; });
+      msgs.forEach(m => { c += `    ${m.from}${m.arrow}${m.to}: ${m.text}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-4 space-y-3 overflow-auto">
+        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Sequence Diagram Editor</div>
+        <div>
+          <span className="text-xs" style={{ color: "var(--text-faint)" }}>Participants:</span>
+          <div className="flex gap-1.5 mt-1 flex-wrap">
+            {participants.map((p, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <input value={p} onChange={(e) => {
+                  const next = [...participants]; const old = next[i]; next[i] = e.target.value;
+                  const newMsgs = messages.map(m => ({
+                    ...m,
+                    from: m.from === old ? e.target.value : m.from,
+                    to: m.to === old ? e.target.value : m.to,
+                  }));
+                  rebuild(next, newMsgs);
+                }}
+                  className="w-24 px-2 py-1 text-xs rounded outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                />
+                <button onMouseDown={() => rebuild(participants.filter((_, j) => j !== i), messages)}
+                  className="text-[10px]" style={{ color: "#ef4444" }}>×</button>
+              </div>
+            ))}
+            <button onClick={() => rebuild([...participants, `P${participants.length + 1}`], messages)}
+              className="text-xs px-2 py-1 rounded"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            >+</button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <span className="text-xs" style={{ color: "var(--text-faint)" }}>Messages:</span>
+          {messages.map((m, i) => (
+            <div key={i} className="flex gap-1.5 items-center">
+              <select value={m.from} onChange={(e) => {
+                const next = [...messages]; next[i] = { ...next[i], from: e.target.value }; rebuild(participants, next);
+              }}
+                className="w-20 px-1 py-1 text-xs rounded outline-none"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              >
+                {participants.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={m.arrow} onChange={(e) => {
+                const next = [...messages]; next[i] = { ...next[i], arrow: e.target.value }; rebuild(participants, next);
+              }}
+                className="w-14 px-1 py-1 text-xs rounded outline-none font-mono"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--accent)" }}
+              >
+                {arrows.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <select value={m.to} onChange={(e) => {
+                const next = [...messages]; next[i] = { ...next[i], to: e.target.value }; rebuild(participants, next);
+              }}
+                className="w-20 px-1 py-1 text-xs rounded outline-none"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              >
+                {participants.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <input value={m.text} onChange={(e) => {
+                const next = [...messages]; next[i] = { ...next[i], text: e.target.value }; rebuild(participants, next);
+              }}
+                className="flex-1 px-2 py-1 text-xs rounded outline-none"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                placeholder="Message text"
+              />
+              <button onMouseDown={() => rebuild(participants, messages.filter((_, j) => j !== i))}
+                className="text-[10px]" style={{ color: "#ef4444" }}>×</button>
+            </div>
+          ))}
+          <button onClick={() => rebuild(participants, [...messages, { from: participants[0] || "A", arrow: "->>", to: participants[1] || "B", text: "message" }])}
+            className="text-xs px-3 py-1.5 rounded"
+            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+          >+ Add Message</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback: raw code editor
+  return (
+    <div className="flex flex-col flex-1">
+      <div className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+        style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
+        Code Editor
+      </div>
+      <textarea value={code} onChange={(e) => onChange(e.target.value)}
+        className="flex-1 p-4 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+        style={{ color: "var(--editor-text)" }} spellCheck={false} />
+    </div>
+  );
+}
+
 export default function MdCanvas({
   onGenerate,
   onCancel,
@@ -517,20 +682,8 @@ export default function MdCanvas({
 
       {/* Raw code mode for non-flowchart diagrams (sequence, pie, etc) */}
       {rawCodeMode ? (
-        <div className="flex-1 flex flex-col">
-          <div
-            className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
-            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
-          >
-            Code Editor (sequence, pie, gantt, etc.)
-          </div>
-          <textarea
-            value={rawCode}
-            onChange={(e) => setRawCode(e.target.value)}
-            className="flex-1 p-4 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
-            style={{ color: "var(--editor-text)" }}
-            spellCheck={false}
-          />
+        <div className="flex-1 flex flex-col overflow-auto">
+          <DiagramFormEditor code={rawCode} onChange={setRawCode} />
         </div>
       ) : (
       /* Canvas */
