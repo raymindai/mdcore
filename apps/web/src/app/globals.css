@@ -318,9 +318,10 @@ body {
 .mdcore-rendered li:hover,
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
-  outline-style: dashed !important;
-  outline-width: 1px !important;
-  outline-color: var(--border) !important;
+  --tw-outline-style: dashed;
+  outline-style: dashed;
+  outline-width: 1px;
+  outline-color: var(--border);
   outline-offset: -1px;
   cursor: text;
   border-radius: 2px;
@@ -329,9 +330,10 @@ body {
 /* Editing state: orange solid */
 .mdcore-rendered [contenteditable="true"],
 .mdcore-rendered [contenteditable="true"]:hover {
-  outline-style: solid !important;
-  outline-width: 1px !important;
-  outline-color: var(--accent) !important;
+  --tw-outline-style: solid;
+  outline-style: solid;
+  outline-width: 1px;
+  outline-color: var(--accent);
   outline-offset: -1px;
   border-radius: 2px;
 }
