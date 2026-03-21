@@ -334,10 +334,11 @@ body {
   outline: 1px solid var(--accent) !important;
 }
 
-/* Table cells: inset shadow (no clipping from table overflow) */
+/* Table cells: dashed inset on hover */
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
-  box-shadow: inset 0 0 0 1px var(--border);
+  outline: 1px dashed var(--border);
+  outline-offset: -2px;
   cursor: text;
 }
 
