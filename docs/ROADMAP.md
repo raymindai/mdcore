@@ -250,11 +250,34 @@ AI가 참조한 원본 소스에서 발췌한 내용.
 - 기존 .md 파일이 깨지지 않음
 - 나중에 `:::directive`로 마이그레이션해도 병행 가능
 
+### macOS Quick Look 확장 — mdcore Preview
+
+Finder에서 .md 파일 선택 → 스페이스바 → mdcore 엔진으로 렌더링된 프리뷰.
+
+기존 Quick Look MD 플러그인들(QLMarkdown, PreviewMarkdown 등)은 기본 CommonMark/GFM만 지원. mdcore Preview는:
+
+- **모든 flavor 자동 감지** (GFM, Obsidian, MDX, Pandoc) — mdcore 엔진 사용
+- **KaTeX 수학 + Mermaid 다이어그램 + 코드 하이라이팅** 완전 지원
+- **다크/라이트 모드** macOS 시스템 설정 따라감
+- **"Open in mdfy.cc" 버튼** → 클릭하면 브라우저에서 편집
+- **Swift + WebKit + mdcore WASM** 기술 스택
+- **Homebrew 배포**: `brew install --cask mdcore-preview`
+- **App Store 배포** 검토 (무료)
+
+```
+기술 구현:
+Swift App Extension (QLPreviewingController)
+  → WebKit WKWebView
+    → mdcore WASM 엔진 로드
+    → mdfy.cc와 동일한 렌더링 퀄리티
+    → 시스템 다크모드 감지 (prefers-color-scheme)
+```
+
 ### Phase 2 마일스톤
 
 - **Month 4**: @mdcore/engine v0.1 (mdfy.cc 렌더러 추출 + 정리)
 - **Month 5**: npm 공개 + README + mdcore.org에 문서
-- **Month 6**: @mdcore/themes v0.1 + GitHub 공개
+- **Month 6**: @mdcore/themes v0.1 + macOS Quick Look 확장 v1.0
 - **Month 7–8**: 커뮤니티 피드백 반영 + v0.2
 
 ### Phase 2 성공 기준

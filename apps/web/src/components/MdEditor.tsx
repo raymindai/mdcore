@@ -90,6 +90,8 @@ This has a footnote[^1]. And another[^2].
 
 type ViewMode = "split" | "preview" | "editor";
 
+type Theme = "dark" | "light";
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -101,8 +103,32 @@ function useIsMobile() {
   return isMobile;
 }
 
+function useTheme() {
+  const [theme, setThemeState] = useState<Theme>("dark");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("mdfy-theme") as Theme | null;
+    const initial = saved || "dark";
+    setThemeState(initial);
+    document.documentElement.setAttribute("data-theme", initial);
+  }, []);
+
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+    document.documentElement.setAttribute("data-theme", t);
+    localStorage.setItem("mdfy-theme", t);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme, setTheme]);
+
+  return { theme, toggleTheme };
+}
+
 export default function MdEditor() {
   const isMobile = useIsMobile();
+  const { theme, toggleTheme } = useTheme();
   const [markdown, setMarkdown] = useState(SAMPLE_MD);
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
@@ -165,25 +191,42 @@ export default function MdEditor() {
       previewRef.current.querySelectorAll(".mermaid-container");
     if (mermaidContainers.length === 0) return;
 
+    const isDark = theme === "dark";
+
     import("mermaid").then((mermaidModule) => {
       const mermaid = mermaidModule.default;
       mermaid.initialize({
         startOnLoad: false,
-        theme: "dark",
-        themeVariables: {
-          primaryColor: "#fb923c",
-          primaryTextColor: "#fafafa",
-          primaryBorderColor: "#ea580c",
-          lineColor: "#71717a",
-          secondaryColor: "#27272a",
-          tertiaryColor: "#18181b",
-          background: "#09090b",
-          mainBkg: "#27272a",
-          nodeBorder: "#3f3f46",
-          clusterBkg: "#18181b",
-          titleColor: "#fafafa",
-          edgeLabelBackground: "#18181b",
-        },
+        theme: isDark ? "dark" : "default",
+        themeVariables: isDark
+          ? {
+              primaryColor: "#fb923c",
+              primaryTextColor: "#fafafa",
+              primaryBorderColor: "#ea580c",
+              lineColor: "#71717a",
+              secondaryColor: "#27272a",
+              tertiaryColor: "#18181b",
+              background: "#09090b",
+              mainBkg: "#27272a",
+              nodeBorder: "#3f3f46",
+              clusterBkg: "#18181b",
+              titleColor: "#fafafa",
+              edgeLabelBackground: "#18181b",
+            }
+          : {
+              primaryColor: "#fed7aa",
+              primaryTextColor: "#18181b",
+              primaryBorderColor: "#ea580c",
+              lineColor: "#a1a1aa",
+              secondaryColor: "#f4f4f5",
+              tertiaryColor: "#fafafa",
+              background: "#ffffff",
+              mainBkg: "#fff7ed",
+              nodeBorder: "#e4e4e7",
+              clusterBkg: "#fafafa",
+              titleColor: "#18181b",
+              edgeLabelBackground: "#ffffff",
+            },
         fontFamily: "ui-monospace, monospace",
         fontSize: 13,
       });
@@ -202,7 +245,7 @@ export default function MdEditor() {
         }
       });
     });
-  }, [html, isLoading]);
+  }, [html, isLoading, theme]);
 
   // Load shared content from URL on mount
   useEffect(() => {
@@ -362,41 +405,54 @@ export default function MdEditor() {
 
   return (
     <div
-      className="flex flex-col h-screen bg-zinc-950 text-zinc-100"
+      className="flex flex-col h-screen"
+      style={{ background: "var(--background)", color: "var(--foreground)" }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
     >
       {/* Drag overlay */}
       {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/90 border-2 border-dashed border-orange-400/50 rounded-lg m-2">
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed rounded-lg m-2"
+          style={{ background: "var(--drag-bg)", borderColor: "var(--accent)" }}
+        >
           <div className="text-center">
             <div className="text-4xl mb-3 opacity-60">📄</div>
-            <p className="text-lg text-orange-400 font-medium">Drop your .md file</p>
-            <p className="text-sm text-zinc-500 mt-1">Supports .md, .markdown, .txt</p>
+            <p className="text-lg font-medium" style={{ color: "var(--accent)" }}>Drop your .md file</p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Supports .md, .markdown, .txt</p>
           </div>
         </div>
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-sm">
+      <header
+        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
+      >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <h1
             className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
             onClick={handleClear}
             title="mdfy.cc — New document"
           >
-            <span className="text-orange-400">md</span>
-            <span className="text-zinc-200">fy</span>
-            <span className="text-zinc-600">.cc</span>
+            <span style={{ color: "var(--accent)" }}>md</span>
+            <span style={{ color: "var(--text-primary)" }}>fy</span>
+            <span style={{ color: "var(--text-muted)" }}>.cc</span>
           </h1>
           {title && (
-            <span className="text-xs sm:text-sm text-zinc-500 border-l border-zinc-800 pl-2 sm:pl-3 hidden sm:inline truncate max-w-[200px]">
+            <span
+              className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline truncate max-w-[200px]"
+              style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
+            >
               {title}
             </span>
           )}
           {isSharedDoc && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-400/15 text-orange-400 font-mono shrink-0">
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
               SHARED
             </span>
           )}
@@ -405,7 +461,10 @@ export default function MdEditor() {
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
           {/* Flavor badges — desktop only */}
           <div className="items-center gap-1.5 hidden lg:flex">
-            <span className="px-2 py-0.5 rounded-md bg-orange-400/15 text-orange-400 font-mono font-medium">
+            <span
+              className="px-2 py-0.5 rounded-md font-mono font-medium"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
               {flavor}
             </span>
             {Object.entries(flavorDetails)
@@ -413,7 +472,8 @@ export default function MdEditor() {
               .map(([key]) => (
                 <span
                   key={key}
-                  className="px-1.5 py-0.5 rounded-md bg-zinc-800/80 text-zinc-500 font-mono"
+                  className="px-1.5 py-0.5 rounded-md font-mono"
+                  style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}
                 >
                   +{key}
                 </span>
@@ -421,14 +481,14 @@ export default function MdEditor() {
           </div>
 
           {/* Stats — desktop only */}
-          <div className="items-center gap-2 text-zinc-600 font-mono hidden md:flex">
+          <div className="items-center gap-2 font-mono hidden md:flex" style={{ color: "var(--text-muted)" }}>
             <span>{charCount.toLocaleString()} chars</span>
-            <span className="text-zinc-800">·</span>
+            <span style={{ color: "var(--border)" }}>·</span>
             <span>{renderTime.toFixed(1)}ms</span>
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center rounded-md bg-zinc-800/50 p-0.5">
+          <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
             {(isMobile
               ? (["editor", "preview"] as ViewMode[])
               : (["editor", "split", "preview"] as ViewMode[])
@@ -436,27 +496,37 @@ export default function MdEditor() {
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                  viewMode === mode
-                    ? "bg-zinc-700 text-zinc-200"
-                    : "text-zinc-600 hover:text-zinc-400"
-                }`}
+                className="px-2 py-0.5 rounded text-[10px] font-mono transition-colors"
+                style={{
+                  background: viewMode === mode ? "var(--toggle-active)" : "transparent",
+                  color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
+                }}
               >
                 {mode === "editor" ? "MD" : mode === "split" ? "Split" : "View"}
               </button>
             ))}
           </div>
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="px-2 py-1 rounded-md transition-colors text-[11px]"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
+
           {/* Actions */}
           <div className="flex items-center gap-1">
             <button
               onClick={handleShare}
               disabled={shareState === "sharing"}
-              className={`px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs ${
-                shareState === "copied"
-                  ? "bg-green-500/20 text-green-400"
-                  : "bg-orange-400/15 hover:bg-orange-400/25 text-orange-400"
-              }`}
+              className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
+              style={{
+                background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
+                color: shareState === "copied" ? "#4ade80" : "var(--accent)",
+              }}
               title="Share (⌘S)"
             >
               {shareButtonLabel}
@@ -464,30 +534,37 @@ export default function MdEditor() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="px-2 py-1 rounded-md bg-zinc-800/50 hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors font-mono"
+                className="px-2 py-1 rounded-md transition-colors font-mono"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
                 ···
               </button>
               {showMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50">
+                <div
+                  className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl z-50"
+                  style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}
+                >
                   <div className="py-1">
                     <button
                       onClick={handleCopyHtml}
-                      className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
                     >
                       Copy HTML
-                      <span className="float-right text-zinc-600 hidden sm:inline">⌘⇧C</span>
+                      <span className="float-right hidden sm:inline" style={{ color: "var(--text-muted)" }}>⌘⇧C</span>
                     </button>
                     <button
                       onClick={handleDownloadMd}
-                      className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
                     >
                       Download .md
                     </button>
-                    <hr className="border-zinc-800 my-1" />
+                    <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
                       onClick={handleClear}
-                      className="w-full text-left px-3 py-2 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-muted)" }}
                     >
                       New document
                     </button>
@@ -498,7 +575,10 @@ export default function MdEditor() {
           </div>
 
           {/* Engine badge — xl only */}
-          <span className="px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-500/70 font-mono text-[10px] tracking-wide hidden xl:inline">
+          <span
+            className="px-2 py-0.5 rounded-md font-mono text-[10px] tracking-wide hidden xl:inline"
+            style={{ background: "var(--accent-dim)", color: "var(--accent)", opacity: 0.7 }}
+          >
             RUST→WASM
           </span>
         </div>
@@ -511,17 +591,22 @@ export default function MdEditor() {
           <div
             className={`${
               viewMode === "split" ? "w-1/2" : "w-full"
-            } border-r border-zinc-800/60 flex flex-col`}
+            } flex flex-col`}
+            style={{ borderRight: viewMode === "split" ? "1px solid var(--border-dim)" : "none" }}
           >
-            <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
+            <div
+              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+            >
               <span>Markdown</span>
-              <span className="text-zinc-700 hidden sm:inline">
+              <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
             <textarea
               ref={textareaRef}
-              className="flex-1 p-3 sm:p-5 bg-transparent text-zinc-300 font-mono text-[13px] resize-none outline-none leading-relaxed placeholder:text-zinc-700"
+              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+              style={{ color: "var(--editor-text)", caretColor: "var(--accent)" }}
               value={markdown}
               onChange={(e) => handleChange(e.target.value)}
               spellCheck={false}
@@ -535,27 +620,35 @@ export default function MdEditor() {
           <div
             className={`${
               viewMode === "split" ? "w-1/2" : "w-full"
-            } flex flex-col bg-zinc-950`}
+            } flex flex-col`}
+            style={{ background: "var(--background)" }}
           >
-            <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] text-zinc-600 border-b border-zinc-800/40 font-mono uppercase tracking-wider">
+            <div
+              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+            >
               <span>Preview</span>
               <div className="flex items-center gap-2">
                 {isSharedDoc && (
                   <button
                     onClick={handleEditShared}
-                    className="text-orange-400/70 hover:text-orange-400 transition-colors normal-case"
+                    className="transition-colors normal-case"
+                    style={{ color: "var(--accent)", opacity: 0.7 }}
                   >
                     Edit →
                   </button>
                 )}
-                <span className="text-zinc-700 hidden sm:inline">rendered</span>
+                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>rendered</span>
               </div>
             </div>
             <div className="flex-1 overflow-auto" ref={previewRef}>
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
-                  <div className="w-6 h-6 border-2 border-orange-400/30 border-t-orange-400 rounded-full animate-spin" />
-                  <span className="text-zinc-600 text-sm">
+                  <div
+                    className="w-6 h-6 border-2 rounded-full animate-spin"
+                    style={{ borderColor: "var(--accent-dim)", borderTopColor: "var(--accent)" }}
+                  />
+                  <span className="text-sm" style={{ color: "var(--text-muted)" }}>
                     Loading WASM engine...
                   </span>
                 </div>
@@ -569,16 +662,16 @@ export default function MdEditor() {
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700 px-4">
+                <div className="flex flex-col items-center justify-center h-full gap-4 px-4" style={{ color: "var(--text-muted)" }}>
                   <div className="text-4xl sm:text-5xl opacity-30">📝</div>
                   <p className="text-sm text-center">
                     {isMobile ? "Tap MD to start writing" : "Type or paste Markdown on the left"}
                   </p>
-                  <p className="text-xs text-zinc-800 text-center">
+                  <p className="text-xs text-center" style={{ color: "var(--text-faint)" }}>
                     Supports GFM · Obsidian · MDX · Pandoc · KaTeX · Mermaid
                   </p>
                   {!isMobile && (
-                    <p className="text-xs text-zinc-800 mt-2">
+                    <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
                       or drag & drop a .md file anywhere
                     </p>
                   )}
@@ -590,15 +683,19 @@ export default function MdEditor() {
       </div>
 
       {/* Footer */}
-      <footer className="flex items-center justify-between px-3 sm:px-5 py-1.5 border-t border-zinc-800/50 text-[10px] text-zinc-700 font-mono">
+      <footer
+        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
+        style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
+      >
         <span className="truncate">mdcore v0.1.0 · Rust → WASM</span>
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          <span className="text-zinc-800 hidden sm:inline">
+          <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>
             ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
           </span>
           <a
             href="https://github.com/raymindai/mdcore"
-            className="hover:text-zinc-500 transition-colors"
+            className="transition-colors"
+            style={{ color: "var(--text-muted)" }}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -606,7 +703,8 @@ export default function MdEditor() {
           </a>
           <a
             href="https://mdcore.ai"
-            className="hover:text-zinc-500 transition-colors"
+            className="transition-colors"
+            style={{ color: "var(--text-muted)" }}
             target="_blank"
             rel="noopener noreferrer"
           >

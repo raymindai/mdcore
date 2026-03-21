@@ -136,7 +136,7 @@ function processMermaid(html: string): string {
 function addCodeCopyButtons(html: string): string {
   return html.replace(
     /<pre(?![^>]*class="mermaid")([^>]*)><code/g,
-    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:8px;right:8px;padding:2px 8px;font-size:11px;background:#27272a;color:#a1a1aa;border:1px solid #3f3f46;border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.2s">Copy</button><code`
+    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:8px;right:8px;padding:2px 8px;font-size:11px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.2s">Copy</button><code`
   );
 }
 

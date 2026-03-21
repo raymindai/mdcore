@@ -2,18 +2,81 @@
 @import "katex/dist/katex.min.css";
 @import "highlight.js/styles/github-dark.min.css";
 
-:root {
+/* ========================================
+   Theme: Dark (default)
+   ======================================== */
+:root,
+[data-theme="dark"] {
   --background: #09090b;
   --foreground: #fafafa;
   --accent: #fb923c;
   --accent-dim: rgba(251, 146, 60, 0.15);
   --surface: #18181b;
+  --surface-hover: rgba(251, 146, 60, 0.03);
   --border: #27272a;
   --border-dim: rgba(39, 39, 42, 0.6);
   --text-primary: #fafafa;
   --text-secondary: #d4d4d8;
   --text-tertiary: #a1a1aa;
   --text-muted: #71717a;
+  --text-faint: #52525b;
+  --header-bg: rgba(9, 9, 11, 0.95);
+  --editor-text: #d4d4d8;
+  --editor-placeholder: #3f3f46;
+  --scrollbar-thumb: #27272a;
+  --scrollbar-hover: #3f3f46;
+  --math-color: #c4b5fd;
+  --math-display-color: #ddd6fe;
+  --code-copy-bg: #27272a;
+  --code-copy-color: #a1a1aa;
+  --code-copy-border: #3f3f46;
+  --h2-color: #e4e4e7;
+  --badge-bg: rgba(251, 146, 60, 0.15);
+  --badge-muted-bg: rgba(39, 39, 42, 0.8);
+  --badge-muted-color: #71717a;
+  --menu-bg: #18181b;
+  --menu-hover: rgba(39, 39, 42, 0.5);
+  --toggle-bg: rgba(39, 39, 42, 0.5);
+  --toggle-active: #3f3f46;
+  --drag-bg: rgba(9, 9, 11, 0.9);
+}
+
+/* ========================================
+   Theme: Light
+   ======================================== */
+[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --accent: #ea580c;
+  --accent-dim: rgba(234, 88, 12, 0.1);
+  --surface: #f4f4f5;
+  --surface-hover: rgba(234, 88, 12, 0.04);
+  --border: #e4e4e7;
+  --border-dim: rgba(228, 228, 231, 0.6);
+  --text-primary: #09090b;
+  --text-secondary: #3f3f46;
+  --text-tertiary: #71717a;
+  --text-muted: #a1a1aa;
+  --text-faint: #d4d4d8;
+  --header-bg: rgba(255, 255, 255, 0.95);
+  --editor-text: #3f3f46;
+  --editor-placeholder: #d4d4d8;
+  --scrollbar-thumb: #d4d4d8;
+  --scrollbar-hover: #a1a1aa;
+  --math-color: #7c3aed;
+  --math-display-color: #6d28d9;
+  --code-copy-bg: #f4f4f5;
+  --code-copy-color: #71717a;
+  --code-copy-border: #e4e4e7;
+  --h2-color: #27272a;
+  --badge-bg: rgba(234, 88, 12, 0.1);
+  --badge-muted-bg: rgba(244, 244, 245, 0.8);
+  --badge-muted-color: #71717a;
+  --menu-bg: #ffffff;
+  --menu-hover: rgba(244, 244, 245, 0.8);
+  --toggle-bg: rgba(244, 244, 245, 0.8);
+  --toggle-active: #e4e4e7;
+  --drag-bg: rgba(255, 255, 255, 0.9);
 }
 
 body {
@@ -48,7 +111,7 @@ body {
 .mdcore-rendered h2 {
   font-size: 1.375rem;
   font-weight: 600;
-  color: #e4e4e7;
+  color: var(--h2-color);
   margin: 2rem 0 0.75rem;
   padding-bottom: 0.375rem;
   border-bottom: 1px solid var(--border);
@@ -58,14 +121,14 @@ body {
 .mdcore-rendered h3 {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #e4e4e7;
+  color: var(--h2-color);
   margin: 1.5rem 0 0.5rem;
 }
 
 .mdcore-rendered h4, .mdcore-rendered h5, .mdcore-rendered h6 {
   font-size: 1rem;
   font-weight: 600;
-  color: #e4e4e7;
+  color: var(--h2-color);
   margin: 1.25rem 0 0.5rem;
 }
 
@@ -182,7 +245,7 @@ body {
 }
 
 .mdcore-rendered tr:hover td {
-  background: rgba(251, 146, 60, 0.03);
+  background: var(--surface-hover);
 }
 
 /* Lists */
@@ -231,10 +294,10 @@ body {
   margin: 2rem 0;
 }
 
-/* KaTeX math — overrides for dark theme */
+/* KaTeX math */
 .mdcore-rendered .katex {
   font-size: 1.05em;
-  color: #c4b5fd;
+  color: var(--math-color);
 }
 
 .mdcore-rendered .katex-display {
@@ -247,7 +310,7 @@ body {
 }
 
 .mdcore-rendered .katex-display > .katex {
-  color: #ddd6fe;
+  color: var(--math-display-color);
 }
 
 /* Mermaid diagrams */
@@ -308,6 +371,54 @@ body {
 }
 
 /* ========================================
+   Light mode: highlight.js override
+   ======================================== */
+[data-theme="light"] .hljs {
+  background: var(--surface) !important;
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .hljs-keyword,
+[data-theme="light"] .hljs-selector-tag,
+[data-theme="light"] .hljs-literal,
+[data-theme="light"] .hljs-section,
+[data-theme="light"] .hljs-link {
+  color: #a626a4;
+}
+
+[data-theme="light"] .hljs-string,
+[data-theme="light"] .hljs-title,
+[data-theme="light"] .hljs-name,
+[data-theme="light"] .hljs-type,
+[data-theme="light"] .hljs-attribute,
+[data-theme="light"] .hljs-symbol,
+[data-theme="light"] .hljs-bullet,
+[data-theme="light"] .hljs-addition,
+[data-theme="light"] .hljs-variable,
+[data-theme="light"] .hljs-template-tag,
+[data-theme="light"] .hljs-template-variable {
+  color: #50a14f;
+}
+
+[data-theme="light"] .hljs-comment,
+[data-theme="light"] .hljs-quote,
+[data-theme="light"] .hljs-deletion,
+[data-theme="light"] .hljs-meta {
+  color: #a0a1a7;
+}
+
+[data-theme="light"] .hljs-number,
+[data-theme="light"] .hljs-built_in,
+[data-theme="light"] .hljs-builtin-name,
+[data-theme="light"] .hljs-class .hljs-title {
+  color: #c18401;
+}
+
+[data-theme="light"] .hljs-function {
+  color: #4078f2;
+}
+
+/* ========================================
    Scrollbar styling
    ======================================== */
 *::-webkit-scrollbar {
@@ -320,12 +431,17 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: var(--scrollbar-hover);
+}
+
+/* Textarea placeholder */
+textarea::placeholder {
+  color: var(--editor-placeholder) !important;
 }
 
 /* ========================================
