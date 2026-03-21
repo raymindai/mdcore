@@ -323,35 +323,47 @@ body {
   padding-right: 6px;
 }
 
-/* Editable elements: hover hint (dashed gray) */
-.mdcore-rendered h1:hover,
-.mdcore-rendered h2:hover,
-.mdcore-rendered h3:hover,
-.mdcore-rendered h4:hover,
-.mdcore-rendered h5:hover,
-.mdcore-rendered h6:hover,
-.mdcore-rendered p:hover,
-.mdcore-rendered li:hover,
-.mdcore-rendered td:hover,
-.mdcore-rendered th:hover {
-  --tw-outline-style: dashed;
-  outline-style: dashed;
-  outline-width: 1px;
-  outline-color: var(--border);
-  outline-offset: 2px;
+/* Editable elements: hover hint (dashed gray via pseudo-element) */
+.mdcore-rendered h1,
+.mdcore-rendered h2,
+.mdcore-rendered h3,
+.mdcore-rendered h4,
+.mdcore-rendered h5,
+.mdcore-rendered h6,
+.mdcore-rendered p,
+.mdcore-rendered li,
+.mdcore-rendered td,
+.mdcore-rendered th {
+  position: relative;
   cursor: text;
-  border-radius: 6px;
 }
 
-/* Editing state: orange solid */
-.mdcore-rendered [contenteditable="true"],
-.mdcore-rendered [contenteditable="true"]:hover {
-  --tw-outline-style: solid;
-  outline-style: solid;
-  outline-width: 1px;
-  outline-color: var(--accent);
-  outline-offset: 2px;
+.mdcore-rendered h1:hover::after,
+.mdcore-rendered h2:hover::after,
+.mdcore-rendered h3:hover::after,
+.mdcore-rendered h4:hover::after,
+.mdcore-rendered h5:hover::after,
+.mdcore-rendered h6:hover::after,
+.mdcore-rendered p:hover::after,
+.mdcore-rendered li:hover::after,
+.mdcore-rendered td:hover::after,
+.mdcore-rendered th:hover::after {
+  content: "";
+  position: absolute;
+  inset: -3px -4px;
+  border: 1px dashed var(--border);
   border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Editing state: orange solid (via pseudo-element) */
+.mdcore-rendered [contenteditable="true"]::after {
+  content: "" !important;
+  position: absolute;
+  inset: -3px -4px;
+  border: 1px solid var(--accent) !important;
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 /* Description lists */
