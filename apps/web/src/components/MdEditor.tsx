@@ -444,7 +444,9 @@ export default function MdEditor() {
     const handleDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
       // Only allow editing on simple text elements
-      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,td,th,blockquote > p") as HTMLElement | null;
+      // Skip table cells — handled by handleTableDblClick with size-locked input
+      if (target.closest("td,th,table")) return;
+      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,blockquote > p") as HTMLElement | null;
       if (!editable) return;
       // Skip if it's a code block, mermaid, katex
       if (target.closest("pre,code,.mermaid-container,.katex")) return;
