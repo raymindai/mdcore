@@ -339,7 +339,8 @@ body {
   height: auto;
 }
 
-.mdcore-rendered .mermaid-container:hover .mermaid-edit-btn {
+.mdcore-rendered .mermaid-container:hover .mermaid-edit-btn,
+.mdcore-rendered .mermaid-rendered:hover .mermaid-edit-btn {
   opacity: 1 !important;
 }
 

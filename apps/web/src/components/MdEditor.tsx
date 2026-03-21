@@ -318,20 +318,17 @@ export default function MdEditor() {
 
         try {
           const { svg } = await mermaid.render(id, code);
-          container.innerHTML = `<div class="mermaid-rendered">${svg}</div>`;
-          // Add Edit button
-          const editBtn = document.createElement("button");
-          editBtn.textContent = "Edit in Canvas";
-          editBtn.className = "mermaid-edit-btn";
-          editBtn.setAttribute("data-mermaid-code", code);
-          editBtn.style.cssText = `
-            position:absolute;top:8px;right:8px;padding:3px 10px;font-size:11px;
-            font-family:ui-monospace,monospace;background:var(--accent-dim);
-            color:var(--accent);border:none;border-radius:6px;cursor:pointer;
-            opacity:0;transition:opacity 0.2s;z-index:5;
-          `;
-          (container as HTMLElement).style.position = "relative";
-          container.appendChild(editBtn);
+          // Encode mermaid source for the edit button
+          const encodedCode = btoa(encodeURIComponent(code));
+          container.innerHTML = `
+            <div class="mermaid-rendered" style="position:relative">
+              ${svg}
+              <button
+                class="mermaid-edit-btn"
+                data-mermaid-src="${encodedCode}"
+                style="position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;font-family:ui-monospace,monospace;background:var(--accent-dim);color:var(--accent);border:none;border-radius:6px;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:5;"
+              >Edit in Mermaid</button>
+            </div>`;
         } catch {
           // Leave as-is
         }
@@ -385,10 +382,15 @@ export default function MdEditor() {
     const handler = (e: Event) => {
       const btn = (e.target as HTMLElement).closest(".mermaid-edit-btn") as HTMLElement | null;
       if (!btn) return;
-      const code = btn.getAttribute("data-mermaid-code");
-      if (code) {
-        setCanvasMermaid(code);
-        setViewMode("mermaid");
+      const encoded = btn.getAttribute("data-mermaid-src");
+      if (encoded) {
+        try {
+          const code = decodeURIComponent(atob(encoded));
+          setCanvasMermaid(code);
+          setViewMode("mermaid");
+        } catch {
+          // fallback
+        }
       }
     };
     previewRef.current.addEventListener("click", handler);
