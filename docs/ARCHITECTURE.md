@@ -257,11 +257,12 @@ Week 4: mdfy.cc MVP
 | HTML 렌더링 | **Rust** | 코어 기능 |
 | Flavor 감지 | **Rust** | 코어 기능 |
 | X↔MD 변환 | **Rust** | 코어 기능 |
-| Syntax highlighting | JS (Shiki) 또는 Rust (syntect) | 환경에 따라 선택 |
+| Syntax highlighting | **JS (highlight.js)** | syntect는 WASM 불가, Shiki보다 경량 |
 | Math (KaTeX) | **JS** | 브라우저 DOM 필요 |
 | Diagrams (Mermaid) | **JS** | SVG 렌더링, DOM 의존 |
 | Interactive editing | **JS/React** | UI 레이어 |
-| Canvas mode | **JS (tldraw)** | 이미 완성된 라이브러리 |
+| Mermaid visual editor | **JS/React (자체 구현)** | tldraw 대신 경량 캔버스. 외부 의존성 0 |
+| HTML → MD 변환 | **JS (Turndown)** | 붙여넣기 자동 감지 |
 | 테마/스타일 | **CSS/TailwindCSS** | 스타일은 코드 아님 |
 
 **원칙**: "데이터를 다루는 것은 Rust, 화면을 다루는 것은 JS"

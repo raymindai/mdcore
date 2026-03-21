@@ -217,16 +217,17 @@ INPUT → RENDER → REFINE → SHARE → COLLABORATE → ITERATE
 ```
 
 **왜 이게 킬러인가:**
-- tldraw "Make Real"은 스케치→앱, Excalidraw는 다이어그램 도구. **캔버스→구조화된 문서**는 아무도 안 하고 있음
-- MD를 모르는 사람도 쓸 수 있다 → TAM 확장 (개발자 → 모든 사람)
-- "에디터를 만들지 마라" 원칙에 안 어긋남 — 이건 에디터가 아니라 **인풋 레이어**
+- Mermaid 문법을 모르는 사람도 비주얼로 플로우차트를 만들 수 있다
+- 기존 Mermaid 코드를 캔버스에 불러와서 비주얼로 수정 가능 (역방향)
+- "에디터를 만들지 마라" 원칙에 안 어긋남 — Mermaid 코드의 인풋 레이어
 
-**구현 (초경량 유지)**:
-- 캔버스 = tldraw SDK의 TldrawEditor (미니멀 모드) 또는 자체 경량 캔버스 (<50KB)
-- 요소: 텍스트 박스 + 화살표 + 색상 그룹 — 이것만. Excalidraw 수준의 드로잉 불필요
-- AI 구조화 = 캔버스 요소+연결 관계를 JSON → Claude API → 구조화된 MD
-- 인풋 수단: 타이핑, 음성(Whisper API), 이미지 붙여넣기(OCR→텍스트)
-- Phase 2 후반에 도입. MVP에는 넣지 않음 (렌더링 품질이 먼저)
+**구현 (완료 — Phase 2)**:
+- 자체 경량 캔버스 (React, 외부 의존성 0) — tldraw 대신 직접 구현
+- 요소: 텍스트 노드 (4가지 shape: round/square/circle/diamond) + 화살표 (라벨 지원)
+- Mermaid 코드 생성: 캔버스 노드+엣지 → `graph LR/TD` 코드 자동 생성
+- Mermaid 코드 Import: 기존 Mermaid 코드 → 캔버스에 노드/엣지로 auto-layout
+- AI 불필요 — 알고리즘 기반 변환 (그래프 구조 → Mermaid 문법은 1:1 매핑)
+- 향후 Gemini Flash Lite 연동으로 "더 똑똑한 정리" 옵션 추가 가능
 
 ### ★ 인터랙티브 수정 — "렌더링 위에서 바로 고친다"
 
