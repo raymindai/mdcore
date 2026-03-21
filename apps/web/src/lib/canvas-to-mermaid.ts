@@ -11,12 +11,14 @@ export interface CanvasNode {
 }
 
 export type EdgeStyle = "solid" | "dotted" | "thick";
+export type EdgeDirection = "forward" | "both" | "none";
 
 export interface CanvasEdge {
   from: string;
   to: string;
   label?: string;
   style?: EdgeStyle;
+  direction?: EdgeDirection;
 }
 
 type Direction = "LR" | "TD" | "TB" | "RL" | "BT";
@@ -59,8 +61,16 @@ export function canvasToMermaid(
   for (const edge of edges) {
     const fromId = toMermaidId(edge.from);
     const toId = toMermaidId(edge.to);
-    // Arrow style: --> solid, -.-> dotted, ==> thick
-    const arrow = edge.style === "dotted" ? "-.->" : edge.style === "thick" ? "==>" : "-->";
+    // Arrow style + direction
+    const dir = edge.direction || "forward";
+    let arrow: string;
+    if (edge.style === "dotted") {
+      arrow = dir === "both" ? "<-.->" : dir === "none" ? "-.-" : "-.->";
+    } else if (edge.style === "thick") {
+      arrow = dir === "both" ? "<==> " : dir === "none" ? "===" : "==>";
+    } else {
+      arrow = dir === "both" ? "<-->" : dir === "none" ? "---" : "-->";
+    }
     if (edge.label) {
       lines.push(`    ${fromId} ${arrow}|${sanitizeMermaidText(edge.label)}| ${toId}`);
     } else {

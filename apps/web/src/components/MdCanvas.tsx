@@ -36,7 +36,7 @@ interface SelectionBox {
 }
 
 const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
-  round: { borderRadius: "999px", padding: "10px 24px" },
+  round: { borderRadius: "20px" },
   square: { borderRadius: "4px" },
   circle: { borderRadius: "50%", width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
   diamond: { transform: "rotate(45deg)", borderRadius: "4px", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
@@ -610,6 +610,9 @@ export default function MdCanvas({
             <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
             </marker>
+            <marker id="arr-start" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
+            </marker>
             <marker id="arr-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
               <polygon points="0 0, 8 3, 0 6" fill="var(--accent)" />
             </marker>
@@ -639,7 +642,8 @@ export default function MdCanvas({
                   strokeWidth={edge.style === "thick" ? 3 : 1.5}
                   strokeDasharray={edge.style === "dotted" ? "6 4" : undefined}
                   fill="none"
-                  markerEnd="url(#arr)"
+                  markerEnd={edge.direction === "none" ? undefined : "url(#arr)"}
+                  markerStart={edge.direction === "both" ? "url(#arr-start)" : undefined}
                 />
                 {/* Clickable hit area */}
                 <path
@@ -727,10 +731,27 @@ export default function MdCanvas({
                     className="px-1.5 py-1 rounded text-[9px] font-mono"
                     style={{
                       background: (edge.style || "solid") === s ? "var(--accent-dim)" : "var(--toggle-bg)",
-                      color: (edge.style || "solid") === s ? "var(--accent)" : "var(--text-faint)",
+                      color: (edge.style || "solid") === s ? "var(--accent)" : "var(--text-muted)",
                     }}
                   >
                     {s === "solid" ? "—" : s === "dotted" ? "···" : "═"}
+                  </button>
+                ))}
+                {/* Direction toggle */}
+                {(["forward", "both", "none"] as const).map((d) => (
+                  <button
+                    key={d}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, direction: d } : ed));
+                    }}
+                    className="px-1.5 py-1 rounded text-[9px] font-mono"
+                    style={{
+                      background: (edge.direction || "forward") === d ? "var(--accent-dim)" : "var(--toggle-bg)",
+                      color: (edge.direction || "forward") === d ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                  >
+                    {d === "forward" ? "→" : d === "both" ? "↔" : "—"}
                   </button>
                 ))}
                 <button

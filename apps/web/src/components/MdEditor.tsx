@@ -384,8 +384,9 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
-  const [splitPercent, setSplitPercent] = useState(50); // editor width %
+  const splitPercentRef = useRef(50);
   const isDraggingSplit = useRef(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1790,17 +1791,27 @@ export default function MdEditor() {
 
       {/* Main content */}
       <div
+        ref={splitContainerRef}
         className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
         onMouseMove={(e) => {
-          if (!isDraggingSplit.current) return;
-          const container = e.currentTarget;
-          const rect = container.getBoundingClientRect();
+          if (!isDraggingSplit.current || !splitContainerRef.current) return;
+          const rect = splitContainerRef.current.getBoundingClientRect();
+          let pct: number;
           if (isMobile) {
-            const pct = ((e.clientY - rect.top) / rect.height) * 100;
-            setSplitPercent(Math.max(20, Math.min(80, pct)));
+            pct = ((e.clientY - rect.top) / rect.height) * 100;
           } else {
-            const pct = ((e.clientX - rect.left) / rect.width) * 100;
-            setSplitPercent(Math.max(20, Math.min(80, pct)));
+            pct = ((e.clientX - rect.left) / rect.width) * 100;
+          }
+          pct = Math.max(20, Math.min(80, pct));
+          splitPercentRef.current = pct;
+          // Update DOM directly to avoid re-render (preserves Mermaid SVGs)
+          const editorPane = splitContainerRef.current.querySelector("[data-pane='editor']") as HTMLElement;
+          if (editorPane) {
+            if (isMobile) {
+              editorPane.style.height = `${pct}%`;
+            } else {
+              editorPane.style.width = `${pct}%`;
+            }
           }
         }}
         onMouseUp={() => { isDraggingSplit.current = false; }}
@@ -1809,10 +1820,11 @@ export default function MdEditor() {
         {/* Editor pane */}
         {viewMode !== "preview" && (
           <div
+            data-pane="editor"
             className="flex flex-col"
             style={{
-              width: viewMode === "split" && !isMobile ? `${splitPercent}%` : "100%",
-              height: viewMode === "split" && isMobile ? `${splitPercent}%` : undefined,
+              width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
+              height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
               flexShrink: 0,
             }}
           >
@@ -1893,12 +1905,18 @@ export default function MdEditor() {
                 </div>
               ) : html ? (
                 <article
+                  ref={(el) => {
+                    // Only update innerHTML when html actually changes
+                    if (el && el.getAttribute("data-html-hash") !== String(html.length)) {
+                      el.innerHTML = html;
+                      el.setAttribute("data-html-hash", String(html.length));
+                    }
+                  }}
                   className={`mdcore-rendered max-w-none ${
                     viewMode === "preview"
                       ? "p-4 sm:p-8 mx-auto max-w-3xl"
                       : "p-3 sm:p-6"
                   }`}
-                  dangerouslySetInnerHTML={{ __html: html }}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-4 px-4" style={{ color: "var(--text-muted)" }}>
