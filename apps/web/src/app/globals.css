@@ -308,6 +308,7 @@ body {
 }
 
 /* Editable elements hint on hover */
+/* Text elements: dashed outline on hover */
 .mdcore-rendered h1:hover,
 .mdcore-rendered h2:hover,
 .mdcore-rendered h3:hover,
@@ -315,7 +316,14 @@ body {
 .mdcore-rendered h5:hover,
 .mdcore-rendered h6:hover,
 .mdcore-rendered p:hover,
-.mdcore-rendered li:hover,
+.mdcore-rendered li:hover {
+  outline: 1px dashed var(--border);
+  outline-offset: 2px;
+  cursor: text;
+  border-radius: 4px;
+}
+
+/* Table cells: inset shadow (no clipping from table overflow) */
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
   box-shadow: inset 0 0 0 1px var(--text-faint);
