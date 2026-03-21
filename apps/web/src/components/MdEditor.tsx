@@ -480,6 +480,9 @@ export default function MdEditor() {
           // Wrap the <pre> in a container and replace with rendered SVG
           const wrapper = document.createElement("div");
           wrapper.className = "mermaid-container";
+          // Copy sourcepos for click-to-source
+          const sourcepos = pre.getAttribute("data-sourcepos");
+          if (sourcepos) wrapper.setAttribute("data-sourcepos", sourcepos);
           wrapper.innerHTML = `
             <div class="mermaid-rendered" style="position:relative">
               ${svg}
@@ -847,7 +850,7 @@ export default function MdEditor() {
     };
   }, [viewMode, markdown, doRender]);
 
-  // Mermaid edit button click handler
+  // Mermaid edit button click handler (re-attach on html/viewMode change)
   useEffect(() => {
     if (!previewRef.current) return;
     const handler = (e: Event) => {
@@ -867,7 +870,7 @@ export default function MdEditor() {
     previewRef.current.addEventListener("click", handler);
     const ref = previewRef.current;
     return () => ref.removeEventListener("click", handler);
-  }, []);
+  }, [html, viewMode]);
 
   // Interactive editing: checkbox toggle + table cell edit
   useEffect(() => {

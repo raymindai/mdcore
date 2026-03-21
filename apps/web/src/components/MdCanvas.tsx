@@ -28,6 +28,13 @@ interface ConnectState {
   mouseY: number;
 }
 
+interface SelectionBox {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
 const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
   round: { borderRadius: "20px" },
   square: { borderRadius: "4px" },
@@ -35,12 +42,21 @@ const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
   diamond: { transform: "rotate(45deg)", borderRadius: "4px", minWidth: "70px", minHeight: "70px", display: "flex", alignItems: "center", justifyContent: "center" },
 };
 
-const shapeLabels: Record<CanvasNode["shape"], string> = {
-  round: "()",
-  square: "[]",
-  circle: "(())",
-  diamond: "{}",
-};
+// SVG mini icons for shape selector
+function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: number }) {
+  const s = size;
+  const c = "var(--accent)";
+  switch (shape) {
+    case "round":
+      return <svg width={s} height={s} viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="5" fill="none" stroke={c} strokeWidth="1.5"/></svg>;
+    case "square":
+      return <svg width={s} height={s} viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="1" fill="none" stroke={c} strokeWidth="1.5"/></svg>;
+    case "circle":
+      return <svg width={s} height={s} viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke={c} strokeWidth="1.5"/></svg>;
+    case "diamond":
+      return <svg width={s} height={s} viewBox="0 0 16 16"><polygon points="8,1 15,8 8,15 1,8" fill="none" stroke={c} strokeWidth="1.5"/></svg>;
+  }
+}
 
 export default function MdCanvas({
   onGenerate,
@@ -57,6 +73,8 @@ export default function MdCanvas({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingEdge, setEditingEdge] = useState<number | null>(null);
+  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showImport, setShowImport] = useState(false);
   const [importCode, setImportCode] = useState("");
   const [showCode, setShowCode] = useState(true);
@@ -257,12 +275,20 @@ export default function MdCanvas({
   }, []);
 
   const deleteSelected = useCallback(() => {
+    // Delete multi-selected nodes
+    if (selectedIds.size > 0) {
+      setNodes((prev) => prev.filter((n) => !selectedIds.has(n.id)));
+      setEdges((prev) => prev.filter((e) => !selectedIds.has(e.from) && !selectedIds.has(e.to)));
+      setSelectedIds(new Set());
+      return;
+    }
+    // Delete single selected node
     if (!selectedId) return;
     setNodes((prev) => prev.filter((n) => n.id !== selectedId));
     setEdges((prev) => prev.filter((e) => e.from !== selectedId && e.to !== selectedId));
     setSelectedId(null);
     setEditingId(null);
-  }, [selectedId]);
+  }, [selectedId, selectedIds]);
 
   const duplicateSelected = useCallback(() => {
     if (!selectedId) return;
@@ -474,11 +500,53 @@ export default function MdCanvas({
         ref={canvasRef}
         className={`${showCode && nodes.length > 0 ? "w-2/3" : "w-full"} relative overflow-auto cursor-crosshair select-none`}
         onDoubleClick={handleCanvasDoubleClick}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onMouseDown={(e) => {
+          // Start selection box if clicking on empty canvas
+          if ((e.target as HTMLElement).closest(".canvas-node") || (e.target as HTMLElement).closest(".edge-label")) return;
+          if (e.button !== 0) return;
+          const rect = canvasRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          setSelectionBox({ startX: x, startY: y, endX: x, endY: y });
+        }}
+        onMouseMove={(e) => {
+          handleMouseMove(e);
+          // Update selection box
+          if (selectionBox && !dragState && !connectState) {
+            const rect = canvasRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            setSelectionBox((prev) => prev ? { ...prev, endX: e.clientX - rect.left, endY: e.clientY - rect.top } : null);
+          }
+        }}
+        onMouseUp={(e) => {
+          handleMouseUp(e);
+          // Finish selection box
+          if (selectionBox) {
+            const minX = Math.min(selectionBox.startX, selectionBox.endX);
+            const maxX = Math.max(selectionBox.startX, selectionBox.endX);
+            const minY = Math.min(selectionBox.startY, selectionBox.endY);
+            const maxY = Math.max(selectionBox.startY, selectionBox.endY);
+            // Only select if box is bigger than 10px (not just a click)
+            if (maxX - minX > 10 && maxY - minY > 10) {
+              const selected = new Set<string>();
+              nodes.forEach((n) => {
+                const cx = n.x + 60;
+                const cy = n.y + 20;
+                if (cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) {
+                  selected.add(n.id);
+                }
+              });
+              setSelectedIds(selected);
+              if (selected.size > 0) setSelectedId(null);
+            }
+            setSelectionBox(null);
+          }
+        }}
         onClick={(e) => {
           if (!(e.target as HTMLElement).closest(".canvas-node") && !(e.target as HTMLElement).closest(".edge-label")) {
             setSelectedId(null);
+            setSelectedIds(new Set());
             setEditingId(null);
             setEditingEdge(null);
           }
@@ -626,7 +694,7 @@ export default function MdCanvas({
               className="px-3 py-2 text-sm transition-colors"
               style={{
                 background: "var(--surface)",
-                border: `1.5px solid ${selectedId === node.id ? "var(--accent)" : "var(--border)"}`,
+                border: `1.5px solid ${(selectedId === node.id || selectedIds.has(node.id)) ? "var(--accent)" : "var(--border)"}`,
                 boxShadow: selectedId === node.id
                   ? "0 0 0 2px var(--accent-dim), 0 4px 12px rgba(0,0,0,0.3)"
                   : "0 2px 8px rgba(0,0,0,0.2)",
@@ -635,14 +703,14 @@ export default function MdCanvas({
             >
               {/* Diamond: counter-rotate content */}
               <div style={node.shape === "diamond" ? { transform: "rotate(-45deg)" } : {}}>
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1 mb-1">
                   <button
                     onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
-                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
-                    style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
-                    title="Change shape: () round, [] square, (()) circle, {} diamond"
+                    className="p-0.5 rounded"
+                    style={{ background: "var(--accent-dim)", display: "flex", alignItems: "center" }}
+                    title="Click to change shape"
                   >
-                    {shapeLabels[node.shape]}
+                    <ShapeIcon shape={node.shape} />
                   </button>
                 </div>
                 {editingId === node.id ? (
@@ -672,6 +740,23 @@ export default function MdCanvas({
         ))}
 
         {/* Empty state */}
+        {/* Selection box */}
+        {selectionBox && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: Math.min(selectionBox.startX, selectionBox.endX),
+              top: Math.min(selectionBox.startY, selectionBox.endY),
+              width: Math.abs(selectionBox.endX - selectionBox.startX),
+              height: Math.abs(selectionBox.endY - selectionBox.startY),
+              border: "1px dashed var(--accent)",
+              background: "var(--accent-dim)",
+              borderRadius: 4,
+              zIndex: 20,
+            }}
+          />
+        )}
+
         {nodes.length === 0 && !showImport && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
             <div className="text-4xl opacity-20">🔀</div>
