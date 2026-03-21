@@ -10,6 +10,7 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
+import { parseSourceBlocks, matchElementToBlock, type SourceBlock } from "@/lib/source-map";
 import {
   createShareUrl,
   createShortUrl,
@@ -195,6 +196,8 @@ export default function MdEditor() {
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
+  const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
+  const [highlightLines, setHighlightLines] = useState<{ start: number; end: number } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -227,6 +230,9 @@ export default function MdEditor() {
       setRenderTime(elapsed);
       setCharCount(md.length);
       setIsLoading(false);
+
+      // Parse source blocks for hover mapping
+      setSourceBlocks(parseSourceBlocks(md));
 
       // Detect AI conversation
       if (md.length > 50 && isAiConversation(md)) {
@@ -375,6 +381,47 @@ export default function MdEditor() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Preview hover → highlight source lines
+  useEffect(() => {
+    if (!previewRef.current || viewMode === "preview" || viewMode === "mermaid") return;
+    const preview = previewRef.current;
+
+    const handleHover = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Walk up to find a block-level element
+      const blockEl = target.closest("h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ul,ol,hr,.mermaid-container,.mermaid-rendered,.katex-display") as HTMLElement | null;
+      if (!blockEl) {
+        setHighlightLines(null);
+        return;
+      }
+
+      const blockIdx = matchElementToBlock(blockEl, sourceBlocks);
+      if (blockIdx >= 0 && blockIdx < sourceBlocks.length) {
+        const block = sourceBlocks[blockIdx];
+        setHighlightLines({ start: block.startLine, end: block.endLine });
+
+        // Scroll textarea to show the highlighted line
+        if (textareaRef.current) {
+          const ta = textareaRef.current;
+          const lineHeight = ta.scrollHeight / (markdown.split("\n").length || 1);
+          const targetScroll = block.startLine * lineHeight - ta.clientHeight / 3;
+          ta.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+        }
+      } else {
+        setHighlightLines(null);
+      }
+    };
+
+    const handleLeave = () => setHighlightLines(null);
+
+    preview.addEventListener("mousemove", handleHover);
+    preview.addEventListener("mouseleave", handleLeave);
+    return () => {
+      preview.removeEventListener("mousemove", handleHover);
+      preview.removeEventListener("mouseleave", handleLeave);
+    };
+  }, [sourceBlocks, viewMode, markdown]);
 
   // Mermaid edit button click handler
   useEffect(() => {
@@ -1101,16 +1148,33 @@ export default function MdEditor() {
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
-            <textarea
-              ref={textareaRef}
-              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
-              style={{ color: "var(--editor-text)", caretColor: "var(--accent)" }}
-              value={markdown}
-              onChange={(e) => handleChange(e.target.value)}
-              onPaste={handlePaste}
-              spellCheck={false}
-              placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
-            />
+            <div className="flex-1 relative overflow-hidden">
+              {/* Highlight overlay */}
+              {highlightLines && viewMode === "split" && (
+                <div
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{
+                    top: `calc(${highlightLines.start} * 1.65em + 0.75rem)`,
+                    height: `calc(${(highlightLines.end - highlightLines.start + 1)} * 1.65em)`,
+                    background: "var(--accent-dim)",
+                    borderLeft: "2px solid var(--accent)",
+                    zIndex: 0,
+                    transition: "top 0.15s, height 0.15s",
+                    marginTop: textareaRef.current ? `-${textareaRef.current.scrollTop}px` : "0",
+                  }}
+                />
+              )}
+              <textarea
+                ref={textareaRef}
+                className="absolute inset-0 w-full h-full p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+                style={{ color: "var(--editor-text)", caretColor: "var(--accent)", zIndex: 1 }}
+                value={markdown}
+                onChange={(e) => handleChange(e.target.value)}
+                onPaste={handlePaste}
+                spellCheck={false}
+                placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
+              />
+            </div>
           </div>
         )}
 
