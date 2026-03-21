@@ -11,7 +11,7 @@ async function getDocument(id: string) {
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at")
+    .select("id, markdown, title, created_at, password_hash, expires_at")
     .eq("id", id)
     .single();
 
@@ -23,13 +23,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = await getDocument(id);
   if (!doc) return {};
 
-  const title = doc.title || "Shared Document";
-  const description = doc.markdown
-    .slice(0, 200)
-    .replace(/[#*_`\n]/g, " ")
-    .trim();
+  // Don't reveal content in OG if password-protected
+  const isProtected = !!doc.password_hash;
+  const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
 
-  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}&preview=${encodeURIComponent(description)}`;
+  if (isExpired) {
+    return { title: "Expired — mdfy.cc" };
+  }
+
+  const title = isProtected ? "Protected Document" : (doc.title || "Shared Document");
+  const description = isProtected
+    ? "This document is password protected."
+    : doc.markdown.slice(0, 200).replace(/[#*_`\n]/g, " ").trim();
+
+  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}`;
 
   return {
     title: `${title} — mdfy.cc`,
@@ -56,11 +63,16 @@ export default async function DocPage({ params }: Props) {
   const doc = await getDocument(id);
   if (!doc) notFound();
 
+  const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
+  const isProtected = !!doc.password_hash;
+
   return (
     <DocumentViewer
       id={doc.id}
-      markdown={doc.markdown}
-      title={doc.title}
+      markdown={isExpired ? "" : (isProtected ? "" : doc.markdown)}
+      title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
+      isProtected={isProtected}
+      isExpired={!!isExpired}
     />
   );
 }

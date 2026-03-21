@@ -389,6 +389,37 @@ export default function MdEditor() {
     setShowMenu(false);
   }, [html]);
 
+  // Copy rich text (for Google Docs, Email etc)
+  const handleCopyRichText = useCallback(async () => {
+    try {
+      const blob = new Blob([html], { type: "text/html" });
+      const textBlob = new Blob([markdown], { type: "text/plain" });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": blob,
+          "text/plain": textBlob,
+        }),
+      ]);
+    } catch {
+      await copyToClipboard(html);
+    }
+    setShowMenu(false);
+  }, [html, markdown]);
+
+  // Copy for Slack (simplified markdown)
+  const handleCopySlack = useCallback(async () => {
+    // Slack uses its own mrkdwn: *bold*, _italic_, `code`, ```code block```
+    // Convert standard MD to Slack-compatible format
+    const slackText = markdown
+      .replace(/\*\*(.*?)\*\*/g, "*$1*")       // **bold** → *bold*
+      .replace(/^### (.*$)/gm, "*$1*")          // ### heading → *heading*
+      .replace(/^## (.*$)/gm, "*$1*")           // ## heading → *heading*
+      .replace(/^# (.*$)/gm, "*$1*")            // # heading → *heading*
+      .replace(/^\- /gm, "• ");                  // - list → • list
+    await copyToClipboard(slackText);
+    setShowMenu(false);
+  }, [markdown]);
+
   // Download .md file
   const handleDownloadMd = useCallback(() => {
     const blob = new Blob([markdown], { type: "text/markdown" });
@@ -444,6 +475,18 @@ export default function MdEditor() {
     doRender("");
     setShowMenu(false);
   }, [doRender]);
+
+  // Export PDF
+  const handleExportPdf = useCallback(() => {
+    setShowMenu(false);
+    // Switch to preview mode temporarily for print
+    const prevMode = viewMode;
+    setViewMode("preview");
+    setTimeout(() => {
+      window.print();
+      setViewMode(prevMode);
+    }, 300);
+  }, [viewMode]);
 
   // Edit shared doc
   const handleEditShared = useCallback(() => {
@@ -651,20 +694,54 @@ export default function MdEditor() {
                       <span className="float-right hidden sm:inline" style={{ color: "var(--text-muted)" }}>⌘⇧C</span>
                     </button>
                     <button
+                      onClick={handleCopyRichText}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Copy for Docs / Email
+                    </button>
+                    <button
+                      onClick={handleCopySlack}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Copy for Slack
+                    </button>
+                    <button
                       onClick={handleDownloadMd}
                       className="w-full text-left px-3 py-2 text-xs transition-colors"
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Download .md
                     </button>
+                    <button
+                      onClick={handleExportPdf}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      Export PDF
+                    </button>
                     {docId && (
-                      <button
-                        onClick={() => { setShowQr(true); setShowMenu(false); }}
-                        className="w-full text-left px-3 py-2 text-xs transition-colors"
-                        style={{ color: "var(--text-tertiary)" }}
-                      >
-                        QR Code
-                      </button>
+                      <>
+                        <button
+                          onClick={() => { setShowQr(true); setShowMenu(false); }}
+                          className="w-full text-left px-3 py-2 text-xs transition-colors"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          QR Code
+                        </button>
+                        <button
+                          onClick={() => {
+                            const code = `<iframe src="https://mdfy.cc/embed/${docId}" width="100%" height="500" frameborder="0" style="border:1px solid #27272a;border-radius:8px;"></iframe>`;
+                            copyToClipboard(code);
+                            setShowMenu(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs transition-colors"
+                          style={{ color: "var(--text-tertiary)" }}
+                        >
+                          Copy Embed Code
+                        </button>
+                      </>
                     )}
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button

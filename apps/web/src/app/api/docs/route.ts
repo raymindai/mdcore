@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { markdown?: string; title?: string };
+  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown, title } = body;
+  const { markdown, title, password, expiresIn } = body;
   if (!markdown || typeof markdown !== "string") {
     return NextResponse.json(
       { error: "markdown is required" },
@@ -46,11 +46,27 @@ export async function POST(req: NextRequest) {
   const id = nanoid(8);
   const editToken = nanoid(32);
 
+  // Simple password hash (base64 of SHA-256)
+  let passwordHash: string | null = null;
+  if (password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    passwordHash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+  }
+
+  // Expiration: expiresIn is in hours
+  const expiresAt = expiresIn
+    ? new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString()
+    : null;
+
   const { error } = await supabase.from("documents").insert({
     id,
     markdown,
     title: title || null,
     edit_token: editToken,
+    password_hash: passwordHash,
+    expires_at: expiresAt,
   });
 
   if (error) {

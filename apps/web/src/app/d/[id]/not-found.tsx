@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function NotFound() {
   return (
     <div
@@ -8,13 +10,13 @@ export default function NotFound() {
         404
       </h1>
       <p style={{ color: "var(--text-muted)" }}>Document not found</p>
-      <a
+      <Link
         href="/"
         className="mt-4 px-4 py-2 rounded-md text-sm font-mono"
         style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
       >
         Create a new document
-      </a>
+      </Link>
     </div>
   );
 }

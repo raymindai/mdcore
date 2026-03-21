@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 
@@ -8,16 +9,25 @@ type Theme = "dark" | "light";
 
 export default function DocumentViewer({
   id,
-  markdown,
-  title,
+  markdown: initialMarkdown,
+  title: initialTitle,
+  isProtected = false,
+  isExpired = false,
 }: {
   id: string;
   markdown: string;
   title: string | null;
+  isProtected?: boolean;
+  isExpired?: boolean;
 }) {
   const [html, setHtml] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [markdown, setMarkdown] = useState(initialMarkdown);
+  const [title, setTitle] = useState(initialTitle);
+  const [isLoading, setIsLoading] = useState(!isExpired && !isProtected);
   const [theme, setThemeState] = useState<Theme>("dark");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const [unlocked, setUnlocked] = useState(!isProtected);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Theme
@@ -35,8 +45,30 @@ export default function DocumentViewer({
     localStorage.setItem("mdfy-theme", next);
   }, [theme]);
 
+  // Unlock with password
+  const handleUnlock = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/docs/${id}`, {
+        headers: { "x-document-password": passwordInput },
+      });
+      if (res.ok) {
+        const doc = await res.json();
+        setMarkdown(doc.markdown);
+        setTitle(doc.title);
+        setUnlocked(true);
+        setIsLoading(true);
+        setPasswordError(false);
+      } else {
+        setPasswordError(true);
+      }
+    } catch {
+      setPasswordError(true);
+    }
+  }, [id, passwordInput]);
+
   // Render markdown via WASM
   useEffect(() => {
+    if (!markdown || !unlocked) return;
     (async () => {
       try {
         const result = await renderMarkdown(markdown);
@@ -48,7 +80,7 @@ export default function DocumentViewer({
         setIsLoading(false);
       }
     })();
-  }, [markdown]);
+  }, [markdown, unlocked]);
 
   // Mermaid rendering
   useEffect(() => {
@@ -129,14 +161,14 @@ export default function DocumentViewer({
         }}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <a
+          <Link
             href="/"
             className="text-base sm:text-lg font-bold tracking-tight shrink-0"
           >
             <span style={{ color: "var(--accent)" }}>md</span>
             <span style={{ color: "var(--text-primary)" }}>fy</span>
             <span style={{ color: "var(--text-muted)" }}>.cc</span>
-          </a>
+          </Link>
           {title && (
             <span
               className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline truncate max-w-[300px]"
@@ -170,7 +202,17 @@ export default function DocumentViewer({
           >
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <a
+          <button
+            onClick={() => window.print()}
+            className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
+            style={{
+              background: "var(--toggle-bg)",
+              color: "var(--text-muted)",
+            }}
+          >
+            PDF
+          </button>
+          <Link
             href={`/?from=${id}`}
             className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
             style={{
@@ -179,13 +221,56 @@ export default function DocumentViewer({
             }}
           >
             Edit
-          </a>
+          </Link>
         </div>
       </header>
 
       {/* Content */}
       <div className="flex-1 overflow-auto" ref={previewRef}>
-        {isLoading ? (
+        {isExpired ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="text-5xl opacity-40">⏰</div>
+            <p className="text-lg" style={{ color: "var(--text-muted)" }}>This document has expired</p>
+            <Link
+              href="/"
+              className="mt-2 px-4 py-2 rounded-md text-sm font-mono"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
+              Create a new document
+            </Link>
+          </div>
+        ) : !unlocked ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="text-5xl opacity-40">🔒</div>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>This document is password protected</p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
+                onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+                placeholder="Enter password"
+                className="px-3 py-2 rounded-md text-sm outline-none"
+                style={{
+                  background: "var(--surface)",
+                  border: `1px solid ${passwordError ? "#ef4444" : "var(--border)"}`,
+                  color: "var(--text-primary)",
+                }}
+                autoFocus
+              />
+              <button
+                onClick={handleUnlock}
+                className="px-4 py-2 rounded-md text-sm font-mono"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+              >
+                Unlock
+              </button>
+            </div>
+            {passwordError && (
+              <p className="text-xs" style={{ color: "#ef4444" }}>Wrong password</p>
+            )}
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
             <div
               className="w-6 h-6 border-2 rounded-full animate-spin"
@@ -194,10 +279,7 @@ export default function DocumentViewer({
                 borderTopColor: "var(--accent)",
               }}
             />
-            <span
-              className="text-sm"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
               Loading WASM engine...
             </span>
           </div>

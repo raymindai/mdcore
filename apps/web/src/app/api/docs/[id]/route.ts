@@ -15,12 +15,38 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at")
     .eq("id", id)
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Check expiration
+  if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    return NextResponse.json({ error: "Document expired" }, { status: 410 });
+  }
+
+  // Check password
+  const hasPassword = !!data.password_hash;
+  if (hasPassword) {
+    const providedPassword = _req.headers.get("x-document-password") || "";
+    if (!providedPassword) {
+      return NextResponse.json(
+        { error: "Password required", passwordRequired: true },
+        { status: 401 }
+      );
+    }
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(providedPassword));
+    const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+    if (hash !== data.password_hash) {
+      return NextResponse.json(
+        { error: "Wrong password", passwordRequired: true },
+        { status: 403 }
+      );
+    }
   }
 
   // Increment view count (fire-and-forget)
@@ -30,7 +56,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .eq("id", id)
     .then(() => {});
 
-  return NextResponse.json(data);
+  // Don't expose password_hash
+  const { password_hash: _, ...safeData } = data;
+  return NextResponse.json({ ...safeData, hasPassword });
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {

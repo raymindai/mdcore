@@ -100,12 +100,18 @@ interface ShortUrlResult {
 
 export async function createShortUrl(
   markdown: string,
-  title?: string
+  title?: string,
+  options?: { password?: string; expiresIn?: number }
 ): Promise<ShortUrlResult> {
   const res = await fetch("/api/docs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ markdown, title }),
+    body: JSON.stringify({
+      markdown,
+      title,
+      password: options?.password,
+      expiresIn: options?.expiresIn,
+    }),
   });
 
   if (!res.ok) throw new Error("Failed to create short URL");
