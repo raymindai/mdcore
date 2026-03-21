@@ -712,11 +712,16 @@ export default function MdEditor() {
       e.stopPropagation();
 
       const originalText = editable.textContent || "";
+      // Remove hover style, add edit style
+      editable.style.cssText = editable.style.cssText.replace(HOVER_STYLE, "");
+      editable.style.cssText += "outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 6px;";
       editable.setAttribute("contenteditable", "true");
       editable.focus();
 
+      const EDIT_STYLE = "outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 6px;";
       const commit = () => {
         editable.removeAttribute("contenteditable");
+        editable.style.cssText = editable.style.cssText.replace(EDIT_STYLE, "");
 
         const newText = editable.textContent || "";
         if (newText !== originalText) {
@@ -761,11 +766,42 @@ export default function MdEditor() {
       });
     };
 
+    // Hover: dashed gray outline via JS inline style
+    let hoveredEl: HTMLElement | null = null;
+    const HOVER_STYLE = "outline: 1px dashed var(--border); outline-offset: 2px; border-radius: 6px;";
+    const EDITABLE_TAGS = new Set(["H1","H2","H3","H4","H5","H6","P","LI","TD","TH"]);
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const el = target.closest("h1,h2,h3,h4,h5,h6,p,li,td,th") as HTMLElement | null;
+      if (el === hoveredEl) return;
+      if (hoveredEl && !hoveredEl.hasAttribute("contenteditable")) {
+        hoveredEl.style.cssText = hoveredEl.style.cssText.replace(HOVER_STYLE, "");
+      }
+      hoveredEl = null;
+      if (el && EDITABLE_TAGS.has(el.tagName) && !el.hasAttribute("contenteditable")) {
+        el.style.cssText += HOVER_STYLE;
+        hoveredEl = el;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (hoveredEl && !hoveredEl.hasAttribute("contenteditable")) {
+        hoveredEl.style.cssText = hoveredEl.style.cssText.replace(HOVER_STYLE, "");
+      }
+      hoveredEl = null;
+    };
+
     preview.addEventListener("click", handleClick);
     preview.addEventListener("dblclick", handleDblClick);
+    preview.addEventListener("mouseover", handleMouseOver);
+    preview.addEventListener("mouseleave", handleMouseLeave);
     return () => {
       preview.removeEventListener("click", handleClick);
       preview.removeEventListener("dblclick", handleDblClick);
+      preview.removeEventListener("mouseover", handleMouseOver);
+      preview.removeEventListener("mouseleave", handleMouseLeave);
+      handleMouseLeave();
     };
   }, [viewMode, markdown, doRender]);
 

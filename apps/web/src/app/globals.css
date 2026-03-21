@@ -323,7 +323,7 @@ body {
   padding-right: 6px;
 }
 
-/* Editable elements: hover hint (dashed gray via pseudo-element) */
+/* Editable elements: cursor hint */
 .mdcore-rendered h1,
 .mdcore-rendered h2,
 .mdcore-rendered h3,
@@ -334,41 +334,11 @@ body {
 .mdcore-rendered li,
 .mdcore-rendered td,
 .mdcore-rendered th {
-  position: relative;
   cursor: text;
 }
 
-.mdcore-rendered h1:hover::after,
-.mdcore-rendered h2:hover::after,
-.mdcore-rendered h3:hover::after,
-.mdcore-rendered h4:hover::after,
-.mdcore-rendered h5:hover::after,
-.mdcore-rendered h6:hover::after,
-.mdcore-rendered p:hover::after,
-.mdcore-rendered li:hover::after,
-.mdcore-rendered td:hover::after,
-.mdcore-rendered th:hover::after {
-  content: "";
-  position: absolute;
-  inset: -3px -4px;
-  border-width: 1px !important;
-  border-style: dashed !important;
-  border-color: var(--border) !important;
-  border-radius: 6px;
-  pointer-events: none;
-}
-
-/* Editing state: orange solid (via pseudo-element) */
-.mdcore-rendered [contenteditable="true"]::after {
-  content: "" !important;
-  position: absolute;
-  inset: -3px -4px;
-  border-width: 1px !important;
-  border-style: solid !important;
-  border-color: var(--accent) !important;
-  border-radius: 6px;
-  pointer-events: none;
-}
+/* Hover/edit outlines are applied via JS inline styles
+   (Tailwind v4 resets border/outline on ::after, making CSS-only dashed impossible) */
 
 /* Description lists */
 .mdcore-rendered dt {
