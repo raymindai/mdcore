@@ -713,16 +713,10 @@ export default function MdEditor() {
 
       const originalText = editable.textContent || "";
       editable.setAttribute("contenteditable", "true");
-      editable.style.outline = "1px solid var(--accent)";
-      editable.style.outlineOffset = "2px";
-      editable.style.borderRadius = "4px";
       editable.focus();
 
       const commit = () => {
         editable.removeAttribute("contenteditable");
-        editable.style.outline = "";
-        editable.style.outlineOffset = "";
-        editable.style.borderRadius = "";
 
         const newText = editable.textContent || "";
         if (newText !== originalText) {
