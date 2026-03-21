@@ -28,11 +28,11 @@ interface ConnectState {
   mouseY: number;
 }
 
-const shapeStyles: Record<CanvasNode["shape"], string> = {
-  round: "border-radius: 20px",
-  square: "border-radius: 6px",
-  circle: "border-radius: 50%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center",
-  diamond: "transform: rotate(0deg); border-radius: 6px",
+const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
+  round: { borderRadius: "20px" },
+  square: { borderRadius: "4px" },
+  circle: { borderRadius: "50%", minWidth: "80px", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center" },
+  diamond: { transform: "rotate(45deg)", borderRadius: "4px", minWidth: "70px", minHeight: "70px", display: "flex", alignItems: "center", justifyContent: "center" },
 };
 
 const shapeLabels: Record<CanvasNode["shape"], string> = {
@@ -478,31 +478,55 @@ export default function MdCanvas({
             const midX = (from.x + to.x) / 2;
             const midY = (from.y + to.y) / 2;
 
+            // Curved path with control point offset
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const isHorizontalish = Math.abs(dx) > Math.abs(dy);
+            const cx1 = isHorizontalish ? from.x + dx * 0.5 : from.x;
+            const cy1 = isHorizontalish ? from.y : from.y + dy * 0.5;
+            const cx2 = isHorizontalish ? to.x - dx * 0.5 : to.x;
+            const cy2 = isHorizontalish ? to.y : to.y - dy * 0.5;
+            const pathD = `M ${from.x} ${from.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${to.x} ${to.y}`;
+
             return (
               <g key={i}>
-                <line
-                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                <path
+                  d={pathD}
                   stroke="var(--text-faint)" strokeWidth={1.5}
+                  fill="none"
                   markerEnd="url(#arr)"
                 />
                 {/* Clickable hit area */}
-                <line
-                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                  stroke="transparent" strokeWidth={12}
+                <path
+                  d={pathD}
+                  stroke="transparent" strokeWidth={14}
+                  fill="none"
                   style={{ pointerEvents: "all", cursor: "pointer" }}
                   onDoubleClick={(e) => { e.stopPropagation(); setEditingEdge(i); }}
                 />
                 {/* Edge label */}
                 {edge.label && (
-                  <text
-                    x={midX} y={midY - 8}
-                    textAnchor="middle"
-                    fill="var(--text-muted)"
-                    fontSize={11}
-                    fontFamily="var(--font-geist-mono), monospace"
-                  >
-                    {edge.label}
-                  </text>
+                  <g>
+                    <rect
+                      x={midX - edge.label.length * 3.5 - 6}
+                      y={midY - 18}
+                      width={edge.label.length * 7 + 12}
+                      height={20}
+                      rx={4}
+                      fill="var(--surface)"
+                      stroke="var(--border)"
+                      strokeWidth={0.5}
+                    />
+                    <text
+                      x={midX} y={midY - 5}
+                      textAnchor="middle"
+                      fill="var(--text-muted)"
+                      fontSize={11}
+                      fontFamily="var(--font-geist-mono), monospace"
+                    >
+                      {edge.label}
+                    </text>
+                  </g>
                 )}
               </g>
             );
@@ -571,41 +595,46 @@ export default function MdCanvas({
               style={{
                 background: "var(--surface)",
                 border: `1.5px solid ${selectedId === node.id ? "var(--accent)" : "var(--border)"}`,
-                boxShadow: selectedId === node.id ? "0 0 0 2px var(--accent-dim)" : "none",
-                ...Object.fromEntries(shapeStyles[node.shape].split(";").map(s => { const [k, v] = s.split(":").map(x => x.trim()); return [k.replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v]; }).filter(([k]) => k)),
+                boxShadow: selectedId === node.id
+                  ? "0 0 0 2px var(--accent-dim), 0 4px 12px rgba(0,0,0,0.3)"
+                  : "0 2px 8px rgba(0,0,0,0.2)",
+                ...shapeCSS[node.shape],
               }}
             >
-              <div className="flex items-center gap-1.5 mb-1">
-                <button
-                  onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
-                  className="text-[9px] font-mono font-bold px-1 rounded"
-                  style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
-                  title="Change shape"
-                >
-                  {shapeLabels[node.shape]}
-                </button>
-              </div>
-              {editingId === node.id ? (
-                <input
-                  autoFocus
-                  value={node.text}
-                  onChange={(e) => handleTextChange(node.id, e.target.value)}
-                  onBlur={() => setEditingId(null)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === "Escape") setEditingId(null);
-                    e.stopPropagation();
-                  }}
-                  className="w-full bg-transparent outline-none text-xs"
-                  style={{ color: "var(--text-primary)", minWidth: 80 }}
-                />
-              ) : (
-                <div
-                  className="text-xs min-h-[20px] whitespace-nowrap"
-                  style={{ color: node.text ? "var(--text-secondary)" : "var(--text-faint)" }}
-                >
-                  {node.text || "..."}
+              {/* Diamond: counter-rotate content */}
+              <div style={node.shape === "diamond" ? { transform: "rotate(-45deg)" } : {}}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
+                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
+                    style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
+                    title="Change shape: () round, [] square, (()) circle, {} diamond"
+                  >
+                    {shapeLabels[node.shape]}
+                  </button>
                 </div>
-              )}
+                {editingId === node.id ? (
+                  <input
+                    autoFocus
+                    value={node.text}
+                    onChange={(e) => handleTextChange(node.id, e.target.value)}
+                    onBlur={() => setEditingId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape") setEditingId(null);
+                      e.stopPropagation();
+                    }}
+                    className="w-full bg-transparent outline-none text-xs"
+                    style={{ color: "var(--text-primary)", minWidth: 80 }}
+                  />
+                ) : (
+                  <div
+                    className="text-xs min-h-[20px] whitespace-nowrap"
+                    style={{ color: node.text ? "var(--text-secondary)" : "var(--text-faint)" }}
+                  >
+                    {node.text || "..."}
+                  </div>
+                )}
+              </div>{/* end diamond rotate wrapper */}
             </div>
           </div>
         ))}

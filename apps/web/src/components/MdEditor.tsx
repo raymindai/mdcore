@@ -255,7 +255,7 @@ export default function MdEditor() {
 
     const isDark = theme === "dark";
 
-    import("mermaid").then((mermaidModule) => {
+    import("mermaid").then(async (mermaidModule) => {
       const mermaid = mermaidModule.default;
       mermaid.initialize({
         startOnLoad: false,
@@ -315,12 +315,15 @@ export default function MdEditor() {
         },
       });
 
-      mermaidPres.forEach(async (pre, idx) => {
+      const ts = Date.now();
+      // Process sequentially to avoid mermaid ID conflicts
+      for (let idx = 0; idx < mermaidPres.length; idx++) {
+        const pre = mermaidPres[idx];
         const codeEl = pre.querySelector("code");
         const code = (codeEl?.textContent || pre.textContent || "").trim();
-        if (!code) return;
+        if (!code) continue;
 
-        const id = `mermaid-${Date.now()}-${idx}`;
+        const id = `mermaid-${ts}-${idx}`;
 
         try {
           const { svg } = await mermaid.render(id, code);
@@ -342,7 +345,7 @@ export default function MdEditor() {
         } catch {
           // Leave as-is on error
         }
-      });
+      }
     });
   }, [html, isLoading, theme, viewMode]);
 
@@ -1144,8 +1147,32 @@ export default function MdEditor() {
             <MdCanvas
               initialMermaid={canvasMermaid}
               onGenerate={(md) => {
-                setMarkdown(markdown + "\n\n" + md);
-                doRender(markdown + "\n\n" + md);
+                let newMarkdown: string;
+                if (canvasMermaid) {
+                  // Replace the original mermaid code block
+                  const originalBlock = "```mermaid\n" + canvasMermaid + "\n```";
+                  if (markdown.includes(originalBlock)) {
+                    newMarkdown = markdown.replace(originalBlock, md);
+                  } else {
+                    // Try to find by content similarity
+                    const mermaidBlockRegex = /```mermaid\n[\s\S]*?```/g;
+                    const blocks = [...markdown.matchAll(mermaidBlockRegex)];
+                    const match = blocks.find(b => {
+                      // Check if the block contains the first line of the original
+                      const firstLine = canvasMermaid.split("\n")[1]?.trim();
+                      return firstLine && b[0].includes(firstLine);
+                    });
+                    if (match && match.index !== undefined) {
+                      newMarkdown = markdown.slice(0, match.index) + md + markdown.slice(match.index + match[0].length);
+                    } else {
+                      newMarkdown = markdown + "\n\n" + md;
+                    }
+                  }
+                } else {
+                  newMarkdown = markdown ? markdown + "\n\n" + md : md;
+                }
+                setMarkdown(newMarkdown);
+                doRender(newMarkdown);
                 setCanvasMermaid(undefined);
                 setViewMode(isMobile ? "preview" : "split");
               }}
