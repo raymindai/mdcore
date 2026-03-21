@@ -52,7 +52,7 @@ pub fn to_html(markdown: &str) -> (String, Option<String>, Vec<TocEntry>) {
         unsafe_: true, // Allow raw HTML passthrough
         github_pre_lang: true,
         escape: false,
-        sourcepos: false,
+        sourcepos: true,
         ..Default::default()
     };
 

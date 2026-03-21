@@ -10,7 +10,6 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
-// import { parseSourceBlocks, matchElementToBlock, type SourceBlock } from "@/lib/source-map";
 import {
   createShareUrl,
   createShortUrl,
@@ -196,7 +195,6 @@ export default function MdEditor() {
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
-  // const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -386,9 +384,142 @@ export default function MdEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // NOTE: Preview click → source sync disabled.
-  // Requires comrak sourcepos option (WASM rebuild) for accurate line mapping.
-  // Current nth-index matching is unreliable with inline elements (KaTeX, links, etc).
+  // Preview: click to scroll to source + double-click to inline edit
+  // Uses comrak's data-sourcepos="startLine:startCol-endLine:endCol" for accurate mapping
+  useEffect(() => {
+    if (!previewRef.current || viewMode !== "split") return;
+    const preview = previewRef.current;
+
+    // Parse sourcepos attribute → { startLine, endLine }
+    const getSourcePos = (el: HTMLElement): { startLine: number; endLine: number } | null => {
+      const sp = el.getAttribute("data-sourcepos") || el.closest("[data-sourcepos]")?.getAttribute("data-sourcepos");
+      if (!sp) return null;
+      const match = sp.match(/^(\d+):\d+-(\d+):\d+$/);
+      if (!match) return null;
+      return { startLine: parseInt(match[1]) - 1, endLine: parseInt(match[2]) - 1 }; // 0-indexed
+    };
+
+    // Account for frontmatter offset
+    const lines = markdown.split("\n");
+    let frontmatterOffset = 0;
+    if (lines[0]?.trim() === "---") {
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]?.trim() === "---") {
+          frontmatterOffset = i + 1;
+          // Skip blank lines after frontmatter
+          while (frontmatterOffset < lines.length && !lines[frontmatterOffset]?.trim()) {
+            frontmatterOffset++;
+          }
+          break;
+        }
+      }
+    }
+
+    // Click → scroll to source
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("button,a,input")) return;
+
+      const sourceEl = target.closest("[data-sourcepos]") as HTMLElement | null;
+      if (!sourceEl) return;
+
+      const pos = getSourcePos(sourceEl);
+      if (!pos) return;
+
+      const actualLine = pos.startLine + frontmatterOffset;
+      if (textareaRef.current) {
+        const ta = textareaRef.current;
+        const lineHeight = ta.scrollHeight / (lines.length || 1);
+        ta.scrollTo({ top: Math.max(0, actualLine * lineHeight - ta.clientHeight / 3), behavior: "smooth" });
+
+        let charPos = 0;
+        for (let i = 0; i < actualLine && i < lines.length; i++) {
+          charPos += lines[i].length + 1;
+        }
+        ta.setSelectionRange(charPos, charPos);
+      }
+    };
+
+    // Double-click → inline edit text
+    const handleDblClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // Only allow editing on simple text elements
+      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,td,th,blockquote > p") as HTMLElement | null;
+      if (!editable) return;
+      // Skip if it's a code block, mermaid, katex
+      if (target.closest("pre,code,.mermaid-container,.katex")) return;
+
+      const sourceEl = editable.closest("[data-sourcepos]") as HTMLElement | null;
+      if (!sourceEl) return;
+      const pos = getSourcePos(sourceEl);
+      if (!pos) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const originalText = editable.textContent || "";
+      editable.setAttribute("contenteditable", "true");
+      editable.style.outline = "1px solid var(--accent)";
+      editable.style.outlineOffset = "2px";
+      editable.style.borderRadius = "4px";
+      editable.focus();
+
+      const commit = () => {
+        editable.removeAttribute("contenteditable");
+        editable.style.outline = "";
+        editable.style.outlineOffset = "";
+        editable.style.borderRadius = "";
+
+        const newText = editable.textContent || "";
+        if (newText !== originalText) {
+          const actualStart = pos.startLine + frontmatterOffset;
+          const actualEnd = pos.endLine + frontmatterOffset;
+          const mdLines = markdown.split("\n");
+
+          // For single-line elements, replace inline text
+          if (actualStart === actualEnd && actualStart < mdLines.length) {
+            // Preserve MD syntax (# , - , | etc) and replace text content
+            const line = mdLines[actualStart];
+            const prefixMatch = line.match(/^(\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>\s|(?:\|[^|]*\|)?\s*)?)(.*)$/);
+            if (prefixMatch) {
+              mdLines[actualStart] = prefixMatch[1] + newText;
+            } else {
+              mdLines[actualStart] = newText;
+            }
+          } else {
+            // Multi-line: replace all lines with new text
+            const firstLine = mdLines[actualStart];
+            const prefixMatch = firstLine.match(/^(\s*(?:#{1,6}\s|>\s)?)/);
+            const prefix = prefixMatch ? prefixMatch[1] : "";
+            mdLines.splice(actualStart, actualEnd - actualStart + 1, prefix + newText);
+          }
+
+          const newMd = mdLines.join("\n");
+          setMarkdown(newMd);
+          doRender(newMd);
+        }
+      };
+
+      editable.addEventListener("blur", commit, { once: true });
+      editable.addEventListener("keydown", (ke) => {
+        if ((ke as KeyboardEvent).key === "Enter") {
+          ke.preventDefault();
+          editable.blur();
+        }
+        if ((ke as KeyboardEvent).key === "Escape") {
+          editable.textContent = originalText;
+          editable.blur();
+        }
+      });
+    };
+
+    preview.addEventListener("click", handleClick);
+    preview.addEventListener("dblclick", handleDblClick);
+    return () => {
+      preview.removeEventListener("click", handleClick);
+      preview.removeEventListener("dblclick", handleDblClick);
+    };
+  }, [viewMode, markdown, doRender]);
 
   // Mermaid edit button click handler
   useEffect(() => {

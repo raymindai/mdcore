@@ -305,12 +305,21 @@ body {
   transform: rotate(45deg);
 }
 
-/* Table cells editable hint */
+/* Editable elements hint on hover */
+.mdcore-rendered h1:hover,
+.mdcore-rendered h2:hover,
+.mdcore-rendered h3:hover,
+.mdcore-rendered h4:hover,
+.mdcore-rendered h5:hover,
+.mdcore-rendered h6:hover,
+.mdcore-rendered p:hover,
+.mdcore-rendered li:hover,
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
   outline: 1px dashed var(--border);
-  outline-offset: -1px;
+  outline-offset: 2px;
   cursor: text;
+  border-radius: 4px;
 }
 
 /* Description lists */
