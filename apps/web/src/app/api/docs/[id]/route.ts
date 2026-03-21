@@ -57,7 +57,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .then(() => {});
 
   // Don't expose password_hash
-  const { password_hash: _, ...safeData } = data;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password_hash: _ph, ...safeData } = data;
   return NextResponse.json({ ...safeData, hasPassword });
 }
 

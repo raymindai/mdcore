@@ -5,6 +5,11 @@ import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
+  isAiConversation,
+  parseConversation,
+  formatConversation,
+} from "@/lib/ai-conversation";
+import {
   createShareUrl,
   createShortUrl,
   saveEditToken,
@@ -159,6 +164,7 @@ export default function MdEditor() {
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showAiBanner, setShowAiBanner] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -191,6 +197,13 @@ export default function MdEditor() {
       setRenderTime(elapsed);
       setCharCount(md.length);
       setIsLoading(false);
+
+      // Detect AI conversation
+      if (md.length > 50 && isAiConversation(md)) {
+        setShowAiBanner(true);
+      } else {
+        setShowAiBanner(false);
+      }
     } catch (e) {
       console.error("Render error:", e);
     }
@@ -299,6 +312,103 @@ export default function MdEditor() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Interactive editing: checkbox toggle + table cell edit
+  useEffect(() => {
+    if (!previewRef.current || isLoading) return;
+
+    const preview = previewRef.current;
+
+    // Checkbox toggle
+    const handleCheckboxClick = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      if (target.tagName !== "INPUT" || target.type !== "checkbox") return;
+
+      const li = target.closest("li");
+      if (!li) return;
+      const text = li.textContent?.trim() || "";
+      // Find the first few words to locate in source
+      const searchText = text.slice(0, 30);
+
+      const lines = markdown.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.includes(searchText.slice(0, 15))) {
+          if (line.match(/- \[x\]/i)) {
+            lines[i] = line.replace(/- \[x\]/i, "- [ ]");
+          } else if (line.match(/- \[ \]/)) {
+            lines[i] = line.replace("- [ ]", "- [x]");
+          }
+          break;
+        }
+      }
+      const newMd = lines.join("\n");
+      setMarkdown(newMd);
+      doRender(newMd);
+      e.preventDefault();
+    };
+
+    // Table cell double-click to edit
+    const handleTableDblClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const cell = target.closest("td, th") as HTMLTableCellElement | null;
+      if (!cell) return;
+
+      const currentText = cell.textContent || "";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = currentText;
+      input.style.cssText = `
+        width: 100%; background: var(--surface); color: var(--text-primary);
+        border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px;
+        font-size: inherit; font-family: inherit; outline: none;
+      `;
+
+      const originalContent = cell.innerHTML;
+      cell.textContent = "";
+      cell.appendChild(input);
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const newText = input.value;
+        cell.textContent = newText;
+
+        if (newText !== currentText) {
+          // Find and replace in markdown source
+          // Look for the old cell text in table rows
+          const lines = markdown.split("\n");
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes("|") && lines[i].includes(currentText)) {
+              lines[i] = lines[i].replace(currentText, newText);
+              break;
+            }
+          }
+          const newMd = lines.join("\n");
+          setMarkdown(newMd);
+          doRender(newMd);
+        }
+      };
+
+      const cancel = () => {
+        cell.innerHTML = originalContent;
+      };
+
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", (ke) => {
+        if (ke.key === "Enter") { ke.preventDefault(); input.blur(); }
+        if (ke.key === "Escape") { input.removeEventListener("blur", commit); cancel(); }
+      });
+    };
+
+    preview.addEventListener("click", handleCheckboxClick);
+    preview.addEventListener("dblclick", handleTableDblClick);
+
+    return () => {
+      preview.removeEventListener("click", handleCheckboxClick);
+      preview.removeEventListener("dblclick", handleTableDblClick);
+    };
+  }, [html, isLoading, markdown, doRender]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -524,6 +634,17 @@ export default function MdEditor() {
     doRender("");
     setShowMenu(false);
   }, [doRender]);
+
+  // Format AI conversation
+  const handleFormatAiConversation = useCallback(() => {
+    const messages = parseConversation(markdown);
+    if (messages) {
+      const formatted = formatConversation(messages);
+      setMarkdown(formatted);
+      doRender(formatted);
+    }
+    setShowAiBanner(false);
+  }, [markdown, doRender]);
 
   // Export PDF
   const handleExportPdf = useCallback(() => {
@@ -828,6 +949,34 @@ export default function MdEditor() {
         </div>
       </header>
 
+      {/* AI conversation banner */}
+      {showAiBanner && (
+        <div
+          className="flex items-center justify-between px-3 sm:px-5 py-2 text-xs"
+          style={{ background: "var(--accent-dim)", borderBottom: "1px solid var(--border-dim)" }}
+        >
+          <span style={{ color: "var(--accent)" }}>
+            AI conversation detected. Format as a clean document?
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleFormatAiConversation}
+              className="px-2.5 py-1 rounded font-mono text-[11px]"
+              style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}
+            >
+              Format
+            </button>
+            <button
+              onClick={() => setShowAiBanner(false)}
+              className="px-2 py-1 rounded font-mono text-[11px]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main content */}
       <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
         {/* Editor pane */}
@@ -987,6 +1136,7 @@ export default function MdEditor() {
             <p className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>
               mdfy.cc/{docId}
             </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
               alt="QR Code"

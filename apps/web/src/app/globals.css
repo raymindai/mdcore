@@ -266,6 +266,16 @@ body {
   margin-right: 0.5rem;
   accent-color: var(--accent);
   transform: scale(1.1);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Table cells editable hint */
+.mdcore-rendered td:hover,
+.mdcore-rendered th:hover {
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+  cursor: text;
 }
 
 /* Description lists */
