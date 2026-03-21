@@ -62,12 +62,53 @@ export default function MdCanvas({
   const [showCode, setShowCode] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
 
   // Live Mermaid code preview
   const liveCode = useMemo(
     () => (nodes.length > 0 ? canvasToMermaid(nodes, edges, direction) : ""),
     [nodes, edges, direction]
   );
+
+  // Render live Mermaid preview
+  useEffect(() => {
+    if (!previewPanelRef.current || !liveCode || !showCode) return;
+    const container = previewPanelRef.current.querySelector(".mermaid-preview-render");
+    if (!container) return;
+
+    import("mermaid").then(async (mermaidModule) => {
+      const mermaid = mermaidModule.default;
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: "dark",
+        themeVariables: {
+          primaryColor: "#fb923c",
+          primaryTextColor: "#fafafa",
+          primaryBorderColor: "#ea580c",
+          lineColor: "#71717a",
+          secondaryColor: "#27272a",
+          tertiaryColor: "#18181b",
+          background: "#09090b",
+          mainBkg: "#27272a",
+          nodeBorder: "#3f3f46",
+          clusterBkg: "#18181b",
+          titleColor: "#fafafa",
+          edgeLabelBackground: "#18181b",
+        },
+        fontFamily: "ui-monospace, monospace",
+        fontSize: 13,
+      });
+
+      try {
+        const id = `mermaid-preview-${Date.now()}`;
+        const { svg } = await mermaid.render(id, liveCode);
+        container.innerHTML = svg;
+      } catch {
+        container.innerHTML = `<span style="color:var(--text-faint);font-size:11px">Invalid diagram</span>`;
+      }
+    });
+  }, [liveCode, showCode]);
 
   // Load initial mermaid code
   useEffect(() => {
@@ -584,25 +625,45 @@ export default function MdCanvas({
         )}
       </div>
 
-      {/* Live code panel */}
+      {/* Code + Preview panel */}
       {showCode && nodes.length > 0 && (
         <div
           className="w-1/3 flex flex-col"
           style={{ borderLeft: "1px solid var(--border-dim)" }}
         >
-          <div
-            className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
-            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
-          >
-            <span>Mermaid Code</span>
-            <span style={{ color: "var(--text-faint)" }}>live</span>
+          {/* Code */}
+          <div className="flex flex-col h-1/2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+            <div
+              className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+            >
+              <span>Code</span>
+              <span style={{ color: "var(--text-faint)" }}>live</span>
+            </div>
+            <pre
+              className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed"
+              style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0 }}
+            >
+              {liveCode}
+            </pre>
           </div>
-          <pre
-            className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed"
-            style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0 }}
-          >
-            {liveCode}
-          </pre>
+
+          {/* Rendered Preview */}
+          <div className="flex flex-col h-1/2">
+            <div
+              className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+            >
+              <span>Preview</span>
+            </div>
+            <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
+              {liveCode ? (
+                <div className="mermaid-preview-render" style={{ textAlign: "center", width: "100%" }} />
+              ) : (
+                <span className="text-xs" style={{ color: "var(--text-faint)" }}>Add nodes to see preview</span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
