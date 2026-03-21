@@ -276,10 +276,6 @@ body {
   vertical-align: middle;
 }
 
-/* Task list items: extra left padding so outline doesn't overlap checkbox */
-.mdcore-rendered li:has(input[type="checkbox"]) {
-  padding-left: 4px;
-}
 
 /* Unchecked checkbox: visible border */
 .mdcore-rendered ul li input[type="checkbox"]:not(:checked) {
@@ -313,6 +309,20 @@ body {
   transform: rotate(45deg);
 }
 
+/* Editable elements: padding for hover/edit outlines */
+.mdcore-rendered h1,
+.mdcore-rendered h2,
+.mdcore-rendered h3,
+.mdcore-rendered h4,
+.mdcore-rendered h5,
+.mdcore-rendered h6,
+.mdcore-rendered p,
+.mdcore-rendered li,
+.mdcore-rendered blockquote {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 /* Editable elements: hover hint (dashed gray) */
 .mdcore-rendered h1:hover,
 .mdcore-rendered h2:hover,
@@ -328,9 +338,9 @@ body {
   outline-style: dashed;
   outline-width: 1px;
   outline-color: var(--border);
-  outline-offset: -1px;
+  outline-offset: 2px;
   cursor: text;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 /* Editing state: orange solid */
@@ -340,8 +350,8 @@ body {
   outline-style: solid;
   outline-width: 1px;
   outline-color: var(--accent);
-  outline-offset: -1px;
-  border-radius: 8px;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 /* Description lists */
