@@ -384,6 +384,8 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
+  const [splitPercent, setSplitPercent] = useState(50); // editor width %
+  const isDraggingSplit = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1787,19 +1789,31 @@ export default function MdEditor() {
       )}
 
       {/* Main content */}
-      <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
-        {/* Canvas mode */}
+      <div
+        className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
+        onMouseMove={(e) => {
+          if (!isDraggingSplit.current) return;
+          const container = e.currentTarget;
+          const rect = container.getBoundingClientRect();
+          if (isMobile) {
+            const pct = ((e.clientY - rect.top) / rect.height) * 100;
+            setSplitPercent(Math.max(20, Math.min(80, pct)));
+          } else {
+            const pct = ((e.clientX - rect.left) / rect.width) * 100;
+            setSplitPercent(Math.max(20, Math.min(80, pct)));
+          }
+        }}
+        onMouseUp={() => { isDraggingSplit.current = false; }}
+        onMouseLeave={() => { isDraggingSplit.current = false; }}
+      >
         {/* Editor pane */}
         {viewMode !== "preview" && (
           <div
-            className={`${
-              viewMode === "split"
-                ? isMobile ? "w-full h-1/2" : "w-1/2"
-                : "w-full"
-            } flex flex-col`}
+            className="flex flex-col"
             style={{
-              borderRight: viewMode === "split" && !isMobile ? "1px solid var(--border-dim)" : "none",
-              borderBottom: viewMode === "split" && isMobile ? "1px solid var(--border-dim)" : "none",
+              width: viewMode === "split" && !isMobile ? `${splitPercent}%` : "100%",
+              height: viewMode === "split" && isMobile ? `${splitPercent}%` : undefined,
+              flexShrink: 0,
             }}
           >
             <div
@@ -1828,14 +1842,24 @@ export default function MdEditor() {
           </div>
         )}
 
+        {/* Resize handle */}
+        {viewMode === "split" && (
+          <div
+            className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
+            style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
+            onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
+          >
+            <div
+              className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8"}`}
+              style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.4 }}
+            />
+          </div>
+        )}
+
         {/* Preview pane */}
         {viewMode !== "editor" && (
           <div
-            className={`${
-              viewMode === "split"
-                ? isMobile ? "w-full h-1/2" : "w-1/2"
-                : "w-full"
-            } flex flex-col`}
+            className="flex-1 min-w-0 flex flex-col"
             style={{ background: "var(--background)" }}
           >
             <div
