@@ -238,16 +238,6 @@ body {
   border-bottom: 1px solid var(--border-dim);
 }
 
-/* Respect comrak's align attribute from Markdown alignment syntax */
-.mdcore-rendered th[align="center"],
-.mdcore-rendered td[align="center"] {
-  text-align: center !important;
-}
-
-.mdcore-rendered th[align="right"],
-.mdcore-rendered td[align="right"] {
-  text-align: right !important;
-}
 
 .mdcore-rendered tr:last-child td {
   border-bottom: none;

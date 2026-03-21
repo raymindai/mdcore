@@ -26,6 +26,9 @@ export function postProcessHtml(html: string): string {
   // Remove disabled from checkboxes so they're clickable
   result = result.replace(/ disabled=""/g, "");
 
+  // Convert align attr to inline style (Tailwind resets override HTML align)
+  result = result.replace(/ align="(left|center|right)"/g, ' style="text-align:$1"');
+
   // NOTE: Mermaid is handled via DOM in useEffect (MdEditor.tsx),
   // not here. This avoids fragile regex matching on HTML strings.
 
