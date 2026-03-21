@@ -505,6 +505,12 @@ textarea::placeholder {
   color: var(--editor-placeholder) !important;
 }
 
+/* Textarea selection highlight */
+textarea::selection {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
 /* ========================================
    Animations
    ======================================== */

@@ -553,7 +553,7 @@ export default function MdEditor() {
       }
     }
 
-    // Click → scroll to source
+    // Click → scroll to source + highlight the block
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button,a,input")) return;
@@ -564,17 +564,25 @@ export default function MdEditor() {
       const pos = getSourcePos(sourceEl);
       if (!pos) return;
 
-      const actualLine = pos.startLine + frontmatterOffset;
+      const actualStart = pos.startLine + frontmatterOffset;
+      const actualEnd = pos.endLine + frontmatterOffset;
+
       if (textareaRef.current) {
         const ta = textareaRef.current;
         const lineHeight = ta.scrollHeight / (lines.length || 1);
-        ta.scrollTo({ top: Math.max(0, actualLine * lineHeight - ta.clientHeight / 3), behavior: "smooth" });
+        ta.scrollTo({ top: Math.max(0, actualStart * lineHeight - ta.clientHeight / 3), behavior: "smooth" });
 
-        let charPos = 0;
-        for (let i = 0; i < actualLine && i < lines.length; i++) {
-          charPos += lines[i].length + 1;
+        // Select the entire block to highlight it
+        let startChar = 0;
+        for (let i = 0; i < actualStart && i < lines.length; i++) {
+          startChar += lines[i].length + 1;
         }
-        ta.setSelectionRange(charPos, charPos);
+        let endChar = startChar;
+        for (let i = actualStart; i <= actualEnd && i < lines.length; i++) {
+          endChar += lines[i].length + 1;
+        }
+        ta.focus();
+        ta.setSelectionRange(startChar, endChar);
       }
     };
 
