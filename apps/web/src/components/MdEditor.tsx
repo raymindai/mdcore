@@ -10,7 +10,7 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
-import { parseSourceBlocks, matchElementToBlock, type SourceBlock } from "@/lib/source-map";
+// import { parseSourceBlocks, matchElementToBlock, type SourceBlock } from "@/lib/source-map";
 import {
   createShareUrl,
   createShortUrl,
@@ -196,7 +196,7 @@ export default function MdEditor() {
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
-  const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
+  // const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -229,9 +229,6 @@ export default function MdEditor() {
       setRenderTime(elapsed);
       setCharCount(md.length);
       setIsLoading(false);
-
-      // Parse source blocks for hover mapping
-      setSourceBlocks(parseSourceBlocks(md));
 
       // Detect AI conversation
       if (md.length > 50 && isAiConversation(md)) {
@@ -389,45 +386,9 @@ export default function MdEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Preview click → scroll to source line in editor
-  useEffect(() => {
-    if (!previewRef.current || viewMode !== "split") return;
-    const preview = previewRef.current;
-
-    const handleClick = (e: MouseEvent) => {
-      // Don't interfere with buttons, links, checkboxes
-      const target = e.target as HTMLElement;
-      if (target.closest("button,a,input")) return;
-
-      const blockEl = target.closest("h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ul,ol,hr,.mermaid-container,.mermaid-rendered,.katex-display") as HTMLElement | null;
-      if (!blockEl) return;
-
-      const blockIdx = matchElementToBlock(blockEl, sourceBlocks);
-      if (blockIdx >= 0 && blockIdx < sourceBlocks.length) {
-        const block = sourceBlocks[blockIdx];
-
-        // Scroll textarea to the source line
-        if (textareaRef.current) {
-          const ta = textareaRef.current;
-          const lineHeight = ta.scrollHeight / (markdown.split("\n").length || 1);
-          const targetScroll = block.startLine * lineHeight - ta.clientHeight / 3;
-          ta.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
-
-          // Also set cursor position
-          const lines = markdown.split("\n");
-          let charPos = 0;
-          for (let i = 0; i < block.startLine && i < lines.length; i++) {
-            charPos += lines[i].length + 1;
-          }
-          ta.focus();
-          ta.setSelectionRange(charPos, charPos);
-        }
-      }
-    };
-
-    preview.addEventListener("click", handleClick);
-    return () => preview.removeEventListener("click", handleClick);
-  }, [sourceBlocks, viewMode, markdown]);
+  // NOTE: Preview click → source sync disabled.
+  // Requires comrak sourcepos option (WASM rebuild) for accurate line mapping.
+  // Current nth-index matching is unreliable with inline elements (KaTeX, links, etc).
 
   // Mermaid edit button click handler
   useEffect(() => {
