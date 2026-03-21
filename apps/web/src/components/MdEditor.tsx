@@ -454,27 +454,29 @@ export default function MdEditor() {
 
     const preview = previewRef.current;
 
-    // Checkbox toggle
+    // Checkbox toggle — match by nth checkbox index
     const handleCheckboxClick = (e: Event) => {
       const target = e.target as HTMLInputElement;
       if (target.tagName !== "INPUT" || target.type !== "checkbox") return;
 
-      const li = target.closest("li");
-      if (!li) return;
-      const text = li.textContent?.trim() || "";
-      // Find the first few words to locate in source
-      const searchText = text.slice(0, 30);
+      const allCheckboxes = preview.querySelectorAll('input[type="checkbox"]');
+      const checkboxIndex = Array.from(allCheckboxes).indexOf(target);
+      if (checkboxIndex === -1) return;
 
+      // Find the nth task list item in markdown source
       const lines = markdown.split("\n");
+      let found = 0;
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.includes(searchText.slice(0, 15))) {
-          if (line.match(/- \[x\]/i)) {
-            lines[i] = line.replace(/- \[x\]/i, "- [ ]");
-          } else if (line.match(/- \[ \]/)) {
-            lines[i] = line.replace("- [ ]", "- [x]");
+        if (/^\s*- \[([ xX])\]/.test(lines[i])) {
+          if (found === checkboxIndex) {
+            if (/- \[x\]/i.test(lines[i])) {
+              lines[i] = lines[i].replace(/- \[x\]/i, "- [ ]");
+            } else {
+              lines[i] = lines[i].replace(/- \[ \]/, "- [x]");
+            }
+            break;
           }
-          break;
+          found++;
         }
       }
       const newMd = lines.join("\n");
@@ -483,21 +485,42 @@ export default function MdEditor() {
       e.preventDefault();
     };
 
-    // Table cell double-click to edit
+    // Table cell double-click to edit (keep original cell size)
     const handleTableDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
       const cell = target.closest("td, th") as HTMLTableCellElement | null;
       if (!cell) return;
 
+      // Lock cell dimensions before editing
+      const rect = cell.getBoundingClientRect();
       const currentText = cell.textContent || "";
+
       const input = document.createElement("input");
       input.type = "text";
       input.value = currentText;
       input.style.cssText = `
-        width: 100%; background: var(--surface); color: var(--text-primary);
-        border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px;
-        font-size: inherit; font-family: inherit; outline: none;
+        width: ${rect.width - 12}px;
+        height: ${rect.height - 8}px;
+        max-width: ${rect.width - 12}px;
+        background: var(--surface);
+        color: var(--text-primary);
+        border: 1px solid var(--accent);
+        border-radius: 3px;
+        padding: 0 4px;
+        font-size: inherit;
+        font-family: inherit;
+        outline: none;
+        box-sizing: border-box;
+        margin: 0;
       `;
+
+      // Lock cell size
+      cell.style.width = `${rect.width}px`;
+      cell.style.height = `${rect.height}px`;
+      cell.style.minWidth = `${rect.width}px`;
+      cell.style.maxWidth = `${rect.width}px`;
+      cell.style.overflow = "hidden";
+      cell.style.padding = "2px 4px";
 
       const originalContent = cell.innerHTML;
       cell.textContent = "";
@@ -507,11 +530,11 @@ export default function MdEditor() {
 
       const commit = () => {
         const newText = input.value;
+        // Restore cell
+        cell.removeAttribute("style");
         cell.textContent = newText;
 
         if (newText !== currentText) {
-          // Find and replace in markdown source
-          // Look for the old cell text in table rows
           const lines = markdown.split("\n");
           for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes("|") && lines[i].includes(currentText)) {
@@ -526,6 +549,7 @@ export default function MdEditor() {
       };
 
       const cancel = () => {
+        cell.removeAttribute("style");
         cell.innerHTML = originalContent;
       };
 
