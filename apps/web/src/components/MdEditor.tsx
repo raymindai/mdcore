@@ -285,7 +285,7 @@ Special chars: &copy; &mdash; &rarr; &hearts; &check;
 *Double-click any text to edit inline · Click to jump to source · Right-click tables for row/column options · Use the Mermaid tab for visual diagrams*
 `;
 
-type ViewMode = "split" | "preview" | "editor" | "mermaid";
+type ViewMode = "split" | "preview" | "editor";
 
 type Theme = "dark" | "light";
 
@@ -383,6 +383,7 @@ export default function MdEditor() {
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
+  const [showMermaidModal, setShowMermaidModal] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -532,7 +533,7 @@ export default function MdEditor() {
             ev.stopPropagation();
             ev.preventDefault();
             setCanvasMermaid(code);
-            setViewMode("mermaid");
+            setShowMermaidModal(true);
           });
           wrapper.style.cursor = "pointer";
 
@@ -905,7 +906,7 @@ export default function MdEditor() {
         try {
           const code = decodeURIComponent(atob(encoded));
           setCanvasMermaid(code);
-          setViewMode("mermaid");
+          setShowMermaidModal(true);
         } catch {
           // fallback
         }
@@ -1587,8 +1588,8 @@ export default function MdEditor() {
           {/* View mode toggle */}
           <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
             {(isMobile
-              ? (["editor", "split", "preview", "mermaid"] as ViewMode[])
-              : (["editor", "split", "preview", "mermaid"] as ViewMode[])
+              ? (["editor", "split", "preview"] as ViewMode[])
+              : (["editor", "split", "preview"] as ViewMode[])
             ).map((mode) => (
               <button
                 key={mode}
@@ -1599,7 +1600,7 @@ export default function MdEditor() {
                   color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
-                {mode === "editor" ? "MD" : mode === "split" ? "Split" : mode === "mermaid" ? "Mermaid" : "View"}
+                {mode === "editor" ? "MD" : mode === "split" ? "Split" :  "View"}
               </button>
             ))}
           </div>
@@ -1714,6 +1715,13 @@ export default function MdEditor() {
                         </button>
                       </>
                     )}
+                    <button
+                      onClick={() => { setCanvasMermaid(undefined); setShowMermaidModal(true); setShowMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      New Mermaid Diagram
+                    </button>
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
                       onClick={handleClear}
@@ -1781,46 +1789,8 @@ export default function MdEditor() {
       {/* Main content */}
       <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
         {/* Canvas mode */}
-        {viewMode === "mermaid" && (
-          <div className="w-full flex flex-col flex-1">
-            <MdCanvas
-              initialMermaid={canvasMermaid}
-              onGenerate={(md) => {
-                let newMarkdown: string;
-                if (canvasMermaid) {
-                  // Replace the original mermaid code block
-                  const originalBlock = "```mermaid\n" + canvasMermaid + "\n```";
-                  if (markdown.includes(originalBlock)) {
-                    newMarkdown = markdown.replace(originalBlock, md);
-                  } else {
-                    // Try to find by content similarity
-                    const mermaidBlockRegex = /```mermaid\n[\s\S]*?```/g;
-                    const blocks = [...markdown.matchAll(mermaidBlockRegex)];
-                    const match = blocks.find(b => {
-                      // Check if the block contains the first line of the original
-                      const firstLine = canvasMermaid.split("\n")[1]?.trim();
-                      return firstLine && b[0].includes(firstLine);
-                    });
-                    if (match && match.index !== undefined) {
-                      newMarkdown = markdown.slice(0, match.index) + md + markdown.slice(match.index + match[0].length);
-                    } else {
-                      newMarkdown = markdown + "\n\n" + md;
-                    }
-                  }
-                } else {
-                  newMarkdown = markdown ? markdown + "\n\n" + md : md;
-                }
-                setMarkdown(newMarkdown);
-                doRender(newMarkdown);
-                setCanvasMermaid(undefined);
-                setViewMode(isMobile ? "preview" : "split");
-              }}
-            />
-          </div>
-        )}
-
         {/* Editor pane */}
-        {viewMode !== "preview" && viewMode !== "mermaid" && (
+        {viewMode !== "preview" && (
           <div
             className={`${
               viewMode === "split"
@@ -1859,7 +1829,7 @@ export default function MdEditor() {
         )}
 
         {/* Preview pane */}
-        {viewMode !== "editor" && viewMode !== "mermaid" && (
+        {viewMode !== "editor" && (
           <div
             className={`${
               viewMode === "split"
@@ -1995,6 +1965,60 @@ export default function MdEditor() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+      {/* Mermaid Editor Modal */}
+      {showMermaidModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+        >
+          <div
+            className="rounded-xl flex flex-col"
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border)",
+              width: "95vw",
+              height: "90vh",
+              maxWidth: "1400px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <MdCanvas
+              initialMermaid={canvasMermaid}
+              onCancel={() => {
+                setShowMermaidModal(false);
+                setCanvasMermaid(undefined);
+              }}
+              onGenerate={(md) => {
+                let newMarkdown: string;
+                if (canvasMermaid) {
+                  const originalBlock = "```mermaid\n" + canvasMermaid + "\n```";
+                  if (markdown.includes(originalBlock)) {
+                    newMarkdown = markdown.replace(originalBlock, md);
+                  } else {
+                    const mermaidBlockRegex = /```mermaid\n[\s\S]*?```/g;
+                    const blocks = [...markdown.matchAll(mermaidBlockRegex)];
+                    const match = blocks.find(b => {
+                      const firstLine = canvasMermaid.split("\n")[1]?.trim();
+                      return firstLine && b[0].includes(firstLine);
+                    });
+                    if (match && match.index !== undefined) {
+                      newMarkdown = markdown.slice(0, match.index) + md + markdown.slice(match.index + match[0].length);
+                    } else {
+                      newMarkdown = markdown + "\n\n" + md;
+                    }
+                  }
+                } else {
+                  newMarkdown = markdown ? markdown + "\n\n" + md : md;
+                }
+                setMarkdown(newMarkdown);
+                doRender(newMarkdown);
+                setCanvasMermaid(undefined);
+                setShowMermaidModal(false);
+              }}
+            />
           </div>
         </div>
       )}

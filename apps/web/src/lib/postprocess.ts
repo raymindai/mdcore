@@ -60,7 +60,7 @@ function highlightCode(html: string): string {
           : hljs.highlightAuto(decoded).value;
         // Preserve data-sourcepos from original pre tag
         const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
-        const langLabel = lang ? `<span class="code-lang-label" style="position:absolute;top:6px;right:12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:1">${lang}</span>` : "";
+        const langLabel = lang ? `<span class="code-lang-label" style="position:absolute;top:6px;left:12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:1">${lang}</span>` : "";
         return `<pre ${sourcepos} lang="${lang || "text"}" style="position:relative">${langLabel}<code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
       } catch {
         return match;
@@ -135,7 +135,7 @@ function processKatex(html: string): string {
 function addCodeCopyButtons(html: string): string {
   return html.replace(
     /<pre(?![^>]*class="mermaid")(?![^>]*lang="mermaid")([^>]*)><code/g,
-    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='\\u2713';setTimeout(()=>this.textContent='\\u2398',1500)})" style="position:absolute;top:6px;right:6px;padding:3px 6px;font-size:14px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0.5;transition:opacity 0.2s;line-height:1;z-index:2" title="Copy code">&#9112;</button><code`
+    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:6px;right:6px;padding:2px 8px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.15s;z-index:2" title="Copy code">Copy</button><code`
   );
 }
 

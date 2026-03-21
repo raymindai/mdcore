@@ -36,10 +36,10 @@ interface SelectionBox {
 }
 
 const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
-  round: { borderRadius: "20px" },
+  round: { borderRadius: "24px", padding: "8px 20px" },
   square: { borderRadius: "4px" },
-  circle: { borderRadius: "50%", minWidth: "80px", minHeight: "80px", display: "flex", alignItems: "center", justifyContent: "center" },
-  diamond: { transform: "rotate(45deg)", borderRadius: "4px", minWidth: "70px", minHeight: "70px", display: "flex", alignItems: "center", justifyContent: "center" },
+  circle: { borderRadius: "50%", width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
+  diamond: { transform: "rotate(45deg)", borderRadius: "4px", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
 };
 
 // SVG mini icons for shape selector
@@ -60,9 +60,11 @@ function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: nu
 
 export default function MdCanvas({
   onGenerate,
+  onCancel,
   initialMermaid,
 }: {
   onGenerate: (md: string) => void;
+  onCancel?: () => void;
   initialMermaid?: string;
 }) {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
@@ -433,16 +435,25 @@ export default function MdCanvas({
           <span className="font-mono text-[10px]" style={{ color: "var(--text-faint)" }}>
             {nodes.length}n · {edges.length}e
           </span>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="px-3 py-1 rounded-md font-mono text-[11px]"
+              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={handleGenerate}
-            disabled={nodes.length === 0}
+            disabled={nodes.length === 0 && !rawCodeMode}
             className="px-3 py-1 rounded-md font-mono text-[11px] font-semibold"
             style={{
-              background: nodes.length > 0 ? "var(--accent)" : "var(--toggle-bg)",
-              color: nodes.length > 0 ? "#000" : "var(--text-muted)",
+              background: (nodes.length > 0 || rawCodeMode) ? "var(--accent)" : "var(--toggle-bg)",
+              color: (nodes.length > 0 || rawCodeMode) ? "#000" : "var(--text-muted)",
             }}
           >
-            Generate Mermaid
+            Apply
           </button>
         </div>
       </div>
