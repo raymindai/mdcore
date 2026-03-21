@@ -624,12 +624,11 @@ export default function MdEditor() {
         const header = document.createElement("div");
         header.style.cssText = `display:flex;justify-content:space-between;align-items:center;`;
         header.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:11px;color:var(--text-faint)">lang:</span>
+          <div style="display:flex;align-items:center;gap:0;">
             <input id="code-lang" type="text" value="${currentLang}" placeholder="language"
-              style="width:100px;padding:2px 8px;font-size:12px;font-family:ui-monospace,monospace;
-              background:var(--background);color:var(--text-primary);border:1px solid var(--border);
-              border-radius:4px;outline:none;" />
+              style="width:110px;padding:4px 10px;font-size:13px;font-family:ui-monospace,monospace;font-weight:600;
+              background:var(--accent-dim);color:var(--accent);border:1px solid transparent;
+              border-radius:6px;outline:none;text-transform:uppercase;letter-spacing:0.5px;" />
           </div>
           <div style="display:flex;gap:6px;">
             <button id="code-save" style="padding:4px 12px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Save</button>
