@@ -38,10 +38,14 @@ export function postProcessHtml(html: string): string {
  */
 function highlightCode(html: string): string {
   return html.replace(
-    /<pre(?:\s+lang="(\w+)")?[^>]*><code(?:\s+class="language-(\w+)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-    (match, preLang, codeLang, code) => {
-      const lang = preLang || codeLang;
-      // Skip mermaid blocks — handled separately
+    /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+    (match, preAttrs, codeAttrs, code) => {
+      // Extract lang from pre attrs (lang="xxx") or code attrs (class="language-xxx")
+      const preLangMatch = preAttrs.match(/lang="(\w+)"/);
+      const codeLangMatch = codeAttrs.match(/language-(\w+)/);
+      const lang = preLangMatch?.[1] || codeLangMatch?.[1] || null;
+
+      // Skip mermaid blocks — handled by DOM in useEffect
       if (lang === "mermaid") return match;
       // Skip math blocks
       if (lang === "math") return match;
@@ -51,7 +55,9 @@ function highlightCode(html: string): string {
         const highlighted = lang && hljs.getLanguage(lang)
           ? hljs.highlight(decoded, { language: lang }).value
           : hljs.highlightAuto(decoded).value;
-        return `<pre><code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
+        // Preserve data-sourcepos from original pre tag
+        const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
+        return `<pre ${sourcepos} lang="${lang || "text"}"><code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
       } catch {
         return match;
       }
