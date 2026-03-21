@@ -770,31 +770,41 @@ export default function MdEditor() {
       };
 
       const isListItem = editable.tagName === "LI";
+      let committed = false;
 
-      editable.addEventListener("blur", commit, { once: true });
+      const safeCommit = () => {
+        if (committed) return;
+        committed = true;
+        editable.removeEventListener("blur", safeCommit);
+        commit();
+      };
+
+      editable.addEventListener("blur", safeCommit);
       editable.addEventListener("keydown", (ke) => {
         const kev = ke as KeyboardEvent;
 
         if (kev.key === "Escape") {
+          committed = true;
+          editable.removeEventListener("blur", safeCommit);
+          editable.removeAttribute("contenteditable");
+          editable.style.outline = "";
+          editable.style.outlineOffset = "";
+          editable.style.borderRadius = "";
           editable.textContent = originalText;
-          editable.blur();
           return;
         }
 
         if (kev.key === "Enter" && isListItem) {
-          // Enter in list item → commit current, add new item below
           kev.preventDefault();
-          commit();
+          safeCommit();
           // Add a new list item in MD source
           const actualStart = pos.startLine + frontmatterOffset;
           const mdLines = markdown.split("\n");
           const currentLine = mdLines[actualStart] || "";
-          // Detect list prefix (-, *, +, 1., etc) with indentation
           const prefixMatch = currentLine.match(/^(\s*)([-*+]|\d+\.)\s/);
           if (prefixMatch) {
             const indent = prefixMatch[1];
             const marker = prefixMatch[2];
-            // For ordered lists, increment number
             const newMarker = /^\d+$/.test(marker) ? (parseInt(marker) + 1) + "." : marker;
             mdLines.splice(actualStart + 1, 0, `${indent}${newMarker} `);
             const newMd = mdLines.join("\n");
@@ -810,17 +820,15 @@ export default function MdEditor() {
           return;
         }
 
-        if (kev.key === "Tab" && isListItem) {
-          // Tab → indent, Shift+Tab → outdent
+        if (kev.key === "Tab") {
           kev.preventDefault();
-          commit();
+          if (!isListItem) return;
+          safeCommit();
           const actualStart = pos.startLine + frontmatterOffset;
           const mdLines = markdown.split("\n");
           if (kev.shiftKey) {
-            // Outdent: remove 2 spaces from start
             mdLines[actualStart] = mdLines[actualStart].replace(/^  /, "");
           } else {
-            // Indent: add 2 spaces
             mdLines[actualStart] = "  " + mdLines[actualStart];
           }
           const newMd = mdLines.join("\n");
