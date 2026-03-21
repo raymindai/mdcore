@@ -307,7 +307,6 @@ body {
   transform: rotate(45deg);
 }
 
-/* Editable elements hint on hover */
 /* Editable elements: hover hint (dashed gray) */
 .mdcore-rendered h1:hover,
 .mdcore-rendered h2:hover,
@@ -316,30 +315,25 @@ body {
 .mdcore-rendered h5:hover,
 .mdcore-rendered h6:hover,
 .mdcore-rendered p:hover,
-.mdcore-rendered li:hover {
-  outline: 1px dashed var(--border);
-  outline-offset: -1px;
-  cursor: text;
-  border-radius: 4px;
-}
-
-/* Hide hover hint when editing (contenteditable active) */
-.mdcore-rendered [contenteditable="true"] {
-  outline: 1px solid var(--accent) !important;
-  outline-offset: -1px !important;
-  border-radius: 4px;
-}
-
-.mdcore-rendered [contenteditable="true"]:hover {
-  outline: 1px solid var(--accent) !important;
-}
-
-/* Table cells: dashed inset on hover */
+.mdcore-rendered li:hover,
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
-  outline: 1px dashed var(--border);
-  outline-offset: -2px;
+  outline-style: dashed !important;
+  outline-width: 1px !important;
+  outline-color: var(--border) !important;
+  outline-offset: -1px;
   cursor: text;
+  border-radius: 2px;
+}
+
+/* Editing state: orange solid */
+.mdcore-rendered [contenteditable="true"],
+.mdcore-rendered [contenteditable="true"]:hover {
+  outline-style: solid !important;
+  outline-width: 1px !important;
+  outline-color: var(--accent) !important;
+  outline-offset: -1px;
+  border-radius: 2px;
 }
 
 /* Description lists */
