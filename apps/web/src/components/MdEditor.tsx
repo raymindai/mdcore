@@ -909,12 +909,140 @@ export default function MdEditor() {
       });
     };
 
+    // Table right-click context menu for row/column add/delete
+    const handleTableContextMenu = (e: Event) => {
+      const me = e as MouseEvent;
+      const target = me.target as HTMLElement;
+      const cell = target.closest("td, th") as HTMLTableCellElement | null;
+      if (!cell) return;
+      const table = cell.closest("table");
+      if (!table) return;
+
+      me.preventDefault();
+
+      const tableEl = table.closest("[data-sourcepos]") as HTMLElement | null;
+      if (!tableEl) return;
+      const sp = tableEl.getAttribute("data-sourcepos");
+      if (!sp) return;
+      const spMatch = sp.match(/^(\d+):\d+-(\d+):\d+$/);
+      if (!spMatch) return;
+
+      // Calculate frontmatter offset
+      const mdLines = markdown.split("\n");
+      let fmOffset = 0;
+      if (mdLines[0]?.trim() === "---") {
+        for (let k = 1; k < mdLines.length; k++) {
+          if (mdLines[k]?.trim() === "---") { fmOffset = k + 1; while (fmOffset < mdLines.length && !mdLines[fmOffset]?.trim()) fmOffset++; break; }
+        }
+      }
+
+      const tableStart = parseInt(spMatch[1]) - 1 + fmOffset;
+      const tableEnd = parseInt(spMatch[2]) - 1 + fmOffset;
+      const row = cell.closest("tr");
+      if (!row) return;
+      const rowIndex = Array.from(table.querySelectorAll("tr")).indexOf(row);
+      const colIndex = Array.from(row.children).indexOf(cell);
+      const isHeader = cell.tagName === "TH";
+
+      // Remove existing context menu
+      document.querySelectorAll(".table-ctx-menu").forEach((el) => el.remove());
+
+      const menu = document.createElement("div");
+      menu.className = "table-ctx-menu";
+      menu.style.cssText = `
+        position:fixed;left:${me.clientX}px;top:${me.clientY}px;z-index:100;
+        background:var(--menu-bg);border:1px solid var(--border);border-radius:8px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.4);padding:4px 0;min-width:160px;
+      `;
+
+      const btnStyle = `display:block;width:100%;text-align:left;padding:6px 12px;font-size:12px;
+        border:none;background:none;cursor:pointer;color:var(--text-secondary);font-family:inherit;`;
+      const dangerStyle = btnStyle + `color:#ef4444;`;
+
+      menu.innerHTML = `
+        <button style="${btnStyle}" data-action="add-row-above">Insert row above</button>
+        <button style="${btnStyle}" data-action="add-row-below">Insert row below</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+        <button style="${btnStyle}" data-action="add-col-left">Insert column left</button>
+        <button style="${btnStyle}" data-action="add-col-right">Insert column right</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
+        ${!isHeader ? `<button style="${dangerStyle}" data-action="delete-row">Delete row</button>` : ""}
+        <button style="${dangerStyle}" data-action="delete-col">Delete column</button>
+      `;
+
+      document.body.appendChild(menu);
+
+      const closeMenu = () => { menu.remove(); document.removeEventListener("click", closeMenu); };
+      setTimeout(() => document.addEventListener("click", closeMenu), 0);
+
+      menu.addEventListener("click", (ev) => {
+        const btn = (ev.target as HTMLElement).closest("[data-action]");
+        if (!btn) return;
+        const action = btn.getAttribute("data-action");
+
+        const tableLines = mdLines.slice(tableStart, tableEnd + 1);
+        const parsedRows = tableLines.filter((l) => l.trim().startsWith("|")).map((l) => {
+          const cells = l.split("|").slice(1, -1).map((c) => c.trim());
+          return cells;
+        });
+
+        // Row 0 = header, Row 1 = separator (---|---), Row 2+ = data
+        const headerRow = parsedRows[0] || [];
+        const sepRow = parsedRows[1] || [];
+        const dataRows = parsedRows.slice(2);
+        const numCols = headerRow.length;
+
+        // Actual data row index (skip header + separator)
+        const dataRowIndex = rowIndex - 1; // -1 for header (tbody starts at rowIndex 1 from DOM perspective)
+
+        const buildLine = (cells: string[]) => "| " + cells.join(" | ") + " |";
+        const emptyCell = "     ";
+
+        if (action === "add-row-above" || action === "add-row-below") {
+          const newRow = Array(numCols).fill(emptyCell);
+          if (isHeader) {
+            // Can't add above header, add below separator instead
+            dataRows.splice(0, 0, newRow);
+          } else {
+            const insertAt = action === "add-row-above" ? dataRowIndex : dataRowIndex + 1;
+            dataRows.splice(insertAt, 0, newRow);
+          }
+        } else if (action === "delete-row" && !isHeader) {
+          dataRows.splice(dataRowIndex, 1);
+        } else if (action === "add-col-left" || action === "add-col-right") {
+          const insertAt = action === "add-col-left" ? colIndex : colIndex + 1;
+          headerRow.splice(insertAt, 0, emptyCell);
+          sepRow.splice(insertAt, 0, "-----");
+          dataRows.forEach((r) => r.splice(insertAt, 0, emptyCell));
+        } else if (action === "delete-col" && numCols > 1) {
+          headerRow.splice(colIndex, 1);
+          sepRow.splice(colIndex, 1);
+          dataRows.forEach((r) => r.splice(colIndex, 1));
+        }
+
+        // Rebuild table
+        const newTableLines = [
+          buildLine(headerRow),
+          buildLine(sepRow),
+          ...dataRows.map(buildLine),
+        ];
+
+        mdLines.splice(tableStart, tableEnd - tableStart + 1, ...newTableLines);
+        const newMd = mdLines.join("\n");
+        setMarkdown(newMd);
+        doRender(newMd);
+        closeMenu();
+      });
+    };
+
     preview.addEventListener("click", handleCheckboxClick);
     preview.addEventListener("dblclick", handleTableDblClick);
+    preview.addEventListener("contextmenu", handleTableContextMenu);
 
     return () => {
       preview.removeEventListener("click", handleCheckboxClick);
       preview.removeEventListener("dblclick", handleTableDblClick);
+      preview.removeEventListener("contextmenu", handleTableContextMenu);
     };
   }, [html, isLoading, markdown, doRender]);
 

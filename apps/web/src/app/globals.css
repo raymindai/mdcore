@@ -239,24 +239,14 @@ body {
 }
 
 /* Respect comrak's align attribute from Markdown alignment syntax */
-.mdcore-rendered th:not([align]),
-.mdcore-rendered td:not([align]) {
-  text-align: left;
-}
-
 .mdcore-rendered th[align="center"],
 .mdcore-rendered td[align="center"] {
-  text-align: center;
+  text-align: center !important;
 }
 
 .mdcore-rendered th[align="right"],
 .mdcore-rendered td[align="right"] {
-  text-align: right;
-}
-
-.mdcore-rendered th[align="left"],
-.mdcore-rendered td[align="left"] {
-  text-align: left;
+  text-align: right !important;
 }
 
 .mdcore-rendered tr:last-child td {
