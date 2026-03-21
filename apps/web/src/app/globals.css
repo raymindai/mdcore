@@ -226,6 +226,7 @@ body {
   background: var(--surface);
   color: var(--text-primary);
   font-weight: 600;
+  text-align: left;
   padding: 0.625rem 1rem;
   border-bottom: 2px solid var(--border);
   font-size: 0.8125rem;
@@ -234,6 +235,7 @@ body {
 }
 
 .mdcore-rendered td {
+  text-align: left;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border-dim);
 }
