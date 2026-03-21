@@ -281,6 +281,28 @@ body {
   list-style-type: decimal;
 }
 
+/* Nested ordered list styles */
+.mdcore-rendered ol ol {
+  list-style-type: lower-alpha;
+}
+
+.mdcore-rendered ol ol ol {
+  list-style-type: lower-roman;
+}
+
+.mdcore-rendered ol ol ol ol {
+  list-style-type: upper-alpha;
+}
+
+/* Nested unordered list styles */
+.mdcore-rendered ul ul {
+  list-style-type: circle;
+}
+
+.mdcore-rendered ul ul ul {
+  list-style-type: square;
+}
+
 .mdcore-rendered li {
   margin: 0.3rem 0;
 }
