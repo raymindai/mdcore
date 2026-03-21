@@ -197,7 +197,6 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [sourceBlocks, setSourceBlocks] = useState<SourceBlock[]>([]);
-  const [highlightLines, setHighlightLines] = useState<{ start: number; end: number } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -246,12 +245,13 @@ export default function MdEditor() {
   }, []);
 
   // Mermaid rendering after DOM update
+  // Finds <pre lang="mermaid"> directly in DOM (no regex on HTML strings)
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
-    const mermaidContainers =
-      previewRef.current.querySelectorAll(".mermaid-container");
-    if (mermaidContainers.length === 0) return;
+    // Find all <pre> with lang="mermaid" that haven't been rendered yet
+    const mermaidPres = previewRef.current.querySelectorAll('pre[lang="mermaid"]');
+    if (mermaidPres.length === 0) return;
 
     const isDark = theme === "dark";
 
@@ -315,18 +315,21 @@ export default function MdEditor() {
         },
       });
 
-      mermaidContainers.forEach(async (container, idx) => {
-        const pre = container.querySelector("pre.mermaid");
-        if (!pre) return;
-        const code = pre.textContent || "";
-        // Use unique ID with timestamp to avoid collisions on re-render
+      mermaidPres.forEach(async (pre, idx) => {
+        const codeEl = pre.querySelector("code");
+        const code = (codeEl?.textContent || pre.textContent || "").trim();
+        if (!code) return;
+
         const id = `mermaid-${Date.now()}-${idx}`;
 
         try {
           const { svg } = await mermaid.render(id, code);
-          // Encode mermaid source for the edit button
           const encodedCode = btoa(encodeURIComponent(code));
-          container.innerHTML = `
+
+          // Wrap the <pre> in a container and replace with rendered SVG
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-container";
+          wrapper.innerHTML = `
             <div class="mermaid-rendered" style="position:relative">
               ${svg}
               <button
@@ -335,8 +338,9 @@ export default function MdEditor() {
                 style="position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;font-family:ui-monospace,monospace;background:var(--accent-dim);color:var(--accent);border:none;border-radius:6px;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:5;"
               >Edit in Mermaid</button>
             </div>`;
+          pre.replaceWith(wrapper);
         } catch {
-          // Leave as-is
+          // Leave as-is on error
         }
       });
     });
@@ -382,45 +386,44 @@ export default function MdEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Preview hover → highlight source lines
+  // Preview click → scroll to source line in editor
   useEffect(() => {
-    if (!previewRef.current || viewMode === "preview" || viewMode === "mermaid") return;
+    if (!previewRef.current || viewMode !== "split") return;
     const preview = previewRef.current;
 
-    const handleHover = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
+      // Don't interfere with buttons, links, checkboxes
       const target = e.target as HTMLElement;
-      // Walk up to find a block-level element
+      if (target.closest("button,a,input")) return;
+
       const blockEl = target.closest("h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ul,ol,hr,.mermaid-container,.mermaid-rendered,.katex-display") as HTMLElement | null;
-      if (!blockEl) {
-        setHighlightLines(null);
-        return;
-      }
+      if (!blockEl) return;
 
       const blockIdx = matchElementToBlock(blockEl, sourceBlocks);
       if (blockIdx >= 0 && blockIdx < sourceBlocks.length) {
         const block = sourceBlocks[blockIdx];
-        setHighlightLines({ start: block.startLine, end: block.endLine });
 
-        // Scroll textarea to show the highlighted line
+        // Scroll textarea to the source line
         if (textareaRef.current) {
           const ta = textareaRef.current;
           const lineHeight = ta.scrollHeight / (markdown.split("\n").length || 1);
           const targetScroll = block.startLine * lineHeight - ta.clientHeight / 3;
           ta.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+
+          // Also set cursor position
+          const lines = markdown.split("\n");
+          let charPos = 0;
+          for (let i = 0; i < block.startLine && i < lines.length; i++) {
+            charPos += lines[i].length + 1;
+          }
+          ta.focus();
+          ta.setSelectionRange(charPos, charPos);
         }
-      } else {
-        setHighlightLines(null);
       }
     };
 
-    const handleLeave = () => setHighlightLines(null);
-
-    preview.addEventListener("mousemove", handleHover);
-    preview.addEventListener("mouseleave", handleLeave);
-    return () => {
-      preview.removeEventListener("mousemove", handleHover);
-      preview.removeEventListener("mouseleave", handleLeave);
-    };
+    preview.addEventListener("click", handleClick);
+    return () => preview.removeEventListener("click", handleClick);
   }, [sourceBlocks, viewMode, markdown]);
 
   // Mermaid edit button click handler
@@ -1150,19 +1153,11 @@ export default function MdEditor() {
             </div>
             <textarea
               ref={textareaRef}
-              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none"
               style={{
                 color: "var(--editor-text)",
                 caretColor: "var(--accent)",
-                backgroundImage: highlightLines && viewMode === "split"
-                  ? `linear-gradient(
-                      transparent ${highlightLines.start * 1.65}em,
-                      var(--accent-dim) ${highlightLines.start * 1.65}em,
-                      var(--accent-dim) ${(highlightLines.end + 1) * 1.65}em,
-                      transparent ${(highlightLines.end + 1) * 1.65}em
-                    )`
-                  : "none",
-                backgroundAttachment: "local",
+                lineHeight: "1.65",
               }}
               value={markdown}
               onChange={(e) => handleChange(e.target.value)}

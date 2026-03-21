@@ -14,10 +14,7 @@ import hljs from "highlight.js";
 export function postProcessHtml(html: string): string {
   let result = html;
 
-  // Process mermaid FIRST — before highlight.js can touch them
-  result = processMermaid(result);
-
-  // Syntax highlight code blocks (skips mermaid which is already processed)
+  // Syntax highlight code blocks (skips mermaid/math)
   result = highlightCode(result);
 
   // Process KaTeX math
@@ -25,6 +22,9 @@ export function postProcessHtml(html: string): string {
 
   // Add copy buttons to code blocks
   result = addCodeCopyButtons(result);
+
+  // NOTE: Mermaid is handled via DOM in useEffect (MdEditor.tsx),
+  // not here. This avoids fragile regex matching on HTML strings.
 
   return result;
 }
@@ -117,37 +117,11 @@ function processKatex(html: string): string {
 }
 
 /**
- * Mark mermaid code blocks for client-side rendering
- * comrak outputs: <pre lang="mermaid"><code>...</code></pre>
- */
-function processMermaid(html: string): string {
-  let mermaidId = 0;
-
-  // Match any <pre> containing mermaid — handles all comrak output variations:
-  //   <pre lang="mermaid"><code>...</code></pre>
-  //   <pre><code class="language-mermaid">...</code></pre>
-  // Use a single broad regex, then check for "mermaid" in the matched pre/code attributes
-  return html.replace(
-    /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
-    (match, preAttrs, codeAttrs, code) => {
-      const isMermaid =
-        /lang="mermaid"/.test(preAttrs) ||
-        /language-mermaid/.test(codeAttrs);
-
-      if (!isMermaid) return match;
-
-      const id = `mermaid-${mermaidId++}`;
-      return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
-    }
-  );
-}
-
-/**
  * Add copy buttons to code blocks (skip mermaid containers)
  */
 function addCodeCopyButtons(html: string): string {
   return html.replace(
-    /<pre(?![^>]*class="mermaid")([^>]*)><code/g,
+    /<pre(?![^>]*class="mermaid")(?![^>]*lang="mermaid")([^>]*)><code/g,
     `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:8px;right:8px;padding:2px 8px;font-size:11px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.2s">Copy</button><code`
   );
 }
