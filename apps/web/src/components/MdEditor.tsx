@@ -48,12 +48,14 @@ This is a [link to mdfy.cc](https://mdfy.cc) and an autolink: https://github.com
 
 ## Headings
 
-All six heading levels, each with distinct sizing:
+All six heading levels with distinct sizing:
 
-### H3 — Third Level
-#### H4 — Fourth Level
-##### H5 — Fifth Level
-###### H6 — SIXTH LEVEL
+> # H1 — Document Title
+> ## H2 — Section
+> ### H3 — Subsection
+> #### H4 — Sub-subsection
+> ##### H5 — Minor heading
+> ###### H6 — Smallest heading
 
 ---
 
@@ -756,15 +758,64 @@ export default function MdEditor() {
         }
       };
 
+      const isListItem = editable.tagName === "LI";
+
       editable.addEventListener("blur", commit, { once: true });
       editable.addEventListener("keydown", (ke) => {
-        if ((ke as KeyboardEvent).key === "Enter") {
-          ke.preventDefault();
-          editable.blur();
-        }
-        if ((ke as KeyboardEvent).key === "Escape") {
+        const kev = ke as KeyboardEvent;
+
+        if (kev.key === "Escape") {
           editable.textContent = originalText;
           editable.blur();
+          return;
+        }
+
+        if (kev.key === "Enter" && isListItem) {
+          // Enter in list item → commit current, add new item below
+          kev.preventDefault();
+          commit();
+          // Add a new list item in MD source
+          const actualStart = pos.startLine + frontmatterOffset;
+          const mdLines = markdown.split("\n");
+          const currentLine = mdLines[actualStart] || "";
+          // Detect list prefix (-, *, +, 1., etc) with indentation
+          const prefixMatch = currentLine.match(/^(\s*)([-*+]|\d+\.)\s/);
+          if (prefixMatch) {
+            const indent = prefixMatch[1];
+            const marker = prefixMatch[2];
+            // For ordered lists, increment number
+            const newMarker = /^\d+$/.test(marker) ? (parseInt(marker) + 1) + "." : marker;
+            mdLines.splice(actualStart + 1, 0, `${indent}${newMarker} `);
+            const newMd = mdLines.join("\n");
+            setMarkdown(newMd);
+            doRender(newMd);
+          }
+          return;
+        }
+
+        if (kev.key === "Enter") {
+          kev.preventDefault();
+          editable.blur();
+          return;
+        }
+
+        if (kev.key === "Tab" && isListItem) {
+          // Tab → indent, Shift+Tab → outdent
+          kev.preventDefault();
+          commit();
+          const actualStart = pos.startLine + frontmatterOffset;
+          const mdLines = markdown.split("\n");
+          if (kev.shiftKey) {
+            // Outdent: remove 2 spaces from start
+            mdLines[actualStart] = mdLines[actualStart].replace(/^  /, "");
+          } else {
+            // Indent: add 2 spaces
+            mdLines[actualStart] = "  " + mdLines[actualStart];
+          }
+          const newMd = mdLines.join("\n");
+          setMarkdown(newMd);
+          doRender(newMd);
+          return;
         }
       });
     };
