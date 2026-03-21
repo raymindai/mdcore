@@ -843,14 +843,11 @@ export default function MdEditor() {
       input.type = "text";
       input.value = currentText;
       input.style.cssText = `
-        width: ${rect.width - 12}px;
-        height: ${rect.height - 8}px;
-        max-width: ${rect.width - 12}px;
-        background: var(--surface);
+        width: 100%;
+        background: transparent;
         color: var(--text-primary);
-        border: 1px solid var(--accent);
-        border-radius: 3px;
-        padding: 0 4px;
+        border: none;
+        padding: 0;
         font-size: inherit;
         font-family: inherit;
         outline: none;
@@ -858,13 +855,12 @@ export default function MdEditor() {
         margin: 0;
       `;
 
-      // Lock cell size (add to existing style)
-      cell.style.width = `${rect.width}px`;
-      cell.style.height = `${rect.height}px`;
-      cell.style.minWidth = `${rect.width}px`;
-      cell.style.maxWidth = `${rect.width}px`;
-      cell.style.overflow = "hidden";
-      cell.style.padding = "2px 4px";
+      // Add orange outline to cell itself (matching other editable elements)
+      cell.style.outlineStyle = "solid";
+      cell.style.outlineWidth = "1px";
+      cell.style.outlineColor = "var(--accent)";
+      cell.style.outlineOffset = "2px";
+      cell.style.borderRadius = "6px";
 
       const originalContent = cell.innerHTML;
       cell.textContent = "";
