@@ -320,11 +320,12 @@ body {
   border-radius: 4px;
 }
 
-/* Table cell hover: dashed border inside cell, same as edit border */
+/* Table cell hover: dashed inset, matches edit input position */
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
   outline: 1px dashed var(--border);
-  outline-offset: -1px;
+  outline-offset: -4px;
+  border-radius: 3px;
   cursor: text;
 }
 
