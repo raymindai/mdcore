@@ -1043,7 +1043,7 @@ export default function MdEditor() {
       const dangerStyle = btnStyle + `color:#ef4444;`;
 
       menu.innerHTML = `
-        <button style="${btnStyle}" data-action="add-row-above">Insert row above</button>
+        ${!isHeader ? `<button style="${btnStyle}" data-action="add-row-above">Insert row above</button>` : ""}
         <button style="${btnStyle}" data-action="add-row-below">Insert row below</button>
         <hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">
         <button style="${btnStyle}" data-action="add-col-left">Insert column left</button>
@@ -1054,6 +1054,21 @@ export default function MdEditor() {
       `;
 
       document.body.appendChild(menu);
+
+      // Prevent menu from going off-screen
+      const menuRect = menu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        menu.style.left = `${window.innerWidth - menuRect.width - 8}px`;
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        menu.style.top = `${window.innerHeight - menuRect.height - 8}px`;
+      }
+      if (menuRect.left < 0) {
+        menu.style.left = "8px";
+      }
+      if (menuRect.top < 0) {
+        menu.style.top = "8px";
+      }
 
       const closeMenu = () => { menu.remove(); document.removeEventListener("click", closeMenu); };
       setTimeout(() => document.addEventListener("click", closeMenu), 0);
@@ -1094,8 +1109,10 @@ export default function MdEditor() {
           dataRows.splice(dataRowIndex, 1);
         } else if (action === "add-col-left" || action === "add-col-right") {
           const insertAt = action === "add-col-left" ? colIndex : colIndex + 1;
+          // Copy separator style from the current column
+          const currentSep = sepRow[colIndex] || "-----";
           headerRow.splice(insertAt, 0, emptyCell);
-          sepRow.splice(insertAt, 0, "-----");
+          sepRow.splice(insertAt, 0, currentSep);
           dataRows.forEach((r) => r.splice(insertAt, 0, emptyCell));
         } else if (action === "delete-col" && numCols > 1) {
           headerRow.splice(colIndex, 1);
