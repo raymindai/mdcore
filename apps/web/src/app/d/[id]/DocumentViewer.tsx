@@ -130,12 +130,11 @@ export default function DocumentViewer({
         fontSize: 13,
       });
 
-      mermaidContainers.forEach(async (container) => {
+      mermaidContainers.forEach(async (container, idx) => {
         const pre = container.querySelector("pre.mermaid");
         if (!pre) return;
         const code = pre.textContent || "";
-        const mermaidId =
-          container.getAttribute("data-mermaid-id") || "mermaid-0";
+        const mermaidId = `mermaid-${Date.now()}-${idx}`;
 
         try {
           const { svg } = await mermaid.render(mermaidId, code);

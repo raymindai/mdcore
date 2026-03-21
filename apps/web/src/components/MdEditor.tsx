@@ -79,6 +79,8 @@ $$
 
 ### Mermaid Diagrams
 
+**Flowchart:**
+
 \`\`\`mermaid
 graph LR
     A[Markdown] --> B[mdcore Engine]
@@ -91,6 +93,32 @@ graph LR
     E --> J[npm package]
     style B fill:#fb923c,stroke:#ea580c,color:#000
 \`\`\`
+
+**Sequence Diagram:**
+
+\`\`\`mermaid
+sequenceDiagram
+    participant User
+    participant mdfy.cc
+    participant WASM Engine
+    User->>mdfy.cc: Paste Markdown
+    mdfy.cc->>WASM Engine: render(md)
+    WASM Engine-->>mdfy.cc: HTML + metadata
+    mdfy.cc-->>User: Beautiful document
+\`\`\`
+
+**Pie Chart:**
+
+\`\`\`mermaid
+pie title Markdown Flavors
+    "GFM" : 45
+    "CommonMark" : 25
+    "Obsidian" : 15
+    "MDX" : 10
+    "Other" : 5
+\`\`\`
+
+> mdfy.cc supports all Mermaid diagram types: flowcharts, sequence, class, state, ER, gantt, pie, git graph, mindmap, timeline, and more. Use the **Mermaid** tab to visually create flowcharts.
 
 ### Footnotes & More
 
@@ -225,6 +253,7 @@ export default function MdEditor() {
       const mermaid = mermaidModule.default;
       mermaid.initialize({
         startOnLoad: false,
+        securityLevel: "loose",
         theme: isDark ? "dark" : "default",
         themeVariables: isDark
           ? {
@@ -240,6 +269,11 @@ export default function MdEditor() {
               clusterBkg: "#18181b",
               titleColor: "#fafafa",
               edgeLabelBackground: "#18181b",
+              pie1: "#fb923c",
+              pie2: "#60a5fa",
+              pie3: "#4ade80",
+              pie4: "#c4b5fd",
+              pie5: "#f472b6",
             }
           : {
               primaryColor: "#fed7aa",
@@ -254,16 +288,33 @@ export default function MdEditor() {
               clusterBkg: "#fafafa",
               titleColor: "#18181b",
               edgeLabelBackground: "#ffffff",
+              pie1: "#ea580c",
+              pie2: "#2563eb",
+              pie3: "#16a34a",
+              pie4: "#7c3aed",
+              pie5: "#db2777",
             },
         fontFamily: "ui-monospace, monospace",
         fontSize: 13,
+        sequence: {
+          actorFontFamily: "ui-monospace, monospace",
+          messageFontFamily: "ui-monospace, monospace",
+          noteFontFamily: "ui-monospace, monospace",
+        },
+        gantt: {
+          titleTopMargin: 15,
+          barHeight: 24,
+          barGap: 4,
+          fontSize: 12,
+        },
       });
 
-      mermaidContainers.forEach(async (container) => {
+      mermaidContainers.forEach(async (container, idx) => {
         const pre = container.querySelector("pre.mermaid");
         if (!pre) return;
         const code = pre.textContent || "";
-        const id = container.getAttribute("data-mermaid-id") || "mermaid-0";
+        // Use unique ID with timestamp to avoid collisions on re-render
+        const id = `mermaid-${Date.now()}-${idx}`;
 
         try {
           const { svg } = await mermaid.render(id, code);
