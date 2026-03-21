@@ -481,12 +481,18 @@ export default function MdEditor() {
           box-shadow:0 20px 60px rgba(0,0,0,0.5);
         `;
 
+        const currentLang = langLine.replace(/```/, "").trim();
+
         const header = document.createElement("div");
         header.style.cssText = `display:flex;justify-content:space-between;align-items:center;`;
         header.innerHTML = `
-          <span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text-muted)">
-            ${langLine.replace(/```/, "").trim() || "code"}
-          </span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--text-faint)">lang:</span>
+            <input id="code-lang" type="text" value="${currentLang}" placeholder="language"
+              style="width:100px;padding:2px 8px;font-size:12px;font-family:ui-monospace,monospace;
+              background:var(--background);color:var(--text-primary);border:1px solid var(--border);
+              border-radius:4px;outline:none;" />
+          </div>
           <div style="display:flex;gap:6px;">
             <button id="code-save" style="padding:4px 12px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Save</button>
             <button id="code-cancel" style="padding:4px 12px;font-size:11px;background:var(--toggle-bg);color:var(--text-muted);border:none;border-radius:6px;cursor:pointer;">Cancel</button>
@@ -511,8 +517,17 @@ export default function MdEditor() {
 
         const save = () => {
           const newCode = textarea.value;
-          if (newCode !== originalCode) {
+          const newLang = (header.querySelector("#code-lang") as HTMLInputElement)?.value?.trim() || "";
+          const codeChanged = newCode !== originalCode;
+          const langChanged = newLang !== currentLang;
+
+          if (codeChanged || langChanged) {
             const newLines = [...mdLines];
+            // Update language on the opening fence line
+            if (langChanged) {
+              newLines[actualStart] = "```" + newLang;
+            }
+            // Update code content
             newLines.splice(actualStart + 1, actualEnd - actualStart - 1, newCode);
             const newMd = newLines.join("\n");
             setMarkdown(newMd);
