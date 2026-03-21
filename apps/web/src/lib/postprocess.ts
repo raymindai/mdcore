@@ -14,14 +14,14 @@ import hljs from "highlight.js";
 export function postProcessHtml(html: string): string {
   let result = html;
 
-  // Syntax highlight code blocks
+  // Process mermaid FIRST — before highlight.js can touch them
+  result = processMermaid(result);
+
+  // Syntax highlight code blocks (skips mermaid which is already processed)
   result = highlightCode(result);
 
   // Process KaTeX math
   result = processKatex(result);
-
-  // Process mermaid code blocks
-  result = processMermaid(result);
 
   // Add copy buttons to code blocks
   result = addCodeCopyButtons(result);
@@ -123,24 +123,23 @@ function processKatex(html: string): string {
 function processMermaid(html: string): string {
   let mermaidId = 0;
 
-  // Match both comrak formats:
-  // 1. <pre lang="mermaid"><code>...</code></pre> (github_pre_lang=true)
-  // 2. <pre><code class="language-mermaid">...</code></pre> (standard)
-  return html
-    .replace(
-      /<pre[^>]*\blang="mermaid"[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/g,
-      (_, code) => {
-        const id = `mermaid-${mermaidId++}`;
-        return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
-      }
-    )
-    .replace(
-      /<pre[^>]*>\s*<code[^>]*class="[^"]*language-mermaid[^"]*"[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/g,
-      (_, code) => {
-        const id = `mermaid-${mermaidId++}`;
-        return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
-      }
-    );
+  // Match any <pre> containing mermaid — handles all comrak output variations:
+  //   <pre lang="mermaid"><code>...</code></pre>
+  //   <pre><code class="language-mermaid">...</code></pre>
+  // Use a single broad regex, then check for "mermaid" in the matched pre/code attributes
+  return html.replace(
+    /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+    (match, preAttrs, codeAttrs, code) => {
+      const isMermaid =
+        /lang="mermaid"/.test(preAttrs) ||
+        /language-mermaid/.test(codeAttrs);
+
+      if (!isMermaid) return match;
+
+      const id = `mermaid-${mermaidId++}`;
+      return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
+    }
+  );
 }
 
 /**

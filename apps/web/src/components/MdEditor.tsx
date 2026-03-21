@@ -1148,33 +1148,28 @@ export default function MdEditor() {
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
-            <div className="flex-1 relative overflow-hidden">
-              {/* Highlight overlay */}
-              {highlightLines && viewMode === "split" && (
-                <div
-                  className="absolute left-0 right-0 pointer-events-none"
-                  style={{
-                    top: `calc(${highlightLines.start} * 1.65em + 0.75rem)`,
-                    height: `calc(${(highlightLines.end - highlightLines.start + 1)} * 1.65em)`,
-                    background: "var(--accent-dim)",
-                    borderLeft: "2px solid var(--accent)",
-                    zIndex: 0,
-                    transition: "top 0.15s, height 0.15s",
-                    marginTop: textareaRef.current ? `-${textareaRef.current.scrollTop}px` : "0",
-                  }}
-                />
-              )}
-              <textarea
-                ref={textareaRef}
-                className="absolute inset-0 w-full h-full p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
-                style={{ color: "var(--editor-text)", caretColor: "var(--accent)", zIndex: 1 }}
-                value={markdown}
-                onChange={(e) => handleChange(e.target.value)}
-                onPaste={handlePaste}
-                spellCheck={false}
-                placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
-              />
-            </div>
+            <textarea
+              ref={textareaRef}
+              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+              style={{
+                color: "var(--editor-text)",
+                caretColor: "var(--accent)",
+                backgroundImage: highlightLines && viewMode === "split"
+                  ? `linear-gradient(
+                      transparent ${highlightLines.start * 1.65}em,
+                      var(--accent-dim) ${highlightLines.start * 1.65}em,
+                      var(--accent-dim) ${(highlightLines.end + 1) * 1.65}em,
+                      transparent ${(highlightLines.end + 1) * 1.65}em
+                    )`
+                  : "none",
+                backgroundAttachment: "local",
+              }}
+              value={markdown}
+              onChange={(e) => handleChange(e.target.value)}
+              onPaste={handlePaste}
+              spellCheck={false}
+              placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
+            />
           </div>
         )}
 
