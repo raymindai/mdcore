@@ -701,10 +701,10 @@ export default function MdCanvas({
           const midY = (from.y + to.y) / 2;
           return (
             <div
-              className="edge-label absolute z-20 flex flex-col gap-1"
-              style={{ left: midX - 80, top: midY - 20 }}
+              className="edge-label absolute z-20 flex flex-col gap-1.5"
+              style={{ left: midX - 100, top: midY - 22, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}
             >
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
                 <input
                   autoFocus
                   value={edge.label || ""}
@@ -717,10 +717,20 @@ export default function MdCanvas({
                     if (e.key === "Enter" || e.key === "Escape") setEditingEdge(null);
                   }}
                   placeholder="label"
-                  className="px-2 py-1 text-[11px] font-mono rounded outline-none w-24"
-                  style={{ background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--text-primary)" }}
+                  className="px-2 py-1.5 text-[11px] font-mono rounded outline-none w-28"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                 />
-                {/* Style toggle */}
+                <button
+                  onMouseDown={(e) => { e.preventDefault(); deleteEdge(editingEdge); }}
+                  className="px-1.5 py-1.5 rounded text-[11px] font-bold"
+                  style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444" }}
+                >
+                  ×
+                </button>
+              </div>
+              {/* Style + Direction row */}
+              <div className="flex gap-1">
+                <span className="text-[9px] py-1" style={{ color: "var(--text-faint)" }}>Line:</span>
                 {(["solid", "dotted", "thick"] as const).map((s) => (
                   <button
                     key={s}
@@ -728,16 +738,17 @@ export default function MdCanvas({
                       e.preventDefault();
                       setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, style: s } : ed));
                     }}
-                    className="px-1.5 py-1 rounded text-[9px] font-mono"
+                    className="px-2 py-1 rounded text-[11px]"
                     style={{
-                      background: (edge.style || "solid") === s ? "var(--accent-dim)" : "var(--toggle-bg)",
-                      color: (edge.style || "solid") === s ? "var(--accent)" : "var(--text-muted)",
+                      background: (edge.style || "solid") === s ? "var(--accent)" : "var(--background)",
+                      color: (edge.style || "solid") === s ? "#000" : "var(--text-secondary)",
+                      border: "1px solid var(--border)",
                     }}
                   >
-                    {s === "solid" ? "—" : s === "dotted" ? "···" : "═"}
+                    {s === "solid" ? "━" : s === "dotted" ? "┄" : "┃"}
                   </button>
                 ))}
-                {/* Direction toggle */}
+                <span className="text-[9px] py-1 ml-1" style={{ color: "var(--text-faint)" }}>Dir:</span>
                 {(["forward", "both", "none"] as const).map((d) => (
                   <button
                     key={d}
@@ -745,22 +756,16 @@ export default function MdCanvas({
                       e.preventDefault();
                       setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, direction: d } : ed));
                     }}
-                    className="px-1.5 py-1 rounded text-[9px] font-mono"
+                    className="px-2 py-1 rounded text-[11px]"
                     style={{
-                      background: (edge.direction || "forward") === d ? "var(--accent-dim)" : "var(--toggle-bg)",
-                      color: (edge.direction || "forward") === d ? "var(--accent)" : "var(--text-muted)",
+                      background: (edge.direction || "forward") === d ? "var(--accent)" : "var(--background)",
+                      color: (edge.direction || "forward") === d ? "#000" : "var(--text-secondary)",
+                      border: "1px solid var(--border)",
                     }}
                   >
-                    {d === "forward" ? "→" : d === "both" ? "↔" : "—"}
+                    {d === "forward" ? "→" : d === "both" ? "⇄" : "―"}
                   </button>
                 ))}
-                <button
-                  onMouseDown={(e) => { e.preventDefault(); deleteEdge(editingEdge); }}
-                  className="px-1.5 py-1 rounded text-[10px]"
-                  style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
-                >
-                  ×
-                </button>
               </div>
             </div>
           );
