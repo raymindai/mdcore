@@ -187,53 +187,117 @@ function parseShapeText(shapeText: string): { text: string; shape: CanvasNode["s
 function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Direction) {
   if (nodes.length === 0) return;
 
-  // Build adjacency for topological sort
-  const children = new Map<string, string[]>();
+  const childrenMap = new Map<string, string[]>();
   const hasParent = new Set<string>();
   for (const e of edges) {
-    const list = children.get(e.from) || [];
+    const list = childrenMap.get(e.from) || [];
     list.push(e.to);
-    children.set(e.from, list);
+    childrenMap.set(e.from, list);
     hasParent.add(e.to);
   }
 
-  // BFS from roots to assign levels
   const roots = nodes.filter((n) => !hasParent.has(n.id));
   if (roots.length === 0) roots.push(nodes[0]);
 
-  const levels = new Map<string, number>();
-  const queue = roots.map((r) => ({ id: r.id, level: 0 }));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const isHorizontal = direction === "LR" || direction === "RL";
+  const NODE_W = 160;
+  const NODE_H = 60;
+  const GAP_MAIN = isHorizontal ? NODE_W + 40 : NODE_H + 40; // along flow direction
+  const GAP_CROSS = isHorizontal ? NODE_H + 20 : NODE_W + 20; // perpendicular
+
+  // Calculate subtree sizes (number of leaf descendants) for centering
+  const subtreeSize = new Map<string, number>();
   const visited = new Set<string>();
 
-  while (queue.length > 0) {
-    const { id, level } = queue.shift()!;
-    if (visited.has(id)) continue;
+  function calcSize(id: string): number {
+    if (visited.has(id)) return 1;
     visited.add(id);
-    levels.set(id, level);
+    const kids = childrenMap.get(id) || [];
+    if (kids.length === 0) {
+      subtreeSize.set(id, 1);
+      return 1;
+    }
+    let total = 0;
+    for (const kid of kids) {
+      total += calcSize(kid);
+    }
+    subtreeSize.set(id, total);
+    return total;
+  }
 
-    for (const childId of children.get(id) || []) {
-      if (!visited.has(childId)) {
-        queue.push({ id: childId, level: level + 1 });
+  for (const root of roots) calcSize(root.id);
+  // Also calc for any unvisited nodes
+  for (const n of nodes) {
+    if (!visited.has(n.id)) {
+      subtreeSize.set(n.id, 1);
+    }
+  }
+
+  // Position nodes using tree layout
+  const positioned = new Set<string>();
+  let globalCrossOffset = 0;
+
+  function positionTree(id: string, depth: number, crossStart: number) {
+    if (positioned.has(id)) return;
+    positioned.add(id);
+
+    const node = nodeMap.get(id);
+    if (!node) return;
+
+    const kids = (childrenMap.get(id) || []).filter((k) => !positioned.has(k));
+    const mySize = subtreeSize.get(id) || 1;
+
+    if (kids.length === 0) {
+      // Leaf node: place at crossStart
+      if (isHorizontal) {
+        node.x = 40 + depth * GAP_MAIN;
+        node.y = 40 + crossStart * GAP_CROSS;
+      } else {
+        node.x = 40 + crossStart * GAP_CROSS;
+        node.y = 40 + depth * GAP_MAIN;
+      }
+    } else {
+      // Parent: position children first, then center self
+      let offset = crossStart;
+      for (const kid of kids) {
+        const kidSize = subtreeSize.get(kid) || 1;
+        positionTree(kid, depth + 1, offset);
+        offset += kidSize;
+      }
+
+      // Center parent between first and last child
+      const firstKid = nodeMap.get(kids[0]);
+      const lastKid = nodeMap.get(kids[kids.length - 1]);
+      if (firstKid && lastKid) {
+        if (isHorizontal) {
+          node.x = 40 + depth * GAP_MAIN;
+          node.y = (firstKid.y + lastKid.y) / 2;
+        } else {
+          node.x = (firstKid.x + lastKid.x) / 2;
+          node.y = 40 + depth * GAP_MAIN;
+        }
       }
     }
   }
 
-  // Assign positions
-  const levelCounts = new Map<number, number>();
-  const isHorizontal = direction === "LR" || direction === "RL";
-  const spacing = { x: isHorizontal ? 200 : 160, y: isHorizontal ? 80 : 100 };
+  for (const root of roots) {
+    const size = subtreeSize.get(root.id) || 1;
+    positionTree(root.id, 0, globalCrossOffset);
+    globalCrossOffset += size;
+  }
 
+  // Position any remaining unpositioned nodes
   for (const node of nodes) {
-    const level = levels.get(node.id) ?? 0;
-    const count = levelCounts.get(level) ?? 0;
-    levelCounts.set(level, count + 1);
-
-    if (isHorizontal) {
-      node.x = 40 + level * spacing.x;
-      node.y = 40 + count * spacing.y;
-    } else {
-      node.x = 40 + count * spacing.x;
-      node.y = 40 + level * spacing.y;
+    if (!positioned.has(node.id)) {
+      if (isHorizontal) {
+        node.x = 40;
+        node.y = 40 + globalCrossOffset * GAP_CROSS;
+      } else {
+        node.x = 40 + globalCrossOffset * GAP_CROSS;
+        node.y = 40;
+      }
+      globalCrossOffset++;
     }
   }
 }
