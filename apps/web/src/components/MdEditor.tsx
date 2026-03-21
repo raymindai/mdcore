@@ -714,7 +714,7 @@ export default function MdEditor() {
       }
 
       // Text elements → contenteditable inline edit
-      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,blockquote > p") as HTMLElement | null;
+      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote > p") as HTMLElement | null;
       if (!editable) return;
       if (target.closest("code")) return;
 

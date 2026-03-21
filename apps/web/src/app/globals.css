@@ -369,7 +369,9 @@ body {
 .mdcore-rendered h5:hover,
 .mdcore-rendered h6:hover,
 .mdcore-rendered p:hover,
-.mdcore-rendered li:hover {
+.mdcore-rendered li:hover,
+.mdcore-rendered dt:hover,
+.mdcore-rendered dd:hover {
   outline: 1px dashed var(--border);
   outline-offset: 2px;
   cursor: text;

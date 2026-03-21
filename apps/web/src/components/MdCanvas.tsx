@@ -120,7 +120,15 @@ export default function MdCanvas({
         setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
         nextId = result.nodes.length + 1;
       }
+    } else {
+      // Fresh canvas
+      setNodes([]);
+      setEdges([]);
+      nextId = 1;
     }
+    setSelectedId(null);
+    setEditingId(null);
+    setEditingEdge(null);
   }, [initialMermaid]);
 
   // Add node on double-click canvas
@@ -256,6 +264,15 @@ export default function MdCanvas({
     setEditingId(null);
   }, [selectedId]);
 
+  const duplicateSelected = useCallback(() => {
+    if (!selectedId) return;
+    const node = nodes.find((n) => n.id === selectedId);
+    if (!node) return;
+    const newId = genId();
+    setNodes((prev) => [...prev, { ...node, id: newId, x: node.x + 30, y: node.y + 30 }]);
+    setSelectedId(newId);
+  }, [selectedId, nodes]);
+
   const deleteEdge = useCallback((index: number) => {
     setEdges((prev) => prev.filter((_, i) => i !== index));
     setEditingEdge(null);
@@ -263,6 +280,11 @@ export default function MdCanvas({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+        e.preventDefault();
+        duplicateSelected();
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (editingId || editingEdge !== null) return;
         deleteSelected();
@@ -270,7 +292,7 @@ export default function MdCanvas({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteSelected, editingId, editingEdge]);
+  }, [deleteSelected, duplicateSelected, editingId, editingEdge]);
 
   const handleGenerate = useCallback(() => {
     const mermaidCode = canvasToMermaid(nodes, edges, direction);
@@ -355,6 +377,15 @@ export default function MdCanvas({
           >
             Import
           </button>
+          {nodes.length > 0 && (
+            <button
+              onClick={() => { setNodes([]); setEdges([]); setSelectedId(null); nextId = 1; }}
+              className="px-2 py-1 rounded-md font-mono text-[11px]"
+              style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}
+            >
+              Clear
+            </button>
+          )}
           <span className="font-mono text-[10px]" style={{ color: "var(--text-faint)" }}>
             {nodes.length}n · {edges.length}e
           </span>
@@ -422,6 +453,7 @@ export default function MdCanvas({
               <p><span style={{ color: "var(--accent)" }}>Alt + drag</span> from one node to another</p>
               <p><span style={{ color: "var(--accent)" }}>Double-click edge</span> to add a label</p>
               <p><span style={{ color: "var(--accent)" }}>Delete/Backspace</span> to remove selected</p>
+              <p><span style={{ color: "var(--accent)" }}>Cmd+D</span> to duplicate selected</p>
             </div>
             <div>
               <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Shapes → Mermaid</p>
