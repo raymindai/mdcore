@@ -320,13 +320,38 @@ body {
   border-radius: 4px;
 }
 
-/* Table cell hover: dashed inset, matches edit input position */
+/* Table cell hover */
+.mdcore-rendered td,
+.mdcore-rendered th {
+  position: relative;
+}
+
 .mdcore-rendered td:hover,
 .mdcore-rendered th:hover {
   outline: 1px dashed var(--border);
   outline-offset: -4px;
   border-radius: 3px;
   cursor: text;
+}
+
+/* Table cell hover hint */
+.mdcore-rendered td::after,
+.mdcore-rendered th::after {
+  content: "···";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+
+.mdcore-rendered td:hover::after,
+.mdcore-rendered th:hover::after {
+  opacity: 1;
 }
 
 /* Description lists */
