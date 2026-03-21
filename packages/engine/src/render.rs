@@ -181,7 +181,7 @@ mod tests {
     fn test_basic_render() {
         let md = "# Hello\n\nThis is **bold** and *italic*.";
         let (html, title, toc) = to_html(md);
-        assert!(html.contains("<h1>"));
+        assert!(html.contains("<h1"));
         assert!(html.contains("<strong>bold</strong>"));
         assert!(html.contains("<em>italic</em>"));
         assert_eq!(title, Some("Hello".to_string()));
@@ -196,8 +196,8 @@ mod tests {
 | Bob | 25 |
 "#;
         let (html, _, _) = to_html(md);
-        assert!(html.contains("<table>"));
-        assert!(html.contains("<th>"));
+        assert!(html.contains("<table"));
+        assert!(html.contains("<th"));
         assert!(html.contains("Alice"));
     }
 

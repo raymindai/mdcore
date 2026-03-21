@@ -57,7 +57,8 @@ function highlightCode(html: string): string {
           : hljs.highlightAuto(decoded).value;
         // Preserve data-sourcepos from original pre tag
         const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
-        return `<pre ${sourcepos} lang="${lang || "text"}"><code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
+        const langLabel = lang ? `<span class="code-lang-label" style="position:absolute;top:6px;left:12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none">${lang}</span>` : "";
+        return `<pre ${sourcepos} lang="${lang || "text"}" style="position:relative">${langLabel}<code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
       } catch {
         return match;
       }
