@@ -712,16 +712,17 @@ export default function MdEditor() {
       e.stopPropagation();
 
       const originalText = editable.textContent || "";
-      // Remove hover style, add edit style
-      editable.style.cssText = editable.style.cssText.replace(HOVER_STYLE, "");
-      editable.style.cssText += "outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 6px;";
       editable.setAttribute("contenteditable", "true");
+      editable.style.outline = "1px solid var(--accent)";
+      editable.style.outlineOffset = "2px";
+      editable.style.borderRadius = "4px";
       editable.focus();
 
-      const EDIT_STYLE = "outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 6px;";
       const commit = () => {
         editable.removeAttribute("contenteditable");
-        editable.style.cssText = editable.style.cssText.replace(EDIT_STYLE, "");
+        editable.style.outline = "";
+        editable.style.outlineOffset = "";
+        editable.style.borderRadius = "";
 
         const newText = editable.textContent || "";
         if (newText !== originalText) {
@@ -766,42 +767,11 @@ export default function MdEditor() {
       });
     };
 
-    // Hover: dashed gray outline via JS inline style
-    let hoveredEl: HTMLElement | null = null;
-    const HOVER_STYLE = "outline: 1px dashed var(--border); outline-offset: 2px; border-radius: 6px;";
-    const EDITABLE_TAGS = new Set(["H1","H2","H3","H4","H5","H6","P","LI","TD","TH"]);
-
-    const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const el = target.closest("h1,h2,h3,h4,h5,h6,p,li,td,th") as HTMLElement | null;
-      if (el === hoveredEl) return;
-      if (hoveredEl && !hoveredEl.hasAttribute("contenteditable")) {
-        hoveredEl.style.cssText = hoveredEl.style.cssText.replace(HOVER_STYLE, "");
-      }
-      hoveredEl = null;
-      if (el && EDITABLE_TAGS.has(el.tagName) && !el.hasAttribute("contenteditable")) {
-        el.style.cssText += HOVER_STYLE;
-        hoveredEl = el;
-      }
-    };
-
-    const handleMouseLeave = () => {
-      if (hoveredEl && !hoveredEl.hasAttribute("contenteditable")) {
-        hoveredEl.style.cssText = hoveredEl.style.cssText.replace(HOVER_STYLE, "");
-      }
-      hoveredEl = null;
-    };
-
     preview.addEventListener("click", handleClick);
     preview.addEventListener("dblclick", handleDblClick);
-    preview.addEventListener("mouseover", handleMouseOver);
-    preview.addEventListener("mouseleave", handleMouseLeave);
     return () => {
       preview.removeEventListener("click", handleClick);
       preview.removeEventListener("dblclick", handleDblClick);
-      preview.removeEventListener("mouseover", handleMouseOver);
-      preview.removeEventListener("mouseleave", handleMouseLeave);
-      handleMouseLeave();
     };
   }, [viewMode, markdown, doRender]);
 
@@ -879,11 +849,14 @@ export default function MdEditor() {
       input.type = "text";
       input.value = currentText;
       input.style.cssText = `
-        width: 100%;
-        background: transparent;
+        width: ${rect.width - 12}px;
+        height: ${rect.height - 8}px;
+        max-width: ${rect.width - 12}px;
+        background: var(--surface);
         color: var(--text-primary);
-        border: none;
-        padding: 0;
+        border: 1px solid var(--accent);
+        border-radius: 3px;
+        padding: 0 4px;
         font-size: inherit;
         font-family: inherit;
         outline: none;
@@ -891,12 +864,9 @@ export default function MdEditor() {
         margin: 0;
       `;
 
-      // Add orange outline to cell itself (matching other editable elements)
-      cell.style.outlineStyle = "solid";
-      cell.style.outlineWidth = "1px";
-      cell.style.outlineColor = "var(--accent)";
-      cell.style.outlineOffset = "2px";
-      cell.style.borderRadius = "6px";
+      // Lock cell size (preserve original style like text-align)
+      const lockStyles = `width:${rect.width}px;height:${rect.height}px;min-width:${rect.width}px;max-width:${rect.width}px;overflow:hidden;padding:2px 4px;`;
+      cell.setAttribute("style", originalStyle + ";" + lockStyles);
 
       const originalContent = cell.innerHTML;
       cell.textContent = "";
@@ -904,17 +874,10 @@ export default function MdEditor() {
       input.focus();
       input.select();
 
-      const restoreStyle = () => {
-        if (originalStyle) {
-          cell.setAttribute("style", originalStyle);
-        } else {
-          cell.removeAttribute("style");
-        }
-      };
-
       const commit = () => {
         const newText = input.value;
-        restoreStyle();
+        // Restore original style (preserves text-align)
+        cell.setAttribute("style", originalStyle);
         cell.textContent = newText;
 
         if (newText !== currentText) {
@@ -932,7 +895,7 @@ export default function MdEditor() {
       };
 
       const cancel = () => {
-        restoreStyle();
+        cell.setAttribute("style", originalStyle);
         cell.innerHTML = originalContent;
       };
 
