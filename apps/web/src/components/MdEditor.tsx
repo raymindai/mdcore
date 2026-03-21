@@ -35,6 +35,8 @@ author: mdcore
 
 ## Text Formatting
 
+> **Tip:** Double-click any text in the preview to edit it inline. Click to jump to the source.
+
 Regular text, **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and \`inline code\`.
 
 This is a [link to mdfy.cc](https://mdfy.cc) and an autolink: https://github.com/raymindai/mdcore
@@ -61,6 +63,8 @@ All six heading levels with distinct sizing:
 
 ## Lists
 
+> **Tip:** Double-click a list item to edit it inline. Press **Enter** to add a new item, **Tab** to indent, **Shift+Tab** to outdent.
+
 ### Unordered
 - First item
 - Second item
@@ -77,6 +81,9 @@ All six heading levels with distinct sizing:
 3. Step three
 
 ### Task List
+
+> **Tip:** Click checkboxes to toggle them. Changes sync to Markdown source.
+
 - [x] Rust engine compiled to WASM
 - [x] GFM tables, task lists, footnotes
 - [x] KaTeX math rendering
@@ -90,6 +97,8 @@ All six heading levels with distinct sizing:
 ---
 
 ## Tables
+
+> **Tip:** Double-click a cell to edit it. Right-click for row/column options (insert, delete). Use \`|:---:|\` for center and \`|---:|\` for right alignment.
 
 | Feature | Free | Pro ($12/mo) |
 |---------|:----:|:------------:|
@@ -110,6 +119,8 @@ All six heading levels with distinct sizing:
 ---
 
 ## Code Blocks
+
+> **Tip:** Double-click a code block to open the editor. You can change the language and code, then save.
 
 \`\`\`rust
 use mdcore_engine::render;
@@ -217,7 +228,7 @@ pie title Markdown Flavors in the Wild
     "Other" : 5
 \`\`\`
 
-> Use the **Mermaid** tab above to visually create flowcharts — no code needed!
+> **Tip:** Use the **Mermaid** tab above to visually create flowcharts — no code needed! Hover a diagram and click **Edit in Mermaid** to modify it visually.
 
 ---
 
@@ -271,7 +282,7 @@ Special chars: &copy; &mdash; &rarr; &hearts; &check;
 
 *Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. Zero server round-trip.*
 
-*Double-click any text in the preview to edit it inline. Click to jump to the source.*
+*Double-click any text to edit inline · Click to jump to source · Right-click tables for row/column options · Use the Mermaid tab for visual diagrams*
 `;
 
 type ViewMode = "split" | "preview" | "editor" | "mermaid";
