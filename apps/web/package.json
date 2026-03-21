@@ -10,10 +10,15 @@
     "build:wasm": "cd ../../packages/engine && wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.3",
     "@types/katex": "^0.16.8",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/og": "^0.11.1",
+    "@vercel/speed-insights": "^2.0.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.40",
     "mermaid": "^11.13.0",
+    "nanoid": "^3.3.11",
     "next": "15.5.14",
     "react": "19.1.0",
     "react-dom": "19.1.0"

@@ -91,6 +91,80 @@ export async function extractFromUrl(): Promise<string | null> {
   return markdown || null;
 }
 
+// ─── Server-side short URL sharing ───
+
+interface ShortUrlResult {
+  url: string;
+  editToken: string;
+}
+
+export async function createShortUrl(
+  markdown: string,
+  title?: string
+): Promise<ShortUrlResult> {
+  const res = await fetch("/api/docs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markdown, title }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create short URL");
+
+  const { id, editToken } = await res.json();
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "https://mdfy.cc";
+
+  return { url: `${baseUrl}/${id}`, editToken };
+}
+
+export async function updateDocument(
+  id: string,
+  editToken: string,
+  markdown: string,
+  title?: string
+): Promise<void> {
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ markdown, title, editToken }),
+  });
+  if (!res.ok) throw new Error("Failed to update document");
+}
+
+export async function deleteDocument(
+  id: string,
+  editToken: string
+): Promise<void> {
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ editToken }),
+  });
+  if (!res.ok) throw new Error("Failed to delete document");
+}
+
+// ─── Edit token management (localStorage) ───
+
+const TOKEN_STORAGE_KEY = "mdfy-edit-tokens";
+
+export function saveEditToken(id: string, token: string): void {
+  const tokens = getEditTokens();
+  tokens[id] = token;
+  localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokens));
+}
+
+export function getEditToken(id: string): string | null {
+  return getEditTokens()[id] || null;
+}
+
+function getEditTokens(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(TOKEN_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Copy text to clipboard with fallback
  */

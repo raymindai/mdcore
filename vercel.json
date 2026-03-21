@@ -30,7 +30,11 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!_next|api|favicon.ico|.*\\.wasm).*)",
+      "source": "/:id([A-Za-z0-9_-]{6,10})",
+      "destination": "/d/:id"
+    },
+    {
+      "source": "/((?!_next|api|d|favicon.ico|.*\\.wasm).*)",
       "destination": "/"
     }
   ]

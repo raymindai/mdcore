@@ -3,7 +3,16 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
-import { createShareUrl, extractFromUrl, copyToClipboard } from "@/lib/share";
+import {
+  createShareUrl,
+  createShortUrl,
+  saveEditToken,
+  getEditToken,
+  updateDocument,
+  deleteDocument,
+  extractFromUrl,
+  copyToClipboard,
+} from "@/lib/share";
 
 const SAMPLE_MD = `---
 title: mdcore Demo
@@ -146,6 +155,9 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [docId, setDocId] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -250,15 +262,39 @@ export default function MdEditor() {
   // Load shared content from URL on mount
   useEffect(() => {
     (async () => {
+      // Check hash-based sharing first
       const shared = await extractFromUrl();
       if (shared) {
         setMarkdown(shared);
         setIsSharedDoc(true);
         setViewMode("preview");
         await doRender(shared);
-      } else {
-        await doRender(markdown);
+        return;
       }
+
+      // Check ?from= parameter (editing a shared doc)
+      const params = new URLSearchParams(window.location.search);
+      const fromId = params.get("from");
+      if (fromId) {
+        try {
+          const res = await fetch(`/api/docs/${fromId}`);
+          if (res.ok) {
+            const doc = await res.json();
+            setMarkdown(doc.markdown);
+            if (doc.title) setTitle(doc.title);
+            setDocId(fromId);
+            const token = getEditToken(fromId);
+            if (token) setIsOwner(true);
+            await doRender(doc.markdown);
+            if (!isMobile) setViewMode("split");
+            return;
+          }
+        } catch {
+          // ignore, fall through to default
+        }
+      }
+
+      await doRender(markdown);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -319,21 +355,33 @@ export default function MdEditor() {
     setIsDragging(false);
   }, []);
 
-  // Share
+  // Share — try short URL first, fallback to hash-based
   const handleShare = useCallback(async () => {
     if (!markdown.trim()) return;
     setShareState("sharing");
     try {
-      const url = await createShareUrl(markdown);
-      await copyToClipboard(url);
-      window.history.replaceState(null, "", url.split(window.location.origin)[1]);
+      try {
+        // Try server-side short URL
+        const { url, editToken } = await createShortUrl(markdown, title);
+        const newDocId = url.split("/").pop()!;
+        saveEditToken(newDocId, editToken);
+        setDocId(newDocId);
+        setIsOwner(true);
+        await copyToClipboard(url);
+        window.history.replaceState(null, "", `/${newDocId}`);
+      } catch {
+        // Fallback to hash-based sharing
+        const url = await createShareUrl(markdown);
+        await copyToClipboard(url);
+        window.history.replaceState(null, "", url.split(window.location.origin)[1]);
+      }
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 3000);
     } catch {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 3000);
     }
-  }, [markdown]);
+  }, [markdown, title]);
 
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
@@ -353,10 +401,45 @@ export default function MdEditor() {
     setShowMenu(false);
   }, [markdown, title]);
 
+  // Update existing document
+  const handleUpdate = useCallback(async () => {
+    if (!docId || !markdown.trim()) return;
+    const token = getEditToken(docId);
+    if (!token) return;
+    setShareState("sharing");
+    try {
+      await updateDocument(docId, token, markdown, title);
+      setShareState("copied");
+      setTimeout(() => setShareState("idle"), 3000);
+    } catch {
+      setShareState("error");
+      setTimeout(() => setShareState("idle"), 3000);
+    }
+  }, [docId, markdown, title]);
+
+  // Delete document
+  const handleDelete = useCallback(async () => {
+    if (!docId) return;
+    const token = getEditToken(docId);
+    if (!token) return;
+    if (!window.confirm("Delete this shared document?")) return;
+    try {
+      await deleteDocument(docId, token);
+      setDocId(null);
+      setIsOwner(false);
+      window.history.replaceState(null, "", "/");
+    } catch {
+      // ignore
+    }
+    setShowMenu(false);
+  }, [docId]);
+
   // Clear
   const handleClear = useCallback(() => {
     setMarkdown("");
     setIsSharedDoc(false);
+    setDocId(null);
+    setIsOwner(false);
     window.history.replaceState(null, "", "/");
     doRender("");
     setShowMenu(false);
@@ -519,6 +602,20 @@ export default function MdEditor() {
 
           {/* Actions */}
           <div className="flex items-center gap-1">
+            {isOwner && docId ? (
+              <button
+                onClick={handleUpdate}
+                disabled={shareState === "sharing"}
+                className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
+                style={{
+                  background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "rgba(59, 130, 246, 0.15)",
+                  color: shareState === "copied" ? "#4ade80" : "#60a5fa",
+                }}
+                title="Update shared document"
+              >
+                {shareState === "copied" ? "Updated!" : shareState === "sharing" ? "..." : "Update"}
+              </button>
+            ) : null}
             <button
               onClick={handleShare}
               disabled={shareState === "sharing"}
@@ -560,6 +657,15 @@ export default function MdEditor() {
                     >
                       Download .md
                     </button>
+                    {docId && (
+                      <button
+                        onClick={() => { setShowQr(true); setShowMenu(false); }}
+                        className="w-full text-left px-3 py-2 text-xs transition-colors"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        QR Code
+                      </button>
+                    )}
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
                       onClick={handleClear}
@@ -568,6 +674,18 @@ export default function MdEditor() {
                     >
                       New document
                     </button>
+                    {isOwner && docId && (
+                      <>
+                        <hr style={{ borderColor: "var(--border)" }} className="my-1" />
+                        <button
+                          onClick={handleDelete}
+                          className="w-full text-left px-3 py-2 text-xs transition-colors"
+                          style={{ color: "#ef4444" }}
+                        >
+                          Delete shared doc
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -712,6 +830,39 @@ export default function MdEditor() {
           </a>
         </div>
       </footer>
+
+      {/* QR Code Modal */}
+      {showQr && docId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowQr(false)}
+        >
+          <div
+            className="rounded-xl p-6 flex flex-col items-center gap-4"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>
+              mdfy.cc/{docId}
+            </p>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
+              alt="QR Code"
+              width={200}
+              height={200}
+              className="rounded-lg"
+            />
+            <button
+              onClick={() => setShowQr(false)}
+              className="text-xs px-3 py-1.5 rounded-md"
+              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
