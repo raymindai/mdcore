@@ -837,6 +837,7 @@ export default function MdEditor() {
       // Lock cell dimensions before editing
       const rect = cell.getBoundingClientRect();
       const currentText = cell.textContent || "";
+      const originalStyle = cell.getAttribute("style") || "";
 
       const input = document.createElement("input");
       input.type = "text";
@@ -857,7 +858,7 @@ export default function MdEditor() {
         margin: 0;
       `;
 
-      // Lock cell size
+      // Lock cell size (add to existing style)
       cell.style.width = `${rect.width}px`;
       cell.style.height = `${rect.height}px`;
       cell.style.minWidth = `${rect.width}px`;
@@ -871,10 +872,17 @@ export default function MdEditor() {
       input.focus();
       input.select();
 
+      const restoreStyle = () => {
+        if (originalStyle) {
+          cell.setAttribute("style", originalStyle);
+        } else {
+          cell.removeAttribute("style");
+        }
+      };
+
       const commit = () => {
         const newText = input.value;
-        // Restore cell
-        cell.removeAttribute("style");
+        restoreStyle();
         cell.textContent = newText;
 
         if (newText !== currentText) {
@@ -892,7 +900,7 @@ export default function MdEditor() {
       };
 
       const cancel = () => {
-        cell.removeAttribute("style");
+        restoreStyle();
         cell.innerHTML = originalContent;
       };
 
