@@ -9,6 +9,7 @@ import {
   parseConversation,
   formatConversation,
 } from "@/lib/ai-conversation";
+import MdCanvas from "@/components/MdCanvas";
 import {
   createShareUrl,
   createShortUrl,
@@ -103,7 +104,7 @@ This has a footnote[^1]. And another[^2].
 *Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. No server round-trip.*
 `;
 
-type ViewMode = "split" | "preview" | "editor";
+type ViewMode = "split" | "preview" | "editor" | "canvas";
 
 type Theme = "dark" | "light";
 
@@ -786,8 +787,8 @@ export default function MdEditor() {
           {/* View mode toggle */}
           <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
             {(isMobile
-              ? (["editor", "split", "preview"] as ViewMode[])
-              : (["editor", "split", "preview"] as ViewMode[])
+              ? (["editor", "split", "preview", "canvas"] as ViewMode[])
+              : (["editor", "split", "preview", "canvas"] as ViewMode[])
             ).map((mode) => (
               <button
                 key={mode}
@@ -798,7 +799,7 @@ export default function MdEditor() {
                   color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
-                {mode === "editor" ? "MD" : mode === "split" ? "Split" : "View"}
+                {mode === "editor" ? "MD" : mode === "split" ? "Split" : mode === "canvas" ? "Canvas" : "View"}
               </button>
             ))}
           </div>
@@ -979,8 +980,21 @@ export default function MdEditor() {
 
       {/* Main content */}
       <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
+        {/* Canvas mode */}
+        {viewMode === "canvas" && (
+          <div className="w-full flex flex-col flex-1">
+            <MdCanvas
+              onGenerate={(md) => {
+                setMarkdown(md);
+                doRender(md);
+                setViewMode(isMobile ? "preview" : "split");
+              }}
+            />
+          </div>
+        )}
+
         {/* Editor pane */}
-        {viewMode !== "preview" && (
+        {viewMode !== "preview" && viewMode !== "canvas" && (
           <div
             className={`${
               viewMode === "split"
@@ -1015,7 +1029,7 @@ export default function MdEditor() {
         )}
 
         {/* Preview pane */}
-        {viewMode !== "editor" && (
+        {viewMode !== "editor" && viewMode !== "canvas" && (
           <div
             className={`${
               viewMode === "split"
