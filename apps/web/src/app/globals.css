@@ -324,7 +324,7 @@ body {
   outline-color: var(--border);
   outline-offset: -1px;
   cursor: text;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 /* Editing state: orange solid */
@@ -335,7 +335,7 @@ body {
   outline-width: 1px;
   outline-color: var(--accent);
   outline-offset: -1px;
-  border-radius: 2px;
+  border-radius: 8px;
 }
 
 /* Description lists */
