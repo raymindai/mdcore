@@ -339,6 +339,10 @@ body {
   height: auto;
 }
 
+.mdcore-rendered .mermaid-container:hover .mermaid-edit-btn {
+  opacity: 1 !important;
+}
+
 /* Images */
 .mdcore-rendered img {
   max-width: 100%;

@@ -166,6 +166,7 @@ export default function MdEditor() {
   const [isOwner, setIsOwner] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
+  const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -267,6 +268,19 @@ export default function MdEditor() {
         try {
           const { svg } = await mermaid.render(id, code);
           container.innerHTML = `<div class="mermaid-rendered">${svg}</div>`;
+          // Add Edit button
+          const editBtn = document.createElement("button");
+          editBtn.textContent = "Edit in Canvas";
+          editBtn.className = "mermaid-edit-btn";
+          editBtn.setAttribute("data-mermaid-code", code);
+          editBtn.style.cssText = `
+            position:absolute;top:8px;right:8px;padding:3px 10px;font-size:11px;
+            font-family:ui-monospace,monospace;background:var(--accent-dim);
+            color:var(--accent);border:none;border-radius:6px;cursor:pointer;
+            opacity:0;transition:opacity 0.2s;z-index:5;
+          `;
+          (container as HTMLElement).style.position = "relative";
+          container.appendChild(editBtn);
         } catch {
           // Leave as-is
         }
@@ -312,6 +326,23 @@ export default function MdEditor() {
       await doRender(markdown);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Mermaid edit button click handler
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const handler = (e: Event) => {
+      const btn = (e.target as HTMLElement).closest(".mermaid-edit-btn") as HTMLElement | null;
+      if (!btn) return;
+      const code = btn.getAttribute("data-mermaid-code");
+      if (code) {
+        setCanvasMermaid(code);
+        setViewMode("canvas");
+      }
+    };
+    previewRef.current.addEventListener("click", handler);
+    const ref = previewRef.current;
+    return () => ref.removeEventListener("click", handler);
   }, []);
 
   // Interactive editing: checkbox toggle + table cell edit
@@ -984,9 +1015,11 @@ export default function MdEditor() {
         {viewMode === "canvas" && (
           <div className="w-full flex flex-col flex-1">
             <MdCanvas
+              initialMermaid={canvasMermaid}
               onGenerate={(md) => {
-                setMarkdown(md);
-                doRender(md);
+                setMarkdown(markdown + "\n\n" + md);
+                doRender(markdown + "\n\n" + md);
+                setCanvasMermaid(undefined);
                 setViewMode(isMobile ? "preview" : "split");
               }}
             />

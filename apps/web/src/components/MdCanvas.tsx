@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   type CanvasNode,
   type CanvasEdge,
@@ -59,7 +59,15 @@ export default function MdCanvas({
   const [editingEdge, setEditingEdge] = useState<number | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importCode, setImportCode] = useState("");
+  const [showCode, setShowCode] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Live Mermaid code preview
+  const liveCode = useMemo(
+    () => (nodes.length > 0 ? canvasToMermaid(nodes, edges, direction) : ""),
+    [nodes, edges, direction]
+  );
 
   // Load initial mermaid code
   useEffect(() => {
@@ -277,11 +285,28 @@ export default function MdCanvas({
               </button>
             ))}
           </div>
-          <span className="text-[10px] hidden sm:inline" style={{ color: "var(--text-faint)" }}>
-            Double-click: add · Alt+drag: connect · Delete: remove
-          </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowGuide(!showGuide)}
+            className="px-2 py-1 rounded-md font-mono text-[11px]"
+            style={{
+              background: showGuide ? "var(--accent-dim)" : "var(--toggle-bg)",
+              color: showGuide ? "var(--accent)" : "var(--text-muted)",
+            }}
+          >
+            ?
+          </button>
+          <button
+            onClick={() => setShowCode(!showCode)}
+            className="px-2 py-1 rounded-md font-mono text-[11px]"
+            style={{
+              background: showCode ? "var(--accent-dim)" : "var(--toggle-bg)",
+              color: showCode ? "var(--accent)" : "var(--text-muted)",
+            }}
+          >
+            Code
+          </button>
           <button
             onClick={() => setShowImport(!showImport)}
             className="px-2 py-1 rounded-md font-mono text-[11px]"
@@ -338,10 +363,43 @@ export default function MdCanvas({
         </div>
       )}
 
+      {/* Guide panel */}
+      {showGuide && (
+        <div
+          className="px-4 py-3 text-xs overflow-auto"
+          style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)", maxHeight: 200 }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ color: "var(--text-tertiary)" }}>
+            <div>
+              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Create</p>
+              <p><span style={{ color: "var(--accent)" }}>Double-click</span> canvas to add a node</p>
+              <p><span style={{ color: "var(--accent)" }}>Click shape button</span> ()/[]/(()/{"{}"}{")"} to change shape</p>
+              <p><span style={{ color: "var(--accent)" }}>Double-click node</span> to edit text</p>
+            </div>
+            <div>
+              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Connect</p>
+              <p><span style={{ color: "var(--accent)" }}>Alt + drag</span> from one node to another</p>
+              <p><span style={{ color: "var(--accent)" }}>Double-click edge</span> to add a label</p>
+              <p><span style={{ color: "var(--accent)" }}>Delete/Backspace</span> to remove selected</p>
+            </div>
+            <div>
+              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Shapes → Mermaid</p>
+              <p><span style={{ color: "var(--accent)" }}>()</span> Round = default node</p>
+              <p><span style={{ color: "var(--accent)" }}>[]</span> Square = process/action</p>
+              <p><span style={{ color: "var(--accent)" }}>(())</span> Circle = start/end</p>
+              <p><span style={{ color: "var(--accent)" }}>{"{}"}</span> Diamond = decision/condition</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main area: canvas + code panel */}
+      <div className="flex flex-1 min-h-0">
+
       {/* Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 relative overflow-auto cursor-crosshair select-none"
+        className={`${showCode && nodes.length > 0 ? "w-2/3" : "w-full"} relative overflow-auto cursor-crosshair select-none`}
         onDoubleClick={handleCanvasDoubleClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -513,17 +571,42 @@ export default function MdCanvas({
 
         {/* Empty state */}
         {nodes.length === 0 && !showImport && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
             <div className="text-4xl opacity-20">🔀</div>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Double-click to add nodes, Alt+drag to connect
+              Double-click anywhere to add a node
             </p>
-            <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-              Visual Mermaid flowchart editor
-            </p>
+            <div className="text-xs space-y-1 text-center" style={{ color: "var(--text-faint)" }}>
+              <p>Alt + drag between nodes to connect them</p>
+              <p>Click <span style={{ color: "var(--accent)" }}>?</span> for the full guide</p>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Live code panel */}
+      {showCode && nodes.length > 0 && (
+        <div
+          className="w-1/3 flex flex-col"
+          style={{ borderLeft: "1px solid var(--border-dim)" }}
+        >
+          <div
+            className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+          >
+            <span>Mermaid Code</span>
+            <span style={{ color: "var(--text-faint)" }}>live</span>
+          </div>
+          <pre
+            className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed"
+            style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0 }}
+          >
+            {liveCode}
+          </pre>
+        </div>
+      )}
+
+      </div>{/* end main area */}
     </div>
   );
 }
