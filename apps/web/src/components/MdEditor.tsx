@@ -1046,7 +1046,7 @@ export default function MdEditor() {
         const dataRowIndex = rowIndex - 1; // -1 for header (tbody starts at rowIndex 1 from DOM perspective)
 
         const buildLine = (cells: string[]) => "| " + cells.join(" | ") + " |";
-        const emptyCell = "     ";
+        const emptyCell = "  —  ";
 
         if (action === "add-row-above" || action === "add-row-below") {
           const newRow = Array(numCols).fill(emptyCell);

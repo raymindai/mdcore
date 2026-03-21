@@ -252,6 +252,11 @@ body {
 .mdcore-rendered td {
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border-dim);
+  min-height: 2rem;
+}
+
+.mdcore-rendered td:empty::after {
+  content: "\00a0";
 }
 
 
