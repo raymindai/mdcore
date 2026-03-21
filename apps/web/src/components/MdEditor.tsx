@@ -22,7 +22,8 @@ import {
 } from "@/lib/share";
 
 const SAMPLE_MD = `---
-title: mdcore Demo
+title: mdfy.cc — Complete Markdown Demo
+author: mdcore
 ---
 
 # Welcome to mdfy.cc
@@ -30,24 +31,81 @@ title: mdcore Demo
 > **The universal Markdown engine for the AI era.**
 > Paste any Markdown — from any AI, any tool, any flavor. Rendered instantly via Rust + WASM.
 
-## Features Detected Automatically
+---
 
-### GFM (GitHub Flavored Markdown)
+## Text Formatting
 
-- [x] Tables with alignment
-- [x] Task lists
-- [x] Strikethrough ~~like this~~
-- [x] Autolinks: https://mdfy.cc
-- [ ] More coming soon
+Regular text, **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and \`inline code\`.
 
-| Engine | Language | WASM | Speed |
-|--------|----------|:----:|-------|
-| **mdcore** | Rust | ✅ | 🚀 25x faster |
-| markdown-it | JavaScript | ❌ | Baseline |
-| Pandoc | Haskell | ❌ | CLI only |
-| Remark | JavaScript | ❌ | AST only |
+This is a [link to mdfy.cc](https://mdfy.cc) and an autolink: https://github.com/raymindai/mdcore
 
-### Code with Syntax Highlighting
+> Blockquotes can contain **formatting** and even
+> multiple paragraphs.
+>
+> > Nested blockquotes work too.
+
+---
+
+## Headings
+
+### H3 — Third Level
+#### H4 — Fourth Level
+##### H5 — Fifth Level
+###### H6 — Sixth Level
+
+---
+
+## Lists
+
+### Unordered
+- First item
+- Second item
+  - Nested item
+  - Another nested
+    - Even deeper
+- Third item
+
+### Ordered
+1. Step one
+2. Step two
+   1. Sub-step A
+   2. Sub-step B
+3. Step three
+
+### Task List
+- [x] Rust engine compiled to WASM
+- [x] GFM tables, task lists, footnotes
+- [x] KaTeX math rendering
+- [x] Mermaid diagrams
+- [x] Syntax highlighting (190+ languages)
+- [x] Dark / Light mode
+- [x] Short URL sharing (mdfy.cc/{id})
+- [ ] PDF export
+- [ ] Chrome extension
+
+---
+
+## Tables
+
+| Feature | Free | Pro ($12/mo) |
+|---------|:----:|:------------:|
+| Render Markdown | ✅ | ✅ |
+| Share URL | 10/mo | Unlimited |
+| PDF Export | 3/mo | Unlimited |
+| Custom Theme | ❌ | ✅ |
+| Password Protection | ❌ | ✅ |
+
+### Table with Alignment
+
+| Left | Center | Right |
+|:-----|:------:|------:|
+| L1 | C1 | R1 |
+| L2 | C2 | R2 |
+| L3 | C3 | R3 |
+
+---
+
+## Code Blocks
 
 \`\`\`rust
 use mdcore_engine::render;
@@ -64,22 +122,55 @@ import { renderMarkdown } from "@mdcore/engine";
 
 const { html, flavor, toc } = await renderMarkdown(input);
 console.log(\`Detected: \${flavor.primary}, math: \${flavor.math}\`);
-document.getElementById("output").innerHTML = html;
 \`\`\`
 
-### Math Support
+\`\`\`python
+import requests
 
-Inline math: $E = mc^2$ and $\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}$
+response = requests.get("https://api.mdcore.ai/v1/render", json={
+    "markdown": "# Hello World",
+    "theme": "minimal-light"
+})
+print(response.json()["html"])
+\`\`\`
 
-Display math:
+\`\`\`sql
+SELECT documents.id, documents.title, documents.view_count
+FROM documents
+WHERE created_at > NOW() - INTERVAL '7 days'
+ORDER BY view_count DESC
+LIMIT 10;
+\`\`\`
+
+---
+
+## Math (KaTeX)
+
+### Inline Math
+
+The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$.
+
+Einstein's famous equation: $E = mc^2$. Maxwell's equation: $\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}$.
+
+### Display Math
 
 $$
 \\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
 $$
 
-### Mermaid Diagrams
+$$
+\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
+$$
 
-**Flowchart:**
+$$
+\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} ax + by \\\\ cx + dy \\end{pmatrix}
+$$
+
+---
+
+## Mermaid Diagrams
+
+### Flowchart
 
 \`\`\`mermaid
 graph LR
@@ -89,28 +180,32 @@ graph LR
     B --> E[Node.js napi-rs]
     C --> F[Browser]
     C --> G[Edge / CF Workers]
-    D --> H[CLI - brew install]
+    D --> H[CLI]
     E --> J[npm package]
     style B fill:#fb923c,stroke:#ea580c,color:#000
 \`\`\`
 
-**Sequence Diagram:**
+### Sequence Diagram
 
 \`\`\`mermaid
 sequenceDiagram
     participant User
     participant mdfy.cc
-    participant WASM Engine
+    participant WASM
+    participant Supabase
     User->>mdfy.cc: Paste Markdown
-    mdfy.cc->>WASM Engine: render(md)
-    WASM Engine-->>mdfy.cc: HTML + metadata
-    mdfy.cc-->>User: Beautiful document
+    mdfy.cc->>WASM: render(md)
+    WASM-->>mdfy.cc: HTML + metadata
+    User->>mdfy.cc: Click Share
+    mdfy.cc->>Supabase: POST /api/docs
+    Supabase-->>mdfy.cc: { id, editToken }
+    mdfy.cc-->>User: mdfy.cc/{id} copied!
 \`\`\`
 
-**Pie Chart:**
+### Pie Chart
 
 \`\`\`mermaid
-pie title Markdown Flavors
+pie title Markdown Flavors in the Wild
     "GFM" : 45
     "CommonMark" : 25
     "Obsidian" : 15
@@ -118,18 +213,61 @@ pie title Markdown Flavors
     "Other" : 5
 \`\`\`
 
-> mdfy.cc supports all Mermaid diagram types: flowcharts, sequence, class, state, ER, gantt, pie, git graph, mindmap, timeline, and more. Use the **Mermaid** tab to visually create flowcharts.
-
-### Footnotes & More
-
-This has a footnote[^1]. And another[^2].
-
-[^1]: mdcore supports GFM-style footnotes out of the box.
-[^2]: Built with comrak — the same Rust parser that powers GitLab.
+> Use the **Mermaid** tab above to visually create flowcharts — no code needed!
 
 ---
 
-*Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. No server round-trip.*
+## Footnotes
+
+Markdown was created by John Gruber[^1] in 2004. The most widely used flavor today is GFM[^2], which adds tables, task lists, and more.
+
+[^1]: John Gruber created Markdown with Aaron Swartz. See [Daring Fireball](https://daringfireball.net/projects/markdown/).
+[^2]: GitHub Flavored Markdown (GFM) is specified at [github.github.com/gfm](https://github.github.com/gfm/).
+
+---
+
+## Horizontal Rules
+
+Three or more dashes, asterisks, or underscores:
+
+---
+
+***
+
+___
+
+---
+
+## Images
+
+![Placeholder](https://placehold.co/600x200/18181b/fb923c?text=mdfy.cc+%E2%80%94+Markdown+Engine)
+
+---
+
+## Description Lists
+
+Markdown
+: A lightweight markup language for creating formatted text.
+
+mdfy.cc
+: The universal Markdown renderer for the AI era.
+
+WASM
+: WebAssembly — a binary instruction format for a stack-based virtual machine.
+
+---
+
+## Superscript & Special Characters
+
+H~2~O is water. 2^10^ is 1024.
+
+Special chars: &copy; &mdash; &rarr; &hearts; &check;
+
+---
+
+*Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. Zero server round-trip.*
+
+*Double-click any text in the preview to edit it inline. Click to jump to the source.*
 `;
 
 type ViewMode = "split" | "preview" | "editor" | "mermaid";
