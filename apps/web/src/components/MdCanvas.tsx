@@ -2,15 +2,19 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  CanvasNode,
-  CanvasEdge,
-  canvasToMarkdown,
-} from "@/lib/canvas-to-md";
+  type CanvasNode,
+  type CanvasEdge,
+  canvasToMermaid,
+  mermaidToCanvas,
+  wrapInCodeBlock,
+} from "@/lib/canvas-to-mermaid";
 
 let nextId = 1;
 function genId() {
-  return `node-${nextId++}`;
+  return `n${nextId++}`;
 }
+
+type Direction = "LR" | "TD";
 
 interface DragState {
   nodeId: string;
@@ -24,23 +28,57 @@ interface ConnectState {
   mouseY: number;
 }
 
+const shapeStyles: Record<CanvasNode["shape"], string> = {
+  round: "border-radius: 20px",
+  square: "border-radius: 6px",
+  circle: "border-radius: 50%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center",
+  diamond: "transform: rotate(0deg); border-radius: 6px",
+};
+
+const shapeLabels: Record<CanvasNode["shape"], string> = {
+  round: "()",
+  square: "[]",
+  circle: "(())",
+  diamond: "{}",
+};
+
 export default function MdCanvas({
   onGenerate,
+  initialMermaid,
 }: {
   onGenerate: (md: string) => void;
+  initialMermaid?: string;
 }) {
   const [nodes, setNodes] = useState<CanvasNode[]>([]);
   const [edges, setEdges] = useState<CanvasEdge[]>([]);
+  const [direction, setDirection] = useState<Direction>("LR");
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [connectState, setConnectState] = useState<ConnectState | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingEdge, setEditingEdge] = useState<number | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importCode, setImportCode] = useState("");
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Load initial mermaid code
+  useEffect(() => {
+    if (initialMermaid) {
+      const result = mermaidToCanvas(initialMermaid);
+      if (result) {
+        setNodes(result.nodes);
+        setEdges(result.edges);
+        setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
+        nextId = result.nodes.length + 1;
+      }
+    }
+  }, [initialMermaid]);
 
   // Add node on double-click canvas
   const handleCanvasDoubleClick = useCallback(
     (e: React.MouseEvent) => {
       if ((e.target as HTMLElement).closest(".canvas-node")) return;
+      if ((e.target as HTMLElement).closest(".edge-label")) return;
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
@@ -50,7 +88,7 @@ export default function MdCanvas({
         x: e.clientX - rect.left - 60,
         y: e.clientY - rect.top - 18,
         text: "",
-        type: "text",
+        shape: "round",
       };
       setNodes((prev) => [...prev, newNode]);
       setEditingId(id);
@@ -59,14 +97,13 @@ export default function MdCanvas({
     []
   );
 
-  // Start dragging a node
   const handleNodeMouseDown = useCallback(
     (e: React.MouseEvent, nodeId: string) => {
       if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
+      if ((e.target as HTMLElement).closest("button")) return;
       e.stopPropagation();
       setSelectedId(nodeId);
 
-      // Alt/Option + click = start connecting
       if (e.altKey) {
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -92,7 +129,6 @@ export default function MdCanvas({
     [nodes]
   );
 
-  // Mouse move — drag or connect
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -110,20 +146,16 @@ export default function MdCanvas({
 
       if (connectState) {
         setConnectState((prev) =>
-          prev
-            ? { ...prev, mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top }
-            : null
+          prev ? { ...prev, mouseX: e.clientX - rect.left, mouseY: e.clientY - rect.top } : null
         );
       }
     },
     [dragState, connectState]
   );
 
-  // Mouse up — finish drag or connect
   const handleMouseUp = useCallback(
     (e: React.MouseEvent) => {
       if (connectState) {
-        // Find node under mouse
         const rect = canvasRef.current?.getBoundingClientRect();
         if (rect) {
           const mx = e.clientX - rect.left;
@@ -131,21 +163,17 @@ export default function MdCanvas({
           const target = nodes.find(
             (n) =>
               n.id !== connectState.fromId &&
-              mx >= n.x &&
-              mx <= n.x + 140 &&
-              my >= n.y &&
-              my <= n.y + 40
+              mx >= n.x - 10 &&
+              mx <= n.x + 150 &&
+              my >= n.y - 10 &&
+              my <= n.y + 50
           );
           if (target) {
-            // Don't add duplicate edges
             const exists = edges.some(
               (ed) => ed.from === connectState.fromId && ed.to === target.id
             );
             if (!exists) {
-              setEdges((prev) => [
-                ...prev,
-                { from: connectState.fromId, to: target.id },
-              ]);
+              setEdges((prev) => [...prev, { from: connectState.fromId, to: target.id }]);
             }
           }
         }
@@ -156,91 +184,113 @@ export default function MdCanvas({
     [connectState, nodes, edges]
   );
 
-  // Update node text
   const handleTextChange = useCallback((nodeId: string, text: string) => {
-    setNodes((prev) =>
-      prev.map((n) => (n.id === nodeId ? { ...n, text } : n))
-    );
+    setNodes((prev) => prev.map((n) => (n.id === nodeId ? { ...n, text } : n)));
   }, []);
 
-  // Change node type
-  const cycleType = useCallback((nodeId: string) => {
+  const cycleShape = useCallback((nodeId: string) => {
     setNodes((prev) =>
       prev.map((n) => {
         if (n.id !== nodeId) return n;
-        const types: CanvasNode["type"][] = ["text", "code", "task"];
-        const idx = types.indexOf(n.type);
-        return { ...n, type: types[(idx + 1) % types.length] };
+        const shapes: CanvasNode["shape"][] = ["round", "square", "circle", "diamond"];
+        const idx = shapes.indexOf(n.shape);
+        return { ...n, shape: shapes[(idx + 1) % shapes.length] };
       })
     );
   }, []);
 
-  // Toggle task checkbox
-  const toggleCheck = useCallback((nodeId: string) => {
-    setNodes((prev) =>
-      prev.map((n) =>
-        n.id === nodeId ? { ...n, checked: !n.checked } : n
-      )
-    );
-  }, []);
-
-  // Delete selected node
   const deleteSelected = useCallback(() => {
     if (!selectedId) return;
     setNodes((prev) => prev.filter((n) => n.id !== selectedId));
-    setEdges((prev) =>
-      prev.filter((e) => e.from !== selectedId && e.to !== selectedId)
-    );
+    setEdges((prev) => prev.filter((e) => e.from !== selectedId && e.to !== selectedId));
     setSelectedId(null);
     setEditingId(null);
   }, [selectedId]);
 
-  // Keyboard shortcuts
+  const deleteEdge = useCallback((index: number) => {
+    setEdges((prev) => prev.filter((_, i) => i !== index));
+    setEditingEdge(null);
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (editingId) return; // don't delete while editing text
+        if (editingId || editingEdge !== null) return;
         deleteSelected();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [deleteSelected, editingId]);
+  }, [deleteSelected, editingId, editingEdge]);
 
-  // Generate MD
   const handleGenerate = useCallback(() => {
-    const md = canvasToMarkdown(nodes, edges);
+    const mermaidCode = canvasToMermaid(nodes, edges, direction);
+    const md = wrapInCodeBlock(mermaidCode);
     onGenerate(md);
-  }, [nodes, edges, onGenerate]);
+  }, [nodes, edges, direction, onGenerate]);
 
-  // Get node center for edge drawing
+  const handleImport = useCallback(() => {
+    // Strip code fences if present
+    let code = importCode.trim();
+    code = code.replace(/^```mermaid\n?/, "").replace(/\n?```$/, "");
+
+    const result = mermaidToCanvas(code);
+    if (result) {
+      setNodes(result.nodes);
+      setEdges(result.edges);
+      setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
+      nextId = result.nodes.length + 1;
+      setShowImport(false);
+      setImportCode("");
+    }
+  }, [importCode]);
+
   const getNodeCenter = (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
     return { x: node.x + 70, y: node.y + 20 };
   };
 
-  const typeLabel = { text: "T", code: "</>", task: "[]" };
-  const typeColor = { text: "var(--accent)", code: "#4ade80", task: "#60a5fa" };
-
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--background)" }}>
       {/* Toolbar */}
       <div
-        className="flex items-center justify-between px-3 sm:px-4 py-2 text-xs"
+        className="flex items-center justify-between px-3 sm:px-4 py-2 text-xs flex-wrap gap-2"
         style={{ borderBottom: "1px solid var(--border-dim)" }}
       >
         <div className="flex items-center gap-3">
           <span className="font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-            Canvas
+            Mermaid Editor
           </span>
-          <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>
-            Double-click to add · Drag to move · Alt+drag to connect · Delete to remove
+          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            {(["LR", "TD"] as Direction[]).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDirection(d)}
+                className="px-2 py-0.5 text-[10px] font-mono"
+                style={{
+                  background: direction === d ? "var(--accent-dim)" : "transparent",
+                  color: direction === d ? "var(--accent)" : "var(--text-muted)",
+                }}
+              >
+                {d === "LR" ? "→" : "↓"}
+              </button>
+            ))}
+          </div>
+          <span className="text-[10px] hidden sm:inline" style={{ color: "var(--text-faint)" }}>
+            Double-click: add · Alt+drag: connect · Delete: remove
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(!showImport)}
+            className="px-2 py-1 rounded-md font-mono text-[11px]"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+          >
+            Import
+          </button>
           <span className="font-mono text-[10px]" style={{ color: "var(--text-faint)" }}>
-            {nodes.length} nodes · {edges.length} edges
+            {nodes.length}n · {edges.length}e
           </span>
           <button
             onClick={handleGenerate}
@@ -251,27 +301,59 @@ export default function MdCanvas({
               color: nodes.length > 0 ? "#000" : "var(--text-muted)",
             }}
           >
-            Generate MD
+            Generate Mermaid
           </button>
         </div>
       </div>
 
-      {/* Canvas area */}
+      {/* Import panel */}
+      {showImport && (
+        <div
+          className="px-4 py-3 flex gap-2"
+          style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}
+        >
+          <textarea
+            value={importCode}
+            onChange={(e) => setImportCode(e.target.value)}
+            placeholder="Paste Mermaid code here (graph LR; A --> B)"
+            className="flex-1 bg-transparent text-xs font-mono outline-none resize-none"
+            style={{ color: "var(--text-primary)", minHeight: 48 }}
+          />
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={handleImport}
+              className="px-3 py-1 rounded text-[11px] font-mono"
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
+              Load
+            </button>
+            <button
+              onClick={() => { setShowImport(false); setImportCode(""); }}
+              className="px-3 py-1 rounded text-[11px] font-mono"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Canvas */}
       <div
         ref={canvasRef}
         className="flex-1 relative overflow-auto cursor-crosshair select-none"
-        style={{ background: "var(--background)" }}
         onDoubleClick={handleCanvasDoubleClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onClick={(e) => {
-          if (!(e.target as HTMLElement).closest(".canvas-node")) {
+          if (!(e.target as HTMLElement).closest(".canvas-node") && !(e.target as HTMLElement).closest(".edge-label")) {
             setSelectedId(null);
             setEditingId(null);
+            setEditingEdge(null);
           }
         }}
       >
-        {/* Grid dots */}
+        {/* Grid */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -280,121 +362,149 @@ export default function MdCanvas({
           }}
         />
 
-        {/* SVG for edges */}
+        {/* Edges SVG */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
+            </marker>
+            <marker id="arr-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--accent)" />
+            </marker>
+          </defs>
+
           {edges.map((edge, i) => {
             const from = getNodeCenter(edge.from);
             const to = getNodeCenter(edge.to);
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
+
             return (
               <g key={i}>
                 <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke="var(--text-faint)"
-                  strokeWidth={1.5}
-                  markerEnd="url(#arrowhead)"
+                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                  stroke="var(--text-faint)" strokeWidth={1.5}
+                  markerEnd="url(#arr)"
                 />
+                {/* Clickable hit area */}
+                <line
+                  x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                  stroke="transparent" strokeWidth={12}
+                  style={{ pointerEvents: "all", cursor: "pointer" }}
+                  onDoubleClick={(e) => { e.stopPropagation(); setEditingEdge(i); }}
+                />
+                {/* Edge label */}
+                {edge.label && (
+                  <text
+                    x={midX} y={midY - 8}
+                    textAnchor="middle"
+                    fill="var(--text-muted)"
+                    fontSize={11}
+                    fontFamily="var(--font-geist-mono), monospace"
+                  >
+                    {edge.label}
+                  </text>
+                )}
               </g>
             );
           })}
-          {/* Connecting line preview */}
+
           {connectState && (
             <line
               x1={getNodeCenter(connectState.fromId).x}
               y1={getNodeCenter(connectState.fromId).y}
-              x2={connectState.mouseX}
-              y2={connectState.mouseY}
-              stroke="var(--accent)"
-              strokeWidth={1.5}
-              strokeDasharray="6 3"
+              x2={connectState.mouseX} y2={connectState.mouseY}
+              stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="6 3"
+              markerEnd="url(#arr-accent)"
             />
           )}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="8"
-              markerHeight="6"
-              refX="8"
-              refY="3"
-              orient="auto"
-            >
-              <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
-            </marker>
-          </defs>
         </svg>
+
+        {/* Edge label editor */}
+        {editingEdge !== null && edges[editingEdge] && (() => {
+          const edge = edges[editingEdge];
+          const from = getNodeCenter(edge.from);
+          const to = getNodeCenter(edge.to);
+          const midX = (from.x + to.x) / 2;
+          const midY = (from.y + to.y) / 2;
+          return (
+            <div
+              className="edge-label absolute z-20 flex gap-1"
+              style={{ left: midX - 60, top: midY - 16 }}
+            >
+              <input
+                autoFocus
+                value={edge.label || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, label: val } : ed));
+                }}
+                onBlur={() => setEditingEdge(null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === "Escape") setEditingEdge(null);
+                }}
+                placeholder="label"
+                className="px-2 py-1 text-[11px] font-mono rounded outline-none w-24"
+                style={{ background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--text-primary)" }}
+              />
+              <button
+                onMouseDown={(e) => { e.preventDefault(); deleteEdge(editingEdge); }}
+                className="px-1.5 py-1 rounded text-[10px]"
+                style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Nodes */}
         {nodes.map((node) => (
           <div
             key={node.id}
             className="canvas-node absolute"
-            style={{
-              left: node.x,
-              top: node.y,
-              zIndex: selectedId === node.id ? 10 : 2,
-              minWidth: 140,
-            }}
+            style={{ left: node.x, top: node.y, zIndex: selectedId === node.id ? 10 : 2, minWidth: 120 }}
             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              setEditingId(node.id);
-            }}
+            onDoubleClick={(e) => { e.stopPropagation(); setEditingId(node.id); }}
           >
             <div
-              className="rounded-lg px-3 py-2 text-sm transition-colors"
+              className="px-3 py-2 text-sm transition-colors"
               style={{
                 background: "var(--surface)",
                 border: `1.5px solid ${selectedId === node.id ? "var(--accent)" : "var(--border)"}`,
                 boxShadow: selectedId === node.id ? "0 0 0 2px var(--accent-dim)" : "none",
+                ...Object.fromEntries(shapeStyles[node.shape].split(";").map(s => { const [k, v] = s.split(":").map(x => x.trim()); return [k.replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v]; }).filter(([k]) => k)),
               }}
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <button
-                  onClick={(e) => { e.stopPropagation(); cycleType(node.id); }}
+                  onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
                   className="text-[9px] font-mono font-bold px-1 rounded"
-                  style={{ color: typeColor[node.type], background: `${typeColor[node.type]}15` }}
+                  style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
+                  title="Change shape"
                 >
-                  {typeLabel[node.type]}
+                  {shapeLabels[node.shape]}
                 </button>
-                {node.type === "task" && (
-                  <input
-                    type="checkbox"
-                    checked={node.checked || false}
-                    onChange={() => toggleCheck(node.id)}
-                    className="cursor-pointer"
-                    style={{ accentColor: "var(--accent)" }}
-                  />
-                )}
               </div>
               {editingId === node.id ? (
-                <textarea
+                <input
                   autoFocus
                   value={node.text}
                   onChange={(e) => handleTextChange(node.id, e.target.value)}
                   onBlur={() => setEditingId(null)}
                   onKeyDown={(e) => {
-                    if (e.key === "Escape") setEditingId(null);
+                    if (e.key === "Enter" || e.key === "Escape") setEditingId(null);
                     e.stopPropagation();
                   }}
-                  className="w-full bg-transparent outline-none resize-none text-xs leading-relaxed"
-                  style={{
-                    color: "var(--text-primary)",
-                    fontFamily: node.type === "code" ? "var(--font-geist-mono), monospace" : "inherit",
-                    minHeight: 24,
-                  }}
-                  rows={Math.max(1, node.text.split("\n").length)}
+                  className="w-full bg-transparent outline-none text-xs"
+                  style={{ color: "var(--text-primary)", minWidth: 80 }}
                 />
               ) : (
                 <div
-                  className="text-xs leading-relaxed min-h-[24px] whitespace-pre-wrap"
-                  style={{
-                    color: node.text ? "var(--text-secondary)" : "var(--text-faint)",
-                    fontFamily: node.type === "code" ? "var(--font-geist-mono), monospace" : "inherit",
-                  }}
+                  className="text-xs min-h-[20px] whitespace-nowrap"
+                  style={{ color: node.text ? "var(--text-secondary)" : "var(--text-faint)" }}
                 >
-                  {node.text || "Double-click to edit"}
+                  {node.text || "..."}
                 </div>
               )}
             </div>
@@ -402,14 +512,14 @@ export default function MdCanvas({
         ))}
 
         {/* Empty state */}
-        {nodes.length === 0 && (
+        {nodes.length === 0 && !showImport && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-            <div className="text-4xl opacity-20">🧩</div>
+            <div className="text-4xl opacity-20">🔀</div>
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Double-click anywhere to add a node
+              Double-click to add nodes, Alt+drag to connect
             </p>
             <p className="text-xs" style={{ color: "var(--text-faint)" }}>
-              Alt + drag between nodes to connect them
+              Visual Mermaid flowchart editor
             </p>
           </div>
         )}

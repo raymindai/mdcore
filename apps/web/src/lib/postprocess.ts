@@ -35,8 +35,9 @@ export function postProcessHtml(html: string): string {
  */
 function highlightCode(html: string): string {
   return html.replace(
-    /<pre(?:\s+lang="(\w+)")?[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-    (match, lang, code) => {
+    /<pre(?:\s+lang="(\w+)")?[^>]*><code(?:\s+class="language-(\w+)")?[^>]*>([\s\S]*?)<\/code><\/pre>/g,
+    (match, preLang, codeLang, code) => {
+      const lang = preLang || codeLang;
       // Skip mermaid blocks — handled separately
       if (lang === "mermaid") return match;
       // Skip math blocks
@@ -121,13 +122,25 @@ function processKatex(html: string): string {
  */
 function processMermaid(html: string): string {
   let mermaidId = 0;
-  return html.replace(
-    /<pre[^>]*lang="mermaid"[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-    (_, code) => {
-      const id = `mermaid-${mermaidId++}`;
-      return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
-    }
-  );
+
+  // Match both comrak formats:
+  // 1. <pre lang="mermaid"><code>...</code></pre> (github_pre_lang=true)
+  // 2. <pre><code class="language-mermaid">...</code></pre> (standard)
+  return html
+    .replace(
+      /<pre[^>]*\blang="mermaid"[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/g,
+      (_, code) => {
+        const id = `mermaid-${mermaidId++}`;
+        return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
+      }
+    )
+    .replace(
+      /<pre[^>]*>\s*<code[^>]*class="[^"]*language-mermaid[^"]*"[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/g,
+      (_, code) => {
+        const id = `mermaid-${mermaidId++}`;
+        return `<div class="mermaid-container" data-mermaid-id="${id}"><pre class="mermaid">${decodeHtmlEntities(code.trim())}</pre></div>`;
+      }
+    );
 }
 
 /**
