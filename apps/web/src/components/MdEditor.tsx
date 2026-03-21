@@ -48,10 +48,12 @@ This is a [link to mdfy.cc](https://mdfy.cc) and an autolink: https://github.com
 
 ## Headings
 
+All six heading levels, each with distinct sizing:
+
 ### H3 — Third Level
 #### H4 — Fourth Level
 ##### H5 — Fifth Level
-###### H6 — Sixth Level
+###### H6 — SIXTH LEVEL
 
 ---
 
