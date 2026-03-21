@@ -351,7 +351,9 @@ body {
   content: "";
   position: absolute;
   inset: -3px -4px;
-  border: 1px dashed var(--border);
+  border-width: 1px !important;
+  border-style: dashed !important;
+  border-color: var(--border) !important;
   border-radius: 6px;
   pointer-events: none;
 }
@@ -361,7 +363,9 @@ body {
   content: "" !important;
   position: absolute;
   inset: -3px -4px;
-  border: 1px solid var(--accent) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--accent) !important;
   border-radius: 6px;
   pointer-events: none;
 }
