@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
+import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
   createShareUrl,
   createShortUrl,
@@ -166,7 +167,7 @@ export default function MdEditor() {
   // Set default view mode based on screen size
   useEffect(() => {
     if (isMobile) {
-      setViewMode("preview");
+      setViewMode("split"); // vertical split on mobile
     }
   }, [isMobile]);
 
@@ -354,6 +355,54 @@ export default function MdEditor() {
     e.preventDefault();
     setIsDragging(false);
   }, []);
+
+  // Paste handler — detect HTML and convert to MD
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const htmlData = e.clipboardData.getData("text/html");
+      const textData = e.clipboardData.getData("text/plain");
+
+      // If clipboard has HTML and it looks like real HTML (not just markdown)
+      if (htmlData && isHtmlContent(htmlData)) {
+        e.preventDefault();
+        const converted = htmlToMarkdown(htmlData);
+        const textarea = e.currentTarget;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newValue =
+          markdown.slice(0, start) + converted + markdown.slice(end);
+        setMarkdown(newValue);
+        setIsSharedDoc(false);
+        doRender(newValue);
+        // Set cursor position after inserted text
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd =
+            start + converted.length;
+        }, 0);
+        return;
+      }
+
+      // Otherwise let default paste handle it (plain text / markdown)
+      // But if it's plain text that looks like HTML, also convert
+      if (textData && !htmlData && isHtmlContent(textData)) {
+        e.preventDefault();
+        const converted = htmlToMarkdown(textData);
+        const textarea = e.currentTarget;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newValue =
+          markdown.slice(0, start) + converted + markdown.slice(end);
+        setMarkdown(newValue);
+        setIsSharedDoc(false);
+        doRender(newValue);
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd =
+            start + converted.length;
+        }, 0);
+      }
+    },
+    [markdown, doRender]
+  );
 
   // Share — try short URL first, fallback to hash-based
   const handleShare = useCallback(async () => {
@@ -616,7 +665,7 @@ export default function MdEditor() {
           {/* View mode toggle */}
           <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
             {(isMobile
-              ? (["editor", "preview"] as ViewMode[])
+              ? (["editor", "split", "preview"] as ViewMode[])
               : (["editor", "split", "preview"] as ViewMode[])
             ).map((mode) => (
               <button
@@ -780,14 +829,19 @@ export default function MdEditor() {
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 min-h-0">
+      <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
         {/* Editor pane */}
         {viewMode !== "preview" && (
           <div
             className={`${
-              viewMode === "split" ? "w-1/2" : "w-full"
+              viewMode === "split"
+                ? isMobile ? "w-full h-1/2" : "w-1/2"
+                : "w-full"
             } flex flex-col`}
-            style={{ borderRight: viewMode === "split" ? "1px solid var(--border-dim)" : "none" }}
+            style={{
+              borderRight: viewMode === "split" && !isMobile ? "1px solid var(--border-dim)" : "none",
+              borderBottom: viewMode === "split" && isMobile ? "1px solid var(--border-dim)" : "none",
+            }}
           >
             <div
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
@@ -804,6 +858,7 @@ export default function MdEditor() {
               style={{ color: "var(--editor-text)", caretColor: "var(--accent)" }}
               value={markdown}
               onChange={(e) => handleChange(e.target.value)}
+              onPaste={handlePaste}
               spellCheck={false}
               placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
             />
@@ -814,7 +869,9 @@ export default function MdEditor() {
         {viewMode !== "editor" && (
           <div
             className={`${
-              viewMode === "split" ? "w-1/2" : "w-full"
+              viewMode === "split"
+                ? isMobile ? "w-full h-1/2" : "w-1/2"
+                : "w-full"
             } flex flex-col`}
             style={{ background: "var(--background)" }}
           >
