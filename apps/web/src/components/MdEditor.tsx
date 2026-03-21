@@ -104,7 +104,7 @@ This has a footnote[^1]. And another[^2].
 *Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. No server round-trip.*
 `;
 
-type ViewMode = "split" | "preview" | "editor" | "canvas";
+type ViewMode = "split" | "preview" | "editor" | "mermaid";
 
 type Theme = "dark" | "light";
 
@@ -286,7 +286,7 @@ export default function MdEditor() {
         }
       });
     });
-  }, [html, isLoading, theme]);
+  }, [html, isLoading, theme, viewMode]);
 
   // Load shared content from URL on mount
   useEffect(() => {
@@ -337,7 +337,7 @@ export default function MdEditor() {
       const code = btn.getAttribute("data-mermaid-code");
       if (code) {
         setCanvasMermaid(code);
-        setViewMode("canvas");
+        setViewMode("mermaid");
       }
     };
     previewRef.current.addEventListener("click", handler);
@@ -818,8 +818,8 @@ export default function MdEditor() {
           {/* View mode toggle */}
           <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
             {(isMobile
-              ? (["editor", "split", "preview", "canvas"] as ViewMode[])
-              : (["editor", "split", "preview", "canvas"] as ViewMode[])
+              ? (["editor", "split", "preview", "mermaid"] as ViewMode[])
+              : (["editor", "split", "preview", "mermaid"] as ViewMode[])
             ).map((mode) => (
               <button
                 key={mode}
@@ -830,7 +830,7 @@ export default function MdEditor() {
                   color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
-                {mode === "editor" ? "MD" : mode === "split" ? "Split" : mode === "canvas" ? "Canvas" : "View"}
+                {mode === "editor" ? "MD" : mode === "split" ? "Split" : mode === "mermaid" ? "Mermaid" : "View"}
               </button>
             ))}
           </div>
@@ -1012,7 +1012,7 @@ export default function MdEditor() {
       {/* Main content */}
       <div className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}>
         {/* Canvas mode */}
-        {viewMode === "canvas" && (
+        {viewMode === "mermaid" && (
           <div className="w-full flex flex-col flex-1">
             <MdCanvas
               initialMermaid={canvasMermaid}
@@ -1027,7 +1027,7 @@ export default function MdEditor() {
         )}
 
         {/* Editor pane */}
-        {viewMode !== "preview" && viewMode !== "canvas" && (
+        {viewMode !== "preview" && viewMode !== "mermaid" && (
           <div
             className={`${
               viewMode === "split"
@@ -1062,7 +1062,7 @@ export default function MdEditor() {
         )}
 
         {/* Preview pane */}
-        {viewMode !== "editor" && viewMode !== "canvas" && (
+        {viewMode !== "editor" && viewMode !== "mermaid" && (
           <div
             className={`${
               viewMode === "split"
