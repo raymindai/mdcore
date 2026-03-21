@@ -390,24 +390,34 @@ body {
   cursor: text;
 }
 
-/* Table cell hover hint */
-.mdcore-rendered td::after,
-.mdcore-rendered th::after {
-  content: "···";
+/* Table cell menu button */
+.mdcore-rendered .cell-menu-btn {
   position: absolute;
   top: 2px;
-  right: 4px;
-  font-size: 10px;
-  color: var(--text-faint);
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   opacity: 0;
-  pointer-events: none;
   transition: opacity 0.15s;
-  line-height: 1;
+  padding: 0;
+  font-family: system-ui;
 }
 
-.mdcore-rendered td:hover::after,
-.mdcore-rendered th:hover::after {
-  opacity: 1;
+.mdcore-rendered td:hover .cell-menu-btn,
+.mdcore-rendered th:hover .cell-menu-btn {
+  opacity: 0.7;
+}
+
+.mdcore-rendered .cell-menu-btn:hover {
+  opacity: 1 !important;
 }
 
 /* Description lists */
