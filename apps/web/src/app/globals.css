@@ -248,9 +248,16 @@ body {
 }
 
 /* Lists */
-.mdcore-rendered ul, .mdcore-rendered ol {
+.mdcore-rendered ul {
   margin: 0.75rem 0;
   padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.mdcore-rendered ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  list-style-type: decimal;
 }
 
 .mdcore-rendered li {
