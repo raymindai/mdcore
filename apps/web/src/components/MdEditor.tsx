@@ -443,13 +443,105 @@ export default function MdEditor() {
     // Double-click → inline edit text
     const handleDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
-      // Only allow editing on simple text elements
-      // Skip table cells — handled by handleTableDblClick with size-locked input
+      // Skip table cells — handled by handleTableDblClick
       if (target.closest("td,th,table")) return;
+      // Skip mermaid, katex
+      if (target.closest(".mermaid-container,.katex")) return;
+
+      // Code block → mini editor modal
+      const preEl = target.closest("pre") as HTMLElement | null;
+      if (preEl) {
+        const codeEl = preEl.querySelector("code");
+        if (!codeEl) return;
+        const pos = getSourcePos(preEl);
+        if (!pos) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const actualStart = pos.startLine + frontmatterOffset;
+        const actualEnd = pos.endLine + frontmatterOffset;
+        const mdLines = markdown.split("\n");
+
+        // Extract the code block content (lines between ``` fences)
+        const originalCode = mdLines.slice(actualStart + 1, actualEnd).join("\n");
+        const langLine = mdLines[actualStart] || "";
+
+        // Create modal overlay
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+          position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.6);
+          display:flex;align-items:center;justify-content:center;
+        `;
+
+        const modal = document.createElement("div");
+        modal.style.cssText = `
+          background:var(--surface);border:1px solid var(--border);border-radius:12px;
+          padding:16px;width:90%;max-width:640px;max-height:80vh;display:flex;flex-direction:column;gap:12px;
+          box-shadow:0 20px 60px rgba(0,0,0,0.5);
+        `;
+
+        const header = document.createElement("div");
+        header.style.cssText = `display:flex;justify-content:space-between;align-items:center;`;
+        header.innerHTML = `
+          <span style="font-size:12px;font-family:ui-monospace,monospace;color:var(--text-muted)">
+            ${langLine.replace(/```/, "").trim() || "code"}
+          </span>
+          <div style="display:flex;gap:6px;">
+            <button id="code-save" style="padding:4px 12px;font-size:11px;background:var(--accent);color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Save</button>
+            <button id="code-cancel" style="padding:4px 12px;font-size:11px;background:var(--toggle-bg);color:var(--text-muted);border:none;border-radius:6px;cursor:pointer;">Cancel</button>
+          </div>
+        `;
+
+        const textarea = document.createElement("textarea");
+        textarea.value = originalCode;
+        textarea.style.cssText = `
+          flex:1;min-height:200px;background:var(--background);color:var(--editor-text);
+          border:1px solid var(--border);border-radius:8px;padding:12px;
+          font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:13px;
+          line-height:1.6;resize:vertical;outline:none;
+        `;
+        textarea.spellcheck = false;
+
+        modal.appendChild(header);
+        modal.appendChild(textarea);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        textarea.focus();
+
+        const save = () => {
+          const newCode = textarea.value;
+          if (newCode !== originalCode) {
+            const newLines = [...mdLines];
+            newLines.splice(actualStart + 1, actualEnd - actualStart - 1, newCode);
+            const newMd = newLines.join("\n");
+            setMarkdown(newMd);
+            doRender(newMd);
+          }
+          document.body.removeChild(overlay);
+        };
+
+        const cancel = () => {
+          document.body.removeChild(overlay);
+        };
+
+        header.querySelector("#code-save")!.addEventListener("click", save);
+        header.querySelector("#code-cancel")!.addEventListener("click", cancel);
+        overlay.addEventListener("click", (ev) => {
+          if (ev.target === overlay) cancel();
+        });
+        textarea.addEventListener("keydown", (ke) => {
+          if (ke.key === "Escape") cancel();
+          if (ke.key === "s" && (ke.metaKey || ke.ctrlKey)) { ke.preventDefault(); save(); }
+        });
+
+        return;
+      }
+
+      // Text elements → contenteditable inline edit
       const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,blockquote > p") as HTMLElement | null;
       if (!editable) return;
-      // Skip if it's a code block, mermaid, katex
-      if (target.closest("pre,code,.mermaid-container,.katex")) return;
+      if (target.closest("code")) return;
 
       const sourceEl = editable.closest("[data-sourcepos]") as HTMLElement | null;
       if (!sourceEl) return;
