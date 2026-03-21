@@ -323,14 +323,17 @@ body {
 }
 
 /* Mermaid diagrams */
-.mdcore-rendered .mermaid-container,
-.mdcore-rendered .mermaid-rendered {
+.mdcore-rendered .mermaid-container {
   margin: 1rem 0;
   padding: 1rem;
   background: var(--surface);
   border-radius: 8px;
   border: 1px solid var(--border);
   overflow-x: auto;
+  text-align: center;
+}
+
+.mdcore-rendered .mermaid-rendered {
   text-align: center;
 }
 
