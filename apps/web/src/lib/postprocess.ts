@@ -143,42 +143,51 @@ function addCodeCopyButtons(html: string): string {
 }
 
 /**
- * Detect ASCII art diagrams (box-drawing characters) in code blocks
- * and apply special "diagram" styling for better visual presentation.
+ * Detect ASCII art diagrams in both code blocks AND paragraphs.
+ * Box-drawing characters: ┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼ ═ ║ etc.
  */
 function styleAsciiDiagrams(html: string): string {
-  // Box-drawing characters: ┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼ ╌ ═ ║ ╔ ╗ ╚ ╝ ╠ ╣ ╦ ╩ ╬
-  // Also ASCII-style: +--+ |  | +--+, and arrow chars: → ← ↓ ↑ ▶ ▼
-  const boxChars = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/;
+  const boxCharsRegex = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/g;
+  const MIN_BOX_CHARS = 5;
 
-  return html.replace(
+  // 1. Code blocks containing ASCII art
+  let result = html.replace(
     /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
     (match, preAttrs, codeAttrs, content) => {
-      // Skip mermaid blocks
       if (/lang="mermaid"/.test(preAttrs) || /language-mermaid/.test(codeAttrs)) return match;
 
-      // Skip already highlighted blocks
-      if (/class="hljs/.test(codeAttrs)) {
-        // Check the decoded text content for box chars
-        const decoded = decodeHtmlEntities(content);
-        if (!boxChars.test(decoded)) return match;
-      } else {
-        const decoded = decodeHtmlEntities(content);
-        if (!boxChars.test(decoded)) return match;
-      }
-
-      // Count box-drawing characters — need a meaningful amount
       const decoded = decodeHtmlEntities(content);
-      const boxCount = (decoded.match(/[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈→←↓↑▶▼▲►◄]/g) || []).length;
-      if (boxCount < 5) return match; // not enough to be a diagram
+      const boxCount = (decoded.match(boxCharsRegex) || []).length;
+      if (boxCount < MIN_BOX_CHARS) return match;
 
-      // Apply diagram styling
       const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
-      return `<div class="ascii-diagram" ${sourcepos}>
-        <pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.25rem 1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre>
-      </div>`;
+      return wrapAsciiDiagram(content, sourcepos);
     }
   );
+
+  // 2. Paragraphs containing ASCII art (when pasted without code fences)
+  result = result.replace(
+    /<p([^>]*)>([\s\S]*?)<\/p>/g,
+    (match, pAttrs, content) => {
+      const decoded = decodeHtmlEntities(content);
+      const boxCount = (decoded.match(boxCharsRegex) || []).length;
+      if (boxCount < MIN_BOX_CHARS) return match;
+
+      // Must have multiple lines with box chars (not just a single line with a few)
+      const lines = decoded.split("\n");
+      const linesWithBox = lines.filter(l => /[┌┐└┘│─├┤┬┴┼═║╔╗╚╝]/.test(l)).length;
+      if (linesWithBox < 2) return match;
+
+      const sourcepos = pAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
+      return wrapAsciiDiagram(content, sourcepos);
+    }
+  );
+
+  return result;
+}
+
+function wrapAsciiDiagram(content: string, sourcepos: string): string {
+  return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre></div>`;
 }
 
 function decodeHtmlEntities(text: string): string {
