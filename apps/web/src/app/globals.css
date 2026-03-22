@@ -481,6 +481,50 @@ body {
   text-align: center;
 }
 
+/* Mermaid SVG quality improvements */
+.mdcore-rendered .mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Better node text rendering */
+.mdcore-rendered .mermaid-rendered .nodeLabel {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Better edge labels */
+.mdcore-rendered .mermaid-rendered .edgeLabel {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Flowchart node hover effect */
+.mdcore-rendered .mermaid-rendered .node rect,
+.mdcore-rendered .mermaid-rendered .node circle,
+.mdcore-rendered .mermaid-rendered .node polygon {
+  transition: filter 0.15s;
+}
+
+.mdcore-rendered .mermaid-rendered .node:hover rect,
+.mdcore-rendered .mermaid-rendered .node:hover circle,
+.mdcore-rendered .mermaid-rendered .node:hover polygon {
+  filter: brightness(1.15);
+}
+
+/* Sequence diagram actor boxes */
+.mdcore-rendered .mermaid-rendered .actor {
+  rx: 8;
+  ry: 8;
+}
+
+/* Pie chart labels */
+.mdcore-rendered .mermaid-rendered .pieTitleText {
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .mdcore-rendered .mermaid-rendered svg {
   max-width: 100%;
   height: auto;
