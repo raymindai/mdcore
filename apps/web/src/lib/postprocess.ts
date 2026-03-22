@@ -29,6 +29,9 @@ export function postProcessHtml(html: string): string {
   // Convert align attr to inline style (Tailwind resets override HTML align)
   result = result.replace(/ align="(left|center|right)"/g, ' style="text-align:$1"');
 
+  // Detect and style ASCII art diagrams
+  result = styleAsciiDiagrams(result);
+
   // NOTE: Mermaid is handled via DOM in useEffect (MdEditor.tsx),
   // not here. This avoids fragile regex matching on HTML strings.
 
@@ -136,6 +139,45 @@ function addCodeCopyButtons(html: string): string {
   return html.replace(
     /<pre(?![^>]*class="mermaid")(?![^>]*lang="mermaid")([^>]*)><code/g,
     `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:6px;right:6px;padding:2px 8px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.15s;z-index:2" title="Copy code">Copy</button><code`
+  );
+}
+
+/**
+ * Detect ASCII art diagrams (box-drawing characters) in code blocks
+ * and apply special "diagram" styling for better visual presentation.
+ */
+function styleAsciiDiagrams(html: string): string {
+  // Box-drawing characters: ┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼ ╌ ═ ║ ╔ ╗ ╚ ╝ ╠ ╣ ╦ ╩ ╬
+  // Also ASCII-style: +--+ |  | +--+, and arrow chars: → ← ↓ ↑ ▶ ▼
+  const boxChars = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/;
+
+  return html.replace(
+    /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+    (match, preAttrs, codeAttrs, content) => {
+      // Skip mermaid blocks
+      if (/lang="mermaid"/.test(preAttrs) || /language-mermaid/.test(codeAttrs)) return match;
+
+      // Skip already highlighted blocks
+      if (/class="hljs/.test(codeAttrs)) {
+        // Check the decoded text content for box chars
+        const decoded = decodeHtmlEntities(content);
+        if (!boxChars.test(decoded)) return match;
+      } else {
+        const decoded = decodeHtmlEntities(content);
+        if (!boxChars.test(decoded)) return match;
+      }
+
+      // Count box-drawing characters — need a meaningful amount
+      const decoded = decodeHtmlEntities(content);
+      const boxCount = (decoded.match(/[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈→←↓↑▶▼▲►◄]/g) || []).length;
+      if (boxCount < 5) return match; // not enough to be a diagram
+
+      // Apply diagram styling
+      const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
+      return `<div class="ascii-diagram" ${sourcepos}>
+        <pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.25rem 1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre>
+      </div>`;
+    }
   );
 }
 
