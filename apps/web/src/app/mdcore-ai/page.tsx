@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const MermaidDemo = dynamic(() => import("./MermaidDemo"), { ssr: false });
 
 /* ─── data ─── */
 
@@ -354,63 +359,74 @@ Inline math: $E = mc^2$
           </div>
         </div>
 
-        {/* Example 2: Mermaid + features strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          {/* Mermaid: raw → rendered side by side */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-              {/* Raw mermaid code */}
-              <div style={{ borderRight: "1px solid var(--border-dim)" }}>
-                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>```mermaid</span>
-                </div>
-                <pre style={{ margin: 0, padding: "16px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
+        {/* Example 2: Mermaid diagram */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+            {/* Raw mermaid code */}
+            <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>```mermaid</span>
+              </div>
+              <pre style={{ margin: 0, padding: "20px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
 {`graph LR
   A[API Request] --> B{Cached?}
-  B -->|Yes| C[Edge CDN]
+  B -->|Yes| C([Edge CDN])
   B -->|No| D[Rust Engine]
   D --> E[Parse AST]
   E --> F[Render HTML]
   F --> C`}
+              </pre>
+            </div>
+            {/* Actual Mermaid rendered */}
+            <div>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>rendered</span>
+                <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>SVG</span>
+              </div>
+              <MermaidDemo />
+            </div>
+          </div>
+        </div>
+
+        {/* Example 3: Math + feature list */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Math: raw → rendered */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+              <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>KaTeX</span>
+                </div>
+                <pre style={{ margin: 0, padding: "16px 20px", fontSize: 11, lineHeight: 2, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
+{`$E = mc^2$
+
+$$
+\\int_0^\\infty e^{-x^2} dx
+= \\frac{\\sqrt{\\pi}}{2}
+$$`}
                 </pre>
               </div>
-              {/* Rendered as styled nodes */}
               <div>
                 <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>rendered</span>
-                  <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>SVG</span>
+                  <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>HTML</span>
                 </div>
-                <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-                  {/* Row 1: API Request */}
-                  <div style={{ background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.3)", borderRadius: 8, padding: "6px 16px", fontSize: 11, color: "#fb923c", fontWeight: 600, ...mono }}>
-                    API Request
-                  </div>
-                  <span style={{ color: "var(--border)", fontSize: 14, lineHeight: 1 }}>&#9660;</span>
-                  {/* Row 2: Diamond */}
-                  <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", padding: "6px 20px", fontSize: 11, color: "#fbbf24", fontWeight: 600, ...mono, transform: "rotate(0deg)", borderRadius: 4 }}>
-                    &#9674; Cached?
-                  </div>
-                  {/* Row 3: Branch */}
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", width: "100%" }}>
-                    <div style={{ flex: 1, textAlign: "center" }}>
-                      <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono }}>No</span>
-                      <div style={{ marginTop: 4, background: "rgba(196,181,253,0.1)", border: "1px solid rgba(196,181,253,0.3)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", fontWeight: 600, ...mono }}>Rust Engine</div>
-                      <span style={{ color: "var(--border)", fontSize: 12, display: "block", margin: "2px 0" }}>&#9660;</span>
-                      <div style={{ background: "rgba(196,181,253,0.06)", border: "1px solid rgba(196,181,253,0.2)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", ...mono }}>Parse AST</div>
-                      <span style={{ color: "var(--border)", fontSize: 12, display: "block", margin: "2px 0" }}>&#9660;</span>
-                      <div style={{ background: "rgba(196,181,253,0.06)", border: "1px solid rgba(196,181,253,0.2)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", ...mono }}>Render HTML</div>
-                    </div>
-                    <div style={{ flex: 1, textAlign: "center" }}>
-                      <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono }}>Yes</span>
-                      <div style={{ marginTop: 4, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <span style={{ color: "var(--border)", fontSize: 32, lineHeight: 1 }}>&#8628;</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Row 4: Result */}
-                  <span style={{ color: "var(--border)", fontSize: 14, lineHeight: 1 }}>&#9660;</span>
-                  <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 20, padding: "6px 20px", fontSize: 11, color: "#4ade80", fontWeight: 600, ...mono }}>
-                    Edge CDN &#10003;
+                <div style={{ padding: "16px 20px" }}>
+                  <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "0 0 16px" }}>
+                    <span style={{ color: "var(--math-color)", fontStyle: "italic", fontSize: 15 }}>E = mc<sup>2</sup></span>
+                  </p>
+                  <div style={{ background: "rgba(0,0,0,0.15)", borderRadius: 8, padding: "14px", textAlign: "center", border: "1px solid var(--border-dim)" }}>
+                    <span style={{ color: "var(--math-display-color)", fontSize: 20, fontStyle: "italic" }}>
+                      <span style={{ fontSize: 28, verticalAlign: "middle" }}>&#8747;</span>
+                      <span style={{ fontSize: 10, verticalAlign: "sub" }}>0</span>
+                      <span style={{ fontSize: 10, verticalAlign: "super" }}>&infin;</span>
+                      {" "}e<sup style={{ fontSize: 12 }}>-x&sup2;</sup> dx
+                      {" "}={" "}
+                      <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "middle", lineHeight: 1.2 }}>
+                        <span style={{ borderBottom: "1px solid var(--math-display-color)", paddingBottom: 2, fontSize: 16 }}>&radic;&pi;</span>
+                        <span style={{ fontSize: 16, paddingTop: 2 }}>2</span>
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -420,23 +436,22 @@ Inline math: $E = mc^2$
           {/* Feature highlights */}
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
             <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
-              <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>What gets rendered</span>
+              <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>Everything that renders</span>
             </div>
-            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { feature: "Syntax highlighting", detail: "190+ languages, auto-detected", example: "rust, python, typescript, go..." },
-                { feature: "Math equations", detail: "KaTeX, inline & display", example: "E = mc², ∫₀^∞ e^(-x²) dx" },
-                { feature: "Tables", detail: "GFM with alignment & striping", example: "| col | col | — sortable" },
-                { feature: "Mermaid diagrams", detail: "Flowchart, sequence, gantt", example: "graph LR → interactive SVG" },
-                { feature: "Task lists", detail: "Clickable checkboxes", example: "- [x] Done  - [ ] Todo" },
-                { feature: "Blockquotes", detail: "Nested, with callout styling", example: "> **Note:** styled callouts" },
-                { feature: "Footnotes", detail: "Auto-linked references", example: "Text[^1] → numbered links" },
-                { feature: "Auto-links", detail: "URLs, emails, @mentions", example: "https://... → clickable" },
+                { feature: "Syntax highlighting", detail: "190+ languages" },
+                { feature: "Math equations", detail: "KaTeX, inline & display" },
+                { feature: "Tables", detail: "GFM, alignment, striping" },
+                { feature: "Mermaid diagrams", detail: "Flowchart, sequence, gantt" },
+                { feature: "Task lists", detail: "Interactive checkboxes" },
+                { feature: "Blockquotes", detail: "Nested, callout styling" },
+                { feature: "Footnotes", detail: "Auto-linked references" },
+                { feature: "Auto-links", detail: "URLs, emails, @mentions" },
               ].map((f) => (
-                <div key={f.feature} style={{ display: "flex", alignItems: "baseline", gap: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", width: 150, flexShrink: 0 }}>{f.feature}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-faint)", flex: 1 }}>{f.detail}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono, opacity: 0.6 }}>{f.example}</span>
+                <div key={f.feature} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{f.feature}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>{f.detail}</span>
                 </div>
               ))}
             </div>
