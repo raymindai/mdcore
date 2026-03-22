@@ -45,7 +45,7 @@
    Theme: Light
    ======================================== */
 [data-theme="light"] {
-  --background: #ffffff;
+  --background: #faf9f7;
   --foreground: #18181b;
   --accent: #ea580c;
   --accent-dim: rgba(234, 88, 12, 0.1);

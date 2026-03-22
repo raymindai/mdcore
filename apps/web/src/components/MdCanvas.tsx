@@ -86,8 +86,12 @@ export default function MdCanvas({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const justSelectedRef = useRef(false);
   const [canvasSplit, setCanvasSplit] = useState(65); // editor % vs code+preview
+  const [codeSplit, setCodeSplit] = useState(50); // code % vs preview (vertical)
   const isDraggingCanvasSplit = useRef(false);
+  const isDraggingCodeSplit = useRef(false);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const codePanelRef = useRef<HTMLDivElement>(null);
+  const [expandedPanel, setExpandedPanel] = useState<"editor" | "code" | "preview" | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [rawCodeMode, setRawCodeMode] = useState(false);
   const [rawCode, setRawCode] = useState("");
@@ -538,12 +542,18 @@ export default function MdCanvas({
         ref={canvasWrapperRef}
         className="flex flex-1 min-h-0"
         onMouseMove={(e) => {
-          if (!isDraggingCanvasSplit.current || !canvasWrapperRef.current) return;
-          const rect = canvasWrapperRef.current.getBoundingClientRect();
-          const pct = ((e.clientX - rect.left) / rect.width) * 100;
-          setCanvasSplit(Math.max(30, Math.min(80, pct)));
+          if (isDraggingCanvasSplit.current && canvasWrapperRef.current) {
+            const rect = canvasWrapperRef.current.getBoundingClientRect();
+            const pct = ((e.clientX - rect.left) / rect.width) * 100;
+            setCanvasSplit(Math.max(30, Math.min(80, pct)));
+          }
+          if (isDraggingCodeSplit.current && codePanelRef.current) {
+            const rect = codePanelRef.current.getBoundingClientRect();
+            const pct = ((e.clientY - rect.top) / rect.height) * 100;
+            setCodeSplit(Math.max(20, Math.min(80, pct)));
+          }
         }}
-        onMouseUp={() => { isDraggingCanvasSplit.current = false; }}
+        onMouseUp={() => { isDraggingCanvasSplit.current = false; isDraggingCodeSplit.current = false; }}
       >
 
       {/* Raw code mode for non-flowchart diagrams (sequence, pie, etc) */}
@@ -556,7 +566,10 @@ export default function MdCanvas({
       <div
         ref={canvasRef}
         className="relative overflow-auto cursor-crosshair select-none"
-        style={{ width: showCode && (nodes.length > 0 || rawCodeMode) ? `${canvasSplit}%` : "100%" }}
+        style={{
+          width: expandedPanel === "code" || expandedPanel === "preview" ? 0 : showCode && (nodes.length > 0 || rawCodeMode) ? `${canvasSplit}%` : "100%",
+          overflow: expandedPanel === "code" || expandedPanel === "preview" ? "hidden" : undefined,
+        }}
         onDoubleClick={handleCanvasDoubleClick}
         onMouseDown={(e) => {
           // Start selection box if clicking on empty canvas
@@ -886,7 +899,7 @@ export default function MdCanvas({
 
       {/* Code + Preview panel */}
       {/* Resize handle */}
-      {showCode && (nodes.length > 0 || rawCodeMode) && (
+      {showCode && (nodes.length > 0 || rawCodeMode) && !expandedPanel && (
         <div
           className="shrink-0 cursor-col-resize w-[5px]"
           style={{ background: "var(--border-dim)", position: "relative" }}
@@ -898,17 +911,22 @@ export default function MdCanvas({
 
       {showCode && (nodes.length > 0 || rawCodeMode) && (
         <div
+          ref={codePanelRef}
           className="flex flex-col"
-          style={{ width: `${100 - canvasSplit}%` }}
+          style={{ width: expandedPanel === "editor" ? 0 : expandedPanel ? "100%" : `${100 - canvasSplit}%`, overflow: "hidden" }}
         >
           {/* Code */}
-          <div className="flex flex-col h-1/2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          {expandedPanel !== "preview" && (
+          <div className="flex flex-col" style={{ height: expandedPanel === "code" ? "100%" : `${codeSplit}%` }}>
             <div
               className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <span>Code</span>
-              <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>editable</span>
+              <button onClick={() => setExpandedPanel(expandedPanel === "code" ? null : "code")}
+                className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: expandedPanel === "code" ? "var(--accent-dim)" : "transparent" }}>
+                {expandedPanel === "code" ? "⊟" : "⊞"}
+              </button>
             </div>
             <textarea
               className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed resize-none outline-none"
@@ -919,7 +937,6 @@ export default function MdCanvas({
                 if (rawCodeMode) {
                   setRawCode(newCode);
                 } else {
-                  // Parse edited code back into canvas nodes
                   const result = mermaidToCanvas(newCode);
                   if (result && result.nodes.length > 0) {
                     setNodes(result.nodes);
@@ -932,14 +949,31 @@ export default function MdCanvas({
               spellCheck={false}
             />
           </div>
+          )}
+
+          {/* Code/Preview resize handle */}
+          {!expandedPanel && (
+            <div
+              className="shrink-0 cursor-row-resize h-[5px]"
+              style={{ background: "var(--border-dim)", position: "relative" }}
+              onMouseDown={(e) => { e.preventDefault(); isDraggingCodeSplit.current = true; }}
+            >
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-[3px]" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
+            </div>
+          )}
 
           {/* Rendered Preview */}
-          <div className="flex flex-col h-1/2">
+          {expandedPanel !== "code" && (
+          <div className="flex flex-col" style={{ height: expandedPanel === "preview" ? "100%" : `${100 - codeSplit}%` }}>
             <div
-              className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+              className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <span>Preview</span>
+              <button onClick={() => setExpandedPanel(expandedPanel === "preview" ? null : "preview")}
+                className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: expandedPanel === "preview" ? "var(--accent-dim)" : "transparent" }}>
+                {expandedPanel === "preview" ? "⊟" : "⊞"}
+              </button>
             </div>
             <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
               {(rawCodeMode ? rawCode : liveCode) ? (
@@ -949,6 +983,7 @@ export default function MdCanvas({
               )}
             </div>
           </div>
+          )}
         </div>
       )}
 
