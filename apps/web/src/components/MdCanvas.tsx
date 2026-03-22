@@ -627,7 +627,13 @@ export default function MdCanvas({
       >
         <div className="flex items-center gap-3">
           <span className="font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-            Mermaid Editor
+            Mermaid
+          </span>
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
+            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+            {rawCodeMode
+              ? (rawCode.startsWith("sequenceDiagram") ? "Sequence" : rawCode.startsWith("pie") ? "Pie" : rawCode.startsWith("gantt") ? "Gantt" : rawCode.startsWith("classDiagram") ? "Class" : rawCode.startsWith("stateDiagram") ? "State" : "Diagram")
+              : "Flowchart"}
           </span>
           <button
             onClick={() => setShowGuide(!showGuide)}
@@ -1116,14 +1122,29 @@ export default function MdCanvas({
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <span>Code</span>
-              <span style={{ color: "var(--text-faint)" }}>live</span>
+              <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>editable</span>
             </div>
-            <pre
-              className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed"
-              style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0 }}
-            >
-              {rawCodeMode ? rawCode : liveCode}
-            </pre>
+            <textarea
+              className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed resize-none outline-none"
+              style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0, border: "none" }}
+              value={rawCodeMode ? rawCode : liveCode}
+              onChange={(e) => {
+                const newCode = e.target.value;
+                if (rawCodeMode) {
+                  setRawCode(newCode);
+                } else {
+                  // Parse edited code back into canvas nodes
+                  const result = mermaidToCanvas(newCode);
+                  if (result && result.nodes.length > 0) {
+                    setNodes(result.nodes);
+                    setEdges(result.edges);
+                    setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
+                    nextId = result.nodes.length + 1;
+                  }
+                }
+              }}
+              spellCheck={false}
+            />
           </div>
 
           {/* Rendered Preview */}

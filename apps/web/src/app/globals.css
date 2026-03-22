@@ -623,6 +623,165 @@ textarea::selection {
 }
 
 /* ========================================
+   mdcore.ai landing styles
+   ======================================== */
+
+/* Dot grid background */
+.mdcore-dot-grid {
+  background-image: radial-gradient(circle, rgba(251,146,60,0.18) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Gradient text */
+.mdcore-gradient-text {
+  background: linear-gradient(135deg, #fb923c 0%, #f472b6 50%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animated glow border */
+@keyframes glow-rotate {
+  0% { --glow-angle: 0deg; }
+  100% { --glow-angle: 360deg; }
+}
+
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.mdcore-glow-border {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.mdcore-glow-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 40%,
+    #fb923c 50%,
+    #f472b6 55%,
+    #c4b5fd 60%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: glow-rotate 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Glow shadow pulse */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(251,146,60,0.08), 0 0 60px rgba(251,146,60,0.04); }
+  50% { box-shadow: 0 0 30px rgba(251,146,60,0.12), 0 0 80px rgba(251,146,60,0.06); }
+}
+
+.mdcore-glow-shadow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Card hover lift */
+.mdcore-card-hover {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mdcore-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(251,146,60,0.3) !important;
+  box-shadow: 0 8px 32px rgba(251,146,60,0.06);
+}
+
+/* Gradient line */
+.mdcore-gradient-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(251,146,60,0.4), rgba(196,181,253,0.4), transparent);
+}
+
+/* Bento grid */
+.mdcore-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+}
+
+.mdcore-bento > :first-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .mdcore-bento {
+    grid-template-columns: 1fr;
+  }
+  .mdcore-bento > :first-child {
+    grid-column: 1;
+  }
+}
+
+/* Fade in up animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mdcore-fade-in {
+  animation: fade-in-up 0.6s ease-out both;
+}
+
+/* Staggered children */
+.mdcore-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.mdcore-stagger > *:nth-child(2) { animation-delay: 80ms; }
+.mdcore-stagger > *:nth-child(3) { animation-delay: 160ms; }
+.mdcore-stagger > *:nth-child(4) { animation-delay: 240ms; }
+
+/* Accent border left */
+.mdcore-accent-left {
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.mdcore-accent-left:hover {
+  border-left-color: var(--accent);
+}
+
+/* Tag pill */
+.mdcore-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
+/* Noise texture overlay (subtle) */
+.mdcore-noise::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.4;
+}
+
+/* ========================================
    Print styles (PDF export)
    ======================================== */
 @media print {
