@@ -632,61 +632,9 @@ textarea::selection {
   background-size: 24px 24px;
 }
 
-/* Gradient text */
-.mdcore-gradient-text {
-  background: linear-gradient(135deg, #fb923c 0%, #f472b6 50%, #c4b5fd 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Animated glow border */
-@keyframes glow-rotate {
-  0% { --glow-angle: 0deg; }
-  100% { --glow-angle: 360deg; }
-}
-
-@property --glow-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.mdcore-glow-border {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.mdcore-glow-border::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--glow-angle),
-    transparent 40%,
-    #fb923c 50%,
-    #f472b6 55%,
-    #c4b5fd 60%,
-    transparent 70%
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: glow-rotate 4s linear infinite;
-  pointer-events: none;
-}
-
-/* Glow shadow pulse */
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(251,146,60,0.08), 0 0 60px rgba(251,146,60,0.04); }
-  50% { box-shadow: 0 0 30px rgba(251,146,60,0.12), 0 0 80px rgba(251,146,60,0.06); }
-}
-
-.mdcore-glow-shadow {
-  animation: glow-pulse 3s ease-in-out infinite;
+/* Simple accent border */
+.mdcore-accent-border {
+  border: 1px solid rgba(251,146,60,0.3);
 }
 
 /* Card hover lift */
@@ -700,10 +648,10 @@ textarea::selection {
   box-shadow: 0 8px 32px rgba(251,146,60,0.06);
 }
 
-/* Gradient line */
-.mdcore-gradient-line {
+/* Divider line */
+.mdcore-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(251,146,60,0.4), rgba(196,181,253,0.4), transparent);
+  background: var(--border-dim);
 }
 
 /* Bento grid */
@@ -770,15 +718,52 @@ textarea::selection {
   border-radius: 100px;
 }
 
-/* Noise texture overlay (subtle) */
-.mdcore-noise::after {
+/* Pipeline step connector */
+.mdcore-pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  position: relative;
+}
+
+.mdcore-pipeline-step {
+  position: relative;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Horizontal line connecting steps */
+.mdcore-pipeline-step:not(:last-child)::after {
   content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 50;
-  opacity: 0.4;
+  position: absolute;
+  top: 26px;
+  left: calc(16px + 54px);
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.mdcore-pipeline-step:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  left: 0;
+  width: 16px;
+  height: 1px;
+  background: var(--border);
+}
+
+@media (max-width: 768px) {
+  .mdcore-pipeline {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .mdcore-pipeline-step::after,
+  .mdcore-pipeline-step::before {
+    display: none;
+  }
 }
 
 /* ========================================

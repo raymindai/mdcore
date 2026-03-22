@@ -91,6 +91,14 @@ function DeleteBtn({ onClick }: { onClick: () => void }) {
 function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: string) => void }) {
   const type = code.startsWith("sequenceDiagram") ? "sequence"
     : code.startsWith("pie") ? "pie"
+    : code.startsWith("gantt") ? "gantt"
+    : code.startsWith("erDiagram") ? "er"
+    : code.startsWith("mindmap") ? "mindmap"
+    : code.startsWith("timeline") ? "timeline"
+    : code.startsWith("journey") ? "journey"
+    : code.startsWith("quadrantChart") ? "quadrant"
+    : code.startsWith("xychart") ? "xychart"
+    : code.startsWith("kanban") ? "kanban"
     : "raw";
 
   if (type === "pie") {
@@ -288,7 +296,459 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     );
   }
 
-  // Fallback: raw code editor (gantt, class, state, etc.)
+  // ─── Gantt ───
+  if (type === "gantt" || code.startsWith("gantt")) {
+    const titleMatch = code.match(/title\s+(.+)/);
+    const ganttTitle = titleMatch?.[1] || "";
+    const dateFormat = code.match(/dateFormat\s+(.+)/)?.[1] || "YYYY-MM-DD";
+    const sections: { name: string; tasks: { name: string; status: string; date: string }[] }[] = [];
+    let currentSection = { name: "Default", tasks: [] as { name: string; status: string; date: string }[] };
+    code.split("\n").forEach(line => {
+      const secMatch = line.match(/^\s*section\s+(.+)/);
+      if (secMatch) {
+        if (currentSection.tasks.length > 0 || currentSection.name !== "Default") sections.push(currentSection);
+        currentSection = { name: secMatch[1], tasks: [] };
+        return;
+      }
+      const taskMatch = line.match(/^\s+(.+?)\s*:\s*(.+)/);
+      if (taskMatch && !line.includes("title") && !line.includes("dateFormat")) {
+        const parts = taskMatch[2].split(",").map(s => s.trim());
+        currentSection.tasks.push({ name: taskMatch[1], status: parts[0] || "", date: parts.slice(1).join(", ") || "" });
+      }
+    });
+    if (currentSection.tasks.length > 0 || sections.length === 0) sections.push(currentSection);
+
+    const rebuild = () => {
+      let c = `gantt\n    title ${ganttTitle}\n    dateFormat ${dateFormat}\n`;
+      sections.forEach(s => {
+        c += `    section ${s.name}\n`;
+        s.tasks.forEach(t => { c += `    ${t.name} :${t.status}${t.date ? ", " + t.date : ""}\n`; });
+      });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Gantt Chart</SectionTitle>
+        <input value={ganttTitle} onChange={(e) => { const t = e.target.value; code = code.replace(/title\s+.+/, `title ${t}`); onChange(code); }}
+          className={`w-full ${inputStyle} font-semibold`} style={inputCSS} placeholder="Chart title" />
+        {sections.map((sec, si) => (
+          <div key={si} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 rounded" style={{ background: PIE_COLORS[si % PIE_COLORS.length] }} />
+              <input value={sec.name} onChange={(e) => { sections[si].name = e.target.value; rebuild(); }}
+                className="bg-transparent outline-none text-sm font-semibold" style={{ color: "var(--text-primary)" }}
+                placeholder="Section name" />
+              <DeleteBtn onClick={() => { sections.splice(si, 1); rebuild(); }} />
+            </div>
+            {sec.tasks.map((task, ti) => (
+              <div key={ti} className="flex gap-2 items-center ml-3 p-2" style={cardCSS}>
+                <input value={task.name} onChange={(e) => { sections[si].tasks[ti].name = e.target.value; rebuild(); }}
+                  className="flex-1 bg-transparent outline-none text-xs" style={{ color: "var(--text-primary)" }} placeholder="Task" />
+                <input value={task.status} onChange={(e) => { sections[si].tasks[ti].status = e.target.value; rebuild(); }}
+                  className="w-16 bg-transparent outline-none text-xs font-mono" style={{ color: "var(--accent)" }} placeholder="status" />
+                <input value={task.date} onChange={(e) => { sections[si].tasks[ti].date = e.target.value; rebuild(); }}
+                  className="w-32 bg-transparent outline-none text-xs font-mono" style={{ color: "var(--text-muted)" }} placeholder="date, duration" />
+                <DeleteBtn onClick={() => { sections[si].tasks.splice(ti, 1); rebuild(); }} />
+              </div>
+            ))}
+            <button onClick={() => { sec.tasks.push({ name: "New task", status: "", date: "2026-01-01, 3d" }); rebuild(); }}
+              className="ml-3 text-[10px] px-3 py-1 rounded" style={accentBtnCSS}>+ Task</button>
+          </div>
+        ))}
+        <AddButton onClick={() => { sections.push({ name: "New Section", tasks: [{ name: "Task", status: "", date: "2026-01-01, 5d" }] }); rebuild(); }}>+ Add Section</AddButton>
+      </div>
+    );
+  }
+
+  // ─── ER Diagram ───
+  if (code.startsWith("erDiagram")) {
+    const entities = [...code.matchAll(/([\w]+)\s*\{([^}]*)\}/g)].map(m => ({
+      name: m[1],
+      attrs: m[2].trim().split("\n").map(a => a.trim()).filter(Boolean).map(a => { const p = a.split(/\s+/); return { type: p[0] || "string", name: p[1] || "" }; })
+    }));
+    const rels = [...code.matchAll(/([\w]+)\s*(\|[o|]{1,2}--[o|]{1,2}\||\}[o|]--[o|]\{|[|}{o]+-*-*[|}{o]+)\s*([\w]+)\s*:\s*"?([^"\n]*)"?/g)].map(m => ({
+      from: m[1], rel: m[2], to: m[3], label: m[4]
+    }));
+
+    const rebuild = (ents: typeof entities, rs: typeof rels) => {
+      let c = "erDiagram\n";
+      ents.forEach(e => { c += `    ${e.name} {\n`; e.attrs.forEach(a => { c += `        ${a.type} ${a.name}\n`; }); c += `    }\n`; });
+      rs.forEach(r => { c += `    ${r.from} ${r.rel} ${r.to} : "${r.label}"\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>ER Diagram — Entities ({entities.length})</SectionTitle>
+        {entities.map((ent, ei) => (
+          <div key={ei} className="p-3 space-y-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[ei % PIE_COLORS.length]}` }}>
+            <div className="flex items-center gap-2">
+              <input value={ent.name} onChange={(e) => { entities[ei].name = e.target.value; rebuild(entities, rels); }}
+                className="bg-transparent outline-none text-sm font-bold" style={{ color: "var(--text-primary)" }} />
+              <DeleteBtn onClick={() => rebuild(entities.filter((_, j) => j !== ei), rels)} />
+            </div>
+            {ent.attrs.map((attr, ai) => (
+              <div key={ai} className="flex gap-2 ml-2">
+                <input value={attr.type} onChange={(e) => { entities[ei].attrs[ai].type = e.target.value; rebuild(entities, rels); }}
+                  className="w-20 text-xs font-mono bg-transparent outline-none" style={{ color: "var(--accent)" }} placeholder="type" />
+                <input value={attr.name} onChange={(e) => { entities[ei].attrs[ai].name = e.target.value; rebuild(entities, rels); }}
+                  className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="name" />
+                <DeleteBtn onClick={() => { entities[ei].attrs.splice(ai, 1); rebuild(entities, rels); }} />
+              </div>
+            ))}
+            <button onClick={() => { ent.attrs.push({ type: "string", name: "field" }); rebuild(entities, rels); }}
+              className="ml-2 text-[10px] px-2 py-1 rounded" style={accentBtnCSS}>+ Attr</button>
+          </div>
+        ))}
+        <AddButton onClick={() => rebuild([...entities, { name: "Entity", attrs: [{ type: "int", name: "id" }] }], rels)}>+ Add Entity</AddButton>
+
+        <SectionTitle>Relationships ({rels.length})</SectionTitle>
+        {rels.map((r, ri) => (
+          <div key={ri} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <select value={r.from} onChange={(e) => { rels[ri].from = e.target.value; rebuild(entities, rels); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {entities.map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
+            </select>
+            <input value={r.rel} onChange={(e) => { rels[ri].rel = e.target.value; rebuild(entities, rels); }}
+              className="w-20 text-xs font-mono text-center bg-transparent outline-none" style={{ color: "var(--accent)" }} />
+            <select value={r.to} onChange={(e) => { rels[ri].to = e.target.value; rebuild(entities, rels); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {entities.map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
+            </select>
+            <input value={r.label} onChange={(e) => { rels[ri].label = e.target.value; rebuild(entities, rels); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="label" />
+            <DeleteBtn onClick={() => rebuild(entities, rels.filter((_, j) => j !== ri))} />
+          </div>
+        ))}
+        <AddButton onClick={() => rebuild(entities, [...rels, { from: entities[0]?.name || "A", rel: "||--o{", to: entities[1]?.name || "B", label: "has" }])}>+ Add Relationship</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Mindmap ───
+  if (code.startsWith("mindmap")) {
+    const lines = code.split("\n").slice(1).filter(l => l.trim());
+    const items = lines.map(l => {
+      const indent = l.search(/\S/);
+      const text = l.trim();
+      return { indent: Math.floor(indent / 2), text };
+    });
+    if (items.length === 0) items.push({ indent: 0, text: "Central Topic" });
+
+    const rebuild = (itms: typeof items) => {
+      let c = "mindmap\n";
+      itms.forEach(i => { c += "  ".repeat(i.indent + 1) + i.text + "\n"; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Mindmap</SectionTitle>
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2 items-center" style={{ marginLeft: item.indent * 20 }}>
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[item.indent % PIE_COLORS.length] }} />
+            <input value={item.text} onChange={(e) => { items[i].text = e.target.value; rebuild(items); }}
+              className="flex-1 bg-transparent outline-none text-sm" style={{ color: "var(--text-primary)" }} />
+            <button onMouseDown={() => { if (item.indent > 0) { items[i].indent--; rebuild(items); } }}
+              className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)" }}>◀</button>
+            <button onMouseDown={() => { items[i].indent++; rebuild(items); }}
+              className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)" }}>▶</button>
+            <DeleteBtn onClick={() => rebuild(items.filter((_, j) => j !== i))} />
+          </div>
+        ))}
+        <AddButton onClick={() => rebuild([...items, { indent: 1, text: "New topic" }])}>+ Add Topic</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Timeline ───
+  if (code.startsWith("timeline")) {
+    const titleMatch = code.match(/title\s+(.+)/);
+    const tlTitle = titleMatch?.[1] || "";
+    const events: { period: string; items: string[] }[] = [];
+    let current: { period: string; items: string[] } | null = null;
+    code.split("\n").forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === "timeline" || trimmed.startsWith("title")) return;
+      if (!line.startsWith("    ") && !line.startsWith("\t\t")) {
+        if (current) events.push(current);
+        current = { period: trimmed, items: [] };
+      } else if (current) {
+        current.items.push(trimmed.replace(/^:\s*/, ""));
+      }
+    });
+    if (current) events.push(current);
+    if (events.length === 0) events.push({ period: "2026", items: ["Event"] });
+
+    const rebuild = () => {
+      let c = `timeline\n    title ${tlTitle}\n`;
+      events.forEach(e => {
+        c += `    ${e.period}\n`;
+        e.items.forEach(item => { c += `        : ${item}\n`; });
+      });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Timeline</SectionTitle>
+        <input value={tlTitle} onChange={(e) => { code = code.replace(/title\s+.+/, `title ${e.target.value}`); onChange(code); }}
+          className={`w-full ${inputStyle} font-semibold`} style={inputCSS} placeholder="Timeline title" />
+        {events.map((ev, ei) => (
+          <div key={ei} className="p-3 space-y-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[ei % PIE_COLORS.length]}` }}>
+            <div className="flex items-center gap-2">
+              <input value={ev.period} onChange={(e) => { events[ei].period = e.target.value; rebuild(); }}
+                className="bg-transparent outline-none text-sm font-bold" style={{ color: PIE_COLORS[ei % PIE_COLORS.length] }} placeholder="Period" />
+              <DeleteBtn onClick={() => { events.splice(ei, 1); rebuild(); }} />
+            </div>
+            {ev.items.map((item, ii) => (
+              <div key={ii} className="flex gap-2 ml-3">
+                <input value={item} onChange={(e) => { events[ei].items[ii] = e.target.value; rebuild(); }}
+                  className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
+                <DeleteBtn onClick={() => { events[ei].items.splice(ii, 1); rebuild(); }} />
+              </div>
+            ))}
+            <button onClick={() => { ev.items.push("New event"); rebuild(); }}
+              className="ml-3 text-[10px] px-2 py-1 rounded" style={accentBtnCSS}>+ Event</button>
+          </div>
+        ))}
+        <AddButton onClick={() => { events.push({ period: "Period", items: ["Event"] }); rebuild(); }}>+ Add Period</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Journey ───
+  if (code.startsWith("journey")) {
+    const titleMatch = code.match(/title\s+(.+)/);
+    const jTitle = titleMatch?.[1] || "";
+    const sections: { name: string; tasks: { name: string; rating: number; actors: string }[] }[] = [];
+    let currentSec = { name: "", tasks: [] as { name: string; rating: number; actors: string }[] };
+    code.split("\n").forEach(line => {
+      const secMatch = line.match(/^\s*section\s+(.+)/);
+      if (secMatch) {
+        if (currentSec.tasks.length > 0) sections.push(currentSec);
+        currentSec = { name: secMatch[1], tasks: [] };
+        return;
+      }
+      const taskMatch = line.match(/^\s+(.+?)\s*:\s*(\d+)\s*(?::\s*(.+))?/);
+      if (taskMatch && !line.includes("title")) {
+        currentSec.tasks.push({ name: taskMatch[1].trim(), rating: parseInt(taskMatch[2]), actors: taskMatch[3]?.trim() || "" });
+      }
+    });
+    if (currentSec.tasks.length > 0) sections.push(currentSec);
+    if (sections.length === 0) sections.push({ name: "Section", tasks: [{ name: "Task", rating: 5, actors: "User" }] });
+
+    const rebuild = () => {
+      let c = `journey\n    title ${jTitle}\n`;
+      sections.forEach(s => {
+        c += `    section ${s.name}\n`;
+        s.tasks.forEach(t => { c += `      ${t.name}: ${t.rating}${t.actors ? ": " + t.actors : ""}\n`; });
+      });
+      onChange(c.trim());
+    };
+
+    const ratingColor = (r: number) => r >= 4 ? "#4ade80" : r >= 3 ? "#fbbf24" : "#ef4444";
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>User Journey</SectionTitle>
+        <input value={jTitle} onChange={(e) => { code = code.replace(/title\s+.+/, `title ${e.target.value}`); onChange(code); }}
+          className={`w-full ${inputStyle} font-semibold`} style={inputCSS} placeholder="Journey title" />
+        {sections.map((sec, si) => (
+          <div key={si} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 rounded" style={{ background: PIE_COLORS[si % PIE_COLORS.length] }} />
+              <input value={sec.name} onChange={(e) => { sections[si].name = e.target.value; rebuild(); }}
+                className="bg-transparent outline-none text-sm font-semibold" style={{ color: "var(--text-primary)" }} />
+              <DeleteBtn onClick={() => { sections.splice(si, 1); rebuild(); }} />
+            </div>
+            {sec.tasks.map((task, ti) => (
+              <div key={ti} className="flex gap-2 items-center ml-3 p-2" style={cardCSS}>
+                <input value={task.name} onChange={(e) => { sections[si].tasks[ti].name = e.target.value; rebuild(); }}
+                  className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="Task" />
+                <div className="flex items-center gap-1">
+                  {[1,2,3,4,5].map(r => (
+                    <button key={r} onMouseDown={() => { sections[si].tasks[ti].rating = r; rebuild(); }}
+                      className="w-5 h-5 rounded-full text-[9px] font-bold"
+                      style={{ background: task.rating >= r ? ratingColor(r) : "var(--surface)", color: task.rating >= r ? "#000" : "var(--text-faint)", border: "1px solid var(--border)" }}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <input value={task.actors} onChange={(e) => { sections[si].tasks[ti].actors = e.target.value; rebuild(); }}
+                  className="w-20 text-xs bg-transparent outline-none" style={{ color: "var(--text-muted)" }} placeholder="actors" />
+                <DeleteBtn onClick={() => { sections[si].tasks.splice(ti, 1); rebuild(); }} />
+              </div>
+            ))}
+            <button onClick={() => { sec.tasks.push({ name: "New task", rating: 3, actors: "" }); rebuild(); }}
+              className="ml-3 text-[10px] px-2 py-1 rounded" style={accentBtnCSS}>+ Task</button>
+          </div>
+        ))}
+        <AddButton onClick={() => { sections.push({ name: "Section", tasks: [{ name: "Task", rating: 5, actors: "" }] }); rebuild(); }}>+ Add Section</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Quadrant Chart ───
+  if (code.startsWith("quadrantChart")) {
+    const title = code.match(/title\s+(.+)/)?.[1] || "";
+    const xLabel = code.match(/x-axis\s+"([^"]+)"/)?.[1] || "";
+    const yLabel = code.match(/y-axis\s+"([^"]+)"/)?.[1] || "";
+    const xRight = code.match(/x-axis\s+"[^"]+"\s+-->\s+"([^"]+)"/)?.[1] || "";
+    const yTop = code.match(/y-axis\s+"[^"]+"\s+-->\s+"([^"]+)"/)?.[1] || "";
+    const points = [...code.matchAll(/([\w\s]+?):\s*\[([0-9.]+),\s*([0-9.]+)\]/g)].map(m => ({
+      name: m[1].trim(), x: parseFloat(m[2]), y: parseFloat(m[3])
+    }));
+
+    const rebuild = () => {
+      let c = `quadrantChart\n    title ${title}\n    x-axis "${xLabel}" --> "${xRight}"\n    y-axis "${yLabel}" --> "${yTop}"\n`;
+      points.forEach(p => { c += `    ${p.name}: [${p.x}, ${p.y}]\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Quadrant Chart</SectionTitle>
+        <input value={title} onChange={(e) => { code = code.replace(/title\s+.+/, `title ${e.target.value}`); onChange(code); }}
+          className={`w-full ${inputStyle} font-semibold`} style={inputCSS} placeholder="Title" />
+        <div className="grid grid-cols-2 gap-2">
+          <input value={xLabel} onChange={(e) => { code = code.replace(/x-axis\s+"[^"]+"/, `x-axis "${e.target.value}"`); onChange(code); }}
+            className={`${inputStyle} text-xs`} style={inputCSS} placeholder="X-axis left" />
+          <input value={xRight} onChange={(e) => { code = code.replace(/-->\s+"[^"]+"/, `--> "${e.target.value}"`); onChange(code); }}
+            className={`${inputStyle} text-xs`} style={inputCSS} placeholder="X-axis right" />
+        </div>
+        <SectionTitle>Data Points ({points.length})</SectionTitle>
+        {points.map((p, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <div className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+            <input value={p.name} onChange={(e) => { points[i].name = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
+            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>x:</span>
+            <input type="number" step="0.1" min="0" max="1" value={p.x} onChange={(e) => { points[i].x = parseFloat(e.target.value) || 0; rebuild(); }}
+              className="w-14 text-xs font-mono rounded px-1 py-0.5 outline-none" style={inputCSS} />
+            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>y:</span>
+            <input type="number" step="0.1" min="0" max="1" value={p.y} onChange={(e) => { points[i].y = parseFloat(e.target.value) || 0; rebuild(); }}
+              className="w-14 text-xs font-mono rounded px-1 py-0.5 outline-none" style={inputCSS} />
+            <DeleteBtn onClick={() => rebuild()} />
+          </div>
+        ))}
+        <AddButton onClick={() => { points.push({ name: "Item", x: 0.5, y: 0.5 }); rebuild(); }}>+ Add Point</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Kanban ───
+  if (code.startsWith("kanban")) {
+    const cols: { name: string; items: string[] }[] = [];
+    let current: { name: string; items: string[] } | null = null;
+    code.split("\n").forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === "kanban") return;
+      if (!line.startsWith("  ") && !line.startsWith("\t")) {
+        if (current) cols.push(current);
+        current = { name: trimmed, items: [] };
+      } else if (current) {
+        current.items.push(trimmed);
+      }
+    });
+    if (current) cols.push(current);
+    if (cols.length === 0) cols.push({ name: "To Do", items: ["Task 1"] });
+
+    const rebuild = () => {
+      let c = "kanban\n";
+      cols.forEach(col => {
+        c += `  ${col.name}\n`;
+        col.items.forEach(item => { c += `    ${item}\n`; });
+      });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Kanban Board</SectionTitle>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {cols.map((col, ci) => (
+            <div key={ci} className="min-w-[180px] p-3 space-y-2 shrink-0" style={{ ...cardCSS, borderTop: `3px solid ${PIE_COLORS[ci % PIE_COLORS.length]}` }}>
+              <div className="flex items-center gap-1">
+                <input value={col.name} onChange={(e) => { cols[ci].name = e.target.value; rebuild(); }}
+                  className="bg-transparent outline-none text-xs font-bold flex-1" style={{ color: "var(--text-primary)" }} />
+                <DeleteBtn onClick={() => { cols.splice(ci, 1); rebuild(); }} />
+              </div>
+              {col.items.map((item, ii) => (
+                <div key={ii} className="flex gap-1 items-center p-1.5 rounded" style={{ background: "var(--surface)" }}>
+                  <input value={item} onChange={(e) => { cols[ci].items[ii] = e.target.value; rebuild(); }}
+                    className="flex-1 text-[11px] bg-transparent outline-none" style={{ color: "var(--text-secondary)" }} />
+                  <button onMouseDown={() => { cols[ci].items.splice(ii, 1); rebuild(); }}
+                    className="text-[9px]" style={{ color: "var(--text-faint)" }}>×</button>
+                </div>
+              ))}
+              <button onClick={() => { col.items.push("New item"); rebuild(); }}
+                className="w-full text-[10px] py-1 rounded" style={{ color: "var(--text-faint)", border: "1px dashed var(--border)" }}>+</button>
+            </div>
+          ))}
+          <button onClick={() => { cols.push({ name: "Column", items: [] }); rebuild(); }}
+            className="min-w-[60px] flex items-center justify-center rounded-lg text-sm"
+            style={accentBtnCSS}>+</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── XY Chart ───
+  if (code.startsWith("xychart-beta")) {
+    const title = code.match(/title\s+"([^"]+)"/)?.[1] || "";
+    const xVals = code.match(/x-axis\s+\[([^\]]+)\]/)?.[1]?.split(",").map(s => s.trim().replace(/"/g, "")) || [];
+    const lines = [...code.matchAll(/(?:line|bar)\s+\[([^\]]+)\]/g)].map((m, i) => ({
+      type: code.split("\n").find(l => l.includes(m[1]))?.trim().startsWith("bar") ? "bar" : "line",
+      values: m[1].split(",").map(s => parseFloat(s.trim()))
+    }));
+
+    const rebuild = () => {
+      let c = `xychart-beta\n    title "${title}"\n    x-axis [${xVals.map(v => `"${v}"`).join(", ")}]\n`;
+      lines.forEach(l => { c += `    ${l.type} [${l.values.join(", ")}]\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>XY Chart</SectionTitle>
+        <input value={title} onChange={(e) => { code = code.replace(/title\s+"[^"]+"/, `title "${e.target.value}"`); onChange(code); }}
+          className={`w-full ${inputStyle} font-semibold`} style={inputCSS} placeholder="Title" />
+        <SectionTitle>X-Axis Labels</SectionTitle>
+        <div className="flex gap-1 flex-wrap">
+          {xVals.map((v, i) => (
+            <input key={i} value={v} onChange={(e) => { xVals[i] = e.target.value; rebuild(); }}
+              className="w-16 text-xs font-mono rounded px-2 py-1 outline-none" style={inputCSS} />
+          ))}
+          <button onClick={() => { xVals.push(`v${xVals.length + 1}`); rebuild(); }}
+            className="text-[10px] px-2 py-1 rounded" style={accentBtnCSS}>+</button>
+        </div>
+        <SectionTitle>Data Series ({lines.length})</SectionTitle>
+        {lines.map((l, li) => (
+          <div key={li} className="p-2 space-y-1" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[li % PIE_COLORS.length]}` }}>
+            <div className="flex items-center gap-2">
+              <select value={l.type} onChange={(e) => { lines[li].type = e.target.value; rebuild(); }}
+                className="text-xs rounded px-2 py-1 outline-none" style={inputCSS}>
+                <option value="line">Line</option>
+                <option value="bar">Bar</option>
+              </select>
+              <DeleteBtn onClick={() => { lines.splice(li, 1); rebuild(); }} />
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {l.values.map((v, vi) => (
+                <input key={vi} type="number" value={v} onChange={(e) => { lines[li].values[vi] = parseFloat(e.target.value) || 0; rebuild(); }}
+                  className="w-14 text-xs font-mono rounded px-1 py-0.5 outline-none" style={inputCSS} />
+              ))}
+            </div>
+          </div>
+        ))}
+        <AddButton onClick={() => { lines.push({ type: "bar", values: xVals.map(() => 0) }); rebuild(); }}>+ Add Series</AddButton>
+      </div>
+    );
+  }
+
+  // Fallback: raw code editor (class, state, git, sankey, block, packet, architecture, requirement)
   return (
     <div className="flex flex-col flex-1">
       <div className="p-5">
@@ -632,7 +1092,24 @@ export default function MdCanvas({
           <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
             style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
             {rawCodeMode
-              ? (rawCode.startsWith("sequenceDiagram") ? "Sequence" : rawCode.startsWith("pie") ? "Pie" : rawCode.startsWith("gantt") ? "Gantt" : rawCode.startsWith("classDiagram") ? "Class" : rawCode.startsWith("stateDiagram") ? "State" : "Diagram")
+              ? rawCode.startsWith("sequenceDiagram") ? "Sequence"
+              : rawCode.startsWith("pie") ? "Pie"
+              : rawCode.startsWith("gantt") ? "Gantt"
+              : rawCode.startsWith("erDiagram") ? "ER"
+              : rawCode.startsWith("mindmap") ? "Mindmap"
+              : rawCode.startsWith("timeline") ? "Timeline"
+              : rawCode.startsWith("journey") ? "Journey"
+              : rawCode.startsWith("quadrantChart") ? "Quadrant"
+              : rawCode.startsWith("xychart") ? "XY Chart"
+              : rawCode.startsWith("kanban") ? "Kanban"
+              : rawCode.startsWith("classDiagram") ? "Class"
+              : rawCode.startsWith("stateDiagram") ? "State"
+              : rawCode.startsWith("gitGraph") ? "Git"
+              : rawCode.startsWith("sankey") ? "Sankey"
+              : rawCode.startsWith("block") ? "Block"
+              : rawCode.startsWith("architecture") ? "Architecture"
+              : rawCode.startsWith("requirementDiagram") ? "Requirement"
+              : "Diagram"
               : "Flowchart"}
           </span>
           <button
