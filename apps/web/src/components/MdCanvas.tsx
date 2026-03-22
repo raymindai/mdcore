@@ -136,8 +136,9 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
   }
 
   if (type === "sequence") {
-    const participants = [...code.matchAll(/participant\s+(\w+)/g)].map(m => m[1]);
-    const messages = [...code.matchAll(/(\w+)(--?>>?|--?\)|--?>)(\w+)\s*:\s*(.+)/g)].map(m => ({
+    // Support participant names with dots, dashes, etc (e.g. mdfy.cc)
+    const participants = [...code.matchAll(/participant\s+([\w.:-]+)/g)].map(m => m[1]);
+    const messages = [...code.matchAll(/([\w.:-]+)(--?>>?|--?\)|--?>)([\w.:-]+)\s*:\s*(.+)/g)].map(m => ({
       from: m[1], arrow: m[2], to: m[3], text: m[4].trim()
     }));
 
@@ -337,6 +338,11 @@ export default function MdCanvas({
           clusterBkg: "#18181b",
           titleColor: "#fafafa",
           edgeLabelBackground: "#18181b",
+          pie1: "#fb923c",
+          pie2: "#60a5fa",
+          pie3: "#4ade80",
+          pie4: "#c4b5fd",
+          pie5: "#f472b6",
         },
         fontFamily: "ui-monospace, monospace",
         fontSize: 13,
@@ -700,7 +706,7 @@ export default function MdCanvas({
       )}
 
       {/* Guide panel */}
-      {showGuide && (
+      {showGuide && !rawCodeMode && (
         <div
           className="px-4 py-3 text-xs overflow-auto"
           style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)", maxHeight: 200 }}
