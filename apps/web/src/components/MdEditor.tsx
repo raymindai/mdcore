@@ -358,7 +358,10 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
+  const [sidebarWidth, setSidebarWidth] = useState(200);
+  const isDraggingSidebar = useRef(false);
+  const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   const splitPercentRef = useRef(50);
   const isDraggingSplit = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -1564,11 +1567,14 @@ export default function MdEditor() {
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => setShowSidebar(!showSidebar)}
-            className="text-[13px] px-1.5 py-0.5 rounded transition-colors shrink-0"
+            className="px-1.5 py-1 rounded transition-colors shrink-0"
             style={{ color: showSidebar ? "var(--accent)" : "var(--text-muted)", background: showSidebar ? "var(--accent-dim)" : "transparent" }}
             title="Toggle documents sidebar"
           >
-            ☰
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="1" y="2" width="14" height="12" rx="2" />
+              <line x1="5.5" y1="2" x2="5.5" y2="14" />
+            </svg>
           </button>
           <h1
             className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
@@ -1836,52 +1842,75 @@ export default function MdEditor() {
       )}
 
       {/* Main content wrapper (sidebar + editor/render) */}
-      <div className="flex flex-1 min-h-0">
+      <div
+        className="flex flex-1 min-h-0"
+        onMouseMove={(e) => {
+          if (isDraggingSidebar.current) {
+            const wrapper = e.currentTarget;
+            const rect = wrapper.getBoundingClientRect();
+            const w = Math.max(140, Math.min(400, e.clientX - rect.left));
+            setSidebarWidth(w);
+            const el = wrapper.querySelector('[data-pane="sidebar"]') as HTMLElement;
+            if (el) el.style.width = `${w}px`;
+          }
+        }}
+        onMouseUp={() => { isDraggingSidebar.current = false; }}
+        onClick={() => { if (docContextMenu) setDocContextMenu(null); }}
+      >
 
       {/* Sidebar */}
       {showSidebar && (
+        <>
         <div
           className="flex flex-col shrink-0 overflow-y-auto"
-          style={{ width: 200, borderRight: "1px solid var(--border-dim)", background: "var(--surface)" }}
+          data-pane="sidebar"
+          style={{ width: sidebarWidth, background: "var(--background)" }}
         >
-          <div className="p-3 space-y-1">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-                Documents
-              </span>
-              <button
-                onClick={addTab}
-                className="text-[10px] px-1.5 py-0.5 rounded"
-                style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
-              >
-                +
-              </button>
-            </div>
+          {/* Header — matches Markdown/Render headers */}
+          <div
+            className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+          >
+            <span>Documents</span>
+            <button
+              onClick={addTab}
+              className="text-[10px] px-1.5 py-0.5 rounded"
+              style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
+            >
+              + New
+            </button>
+          </div>
+          {/* Document list */}
+          <div className="p-2 space-y-0.5 flex-1">
             {tabs.map((tab) => (
               <div
                 key={tab.id}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-xs"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
                 style={{
-                  background: tab.id === activeTabId ? "var(--background)" : "transparent",
+                  background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                   color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
-                  border: tab.id === activeTabId ? "1px solid var(--border)" : "1px solid transparent",
                 }}
                 onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
+                }}
               >
+                <span className="text-[10px]" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }}>📄</span>
                 <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                {tabs.length > 1 && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] px-1 rounded shrink-0"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    ×
-                  </button>
-                )}
               </div>
             ))}
           </div>
         </div>
+        {/* Sidebar resize handle */}
+        <div
+          className="shrink-0 cursor-col-resize w-[5px]"
+          style={{ background: "var(--border-dim)", position: "relative" }}
+          onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
+        >
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
+        </div>
+        </>
       )}
 
       {/* Editor + Render area */}
@@ -2072,6 +2101,55 @@ export default function MdEditor() {
           </a>
         </div>
       </footer>
+
+      {/* Document context menu */}
+      {docContextMenu && (
+        <div
+          className="fixed rounded-lg shadow-xl py-1"
+          style={{
+            left: docContextMenu.x,
+            top: docContextMenu.y,
+            zIndex: 9999,
+            background: "var(--menu-bg)",
+            border: "1px solid var(--border)",
+            minWidth: 150,
+          }}
+        >
+          {[
+            { label: "Duplicate", action: () => {
+              const tab = tabs.find(t => t.id === docContextMenu.tabId);
+              if (tab) {
+                const id = `tab-${tabIdCounter++}`;
+                setTabs(prev => [...prev, { ...tab, id, title: tab.title + " (copy)" }]);
+              }
+            }},
+            { label: "Share", action: () => {
+              const tab = tabs.find(t => t.id === docContextMenu.tabId);
+              if (tab) { switchTab(tab.id); setTimeout(() => handleShare(), 100); }
+            }},
+            { label: "Download .md", action: () => {
+              const tab = tabs.find(t => t.id === docContextMenu.tabId);
+              if (tab) {
+                const blob = new Blob([tab.markdown], { type: "text/markdown" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = `${tab.title || "document"}.md`; a.click();
+                URL.revokeObjectURL(url);
+              }
+            }},
+            ...(tabs.length > 1 ? [{ label: "Delete", action: () => closeTab(docContextMenu.tabId), danger: true }] : []),
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => { item.action(); setDocContextMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-xs transition-colors"
+              style={{ color: (item as { danger?: boolean }).danger ? "#ef4444" : "var(--text-secondary)" }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* QR Code Modal */}
       {showQr && docId && (
