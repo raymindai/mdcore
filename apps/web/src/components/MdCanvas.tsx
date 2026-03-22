@@ -61,7 +61,33 @@ function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: nu
 // Mermaid theme colors for pie chart
 const PIE_COLORS = ["#fb923c", "#60a5fa", "#4ade80", "#c4b5fd", "#f472b6", "#fbbf24", "#f87171", "#38bdf8", "#a3e635", "#e879f9"];
 
-// Visual editor for sequence diagrams, pie charts, etc.
+// ─── Shared UI components ───
+const inputStyle = "px-3 py-2 text-sm rounded-lg outline-none transition-colors";
+const inputCSS: React.CSSProperties = { background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" };
+const cardCSS: React.CSSProperties = { background: "var(--background)", border: "1px solid var(--border)", borderRadius: 10 };
+const accentBtnCSS: React.CSSProperties = { background: "var(--accent-dim)", color: "var(--accent)", border: "1px dashed var(--accent)" };
+const delBtnCSS: React.CSSProperties = { color: "#ef4444", background: "rgba(239,68,68,0.1)", border: "none", borderRadius: 6 };
+const sectionLabel = "text-[10px] font-semibold uppercase tracking-wider mb-2";
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div className={sectionLabel} style={{ color: "var(--text-faint)" }}>{children}</div>;
+}
+
+function AddButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} className="text-xs px-4 py-2.5 rounded-lg w-full font-medium" style={accentBtnCSS}>
+      {children}
+    </button>
+  );
+}
+
+function DeleteBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button onMouseDown={onClick} className="px-2 py-1.5 rounded text-xs font-bold" style={delBtnCSS}>×</button>
+  );
+}
+
+// ─── Diagram form editors ───
 function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: string) => void }) {
   const type = code.startsWith("sequenceDiagram") ? "sequence"
     : code.startsWith("pie") ? "pie"
@@ -81,75 +107,76 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     };
 
     return (
-      <div className="p-4 space-y-4">
-        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-          Pie Chart
-        </div>
+      <div className="p-5 space-y-5 overflow-auto">
+        <SectionTitle>Title</SectionTitle>
         <input value={pieTitle} onChange={(e) => rebuild(e.target.value, items)}
-          className="w-full px-3 py-2 text-sm rounded-lg outline-none font-semibold"
-          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          className={`w-full ${inputStyle} font-semibold text-base`} style={inputCSS}
           placeholder="Chart title"
         />
-        {/* Visual bar representation */}
-        <div className="flex rounded-lg overflow-hidden h-6" style={{ border: "1px solid var(--border)" }}>
+
+        <SectionTitle>Distribution</SectionTitle>
+        <div className="flex rounded-xl overflow-hidden h-8" style={{ border: "1px solid var(--border)" }}>
           {items.map((item, i) => (
-            <div key={i} style={{ width: `${(item.value / total) * 100}%`, background: PIE_COLORS[i % PIE_COLORS.length], minWidth: 2 }}
-              title={`${item.label}: ${Math.round((item.value / total) * 100)}%`}
-            />
-          ))}
-        </div>
-        {/* Items */}
-        <div className="space-y-2">
-          {items.map((item, i) => (
-            <div key={i} className="flex gap-2 items-center rounded-lg p-2"
-              style={{ background: "var(--background)", border: "1px solid var(--border)" }}
+            <div key={i} className="relative group"
+              style={{ width: `${(item.value / total) * 100}%`, background: PIE_COLORS[i % PIE_COLORS.length], minWidth: 4, transition: "width 0.2s" }}
             >
-              <div className="w-4 h-4 rounded-full shrink-0"
-                style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-              <input value={item.label} onChange={(e) => {
-                const next = [...items]; next[i] = { ...next[i], label: e.target.value }; rebuild(pieTitle, next);
-              }}
-                className="flex-1 px-2 py-1 text-sm bg-transparent outline-none"
-                style={{ color: "var(--text-primary)" }}
-                placeholder="Label"
-              />
-              <input type="number" value={item.value} onChange={(e) => {
-                const next = [...items]; next[i] = { ...next[i], value: parseInt(e.target.value) || 0 }; rebuild(pieTitle, next);
-              }}
-                className="w-16 px-2 py-1 text-sm rounded outline-none text-right font-mono"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-              />
-              <span className="text-[10px] font-mono w-10 text-right" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>
+              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity">
                 {Math.round((item.value / total) * 100)}%
               </span>
-              <button onMouseDown={() => rebuild(pieTitle, items.filter((_, j) => j !== i))}
-                className="px-1.5 py-0.5 rounded text-xs" style={{ color: "#ef4444" }}>×</button>
             </div>
           ))}
         </div>
-        <button onClick={() => rebuild(pieTitle, [...items, { label: "New", value: 10 }])}
-          className="text-xs px-4 py-2 rounded-lg w-full"
-          style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px dashed var(--accent)" }}
-        >+ Add Slice</button>
+
+        <SectionTitle>Slices ({items.length})</SectionTitle>
+        <div className="space-y-2">
+          {items.map((item, i) => (
+            <div key={i} className="flex gap-3 items-center p-3" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+              <div className="w-3 h-3 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+              <input value={item.label} onChange={(e) => {
+                const next = [...items]; next[i] = { ...next[i], label: e.target.value }; rebuild(pieTitle, next);
+              }}
+                className="flex-1 bg-transparent outline-none text-sm" style={{ color: "var(--text-primary)" }}
+                placeholder="Label"
+              />
+              <div className="flex items-center gap-2">
+                <input type="range" min="1" max="100" value={item.value} onChange={(e) => {
+                  const next = [...items]; next[i] = { ...next[i], value: parseInt(e.target.value) }; rebuild(pieTitle, next);
+                }}
+                  className="w-20 accent-[var(--accent)]"
+                  style={{ accentColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                />
+                <input type="number" value={item.value} onChange={(e) => {
+                  const next = [...items]; next[i] = { ...next[i], value: parseInt(e.target.value) || 0 }; rebuild(pieTitle, next);
+                }}
+                  className="w-14 px-2 py-1 text-xs rounded-md outline-none text-right font-mono"
+                  style={inputCSS}
+                />
+                <span className="text-[10px] font-mono w-10 text-right font-semibold"
+                  style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>
+                  {Math.round((item.value / total) * 100)}%
+                </span>
+              </div>
+              <DeleteBtn onClick={() => rebuild(pieTitle, items.filter((_, j) => j !== i))} />
+            </div>
+          ))}
+        </div>
+        <AddButton onClick={() => rebuild(pieTitle, [...items, { label: "New", value: 10 }])}>+ Add Slice</AddButton>
       </div>
     );
   }
 
   if (type === "sequence") {
-    // Support participant names with dots, dashes, etc (e.g. mdfy.cc)
     const participants = [...code.matchAll(/participant\s+([\w.:-]+)/g)].map(m => m[1]);
     const messages = [...code.matchAll(/([\w.:-]+)(--?>>?|--?\)|--?>)([\w.:-]+)\s*:\s*(.+)/g)].map(m => ({
       from: m[1], arrow: m[2], to: m[3], text: m[4].trim()
     }));
 
     const arrowStyles = [
-      { value: "->>", label: "Solid arrow", icon: "──▶" },
-      { value: "-->>", label: "Dashed arrow", icon: "╌╌▶" },
-      { value: "->", label: "Solid line", icon: "───" },
+      { value: "->>", label: "Request (solid arrow)", icon: "━━▶" },
+      { value: "-->>", label: "Response (dashed arrow)", icon: "╌╌▶" },
+      { value: "->", label: "Solid line", icon: "━━━" },
       { value: "-->", label: "Dashed line", icon: "╌╌╌" },
     ];
-
-    const pColors = PIE_COLORS; // reuse for participant colors
 
     const rebuild = (parts: string[], msgs: { from: string; arrow: string; to: string; text: string }[]) => {
       let c = "sequenceDiagram\n";
@@ -159,119 +186,119 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     };
 
     return (
-      <div className="p-4 space-y-4 overflow-auto">
-        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-          Sequence Diagram
+      <div className="p-5 space-y-5 overflow-auto">
+        <SectionTitle>Participants ({participants.length})</SectionTitle>
+        <div className="flex gap-2 flex-wrap">
+          {participants.map((p, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 pr-1"
+              style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}
+            >
+              <input value={p} onChange={(e) => {
+                const next = [...participants]; const old = next[i]; next[i] = e.target.value;
+                rebuild(next, messages.map(m => ({
+                  ...m,
+                  from: m.from === old ? e.target.value : m.from,
+                  to: m.to === old ? e.target.value : m.to,
+                })));
+              }}
+                className="w-24 bg-transparent outline-none text-sm font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              />
+              <DeleteBtn onClick={() => rebuild(participants.filter((_, j) => j !== i), messages)} />
+            </div>
+          ))}
+          <button onClick={() => rebuild([...participants, `P${participants.length + 1}`], messages)}
+            className="flex items-center gap-1 text-xs px-3 py-2 rounded-lg font-medium"
+            style={accentBtnCSS}
+          >+ Add</button>
         </div>
 
-        {/* Participants as colored chips */}
-        <div>
-          <div className="text-[10px] uppercase mb-2" style={{ color: "var(--text-faint)", letterSpacing: "0.5px" }}>Participants</div>
-          <div className="flex gap-2 flex-wrap">
-            {participants.map((p, i) => (
-              <div key={i} className="flex items-center gap-1 rounded-lg px-2 py-1.5"
-                style={{ background: "var(--background)", border: `2px solid ${pColors[i % pColors.length]}` }}
-              >
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: pColors[i % pColors.length] }} />
-                <input value={p} onChange={(e) => {
-                  const next = [...participants]; const old = next[i]; next[i] = e.target.value;
-                  rebuild(next, messages.map(m => ({
-                    ...m,
-                    from: m.from === old ? e.target.value : m.from,
-                    to: m.to === old ? e.target.value : m.to,
-                  })));
-                }}
-                  className="w-20 bg-transparent outline-none text-xs font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                />
-                <button onMouseDown={() => rebuild(participants.filter((_, j) => j !== i), messages)}
-                  className="text-[10px] ml-1" style={{ color: "var(--text-faint)" }}>×</button>
-              </div>
-            ))}
-            <button onClick={() => rebuild([...participants, `P${participants.length + 1}`], messages)}
-              className="text-xs px-3 py-1.5 rounded-lg"
-              style={{ border: "1px dashed var(--accent)", color: "var(--accent)" }}
-            >+ Add</button>
-          </div>
-        </div>
+        <SectionTitle>Messages ({messages.length})</SectionTitle>
+        <div className="space-y-2">
+          {messages.map((m, i) => {
+            const fromIdx = participants.indexOf(m.from);
+            const toIdx = participants.indexOf(m.to);
+            const fromColor = PIE_COLORS[Math.max(0, fromIdx) % PIE_COLORS.length];
+            const toColor = PIE_COLORS[Math.max(0, toIdx) % PIE_COLORS.length];
+            const isDashed = m.arrow.startsWith("--");
 
-        {/* Messages as visual timeline */}
-        <div>
-          <div className="text-[10px] uppercase mb-2" style={{ color: "var(--text-faint)", letterSpacing: "0.5px" }}>Messages</div>
-          <div className="space-y-1.5">
-            {messages.map((m, i) => {
-              const fromIdx = participants.indexOf(m.from);
-              const toIdx = participants.indexOf(m.to);
-              const fromColor = pColors[Math.max(0, fromIdx) % pColors.length];
-              const toColor = pColors[Math.max(0, toIdx) % pColors.length];
-              const arrowInfo = arrowStyles.find(a => a.value === m.arrow) || arrowStyles[0];
-
-              return (
-                <div key={i} className="flex items-center gap-2 rounded-lg p-2"
-                  style={{ background: "var(--background)", border: "1px solid var(--border)" }}
-                >
-                  <span className="text-[10px] font-mono w-4 text-center" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
-                  {/* From */}
+            return (
+              <div key={i} className="p-3" style={cardCSS}>
+                {/* Row 1: From → To */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-mono w-5 text-center shrink-0"
+                    style={{ color: "var(--text-faint)" }}>{i + 1}</span>
                   <select value={m.from} onChange={(e) => {
                     const next = [...messages]; next[i] = { ...next[i], from: e.target.value }; rebuild(participants, next);
                   }}
-                    className="w-20 px-2 py-1.5 text-xs rounded-md outline-none font-semibold"
-                    style={{ background: "var(--surface)", border: `1.5px solid ${fromColor}`, color: "var(--text-primary)" }}
+                    className={`w-24 ${inputStyle} text-xs font-semibold`}
+                    style={{ ...inputCSS, borderLeft: `3px solid ${fromColor}` }}
                   >
                     {participants.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
-                  {/* Arrow style */}
-                  <select value={m.arrow} onChange={(e) => {
-                    const next = [...messages]; next[i] = { ...next[i], arrow: e.target.value }; rebuild(participants, next);
-                  }}
-                    className="w-16 px-1 py-1.5 text-xs rounded-md outline-none text-center font-mono"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--accent)" }}
-                  >
-                    {arrowStyles.map(a => <option key={a.value} value={a.value}>{a.icon}</option>)}
-                  </select>
-                  {/* To */}
+
+                  {/* Visual arrow */}
+                  <div className="flex items-center gap-1 px-1">
+                    {arrowStyles.map(a => (
+                      <button key={a.value}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const next = [...messages]; next[i] = { ...next[i], arrow: a.value }; rebuild(participants, next);
+                        }}
+                        className="px-1.5 py-1 rounded text-[10px] font-mono"
+                        style={{
+                          background: m.arrow === a.value ? "var(--accent)" : "var(--surface)",
+                          color: m.arrow === a.value ? "#000" : "var(--text-muted)",
+                          border: "1px solid var(--border)",
+                        }}
+                        title={a.label}
+                      >{a.icon}</button>
+                    ))}
+                  </div>
+
                   <select value={m.to} onChange={(e) => {
                     const next = [...messages]; next[i] = { ...next[i], to: e.target.value }; rebuild(participants, next);
                   }}
-                    className="w-20 px-2 py-1.5 text-xs rounded-md outline-none font-semibold"
-                    style={{ background: "var(--surface)", border: `1.5px solid ${toColor}`, color: "var(--text-primary)" }}
+                    className={`w-24 ${inputStyle} text-xs font-semibold`}
+                    style={{ ...inputCSS, borderLeft: `3px solid ${toColor}` }}
                   >
                     {participants.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
-                  {/* Message text */}
+
+                  <DeleteBtn onClick={() => rebuild(participants, messages.filter((_, j) => j !== i))} />
+                </div>
+                {/* Row 2: Message text */}
+                <div className="flex items-center gap-2 ml-7">
+                  <span className="text-[10px] shrink-0" style={{ color: "var(--text-faint)" }}>msg:</span>
                   <input value={m.text} onChange={(e) => {
                     const next = [...messages]; next[i] = { ...next[i], text: e.target.value }; rebuild(participants, next);
                   }}
-                    className="flex-1 px-2 py-1.5 text-xs rounded-md outline-none"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                    className={`flex-1 ${inputStyle} text-xs`} style={inputCSS}
                     placeholder="Message text"
                   />
-                  <button onMouseDown={() => rebuild(participants, messages.filter((_, j) => j !== i))}
-                    className="px-1.5 py-0.5 rounded text-xs" style={{ color: "#ef4444" }}>×</button>
                 </div>
-              );
-            })}
-            <button onClick={() => rebuild(participants, [...messages, {
-              from: participants[0] || "A", arrow: "->>", to: participants[1] || participants[0] || "B", text: "message"
-            }])}
-              className="text-xs px-4 py-2 rounded-lg w-full"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px dashed var(--accent)" }}
-            >+ Add Message</button>
-          </div>
+              </div>
+            );
+          })}
         </div>
+        <AddButton onClick={() => rebuild(participants, [...messages, {
+          from: participants[0] || "A", arrow: "->>", to: participants[1] || participants[0] || "B", text: "message"
+        }])}>+ Add Message</AddButton>
       </div>
     );
   }
 
-  // Fallback: raw code editor
+  // Fallback: raw code editor (gantt, class, state, etc.)
   return (
     <div className="flex flex-col flex-1">
-      <div className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider"
-        style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
-        Code Editor
+      <div className="p-5">
+        <SectionTitle>Mermaid Code</SectionTitle>
+        <p className="text-[11px] mb-3" style={{ color: "var(--text-faint)" }}>
+          Edit the Mermaid code directly. Changes are reflected in the preview.
+        </p>
       </div>
       <textarea value={code} onChange={(e) => onChange(e.target.value)}
-        className="flex-1 p-4 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+        className="flex-1 px-5 pb-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
         style={{ color: "var(--editor-text)" }} spellCheck={false} />
     </div>
   );
