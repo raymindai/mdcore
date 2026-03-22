@@ -163,7 +163,7 @@ export default function MdcoreAiPage() {
       </nav>
 
       {/* ══════════ HERO ══════════ */}
-      <section className="mdcore-dot-grid" style={{ position: "relative", maxWidth: 1120, margin: "0 auto", padding: "120px 24px 60px", textAlign: "center" }}>
+      <section style={{ position: "relative", maxWidth: 1120, margin: "0 auto", padding: "120px 24px 60px", textAlign: "center" }}>
         <div style={{ marginBottom: 24 }}>
           <span className="mdcore-tag" style={{ color: "var(--accent)", background: "var(--accent-dim)", border: "1px solid rgba(251,146,60,0.2)" }}>
             Built for performance. Designed for developers.
@@ -364,8 +364,9 @@ Inline math: $E = mc^2$
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
             {/* Raw mermaid code */}
             <div style={{ borderRight: "1px solid var(--border-dim)", display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>```mermaid</span>
+                <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono, background: "var(--border-dim)", padding: "2px 6px", borderRadius: 4 }}>RAW</span>
               </div>
               <pre style={{ margin: 0, padding: "20px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre", flex: 1, display: "flex", alignItems: "center" }}>
 {`graph LR
@@ -396,8 +397,9 @@ Inline math: $E = mc^2$
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
               <div style={{ borderRight: "1px solid var(--border-dim)", display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>KaTeX</span>
+                  <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono, background: "var(--border-dim)", padding: "2px 6px", borderRadius: 4 }}>RAW</span>
                 </div>
                 <pre style={{ margin: 0, padding: "16px 20px", fontSize: 11, lineHeight: 2, color: "var(--text-muted)", ...mono, whiteSpace: "pre", flex: 1, display: "flex", alignItems: "center" }}>
 {`$E = mc^2$

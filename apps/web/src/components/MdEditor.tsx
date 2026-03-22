@@ -358,6 +358,7 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const splitPercentRef = useRef(50);
   const isDraggingSplit = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -1561,6 +1562,14 @@ export default function MdEditor() {
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="text-[13px] px-1.5 py-0.5 rounded transition-colors shrink-0"
+            style={{ color: showSidebar ? "var(--accent)" : "var(--text-muted)", background: showSidebar ? "var(--accent-dim)" : "transparent" }}
+            title="Toggle documents sidebar"
+          >
+            ☰
+          </button>
           <h1
             className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
             onClick={handleClear}
@@ -1797,48 +1806,6 @@ export default function MdEditor() {
         </div>
       </header>
 
-      {/* Tab bar */}
-      {tabs.length > 1 && (
-        <div
-          className="flex items-center gap-0 overflow-x-auto shrink-0"
-          style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}
-        >
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-mono cursor-pointer shrink-0 relative group"
-              style={{
-                color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
-                background: tab.id === activeTabId ? "var(--background)" : "transparent",
-                borderRight: "1px solid var(--border-dim)",
-              }}
-              onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
-            >
-              <span className="truncate max-w-[120px]">{tab.title || "Untitled"}</span>
-              {tabs.length > 1 && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                  className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] px-1 rounded"
-                  style={{ color: "var(--text-faint)" }}
-                >
-                  ×
-                </button>
-              )}
-              {tab.id === activeTabId && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "var(--accent)" }} />
-              )}
-            </div>
-          ))}
-          <button
-            onClick={addTab}
-            className="px-2 py-1.5 text-[11px] shrink-0"
-            style={{ color: "var(--text-faint)" }}
-            title="New tab"
-          >
-            +
-          </button>
-        </div>
-      )}
 
       {/* AI conversation banner */}
       {showAiBanner && (
@@ -1868,7 +1835,56 @@ export default function MdEditor() {
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content wrapper (sidebar + editor/render) */}
+      <div className="flex flex-1 min-h-0">
+
+      {/* Sidebar */}
+      {showSidebar && (
+        <div
+          className="flex flex-col shrink-0 overflow-y-auto"
+          style={{ width: 200, borderRight: "1px solid var(--border-dim)", background: "var(--surface)" }}
+        >
+          <div className="p-3 space-y-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
+                Documents
+              </span>
+              <button
+                onClick={addTab}
+                className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
+              >
+                +
+              </button>
+            </div>
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group text-xs"
+                style={{
+                  background: tab.id === activeTabId ? "var(--background)" : "transparent",
+                  color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                  border: tab.id === activeTabId ? "1px solid var(--border)" : "1px solid transparent",
+                }}
+                onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+              >
+                <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                {tabs.length > 1 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] px-1 rounded shrink-0"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Editor + Render area */}
       <div
         ref={splitContainerRef}
         className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
@@ -2017,6 +2033,7 @@ export default function MdEditor() {
           </div>
         )}
       </div>
+      </div>{/* end main content wrapper */}
 
       {/* Footer */}
       <footer
