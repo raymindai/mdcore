@@ -397,12 +397,20 @@ export default function MdCanvas({
           <span className="font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
             Mermaid
           </span>
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold"
-            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-            {rawCodeMode
-              ? (DIAGRAM_TYPES.find(d => d.id === detectDiagramType(rawCode))?.label || "Diagram")
-              : "Flowchart"}
-          </span>
+          {(() => {
+            const dt = rawCodeMode
+              ? DIAGRAM_TYPES.find(d => d.id === detectDiagramType(rawCode))
+              : DIAGRAM_TYPES.find(d => d.id === "flowchart");
+            return (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold flex items-center gap-1"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                {dt?.label || "Diagram"}
+                {(dt as { beta?: boolean })?.beta && (
+                  <span className="text-[7px] px-1 rounded" style={{ background: "var(--surface)", color: "var(--text-faint)" }}>beta</span>
+                )}
+              </span>
+            );
+          })()}
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="px-2 py-1 rounded-md font-mono text-[11px]"

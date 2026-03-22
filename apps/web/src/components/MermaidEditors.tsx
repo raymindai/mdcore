@@ -22,14 +22,14 @@ export const DIAGRAM_TYPES = [
   { id: "timeline", label: "Timeline", icon: "📅", template: "timeline\n    title History\n    2020 : Event A\n    2022 : Event B\n    2024 : Event C" },
   { id: "journey", label: "Journey", icon: "🗺️", template: "journey\n    title User Journey\n    section Onboarding\n      Sign up: 5: User\n      Tutorial: 3: User\n    section Usage\n      Create doc: 4: User" },
   { id: "quadrant", label: "Quadrant", icon: "📍", template: 'quadrantChart\n    title Priority Matrix\n    x-axis "Low Effort" --> "High Effort"\n    y-axis "Low Impact" --> "High Impact"\n    Item A: [0.2, 0.8]\n    Item B: [0.7, 0.6]' },
-  { id: "xy", label: "XY Chart", icon: "📈", template: 'xychart-beta\n    title "Sales"\n    x-axis ["Jan", "Feb", "Mar", "Apr"]\n    bar [10, 20, 15, 25]' },
-  { id: "kanban", label: "Kanban", icon: "📋", template: "kanban\n  To Do\n    Task 1\n    Task 2\n  In Progress\n    Task 3\n  Done\n    Task 4" },
+  { id: "xy", label: "XY Chart", icon: "📈", beta: true, template: 'xychart-beta\n    title "Sales"\n    x-axis ["Jan", "Feb", "Mar", "Apr"]\n    bar [10, 20, 15, 25]' },
+  { id: "kanban", label: "Kanban", icon: "📋", beta: true, template: "kanban\n  To Do\n    Task 1\n    Task 2\n  In Progress\n    Task 3\n  Done\n    Task 4" },
   { id: "git", label: "Git Graph", icon: "🔗", template: 'gitGraph\n    commit id: "Initial"\n    branch feature\n    commit id: "Feature work"\n    checkout main\n    commit id: "Hotfix"\n    merge feature' },
-  { id: "sankey", label: "Sankey", icon: "🌊", template: "sankey-beta\n\nSource A,Target X,30\nSource A,Target Y,20\nSource B,Target X,15\nSource B,Target Z,25" },
+  { id: "sankey", label: "Sankey", icon: "🌊", beta: true, template: "sankey-beta\n\nSource A,Target X,30\nSource A,Target Y,20\nSource B,Target X,15\nSource B,Target Z,25" },
   { id: "requirement", label: "Requirement", icon: "📋", template: "requirementDiagram\n\n    requirement Req1 {\n        id: REQ-1\n        text: Must support login\n        risk: low\n    }" },
-  { id: "block", label: "Block", icon: "🧱", template: 'block-beta\n    columns 3\n    a["Input"] b["Process"] c["Output"]\n    a --> b --> c' },
-  { id: "packet", label: "Packet", icon: "📦", template: 'packet-beta\n    0-15 : "Header"\n    16-23 : "Type"\n    24-31 : "Length"' },
-  { id: "architecture", label: "Architecture", icon: "🏗️", template: "architecture-beta\n    service api(API Server)\n    service db(Database)\n    service cache(Cache)\n    api --> db\n    api --> cache" },
+  { id: "block", label: "Block", icon: "🧱", beta: true, template: 'block-beta\n    columns 3\n    a["Input"] b["Process"] c["Output"]\n    a --> b --> c' },
+  { id: "packet", label: "Packet", icon: "📦", beta: true, template: 'packet-beta\n    0-15 : "Header"\n    16-23 : "Type"\n    24-31 : "Length"' },
+  { id: "architecture", label: "Architecture", icon: "🏗️", beta: true, template: "architecture-beta\n    service api(API Server)\n    service db(Database)\n    service cache(Cache)\n    api --> db\n    api --> cache" },
 ] as const;
 
 export type DiagramTypeId = typeof DIAGRAM_TYPES[number]["id"];
@@ -116,7 +116,12 @@ export function DiagramTypeSelector({ onSelect }: { onSelect: (template: string)
               style={{ ...S.card }}
             >
               <span className="text-lg">{dt.icon}</span>
-              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dt.label}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dt.label}</span>
+                {(dt as { beta?: boolean }).beta && (
+                  <span className="text-[8px] px-1 py-0.5 rounded font-mono" style={{ color: "var(--text-faint)", background: "var(--surface)" }}>beta</span>
+                )}
+              </div>
             </button>
           ))}
         </div>
