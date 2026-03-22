@@ -21,36 +21,54 @@ import {
   copyToClipboard,
 } from "@/lib/share";
 
-const SAMPLE_MD = `---
-title: mdfy.cc — Complete Markdown Demo
-author: mdcore
----
+// ─── Sample documents for default tabs ───
 
-# Welcome to mdfy.cc
+const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 > **The universal Markdown engine for the AI era.**
 > Paste any Markdown — from any AI, any tool, any flavor. Rendered instantly via Rust + WASM.
 
+## Quick Start
+
+1. **Paste** any Markdown in the editor
+2. **Preview** renders instantly (split view)
+3. **Share** with a short URL — \`mdfy.cc/{id}\`
+
+## Interactive Features
+
+- **Double-click** any text in preview to edit inline
+- **Click** preview elements to jump to source
+- **Right-click** table cells for row/column options
+- **Double-click** diagrams to open the visual editor
+- **Drag & drop** .md files (multiple files → new tabs)
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| ⌘S | Share (copy URL) |
+| ⌘Z | Undo |
+| ⌘⇧Z | Redo |
+| ⌘⇧C | Copy HTML |
+| ⌘\\\\ | Toggle view mode |
+
 ---
+
+*Powered by **mdcore engine v0.1.0** — Rust → WASM*
+`;
+
+const SAMPLE_FORMATTING = `# Markdown Syntax Guide
 
 ## Text Formatting
 
-> **Tip:** Double-click any text in the preview to edit it inline. Click to jump to the source.
-
 Regular text, **bold**, *italic*, ***bold italic***, ~~strikethrough~~, and \`inline code\`.
-
-This is a [link to mdfy.cc](https://mdfy.cc) and an autolink: https://github.com/raymindai/mdcore
 
 > Blockquotes can contain **formatting** and even
 > multiple paragraphs.
 >
 > > Nested blockquotes work too.
 
----
-
 ## Headings
-
-All six heading levels with distinct sizing:
 
 > # H1 — Document Title
 > ## H2 — Section
@@ -59,11 +77,7 @@ All six heading levels with distinct sizing:
 > ##### H5 — Minor heading
 > ###### H6 — Smallest heading
 
----
-
 ## Lists
-
-> **Tip:** Double-click a list item to edit it inline. Press **Enter** to add a new item, **Tab** to indent, **Shift+Tab** to outdent.
 
 ### Unordered
 - First item
@@ -71,44 +85,19 @@ All six heading levels with distinct sizing:
   - Nested item
   - Another nested
     - Even deeper
-- Third item
 
 ### Ordered
 1. Step one
 2. Step two
    1. Sub-step A
    2. Sub-step B
-3. Step three
 
 ### Task List
-
-> **Tip:** Click checkboxes to toggle them. Changes sync to Markdown source.
-
-- [x] Rust engine compiled to WASM
-- [x] GFM tables, task lists, footnotes
-- [x] KaTeX math rendering
-- [x] Mermaid diagrams
-- [x] Syntax highlighting (190+ languages)
-- [x] Dark / Light mode
-- [x] Short URL sharing (mdfy.cc/{id})
-- [ ] PDF export
-- [ ] Chrome extension
-
----
+- [x] Completed task
+- [x] Another done
+- [ ] Still to do
 
 ## Tables
-
-> **Tip:** Double-click a cell to edit it. Right-click for row/column options (insert, delete). Use \`|:---:|\` for center and \`|---:|\` for right alignment.
-
-| Feature | Free | Pro ($12/mo) |
-|---------|:----:|:------------:|
-| Render Markdown | ✅ | ✅ |
-| Share URL | 10/mo | Unlimited |
-| PDF Export | 3/mo | Unlimited |
-| Custom Theme | ❌ | ✅ |
-| Password Protection | ❌ | ✅ |
-
-### Table with Alignment
 
 | Left | Center | Right |
 |:-----|:------:|------:|
@@ -116,76 +105,53 @@ All six heading levels with distinct sizing:
 | L2 | C2 | R2 |
 | L3 | C3 | R3 |
 
----
-
-## Code Blocks
-
-> **Tip:** Double-click a code block to open the editor. You can change the language and code, then save.
-
-\`\`\`rust
-use mdcore_engine::render;
-
-fn main() {
-    let result = render("# Hello from Rust → WASM");
-    println!("Flavor: {}", result.flavor.primary);
-    println!("HTML: {}", result.html);
-}
-\`\`\`
+## Code
 
 \`\`\`typescript
-import { renderMarkdown } from "@mdcore/engine";
-
-const { html, flavor, toc } = await renderMarkdown(input);
-console.log(\`Detected: \${flavor.primary}, math: \${flavor.math}\`);
+const { html, flavor } = await renderMarkdown(input);
+console.log(\`Detected: \${flavor.primary}\`);
 \`\`\`
 
 \`\`\`python
-import requests
-
 response = requests.get("https://api.mdcore.ai/v1/render", json={
-    "markdown": "# Hello World",
+    "markdown": "# Hello",
     "theme": "minimal-light"
 })
-print(response.json()["html"])
 \`\`\`
-
-\`\`\`sql
-SELECT documents.id, documents.title, documents.view_count
-FROM documents
-WHERE created_at > NOW() - INTERVAL '7 days'
-ORDER BY view_count DESC
-LIMIT 10;
-\`\`\`
-
----
 
 ## Math (KaTeX)
 
-### Inline Math
-
-The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$.
-
-Einstein's famous equation: $E = mc^2$. Maxwell's equation: $\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J}$.
-
-### Display Math
+Inline: $E = mc^2$ and $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$
 
 $$
 \\int_0^{\\infty} e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}
 $$
 
 $$
-\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
-$$
-
-$$
 \\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix} \\begin{pmatrix} x \\\\ y \\end{pmatrix} = \\begin{pmatrix} ax + by \\\\ cx + dy \\end{pmatrix}
 $$
 
----
+## Footnotes
 
-## Mermaid Diagrams
+Created by John Gruber[^1]. Most popular flavor: GFM[^2].
 
-### Flowchart
+[^1]: See [Daring Fireball](https://daringfireball.net/projects/markdown/).
+[^2]: [github.github.com/gfm](https://github.github.com/gfm/).
+
+## Description Lists
+
+Markdown
+: A lightweight markup language for creating formatted text.
+
+WASM
+: WebAssembly — a binary instruction format for a stack-based virtual machine.
+`;
+
+const SAMPLE_DIAGRAMS = `# Mermaid Diagrams
+
+> **Tip:** Double-click any diagram to open the visual editor. Hover for the "Edit in Mermaid" button.
+
+## Flowchart
 
 \`\`\`mermaid
 graph LR
@@ -200,7 +166,7 @@ graph LR
     style B fill:#fb923c,stroke:#ea580c,color:#000
 \`\`\`
 
-### Sequence Diagram
+## Sequence Diagram
 
 \`\`\`mermaid
 sequenceDiagram
@@ -217,7 +183,7 @@ sequenceDiagram
     mdfy.cc-->>User: mdfy.cc/{id} copied!
 \`\`\`
 
-### Pie Chart
+## Pie Chart
 
 \`\`\`mermaid
 pie title Markdown Flavors in the Wild
@@ -228,62 +194,52 @@ pie title Markdown Flavors in the Wild
     "Other" : 5
 \`\`\`
 
-> **Tip:** Use the **Mermaid** tab above to visually create flowcharts — no code needed! Hover a diagram and click **Edit in Mermaid** to modify it visually.
+## Mindmap
+
+\`\`\`mermaid
+mindmap
+  root((mdcore))
+    Product
+      mdfy.cc
+      Chrome Extension
+    Engine
+      Rust
+      WASM
+      napi-rs
+    Features
+      GFM
+      KaTeX
+      Mermaid
+\`\`\`
+
+## User Journey
+
+\`\`\`mermaid
+journey
+    title User Journey — mdfy.cc
+    section Discovery
+      Visit mdfy.cc: 5: User
+      See demo: 4: User
+    section First Use
+      Paste markdown: 5: User
+      Preview renders: 5: User
+      Click Share: 4: User
+    section Return
+      Open shared URL: 5: User
+      Edit inline: 4: User
+\`\`\`
 
 ---
 
-## Footnotes
-
-Markdown was created by John Gruber[^1] in 2004. The most widely used flavor today is GFM[^2], which adds tables, task lists, and more.
-
-[^1]: John Gruber created Markdown with Aaron Swartz. See [Daring Fireball](https://daringfireball.net/projects/markdown/).
-[^2]: GitHub Flavored Markdown (GFM) is specified at [github.github.com/gfm](https://github.github.com/gfm/).
-
----
-
-## Horizontal Rules
-
-Three or more dashes, asterisks, or underscores:
-
----
-
-***
-
-___
-
----
-
-## Images
-
-![Placeholder](https://placehold.co/600x200/18181b/fb923c?text=mdfy.cc+%E2%80%94+Markdown+Engine)
-
----
-
-## Description Lists
-
-Markdown
-: A lightweight markup language for creating formatted text.
-
-mdfy.cc
-: The universal Markdown renderer for the AI era.
-
-WASM
-: WebAssembly — a binary instruction format for a stack-based virtual machine.
-
----
-
-## Superscript & Special Characters
-
-H~2~O is water. 2^10^ is 1024.
-
-Special chars: &copy; &mdash; &rarr; &hearts; &check;
-
----
-
-*Rendered by **mdcore engine v0.1.0** — Rust → WASM, running entirely in your browser. Zero server round-trip.*
-
-*Double-click any text to edit inline · Click to jump to source · Right-click tables for row/column options · Use the Mermaid tab for visual diagrams*
+*mdfy.cc supports all 19 Mermaid diagram types with visual editors.*
+*New Mermaid Diagram from the ··· menu to create from scratch.*
 `;
+
+const INITIAL_TABS: Tab[] = [
+  { id: "tab-welcome", title: "Welcome", markdown: SAMPLE_WELCOME },
+  { id: "tab-syntax", title: "Syntax Guide", markdown: SAMPLE_FORMATTING },
+  { id: "tab-diagrams", title: "Diagrams", markdown: SAMPLE_DIAGRAMS },
+];
 
 type ViewMode = "split" | "preview" | "editor";
 
@@ -336,14 +292,12 @@ export default function MdEditor() {
   const { theme, toggleTheme } = useTheme();
 
   // Tab system
-  const [tabs, setTabs] = useState<Tab[]>([
-    { id: "tab-0", title: "Demo", markdown: SAMPLE_MD },
-  ]);
-  const [activeTabId, setActiveTabId] = useState("tab-0");
+  const [tabs, setTabs] = useState<Tab[]>(INITIAL_TABS);
+  const [activeTabId, setActiveTabId] = useState("tab-welcome");
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
-  const [markdown, setMarkdownRaw] = useState(SAMPLE_MD);
-  const undoStack = useRef<string[]>([SAMPLE_MD]);
+  const [markdown, setMarkdownRaw] = useState(SAMPLE_WELCOME);
+  const undoStack = useRef<string[]>([SAMPLE_WELCOME]);
   const redoStack = useRef<string[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -1678,7 +1632,7 @@ export default function MdEditor() {
                   color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
-                {mode === "editor" ? "MD" : mode === "split" ? "Split" :  "View"}
+                {mode === "editor" ? "MD" : mode === "split" ? "Split" : "Render"}
               </button>
             ))}
           </div>
@@ -1731,8 +1685,8 @@ export default function MdEditor() {
               </button>
               {showMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl z-50"
-                  style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}
+                  className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl"
+                  style={{ zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)" }}
                 >
                   <div className="py-1">
                     <button
@@ -2003,7 +1957,7 @@ export default function MdEditor() {
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span>Preview</span>
+              <span>Render</span>
               <div className="flex items-center gap-2">
                 {isSharedDoc && (
                   <button

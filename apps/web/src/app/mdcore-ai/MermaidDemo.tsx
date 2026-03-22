@@ -53,23 +53,33 @@ export default function MermaidDemo() {
         const { svg } = await mermaid.render("mermaid-demo", MERMAID_CODE);
         if (cancelled || !ref.current) return;
         ref.current.innerHTML = svg;
+
+        // Make SVG fill the container
+        const svgEl = ref.current.querySelector("svg");
+        if (svgEl) {
+          svgEl.style.width = "100%";
+          svgEl.style.height = "100%";
+          svgEl.style.maxWidth = "100%";
+        }
+
         setReady(true);
       } catch {
         // mermaid may not be available
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div
       ref={ref}
       style={{
-        padding: "24px 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 180,
+        padding: "16px",
+        width: "100%",
+        height: "100%",
+        boxSizing: "border-box",
         opacity: ready ? 1 : 0.3,
         transition: "opacity 0.3s",
       }}

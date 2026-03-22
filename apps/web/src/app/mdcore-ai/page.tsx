@@ -361,13 +361,13 @@ Inline math: $E = mc^2$
 
         {/* Example 2: Mermaid diagram */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
             {/* Raw mermaid code */}
-            <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRight: "1px solid var(--border-dim)", display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
                 <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>```mermaid</span>
               </div>
-              <pre style={{ margin: 0, padding: "20px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
+              <pre style={{ margin: 0, padding: "20px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre", flex: 1, display: "flex", alignItems: "center" }}>
 {`graph LR
   A[API Request] --> B{Cached?}
   B -->|Yes| C([Edge CDN])
@@ -378,12 +378,14 @@ Inline math: $E = mc^2$
               </pre>
             </div>
             {/* Actual Mermaid rendered */}
-            <div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>rendered</span>
                 <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>SVG</span>
               </div>
-              <MermaidDemo />
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <MermaidDemo />
+              </div>
             </div>
           </div>
         </div>
@@ -392,12 +394,12 @@ Inline math: $E = mc^2$
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {/* Math: raw → rendered */}
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-              <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "stretch" }}>
+              <div style={{ borderRight: "1px solid var(--border-dim)", display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>KaTeX</span>
                 </div>
-                <pre style={{ margin: 0, padding: "16px 20px", fontSize: 11, lineHeight: 2, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
+                <pre style={{ margin: 0, padding: "16px 20px", fontSize: 11, lineHeight: 2, color: "var(--text-muted)", ...mono, whiteSpace: "pre", flex: 1, display: "flex", alignItems: "center" }}>
 {`$E = mc^2$
 
 $$
@@ -406,12 +408,12 @@ $$
 $$`}
                 </pre>
               </div>
-              <div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>rendered</span>
                   <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>HTML</span>
                 </div>
-                <div style={{ padding: "16px 20px" }}>
+                <div style={{ padding: "16px 20px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                   <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "0 0 16px" }}>
                     <span style={{ color: "var(--math-color)", fontStyle: "italic", fontSize: 15 }}>E = mc<sup>2</sup></span>
                   </p>
@@ -589,7 +591,7 @@ $$`}
             { title: "Zero JS parsers in the hot path", desc: "The entire parse → AST → render pipeline runs in compiled WASM. No garbage collection pauses, no event loop blocking, no V8 overhead." },
             { title: "Edge-first deployment", desc: "WASM binary runs on Cloudflare Workers, Vercel Edge, Deno Deploy. Your Markdown renders at the edge closest to your users, not in a central Node.js server." },
             { title: "Drop-in replacement", desc: "Same output as remark + rehype + shiki + katex + mermaid combined — but 25x faster, zero config, and one dependency instead of five with conflicting versions." },
-          ].map((item, i) => (
+          ].map((item) => (
             <div key={item.title} className="mdcore-card-hover" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px 20px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px" }}>{item.title}</h3>
               <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>{item.desc}</p>
