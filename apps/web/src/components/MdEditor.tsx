@@ -323,9 +323,25 @@ function useTheme() {
   return { theme, toggleTheme };
 }
 
+interface Tab {
+  id: string;
+  title: string;
+  markdown: string;
+}
+
+let tabIdCounter = 1;
+
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
+
+  // Tab system
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: "tab-0", title: "Demo", markdown: SAMPLE_MD },
+  ]);
+  const [activeTabId, setActiveTabId] = useState("tab-0");
+  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+
   const [markdown, setMarkdownRaw] = useState(SAMPLE_MD);
   const undoStack = useRef<string[]>([SAMPLE_MD]);
   const redoStack = useRef<string[]>([]);
@@ -362,6 +378,10 @@ export default function MdEditor() {
     setMarkdownRaw(next);
     doRender(next);
   }, []);
+
+  // Tab functions use doRenderRef to avoid circular dependency
+  const doRenderRef = useRef<(md: string) => void>(() => {});
+
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
   const [flavorDetails, setFlavorDetails] = useState<Record<string, boolean>>(
@@ -430,6 +450,50 @@ export default function MdEditor() {
       console.error("Render error:", e);
     }
   }, []);
+
+  // Keep doRenderRef in sync
+  doRenderRef.current = doRender;
+
+  // ─── Tab management ───
+  const switchTab = useCallback((tabId: string) => {
+    // Save current tab
+    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    setActiveTabId(tabId);
+    setMarkdownRaw(tab.markdown);
+    undoStack.current = [tab.markdown];
+    redoStack.current = [];
+    doRenderRef.current(tab.markdown);
+  }, [tabs, activeTabId, markdown, title]);
+
+  const addTab = useCallback(() => {
+    // Save current tab
+    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
+    const id = `tab-${tabIdCounter++}`;
+    const newTab: Tab = { id, title: "Untitled", markdown: "" };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(id);
+    setMarkdownRaw("");
+    undoStack.current = [""];
+    redoStack.current = [];
+    doRenderRef.current("");
+  }, [activeTabId, markdown, title]);
+
+  const closeTab = useCallback((tabId: string) => {
+    if (tabs.length <= 1) return;
+    const idx = tabs.findIndex((t) => t.id === tabId);
+    const newTabs = tabs.filter((t) => t.id !== tabId);
+    setTabs(newTabs);
+    if (tabId === activeTabId) {
+      const next = newTabs[Math.min(idx, newTabs.length - 1)];
+      setActiveTabId(next.id);
+      setMarkdownRaw(next.markdown);
+      undoStack.current = [next.markdown];
+      redoStack.current = [];
+      doRenderRef.current(next.markdown);
+    }
+  }, [tabs, activeTabId]);
 
   // Mermaid rendering after DOM update
   // Finds <pre lang="mermaid"> directly in DOM (no regex on HTML strings)
@@ -1233,22 +1297,33 @@ export default function MdEditor() {
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file && (file.name.endsWith(".md") || file.name.endsWith(".markdown") || file.name.endsWith(".txt") || file.type === "text/markdown" || file.type === "text/plain")) {
+      const files = Array.from(e.dataTransfer.files).filter(
+        f => f.name.endsWith(".md") || f.name.endsWith(".markdown") || f.name.endsWith(".txt") || f.type === "text/markdown" || f.type === "text/plain"
+      );
+
+      files.forEach((file, idx) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
           const text = ev.target?.result as string;
-          if (text) {
+          if (!text) return;
+
+          if (idx === 0 && !markdown.trim()) {
+            // First file into current empty tab
             setMarkdown(text);
             setIsSharedDoc(false);
             doRender(text);
-            if (!isMobile) setViewMode("split");
+          } else {
+            // Additional files → new tabs
+            const id = `tab-${tabIdCounter++}`;
+            const name = file.name.replace(/\.(md|markdown|txt)$/, "");
+            setTabs((prev) => [...prev, { id, title: name, markdown: text }]);
           }
+          if (!isMobile) setViewMode("split");
         };
         reader.readAsText(file);
-      }
+      });
     },
-    [doRender, isMobile]
+    [doRender, isMobile, markdown]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -1727,11 +1802,18 @@ export default function MdEditor() {
                     </button>
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
+                      onClick={() => { addTab(); setShowMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      New tab
+                    </button>
+                    <button
                       onClick={handleClear}
                       className="w-full text-left px-3 py-2 text-xs transition-colors"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      New document
+                      Clear document
                     </button>
                     {isOwner && docId && (
                       <>
@@ -1760,6 +1842,49 @@ export default function MdEditor() {
           </span>
         </div>
       </header>
+
+      {/* Tab bar */}
+      {tabs.length > 1 && (
+        <div
+          className="flex items-center gap-0 overflow-x-auto shrink-0"
+          style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}
+        >
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-mono cursor-pointer shrink-0 relative group"
+              style={{
+                color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                background: tab.id === activeTabId ? "var(--background)" : "transparent",
+                borderRight: "1px solid var(--border-dim)",
+              }}
+              onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+            >
+              <span className="truncate max-w-[120px]">{tab.title || "Untitled"}</span>
+              {tabs.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                  className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] px-1 rounded"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  ×
+                </button>
+              )}
+              {tab.id === activeTabId && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: "var(--accent)" }} />
+              )}
+            </div>
+          ))}
+          <button
+            onClick={addTab}
+            className="px-2 py-1.5 text-[11px] shrink-0"
+            style={{ color: "var(--text-faint)" }}
+            title="New tab"
+          >
+            +
+          </button>
+        </div>
+      )}
 
       {/* AI conversation banner */}
       {showAiBanner && (
