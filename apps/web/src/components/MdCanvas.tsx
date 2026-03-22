@@ -99,6 +99,11 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     : code.startsWith("quadrantChart") ? "quadrant"
     : code.startsWith("xychart") ? "xychart"
     : code.startsWith("kanban") ? "kanban"
+    : code.startsWith("classDiagram") ? "class"
+    : code.startsWith("stateDiagram") ? "state"
+    : code.startsWith("gitGraph") ? "git"
+    : code.startsWith("sankey") ? "sankey"
+    : code.startsWith("requirementDiagram") ? "requirement"
     : "raw";
 
   if (type === "pie") {
@@ -748,7 +753,285 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     );
   }
 
-  // Fallback: raw code editor (class, state, git, sankey, block, packet, architecture, requirement)
+  // ─── Class Diagram ───
+  if (code.startsWith("classDiagram")) {
+    const classes = [...code.matchAll(/class\s+(\w+)\s*\{([^}]*)\}/g)].map(m => ({
+      name: m[1],
+      members: m[2].trim().split("\n").map(l => l.trim()).filter(Boolean)
+    }));
+    // Also detect classes from relationships
+    const relClasses = [...code.matchAll(/(\w+)\s*(?:<\||--|\*--|o--|\.\.>|-->)\s*(\w+)/g)];
+    const allClassNames = new Set([...classes.map(c => c.name), ...relClasses.flatMap(m => [m[1], m[2]])]);
+    classes.forEach(c => allClassNames.delete(c.name));
+    allClassNames.forEach(name => classes.push({ name, members: [] }));
+
+    const rels = [...code.matchAll(/(\w+)\s*((?:<\||\*|o)?--(?:\|>|\*|o)?|\.\.>|-->)\s*(\w+)\s*(?::\s*(.+))?/g)].map(m => ({
+      from: m[1], rel: m[2], to: m[3], label: m[4]?.trim() || ""
+    }));
+
+    const rebuild = () => {
+      let c = "classDiagram\n";
+      classes.forEach(cl => {
+        c += `    class ${cl.name} {\n`;
+        cl.members.forEach(m => { c += `        ${m}\n`; });
+        c += `    }\n`;
+      });
+      rels.forEach(r => { c += `    ${r.from} ${r.rel} ${r.to}${r.label ? " : " + r.label : ""}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Class Diagram — Classes ({classes.length})</SectionTitle>
+        {classes.map((cl, ci) => (
+          <div key={ci} className="p-3 space-y-1" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[ci % PIE_COLORS.length]}` }}>
+            <div className="flex items-center gap-2">
+              <input value={cl.name} onChange={(e) => { classes[ci].name = e.target.value; rebuild(); }}
+                className="bg-transparent outline-none text-sm font-bold" style={{ color: "var(--text-primary)" }} />
+              <DeleteBtn onClick={() => { classes.splice(ci, 1); rebuild(); }} />
+            </div>
+            {cl.members.map((mem, mi) => (
+              <div key={mi} className="flex gap-2 ml-2">
+                <input value={mem} onChange={(e) => { classes[ci].members[mi] = e.target.value; rebuild(); }}
+                  className="flex-1 text-xs font-mono bg-transparent outline-none" style={{ color: "var(--text-secondary)" }} />
+                <DeleteBtn onClick={() => { classes[ci].members.splice(mi, 1); rebuild(); }} />
+              </div>
+            ))}
+            <button onClick={() => { cl.members.push("+method()"); rebuild(); }}
+              className="ml-2 text-[10px] px-2 py-1 rounded" style={accentBtnCSS}>+ Member</button>
+          </div>
+        ))}
+        <AddButton onClick={() => { classes.push({ name: "NewClass", members: ["+attribute", "+method()"] }); rebuild(); }}>+ Add Class</AddButton>
+        <SectionTitle>Relationships ({rels.length})</SectionTitle>
+        {rels.map((r, ri) => (
+          <div key={ri} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <select value={r.from} onChange={(e) => { rels[ri].from = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+            <select value={r.rel} onChange={(e) => { rels[ri].rel = e.target.value; rebuild(); }}
+              className="w-16 text-xs font-mono text-center rounded px-1 py-1 outline-none" style={inputCSS}>
+              {["<|--", "*--", "o--", "-->", "..|>", "..>", "--"].map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <select value={r.to} onChange={(e) => { rels[ri].to = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {classes.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+            <input value={r.label} onChange={(e) => { rels[ri].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="label" />
+            <DeleteBtn onClick={() => { rels.splice(ri, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { rels.push({ from: classes[0]?.name || "A", rel: "-->", to: classes[1]?.name || "B", label: "" }); rebuild(); }}>+ Add Relationship</AddButton>
+      </div>
+    );
+  }
+
+  // ─── State Diagram ───
+  if (code.startsWith("stateDiagram")) {
+    const states = [...code.matchAll(/^\s+([\w]+)(?:\s*:\s*(.+))?$/gm)]
+      .filter(m => !["[*]", "state", "note"].includes(m[1]))
+      .map(m => ({ name: m[1], label: m[2]?.trim() || "" }));
+    const transitions = [...code.matchAll(/([\w\[\]*]+)\s*-->\s*([\w\[\]*]+)(?:\s*:\s*(.+))?/g)].map(m => ({
+      from: m[1], to: m[2], label: m[3]?.trim() || ""
+    }));
+    const stateNames = [...new Set([...states.map(s => s.name), ...transitions.flatMap(t => [t.from, t.to])])].filter(s => s !== "[*]");
+
+    const rebuild = () => {
+      let c = "stateDiagram-v2\n";
+      states.filter(s => s.label).forEach(s => { c += `    ${s.name} : ${s.label}\n`; });
+      transitions.forEach(t => { c += `    ${t.from} --> ${t.to}${t.label ? " : " + t.label : ""}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>State Diagram — States ({stateNames.length})</SectionTitle>
+        {stateNames.map((name, i) => {
+          const state = states.find(s => s.name === name);
+          return (
+            <div key={i} className="flex gap-2 items-center p-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+              <input value={name} onChange={(e) => {
+                const old = name;
+                stateNames[i] = e.target.value;
+                if (state) state.name = e.target.value;
+                transitions.forEach(t => { if (t.from === old) t.from = e.target.value; if (t.to === old) t.to = e.target.value; });
+                rebuild();
+              }}
+                className="w-24 bg-transparent outline-none text-sm font-semibold" style={{ color: "var(--text-primary)" }} />
+              <input value={state?.label || ""} onChange={(e) => {
+                if (state) state.label = e.target.value;
+                else states.push({ name, label: e.target.value });
+                rebuild();
+              }}
+                className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-muted)" }} placeholder="description" />
+            </div>
+          );
+        })}
+        <AddButton onClick={() => { const n = `S${stateNames.length + 1}`; states.push({ name: n, label: "" }); stateNames.push(n); rebuild(); }}>+ Add State</AddButton>
+        <SectionTitle>Transitions ({transitions.length})</SectionTitle>
+        {transitions.map((t, ti) => (
+          <div key={ti} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <select value={t.from} onChange={(e) => { transitions[ti].from = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              <option value="[*]">[*] start</option>
+              {stateNames.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <span style={{ color: "var(--accent)" }}>→</span>
+            <select value={t.to} onChange={(e) => { transitions[ti].to = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {stateNames.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="[*]">[*] end</option>
+            </select>
+            <input value={t.label} onChange={(e) => { transitions[ti].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="trigger" />
+            <DeleteBtn onClick={() => { transitions.splice(ti, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { transitions.push({ from: stateNames[0] || "[*]", to: stateNames[1] || stateNames[0] || "S1", label: "" }); rebuild(); }}>+ Add Transition</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Git Graph ───
+  if (code.startsWith("gitGraph")) {
+    const commands: { type: string; value: string }[] = [];
+    code.split("\n").forEach(line => {
+      const t = line.trim();
+      if (t.startsWith("commit")) commands.push({ type: "commit", value: t.match(/id:\s*"([^"]+)"/)?.[1] || "" });
+      else if (t.startsWith("branch")) commands.push({ type: "branch", value: t.replace("branch ", "") });
+      else if (t.startsWith("checkout")) commands.push({ type: "checkout", value: t.replace("checkout ", "") });
+      else if (t.startsWith("merge")) commands.push({ type: "merge", value: t.replace("merge ", "") });
+    });
+    if (commands.length === 0) commands.push({ type: "commit", value: "Initial" });
+
+    const rebuild = () => {
+      let c = "gitGraph\n";
+      commands.forEach(cmd => {
+        if (cmd.type === "commit") c += `    commit${cmd.value ? ` id: "${cmd.value}"` : ""}\n`;
+        else c += `    ${cmd.type} ${cmd.value}\n`;
+      });
+      onChange(c.trim());
+    };
+
+    const cmdColors: Record<string, string> = { commit: "#4ade80", branch: "#60a5fa", checkout: "#fbbf24", merge: "#f472b6" };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Git Graph</SectionTitle>
+        {commands.map((cmd, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={{ ...cardCSS, borderLeft: `4px solid ${cmdColors[cmd.type] || "var(--border)"}` }}>
+            <select value={cmd.type} onChange={(e) => { commands[i].type = e.target.value; rebuild(); }}
+              className="w-24 text-xs font-mono rounded px-2 py-1.5 outline-none font-semibold"
+              style={{ ...inputCSS, color: cmdColors[cmd.type] }}>
+              {["commit", "branch", "checkout", "merge"].map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <input value={cmd.value} onChange={(e) => { commands[i].value = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }}
+              placeholder={cmd.type === "commit" ? "commit message" : "branch name"} />
+            <DeleteBtn onClick={() => { commands.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { commands.push({ type: "commit", value: "" }); rebuild(); }}>+ Add Command</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Sankey ───
+  if (code.startsWith("sankey")) {
+    const dataLines = code.split("\n").slice(1).filter(l => l.trim() && !l.trim().startsWith("sankey"));
+    const flows = dataLines.map(line => {
+      const parts = line.split(",").map(s => s.trim());
+      return { from: parts[0] || "", to: parts[1] || "", value: parts[2] || "10" };
+    });
+    if (flows.length === 0) flows.push({ from: "Source", to: "Target", value: "10" });
+
+    const rebuild = () => {
+      let c = "sankey-beta\n\n";
+      flows.forEach(f => { c += `${f.from},${f.to},${f.value}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Sankey Diagram — Flows ({flows.length})</SectionTitle>
+        {flows.map((f, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <input value={f.from} onChange={(e) => { flows[i].from = e.target.value; rebuild(); }}
+              className={`w-28 ${inputStyle} text-xs`} style={inputCSS} placeholder="Source" />
+            <span style={{ color: "var(--accent)" }}>→</span>
+            <input value={f.to} onChange={(e) => { flows[i].to = e.target.value; rebuild(); }}
+              className={`w-28 ${inputStyle} text-xs`} style={inputCSS} placeholder="Target" />
+            <input type="number" value={f.value} onChange={(e) => { flows[i].value = e.target.value; rebuild(); }}
+              className="w-16 text-xs font-mono rounded px-2 py-1 outline-none text-right" style={inputCSS} />
+            <DeleteBtn onClick={() => { flows.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { flows.push({ from: "Node", to: "Target", value: "10" }); rebuild(); }}>+ Add Flow</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Requirement Diagram ───
+  if (code.startsWith("requirementDiagram")) {
+    const reqs = [...code.matchAll(/requirement\s+(\w+)\s*\{([^}]*)\}/g)].map(m => {
+      const body = m[2];
+      return {
+        name: m[1],
+        id: body.match(/id:\s*(.+)/)?.[1]?.trim() || "",
+        text: body.match(/text:\s*(.+)/)?.[1]?.trim() || "",
+        risk: body.match(/risk:\s*(.+)/)?.[1]?.trim() || "low",
+      };
+    });
+    const elements = [...code.matchAll(/element\s+(\w+)\s*\{([^}]*)\}/g)].map(m => ({
+      name: m[1], type: m[2].match(/type:\s*(.+)/)?.[1]?.trim() || "",
+    }));
+
+    const rebuild = () => {
+      let c = "requirementDiagram\n\n";
+      reqs.forEach(r => {
+        c += `    requirement ${r.name} {\n        id: ${r.id}\n        text: ${r.text}\n        risk: ${r.risk}\n    }\n\n`;
+      });
+      elements.forEach(e => { c += `    element ${e.name} {\n        type: ${e.type}\n    }\n\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Requirements ({reqs.length})</SectionTitle>
+        {reqs.map((r, ri) => (
+          <div key={ri} className="p-3 space-y-1" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[ri % PIE_COLORS.length]}` }}>
+            <input value={r.name} onChange={(e) => { reqs[ri].name = e.target.value; rebuild(); }}
+              className="bg-transparent outline-none text-sm font-bold" style={{ color: "var(--text-primary)" }} />
+            <div className="flex gap-2 ml-1">
+              <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>id:</span>
+              <input value={r.id} onChange={(e) => { reqs[ri].id = e.target.value; rebuild(); }}
+                className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-muted)" }} />
+            </div>
+            <div className="flex gap-2 ml-1">
+              <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>text:</span>
+              <input value={r.text} onChange={(e) => { reqs[ri].text = e.target.value; rebuild(); }}
+                className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
+            </div>
+            <div className="flex gap-2 ml-1 items-center">
+              <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>risk:</span>
+              {["low", "medium", "high"].map(risk => (
+                <button key={risk} onMouseDown={() => { reqs[ri].risk = risk; rebuild(); }}
+                  className="text-[10px] px-2 py-0.5 rounded"
+                  style={{ background: r.risk === risk ? (risk === "high" ? "#ef4444" : risk === "medium" ? "#fbbf24" : "#4ade80") : "var(--surface)", color: r.risk === risk ? "#000" : "var(--text-muted)", border: "1px solid var(--border)" }}>
+                  {risk}
+                </button>
+              ))}
+            </div>
+            <DeleteBtn onClick={() => { reqs.splice(ri, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { reqs.push({ name: "Req" + (reqs.length + 1), id: "REQ-" + (reqs.length + 1), text: "Description", risk: "low" }); rebuild(); }}>+ Add Requirement</AddButton>
+      </div>
+    );
+  }
+
+  // Fallback: raw code editor (block, packet, architecture — beta/niche types)
   return (
     <div className="flex flex-col flex-1">
       <div className="p-5">

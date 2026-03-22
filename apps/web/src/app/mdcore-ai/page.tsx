@@ -39,10 +39,70 @@ const apis = [
 ];
 
 const useCases = [
-  { title: "AI Agent Developers", desc: "Render LLM output as polished documents. Convert any web page to clean Markdown for RAG ingestion.", color: "#fb923c", icon: ">_" },
-  { title: "SaaS Products", desc: "Embed production-grade Markdown rendering into your app. One dependency replaces five.", color: "#4ade80", icon: "{}" },
-  { title: "RAG Pipelines", desc: "PDF, DOCX, HTML to structured Markdown. One API call replaces your brittle conversion scripts.", color: "#c4b5fd", icon: "//" },
-  { title: "Documentation Tools", desc: "Normalize any Markdown flavor to a consistent spec. Auto-detect, convert, and render on the fly.", color: "#60a5fa", icon: "##" },
+  {
+    title: "Your AI chatbot looks like raw text",
+    problem: "You built a chatbot with Claude or GPT. It returns Markdown with tables, code, math. Your frontend shows broken formatting or plain text. Users think your product is broken.",
+    solution: "One API call renders the LLM output as production-quality HTML — syntax-highlighted code, rendered LaTeX, live Mermaid diagrams. Ship it as-is to your frontend.",
+    color: "#fb923c",
+    tag: "AI Products",
+    code: `// Your chatbot response handler\nconst stream = await anthropic.messages.stream({ ... })\nconst markdown = await stream.finalText()\n\n// Before: dangerouslySetInnerHTML with broken formatting\n// After: one call\nconst html = await md.render(markdown)\nres.json({ html }) // production-ready HTML`,
+  },
+  {
+    title: "RAG retrieval quality is terrible",
+    problem: "You're chunking PDFs and web pages for your RAG pipeline. Raw HTML has noise — navbars, footers, ads, scripts. Your embeddings are polluted. Retrieval precision drops.",
+    solution: "Convert any URL or PDF to clean, structured Markdown first. Headings become natural chunk boundaries. Tables stay intact. Code blocks preserve formatting. Your embeddings get signal, not noise.",
+    color: "#4ade80",
+    tag: "RAG / LLM Infra",
+    code: `// Before: messy HTML chunks with nav, footer, ads\n// After: clean Markdown with semantic structure\nconst markdown = await md.convert(url)\n\n// Split by headings — natural semantic boundaries\nconst chunks = markdown.split(/^## /gm)\nfor (const chunk of chunks) {\n  await pinecone.upsert(embed(chunk))\n}`,
+  },
+  {
+    title: "5 dependencies to render a README",
+    problem: "Your docs site needs remark + rehype + shiki + katex + mermaid. Five packages, five version cycles, five configs. Shiki alone is 2MB. A KaTeX update breaks your math. Mermaid conflicts with SSR.",
+    solution: "Replace all five with one API call. Same output quality, zero config, no version conflicts. Your CI build drops from 45s to 12s because you're not bundling five parsers.",
+    color: "#c4b5fd",
+    tag: "Developer Tools",
+    code: `// Before: 5 packages, 200 lines of pipeline config\n// import remarkGfm from 'remark-gfm'\n// import rehypeShiki from 'rehype-shiki'\n// import rehypeKatex from 'rehype-katex'\n// ... 15 more imports and plugins\n\n// After: one line\nconst html = await md.render(content)`,
+  },
+  {
+    title: "Customer sends a PDF, agent can't read it",
+    problem: "Your support agent receives PDFs, DOCX files, and URLs from customers. The LLM needs Markdown to reason about them. You're stitching together pdf-parse, mammoth, and cheerio. Each breaks differently.",
+    solution: "One endpoint handles all formats. PDF, DOCX, HTML, URL — auto-detected, converted to clean Markdown. Your agent gets structured text it can actually reason about.",
+    color: "#60a5fa",
+    tag: "AI Agents",
+    code: `// Customer uploads a contract PDF\nconst markdown = await md.convert(file, {\n  format: "auto" // detects PDF, DOCX, HTML\n})\n\n// Feed to your agent with full structure preserved\nconst analysis = await agent.run(\n  \`Analyze this contract:\\n\\n\${markdown}\`\n)`,
+  },
+  {
+    title: "Obsidian users break your Markdown input",
+    problem: "Your app accepts Markdown input. Users paste from Obsidian (wikilinks), Notion (custom blocks), MDX (JSX components), and GitHub (task lists). Half the syntax doesn't render. Users file bugs.",
+    solution: "Auto-detect the source flavor and normalize to standard GFM. Wikilinks become regular links. MDX components get stripped or rendered. Every flavor works, zero user friction.",
+    color: "#fbbf24",
+    tag: "SaaS Products",
+    code: `// User pastes Obsidian-flavored Markdown\nconst input = "See [[Project Plan]] and ~~old text~~"\n\n// Auto-detect flavor, normalize to GFM\nconst clean = await md.normalize(input, {\n  source_flavor: "auto",\n  target: "gfm"\n})\n// => "See [Project Plan](project-plan) and ~~old text~~"`,
+  },
+  {
+    title: "Weekly reports take 2 hours to format",
+    problem: "Your team writes weekly reports in Markdown. Converting to PDF for stakeholders means fighting with Pandoc, tweaking LaTeX templates, fixing page breaks. Every week, 2 hours lost.",
+    solution: "Markdown in, branded PDF out. Code blocks are highlighted, tables are formatted, charts render from Mermaid. Automate it in your CI — push to main, PDF appears in Slack.",
+    color: "#ef4444",
+    tag: "Automation",
+    code: `// GitHub Action: auto-generate PDF on push\nconst report = fs.readFileSync("reports/week-12.md")\nconst pdf = await md.render(report, {\n  output: "pdf",\n  theme: "corporate"\n})\nawait slack.upload(pdf, "#team-reports")`,
+  },
+  {
+    title: "Notion export is a mess of HTML",
+    problem: "You're migrating 500 pages from Notion to your new docs platform. Notion's export gives you mangled HTML with inline styles, empty divs, and broken links. Manual cleanup would take weeks.",
+    solution: "Batch convert Notion HTML exports to clean Markdown. Structure preserved, links fixed, formatting intact. 500 pages in minutes, not weeks.",
+    color: "#f472b6",
+    tag: "Content Migration",
+    code: `// Batch convert Notion export\nconst files = glob("notion-export/**/*.html")\n\nfor (const file of files) {\n  const html = fs.readFileSync(file)\n  const markdown = await md.convert(html, {\n    format: "html"\n  })\n  fs.writeFileSync(file.replace(".html", ".md"), markdown)\n}\n// 500 pages → clean Markdown in 3 minutes`,
+  },
+  {
+    title: "LLM output renders differently everywhere",
+    problem: "The same Markdown from Claude renders differently in your web app, mobile app, email, and Slack bot. Four surfaces, four rendering stacks, four sets of bugs. Users see inconsistencies.",
+    solution: "One engine, consistent output everywhere. Render once through mdcore, get identical HTML for web, mobile WebView, email, and Slack. Same AST, same styles, same result.",
+    color: "#a78bfa",
+    tag: "Multi-platform",
+    code: `// Same engine, every surface\nconst markdown = agent.response\n\n// Web app\nconst webHtml = await md.render(markdown)\n// Email\nconst emailHtml = await md.render(markdown, { theme: "email" })\n// Slack\nconst slackMrkdwn = await md.render(markdown, { output: "slack" })\n\n// Identical rendering logic. Zero drift.`,
+  },
 ];
 
 const pricing = [
@@ -287,16 +347,39 @@ export default function MdcoreAiPage() {
 
       {/* ══════════ USE CASES ══════════ */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 80px" }}>
-        <p style={label}>Built for</p>
-        <h2 style={heading}>From AI agents to production apps.</h2>
+        <p style={label}>Use Cases</p>
+        <h2 style={heading}>Real problems. One API call to fix each.</h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
-          {useCases.map((uc) => (
-            <div key={uc.title} className="mdcore-accent-left mdcore-card-hover" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 12, padding: "24px 20px", display: "flex", gap: 16, alignItems: "flex-start" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${uc.color}10`, border: `1px solid ${uc.color}25`, display: "flex", alignItems: "center", justifyContent: "center", ...mono, fontSize: 14, fontWeight: 800, color: uc.color, flexShrink: 0 }}>{uc.icon}</div>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 4px" }}>{uc.title}</p>
-                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>{uc.desc}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {useCases.map((uc, i) => (
+            <div key={uc.title} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 0 }}>
+                {/* Left: problem + solution */}
+                <div style={{ padding: "28px 28px 24px", borderRight: "1px solid var(--border-dim)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                    <span className="mdcore-tag" style={{ color: uc.color, background: `${uc.color}12` }}>{uc.tag}</span>
+                  </div>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+                    {uc.title}
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--text-faint)", margin: "0 0 16px", lineHeight: 1.6 }}>
+                    {uc.problem}
+                  </p>
+                  <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 12 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: "0 0 6px", ...mono, letterSpacing: 0.5, textTransform: "uppercase" }}>Solution</p>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+                      {uc.solution}
+                    </p>
+                  </div>
+                </div>
+                {/* Right: code */}
+                <div style={{ background: "rgba(0,0,0,0.12)", display: "flex", flexDirection: "column" }}>
+                  <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: uc.color, opacity: 0.6 }} />
+                    <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>implementation</span>
+                  </div>
+                  <pre style={{ margin: 0, padding: "16px 20px", fontSize: 11.5, lineHeight: 1.65, color: "var(--text-muted)", ...mono, overflowX: "auto", whiteSpace: "pre", flex: 1 }}>{uc.code}</pre>
+                </div>
               </div>
             </div>
           ))}
