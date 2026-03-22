@@ -85,6 +85,9 @@ export default function MdCanvas({
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const justSelectedRef = useRef(false);
+  const [canvasSplit, setCanvasSplit] = useState(65); // editor % vs code+preview
+  const isDraggingCanvasSplit = useRef(false);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const [showImport, setShowImport] = useState(false);
   const [rawCodeMode, setRawCodeMode] = useState(false);
   const [rawCode, setRawCode] = useState("");
@@ -531,7 +534,17 @@ export default function MdCanvas({
       )}
 
       {/* Main area: canvas + code panel */}
-      <div className="flex flex-1 min-h-0">
+      <div
+        ref={canvasWrapperRef}
+        className="flex flex-1 min-h-0"
+        onMouseMove={(e) => {
+          if (!isDraggingCanvasSplit.current || !canvasWrapperRef.current) return;
+          const rect = canvasWrapperRef.current.getBoundingClientRect();
+          const pct = ((e.clientX - rect.left) / rect.width) * 100;
+          setCanvasSplit(Math.max(30, Math.min(80, pct)));
+        }}
+        onMouseUp={() => { isDraggingCanvasSplit.current = false; }}
+      >
 
       {/* Raw code mode for non-flowchart diagrams (sequence, pie, etc) */}
       {rawCodeMode ? (
@@ -542,7 +555,8 @@ export default function MdCanvas({
       /* Canvas */
       <div
         ref={canvasRef}
-        className={`${showCode && nodes.length > 0 ? "w-2/3" : "w-full"} relative overflow-auto cursor-crosshair select-none`}
+        className="relative overflow-auto cursor-crosshair select-none"
+        style={{ width: showCode && (nodes.length > 0 || rawCodeMode) ? `${canvasSplit}%` : "100%" }}
         onDoubleClick={handleCanvasDoubleClick}
         onMouseDown={(e) => {
           // Start selection box if clicking on empty canvas
@@ -871,10 +885,21 @@ export default function MdCanvas({
       )}{/* end rawCodeMode conditional */}
 
       {/* Code + Preview panel */}
+      {/* Resize handle */}
       {showCode && (nodes.length > 0 || rawCodeMode) && (
         <div
-          className="w-1/3 flex flex-col"
-          style={{ borderLeft: "1px solid var(--border-dim)" }}
+          className="shrink-0 cursor-col-resize w-[5px]"
+          style={{ background: "var(--border-dim)", position: "relative" }}
+          onMouseDown={(e) => { e.preventDefault(); isDraggingCanvasSplit.current = true; }}
+        >
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
+        </div>
+      )}
+
+      {showCode && (nodes.length > 0 || rawCodeMode) && (
+        <div
+          className="flex flex-col"
+          style={{ width: `${100 - canvasSplit}%` }}
         >
           {/* Code */}
           <div className="flex flex-col h-1/2" style={{ borderBottom: "1px solid var(--border-dim)" }}>

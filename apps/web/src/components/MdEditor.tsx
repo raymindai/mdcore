@@ -311,9 +311,95 @@ gitGraph
     commit id: "v0.1"
 \`\`\`
 
+## Kanban
+
+\`\`\`mermaid
+kanban
+  Backlog
+    Research
+    Design
+  In Progress
+    Development
+  Done
+    Testing
+\`\`\`
+
+## XY Chart
+
+\`\`\`mermaid
+xychart-beta
+    title "Monthly Users"
+    x-axis ["Jan", "Feb", "Mar", "Apr", "May"]
+    bar [120, 200, 350, 280, 450]
+    line [100, 180, 300, 250, 400]
+\`\`\`
+
+## Sankey
+
+\`\`\`mermaid
+sankey-beta
+
+Traffic,Website,40
+Traffic,App,30
+Website,Signup,25
+Website,Bounce,15
+App,Signup,20
+App,Bounce,10
+\`\`\`
+
+## Requirement Diagram
+
+\`\`\`mermaid
+requirementDiagram
+
+    requirement Auth {
+        id: REQ-1
+        text: Users must authenticate
+        risk: high
+    }
+
+    requirement Logging {
+        id: REQ-2
+        text: All actions must be logged
+        risk: medium
+    }
+\`\`\`
+
+## Block Diagram
+
+\`\`\`mermaid
+block-beta
+    columns 3
+    input["Input"] process["Process"] output["Output"]
+    input --> process --> output
+\`\`\`
+
+## Packet Diagram
+
+\`\`\`mermaid
+packet-beta
+    0-15 : "Source Port"
+    16-31 : "Destination Port"
+    32-63 : "Sequence Number"
+    64-95 : "Acknowledgment"
+\`\`\`
+
+## Architecture
+
+\`\`\`mermaid
+architecture-beta
+    service client(Client)
+    service api(API Server)
+    service db(Database)
+    service cache(Redis Cache)
+    client --> api
+    api --> db
+    api --> cache
+\`\`\`
+
 ---
 
-*All 19 Mermaid types supported. Double-click to edit visually.*
+*All 19 Mermaid diagram types with visual editors. Double-click to edit.*
 `;
 
 
@@ -2284,10 +2370,12 @@ export default function MdEditor() {
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
         >
           <div
-            className="rounded-xl flex flex-col"
+            className="flex flex-col"
             style={{
               background: "var(--background)",
               border: "1px solid var(--border)",
+              borderRadius: 16,
+              overflow: "hidden",
               width: "95vw",
               height: "90vh",
               maxWidth: "1400px",
