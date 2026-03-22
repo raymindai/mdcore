@@ -104,6 +104,9 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     : code.startsWith("gitGraph") ? "git"
     : code.startsWith("sankey") ? "sankey"
     : code.startsWith("requirementDiagram") ? "requirement"
+    : code.startsWith("block") ? "block"
+    : code.startsWith("packet") ? "packet"
+    : code.startsWith("architecture") ? "architecture"
     : "raw";
 
   if (type === "pie") {
@@ -1031,7 +1034,165 @@ function DiagramFormEditor({ code, onChange }: { code: string; onChange: (c: str
     );
   }
 
-  // Fallback: raw code editor (block, packet, architecture — beta/niche types)
+  // ─── Block Diagram ───
+  if (code.startsWith("block")) {
+    const blocks: { id: string; label: string }[] = [];
+    const connections: { from: string; to: string; label: string }[] = [];
+    code.split("\n").forEach(line => {
+      const t = line.trim();
+      const blockMatch = t.match(/^(\w+)(?:\["([^"]+)"\]|\("([^"]+)"\))?$/);
+      if (blockMatch && !["block-beta", "columns"].includes(blockMatch[1])) {
+        blocks.push({ id: blockMatch[1], label: blockMatch[2] || blockMatch[3] || blockMatch[1] });
+      }
+      const connMatch = t.match(/(\w+)\s*-->\s*(\w+)(?:\s*:\s*"?([^"]*)"?)?/);
+      if (connMatch) connections.push({ from: connMatch[1], to: connMatch[2], label: connMatch[3] || "" });
+    });
+
+    const rebuild = () => {
+      let c = "block-beta\n    columns 3\n";
+      blocks.forEach(b => { c += `    ${b.id}["${b.label}"]\n`; });
+      connections.forEach(cn => { c += `    ${cn.from} --> ${cn.to}${cn.label ? ` : "${cn.label}"` : ""}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Block Diagram — Blocks ({blocks.length})</SectionTitle>
+        {blocks.map((b, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+            <input value={b.id} onChange={(e) => { blocks[i].id = e.target.value; rebuild(); }}
+              className="w-20 text-xs font-mono bg-transparent outline-none font-bold" style={{ color: "var(--accent)" }} placeholder="id" />
+            <input value={b.label} onChange={(e) => { blocks[i].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="Label" />
+            <DeleteBtn onClick={() => { blocks.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { blocks.push({ id: `b${blocks.length + 1}`, label: "Block" }); rebuild(); }}>+ Add Block</AddButton>
+        <SectionTitle>Connections ({connections.length})</SectionTitle>
+        {connections.map((cn, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <select value={cn.from} onChange={(e) => { connections[i].from = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {blocks.map(b => <option key={b.id} value={b.id}>{b.id}</option>)}
+            </select>
+            <span style={{ color: "var(--accent)" }}>→</span>
+            <select value={cn.to} onChange={(e) => { connections[i].to = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {blocks.map(b => <option key={b.id} value={b.id}>{b.id}</option>)}
+            </select>
+            <input value={cn.label} onChange={(e) => { connections[i].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="label" />
+            <DeleteBtn onClick={() => { connections.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { connections.push({ from: blocks[0]?.id || "a", to: blocks[1]?.id || "b", label: "" }); rebuild(); }}>+ Add Connection</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Packet Diagram ───
+  if (code.startsWith("packet")) {
+    const fields: { start: number; end: number; label: string }[] = [];
+    code.split("\n").forEach(line => {
+      const m = line.match(/(\d+)-(\d+)\s*:\s*"([^"]+)"/);
+      if (m) fields.push({ start: parseInt(m[1]), end: parseInt(m[2]), label: m[3] });
+    });
+    if (fields.length === 0) fields.push({ start: 0, end: 15, label: "Header" });
+
+    const rebuild = () => {
+      let c = "packet-beta\n";
+      fields.forEach(f => { c += `    ${f.start}-${f.end} : "${f.label}"\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Packet Diagram — Fields ({fields.length})</SectionTitle>
+        {fields.map((f, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>bits:</span>
+            <input type="number" value={f.start} onChange={(e) => { fields[i].start = parseInt(e.target.value) || 0; rebuild(); }}
+              className="w-12 text-xs font-mono rounded px-1 py-0.5 outline-none text-center" style={inputCSS} />
+            <span style={{ color: "var(--text-faint)" }}>—</span>
+            <input type="number" value={f.end} onChange={(e) => { fields[i].end = parseInt(e.target.value) || 0; rebuild(); }}
+              className="w-12 text-xs font-mono rounded px-1 py-0.5 outline-none text-center" style={inputCSS} />
+            <input value={f.label} onChange={(e) => { fields[i].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="Field name" />
+            <DeleteBtn onClick={() => { fields.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => {
+          const last = fields[fields.length - 1];
+          const start = last ? last.end + 1 : 0;
+          fields.push({ start, end: start + 7, label: "Field" }); rebuild();
+        }}>+ Add Field</AddButton>
+      </div>
+    );
+  }
+
+  // ─── Architecture ───
+  if (code.startsWith("architecture")) {
+    const services: { id: string; label: string; icon: string; group: string }[] = [];
+    const connections: { from: string; to: string; direction: string }[] = [];
+    code.split("\n").forEach(line => {
+      const t = line.trim();
+      const svcMatch = t.match(/service\s+(\w+)\(([^)]*)\)/);
+      if (svcMatch) {
+        const inner = svcMatch[2];
+        const icon = inner.match(/\[([^\]]+)\]/)?.[1] || "";
+        const label = inner.replace(/\[[^\]]+\]/, "").trim();
+        services.push({ id: svcMatch[1], label, icon, group: "" });
+      }
+      const connMatch = t.match(/(\w+)\s*(<--|-->|<-->)\s*(\w+)/);
+      if (connMatch) connections.push({ from: connMatch[1], direction: connMatch[2], to: connMatch[3] });
+    });
+
+    const rebuild = () => {
+      let c = "architecture-beta\n";
+      services.forEach(s => { c += `    service ${s.id}(${s.icon ? `[${s.icon}]` : ""} ${s.label})\n`; });
+      connections.forEach(cn => { c += `    ${cn.from} ${cn.direction} ${cn.to}\n`; });
+      onChange(c.trim());
+    };
+
+    return (
+      <div className="p-5 space-y-4 overflow-auto">
+        <SectionTitle>Architecture — Services ({services.length})</SectionTitle>
+        {services.map((s, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={{ ...cardCSS, borderLeft: `4px solid ${PIE_COLORS[i % PIE_COLORS.length]}` }}>
+            <input value={s.id} onChange={(e) => { services[i].id = e.target.value; rebuild(); }}
+              className="w-20 text-xs font-mono bg-transparent outline-none font-bold" style={{ color: "var(--accent)" }} placeholder="id" />
+            <input value={s.label} onChange={(e) => { services[i].label = e.target.value; rebuild(); }}
+              className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} placeholder="Label" />
+            <input value={s.icon} onChange={(e) => { services[i].icon = e.target.value; rebuild(); }}
+              className="w-16 text-xs font-mono bg-transparent outline-none" style={{ color: "var(--text-muted)" }} placeholder="icon" />
+            <DeleteBtn onClick={() => { services.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { services.push({ id: `svc${services.length + 1}`, label: "Service", icon: "server", group: "" }); rebuild(); }}>+ Add Service</AddButton>
+        <SectionTitle>Connections ({connections.length})</SectionTitle>
+        {connections.map((cn, i) => (
+          <div key={i} className="flex gap-2 items-center p-2" style={cardCSS}>
+            <select value={cn.from} onChange={(e) => { connections[i].from = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {services.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
+            </select>
+            <select value={cn.direction} onChange={(e) => { connections[i].direction = e.target.value; rebuild(); }}
+              className="w-14 text-xs font-mono text-center rounded px-1 py-1 outline-none" style={{ ...inputCSS, color: "var(--accent)" }}>
+              {["-->", "<--", "<-->"].map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select value={cn.to} onChange={(e) => { connections[i].to = e.target.value; rebuild(); }}
+              className={`w-24 ${inputStyle} text-xs`} style={inputCSS}>
+              {services.map(s => <option key={s.id} value={s.id}>{s.id}</option>)}
+            </select>
+            <DeleteBtn onClick={() => { connections.splice(i, 1); rebuild(); }} />
+          </div>
+        ))}
+        <AddButton onClick={() => { connections.push({ from: services[0]?.id || "a", direction: "-->", to: services[1]?.id || "b" }); rebuild(); }}>+ Add Connection</AddButton>
+      </div>
+    );
+  }
+
+  // Fallback: raw code for any unknown type
   return (
     <div className="flex flex-col flex-1">
       <div className="p-5">

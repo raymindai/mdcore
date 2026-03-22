@@ -212,6 +212,244 @@ export default function MdcoreAiPage() {
         </div>
       </section>
 
+      {/* ══════════ OUTPUT SHOWCASE ══════════ */}
+      <section style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 80px" }}>
+        <p style={label}>See the output</p>
+        <h2 style={heading}>Raw Markdown in. <span style={{ color: "var(--accent)" }}>This comes out.</span></h2>
+
+        {/* Example 1: Mixed content */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+            {/* Raw input */}
+            <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>input.md</span>
+                <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono, background: "var(--border-dim)", padding: "2px 6px", borderRadius: 4 }}>RAW</span>
+              </div>
+              <pre style={{ margin: 0, padding: "20px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, overflowX: "auto", whiteSpace: "pre" }}>
+{`# Quarterly Report
+
+Revenue grew **34%** YoY, driven by
+API adoption in the enterprise segment.
+
+| Metric     | Q1     | Q2     |
+|------------|--------|--------|
+| Revenue    | $1.2M  | $1.6M  |
+| API Calls  | 12M    | 31M    |
+| Latency    | 4.2ms  | 1.8ms  |
+
+## Code Performance
+
+\`\`\`rust
+pub fn render(input: &str) -> String {
+    let arena = Arena::new();
+    let root = parse_document(
+        &arena, input, &Options::default()
+    );
+    format_html(root, &Options::default())
+}
+\`\`\`
+
+Inline math: $E = mc^2$
+
+> **Note:** All benchmarks measured at p95
+> on Cloudflare Workers edge network.`}</pre>
+            </div>
+
+            {/* Rendered output */}
+            <div>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>output.html</span>
+                <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>RENDERED</span>
+              </div>
+              <div style={{ padding: "24px", fontSize: 14, lineHeight: 1.8, color: "var(--text-secondary)" }}>
+                {/* Rendered H1 */}
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px", paddingBottom: 8, borderBottom: "1px solid var(--border-dim)", letterSpacing: "-0.02em" }}>Quarterly Report</h3>
+                <p style={{ margin: "12px 0", fontSize: 14, lineHeight: 1.7 }}>
+                  Revenue grew <strong style={{ color: "var(--text-primary)" }}>34%</strong> YoY, driven by API adoption in the enterprise segment.
+                </p>
+                {/* Rendered table */}
+                <table style={{ width: "100%", borderCollapse: "collapse", margin: "12px 0", fontSize: 13, border: "1px solid var(--border-dim)", borderRadius: 8, overflow: "hidden" }}>
+                  <thead>
+                    <tr>
+                      {["Metric", "Q1", "Q2"].map((h) => (
+                        <th key={h} style={{ textAlign: "left", padding: "8px 12px", background: "rgba(0,0,0,0.2)", borderBottom: "2px solid var(--border-dim)", fontSize: 11, fontWeight: 600, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[["Revenue", "$1.2M", "$1.6M"], ["API Calls", "12M", "31M"], ["Latency", "4.2ms", "1.8ms"]].map((row) => (
+                      <tr key={row[0]}>
+                        {row.map((cell, j) => (
+                          <td key={j} style={{ padding: "6px 12px", borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)", ...mono, fontSize: 12 }}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {/* Rendered H2 */}
+                <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: "20px 0 8px", paddingBottom: 6, borderBottom: "1px solid var(--border-dim)" }}>Code Performance</h4>
+                {/* Rendered code block */}
+                <div style={{ background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "14px 16px", margin: "8px 0", border: "1px solid var(--border-dim)", fontSize: 12, lineHeight: 1.65, ...mono }}>
+                  <span style={{ color: "#c586c0" }}>pub fn</span>{" "}
+                  <span style={{ color: "#dcdcaa" }}>render</span>
+                  <span style={{ color: "var(--text-muted)" }}>(</span>
+                  <span style={{ color: "#9cdcfe" }}>input</span>
+                  <span style={{ color: "var(--text-muted)" }}>: &</span>
+                  <span style={{ color: "#4ec9b0" }}>str</span>
+                  <span style={{ color: "var(--text-muted)" }}>)</span>
+                  <span style={{ color: "var(--text-muted)" }}> -&gt; </span>
+                  <span style={{ color: "#4ec9b0" }}>String</span>
+                  <span style={{ color: "var(--text-muted)" }}>{" {"}</span>
+                  {"\n"}
+                  {"    "}<span style={{ color: "#c586c0" }}>let</span>{" "}
+                  <span style={{ color: "#9cdcfe" }}>arena</span>
+                  <span style={{ color: "var(--text-muted)" }}> = </span>
+                  <span style={{ color: "#4ec9b0" }}>Arena</span>
+                  <span style={{ color: "var(--text-muted)" }}>::</span>
+                  <span style={{ color: "#dcdcaa" }}>new</span>
+                  <span style={{ color: "var(--text-muted)" }}>();</span>
+                  {"\n"}
+                  {"    "}<span style={{ color: "#c586c0" }}>let</span>{" "}
+                  <span style={{ color: "#9cdcfe" }}>root</span>
+                  <span style={{ color: "var(--text-muted)" }}> = </span>
+                  <span style={{ color: "#dcdcaa" }}>parse_document</span>
+                  <span style={{ color: "var(--text-muted)" }}>(</span>
+                  {"\n"}
+                  {"        "}<span style={{ color: "var(--text-muted)" }}>&amp;</span>
+                  <span style={{ color: "#9cdcfe" }}>arena</span>
+                  <span style={{ color: "var(--text-muted)" }}>, </span>
+                  <span style={{ color: "#9cdcfe" }}>input</span>
+                  <span style={{ color: "var(--text-muted)" }}>, &amp;</span>
+                  <span style={{ color: "#4ec9b0" }}>Options</span>
+                  <span style={{ color: "var(--text-muted)" }}>::</span>
+                  <span style={{ color: "#dcdcaa" }}>default</span>
+                  <span style={{ color: "var(--text-muted)" }}>()</span>
+                  {"\n"}
+                  {"    "}<span style={{ color: "var(--text-muted)" }}>);</span>
+                  {"\n"}
+                  {"    "}<span style={{ color: "#dcdcaa" }}>format_html</span>
+                  <span style={{ color: "var(--text-muted)" }}>(</span>
+                  <span style={{ color: "#9cdcfe" }}>root</span>
+                  <span style={{ color: "var(--text-muted)" }}>, &amp;</span>
+                  <span style={{ color: "#4ec9b0" }}>Options</span>
+                  <span style={{ color: "var(--text-muted)" }}>::</span>
+                  <span style={{ color: "#dcdcaa" }}>default</span>
+                  <span style={{ color: "var(--text-muted)" }}>())</span>
+                  {"\n"}
+                  <span style={{ color: "var(--text-muted)" }}>{"}"}</span>
+                </div>
+                {/* Rendered math */}
+                <p style={{ margin: "12px 0", fontSize: 14 }}>
+                  Inline math:{" "}
+                  <span style={{ color: "var(--math-color)", fontStyle: "italic", fontSize: 15 }}>E = mc<sup>2</sup></span>
+                </p>
+                {/* Rendered blockquote */}
+                <div style={{ borderLeft: "3px solid var(--accent)", padding: "8px 14px", background: "rgba(0,0,0,0.1)", borderRadius: "0 8px 8px 0", margin: "12px 0", fontSize: 13 }}>
+                  <p style={{ margin: 0 }}><strong style={{ color: "var(--accent)" }}>Note:</strong>{" "}
+                  <span style={{ color: "var(--text-muted)" }}>All benchmarks measured at p95 on Cloudflare Workers edge network.</span></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Example 2: Mermaid + features strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Mermaid: raw → rendered side by side */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+              {/* Raw mermaid code */}
+              <div style={{ borderRight: "1px solid var(--border-dim)" }}>
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>```mermaid</span>
+                </div>
+                <pre style={{ margin: 0, padding: "16px", fontSize: 12, lineHeight: 1.7, color: "var(--text-muted)", ...mono, whiteSpace: "pre" }}>
+{`graph LR
+  A[API Request] --> B{Cached?}
+  B -->|Yes| C[Edge CDN]
+  B -->|No| D[Rust Engine]
+  D --> E[Parse AST]
+  E --> F[Render HTML]
+  F --> C`}
+                </pre>
+              </div>
+              {/* Rendered as styled nodes */}
+              <div>
+                <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>rendered</span>
+                  <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>SVG</span>
+                </div>
+                <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  {/* Row 1: API Request */}
+                  <div style={{ background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.3)", borderRadius: 8, padding: "6px 16px", fontSize: 11, color: "#fb923c", fontWeight: 600, ...mono }}>
+                    API Request
+                  </div>
+                  <span style={{ color: "var(--border)", fontSize: 14, lineHeight: 1 }}>&#9660;</span>
+                  {/* Row 2: Diamond */}
+                  <div style={{ background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", padding: "6px 20px", fontSize: 11, color: "#fbbf24", fontWeight: 600, ...mono, transform: "rotate(0deg)", borderRadius: 4 }}>
+                    &#9674; Cached?
+                  </div>
+                  {/* Row 3: Branch */}
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", width: "100%" }}>
+                    <div style={{ flex: 1, textAlign: "center" }}>
+                      <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono }}>No</span>
+                      <div style={{ marginTop: 4, background: "rgba(196,181,253,0.1)", border: "1px solid rgba(196,181,253,0.3)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", fontWeight: 600, ...mono }}>Rust Engine</div>
+                      <span style={{ color: "var(--border)", fontSize: 12, display: "block", margin: "2px 0" }}>&#9660;</span>
+                      <div style={{ background: "rgba(196,181,253,0.06)", border: "1px solid rgba(196,181,253,0.2)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", ...mono }}>Parse AST</div>
+                      <span style={{ color: "var(--border)", fontSize: 12, display: "block", margin: "2px 0" }}>&#9660;</span>
+                      <div style={{ background: "rgba(196,181,253,0.06)", border: "1px solid rgba(196,181,253,0.2)", borderRadius: 8, padding: "5px 10px", fontSize: 10, color: "#c4b5fd", ...mono }}>Render HTML</div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: "center" }}>
+                      <span style={{ fontSize: 10, color: "var(--text-faint)", ...mono }}>Yes</span>
+                      <div style={{ marginTop: 4, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <span style={{ color: "var(--border)", fontSize: 32, lineHeight: 1 }}>&#8628;</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Row 4: Result */}
+                  <span style={{ color: "var(--border)", fontSize: 14, lineHeight: 1 }}>&#9660;</span>
+                  <div style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 20, padding: "6px 20px", fontSize: 11, color: "#4ade80", fontWeight: 600, ...mono }}>
+                    Edge CDN &#10003;
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature highlights */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border-dim)" }}>
+              <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono }}>What gets rendered</span>
+            </div>
+            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {[
+                { feature: "Syntax highlighting", detail: "190+ languages, auto-detected", example: "rust, python, typescript, go..." },
+                { feature: "Math equations", detail: "KaTeX, inline & display", example: "E = mc², ∫₀^∞ e^(-x²) dx" },
+                { feature: "Tables", detail: "GFM with alignment & striping", example: "| col | col | — sortable" },
+                { feature: "Mermaid diagrams", detail: "Flowchart, sequence, gantt", example: "graph LR → interactive SVG" },
+                { feature: "Task lists", detail: "Clickable checkboxes", example: "- [x] Done  - [ ] Todo" },
+                { feature: "Blockquotes", detail: "Nested, with callout styling", example: "> **Note:** styled callouts" },
+                { feature: "Footnotes", detail: "Auto-linked references", example: "Text[^1] → numbered links" },
+                { feature: "Auto-links", detail: "URLs, emails, @mentions", example: "https://... → clickable" },
+              ].map((f) => (
+                <div key={f.feature} style={{ display: "flex", alignItems: "baseline", gap: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", width: 150, flexShrink: 0 }}>{f.feature}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-faint)", flex: 1 }}>{f.detail}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", ...mono, opacity: 0.6 }}>{f.example}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <p style={{ textAlign: "center", marginTop: 24 }}>
+          <a href="https://mdfy.cc" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
+            Try it live on mdfy.cc &rarr;
+          </a>
+        </p>
+      </section>
+
       <div className="mdcore-divider" style={{ maxWidth: 1120, margin: "0 auto" }} />
 
       {/* ══════════ STATS ══════════ */}
