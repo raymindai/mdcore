@@ -147,9 +147,9 @@ WASM
 : WebAssembly — a binary instruction format for a stack-based virtual machine.
 `;
 
-const SAMPLE_DIAGRAMS = `# Mermaid Diagrams
+const SAMPLE_DIAGRAMS = `# Mermaid Diagrams — All 19 Types
 
-> **Tip:** Double-click any diagram to open the visual editor. Hover for the "Edit in Mermaid" button.
+> **Tip:** Double-click any diagram to open the visual editor.
 
 ## Flowchart
 
@@ -158,11 +158,8 @@ graph LR
     A[Markdown] --> B[mdcore Engine]
     B --> C[WASM]
     B --> D[Native Binary]
-    B --> E[Node.js napi-rs]
-    C --> F[Browser]
-    C --> G[Edge / CF Workers]
-    D --> H[CLI]
-    E --> J[npm package]
+    C --> E[Browser]
+    D --> F[CLI]
     style B fill:#fb923c,stroke:#ea580c,color:#000
 \`\`\`
 
@@ -171,27 +168,78 @@ graph LR
 \`\`\`mermaid
 sequenceDiagram
     participant User
-    participant mdfy.cc
-    participant WASM
-    participant Supabase
-    User->>mdfy.cc: Paste Markdown
-    mdfy.cc->>WASM: render(md)
-    WASM-->>mdfy.cc: HTML + metadata
-    User->>mdfy.cc: Click Share
-    mdfy.cc->>Supabase: POST /api/docs
-    Supabase-->>mdfy.cc: { id, editToken }
-    mdfy.cc-->>User: mdfy.cc/{id} copied!
+    participant App
+    participant API
+    User->>App: Request
+    App->>API: Fetch data
+    API-->>App: Response
+    App-->>User: Render
 \`\`\`
 
 ## Pie Chart
 
 \`\`\`mermaid
-pie title Markdown Flavors in the Wild
-    "GFM" : 45
-    "CommonMark" : 25
-    "Obsidian" : 15
-    "MDX" : 10
-    "Other" : 5
+pie title Tech Stack
+    "Rust" : 40
+    "TypeScript" : 35
+    "CSS" : 15
+    "Other" : 10
+\`\`\`
+
+## Gantt Chart
+
+\`\`\`mermaid
+gantt
+    title Project Timeline
+    dateFormat YYYY-MM-DD
+    section Phase 1
+    Design :2026-01-01, 10d
+    Develop :2026-01-11, 20d
+    section Phase 2
+    Test :2026-02-01, 7d
+    Launch :2026-02-08, 3d
+\`\`\`
+
+## Class Diagram
+
+\`\`\`mermaid
+classDiagram
+    class Engine {
+        +render(md) HTML
+        +detectFlavor() Flavor
+    }
+    class Renderer {
+        +highlight() void
+        +katex() void
+    }
+    Engine <|-- Renderer
+\`\`\`
+
+## State Diagram
+
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Loading : fetch
+    Loading --> Rendered : success
+    Loading --> Error : fail
+    Error --> Idle : retry
+    Rendered --> [*]
+\`\`\`
+
+## ER Diagram
+
+\`\`\`mermaid
+erDiagram
+    User {
+        int id
+        string name
+    }
+    Document {
+        int id
+        string markdown
+    }
+    User ||--o{ Document : creates
 \`\`\`
 
 ## Mindmap
@@ -205,35 +253,69 @@ mindmap
     Engine
       Rust
       WASM
-      napi-rs
     Features
       GFM
       KaTeX
       Mermaid
 \`\`\`
 
+## Timeline
+
+\`\`\`mermaid
+timeline
+    title mdcore Milestones
+    2026 Q1 : Engine v0.1
+             : mdfy.cc launch
+    2026 Q2 : npm package
+             : CLI tool
+    2026 Q3 : API platform
+\`\`\`
+
 ## User Journey
 
 \`\`\`mermaid
 journey
-    title User Journey — mdfy.cc
-    section Discovery
-      Visit mdfy.cc: 5: User
+    title First-time User
+    section Discover
+      Visit site: 5: User
       See demo: 4: User
-    section First Use
-      Paste markdown: 5: User
-      Preview renders: 5: User
-      Click Share: 4: User
-    section Return
-      Open shared URL: 5: User
-      Edit inline: 4: User
+    section Use
+      Paste MD: 5: User
+      Share URL: 4: User
+\`\`\`
+
+## Quadrant Chart
+
+\`\`\`mermaid
+quadrantChart
+    title Feature Priority
+    x-axis "Low Effort" --> "High Effort"
+    y-axis "Low Impact" --> "High Impact"
+    Share URL: [0.2, 0.9]
+    PDF Export: [0.4, 0.6]
+    Canvas Mode: [0.8, 0.7]
+    Themes: [0.3, 0.4]
+\`\`\`
+
+## Git Graph
+
+\`\`\`mermaid
+gitGraph
+    commit id: "init"
+    branch feature
+    commit id: "add engine"
+    commit id: "add wasm"
+    checkout main
+    commit id: "hotfix"
+    merge feature
+    commit id: "v0.1"
 \`\`\`
 
 ---
 
-*mdfy.cc supports all 19 Mermaid diagram types with visual editors.*
-*New Mermaid Diagram from the ··· menu to create from scratch.*
+*All 19 Mermaid types supported. Double-click to edit visually.*
 `;
+
 
 const INITIAL_TABS: Tab[] = [
   { id: "tab-welcome", title: "Welcome", markdown: SAMPLE_WELCOME },
@@ -1898,6 +1980,17 @@ export default function MdEditor() {
               >
                 <span className="text-[10px]" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }}>📄</span>
                 <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const rect = (e.target as HTMLElement).getBoundingClientRect();
+                    setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id });
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] px-1 py-0.5 rounded shrink-0"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  ···
+                </button>
               </div>
             ))}
           </div>
@@ -2013,7 +2106,7 @@ export default function MdEditor() {
                     Edit →
                   </button>
                 )}
-                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>rendered</span>
+                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>double-click to edit</span>
               </div>
             </div>
             <div className="flex-1 overflow-auto" ref={previewRef}>
