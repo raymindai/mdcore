@@ -81,8 +81,9 @@ ${ascii}`;
       }
     }
 
-    if (!mermaidCode || !mermaidCode.includes("graph") && !mermaidCode.includes("flowchart")) {
-      return NextResponse.json({ error: "No valid Mermaid output" }, { status: 500 });
+    if (!mermaidCode || (!mermaidCode.includes("graph") && !mermaidCode.includes("flowchart"))) {
+      console.error("Invalid Mermaid output:", mermaidCode?.substring(0, 200));
+      return NextResponse.json({ error: "No valid Mermaid output", raw: mermaidCode?.substring(0, 200) }, { status: 500 });
     }
 
     // Post-process: fix common Mermaid syntax issues
@@ -104,7 +105,7 @@ ${ascii}`;
 
     return NextResponse.json({ mermaid: mermaidCode });
   } catch (err: unknown) {
-    console.error("Gemini request failed:", err instanceof Error ? err.message : err);
-    return NextResponse.json({ error: "AI request failed" }, { status: 500 });
+    console.error("Gemini request failed:", err instanceof Error ? err.stack : err);
+    return NextResponse.json({ error: "AI request failed: " + (err instanceof Error ? err.message : String(err)) }, { status: 500 });
   }
 }
