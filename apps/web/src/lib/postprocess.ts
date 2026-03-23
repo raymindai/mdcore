@@ -14,7 +14,10 @@ import hljs from "highlight.js";
 export function postProcessHtml(html: string): string {
   let result = html;
 
-  // Syntax highlight code blocks (skips mermaid/math)
+  // Detect ASCII art diagrams FIRST (before highlight.js touches them)
+  result = styleAsciiDiagrams(result);
+
+  // Syntax highlight code blocks (skips mermaid/math/ascii-diagram)
   result = highlightCode(result);
 
   // Process KaTeX math
@@ -28,9 +31,6 @@ export function postProcessHtml(html: string): string {
 
   // Convert align attr to inline style (Tailwind resets override HTML align)
   result = result.replace(/ align="(left|center|right)"/g, ' style="text-align:$1"');
-
-  // Detect and style ASCII art diagrams
-  result = styleAsciiDiagrams(result);
 
   // NOTE: Mermaid is handled via DOM in useEffect (MdEditor.tsx),
   // not here. This avoids fragile regex matching on HTML strings.
