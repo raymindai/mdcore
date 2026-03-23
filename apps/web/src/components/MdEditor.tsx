@@ -689,35 +689,8 @@ export default function MdEditor() {
     });
   }, [html, isLoading, theme, viewMode]);
 
-  // ASCII diagram → SVG rendering
-  useEffect(() => {
-    if (!previewRef.current || isLoading) return;
-
-    const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
-    if (asciiDiagrams.length === 0) return;
-
-    import("@/lib/ascii-to-svg").then(({ asciiToSvg }) => {
-      const isDark = theme === "dark";
-
-      asciiDiagrams.forEach((el) => {
-        if (el.querySelector("svg")) return; // already rendered
-
-        const codeEl = el.querySelector("code");
-        const asciiText = codeEl?.textContent || el.textContent || "";
-        if (!asciiText.trim()) return;
-
-        const svg = asciiToSvg(asciiText, isDark);
-        const originalHtml = codeEl?.innerHTML || asciiText;
-
-        (el as HTMLElement).innerHTML = `
-          <div style="text-align:center;padding:0.5rem;overflow-x:auto">${svg}</div>
-          <details style="margin:0;border-top:1px solid var(--border-dim)">
-            <summary style="padding:4px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
-            <pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:0.75rem 1rem;font-family:ui-monospace,monospace;font-size:0.7rem;line-height:1.3;color:var(--text-faint);white-space:pre">${originalHtml}</code></pre>
-          </details>`;
-      });
-    });
-  }, [html, isLoading, theme]);
+  // ASCII diagrams are rendered via CSS in .ascii-diagram class.
+  // No JS transformation needed — monospace font handles alignment perfectly.
 
   // Load shared content from URL on mount
   useEffect(() => {

@@ -487,30 +487,44 @@ body {
   height: auto;
 }
 
-/* ASCII art diagrams — special styling for box-drawing character diagrams */
+/* ASCII art diagrams — premium styled monospace rendering */
 .mdcore-rendered .ascii-diagram {
-  margin: 1rem 0;
+  margin: 1.25rem 0;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--surface);
-  overflow: hidden;
+  background: linear-gradient(145deg, var(--surface), var(--background));
+  overflow-x: auto;
   position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mdcore-rendered .ascii-diagram pre {
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
 }
 
 .mdcore-rendered .ascii-diagram code {
+  display: block !important;
   background: transparent !important;
   border: none !important;
-  padding: 1.5rem !important;
-  color: var(--accent) !important;
+  padding: 1.5rem 2rem !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace !important;
   font-size: 0.8125rem !important;
-  line-height: 1.4 !important;
-  letter-spacing: 0;
+  line-height: 1.45 !important;
+  letter-spacing: 0 !important;
+  color: var(--text-secondary) !important;
+  white-space: pre !important;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Light mode: slightly different background for diagrams */
+/* Light mode */
 [data-theme="light"] .mdcore-rendered .ascii-diagram {
-  background: #f8f9fa;
+  background: linear-gradient(145deg, #f8f9fa, #ffffff);
   border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .mdcore-rendered .mermaid-rendered svg {
