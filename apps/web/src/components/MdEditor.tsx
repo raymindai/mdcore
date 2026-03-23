@@ -715,13 +715,24 @@ export default function MdEditor() {
 
     import("mermaid").then(async (mermaidModule) => {
       const mermaid = mermaidModule.default;
-      // Use Mermaid native themes with minimal customization
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
         theme: isDark ? "dark" : "default",
         fontFamily: "system-ui, -apple-system, sans-serif",
         fontSize: 14,
+        themeVariables: isDark ? {
+          primaryColor: "#2d3748",
+          primaryTextColor: "#e2e8f0",
+          primaryBorderColor: "#4a5568",
+          lineColor: "#718096",
+          secondaryColor: "#1a202c",
+          tertiaryColor: "#2d3748",
+          background: "#1a202c",
+          mainBkg: "#2d3748",
+          nodeBorder: "#4a5568",
+          titleColor: "#e2e8f0",
+        } : {},
       });
 
       const ts = Date.now();
@@ -815,12 +826,25 @@ export default function MdEditor() {
 
           const mermaidModule = await import("mermaid");
           const mermaid = mermaidModule.default;
+          const isDarkMode = theme === "dark";
           mermaid.initialize({
             startOnLoad: false,
             securityLevel: "loose",
-            theme: theme === "dark" ? "dark" : "default",
+            theme: isDarkMode ? "dark" : "default",
             fontFamily: "system-ui, -apple-system, sans-serif",
             fontSize: 14,
+            themeVariables: isDarkMode ? {
+              primaryColor: "#2d3748",
+              primaryTextColor: "#e2e8f0",
+              primaryBorderColor: "#4a5568",
+              lineColor: "#718096",
+              secondaryColor: "#1a202c",
+              tertiaryColor: "#2d3748",
+              background: "#1a202c",
+              mainBkg: "#2d3748",
+              nodeBorder: "#4a5568",
+              titleColor: "#e2e8f0",
+            } : {},
           });
 
           const id = `ascii-${Date.now()}`;

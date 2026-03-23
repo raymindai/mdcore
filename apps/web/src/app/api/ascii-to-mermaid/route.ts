@@ -21,7 +21,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  const prompt = `Convert this ASCII diagram to Mermaid code. Use flowchart TD. Use ["label"] for all nodes. No () shapes. No code fences. No explanations. Only raw Mermaid code.
+  // Detect flow direction from the ASCII art
+  const hasVerticalArrows = /[▼↓]/.test(ascii);
+  const hasHorizontalArrows = /[→▶←◀]/.test(ascii) && !hasVerticalArrows;
+  const direction = hasHorizontalArrows ? "LR" : "TD";
+
+  const prompt = `Convert this ASCII box diagram to Mermaid flowchart ${direction}.
+
+Rules:
+- Use flowchart ${direction}
+- subgraph for nested/grouped boxes
+- ["quoted label"] for ALL nodes (never use parentheses)
+- --> for arrow connections
+- Preserve the original layout direction (${direction === "TD" ? "top-to-bottom" : "left-to-right"})
+- Preserve ALL text exactly
+- Side-by-side boxes should appear in the same row
+- Output ONLY Mermaid code, nothing else
 
 ${ascii}`;
 
