@@ -586,7 +586,7 @@ $$`}
         {/* Why not X */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {[
-            { title: "Zero JS parsers in the hot path", desc: "The entire parse → AST → render pipeline runs in compiled WASM. No garbage collection pauses, no event loop blocking, no V8 overhead." },
+            { title: "Rust parser, JS post-processing", desc: "The core parse → AST → HTML pipeline runs in compiled WASM via comrak. Post-processing (highlight.js, KaTeX, Mermaid) runs in JS — the best tool for each job." },
             { title: "Edge-first deployment", desc: "WASM binary runs on Cloudflare Workers, Vercel Edge, Deno Deploy. Your Markdown renders at the edge closest to your users, not in a central Node.js server." },
             { title: "Drop-in replacement", desc: "Same output as remark + rehype + shiki + katex + mermaid combined — Rust parser with JS post-processing, zero config, one API instead of five packages with conflicting versions." },
           ].map((item) => (
@@ -727,9 +727,9 @@ markdown = client.convert(url)` },
       <section id="playground" style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 80px" }}>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "64px 32px", textAlign: "center" }}>
           <p style={{ fontSize: 13, fontWeight: 700, ...mono, color: "var(--accent)", marginBottom: 12, marginTop: 0 }}>PLAYGROUND</p>
-          <h3 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 12px", letterSpacing: "-0.02em" }}>Try the engine in your browser.</h3>
-          <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 28, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
-            The same Rust + WASM engine, running client-side. No API key needed.
+          <h3 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 12px", letterSpacing: "-0.02em" }}>Try the engine now — it&apos;s already live.</h3>
+          <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 28, maxWidth: 440, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+            The same Rust + WASM engine that will power the API is running client-side on mdfy.cc right now. Paste any Markdown and see the output.
           </p>
           <a href="https://mdfy.cc" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Open mdfy.cc</a>
         </div>
