@@ -696,9 +696,11 @@ export default function MdEditor() {
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
+    console.log("[ASCII] Found", asciiDiagrams.length, "diagrams");
     asciiDiagrams.forEach(async (el) => {
       if (el.getAttribute("data-converted")) return;
       el.setAttribute("data-converted", "true");
+      console.log("[ASCII] Converting diagram...");
 
       const codeEl = el.querySelector("code");
       const asciiText = codeEl?.textContent || el.textContent || "";
@@ -712,6 +714,7 @@ export default function MdEditor() {
       el.prepend(loadingDiv);
 
       try {
+        console.log("[ASCII] Calling API with", asciiText.length, "chars");
         const res = await fetch("/api/ascii-to-mermaid", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -719,11 +722,14 @@ export default function MdEditor() {
         });
 
         if (!res.ok) {
+          console.log("[ASCII] API error:", res.status);
           loadingDiv.remove();
-          return; // Keep original ASCII display
+          return;
         }
 
-        const { mermaid: mermaidCode } = await res.json();
+        const responseData = await res.json();
+        const mermaidCode = responseData.mermaid;
+        console.log("[ASCII] Got mermaid code:", mermaidCode?.substring(0, 100));
         if (!mermaidCode) {
           loadingDiv.remove();
           return;
@@ -749,9 +755,9 @@ export default function MdEditor() {
             <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show original</summary>
             ${originalHtml}
           </details>`;
-      } catch {
+      } catch (err) {
+        console.error("[ASCII] Error:", err);
         loadingDiv.remove();
-        // Keep original ASCII display on any error
       }
     });
   }, [html, isLoading, theme]);
