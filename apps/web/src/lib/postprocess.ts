@@ -138,7 +138,7 @@ function processKatex(html: string): string {
 function addCodeCopyButtons(html: string): string {
   return html.replace(
     /<pre(?![^>]*class="mermaid")(?![^>]*lang="mermaid")([^>]*)><code/g,
-    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="position:absolute;top:6px;right:6px;padding:2px 8px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.15s;z-index:2" title="Copy code">Copy</button><code`
+    `<pre$1 style="position:relative"><button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('code').textContent).then(()=>{this.innerHTML='&#10003;';setTimeout(()=>this.innerHTML='&#128203;',1500)})" style="position:absolute;top:6px;right:6px;padding:4px 6px;font-size:14px;line-height:1;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;opacity:0;transition:opacity 0.15s;z-index:2" title="Copy code">&#128203;</button><code`
   );
 }
 

@@ -795,7 +795,7 @@ export default function MdEditor() {
       btn.className = "ascii-render-btn";
       btn.textContent = "Render as diagram";
       btn.style.cssText = `
-        position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;
+        position:absolute;top:8px;right:60px;padding:4px 12px;font-size:11px;
         font-family:ui-monospace,monospace;background:var(--accent-dim);
         color:var(--accent);border:none;border-radius:6px;cursor:pointer;
         opacity:0;transition:opacity 0.2s;z-index:5;
