@@ -1,9 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-const MermaidDemo = dynamic(() => import("./MermaidDemo"), { ssr: false });
+import MermaidWrapper from "./MermaidWrapper";
 
 /* ─── data ─── */
 
@@ -155,8 +151,8 @@ export default function MdcoreAiPage() {
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <a href="https://mdfy.cc" style={{ color: "var(--text-faint)", fontSize: 12, textDecoration: "none", ...mono }}>mdfy.cc</a>
             <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-faint)", fontSize: 12, textDecoration: "none", ...mono }}>GitHub</a>
-            <a href="#pricing" style={{ background: "var(--accent)", color: "#000", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: "none", ...mono }}>
-              Get API Key
+            <a href="#waitlist" style={{ background: "var(--accent)", color: "#000", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: "none", ...mono }}>
+              Join Waitlist
             </a>
           </div>
         </div>
@@ -177,14 +173,14 @@ export default function MdcoreAiPage() {
         </h1>
 
         <p style={{ fontSize: "clamp(16px, 2vw, 18px)", lineHeight: 1.7, color: "var(--text-muted)", maxWidth: 560, margin: "28px auto 0" }}>
-          A Rust-native engine compiled to WASM. Sub-2ms response.
-          Zero JavaScript parsers. One API to render, convert, and normalize
-          every Markdown flavor.
+          A Rust-native parser compiled to WASM. Sub-2ms parse time.
+          One API to render, convert, and normalize
+          every Markdown flavor. Coming soon.
         </p>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 40 }}>
-          <a href="#pricing" style={{ background: "var(--accent)", color: "#000", padding: "12px 28px", borderRadius: 8, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>
-            Get API Key — Free
+          <a href="#waitlist" style={{ background: "var(--accent)", color: "#000", padding: "12px 28px", borderRadius: 8, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>
+            Join the Waitlist
           </a>
           <Link href="/mdcore-ai/docs" style={{ background: "transparent", color: "var(--text-muted)", padding: "12px 28px", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none", border: "1px solid var(--border-dim)" }}>
             Read the Docs
@@ -207,7 +203,7 @@ export default function MdcoreAiPage() {
             <span style={{ color: "var(--text-muted)" }}>-X POST</span>{" "}
             <span style={{ color: "var(--text-secondary)" }}>https://api.mdcore.ai/v1/render</span>{" \\"}{"\n"}
             {"  "}<span style={{ color: "var(--text-muted)" }}>-H</span>{" "}
-            <span style={{ color: "#4ade80" }}>&quot;Content-Type: application/json&quot;</span>{" \\"}{"\n"}
+            <span style={{ color: "#4ade80" }}>&quot;Authorization: Bearer mc_...&quot;</span>{" \\"}{"\n"}
             {"  "}<span style={{ color: "var(--text-muted)" }}>-d</span>{" "}
             <span style={{ color: "#4ade80" }}>&apos;{`{"markdown": "# Hello\\n**Fast.**", "output": "html"}`}&apos;</span>{"\n"}
             {"\n"}
@@ -385,7 +381,7 @@ Inline math: $E = mc^2$
                 <span style={{ fontSize: 10, color: "var(--accent)", ...mono, background: "var(--accent-dim)", padding: "2px 6px", borderRadius: 4 }}>SVG</span>
               </div>
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <MermaidDemo />
+                <MermaidWrapper />
               </div>
             </div>
           </div>
@@ -473,12 +469,12 @@ $$`}
 
       {/* ══════════ STATS ══════════ */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "64px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, textAlign: "center" }}>
+        <div className="mdcore-stats-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, textAlign: "center" }}>
           {[
-            { value: "<2ms", label: "p95 latency" },
-            { value: "25x", label: "faster than JS" },
+            { value: "<2ms", label: "engine parse" },
+            { value: "6.7x", label: "vs remark+rehype" },
             { value: "190+", label: "languages" },
-            { value: "0", label: "JS dependencies" },
+            { value: "Rust", label: "native parser" },
           ].map((s, i) => (
             <div key={s.label} style={{ padding: "0 24px", borderRight: i < 3 ? "1px solid var(--border-dim)" : "none" }}>
               <p style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px", letterSpacing: "-0.03em", ...mono }}>{s.value}</p>
@@ -546,10 +542,10 @@ $$`}
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)", margin: "0 0 20px", ...mono, letterSpacing: 1, textTransform: "uppercase" }}>Parse + Render benchmark</h3>
             {[
-              { name: "mdcore (Rust/WASM)", ms: "1.8ms", pct: 100, accent: true },
-              { name: "remark + rehype", ms: "12ms", pct: 15, accent: false },
-              { name: "markdown-it", ms: "8ms", pct: 22, accent: false },
-              { name: "marked", ms: "6ms", pct: 30, accent: false },
+              { name: "mdcore (Rust/WASM)", ms: "1.8ms", pct: 15, accent: true },
+              { name: "marked", ms: "6ms", pct: 50, accent: false },
+              { name: "markdown-it", ms: "8ms", pct: 67, accent: false },
+              { name: "remark + rehype", ms: "12ms", pct: 100, accent: false },
             ].map((b) => (
               <div key={b.name} style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -592,7 +588,7 @@ $$`}
           {[
             { title: "Zero JS parsers in the hot path", desc: "The entire parse → AST → render pipeline runs in compiled WASM. No garbage collection pauses, no event loop blocking, no V8 overhead." },
             { title: "Edge-first deployment", desc: "WASM binary runs on Cloudflare Workers, Vercel Edge, Deno Deploy. Your Markdown renders at the edge closest to your users, not in a central Node.js server." },
-            { title: "Drop-in replacement", desc: "Same output as remark + rehype + shiki + katex + mermaid combined — but 25x faster, zero config, and one dependency instead of five with conflicting versions." },
+            { title: "Drop-in replacement", desc: "Same output as remark + rehype + shiki + katex + mermaid combined — Rust parser with JS post-processing, zero config, one API instead of five packages with conflicting versions." },
           ].map((item) => (
             <div key={item.title} className="mdcore-card-hover" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px 20px" }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px" }}>{item.title}</h3>
@@ -648,8 +644,16 @@ $$`}
         <p style={label}>SDKs</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
           {[
-            { lang: "JavaScript / TypeScript", color: "#fbbf24", code: `import { MdCore } from "@mdcore/sdk"\n\nconst md = new MdCore("mc_...")\nconst html = await md.render("# Hello")\nconst markdown = await md.convert(url)` },
-            { lang: "Python", color: "#60a5fa", code: `import mdcore\n\nclient = mdcore.Client("mc_...")\nhtml = client.render("# Hello")\nmarkdown = client.convert(url)` },
+            { lang: "JavaScript / TypeScript", color: "#fbbf24", code: `import { MdCore } from "@mdcore/sdk"
+
+const md = new MdCore("mc_...")
+const html = await md.render("# Hello")
+const markdown = await md.convert(url)` },
+            { lang: "Python", color: "#60a5fa", code: `import mdcore
+
+client = mdcore.Client("mc_...")
+html = client.render("# Hello")
+markdown = client.convert(url)` },
           ].map((sdk) => (
             <div key={sdk.lang} className="mdcore-card-hover" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, overflow: "hidden" }}>
               <div style={{ padding: "14px 20px 10px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -666,7 +670,7 @@ $$`}
 
       {/* ══════════ PRICING ══════════ */}
       <section id="pricing" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
-        <p style={label}>Pricing</p>
+        <p style={label}>Planned Pricing</p>
         <h2 style={heading}>Start free. <span style={{ color: "var(--text-muted)" }}>Scale when you&apos;re ready.</span></h2>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
@@ -688,15 +692,35 @@ $$`}
                   </li>
                 ))}
               </ul>
-              <a href="#" style={{ display: "block", textAlign: "center", background: tier.highlight ? "var(--accent)" : "transparent", color: tier.highlight ? "#000" : "var(--text-muted)", padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", border: tier.highlight ? "none" : "1px solid var(--border-dim)" }}>
-                {tier.cta}
+              <a href="#waitlist" style={{ display: "block", textAlign: "center", background: tier.highlight ? "var(--accent)" : "transparent", color: tier.highlight ? "#000" : "var(--text-muted)", padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", border: tier.highlight ? "none" : "1px solid var(--border-dim)" }}>
+                Join Waitlist
               </a>
             </div>
           ))}
         </div>
         <p style={{ textAlign: "center", fontSize: 12, color: "var(--text-faint)", marginTop: 24, ...mono }}>
-          $0.001 per additional call beyond quota on all paid tiers
+          Pricing is subject to change. $0.001 per additional call beyond quota on all paid tiers.
         </p>
+      </section>
+
+      {/* ══════════ WAITLIST ══════════ */}
+      <section id="waitlist" style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "64px 32px", textAlign: "center" }}>
+          <p style={{ fontSize: 13, fontWeight: 700, ...mono, color: "var(--accent)", marginBottom: 12, marginTop: 0 }}>EARLY ACCESS</p>
+          <h3 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 12px", letterSpacing: "-0.02em" }}>
+            The engine is live. The API is coming.
+          </h3>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 8, maxWidth: 480, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+            mdcore already powers <a href="https://mdfy.cc" style={{ color: "var(--accent)", textDecoration: "none" }}>mdfy.cc</a> in production — rendering Markdown with Rust + WASM in the browser.
+            The hosted API is next. Join the waitlist for early access.
+          </p>
+          <p style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 28, ...mono }}>
+            hi@raymind.ai
+          </p>
+          <a href="mailto:hi@raymind.ai?subject=mdcore.ai%20API%20waitlist&body=I%27m%20interested%20in%20early%20access%20to%20the%20mdcore.ai%20API." style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "12px 28px", borderRadius: 8, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>
+            Join the Waitlist
+          </a>
+        </div>
       </section>
 
       {/* ══════════ PLAYGROUND ══════════ */}
@@ -714,20 +738,22 @@ $$`}
       {/* ══════════ CTA ══════════ */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 120px", textAlign: "center" }}>
         <p style={{ fontSize: 14, color: "var(--text-faint)", margin: "0 0 24px", ...mono }}>
-          Resend built the email API. Stripe built the payments API.
+          The engine is already live on mdfy.cc. The API is next.
         </p>
         <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 0 12px", color: "var(--accent)" }}>
-          We&apos;re building the Markdown API.
+          Be first to ship with mdcore.
         </h2>
-        <p style={{ fontSize: 16, color: "var(--text-muted)", margin: "0 0 32px" }}>Rust-native. Sub-2ms. Zero config. Ship today.</p>
-        <a href="#pricing" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "14px 36px", borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>Get Your API Key</a>
-        <p style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 12, ...mono }}>Free tier &middot; No credit card</p>
+        <p style={{ fontSize: 16, color: "var(--text-muted)", margin: "0 0 32px" }}>Join the waitlist for early API access and developer preview.</p>
+        <a href="#waitlist" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "14px 36px", borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>Join the Waitlist</a>
+        <p style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 12, ...mono }}>
+          <a href="https://mdfy.cc" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Try the engine live on mdfy.cc &rarr;</a>
+        </p>
       </section>
 
       {/* ══════════ FOOTER ══════════ */}
       <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 24px 32px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 48 }}>
+          <div className="mdcore-footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 48 }}>
             {/* Brand */}
             <div>
               <div style={{ marginBottom: 16 }}>

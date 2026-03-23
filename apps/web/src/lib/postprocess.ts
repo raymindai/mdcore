@@ -150,8 +150,8 @@ function styleAsciiDiagrams(html: string): string {
   const boxCharsRegex = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/g;
   const MIN_BOX_CHARS = 5;
 
-  // 1. Code blocks containing ASCII art
-  let result = html.replace(
+  // Only detect in code blocks — not in paragraphs (too many false positives)
+  const result = html.replace(
     /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
     (match, preAttrs, codeAttrs, content) => {
       if (/lang="mermaid"/.test(preAttrs) || /language-mermaid/.test(codeAttrs)) return match;
@@ -162,54 +162,7 @@ function styleAsciiDiagrams(html: string): string {
     }
   );
 
-  // 2. Merge consecutive ASCII <p> tags into one diagram
-  // Pattern: <p>...box chars...</p> followed by optional <p>...box chars...</p>
-  result = mergeConsecutiveAsciiParagraphs(result);
-
   return result;
-}
-
-function mergeConsecutiveAsciiParagraphs(html: string): string {
-  const boxTest = /[┌┐└┘│─├┤┬┴┼═║╔╗╚╝╠╣╦╩╬┊┈▼▲→←]/;
-  // Split into segments: ASCII <p> blocks vs everything else
-  const parts = html.split(/(<p[^>]*>[\s\S]*?<\/p>)/g);
-  const merged: string[] = [];
-  let asciiBuffer: string[] = [];
-  let firstSourcepos = "";
-
-  const flushBuffer = () => {
-    if (asciiBuffer.length === 0) return;
-    const combined = asciiBuffer.join("\n");
-    merged.push(wrapAsciiDiagram(combined, firstSourcepos));
-    asciiBuffer = [];
-    firstSourcepos = "";
-  };
-
-  for (const part of parts) {
-    if (!part) continue;
-    const pMatch = part.match(/^<p([^>]*)>([\s\S]*?)<\/p>$/);
-    if (pMatch) {
-      const content = pMatch[2];
-      const decoded = decodeHtmlEntities(content);
-      const lines = decoded.split("\n");
-      const linesWithBox = lines.filter(l => boxTest.test(l)).length;
-
-      if (linesWithBox >= 2 || (asciiBuffer.length > 0 && linesWithBox >= 1)) {
-        // This is an ASCII art paragraph
-        if (!firstSourcepos) {
-          firstSourcepos = pMatch[1].match(/data-sourcepos="[^"]+"/)?.[0] || "";
-        }
-        asciiBuffer.push(content);
-        continue;
-      }
-    }
-    // Non-ASCII paragraph or other HTML
-    flushBuffer();
-    merged.push(part);
-  }
-  flushBuffer();
-
-  return merged.join("");
 }
 
 function wrapAsciiDiagram(content: string, sourcepos: string): string {

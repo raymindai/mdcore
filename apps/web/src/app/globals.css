@@ -810,6 +810,28 @@ textarea::selection {
   }
 }
 
+/* mdcore.ai responsive */
+@media (max-width: 768px) {
+  .mdcore-split-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .mdcore-split-2 > *:first-child {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .mdcore-stats-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px !important;
+  }
+  .mdcore-stats-4 > * {
+    border-right: none !important;
+  }
+  .mdcore-footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+}
+
 /* ========================================
    Print styles (PDF export)
    ======================================== */
