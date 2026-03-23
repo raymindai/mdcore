@@ -6,10 +6,44 @@
  * Arrows → SVG triangles.
  */
 
-const CHAR_W = 9;   // character width in px
+const CHAR_W = 9;   // half-width character width in px
 const LINE_H = 18;  // line height in px
-const HALF_W = CHAR_W / 2;
 const HALF_H = LINE_H / 2;
+
+/**
+ * Check if a character is full-width (CJK, Hangul, etc).
+ * Full-width chars take 2x the space of ASCII in monospace fonts.
+ */
+function isFullWidth(ch: string): boolean {
+  const code = ch.charCodeAt(0);
+  return (
+    (code >= 0x1100 && code <= 0x11FF) ||   // Hangul Jamo
+    (code >= 0x2E80 && code <= 0x9FFF) ||   // CJK
+    (code >= 0xAC00 && code <= 0xD7AF) ||   // Hangul Syllables
+    (code >= 0xF900 && code <= 0xFAFF) ||   // CJK Compatibility
+    (code >= 0xFE10 && code <= 0xFE6F) ||   // CJK Forms
+    (code >= 0xFF01 && code <= 0xFF60) ||   // Fullwidth Forms
+    (code >= 0xFFE0 && code <= 0xFFE6)      // Fullwidth Signs
+  );
+}
+
+/**
+ * Get x position for a column, accounting for full-width characters.
+ */
+function getCharX(line: string, col: number): number {
+  let x = 0;
+  for (let i = 0; i < col && i < line.length; i++) {
+    x += isFullWidth(line[i]) ? CHAR_W * 2 : CHAR_W;
+  }
+  return x;
+}
+
+/**
+ * Get the width a character takes.
+ */
+function getCharWidth(ch: string): number {
+  return isFullWidth(ch) ? CHAR_W * 2 : CHAR_W;
+}
 
 // Colors (CSS variables don't work in SVG inline, so we use actual values)
 interface ThemeColors {
@@ -39,56 +73,58 @@ const LIGHT_COLORS: ThemeColors = {
 export function asciiToSvg(text: string, isDark: boolean = true): string {
   const colors = isDark ? DARK_COLORS : LIGHT_COLORS;
   const lines = text.split("\n");
-  const maxCols = Math.max(...lines.map(l => l.length));
   const rows = lines.length;
 
-  const width = maxCols * CHAR_W + 20; // padding
+  // Calculate max width accounting for full-width characters
+  const maxWidth = Math.max(...lines.map(l => {
+    let w = 0;
+    for (let i = 0; i < l.length; i++) w += getCharWidth(l[i]);
+    return w;
+  }));
+
+  const width = maxWidth + 20;
   const height = rows * LINE_H + 20;
 
   const svgParts: string[] = [];
-
-  // Collect text runs (consecutive non-box-drawing characters)
   const textRuns: { x: number; y: number; text: string }[] = [];
 
   for (let row = 0; row < rows; row++) {
     const line = lines[row] || "";
     let textBuffer = "";
-    let textStartCol = -1;
+    let textStartX = -1;
 
     for (let col = 0; col < line.length; col++) {
       const ch = line[col];
-      const cx = col * CHAR_W + 10; // center x
-      const cy = row * LINE_H + 10; // center y
-      const mx = cx + HALF_W;       // mid x
-      const my = cy + HALF_H;       // mid y
+      const cx = getCharX(line, col) + 10;
+      const cw = getCharWidth(ch);
+      const cy = row * LINE_H + 10;
+      const mx = cx + cw / 2;
+      const my = cy + HALF_H;
 
       if (isBoxChar(ch)) {
-        // Flush text buffer
         if (textBuffer.trim()) {
-          textRuns.push({ x: textStartCol * CHAR_W + 10, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
+          textRuns.push({ x: textStartX, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
         }
         textBuffer = "";
-        textStartCol = -1;
+        textStartX = -1;
 
-        // Render box-drawing character as SVG paths
-        const paths = boxCharToSvg(ch, mx, my, colors);
-        svgParts.push(paths);
-      } else if (isArrowChar(ch)) {
+        const halfW = cw / 2;
+        svgParts.push(boxCharToSvgDynamic(ch, mx, my, halfW, HALF_H, colors));
+      } else if (isStandaloneArrow(ch, line, col)) {
         if (textBuffer.trim()) {
-          textRuns.push({ x: textStartCol * CHAR_W + 10, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
+          textRuns.push({ x: textStartX, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
         }
         textBuffer = "";
-        textStartCol = -1;
+        textStartX = -1;
         svgParts.push(arrowCharToSvg(ch, mx, my, colors));
       } else if (ch !== " " || textBuffer.length > 0) {
-        if (textStartCol === -1) textStartCol = col;
+        if (textStartX === -1) textStartX = cx;
         textBuffer += ch;
       }
     }
 
-    // Flush remaining text
     if (textBuffer.trim()) {
-      textRuns.push({ x: textStartCol * CHAR_W + 10, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
+      textRuns.push({ x: textStartX, y: row * LINE_H + 10 + HALF_H + 4, text: textBuffer });
     }
   }
 
@@ -122,13 +158,22 @@ function isBoxChar(ch: string): boolean {
 }
 
 function isArrowChar(ch: string): boolean {
-  return "▼▲→←▶◀↓↑".includes(ch);
+  return "▼▲▶◀↓↑".includes(ch); // NOT → ← (they appear in text)
 }
 
-function boxCharToSvg(ch: string, mx: number, my: number, colors: ThemeColors): string {
+/**
+ * Only treat arrow chars as arrows if they're standalone
+ * (surrounded by spaces or box chars, not in the middle of text)
+ */
+function isStandaloneArrow(ch: string, line: string, col: number): boolean {
+  if (!isArrowChar(ch)) return false;
+  const prev = col > 0 ? line[col - 1] : " ";
+  const next = col < line.length - 1 ? line[col + 1] : " ";
+  return (prev === " " || isBoxChar(prev)) && (next === " " || isBoxChar(next));
+}
+
+function boxCharToSvgDynamic(ch: string, mx: number, my: number, hw: number, hh: number, colors: ThemeColors): string {
   const s = `stroke="${colors.line}" stroke-width="1.5" fill="none"`;
-  const hw = HALF_W;
-  const hh = HALF_H;
 
   switch (ch) {
     // Corners
@@ -210,10 +255,10 @@ function detectBoxFills(lines: string[], colors: ThemeColors): string {
         }
         if (endRow >= lines.length) continue;
 
-        // Draw fill rectangle
-        const x = col * CHAR_W + 10 + HALF_W;
+        // Draw fill rectangle using dynamic widths
+        const x = getCharX(line, col) + 10 + getCharWidth(line[col]) / 2;
         const y = row * LINE_H + 10 + HALF_H;
-        const w = (endCol - col) * CHAR_W;
+        const w = getCharX(line, endCol) - getCharX(line, col);
         const h = (endRow - row) * LINE_H;
         fills += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${colors.fill}" />`;
       }
