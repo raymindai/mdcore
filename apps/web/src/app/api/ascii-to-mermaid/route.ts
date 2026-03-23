@@ -20,14 +20,16 @@ export async function POST(req: NextRequest) {
 
   const prompt = `Convert this ASCII box-drawing diagram to Mermaid flowchart code.
 
-Rules:
+CRITICAL RULES:
 - Use "flowchart TD" for top-down flow
 - Use subgraph for nested/grouped boxes
 - Use --> for arrows between sections
-- Preserve all text labels exactly
-- Use appropriate node shapes: [] for rectangles, () for rounded
-- For side-by-side boxes, put them in the same row
-- Output ONLY the Mermaid code, no explanation, no code fences
+- ALL node labels MUST use square brackets: A["label text here"]
+- NEVER use parentheses () for labels — they conflict with Mermaid syntax
+- Escape special chars in labels by wrapping in double quotes inside brackets: A["text with (parens) and /slashes"]
+- For side-by-side boxes, put them in the same subgraph or use direction
+- Output ONLY the raw Mermaid code
+- NO markdown code fences, NO explanations
 
 ASCII diagram:
 ${ascii}`;
@@ -82,6 +84,23 @@ ${ascii}`;
     if (!mermaidCode || !mermaidCode.includes("graph") && !mermaidCode.includes("flowchart")) {
       return NextResponse.json({ error: "No valid Mermaid output" }, { status: 500 });
     }
+
+    // Post-process: fix common Mermaid syntax issues
+    // Replace unescaped parentheses in node labels: A(text) → A["text"]
+    mermaidCode = mermaidCode.replace(
+      /(\w+)\(([^)]*(?:\([^)]*\))?[^)]*)\)/g,
+      (match, id, label) => {
+        // Don't replace subgraph or known Mermaid keywords
+        if (["subgraph", "end", "direction", "click", "style", "classDef", "class"].includes(id)) return match;
+        return `${id}["${label}"]`;
+      }
+    );
+
+    // Ensure labels with special chars are quoted: A[text (with parens)] → A["text (with parens)"]
+    mermaidCode = mermaidCode.replace(
+      /\[([^\]"]*[()\/][^\]"]*)\]/g,
+      '["$1"]'
+    );
 
     return NextResponse.json({ mermaid: mermaidCode });
   } catch (err: unknown) {
