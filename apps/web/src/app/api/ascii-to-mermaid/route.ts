@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import https from "https";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,34 +42,44 @@ Rules:
 ${ascii}`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    // Use https module instead of fetch — Node.js undici has connect timeout issues
+    const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      const body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+      });
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
-      {
+      const options = {
+        hostname: "generativelanguage.googleapis.com",
+        path: `/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
-    clearTimeout(timeout);
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+      };
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Gemini API error:", err);
-      return NextResponse.json({ error: "AI conversion failed" }, { status: 502 });
-    }
+      const req = https.request(options, (res) => {
+        let responseBody = "";
+        res.on("data", (d: Buffer) => responseBody += d.toString());
+        res.on("end", () => {
+          try {
+            if (res.statusCode !== 200) {
+              console.error("Gemini API error:", res.statusCode, responseBody.substring(0, 200));
+              reject(new Error(`Gemini API ${res.statusCode}`));
+              return;
+            }
+            resolve(JSON.parse(responseBody));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
 
-    const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      req.on("error", reject);
+      req.setTimeout(30000, () => { req.destroy(); reject(new Error("Timeout")); });
+      req.write(body);
+      req.end();
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawText = (data as any).candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Extract Mermaid code: look for ```mermaid block first
     let mermaidCode = "";
