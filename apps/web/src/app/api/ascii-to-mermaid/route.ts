@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -18,44 +21,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  const prompt = `You are converting an ASCII art diagram to Mermaid code.
+  const prompt = `Convert this ASCII diagram to Mermaid code. Use flowchart TD. Use ["label"] for all nodes. No () shapes. No code fences. No explanations. Only raw Mermaid code.
 
-First, classify the diagram type:
-- FLOWCHART: boxes connected by arrows (▼ → ←), process flow
-- HIERARCHY: nested boxes, organizational structure
-- SCORECARD: single box with stats/metrics/progress bars
-- TABLE: rows and columns with data
-
-Then convert using these rules:
-
-For FLOWCHART/HIERARCHY:
-- Use "flowchart TD" (top-down vertical flow)
-- Use subgraph for groups/containers with ["label"] syntax
-- Use --> for connections
-- ALL labels MUST use ["quoted text"] format
-- NEVER use () for nodes — it breaks Mermaid
-- Preserve ALL text content
-
-For SCORECARD:
-- Use "flowchart TD" with a single node containing all info
-- Use <br/> for line breaks within the node
-- Include all metrics and text
-
-For TABLE:
-- Use "flowchart LR" with nodes for each cell
-- Or use subgraph rows
-
-CRITICAL: Output ONLY the raw Mermaid code. No markdown fences, no explanations, no comments.
-
-ASCII diagram:
 ${ascii}`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
@@ -65,6 +44,7 @@ ${ascii}`;
         }),
       }
     );
+    clearTimeout(timeout);
 
     if (!res.ok) {
       const err = await res.text();
@@ -95,6 +75,11 @@ ${ascii}`;
           .replace(/Here is.*:\n?/gi, "")
           .trim();
       }
+    }
+
+    // Ensure flowchart declaration exists
+    if (mermaidCode && !mermaidCode.startsWith("flowchart") && !mermaidCode.startsWith("graph")) {
+      mermaidCode = "flowchart TD\n" + mermaidCode;
     }
 
     if (!mermaidCode || (!mermaidCode.includes("graph") && !mermaidCode.includes("flowchart"))) {
