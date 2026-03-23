@@ -21,15 +21,15 @@ export async function POST(req: NextRequest) {
   const prompt = `Convert this ASCII box-drawing diagram to Mermaid flowchart code.
 
 CRITICAL RULES:
-- Use "flowchart TD" for top-down flow
-- Use subgraph for nested/grouped boxes
-- Use --> for arrows between sections
-- ALL node labels MUST use square brackets: A["label text here"]
-- NEVER use parentheses () for labels — they conflict with Mermaid syntax
-- Escape special chars in labels by wrapping in double quotes inside brackets: A["text with (parens) and /slashes"]
-- For side-by-side boxes, put them in the same subgraph or use direction
-- Output ONLY the raw Mermaid code
-- NO markdown code fences, NO explanations
+1. ALWAYS use "flowchart TD" (top-down) — the original diagram flows vertically
+2. Use subgraph for nested/grouped boxes with proper labels
+3. Use --> for arrows (▼ means top-to-bottom connection)
+4. ALL node labels MUST use square brackets with quotes: A["label text"]
+5. NEVER use parentheses () for node shapes — they break Mermaid parsing
+6. For side-by-side boxes, put them in the same row within a subgraph
+7. Preserve ALL text content from the original
+8. Use proper Mermaid subgraph nesting for outer container boxes
+9. Output ONLY raw Mermaid code — no code fences, no markdown, no explanations
 
 ASCII diagram:
 ${ascii}`;
