@@ -22,23 +22,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  // Detect flow direction from the ASCII art
-  const hasVerticalArrows = /[▼↓]/.test(ascii);
-  const hasHorizontalArrows = /[→▶←◀]/.test(ascii) && !hasVerticalArrows;
-  const direction = hasHorizontalArrows ? "LR" : "TD";
-
-  const prompt = `Convert this ASCII box diagram to Mermaid flowchart ${direction}.
+  const prompt = `Convert this ASCII box-drawing diagram into clean, styled HTML.
 
 Rules:
-- Use flowchart ${direction}
-- subgraph for nested/grouped boxes
-- ["quoted label"] for ALL nodes (never use parentheses)
-- --> for arrow connections
-- Preserve the original layout direction (${direction === "TD" ? "top-to-bottom" : "left-to-right"})
-- Preserve ALL text exactly
-- Side-by-side boxes should appear in the same row
-- Output ONLY Mermaid code, nothing else
+- Use a dark theme: background #1a1a2e, text #e0e0e0, borders #2d2d44, accent #fb923c
+- Represent boxes as styled divs with border, border-radius:8px, padding
+- Nested boxes = nested divs with slightly different background
+- Arrows between boxes = centered arrow text (↓ or →) with accent color
+- Side-by-side boxes = flexbox row
+- Preserve ALL text content exactly
+- Use system-ui font, font-size 13px
+- Progress bars (████░░) = colored div bars
+- Make it look professional and clean
+- Output ONLY the HTML — no explanation, no markdown, no code fences
+- Do NOT include <html>, <head>, <body> tags — just the inner content div
+- Wrap everything in a single <div style="..."> root element
 
+ASCII diagram:
 ${ascii}`;
 
   try {
@@ -82,56 +82,20 @@ ${ascii}`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rawText = (data as any).candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Extract Mermaid code: look for ```mermaid block first
-    let mermaidCode = "";
-    const codeBlockMatch = rawText.match(/```mermaid\n([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      mermaidCode = codeBlockMatch[1].trim();
-    } else {
-      // Try plain code block
-      const plainBlock = rawText.match(/```\n([\s\S]*?)```/);
-      if (plainBlock) {
-        mermaidCode = plainBlock[1].trim();
-      } else {
-        // Assume the whole response is mermaid code, clean it up
-        mermaidCode = rawText
-          .replace(/^```mermaid\n?/gm, "")
-          .replace(/^```\n?/gm, "")
-          .replace(/### .*/g, "")
-          .replace(/\*.*\*/g, "")
-          .replace(/Here is.*:\n?/gi, "")
-          .trim();
-      }
+    // Extract HTML from response (remove code fences if present)
+    const htmlOutput = rawText
+      .replace(/^```html\n?/gm, "")
+      .replace(/^```\n?/gm, "")
+      .replace(/Here is.*:\n?/gi, "")
+      .trim();
+
+    // Must contain at least one div tag
+    if (!htmlOutput || !htmlOutput.includes("<div")) {
+      console.error("Invalid HTML output:", htmlOutput?.substring(0, 200));
+      return NextResponse.json({ error: "No valid HTML output" }, { status: 500 });
     }
 
-    // Ensure flowchart declaration exists
-    if (mermaidCode && !mermaidCode.startsWith("flowchart") && !mermaidCode.startsWith("graph")) {
-      mermaidCode = "flowchart TD\n" + mermaidCode;
-    }
-
-    if (!mermaidCode || (!mermaidCode.includes("graph") && !mermaidCode.includes("flowchart"))) {
-      console.error("Invalid Mermaid output:", mermaidCode?.substring(0, 200));
-      return NextResponse.json({ error: "No valid Mermaid output", raw: mermaidCode?.substring(0, 200) }, { status: 500 });
-    }
-
-    // Post-process: fix common Mermaid syntax issues
-    // Replace unescaped parentheses in node labels: A(text) → A["text"]
-    mermaidCode = mermaidCode.replace(
-      /(\w+)\(([^)]*(?:\([^)]*\))?[^)]*)\)/g,
-      (match, id, label) => {
-        // Don't replace subgraph or known Mermaid keywords
-        if (["subgraph", "end", "direction", "click", "style", "classDef", "class"].includes(id)) return match;
-        return `${id}["${label}"]`;
-      }
-    );
-
-    // Ensure labels with special chars are quoted: A[text (with parens)] → A["text (with parens)"]
-    mermaidCode = mermaidCode.replace(
-      /\[([^\]"]*[()\/][^\]"]*)\]/g,
-      '["$1"]'
-    );
-
-    return NextResponse.json({ mermaid: mermaidCode });
+    return NextResponse.json({ html: htmlOutput });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Gemini request failed:", msg);

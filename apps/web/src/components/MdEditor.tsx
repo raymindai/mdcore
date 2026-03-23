@@ -821,38 +821,13 @@ export default function MdEditor() {
 
           if (!res.ok) throw new Error("API error");
 
-          const { mermaid: mermaidCode } = await res.json();
-          if (!mermaidCode) throw new Error("No output");
+          const { html: renderedHtml } = await res.json();
+          if (!renderedHtml) throw new Error("No output");
 
-          const mermaidModule = await import("mermaid");
-          const mermaid = mermaidModule.default;
-          const isDarkMode = theme === "dark";
-          mermaid.initialize({
-            startOnLoad: false,
-            securityLevel: "loose",
-            theme: isDarkMode ? "dark" : "default",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            fontSize: 14,
-            themeVariables: isDarkMode ? {
-              primaryColor: "#2d3748",
-              primaryTextColor: "#e2e8f0",
-              primaryBorderColor: "#4a5568",
-              lineColor: "#718096",
-              secondaryColor: "#1a202c",
-              tertiaryColor: "#2d3748",
-              background: "#1a202c",
-              mainBkg: "#2d3748",
-              nodeBorder: "#4a5568",
-              titleColor: "#e2e8f0",
-            } : {},
-          });
-
-          const id = `ascii-${Date.now()}`;
-          const { svg } = await mermaid.render(id, mermaidCode);
           const originalHtml = el.innerHTML;
 
           (el as HTMLElement).innerHTML = `
-            <div class="mermaid-rendered" style="text-align:center;padding:1rem">${svg}</div>
+            <div style="padding:1rem;overflow-x:auto">${renderedHtml}</div>
             <details style="margin:0;border-top:1px solid var(--border-dim)">
               <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
               <div style="overflow-x:auto">${originalHtml}</div>
@@ -1851,7 +1826,7 @@ export default function MdEditor() {
           style={{ background: "var(--drag-bg)", borderColor: "var(--accent)" }}
         >
           <div className="text-center">
-            <div className="text-4xl mb-3 opacity-60">📄</div>
+            <div className="text-4xl mb-3 opacity-60">•</div>
             <p className="text-lg font-medium" style={{ color: "var(--accent)" }}>Drop your .md file</p>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Supports .md, .markdown, .txt</p>
           </div>
@@ -2195,7 +2170,7 @@ export default function MdEditor() {
                   setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
                 }}
               >
-                <span className="text-[10px]" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }}>📄</span>
+                <span className="text-[10px]" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }}>•</span>
                 <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                 <button
                   onClick={(e) => {
