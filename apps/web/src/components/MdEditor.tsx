@@ -403,10 +403,91 @@ architecture-beta
 `;
 
 
+const SAMPLE_ASCII = `# ASCII Art Examples
+
+> Hover over code blocks and click **"Render as diagram"** to convert with AI.
+
+## Architecture Diagram
+
+\`\`\`
+┌──────────────────────────────────────────┐
+│              mdfy.cc                      │
+│                                          │
+│  ┌─ Input ─────────────────────────────┐ │
+│  │ Chrome Extension: AI → capture      │ │
+│  │ Paste: Cmd+V                        │ │
+│  │ Drop: .md file drag                 │ │
+│  └─────────────────────────────────────┘ │
+│                    │                      │
+│                    ▼                      │
+│  ┌─ Engine (mdcore) ───────────────────┐ │
+│  │ AI noise removal                    │ │
+│  │ Code + Math + Diagram rendering     │ │
+│  │ Format detection                    │ │
+│  └─────────────────────────────────────┘ │
+│                    │                      │
+│                    ▼                      │
+│  ┌─ Output ────────────────────────────┐ │
+│  │ mdfy.cc/{id} — shareable URL        │ │
+│  │ + "Published with mdfy.cc" badge    │ │
+│  └─────────────────────────────────────┘ │
+└──────────────────────────────────────────┘
+\`\`\`
+
+## Score Card
+
+\`\`\`
+┌─────────────────────────────┐
+│  Score: 93/100               │
+│                              │
+│  Quality  ████████░░ 85%     │
+│  Style    █████████░ 92%     │
+│  Clarity  ██████░░░░ 63%     │
+│                              │
+│  — Analyzed by mdcore        │
+│  mdfy.cc                     │
+└─────────────────────────────┘
+\`\`\`
+
+## Comparison Table
+
+\`\`\`
+┌──────────────┬─────────┬──────────┐
+│   Product    │   ARR   │   Moat   │
+├──────────────┼─────────┼──────────┤
+│ Carrd        │ $1.5-2M │ Badge    │
+├──────────────┼─────────┼──────────┤
+│ Plausible    │ $3.1M   │ Anti-GA  │
+├──────────────┼─────────┼──────────┤
+│ Buttondown   │ $180K+  │ Footer   │
+└──────────────┴─────────┴──────────┘
+\`\`\`
+
+## Simple Flow
+
+\`\`\`
+┌────────┐     ┌────────┐     ┌────────┐
+│  Input │────→│ Process│────→│ Output │
+└────────┘     └────────┘     └────────┘
+\`\`\`
+
+## Pricing Tiers
+
+\`\`\`
+┌─ Free ────────┐  ┌─ Pro $8/mo ──────┐
+│ 10 docs/month │  │ Unlimited docs   │
+│ 7-day expiry  │  │ No expiry        │
+│ Watermark     │  │ Custom domain    │
+│ Basic sharing │  │ Analytics        │
+└───────────────┘  └──────────────────┘
+\`\`\`
+`;
+
 const INITIAL_TABS: Tab[] = [
   { id: "tab-welcome", title: "Welcome", markdown: SAMPLE_WELCOME },
   { id: "tab-syntax", title: "Syntax Guide", markdown: SAMPLE_FORMATTING },
   { id: "tab-diagrams", title: "Diagrams", markdown: SAMPLE_DIAGRAMS },
+  { id: "tab-ascii", title: "ASCII Art", markdown: SAMPLE_ASCII },
 ];
 
 type ViewMode = "split" | "preview" | "editor";

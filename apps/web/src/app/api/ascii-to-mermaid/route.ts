@@ -121,7 +121,10 @@ ${ascii}`;
 
     return NextResponse.json({ mermaid: mermaidCode });
   } catch (err: unknown) {
-    console.error("Gemini request failed:", err instanceof Error ? err.stack : err);
-    return NextResponse.json({ error: "AI request failed: " + (err instanceof Error ? err.message : String(err)) }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Gemini request failed:", msg);
+    // Truncate ascii for logging
+    console.error("Input length:", ascii.length, "chars");
+    return NextResponse.json({ error: `AI request failed: ${msg}` }, { status: 500 });
   }
 }
