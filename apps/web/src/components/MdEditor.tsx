@@ -689,49 +689,32 @@ export default function MdEditor() {
     });
   }, [html, isLoading, theme, viewMode]);
 
-  // ASCII diagram → Mermaid rendering
+  // ASCII diagram → SVG rendering
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
-    import("@/lib/ascii-to-mermaid").then(({ asciiToMermaid }) => {
-      import("mermaid").then(async (mermaidModule) => {
-        const mermaid = mermaidModule.default;
-        mermaid.initialize({
-          startOnLoad: false,
-          securityLevel: "loose",
-          theme: theme === "dark" ? "dark" : "default",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          fontSize: 14,
-        });
+    import("@/lib/ascii-to-svg").then(({ asciiToSvg }) => {
+      const isDark = theme === "dark";
 
-        const ts = Date.now();
-        for (let idx = 0; idx < asciiDiagrams.length; idx++) {
-          const el = asciiDiagrams[idx] as HTMLElement;
-          if (el.querySelector(".mermaid-rendered")) continue; // already rendered
+      asciiDiagrams.forEach((el) => {
+        if (el.querySelector("svg")) return; // already rendered
 
-          const codeEl = el.querySelector("code");
-          const asciiText = codeEl?.textContent || el.textContent || "";
-          const mermaidCode = asciiToMermaid(asciiText);
+        const codeEl = el.querySelector("code");
+        const asciiText = codeEl?.textContent || el.textContent || "";
+        if (!asciiText.trim()) return;
 
-          if (mermaidCode) {
-            try {
-              const id = `ascii-mermaid-${ts}-${idx}`;
-              const { svg } = await mermaid.render(id, mermaidCode);
-              // Replace ASCII with rendered Mermaid, keep ASCII as toggle
-              el.innerHTML = `
-                <div class="mermaid-rendered" style="text-align:center;padding:1rem">${svg}</div>
-                <details style="margin:0;border-top:1px solid var(--border-dim)">
-                  <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show ASCII source</summary>
-                  <pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1rem 1.5rem;font-family:ui-monospace,monospace;font-size:0.75rem;line-height:1.4;color:var(--text-faint);white-space:pre">${codeEl?.innerHTML || asciiText}</code></pre>
-                </details>`;
-            } catch {
-              // Mermaid render failed — keep original ASCII display
-            }
-          }
-        }
+        const svg = asciiToSvg(asciiText, isDark);
+        const originalHtml = codeEl?.innerHTML || asciiText;
+
+        (el as HTMLElement).innerHTML = `
+          <div style="text-align:center;padding:0.5rem;overflow-x:auto">${svg}</div>
+          <details style="margin:0;border-top:1px solid var(--border-dim)">
+            <summary style="padding:4px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
+            <pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:0.75rem 1rem;font-family:ui-monospace,monospace;font-size:0.7rem;line-height:1.3;color:var(--text-faint);white-space:pre">${originalHtml}</code></pre>
+          </details>`;
       });
     });
   }, [html, isLoading, theme]);
