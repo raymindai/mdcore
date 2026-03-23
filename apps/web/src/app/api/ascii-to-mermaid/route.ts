@@ -34,7 +34,7 @@ ${ascii}`;
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,21 +55,37 @@ ${ascii}`;
     }
 
     const data = await res.json();
-    let mermaidCode = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Clean up: remove code fences if AI added them
-    mermaidCode = mermaidCode
-      .replace(/^```mermaid\n?/gm, "")
-      .replace(/^```\n?/gm, "")
-      .trim();
+    // Extract Mermaid code: look for ```mermaid block first
+    let mermaidCode = "";
+    const codeBlockMatch = rawText.match(/```mermaid\n([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      mermaidCode = codeBlockMatch[1].trim();
+    } else {
+      // Try plain code block
+      const plainBlock = rawText.match(/```\n([\s\S]*?)```/);
+      if (plainBlock) {
+        mermaidCode = plainBlock[1].trim();
+      } else {
+        // Assume the whole response is mermaid code, clean it up
+        mermaidCode = rawText
+          .replace(/^```mermaid\n?/gm, "")
+          .replace(/^```\n?/gm, "")
+          .replace(/### .*/g, "")
+          .replace(/\*.*\*/g, "")
+          .replace(/Here is.*:\n?/gi, "")
+          .trim();
+      }
+    }
 
-    if (!mermaidCode) {
-      return NextResponse.json({ error: "No output from AI" }, { status: 500 });
+    if (!mermaidCode || !mermaidCode.includes("graph") && !mermaidCode.includes("flowchart")) {
+      return NextResponse.json({ error: "No valid Mermaid output" }, { status: 500 });
     }
 
     return NextResponse.json({ mermaid: mermaidCode });
-  } catch (err) {
-    console.error("Gemini request failed:", err);
+  } catch (err: unknown) {
+    console.error("Gemini request failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "AI request failed" }, { status: 500 });
   }
 }
