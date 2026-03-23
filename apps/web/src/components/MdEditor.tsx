@@ -689,8 +689,72 @@ export default function MdEditor() {
     });
   }, [html, isLoading, theme, viewMode]);
 
-  // ASCII diagrams are rendered via CSS in .ascii-diagram class.
-  // No JS transformation needed — monospace font handles alignment perfectly.
+  // ASCII diagram → AI-powered Mermaid conversion
+  useEffect(() => {
+    if (!previewRef.current || isLoading) return;
+
+    const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
+    if (asciiDiagrams.length === 0) return;
+
+    asciiDiagrams.forEach(async (el) => {
+      if (el.getAttribute("data-converted")) return;
+      el.setAttribute("data-converted", "true");
+
+      const codeEl = el.querySelector("code");
+      const asciiText = codeEl?.textContent || el.textContent || "";
+      if (!asciiText.trim()) return;
+
+      // Show loading state
+      const originalHtml = el.innerHTML;
+      const loadingDiv = document.createElement("div");
+      loadingDiv.style.cssText = "padding:1rem;text-align:center;font-size:11px;color:var(--text-faint);font-family:ui-monospace,monospace";
+      loadingDiv.textContent = "Converting diagram...";
+      el.prepend(loadingDiv);
+
+      try {
+        const res = await fetch("/api/ascii-to-mermaid", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ascii: asciiText }),
+        });
+
+        if (!res.ok) {
+          loadingDiv.remove();
+          return; // Keep original ASCII display
+        }
+
+        const { mermaid: mermaidCode } = await res.json();
+        if (!mermaidCode) {
+          loadingDiv.remove();
+          return;
+        }
+
+        // Render with mermaid.js
+        const mermaidModule = await import("mermaid");
+        const mermaid = mermaidModule.default;
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: theme === "dark" ? "dark" : "default",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontSize: 14,
+        });
+
+        const id = `ascii-converted-${Date.now()}`;
+        const { svg } = await mermaid.render(id, mermaidCode);
+
+        (el as HTMLElement).innerHTML = `
+          <div class="mermaid-rendered" style="text-align:center;padding:1rem">${svg}</div>
+          <details style="margin:0;border-top:1px solid var(--border-dim)">
+            <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show original</summary>
+            ${originalHtml}
+          </details>`;
+      } catch {
+        loadingDiv.remove();
+        // Keep original ASCII display on any error
+      }
+    });
+  }, [html, isLoading, theme]);
 
   // Load shared content from URL on mount
   useEffect(() => {
