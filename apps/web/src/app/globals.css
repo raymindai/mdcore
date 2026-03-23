@@ -520,6 +520,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Show render button on hover */
+.mdcore-rendered .ascii-diagram:hover .ascii-render-btn {
+  opacity: 1 !important;
+}
+
 /* Light mode */
 [data-theme="light"] .mdcore-rendered .ascii-diagram {
   background: linear-gradient(145deg, #f8f9fa, #ffffff);

@@ -689,58 +689,78 @@ export default function MdEditor() {
     });
   }, [html, isLoading, theme, viewMode]);
 
-  // ASCII diagram → AI Mermaid conversion, fallback to styled monospace
+  // ASCII diagram — add "Render as diagram" button (user-controlled, not auto)
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
-    asciiDiagrams.forEach(async (el) => {
-      if (el.getAttribute("data-processed")) return;
-      el.setAttribute("data-processed", "true");
+    asciiDiagrams.forEach((el) => {
+      if (el.querySelector(".ascii-render-btn")) return; // already has button
 
-      const codeEl = el.querySelector("code");
-      const asciiText = codeEl?.textContent || el.textContent || "";
-      if (!asciiText.trim()) return;
+      const btn = document.createElement("button");
+      btn.className = "ascii-render-btn";
+      btn.textContent = "Render as diagram";
+      btn.style.cssText = `
+        position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;
+        font-family:ui-monospace,monospace;background:var(--accent-dim);
+        color:var(--accent);border:none;border-radius:6px;cursor:pointer;
+        opacity:0;transition:opacity 0.2s;z-index:5;
+      `;
 
-      // Try AI conversion to Mermaid
-      try {
-        const res = await fetch("/api/ascii-to-mermaid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ascii: asciiText }),
-        });
+      (el as HTMLElement).style.position = "relative";
+      el.appendChild(btn);
 
-        if (res.ok) {
+      btn.addEventListener("click", async () => {
+        const codeEl = el.querySelector("code");
+        const asciiText = codeEl?.textContent || el.textContent || "";
+        if (!asciiText.trim()) return;
+
+        btn.textContent = "Converting...";
+        btn.style.opacity = "1";
+
+        try {
+          const res = await fetch("/api/ascii-to-mermaid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ascii: asciiText }),
+          });
+
+          if (!res.ok) throw new Error("API error");
+
           const { mermaid: mermaidCode } = await res.json();
-          if (mermaidCode) {
-            const mermaidModule = await import("mermaid");
-            const mermaid = mermaidModule.default;
-            mermaid.initialize({
-              startOnLoad: false,
-              securityLevel: "loose",
-              theme: theme === "dark" ? "dark" : "default",
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              fontSize: 14,
-            });
+          if (!mermaidCode) throw new Error("No output");
 
-            const id = `ascii-${Date.now()}`;
-            const { svg } = await mermaid.render(id, mermaidCode);
-            const originalHtml = el.innerHTML;
+          const mermaidModule = await import("mermaid");
+          const mermaid = mermaidModule.default;
+          mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "loose",
+            theme: theme === "dark" ? "dark" : "default",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            fontSize: 14,
+          });
 
-            (el as HTMLElement).innerHTML = `
-              <div class="mermaid-rendered" style="text-align:center;padding:1rem">${svg}</div>
-              <details style="margin:0;border-top:1px solid var(--border-dim)">
-                <summary style="padding:4px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
-                <div style="overflow-x:auto">${originalHtml}</div>
-              </details>`;
-            return;
-          }
+          const id = `ascii-${Date.now()}`;
+          const { svg } = await mermaid.render(id, mermaidCode);
+          const originalHtml = el.innerHTML;
+
+          (el as HTMLElement).innerHTML = `
+            <div class="mermaid-rendered" style="text-align:center;padding:1rem">${svg}</div>
+            <details style="margin:0;border-top:1px solid var(--border-dim)">
+              <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
+              <div style="overflow-x:auto">${originalHtml}</div>
+            </details>`;
+        } catch {
+          btn.textContent = "Failed — click to retry";
+          btn.style.color = "#ef4444";
+          setTimeout(() => {
+            btn.textContent = "Render as diagram";
+            btn.style.color = "var(--accent)";
+          }, 3000);
         }
-      } catch {
-        // AI conversion failed — keep styled ASCII fallback
-      }
+      });
     });
   }, [html, isLoading, theme]);
 

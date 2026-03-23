@@ -18,18 +18,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  const prompt = `Convert this ASCII box-drawing diagram to Mermaid flowchart code.
+  const prompt = `You are converting an ASCII art diagram to Mermaid code.
 
-CRITICAL RULES:
-1. ALWAYS use "flowchart TD" (top-down) — the original diagram flows vertically
-2. Use subgraph for nested/grouped boxes with proper labels
-3. Use --> for arrows (▼ means top-to-bottom connection)
-4. ALL node labels MUST use square brackets with quotes: A["label text"]
-5. NEVER use parentheses () for node shapes — they break Mermaid parsing
-6. For side-by-side boxes, put them in the same row within a subgraph
-7. Preserve ALL text content from the original
-8. Use proper Mermaid subgraph nesting for outer container boxes
-9. Output ONLY raw Mermaid code — no code fences, no markdown, no explanations
+First, classify the diagram type:
+- FLOWCHART: boxes connected by arrows (▼ → ←), process flow
+- HIERARCHY: nested boxes, organizational structure
+- SCORECARD: single box with stats/metrics/progress bars
+- TABLE: rows and columns with data
+
+Then convert using these rules:
+
+For FLOWCHART/HIERARCHY:
+- Use "flowchart TD" (top-down vertical flow)
+- Use subgraph for groups/containers with ["label"] syntax
+- Use --> for connections
+- ALL labels MUST use ["quoted text"] format
+- NEVER use () for nodes — it breaks Mermaid
+- Preserve ALL text content
+
+For SCORECARD:
+- Use "flowchart TD" with a single node containing all info
+- Use <br/> for line breaks within the node
+- Include all metrics and text
+
+For TABLE:
+- Use "flowchart LR" with nodes for each cell
+- Or use subgraph rows
+
+CRITICAL: Output ONLY the raw Mermaid code. No markdown fences, no explanations, no comments.
 
 ASCII diagram:
 ${ascii}`;
