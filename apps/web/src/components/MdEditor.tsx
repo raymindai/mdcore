@@ -693,10 +693,15 @@ export default function MdEditor() {
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
+    // Debug: check if html contains ascii-diagram
+    console.log("[ASCII] html contains ascii-diagram:", html.includes("ascii-diagram"));
+
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
-    console.log("[ASCII] Found", asciiDiagrams.length, "diagrams");
+    console.log("[ASCII] Found", asciiDiagrams.length, "ascii-diagram elements in preview");
+    // Also log all elements in preview for debugging
+    console.log("[ASCII] Preview children:", previewRef.current?.children.length, "total elements:", previewRef.current?.querySelectorAll("*").length);
     asciiDiagrams.forEach(async (el) => {
       if (el.getAttribute("data-converted")) return;
       el.setAttribute("data-converted", "true");
