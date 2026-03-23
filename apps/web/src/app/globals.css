@@ -497,24 +497,14 @@ body {
   position: relative;
 }
 
-.mdcore-rendered .ascii-diagram::before {
-  content: "DIAGRAM";
-  position: absolute;
-  top: 6px;
-  left: 12px;
-  font-size: 9px;
-  font-family: ui-monospace, monospace;
-  letter-spacing: 1px;
-  color: var(--text-faint);
-  pointer-events: none;
-  z-index: 1;
-}
-
 .mdcore-rendered .ascii-diagram code {
   background: transparent !important;
   border: none !important;
-  padding: 2rem 1.5rem 1.25rem !important;
-  color: var(--text-secondary) !important;
+  padding: 1.5rem !important;
+  color: var(--accent) !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0;
 }
 
 /* Light mode: slightly different background for diagrams */

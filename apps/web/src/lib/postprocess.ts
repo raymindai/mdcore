@@ -213,7 +213,68 @@ function mergeConsecutiveAsciiParagraphs(html: string): string {
 }
 
 function wrapAsciiDiagram(content: string, sourcepos: string): string {
+  const decoded = decodeHtmlEntities(content);
+
+  // Try to convert ASCII table to HTML table
+  const htmlTable = asciiTableToHtml(decoded);
+  if (htmlTable) {
+    return `<div ${sourcepos}>${htmlTable}</div>`;
+  }
+
+  // Otherwise: styled ASCII diagram
   return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre></div>`;
+}
+
+/**
+ * Convert ASCII table (┌──┬──┐ style) to HTML table.
+ * Returns null if the text is not a valid ASCII table.
+ */
+function asciiTableToHtml(text: string): string | null {
+  const lines = text.split("\n").filter(l => l.trim());
+  if (lines.length < 3) return null;
+
+  // Check if it's a table: must have ┬ or ┼ (column separators)
+  const hasTableChars = lines.some(l => /[┬┼┴]/.test(l));
+  if (!hasTableChars) return null;
+
+  // Find separator lines (contain ┼ or ┬ or ┴ or ├ or ─)
+  const sepLines = lines.filter(l => /^[│├┤┌┐└┘─┬┴┼═╔╗╚╝╠╣╦╩╬\s]+$/.test(l));
+  if (sepLines.length === 0) return null;
+
+  // Data lines contain │ separators with text between them
+  const dataLines = lines.filter(l => {
+    const pipes = (l.match(/│/g) || []).length;
+    return pipes >= 2 && !/^[│├┤┌┐└┘─┬┴┼═╔╗╚╝╠╣╦╩╬\s]+$/.test(l);
+  });
+
+  if (dataLines.length < 1) return null;
+
+  // Parse columns from data lines
+  const rows = dataLines.map(line => {
+    return line.split("│").slice(1, -1).map(cell => cell.trim());
+  });
+
+  if (rows.length === 0 || rows[0].length === 0) return null;
+
+  // First row is header, rest are body
+  const [header, ...body] = rows;
+
+  let html = '<table data-sourcepos="">';
+  html += "<thead><tr>";
+  header.forEach(cell => {
+    html += `<th style="text-align:left">${cell}</th>`;
+  });
+  html += "</tr></thead><tbody>";
+  body.forEach(row => {
+    html += "<tr>";
+    row.forEach(cell => {
+      html += `<td>${cell}</td>`;
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+
+  return html;
 }
 
 function decodeHtmlEntities(text: string): string {
