@@ -237,15 +237,27 @@ function asciiTableToHtml(text: string): string | null {
   const hasTableChars = lines.some(l => /[┬┼┴]/.test(l));
   if (!hasTableChars) return null;
 
-  // Find separator lines (contain ┼ or ┬ or ┴ or ├ or ─)
-  const sepLines = lines.filter(l => /^[│├┤┌┐└┘─┬┴┼═╔╗╚╝╠╣╦╩╬\s]+$/.test(l));
-  if (sepLines.length === 0) return null;
-
-  // Data lines contain │ separators with text between them
+  // Strict check: a real table has UNIFORM column structure
+  // All data rows must have the same number of │ separators
+  // Diagrams have irregular │ counts per line
   const dataLines = lines.filter(l => {
     const pipes = (l.match(/│/g) || []).length;
     return pipes >= 2 && !/^[│├┤┌┐└┘─┬┴┼═╔╗╚╝╠╣╦╩╬\s]+$/.test(l);
   });
+  if (dataLines.length < 2) return null;
+
+  // Check if all data lines have the same number of │
+  const pipeCounts = dataLines.map(l => (l.match(/│/g) || []).length);
+  const allSame = pipeCounts.every(c => c === pipeCounts[0]);
+  if (!allSame) return null; // Irregular → it's a diagram, not a table
+
+  // Also reject if there are nested boxes (┌ inside a row)
+  const hasNestedBoxes = dataLines.some(l => /│.*┌/.test(l) || /│.*└/.test(l));
+  if (hasNestedBoxes) return null;
+
+  // Find separator lines (contain ┼ or ┬ or ┴ or ├ or ─)
+  const sepLines = lines.filter(l => /^[│├┤┌┐└┘─┬┴┼═╔╗╚╝╠╣╦╩╬\s]+$/.test(l));
+  if (sepLines.length === 0) return null;
 
   if (dataLines.length < 1) return null;
 
