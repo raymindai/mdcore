@@ -11,25 +11,19 @@ const COLORS = ["#fb923c", "#60a5fa", "#4ade80", "#c4b5fd", "#f472b6", "#fbbf24"
 
 // ─── Diagram Type Registry ───
 export const DIAGRAM_TYPES = [
-  { id: "flowchart", label: "Flowchart", icon: "🔀", template: "graph LR\n    A[Start] --> B[Process]\n    B --> C[End]" },
-  { id: "sequence", label: "Sequence", icon: "↕️", template: "sequenceDiagram\n    participant A\n    participant B\n    A->>B: Request\n    B-->>A: Response" },
-  { id: "pie", label: "Pie Chart", icon: "🥧", template: 'pie title Distribution\n    "Category A" : 40\n    "Category B" : 35\n    "Category C" : 25' },
-  { id: "gantt", label: "Gantt", icon: "📊", template: "gantt\n    title Project\n    dateFormat YYYY-MM-DD\n    section Phase 1\n    Task A :2026-01-01, 5d\n    Task B :2026-01-06, 3d" },
-  { id: "er", label: "ER Diagram", icon: "🗄️", template: "erDiagram\n    User {\n        int id\n        string name\n    }\n    Post {\n        int id\n        string title\n    }\n    User ||--o{ Post : writes" },
-  { id: "class", label: "Class", icon: "📐", template: "classDiagram\n    class Animal {\n        +name: string\n        +move()\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog" },
-  { id: "state", label: "State", icon: "🔄", template: "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Processing : start\n    Processing --> Done : complete\n    Done --> [*]" },
-  { id: "mindmap", label: "Mindmap", icon: "🧠", template: "mindmap\n  root\n    Topic A\n      Sub A1\n      Sub A2\n    Topic B\n      Sub B1" },
-  { id: "timeline", label: "Timeline", icon: "📅", template: "timeline\n    title History\n    2020 : Event A\n    2022 : Event B\n    2024 : Event C" },
-  { id: "journey", label: "Journey", icon: "🗺️", template: "journey\n    title User Journey\n    section Onboarding\n      Sign up: 5: User\n      Tutorial: 3: User\n    section Usage\n      Create doc: 4: User" },
-  { id: "quadrant", label: "Quadrant", icon: "📍", template: 'quadrantChart\n    title Priority Matrix\n    x-axis "Low Effort" --> "High Effort"\n    y-axis "Low Impact" --> "High Impact"\n    Item A: [0.2, 0.8]\n    Item B: [0.7, 0.6]' },
-  { id: "xy", label: "XY Chart", icon: "📈", beta: true, template: 'xychart-beta\n    title "Sales"\n    x-axis ["Jan", "Feb", "Mar", "Apr"]\n    bar [10, 20, 15, 25]' },
-  { id: "kanban", label: "Kanban", icon: "📋", beta: true, template: "kanban\n  To Do\n    Task 1\n    Task 2\n  In Progress\n    Task 3\n  Done\n    Task 4" },
-  { id: "git", label: "Git Graph", icon: "🔗", template: 'gitGraph\n    commit id: "Initial"\n    branch feature\n    commit id: "Feature work"\n    checkout main\n    commit id: "Hotfix"\n    merge feature' },
-  { id: "sankey", label: "Sankey", icon: "🌊", beta: true, template: "sankey-beta\n\nSource A,Target X,30\nSource A,Target Y,20\nSource B,Target X,15\nSource B,Target Z,25" },
-  { id: "requirement", label: "Requirement", icon: "📋", template: "requirementDiagram\n\n    requirement Req1 {\n        id: REQ-1\n        text: Must support login\n        risk: low\n    }" },
-  { id: "block", label: "Block", icon: "🧱", beta: true, template: 'block-beta\n    columns 3\n    a["Input"] b["Process"] c["Output"]\n    a --> b --> c' },
-  { id: "packet", label: "Packet", icon: "📦", beta: true, template: 'packet-beta\n    0-15 : "Header"\n    16-23 : "Type"\n    24-31 : "Length"' },
-  { id: "architecture", label: "Architecture", icon: "🏗️", beta: true, template: "architecture-beta\n    service api(API Server)\n    service db(Database)\n    service cache(Cache)\n    api --> db\n    api --> cache" },
+  { id: "flowchart", label: "Flowchart", icon: "FL", template: "graph LR\n    A[Start] --> B[Process]\n    B --> C[End]" },
+  { id: "sequence", label: "Sequence", icon: "SQ", template: "sequenceDiagram\n    participant A\n    participant B\n    A->>B: Request\n    B-->>A: Response" },
+  { id: "pie", label: "Pie Chart", icon: "PI", template: 'pie title Distribution\n    "Category A" : 40\n    "Category B" : 35\n    "Category C" : 25' },
+  { id: "gantt", label: "Gantt", icon: "GT", template: "gantt\n    title Project\n    dateFormat YYYY-MM-DD\n    section Phase 1\n    Task A :2026-01-01, 5d\n    Task B :2026-01-06, 3d" },
+  { id: "er", label: "ER Diagram", icon: "ER", template: "erDiagram\n    User {\n        int id\n        string name\n    }\n    Post {\n        int id\n        string title\n    }\n    User ||--o{ Post : writes" },
+  { id: "class", label: "Class", icon: "CL", template: "classDiagram\n    class Animal {\n        +name: string\n        +move()\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog" },
+  { id: "state", label: "State", icon: "ST", template: "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Processing : start\n    Processing --> Done : complete\n    Done --> [*]" },
+  { id: "mindmap", label: "Mindmap", icon: "MM", template: "mindmap\n  root\n    Topic A\n      Sub A1\n      Sub A2\n    Topic B\n      Sub B1" },
+  { id: "timeline", label: "Timeline", icon: "TL", template: "timeline\n    title History\n    2020 : Event A\n    2022 : Event B\n    2024 : Event C" },
+  { id: "journey", label: "Journey", icon: "JN", template: "journey\n    title User Journey\n    section Onboarding\n      Sign up: 5: User\n      Tutorial: 3: User\n    section Usage\n      Create doc: 4: User" },
+  { id: "quadrant", label: "Quadrant", icon: "QD", template: 'quadrantChart\n    title Priority Matrix\n    x-axis "Low Effort" --> "High Effort"\n    y-axis "Low Impact" --> "High Impact"\n    Item A: [0.2, 0.8]\n    Item B: [0.7, 0.6]' },
+  { id: "xy", label: "XY Chart", icon: "XY", beta: true, template: 'xychart-beta\n    title "Sales"\n    x-axis ["Jan", "Feb", "Mar", "Apr"]\n    y-axis "Count" 0 --> 30\n    bar [10, 20, 15, 25]' },
+  { id: "git", label: "Git Graph", icon: "GI", template: 'gitGraph\n    commit id: "Initial"\n    branch feature\n    commit id: "Feature work"\n    checkout main\n    commit id: "Hotfix"\n    merge feature' },
 ] as const;
 
 export type DiagramTypeId = typeof DIAGRAM_TYPES[number]["id"];
@@ -46,13 +40,7 @@ export function detectDiagramType(code: string): DiagramTypeId {
   if (code.startsWith("journey")) return "journey";
   if (code.startsWith("quadrantChart")) return "quadrant";
   if (code.startsWith("xychart")) return "xy";
-  if (code.startsWith("kanban")) return "kanban";
   if (code.startsWith("gitGraph")) return "git";
-  if (code.startsWith("sankey")) return "sankey";
-  if (code.startsWith("requirementDiagram")) return "requirement";
-  if (code.startsWith("block")) return "block";
-  if (code.startsWith("packet")) return "packet";
-  if (code.startsWith("architecture")) return "architecture";
   if (code.startsWith("graph") || code.startsWith("flowchart")) return "flowchart";
   return "flowchart";
 }
@@ -89,9 +77,15 @@ function Del({ onClick }: { onClick: () => void }) {
   return <button onMouseDown={onClick} className="px-2 py-1.5 rounded text-xs font-bold shrink-0" style={S.delBtn}>×</button>;
 }
 
-function Card({ children, color, style }: { children: React.ReactNode; color?: string; style?: React.CSSProperties }) {
+function Card({ children, index, style }: { children: React.ReactNode; index?: number; style?: React.CSSProperties }) {
   return (
-    <div className="p-3 flex gap-2 items-center" style={{ ...S.card, borderLeft: color ? `4px solid ${color}` : undefined, ...style }}>
+    <div className="p-3 flex gap-2.5 items-center" style={{ ...S.card, ...style }}>
+      {index !== undefined && (
+        <span className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold"
+          style={{ background: COLORS[index % COLORS.length] + "22", color: COLORS[index % COLORS.length] }}>
+          {index + 1}
+        </span>
+      )}
       {children}
     </div>
   );
@@ -142,7 +136,7 @@ interface EditorProps {
 // ─── Pie ───
 function PieEditor({ code, onChange }: EditorProps) {
   const title = code.match(/pie\s+title\s+(.+)/)?.[1] || "";
-  const items = [...code.matchAll(/"([^"]+)"\s*:\s*(\d+)/g)].map(m => ({ label: m[1], value: parseInt(m[2]) }));
+  const items = [...code.matchAll(/"([^"]+)"\s*:\s*([\d.]+)/g)].map(m => ({ label: m[1], value: parseFloat(m[2]) }));
   if (items.length === 0) items.push({ label: "Item", value: 50 });
   const total = items.reduce((s, i) => s + i.value, 0) || 1;
 
@@ -172,7 +166,7 @@ function PieEditor({ code, onChange }: EditorProps) {
       <Section title="Slices" count={items.length}>
         <div className="space-y-2">
           {items.map((item, i) => (
-            <Card key={i} color={COLORS[i % COLORS.length]}>
+            <Card key={i} index={i}>
               <div className="w-3 h-3 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
               <input value={item.label} onChange={(e) => { items[i] = { ...items[i], label: e.target.value }; rebuild(title, [...items]); }}
                 className="flex-1 bg-transparent outline-none text-sm" style={{ color: "var(--text-primary)" }} placeholder="Label" />
@@ -195,21 +189,38 @@ function PieEditor({ code, onChange }: EditorProps) {
 
 // ─── Sequence ───
 function SequenceEditor({ code, onChange }: EditorProps) {
-  const participants = [...code.matchAll(/participant\s+([\w.:-]+)/g)].map(m => m[1]);
-  const messages = [...code.matchAll(/([\w.:-]+)(--?>>?|--?\)|--?>)([\w.:-]+)\s*:\s*(.+)/g)].map(m => ({
-    from: m[1], arrow: m[2], to: m[3], text: m[4].trim()
+  // Parse participants (both "participant" and "actor")
+  const participants = [...code.matchAll(/(?:participant|actor)\s+([\w.:-]+)(?:\s+as\s+.+)?/g)].map(m => m[1]);
+  // Parse messages — support all arrow types
+  const msgRegex = /([\w.:-]+)\s*(--?>>?\+?|--?\)\+?|--?>>\+?|-\)\+?)\s*([\w.:-]+)\s*:\s*(.+)/g;
+  const messages = [...code.matchAll(msgRegex)].map(m => ({
+    from: m[1], arrow: m[2].replace(/\+$/, ""), to: m[3], text: m[4].trim()
   }));
+  // Collect lines that aren't participants or messages (Note, loop, alt, activate, etc.)
+  const msgLineRegex = /^[\w.:-]+\s*(?:--?>>?|--?\)|--?>|-\))/;
+  const otherLines: string[] = [];
+  code.split("\n").forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === "sequenceDiagram") return;
+    if (/^(?:participant|actor)\s/.test(trimmed)) return;
+    if (msgLineRegex.test(trimmed)) return;
+    otherLines.push(line);
+  });
+
   const arrows = [
     { value: "->>", icon: "━━▶", label: "Request" },
     { value: "-->>", icon: "╌╌▶", label: "Response" },
     { value: "->", icon: "━━━", label: "Solid" },
     { value: "-->", icon: "╌╌╌", label: "Dashed" },
+    { value: "-)", icon: "━━○", label: "Async" },
   ];
 
   const rebuild = (parts: string[], msgs: typeof messages) => {
     let c = "sequenceDiagram\n";
     parts.forEach(p => { c += `    participant ${p}\n`; });
     msgs.forEach(m => { c += `    ${m.from}${m.arrow}${m.to}: ${m.text}\n`; });
+    // Preserve unparsed lines (Notes, loops, etc.)
+    otherLines.forEach(l => { c += l + "\n"; });
     onChange(c.trim());
   };
 
@@ -218,7 +229,7 @@ function SequenceEditor({ code, onChange }: EditorProps) {
       <Section title="Participants" count={participants.length}>
         <div className="flex gap-2 flex-wrap">
           {participants.map((p, i) => (
-            <Card key={i} color={COLORS[i % COLORS.length]} style={{ padding: "6px 8px" }}>
+            <Card key={i} index={i} style={{ padding: "6px 8px" }}>
               <input value={p} onChange={(e) => {
                 const next = [...participants]; const old = next[i]; next[i] = e.target.value;
                 rebuild(next, messages.map(m => ({ ...m, from: m.from === old ? e.target.value : m.from, to: m.to === old ? e.target.value : m.to })));
@@ -233,27 +244,25 @@ function SequenceEditor({ code, onChange }: EditorProps) {
       <Section title="Messages" count={messages.length}>
         <div className="space-y-2">
           {messages.map((m, i) => {
-            const fromColor = COLORS[Math.max(0, participants.indexOf(m.from)) % COLORS.length];
-            const toColor = COLORS[Math.max(0, participants.indexOf(m.to)) % COLORS.length];
             return (
               <div key={i} className="p-3 space-y-2" style={S.card}>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-mono w-5 text-center shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
                   <select value={m.from} onChange={(e) => { const n = [...messages]; n[i] = { ...n[i], from: e.target.value }; rebuild(participants, n); }}
-                    className={`w-24 ${S.input} text-xs font-semibold`} style={{ ...S.inputCSS, borderLeft: `3px solid ${fromColor}` }}>
+                    className={`min-w-[70px] flex-1 ${S.input} text-xs font-semibold`} style={{ ...S.inputCSS, maxWidth: 120 }}>
                     {participants.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
-                  <div className="flex gap-0.5">
+                  <div className="flex gap-0.5 shrink-0">
                     {arrows.map(a => (
                       <button key={a.value} onMouseDown={(e) => { e.preventDefault(); const n = [...messages]; n[i] = { ...n[i], arrow: a.value }; rebuild(participants, n); }}
-                        className="px-1.5 py-1 rounded text-[10px] font-mono" title={a.label}
+                        className="px-1 py-1 rounded text-[9px] font-mono" title={a.label}
                         style={{ background: m.arrow === a.value ? "var(--accent)" : "var(--surface)", color: m.arrow === a.value ? "#000" : "var(--text-muted)", border: "1px solid var(--border)" }}>
                         {a.icon}
                       </button>
                     ))}
                   </div>
                   <select value={m.to} onChange={(e) => { const n = [...messages]; n[i] = { ...n[i], to: e.target.value }; rebuild(participants, n); }}
-                    className={`w-24 ${S.input} text-xs font-semibold`} style={{ ...S.inputCSS, borderLeft: `3px solid ${toColor}` }}>
+                    className={`min-w-[70px] flex-1 ${S.input} text-xs font-semibold`} style={{ ...S.inputCSS, maxWidth: 120 }}>
                     {participants.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                   <Del onClick={() => rebuild(participants, messages.filter((_, j) => j !== i))} />
@@ -284,7 +293,7 @@ function GenericListEditor({ code, onChange, config }: EditorProps & {
     title: string;
     parseTitle: (code: string) => string;
     parseSections: (code: string) => { name: string; items: { fields: Record<string, string> }[] }[];
-    rebuild: (title: string, sections: { name: string; items: { fields: Record<string, string> }[] }[]) => string;
+    rebuild: (title: string, sections: { name: string; items: { fields: Record<string, string> }[] }[], origCode?: string) => string;
     itemFields: { key: string; label: string; width?: string; mono?: boolean; color?: string }[];
     sectionLabel: string;
     itemLabel: string;
@@ -294,7 +303,7 @@ function GenericListEditor({ code, onChange, config }: EditorProps & {
   const title = config.parseTitle(code);
   const sections = config.parseSections(code);
 
-  const update = (t: string, s: typeof sections) => onChange(config.rebuild(t, s));
+  const update = (t: string, s: typeof sections) => onChange(config.rebuild(t, s, code));
 
   const ratingColor = (r: number) => r >= 4 ? "#4ade80" : r >= 3 ? "#fbbf24" : "#ef4444";
 
@@ -381,7 +390,7 @@ function EntityRelEditor({ code, onChange, config }: EditorProps & {
       <Section title={config.entityLabel} count={entities.length}>
         <div className="space-y-2">
           {entities.map((ent, ei) => (
-            <div key={ei} className="p-3 space-y-1.5" style={{ ...S.card, borderLeft: `4px solid ${COLORS[ei % COLORS.length]}` }}>
+            <div key={ei} className="p-3 space-y-1.5" style={S.card}>
               <div className="flex items-center gap-2">
                 <input value={ent.name} onChange={(e) => { entities[ei].name = e.target.value; update([...entities], rels); }}
                   className="bg-transparent outline-none text-sm font-bold flex-1" style={{ color: "var(--text-primary)" }} />
@@ -436,9 +445,35 @@ function EntityRelEditor({ code, onChange, config }: EditorProps & {
 
 export function DiagramFormEditor({ code, onChange }: EditorProps) {
   const type = detectDiagramType(code);
+  const [showTypePicker, setShowTypePicker] = React.useState(false);
 
   const wrapper = (children: React.ReactNode) => (
-    <div className="p-5 space-y-5 overflow-auto">{children}</div>
+    <div className="p-5 space-y-5 overflow-auto">
+      {/* Type switcher */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowTypePicker(!showTypePicker)}
+          className="text-[10px] px-2 py-1 rounded font-mono"
+          style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
+        >
+          Switch type
+        </button>
+        {showTypePicker && (
+          <div className="flex gap-1 flex-wrap">
+            {DIAGRAM_TYPES.filter(dt => dt.id !== type).map(dt => (
+              <button key={dt.id}
+                onClick={() => { onChange(dt.template); setShowTypePicker(false); }}
+                className="text-[10px] px-2 py-1 rounded"
+                style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
+              >
+                {dt.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {children}
+    </div>
   );
 
   switch (type) {
@@ -468,9 +503,15 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
             if (cur.items.length || !sections.length) sections.push(cur);
             return sections;
           },
-          rebuild: (t, secs) => {
-            let c = `gantt\n    title ${t}\n    dateFormat YYYY-MM-DD\n`;
-            secs.forEach(s => { c += `    section ${s.name}\n`; s.items.forEach(i => { c += `    ${i.fields.name || "Task"} :${i.fields.status}${i.fields.date ? ", " + i.fields.date : ""}\n`; }); });
+          rebuild: (t, secs, origCode) => {
+            const dateFormat = origCode?.match(/dateFormat\s+(.+)/)?.[1] || "YYYY-MM-DD";
+            let c = `gantt\n    title ${t}\n    dateFormat ${dateFormat}\n`;
+            secs.forEach(s => { c += `    section ${s.name}\n`; s.items.forEach(i => {
+              const status = i.fields.status || "";
+              const date = i.fields.date || "";
+              const parts = [status, date].filter(Boolean).join(", ");
+              c += `    ${i.fields.name || "Task"} :${parts}\n`;
+            }); });
             return c.trim();
           },
           itemFields: [
@@ -495,7 +536,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
               const sm = l.match(/^\s*section\s+(.+)/);
               if (sm) { if (cur.items.length) secs.push(cur); cur = { name: sm[1], items: [] }; return; }
               const tm = l.match(/^\s+(.+?)\s*:\s*(\d+)\s*(?::\s*(.+))?/);
-              if (tm && !l.includes("title")) cur.items.push({ fields: { name: tm[1].trim(), rating: tm[2], actors: tm[3]?.trim() || "" } });
+              if (tm && !l.trim().startsWith("title")) cur.items.push({ fields: { name: tm[1].trim(), rating: tm[2], actors: tm[3]?.trim() || "" } });
             });
             if (cur.items.length) secs.push(cur);
             if (!secs.length) secs.push({ name: "Section", items: [{ fields: { name: "Task", rating: "5", actors: "" } }] });
@@ -546,16 +587,28 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
     case "timeline": {
       const tlTitle = code.match(/title\s+(.+)/)?.[1] || "";
       const events: { period: string; items: string[] }[] = [];
-      let cur: typeof events[0] | null = null;
+      // Timeline format: periods have "YYYY" or text, items have ": text"
+      // Both may be at the same indent level in mermaid syntax
       code.split("\n").forEach(l => {
         const t = l.trim();
         if (!t || t === "timeline" || t.startsWith("title")) return;
-        if (!l.startsWith("    ") && !l.startsWith("\t\t")) { if (cur) events.push(cur); cur = { period: t, items: [] }; }
-        else if (cur) cur.items.push(t.replace(/^:\s*/, ""));
+        // Items start with ":" prefix
+        if (t.startsWith(":")) {
+          const item = t.replace(/^:\s*/, "");
+          if (events.length > 0) events[events.length - 1].items.push(item);
+        }
+        // Lines with " : " are period + first item inline (e.g. "2026 Q1 : Engine v0.1")
+        else if (t.includes(" : ")) {
+          const [period, ...rest] = t.split(" : ");
+          events.push({ period: period.trim(), items: [rest.join(" : ").trim()] });
+        }
+        // Otherwise it's a period heading
+        else {
+          events.push({ period: t, items: [] });
+        }
       });
-      if (cur) events.push(cur);
       if (!events.length) events.push({ period: "2026", items: ["Event"] });
-      const rebuild = () => { let c = `timeline\n    title ${tlTitle}\n`; events.forEach(e => { c += `    ${e.period}\n`; e.items.forEach(i => { c += `        : ${i}\n`; }); }); onChange(c.trim()); };
+      const rebuild = () => { let c = `timeline\n    title ${tlTitle}\n`; events.forEach(e => { c += `    ${e.period}\n`; e.items.forEach(i => { c += `             : ${i}\n`; }); }); onChange(c.trim()); };
 
       return wrapper(
         <>
@@ -566,7 +619,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
           <Section title="Periods" count={events.length}>
             <div className="space-y-3">
               {events.map((ev, ei) => (
-                <div key={ei} className="p-3 space-y-2" style={{ ...S.card, borderLeft: `4px solid ${COLORS[ei % COLORS.length]}` }}>
+                <div key={ei} className="p-3 space-y-2" style={S.card}>
                   <div className="flex items-center gap-2">
                     <input value={ev.period} onChange={(e) => { events[ei].period = e.target.value; rebuild(); }}
                       className="bg-transparent outline-none text-sm font-bold" style={{ color: COLORS[ei % COLORS.length] }} />
@@ -635,8 +688,17 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
     case "state": {
       const states = [...new Set([...code.matchAll(/([\w]+)\s*(?:-->|:)/g)].map(m => m[1]).filter(s => !["[*]", "stateDiagram", "state"].includes(s)))];
       const transitions = [...code.matchAll(/([\w\[\]*]+)\s*-->\s*([\w\[\]*]+)(?:\s*:\s*(.+))?/g)].map(m => ({ from: m[1], to: m[2], label: m[3]?.trim() || "" }));
+      // Preserve state descriptions and other non-transition lines
+      const stateDescriptions: string[] = [];
+      code.split("\n").forEach(l => {
+        const t = l.trim();
+        if (!t || t.startsWith("stateDiagram")) return;
+        if (/-->/.test(t)) return; // transition — handled above
+        if (/^\w+\s*:/.test(t)) stateDescriptions.push(l); // state description like "Idle : Waiting"
+      });
       const rebuild = () => {
         let c = "stateDiagram-v2\n";
+        stateDescriptions.forEach(l => { c += l + "\n"; });
         transitions.forEach(t => { c += `    ${t.from} --> ${t.to}${t.label ? " : " + t.label : ""}\n`; });
         onChange(c.trim());
       };
@@ -646,7 +708,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
           <Section title="States" count={states.length}>
             <div className="flex gap-2 flex-wrap">
               {states.map((s, i) => (
-                <div key={i} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ ...S.card, borderLeft: `3px solid ${COLORS[i % COLORS.length]}`, color: "var(--text-primary)" }}>{s}</div>
+                <div key={i} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ ...S.card, color: "var(--text-primary)" }}>{s}</div>
               ))}
             </div>
           </Section>
@@ -697,7 +759,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
         <Section title="Git Commands" count={commands.length}>
           <div className="space-y-2">
             {commands.map((cmd, i) => (
-              <Card key={i} color={colors[cmd.type]}>
+              <Card key={i} index={i}>
                 <select value={cmd.type} onChange={(e) => { commands[i].type = e.target.value; rebuild(); }}
                   className="w-24 text-xs font-mono rounded px-2 py-1.5 outline-none font-semibold" style={{ ...S.inputCSS, color: colors[cmd.type] }}>
                   {["commit", "branch", "checkout", "merge"].map(t => <option key={t} value={t}>{t}</option>)}
@@ -710,46 +772,6 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
             ))}
           </div>
           <div className="mt-3"><AddBtn onClick={() => { commands.push({ type: "commit", value: "" }); rebuild(); }}>+ Add Command</AddBtn></div>
-        </Section>
-      );
-    }
-
-    case "kanban": {
-      const cols: { name: string; items: string[] }[] = [];
-      let cur: typeof cols[0] | null = null;
-      code.split("\n").forEach(l => {
-        const t = l.trim(); if (!t || t === "kanban") return;
-        if (!l.startsWith("  ") && !l.startsWith("\t")) { if (cur) cols.push(cur); cur = { name: t, items: [] }; }
-        else if (cur) cur.items.push(t);
-      });
-      if (cur) cols.push(cur);
-      if (!cols.length) cols.push({ name: "To Do", items: ["Task 1"] });
-      const rebuild = () => { let c = "kanban\n"; cols.forEach(col => { c += `  ${col.name}\n`; col.items.forEach(i => { c += `    ${i}\n`; }); }); onChange(c.trim()); };
-
-      return wrapper(
-        <Section title="Kanban Board" count={cols.length}>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {cols.map((col, ci) => (
-              <div key={ci} className="min-w-[180px] p-3 space-y-2 shrink-0" style={{ ...S.card, borderTop: `3px solid ${COLORS[ci % COLORS.length]}` }}>
-                <div className="flex items-center gap-1">
-                  <input value={col.name} onChange={(e) => { cols[ci].name = e.target.value; rebuild(); }}
-                    className="bg-transparent outline-none text-xs font-bold flex-1" style={{ color: "var(--text-primary)" }} />
-                  <Del onClick={() => { cols.splice(ci, 1); rebuild(); }} />
-                </div>
-                {col.items.map((item, ii) => (
-                  <div key={ii} className="flex gap-1 items-center p-1.5 rounded-md" style={{ background: "var(--surface)" }}>
-                    <input value={item} onChange={(e) => { cols[ci].items[ii] = e.target.value; rebuild(); }}
-                      className="flex-1 text-[11px] bg-transparent outline-none" style={{ color: "var(--text-secondary)" }} />
-                    <button onMouseDown={() => { cols[ci].items.splice(ii, 1); rebuild(); }} className="text-[9px]" style={{ color: "var(--text-faint)" }}>×</button>
-                  </div>
-                ))}
-                <button onClick={() => { col.items.push("New item"); rebuild(); }}
-                  className="w-full text-[10px] py-1 rounded" style={{ color: "var(--text-faint)", border: "1px dashed var(--border)" }}>+</button>
-              </div>
-            ))}
-            <button onClick={() => { cols.push({ name: "Column", items: [] }); rebuild(); }}
-              className="min-w-[60px] flex items-center justify-center rounded-lg text-sm shrink-0" style={S.accentBtn}>+</button>
-          </div>
         </Section>
       );
     }
@@ -770,7 +792,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
           <Section title="Data Points" count={points.length}>
             <div className="space-y-2">
               {points.map((p, i) => (
-                <Card key={i} color={COLORS[i % COLORS.length]}>
+                <Card key={i} index={i}>
                   <input value={p.name} onChange={(e) => { points[i].name = e.target.value; rebuild(); }}
                     className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
                   <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>x:</span>
@@ -796,8 +818,10 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
         type: code.split("\n").find(l => l.includes(m[1]))?.trim().startsWith("bar") ? "bar" : "line",
         values: m[1].split(",").map(s => parseFloat(s.trim()))
       }));
+      const yAxis = code.match(/y-axis\s+(.+)/)?.[1] || "";
       const rebuild = () => {
         let c = `xychart-beta\n    title "${xyTitle}"\n    x-axis [${xVals.map(v => `"${v}"`).join(", ")}]\n`;
+        if (yAxis) c += `    y-axis ${yAxis}\n`;
         series.forEach(l => { c += `    ${l.type} [${l.values.join(", ")}]\n`; }); onChange(c.trim());
       };
 
@@ -811,7 +835,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
           </Section>
           <Section title="Series" count={series.length}>
             <div className="space-y-2">{series.map((l, li) => (
-              <div key={li} className="p-2 space-y-1" style={{ ...S.card, borderLeft: `4px solid ${COLORS[li % COLORS.length]}` }}>
+              <div key={li} className="p-2 space-y-1" style={S.card}>
                 <div className="flex items-center gap-2">
                   <select value={l.type} onChange={(e) => { series[li].type = e.target.value; rebuild(); }} className="text-xs rounded px-2 py-1 outline-none" style={S.inputCSS}>
                     <option value="line">Line</option><option value="bar">Bar</option>
@@ -830,72 +854,6 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
       );
     }
 
-    case "sankey": {
-      const flows = code.split("\n").slice(1).filter(l => l.trim()).map(l => { const p = l.split(",").map(s => s.trim()); return { from: p[0] || "", to: p[1] || "", value: p[2] || "10" }; });
-      if (!flows.length) flows.push({ from: "Source", to: "Target", value: "10" });
-      const rebuild = () => { let c = "sankey-beta\n\n"; flows.forEach(f => { c += `${f.from},${f.to},${f.value}\n`; }); onChange(c.trim()); };
-
-      return wrapper(
-        <Section title="Flows" count={flows.length}>
-          <div className="space-y-2">{flows.map((f, i) => (
-            <Card key={i}>
-              <Input value={f.from} onChange={(e) => { flows[i].from = (e.target as HTMLInputElement).value; rebuild(); }} className="w-28 text-xs" placeholder="Source" />
-              <span style={{ color: "var(--accent)" }}>→</span>
-              <Input value={f.to} onChange={(e) => { flows[i].to = (e.target as HTMLInputElement).value; rebuild(); }} className="w-28 text-xs" placeholder="Target" />
-              <input type="number" value={f.value} onChange={(e) => { flows[i].value = e.target.value; rebuild(); }}
-                className="w-16 text-xs font-mono rounded px-2 py-1 outline-none text-right" style={S.inputCSS} />
-              <Del onClick={() => { flows.splice(i, 1); rebuild(); }} />
-            </Card>
-          ))}</div>
-          <div className="mt-3"><AddBtn onClick={() => { flows.push({ from: "Node", to: "Target", value: "10" }); rebuild(); }}>+ Add Flow</AddBtn></div>
-        </Section>
-      );
-    }
-
-    case "requirement": {
-      const reqs = [...code.matchAll(/requirement\s+(\w+)\s*\{([^}]*)\}/g)].map(m => ({
-        name: m[1], id: m[2].match(/id:\s*(.+)/)?.[1]?.trim() || "", text: m[2].match(/text:\s*(.+)/)?.[1]?.trim() || "", risk: m[2].match(/risk:\s*(.+)/)?.[1]?.trim() || "low",
-      }));
-      const rebuild = () => {
-        let c = "requirementDiagram\n\n";
-        reqs.forEach(r => { c += `    requirement ${r.name} {\n        id: ${r.id}\n        text: ${r.text}\n        risk: ${r.risk}\n    }\n\n`; }); onChange(c.trim());
-      };
-
-      return wrapper(
-        <Section title="Requirements" count={reqs.length}>
-          <div className="space-y-2">{reqs.map((r, ri) => (
-            <div key={ri} className="p-3 space-y-2" style={{ ...S.card, borderLeft: `4px solid ${COLORS[ri % COLORS.length]}` }}>
-              <div className="flex items-center gap-2">
-                <input value={r.name} onChange={(e) => { reqs[ri].name = e.target.value; rebuild(); }}
-                  className="bg-transparent outline-none text-sm font-bold flex-1" style={{ color: "var(--text-primary)" }} />
-                <Del onClick={() => { reqs.splice(ri, 1); rebuild(); }} />
-              </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 ml-1 text-xs">
-                <span style={{ color: "var(--text-faint)" }}>ID:</span>
-                <input value={r.id} onChange={(e) => { reqs[ri].id = e.target.value; rebuild(); }}
-                  className="bg-transparent outline-none font-mono" style={{ color: "var(--text-muted)" }} />
-                <span style={{ color: "var(--text-faint)" }}>Text:</span>
-                <input value={r.text} onChange={(e) => { reqs[ri].text = e.target.value; rebuild(); }}
-                  className="bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
-                <span style={{ color: "var(--text-faint)" }}>Risk:</span>
-                <div className="flex gap-1">
-                  {(["low", "medium", "high"] as const).map(risk => (
-                    <button key={risk} onMouseDown={() => { reqs[ri].risk = risk; rebuild(); }}
-                      className="text-[10px] px-2.5 py-1 rounded-md font-medium"
-                      style={{ background: r.risk === risk ? (risk === "high" ? "#ef4444" : risk === "medium" ? "#fbbf24" : "#4ade80") : "var(--surface)", color: r.risk === risk ? "#000" : "var(--text-muted)", border: "1px solid var(--border)" }}>
-                      {risk}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}</div>
-          <div className="mt-3"><AddBtn onClick={() => { reqs.push({ name: `Req${reqs.length + 1}`, id: `REQ-${reqs.length + 1}`, text: "Description", risk: "low" }); rebuild(); }}>+ Add Requirement</AddBtn></div>
-        </Section>
-      );
-    }
-
-    case "block": case "packet": case "architecture":
     default:
       // Fallback raw code editor
       return (

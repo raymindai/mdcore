@@ -58,12 +58,448 @@ function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: nu
   }
 }
 
-import { DiagramFormEditor, detectDiagramType, DIAGRAM_TYPES } from "./MermaidEditors";
+import { DiagramFormEditor, detectDiagramType, DIAGRAM_TYPES, type DiagramTypeId } from "./MermaidEditors";
 
 const PIE_COLORS = ["#fb923c", "#60a5fa", "#4ade80", "#c4b5fd", "#f472b6", "#fbbf24", "#f87171", "#38bdf8", "#a3e635", "#e879f9"];
 
-// Old inline editors removed — now in MermaidEditors.tsx
-// ─── REMAINING: only MdCanvas flowchart editor below ───
+// ─── Diagram-type-specific Help ───
+
+const A = ({ children }: { children: React.ReactNode }) => <span style={{ color: "var(--accent)" }}>{children}</span>;
+const HelpCol = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div><p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>{title}</p>{children}</div>
+);
+
+function DiagramHelp({ type }: { type: DiagramTypeId | "flowchart" }) {
+  const guides: Record<string, React.ReactNode> = {
+    flowchart: (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ color: "var(--text-tertiary)" }}>
+        <HelpCol title="Create">
+          <p><A>Double-click</A> canvas to add a node</p>
+          <p><A>Click shape</A> to cycle: round/square/circle/diamond</p>
+          <p><A>Double-click node</A> to edit text</p>
+        </HelpCol>
+        <HelpCol title="Connect">
+          <p><A>Alt + drag</A> from one node to another</p>
+          <p><A>Double-click edge</A> to add a label</p>
+          <p><A>Delete</A> to remove selected</p>
+          <p><A>Cmd+D</A> to duplicate</p>
+        </HelpCol>
+        <HelpCol title="Shapes">
+          <p><A>()</A> Round &mdash; default node</p>
+          <p><A>[]</A> Square &mdash; process/action</p>
+          <p><A>(())</A> Circle &mdash; start/end</p>
+          <p><A>{"{}"}</A> Diamond &mdash; decision</p>
+        </HelpCol>
+      </div>
+    ),
+    sequence: (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ color: "var(--text-tertiary)" }}>
+        <HelpCol title="Participants">
+          <p>Add actors at the top &mdash; they appear as boxes in the diagram</p>
+          <p>Order matters: left to right in the diagram</p>
+        </HelpCol>
+        <HelpCol title="Messages">
+          <p><A>{"->>  "}</A> Solid line with arrowhead (request)</p>
+          <p><A>{"-->>"}</A> Dashed line with arrowhead (response)</p>
+          <p><A>{"->"}</A> Solid line, no arrowhead</p>
+          <p><A>{"-->"}</A> Dashed line, no arrowhead</p>
+          <p><A>{"-)"}</A> Async message (open arrowhead)</p>
+        </HelpCol>
+      </div>
+    ),
+    pie: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Add slices with labels and values. The chart auto-calculates percentages.</p>
+        <p>Drag the slider or type a number to adjust each slice.</p>
+      </div>
+    ),
+    gantt: (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ color: "var(--text-tertiary)" }}>
+        <HelpCol title="Tasks">
+          <p><A>Status:</A> done, active, crit, or leave empty</p>
+          <p><A>Date:</A> start date + duration, e.g. <code>2026-01-01, 5d</code></p>
+          <p>Or use <code>after task1, 3d</code> for dependencies</p>
+        </HelpCol>
+        <HelpCol title="Sections">
+          <p>Group tasks into phases/sections</p>
+          <p>Each section gets a visual separator in the chart</p>
+        </HelpCol>
+      </div>
+    ),
+    er: (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ color: "var(--text-tertiary)" }}>
+        <HelpCol title="Entities">
+          <p>Define tables with typed attributes</p>
+          <p>Format: <code>type name</code> (e.g. <code>int id</code>)</p>
+        </HelpCol>
+        <HelpCol title="Relations">
+          <p><A>||--o{"{"}</A> one-to-many</p>
+          <p><A>{"}"}&zwj;|--|{"{"}</A> many-to-many</p>
+          <p><A>||--||</A> one-to-one</p>
+        </HelpCol>
+      </div>
+    ),
+    class: (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ color: "var(--text-tertiary)" }}>
+        <HelpCol title="Classes">
+          <p>Add members with <A>+</A> (public), <A>-</A> (private), <A>#</A> (protected)</p>
+          <p>Methods end with <code>()</code></p>
+        </HelpCol>
+        <HelpCol title="Relations">
+          <p><A>{"<|--"}</A> Inheritance</p>
+          <p><A>*--</A> Composition</p>
+          <p><A>o--</A> Aggregation</p>
+          <p><A>{"..|>"}</A> Implementation</p>
+        </HelpCol>
+      </div>
+    ),
+    state: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Define states and transitions between them.</p>
+        <p><A>[*]</A> represents the start/end point.</p>
+        <p>Add labels to transitions to describe triggers (e.g. <code>start</code>, <code>complete</code>).</p>
+      </div>
+    ),
+    mindmap: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Hierarchical tree structure. Indent level determines parent-child relationship.</p>
+        <p>The first item is the root node. Each deeper indent creates a child.</p>
+      </div>
+    ),
+    timeline: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Add periods (years, quarters, etc.) and events under each period.</p>
+        <p>Events are shown chronologically along the timeline.</p>
+      </div>
+    ),
+    journey: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Map user experience across sections. Each task has a <A>satisfaction rating</A> (1-5).</p>
+        <p>Group tasks into sections like &ldquo;Onboarding&rdquo;, &ldquo;Usage&rdquo;, etc.</p>
+      </div>
+    ),
+    quadrant: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Plot items on a 2D grid. X and Y values range from <A>0.0</A> to <A>1.0</A>.</p>
+        <p>Great for priority matrices, effort/impact charts, etc.</p>
+      </div>
+    ),
+    xy: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Define X-axis labels, then add <A>bar</A> or <A>line</A> series with matching data points.</p>
+        <p>Each series array must have the same length as the X-axis labels.</p>
+      </div>
+    ),
+    git: (
+      <div style={{ color: "var(--text-tertiary)" }}>
+        <p>Build a git history: <A>commit</A>, <A>branch</A>, <A>checkout</A>, <A>merge</A>.</p>
+        <p>Commands execute in order, building the graph top to bottom.</p>
+      </div>
+    ),
+  };
+
+  return <>{guides[type] || guides.flowchart}</>;
+}
+
+// ─── Raw Mode Layout (Editor + Code + Preview with layout options) ───
+
+// Layout options:
+// A: Editor | Code | Preview  (3 columns)
+// B: Editor+Code (top) / Preview (bottom full)  — for wide diagrams
+// C: Editor (top full) / Code+Preview (bottom)  — editor focus
+// D: Preview only (full)  — viewing focus
+
+type RawLayout = "A" | "B" | "C" | "D" | "E";
+
+const LAYOUTS: { id: RawLayout; title: string; icon: React.ReactNode }[] = [
+  // A: Editor (left full) / Code (right top) + Preview (right bottom) — DEFAULT
+  { id: "A", title: "Editor left, stacked right", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="7" y1="0" x2="7" y2="12"/><line x1="7" y1="6" x2="16" y2="6"/></svg> },
+  // B: Editor (top full) / Code (bottom left) + Preview (bottom right)
+  { id: "B", title: "Editor top, split bottom", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="0" y1="5.5" x2="16" y2="5.5"/><line x1="8" y1="5.5" x2="8" y2="12"/></svg> },
+  // C: Editor | Code | Preview (3 columns)
+  { id: "C", title: "3 columns", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="5.5" y1="0" x2="5.5" y2="12"/><line x1="10.5" y1="0" x2="10.5" y2="12"/></svg> },
+  // D: Editor+Code (top) / Preview (bottom full) — wide diagrams
+  { id: "D", title: "Preview bottom", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="0" y1="5.5" x2="16" y2="5.5"/><line x1="8" y1="0" x2="8" y2="5.5"/></svg> },
+  // E: Preview only (full)
+  { id: "E", title: "Preview only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/></svg> },
+];
+
+// CSS Grid layouts — panels stay in DOM, only grid-template changes
+type PanelPos = React.CSSProperties;
+const bdr = "var(--border-dim)";
+
+const GRID_STYLES: Record<RawLayout, React.CSSProperties> = {
+  A: { gridTemplateColumns: "1fr 5px 1.2fr", gridTemplateRows: "1fr 5px 1.5fr" },
+  B: { gridTemplateColumns: "1fr 5px 1.5fr", gridTemplateRows: "1.2fr 5px 1fr" },
+  C: { gridTemplateColumns: "2fr 5px 1fr 5px 1.5fr", gridTemplateRows: "1fr" },
+  D: { gridTemplateColumns: "1fr 5px 1fr", gridTemplateRows: "2fr 5px 3fr" },
+  E: { gridTemplateColumns: "1fr", gridTemplateRows: "1fr" },
+};
+
+const PANEL_AREAS: Record<RawLayout, { editor: PanelPos; sep1: PanelPos; code: PanelPos; sep2: PanelPos; preview: PanelPos }> = {
+  // A: Editor (left full height) / Code (right top) + Preview (right bottom)
+  A: {
+    editor:  { gridColumn: "1", gridRow: "1 / -1" },
+    sep1:    { gridColumn: "2", gridRow: "1 / -1", background: bdr, cursor: "col-resize" },
+    code:    { gridColumn: "3", gridRow: "1" },
+    sep2:    { gridColumn: "3", gridRow: "2", background: bdr, cursor: "row-resize" },
+    preview: { gridColumn: "3", gridRow: "3" },
+  },
+  // B: Editor (top full width) / Code (bottom left) + Preview (bottom right)
+  B: {
+    editor:  { gridColumn: "1 / -1", gridRow: "1" },
+    sep1:    { gridColumn: "2", gridRow: "3", background: bdr, cursor: "col-resize" },
+    code:    { gridColumn: "1", gridRow: "3" },
+    sep2:    { gridColumn: "1 / -1", gridRow: "2", background: bdr, cursor: "row-resize" },
+    preview: { gridColumn: "3", gridRow: "3" },
+  },
+  // C: Editor | Code | Preview (3 columns)
+  C: {
+    editor:  { gridColumn: "1", gridRow: "1" },
+    sep1:    { gridColumn: "2", gridRow: "1", background: bdr, cursor: "col-resize" },
+    code:    { gridColumn: "3", gridRow: "1" },
+    sep2:    { gridColumn: "4", gridRow: "1", background: bdr, cursor: "col-resize" },
+    preview: { gridColumn: "5", gridRow: "1" },
+  },
+  // D: Editor+Code (top) / Preview (bottom full)
+  D: {
+    editor:  { gridColumn: "1", gridRow: "1" },
+    sep1:    { gridColumn: "2", gridRow: "1", background: bdr, cursor: "col-resize" },
+    code:    { gridColumn: "3", gridRow: "1" },
+    sep2:    { gridColumn: "1 / -1", gridRow: "2", background: bdr, cursor: "row-resize" },
+    preview: { gridColumn: "1 / -1", gridRow: "3" },
+  },
+  // E: Preview only
+  E: {
+    editor:  { display: "none" },
+    sep1:    { display: "none" },
+    code:    { display: "none" },
+    sep2:    { display: "none" },
+    preview: { gridColumn: "1", gridRow: "1" },
+  },
+};
+
+function RawModeLayout({
+  rawCode, setRawCode, previewPanelRef, layout,
+}: {
+  rawCode: string;
+  setRawCode: (code: string) => void;
+  previewPanelRef: React.RefObject<HTMLDivElement | null>;
+  layout: RawLayout;
+}) {
+  const areas = PANEL_AREAS[layout];
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef<"sep1" | "sep2" | null>(null);
+
+  const Header = ({ label }: { label: string }) => (
+    <div className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+      style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
+      {label}
+    </div>
+  );
+
+  // Resize handler — directly set pixel sizes on grid tracks
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragging.current || !gridRef.current) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const grid = gridRef.current;
+    const xPx = e.clientX - rect.left;
+    const yPx = e.clientY - rect.top;
+
+    if (dragging.current === "sep1") {
+      if (areas.sep1.cursor === "col-resize") {
+        const px = Math.max(100, Math.min(rect.width - 150, xPx));
+        grid.style.gridTemplateColumns = `${px}px 5px 1fr` + (layout === "C" ? " 5px 1fr" : "");
+      } else if (areas.sep1.cursor === "row-resize") {
+        const px = Math.max(60, Math.min(rect.height - 100, yPx));
+        grid.style.gridTemplateRows = `${px}px 5px 1fr`;
+      }
+    } else if (dragging.current === "sep2") {
+      if (areas.sep2.cursor === "col-resize") {
+        // For C layout (3 cols): sep2 is between code and preview
+        const firstColPx = gridRef.current.children[0]?.getBoundingClientRect().width || 200;
+        const codePx = Math.max(80, Math.min(rect.width - firstColPx - 160, xPx - firstColPx - 5));
+        grid.style.gridTemplateColumns = `${firstColPx}px 5px ${codePx}px 5px 1fr`;
+      } else if (areas.sep2.cursor === "row-resize") {
+        const px = Math.max(60, Math.min(rect.height - 100, yPx));
+        grid.style.gridTemplateRows = `${px}px 5px 1fr`;
+      }
+    }
+  }, [areas, layout]);
+
+  const handleMouseUp = useCallback(() => { dragging.current = null; }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
+  }, [handleMouseMove, handleMouseUp]);
+
+  return (
+    <div ref={gridRef} className="flex-1" style={{ display: "grid", ...GRID_STYLES[layout], minHeight: 0 }}>
+      {/* Editor */}
+      <div className="flex flex-col overflow-hidden" style={areas.editor}>
+        <Header label="Editor" />
+        <div className="flex-1 overflow-auto">
+          <DiagramFormEditor code={rawCode} onChange={setRawCode} />
+        </div>
+      </div>
+
+      {/* Sep 1 — draggable */}
+      <div
+        style={areas.sep1}
+        onMouseDown={(e) => { e.preventDefault(); dragging.current = "sep1"; }}
+      >
+        <div style={{ width: "100%", height: "100%", minWidth: 5, minHeight: 5 }} />
+      </div>
+
+      {/* Code */}
+      <div className="flex flex-col overflow-hidden" style={areas.code}>
+        <Header label="Code" />
+        <textarea
+          className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed resize-none outline-none"
+          style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0, border: "none" }}
+          value={rawCode} onChange={(e) => setRawCode(e.target.value)} spellCheck={false}
+        />
+      </div>
+
+      {/* Sep 2 — draggable */}
+      <div
+        style={areas.sep2}
+        onMouseDown={(e) => { e.preventDefault(); dragging.current = "sep2"; }}
+      >
+        <div style={{ width: "100%", height: "100%", minWidth: 5, minHeight: 5 }} />
+      </div>
+
+      {/* Preview — always in DOM, never unmounts */}
+      <div className="flex flex-col overflow-hidden" style={areas.preview}>
+        <Header label="Preview" />
+        <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
+          {rawCode ? (
+            <div className="mermaid-preview-render" style={{ textAlign: "center", width: "100%" }} />
+          ) : (
+            <span className="text-xs" style={{ color: "var(--text-faint)" }}>Edit to see preview</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Flowchart Layout — same CSS Grid as RawModeLayout ───
+
+function FlowchartLayout({
+  layout, liveCode, previewPanelRef, onCodeChange, direction, setDirection, children,
+}: {
+  layout: RawLayout;
+  liveCode: string;
+  previewPanelRef: React.RefObject<HTMLDivElement | null>;
+  onCodeChange: (code: string) => void;
+  direction: Direction;
+  setDirection: (d: Direction) => void;
+  children: React.ReactNode; // canvas content
+}) {
+  const areas = PANEL_AREAS[layout];
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef<"sep1" | "sep2" | null>(null);
+
+  const Header = ({ label, extra }: { label: string; extra?: React.ReactNode }) => (
+    <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+      style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
+      <span>{label}</span>
+      {extra}
+    </div>
+  );
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragging.current || !gridRef.current) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const grid = gridRef.current;
+    const xPx = e.clientX - rect.left;
+    const yPx = e.clientY - rect.top;
+
+    if (dragging.current === "sep1") {
+      if (areas.sep1.cursor === "col-resize") {
+        const px = Math.max(100, Math.min(rect.width - 150, xPx));
+        grid.style.gridTemplateColumns = `${px}px 5px 1fr` + (layout === "C" ? " 5px 1fr" : "");
+      } else if (areas.sep1.cursor === "row-resize") {
+        const px = Math.max(60, Math.min(rect.height - 100, yPx));
+        grid.style.gridTemplateRows = `${px}px 5px 1fr`;
+      }
+    } else if (dragging.current === "sep2") {
+      if (areas.sep2.cursor === "col-resize") {
+        const firstColPx = gridRef.current.children[0]?.getBoundingClientRect().width || 200;
+        const codePx = Math.max(80, Math.min(rect.width - firstColPx - 160, xPx - firstColPx - 5));
+        grid.style.gridTemplateColumns = `${firstColPx}px 5px ${codePx}px 5px 1fr`;
+      } else if (areas.sep2.cursor === "row-resize") {
+        const px = Math.max(60, Math.min(rect.height - 100, yPx));
+        grid.style.gridTemplateRows = `${px}px 5px 1fr`;
+      }
+    }
+  }, [areas, layout]);
+
+  const handleMouseUp = useCallback(() => { dragging.current = null; }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
+  }, [handleMouseMove, handleMouseUp]);
+
+  const dirToggle = (
+    <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      {(["LR", "TD"] as Direction[]).map((d) => (
+        <button key={d} onClick={() => setDirection(d)}
+          className="px-2.5 py-1 text-[11px] font-mono font-semibold"
+          style={{ background: direction === d ? "var(--accent-dim)" : "transparent", color: direction === d ? "var(--accent)" : "var(--text-faint)" }}>
+          {d === "LR" ? (<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display:"inline",verticalAlign:"middle"}}><path d="M3 8h10M10 5l3 3-3 3"/></svg>) : (<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display:"inline",verticalAlign:"middle"}}><path d="M8 3v10M5 10l3 3 3-3"/></svg>)}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div ref={gridRef} className="flex-1" style={{ display: "grid", ...GRID_STYLES[layout], minHeight: 0 }}>
+      {/* Editor (canvas) */}
+      <div className="flex flex-col overflow-hidden" style={areas.editor}>
+        <Header label="Editor" extra={dirToggle} />
+        {children}
+      </div>
+
+      <div style={areas.sep1} onMouseDown={(e) => { e.preventDefault(); dragging.current = "sep1"; }}>
+        <div style={{ width: "100%", height: "100%", minWidth: 5, minHeight: 5 }} />
+      </div>
+
+      {/* Code */}
+      <div className="flex flex-col overflow-hidden" style={areas.code}>
+        <Header label="Code" />
+        <textarea
+          className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed resize-none outline-none"
+          style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0, border: "none" }}
+          value={liveCode}
+          onChange={(e) => onCodeChange(e.target.value)}
+          spellCheck={false}
+        />
+      </div>
+
+      <div style={areas.sep2} onMouseDown={(e) => { e.preventDefault(); dragging.current = "sep2"; }}>
+        <div style={{ width: "100%", height: "100%", minWidth: 5, minHeight: 5 }} />
+      </div>
+
+      {/* Preview */}
+      <div className="flex flex-col overflow-hidden" style={areas.preview}>
+        <Header label="Preview" />
+        <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
+          {liveCode ? (
+            <div className="mermaid-preview-render" style={{ textAlign: "center", width: "100%" }} />
+          ) : (
+            <span className="text-xs" style={{ color: "var(--text-faint)" }}>Add nodes to see preview</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MdCanvas({
   onGenerate,
@@ -98,6 +534,7 @@ export default function MdCanvas({
   const [importCode, setImportCode] = useState("");
   const [showCode, setShowCode] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
+  const [rawLayout, setRawLayout] = useState<RawLayout>("A"); // default: Editor left, stacked right
   const canvasRef = useRef<HTMLDivElement>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
 
@@ -108,50 +545,55 @@ export default function MdCanvas({
   );
 
   // Render live Mermaid preview
+  const renderIdRef = useRef(0);
   useEffect(() => {
+    const currentRender = ++renderIdRef.current;
     const codeToRender = rawCodeMode ? rawCode : liveCode;
-    if (!previewPanelRef.current || !codeToRender || !showCode) return;
-    const container = previewPanelRef.current.querySelector(".mermaid-preview-render");
-    if (!container) return;
+    if (!codeToRender) return;
+    if (!rawCodeMode && !showCode) return;
 
-    import("mermaid").then(async (mermaidModule) => {
-      const mermaid = mermaidModule.default;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mermaid = (window as any).mermaid;
+    if (!mermaid) return;
+
+    const tryRender = (attempt: number) => {
+      if (currentRender !== renderIdRef.current) return; // stale
+      // Find container in DOM (may be in different position after layout change)
+      const container = document.querySelector(".mermaid-preview-render");
+      if (!container) {
+        if (attempt < 5) setTimeout(() => tryRender(attempt + 1), 100);
+        return;
+      }
+
       mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "loose",
-        theme: "dark",
+        startOnLoad: false, securityLevel: "loose", theme: "dark",
         themeVariables: {
-          primaryColor: "#fb923c",
-          primaryTextColor: "#fafafa",
-          primaryBorderColor: "#ea580c",
-          lineColor: "#71717a",
-          secondaryColor: "#27272a",
-          tertiaryColor: "#18181b",
-          background: "#09090b",
-          mainBkg: "#27272a",
-          nodeBorder: "#3f3f46",
-          clusterBkg: "#18181b",
-          titleColor: "#fafafa",
-          edgeLabelBackground: "#18181b",
-          pie1: "#fb923c",
-          pie2: "#60a5fa",
-          pie3: "#4ade80",
-          pie4: "#c4b5fd",
-          pie5: "#f472b6",
+          primaryColor: "#fb923c", primaryTextColor: "#fafafa", primaryBorderColor: "#ea580c",
+          lineColor: "#71717a", secondaryColor: "#27272a", tertiaryColor: "#18181b",
+          background: "#09090b", mainBkg: "#27272a", nodeBorder: "#3f3f46",
+          clusterBkg: "#18181b", titleColor: "#fafafa", edgeLabelBackground: "#18181b",
+          pie1: "#fb923c", pie2: "#60a5fa", pie3: "#4ade80", pie4: "#c4b5fd", pie5: "#f472b6",
         },
-        fontFamily: "ui-monospace, monospace",
-        fontSize: 13,
+        fontFamily: "ui-monospace, monospace", fontSize: 13,
       });
 
-      try {
-        const id = `mermaid-preview-${Date.now()}`;
-        const { svg } = await mermaid.render(id, codeToRender);
-        container.innerHTML = svg;
-      } catch {
-        container.innerHTML = `<span style="color:var(--text-faint);font-size:11px">Invalid diagram</span>`;
-      }
-    });
-  }, [liveCode, rawCode, rawCodeMode, showCode]);
+      (async () => {
+        try {
+          const id = `mermaid-preview-${Date.now()}`;
+          const { svg } = await mermaid.render(id, codeToRender);
+          if (currentRender !== renderIdRef.current) return;
+          container.innerHTML = svg;
+        } catch {
+          if (currentRender === renderIdRef.current) {
+            container.innerHTML = `<span style="color:var(--text-faint);font-size:11px">Invalid diagram</span>`;
+          }
+        }
+      })();
+    };
+
+    const timer = setTimeout(() => tryRender(0), 30);
+    return () => clearTimeout(timer);
+  }, [liveCode, rawCode, rawCodeMode, showCode, rawLayout]);
 
   // Load initial mermaid code
   useEffect(() => {
@@ -228,13 +670,19 @@ export default function MdCanvas({
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
+      // If this node is part of a multi-selection, keep the selection
+      // If not, clear selection and select just this node
+      if (!selectedIds.has(nodeId)) {
+        setSelectedIds(new Set());
+      }
+
       setDragState({
         nodeId,
         offsetX: e.clientX - rect.left - node.x,
         offsetY: e.clientY - rect.top - node.y,
       });
     },
-    [nodes]
+    [nodes, selectedIds]
   );
 
   const handleMouseMove = useCallback(
@@ -243,11 +691,21 @@ export default function MdCanvas({
       if (!rect) return;
 
       if (dragState) {
-        const x = e.clientX - rect.left - dragState.offsetX;
-        const y = e.clientY - rect.top - dragState.offsetY;
+        const newX = e.clientX - rect.left - dragState.offsetX;
+        const newY = e.clientY - rect.top - dragState.offsetY;
+        const draggedNode = nodes.find((n) => n.id === dragState.nodeId);
+        if (!draggedNode) return;
+        const dx = newX - draggedNode.x;
+        const dy = newY - draggedNode.y;
+
+        // Move all selected nodes together, or just the dragged one
+        const movingIds = selectedIds.has(dragState.nodeId) && selectedIds.size > 1
+          ? selectedIds
+          : new Set([dragState.nodeId]);
+
         setNodes((prev) =>
           prev.map((n) =>
-            n.id === dragState.nodeId ? { ...n, x: Math.max(0, x), y: Math.max(0, y) } : n
+            movingIds.has(n.id) ? { ...n, x: Math.max(0, n.x + dx), y: Math.max(0, n.y + dy) } : n
           )
         );
       }
@@ -258,7 +716,7 @@ export default function MdCanvas({
         );
       }
     },
-    [dragState, connectState]
+    [dragState, connectState, nodes, selectedIds]
   );
 
   const handleMouseUp = useCallback(
@@ -393,8 +851,8 @@ export default function MdCanvas({
         className="flex items-center justify-between px-3 sm:px-4 py-2 text-xs flex-wrap gap-2"
         style={{ borderBottom: "1px solid var(--border-dim)" }}
       >
-        <div className="flex items-center gap-3">
-          <span className="font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+        <div className="flex items-center gap-2">
+          <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--text-muted)" }}>
             Mermaid
           </span>
           {(() => {
@@ -402,54 +860,39 @@ export default function MdCanvas({
               ? DIAGRAM_TYPES.find(d => d.id === detectDiagramType(rawCode))
               : DIAGRAM_TYPES.find(d => d.id === "flowchart");
             return (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold flex items-center gap-1"
-                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+              <span className="px-2 rounded-md text-[10px] font-mono font-semibold leading-[24px]"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)", height: 24, display: "inline-flex", alignItems: "center" }}>
                 {dt?.label || "Diagram"}
-                {(dt as { beta?: boolean })?.beta && (
-                  <span className="text-[7px] px-1 rounded" style={{ background: "var(--surface)", color: "var(--text-faint)" }}>beta</span>
-                )}
               </span>
             );
           })()}
           <button
             onClick={() => setShowGuide(!showGuide)}
-            className="px-2 py-1 rounded-md font-mono text-[11px]"
+            className="px-2 rounded-md font-mono text-[11px] leading-[24px]"
             style={{
+              height: 24,
               background: showGuide ? "var(--accent-dim)" : "var(--toggle-bg)",
               color: showGuide ? "var(--accent)" : "var(--text-muted)",
             }}
           >
             Help
           </button>
-          {!rawCodeMode && (
-            <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              {(["LR", "TD"] as Direction[]).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDirection(d)}
-                  className="px-2 py-0.5 text-[10px] font-mono"
-                  style={{
-                    background: direction === d ? "var(--accent-dim)" : "transparent",
-                    color: direction === d ? "var(--accent)" : "var(--text-muted)",
-                  }}
-                >
-                  {d === "LR" ? "→" : "↓"}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCode(!showCode)}
-            className="px-2 py-1 rounded-md font-mono text-[11px]"
-            style={{
-              background: showCode ? "var(--accent-dim)" : "var(--toggle-bg)",
-              color: showCode ? "var(--accent)" : "var(--text-muted)",
-            }}
-          >
-            Code
-          </button>
+          {/* Layout options */}
+          <div className="flex gap-1 mr-1" style={{ borderRight: "1px solid var(--border-dim)", paddingRight: 8 }}>
+            {LAYOUTS.map((l) => (
+              <button key={l.id} title={l.title}
+                className="p-1 rounded"
+                style={{ color: rawLayout === l.id ? "var(--accent)" : "var(--text-faint)", opacity: rawLayout === l.id ? 1 : 0.4 }}
+                onClick={() => {
+                  setRawLayout(l.id);
+                  // Layout applies to both modes via CSS Grid
+                }}>
+                {l.icon}
+              </button>
+            ))}
+          </div>
           {nodes.length > 0 && (
             <button
               onClick={() => { setNodes([]); setEdges([]); setSelectedId(null); nextId = 1; }}
@@ -515,69 +958,43 @@ export default function MdCanvas({
       )}
 
       {/* Guide panel */}
-      {showGuide && !rawCodeMode && (
+      {showGuide && (
         <div
           className="px-4 py-3 text-xs overflow-auto"
           style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)", maxHeight: 200 }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ color: "var(--text-tertiary)" }}>
-            <div>
-              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Create</p>
-              <p><span style={{ color: "var(--accent)" }}>Double-click</span> canvas to add a node</p>
-              <p><span style={{ color: "var(--accent)" }}>Click shape button</span> ()/[]/(()/{"{}"}{")"} to change shape</p>
-              <p><span style={{ color: "var(--accent)" }}>Double-click node</span> to edit text</p>
-            </div>
-            <div>
-              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Connect</p>
-              <p><span style={{ color: "var(--accent)" }}>Alt + drag</span> from one node to another</p>
-              <p><span style={{ color: "var(--accent)" }}>Double-click edge</span> to add a label</p>
-              <p><span style={{ color: "var(--accent)" }}>Delete/Backspace</span> to remove selected</p>
-              <p><span style={{ color: "var(--accent)" }}>Cmd+D</span> to duplicate selected</p>
-            </div>
-            <div>
-              <p className="font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>Shapes → Mermaid</p>
-              <p><span style={{ color: "var(--accent)" }}>()</span> Round = default node</p>
-              <p><span style={{ color: "var(--accent)" }}>[]</span> Square = process/action</p>
-              <p><span style={{ color: "var(--accent)" }}>(())</span> Circle = start/end</p>
-              <p><span style={{ color: "var(--accent)" }}>{"{}"}</span> Diamond = decision/condition</p>
-            </div>
-          </div>
+          <DiagramHelp type={rawCodeMode ? detectDiagramType(rawCode) : "flowchart"} />
         </div>
       )}
 
-      {/* Main area: canvas + code panel */}
-      <div
-        ref={canvasWrapperRef}
-        className="flex flex-1 min-h-0"
-        onMouseMove={(e) => {
-          if (isDraggingCanvasSplit.current && canvasWrapperRef.current) {
-            const rect = canvasWrapperRef.current.getBoundingClientRect();
-            const pct = ((e.clientX - rect.left) / rect.width) * 100;
-            setCanvasSplit(Math.max(30, Math.min(80, pct)));
-          }
-          if (isDraggingCodeSplit.current && codePanelRef.current) {
-            const rect = codePanelRef.current.getBoundingClientRect();
-            const pct = ((e.clientY - rect.top) / rect.height) * 100;
-            setCodeSplit(Math.max(20, Math.min(80, pct)));
-          }
-        }}
-        onMouseUp={() => { isDraggingCanvasSplit.current = false; isDraggingCodeSplit.current = false; }}
-      >
-
-      {/* Raw code mode for non-flowchart diagrams (sequence, pie, etc) */}
+      {/* Main area — unified CSS Grid layout for both modes */}
       {rawCodeMode ? (
-        <div className="flex-1 flex flex-col overflow-auto">
-          <DiagramFormEditor code={rawCode} onChange={setRawCode} />
-        </div>
+        <RawModeLayout
+          rawCode={rawCode}
+          setRawCode={setRawCode}
+          previewPanelRef={previewPanelRef}
+          layout={rawLayout}
+        />
       ) : (
-      /* Canvas */
+        <FlowchartLayout
+          layout={rawLayout}
+          liveCode={liveCode}
+          previewPanelRef={previewPanelRef}
+          onCodeChange={(newCode) => {
+            const result = mermaidToCanvas(newCode);
+            if (result && result.nodes.length > 0) {
+              setNodes(result.nodes);
+              setEdges(result.edges);
+              setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
+              nextId = result.nodes.length + 1;
+            }
+          }}
+          direction={direction}
+          setDirection={setDirection}
+        >
       <div
         ref={canvasRef}
-        className="relative overflow-auto cursor-crosshair select-none"
-        style={{
-          width: expandedPanel === "code" || expandedPanel === "preview" ? 0 : showCode && (nodes.length > 0 || rawCodeMode) ? `${canvasSplit}%` : "100%",
-          overflow: expandedPanel === "code" || expandedPanel === "preview" ? "hidden" : undefined,
-        }}
+        className="relative flex-1 overflow-auto cursor-crosshair select-none"
         onDoubleClick={handleCanvasDoubleClick}
         onMouseDown={(e) => {
           // Start selection box if clicking on empty canvas
@@ -823,17 +1240,8 @@ export default function MdCanvas({
             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
             onDoubleClick={(e) => { e.stopPropagation(); setEditingId(node.id); }}
           >
-            {/* Shape toggle — outside node, top-right */}
-            <button
-              onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
-              className="absolute opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full z-10"
-              style={{ top: -10, right: -10, background: "var(--surface)", border: "1px solid var(--border)" }}
-              title="Click to change shape"
-            >
-              <ShapeIcon shape={node.shape} size={12} />
-            </button>
             <div
-              className="px-3 py-2 text-sm transition-colors"
+              className="px-3 py-2 text-sm transition-colors relative"
               style={{
                 background: "var(--surface)",
                 border: `1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
@@ -867,6 +1275,15 @@ export default function MdCanvas({
                   </div>
                 )}
               </div>{/* end diamond rotate wrapper */}
+              {/* Shape toggle — centered above node, inside the positioned div */}
+              <button
+                onClick={(e) => { e.stopPropagation(); cycleShape(node.id); }}
+                className="absolute opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full z-10"
+                style={{ top: -14, left: "50%", transform: "translateX(-50%)", background: "var(--surface)", border: "1px solid var(--border)" }}
+                title="Click to change shape"
+              >
+                <ShapeIcon shape={node.shape} size={12} />
+              </button>
             </div>
           </div>
           );
@@ -902,100 +1319,9 @@ export default function MdCanvas({
             </div>
           </div>
         )}
-      </div>
-      )}{/* end rawCodeMode conditional */}
-
-      {/* Code + Preview panel */}
-      {/* Resize handle */}
-      {showCode && (nodes.length > 0 || rawCodeMode) && !expandedPanel && (
-        <div
-          className="shrink-0 cursor-col-resize w-[5px]"
-          style={{ background: "var(--border-dim)", position: "relative" }}
-          onMouseDown={(e) => { e.preventDefault(); isDraggingCanvasSplit.current = true; }}
-        >
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
-        </div>
+      </div>{/* end canvasRef */}
+      </FlowchartLayout>
       )}
-
-      {showCode && (nodes.length > 0 || rawCodeMode) && (
-        <div
-          ref={codePanelRef}
-          className="flex flex-col"
-          style={{ width: expandedPanel === "editor" ? 0 : expandedPanel ? "100%" : `${100 - canvasSplit}%`, overflow: "hidden" }}
-        >
-          {/* Code */}
-          {expandedPanel !== "preview" && (
-          <div className="flex flex-col" style={{ height: expandedPanel === "code" ? "100%" : `${codeSplit}%` }}>
-            <div
-              className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
-            >
-              <span>Code</span>
-              <button onClick={() => setExpandedPanel(expandedPanel === "code" ? null : "code")}
-                className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: expandedPanel === "code" ? "var(--accent-dim)" : "transparent" }}>
-                {expandedPanel === "code" ? "⊟" : "⊞"}
-              </button>
-            </div>
-            <textarea
-              className="flex-1 p-3 overflow-auto text-xs font-mono leading-relaxed resize-none outline-none"
-              style={{ color: "var(--text-secondary)", background: "var(--surface)", margin: 0, border: "none" }}
-              value={rawCodeMode ? rawCode : liveCode}
-              onChange={(e) => {
-                const newCode = e.target.value;
-                if (rawCodeMode) {
-                  setRawCode(newCode);
-                } else {
-                  const result = mermaidToCanvas(newCode);
-                  if (result && result.nodes.length > 0) {
-                    setNodes(result.nodes);
-                    setEdges(result.edges);
-                    setDirection(result.direction === "TD" || result.direction === "TB" ? "TD" : "LR");
-                    nextId = result.nodes.length + 1;
-                  }
-                }
-              }}
-              spellCheck={false}
-            />
-          </div>
-          )}
-
-          {/* Code/Preview resize handle */}
-          {!expandedPanel && (
-            <div
-              className="shrink-0 cursor-row-resize h-[5px]"
-              style={{ background: "var(--border-dim)", position: "relative" }}
-              onMouseDown={(e) => { e.preventDefault(); isDraggingCodeSplit.current = true; }}
-            >
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-[3px]" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
-            </div>
-          )}
-
-          {/* Rendered Preview */}
-          {expandedPanel !== "code" && (
-          <div className="flex flex-col" style={{ height: expandedPanel === "preview" ? "100%" : `${100 - codeSplit}%` }}>
-            <div
-              className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
-            >
-              <span>Preview</span>
-              <button onClick={() => setExpandedPanel(expandedPanel === "preview" ? null : "preview")}
-                className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: expandedPanel === "preview" ? "var(--accent-dim)" : "transparent" }}>
-                {expandedPanel === "preview" ? "⊟" : "⊞"}
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-3 flex items-center justify-center" ref={previewPanelRef}>
-              {(rawCodeMode ? rawCode : liveCode) ? (
-                <div className="mermaid-preview-render" style={{ textAlign: "center", width: "100%" }} />
-              ) : (
-                <span className="text-xs" style={{ color: "var(--text-faint)" }}>Add nodes to see preview</span>
-              )}
-            </div>
-          </div>
-          )}
-        </div>
-      )}
-
-      </div>{/* end main area */}
     </div>
   );
 }

@@ -86,11 +86,12 @@ function processKatex(html: string): string {
     /<span data-math-style="inline">([\s\S]*?)<\/span>/g,
     (_, tex) => {
       try {
-        return katex.renderToString(decodeHtmlEntities(tex.trim()), {
+        const rendered = katex.renderToString(decodeHtmlEntities(tex.trim()), {
           displayMode: false,
           throwOnError: false,
           trust: true,
         });
+        return `<span class="math-rendered" data-math-src="${encodeURIComponent(tex.trim())}" data-math-mode="inline" style="cursor:pointer">${rendered}</span>`;
       } catch {
         return `<code class="math-error">${tex}</code>`;
       }
@@ -102,11 +103,12 @@ function processKatex(html: string): string {
     /<span data-math-style="display">([\s\S]*?)<\/span>/g,
     (_, tex) => {
       try {
-        return katex.renderToString(decodeHtmlEntities(tex.trim()), {
+        const rendered = katex.renderToString(decodeHtmlEntities(tex.trim()), {
           displayMode: true,
           throwOnError: false,
           trust: true,
         });
+        return `<div class="math-rendered" data-math-src="${encodeURIComponent(tex.trim())}" data-math-mode="display" style="cursor:pointer">${rendered}</div>`;
       } catch {
         return `<code class="math-error">${tex}</code>`;
       }

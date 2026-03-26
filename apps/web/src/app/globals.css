@@ -466,38 +466,10 @@ body {
   color: var(--math-display-color);
 }
 
-/* Mermaid diagrams */
-.mdcore-rendered .mermaid-container {
-  margin: 1rem 0;
-  padding: 1rem;
-  background: var(--surface);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  overflow-x: auto;
-  text-align: center;
-}
+/* ─── Diagram design system — imported from separate file ─── */
+@import "./diagram-theme.css";
 
-.mdcore-rendered .mermaid-rendered {
-  text-align: center;
-}
-
-/* Mermaid SVG sizing */
-.mdcore-rendered .mermaid-rendered svg {
-  max-width: 100%;
-  height: auto;
-}
-
-/* ASCII art diagrams — premium styled monospace rendering */
-.mdcore-rendered .ascii-diagram {
-  margin: 1.25rem 0;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: linear-gradient(145deg, var(--surface), var(--background));
-  overflow-x: auto;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
+/* ASCII specifics */
 .mdcore-rendered .ascii-diagram pre {
   margin: 0 !important;
   border: none !important;
@@ -518,28 +490,6 @@ body {
   color: var(--text-secondary) !important;
   white-space: pre !important;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Show render button on hover */
-.mdcore-rendered .ascii-diagram:hover .ascii-render-btn {
-  opacity: 1 !important;
-}
-
-/* Light mode */
-[data-theme="light"] .mdcore-rendered .ascii-diagram {
-  background: linear-gradient(145deg, #f8f9fa, #ffffff);
-  border-color: #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.mdcore-rendered .mermaid-rendered svg {
-  max-width: 100%;
-  height: auto;
-}
-
-.mdcore-rendered .mermaid-container:hover .mermaid-edit-btn,
-.mdcore-rendered .mermaid-rendered:hover .mermaid-edit-btn {
-  opacity: 1 !important;
 }
 
 /* Images */
@@ -937,8 +887,10 @@ textarea::selection {
   }
 
   .mdcore-rendered .mermaid-container,
-  .mdcore-rendered .mermaid-rendered {
+  .mdcore-rendered .mermaid-rendered,
+  .mdcore-rendered .ascii-diagram {
     background: white !important;
     border-color: #ddd !important;
+    box-shadow: none !important;
   }
 }

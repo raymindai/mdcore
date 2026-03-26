@@ -71,6 +71,7 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem('mdfy-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light')}}catch(e){}`,
           }}
         />
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@11.13.0/dist/mermaid.min.js" defer />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

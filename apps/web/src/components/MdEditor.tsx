@@ -10,6 +10,7 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
+import MathEditor from "@/components/MathEditor";
 import {
   createShareUrl,
   createShortUrl,
@@ -311,91 +312,17 @@ gitGraph
     commit id: "v0.1"
 \`\`\`
 
-## Kanban
-
-\`\`\`mermaid
-kanban
-  Backlog
-    Research
-    Design
-  In Progress
-    Development
-  Done
-    Testing
-\`\`\`
-
 ## XY Chart
 
 \`\`\`mermaid
 xychart-beta
     title "Monthly Users"
     x-axis ["Jan", "Feb", "Mar", "Apr", "May"]
+    y-axis "Users" 0 --> 500
     bar [120, 200, 350, 280, 450]
     line [100, 180, 300, 250, 400]
 \`\`\`
 
-## Sankey
-
-\`\`\`mermaid
-sankey-beta
-
-Traffic,Website,40
-Traffic,App,30
-Website,Signup,25
-Website,Bounce,15
-App,Signup,20
-App,Bounce,10
-\`\`\`
-
-## Requirement Diagram
-
-\`\`\`mermaid
-requirementDiagram
-
-    requirement Auth {
-        id: REQ-1
-        text: Users must authenticate
-        risk: high
-    }
-
-    requirement Logging {
-        id: REQ-2
-        text: All actions must be logged
-        risk: medium
-    }
-\`\`\`
-
-## Block Diagram
-
-\`\`\`mermaid
-block-beta
-    columns 3
-    input["Input"] process["Process"] output["Output"]
-    input --> process --> output
-\`\`\`
-
-## Packet Diagram
-
-\`\`\`mermaid
-packet-beta
-    0-15 : "Source Port"
-    16-31 : "Destination Port"
-    32-63 : "Sequence Number"
-    64-95 : "Acknowledgment"
-\`\`\`
-
-## Architecture
-
-\`\`\`mermaid
-architecture-beta
-    service client(Client)
-    service api(API Server)
-    service db(Database)
-    service cache(Redis Cache)
-    client --> api
-    api --> db
-    api --> cache
-\`\`\`
 
 ---
 
@@ -405,7 +332,7 @@ architecture-beta
 
 const SAMPLE_ASCII = `# ASCII Art Examples
 
-> Hover over code blocks and click **"Render as diagram"** to convert with AI.
+> Hover over code blocks and click **"Render"** to convert with AI.
 
 ## Architecture Diagram
 
@@ -483,11 +410,17 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 \`\`\`
 `;
 
+/** Extract title from markdown (first # heading, or first line) */
+function extractTitleFromMd(md: string): string {
+  const match = md.match(/^#\s+(.+)/m);
+  return match ? match[1].trim() : "Untitled";
+}
+
 const INITIAL_TABS: Tab[] = [
-  { id: "tab-welcome", title: "Welcome", markdown: SAMPLE_WELCOME },
-  { id: "tab-syntax", title: "Syntax Guide", markdown: SAMPLE_FORMATTING },
-  { id: "tab-diagrams", title: "Diagrams", markdown: SAMPLE_DIAGRAMS },
-  { id: "tab-ascii", title: "ASCII Art", markdown: SAMPLE_ASCII },
+  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII },
 ];
 
 type ViewMode = "split" | "preview" | "editor";
@@ -540,9 +473,27 @@ export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
 
+  // Diagram rendering mode: "default" (mermaid.js/ASCII) or "ai" (Gemini HTML)
+  type DiagramMode = "default" | "ai";
+  const [diagramMode, setDiagramMode] = useState<DiagramMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("mdfy-diagram-mode") as DiagramMode) || "default";
+    }
+    return "default";
+  });
+  const diagramModeRef = useRef(diagramMode);
+  diagramModeRef.current = diagramMode;
+  const toggleDiagramMode = useCallback(() => {
+    const next: DiagramMode = diagramMode === "default" ? "ai" : "default";
+    setDiagramMode(next);
+    localStorage.setItem("mdfy-diagram-mode", next);
+  }, [diagramMode]);
+
   // Tab system
   const [tabs, setTabs] = useState<Tab[]>(INITIAL_TABS);
   const [activeTabId, setActiveTabId] = useState("tab-welcome");
+  const activeTabIdRef = useRef(activeTabId);
+  activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   const [markdown, setMarkdownRaw] = useState(SAMPLE_WELCOME);
@@ -607,6 +558,8 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
+  const [initialMath, setInitialMath] = useState<string | undefined>();
+  const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const isDraggingSidebar = useRef(false);
@@ -626,10 +579,13 @@ export default function MdEditor() {
     }
   }, [isMobile]);
 
+  const renderIdRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
+    const thisRender = ++renderIdRef.current;
     try {
       const start = performance.now();
       const result = await renderMarkdown(md);
+      if (thisRender !== renderIdRef.current) return; // stale render, discard
       const elapsed = performance.now() - start;
 
       const processed = postProcessHtml(result.html);
@@ -643,6 +599,12 @@ export default function MdEditor() {
         jsx: result.flavor.jsx,
       });
       setTitle(result.title);
+      // Sync title to sidebar tab immediately (use ref to avoid stale closure)
+      if (result.title) {
+        const currentTabId = activeTabIdRef.current;
+        const newTitle = result.title;
+        setTabs((prev) => prev.map((t) => t.id === currentTabId ? { ...t, title: newTitle } : t));
+      }
       setRenderTime(elapsed);
       setCharCount(md.length);
       setIsLoading(false);
@@ -713,26 +675,75 @@ export default function MdEditor() {
 
     const isDark = theme === "dark";
 
-    import("mermaid").then(async (mermaidModule) => {
-      const mermaid = mermaidModule.default;
+    // Use mermaid from CDN (window.mermaid) — webpack can't handle mermaid's dynamic chunk imports
+    const waitForMermaid = (): Promise<typeof import("mermaid").default> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).mermaid) return Promise.resolve((window as any).mermaid);
+      return new Promise((resolve) => {
+        const check = setInterval(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if ((window as any).mermaid) { clearInterval(check); resolve((window as any).mermaid); }
+        }, 50);
+        setTimeout(() => clearInterval(check), 10000); // timeout after 10s
+      });
+    };
+
+    waitForMermaid().then(async (mermaid) => {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
         theme: isDark ? "dark" : "default",
         fontFamily: "system-ui, -apple-system, sans-serif",
-        fontSize: 14,
+        fontSize: 15,
+        // Layout config — generous spacing to match AI render feel
+        flowchart: {
+          padding: 16,
+          nodeSpacing: 30,
+          rankSpacing: 40,
+          htmlLabels: true,
+          curve: "basis",
+        },
+        sequence: {
+          actorMargin: 60,
+          messageMargin: 40,
+          boxMargin: 8,
+          noteMargin: 12,
+          messageAlign: "center" as const,
+        },
+        themeCSS: `
+          .nodeLabel { font-size: 14px; font-weight: 500; }
+          .edgeLabel { font-size: 12px; }
+          .cluster-label .nodeLabel { font-size: 13px; font-weight: 600; }
+          .messageText { font-size: 13px; }
+          text.actor { font-size: 14px; font-weight: 500; }
+        `,
         themeVariables: isDark ? {
-          primaryColor: "#2d3748",
-          primaryTextColor: "#e2e8f0",
-          primaryBorderColor: "#4a5568",
-          lineColor: "#718096",
-          secondaryColor: "#1a202c",
-          tertiaryColor: "#2d3748",
-          background: "#1a202c",
-          mainBkg: "#2d3748",
-          nodeBorder: "#4a5568",
-          titleColor: "#e2e8f0",
-        } : {},
+          background: "transparent",
+          primaryColor: "#222230",
+          primaryTextColor: "#ededf0",
+          primaryBorderColor: "#3a3a48",
+          lineColor: "#50505e",
+          secondaryColor: "#1a1a24",
+          tertiaryColor: "#1a1a24",
+          // Pie chart colors (layout needs these)
+          pie1: "#fb923c", pie2: "#818cf8", pie3: "#4ade80", pie4: "#fb7185",
+          pie5: "#60a5fa", pie6: "#c084fc", pie7: "#fbbf24", pie8: "#2dd4bf",
+          // Git colors
+          git0: "#fb923c", git1: "#818cf8", git2: "#4ade80", git3: "#fb7185",
+          git4: "#60a5fa", git5: "#c084fc", git6: "#fbbf24", git7: "#2dd4bf",
+        } : {
+          background: "transparent",
+          primaryColor: "#ffffff",
+          primaryTextColor: "#1a1a2e",
+          primaryBorderColor: "#e0e0e8",
+          lineColor: "#b0b0c0",
+          secondaryColor: "#f7f7fa",
+          tertiaryColor: "#f7f7fa",
+          pie1: "#ea580c", pie2: "#6366f1", pie3: "#16a34a", pie4: "#e11d48",
+          pie5: "#2563eb", pie6: "#9333ea", pie7: "#ca8a04", pie8: "#0d9488",
+          git0: "#ea580c", git1: "#6366f1", git2: "#16a34a", git3: "#e11d48",
+          git4: "#2563eb", git5: "#9333ea", git6: "#ca8a04", git7: "#0d9488",
+        },
       });
 
       const ts = Date.now();
@@ -746,25 +757,62 @@ export default function MdEditor() {
         const id = `mermaid-${ts}-${idx}`;
 
         try {
-          const { svg } = await mermaid.render(id, code);
-          const encodedCode = btoa(encodeURIComponent(code));
+          const { svg: rawSvg } = await mermaid.render(id, code);
+          const { styleMermaidSvg } = await import("@/lib/mermaid-style");
+          const svg = styleMermaidSvg(rawSvg, isDark);
 
-          // Wrap the <pre> in a container and replace with rendered SVG
+          // Build container
           const wrapper = document.createElement("div");
           wrapper.className = "mermaid-container";
-          // Copy sourcepos for click-to-source
           const sourcepos = pre.getAttribute("data-sourcepos");
           if (sourcepos) wrapper.setAttribute("data-sourcepos", sourcepos);
-          wrapper.innerHTML = `
-            <div class="mermaid-rendered" style="position:relative">
-              ${svg}
-              <button
-                class="mermaid-edit-btn"
-                data-mermaid-src="${encodedCode}"
-                style="position:absolute;top:8px;right:8px;padding:4px 12px;font-size:11px;font-family:ui-monospace,monospace;background:var(--accent-dim);color:var(--accent);border:none;border-radius:6px;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:5;"
-              >Edit in Mermaid</button>
-            </div>`;
-          // Double-click mermaid diagram → open in Mermaid editor
+
+          // Toolbar: Edit | Copy
+          const toolbar = document.createElement("div");
+          toolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0;opacity:0;transition:opacity 0.15s";
+
+          const btnStyle = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;border-radius:4px;cursor:pointer;line-height:14px";
+
+          // "Edit" button — Mermaid visual editor
+          const editBtn = document.createElement("button");
+          editBtn.textContent = "Edit";
+          editBtn.style.cssText = `${btnStyle};background:none;color:var(--text-muted);border:1px solid var(--border-dim)`;
+          editBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            setCanvasMermaid(code);
+            setShowMermaidModal(true);
+          });
+          toolbar.appendChild(editBtn);
+
+          // Copy button
+          const copySvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="9" height="10" rx="1"/><path d="M2 6v7a1 1 0 001 1h7"/></svg>';
+          const checkSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 8 7 11 12 5"/></svg>';
+          const copyBtn = document.createElement("button");
+          copyBtn.title = "Copy source";
+          copyBtn.style.cssText = "padding:4px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;display:flex;align-items:center";
+          copyBtn.innerHTML = copySvg;
+          copyBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            navigator.clipboard.writeText(code).then(() => {
+              copyBtn.innerHTML = checkSvg;
+              setTimeout(() => { copyBtn.innerHTML = copySvg; }, 1500);
+            });
+          });
+          toolbar.appendChild(copyBtn);
+
+          wrapper.appendChild(toolbar);
+
+          // Default: mermaid.js SVG rendering
+          const rendered = document.createElement("div");
+          rendered.className = "mermaid-rendered";
+          rendered.innerHTML = svg;
+          wrapper.appendChild(rendered);
+
+          // Show toolbar on hover
+          wrapper.addEventListener("mouseenter", () => { toolbar.style.opacity = "1"; });
+          wrapper.addEventListener("mouseleave", () => { toolbar.style.opacity = "0"; });
+
+          // Double-click → open in Mermaid editor
           wrapper.addEventListener("dblclick", (ev) => {
             ev.stopPropagation();
             ev.preventDefault();
@@ -774,14 +822,23 @@ export default function MdEditor() {
           wrapper.style.cursor = "pointer";
 
           pre.replaceWith(wrapper);
-        } catch {
-          // Leave as-is on error
+
+        } catch (err) {
+          console.warn(`Mermaid render failed for "${code.substring(0, 30)}...":`, err);
+          // mermaid injects error SVGs into DOM — remove them
+          document.querySelectorAll(`#d${id}, [id^="d${id}"]`).forEach((el) => el.remove());
+          // Also remove any mermaid error containers
+          document.querySelectorAll(".mermaid-error, [id*='mermaid-'] .error-icon").forEach((el) => {
+            const parent = el.closest("[id*='mermaid-']");
+            if (parent) parent.remove();
+            else el.remove();
+          });
         }
       }
     });
-  }, [html, isLoading, theme, viewMode]);
+  }, [html, isLoading, theme, viewMode, diagramMode]);
 
-  // ASCII diagram — add "Render as diagram" button (user-controlled, not auto)
+  // ASCII diagram — add "Render" button (user-controlled, not auto)
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
@@ -791,26 +848,37 @@ export default function MdEditor() {
     asciiDiagrams.forEach((el) => {
       if (el.querySelector(".ascii-render-btn")) return; // already has button
 
+      // Toolbar at top of container (flow layout, not overlapping content)
+      const toolbar = document.createElement("div");
+      toolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0;opacity:0;transition:opacity 0.15s";
+
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
-      btn.textContent = "Render as diagram";
+      btn.textContent = "Render";
       btn.style.cssText = `
-        position:absolute;top:8px;right:60px;padding:4px 12px;font-size:11px;
-        font-family:ui-monospace,monospace;background:var(--accent-dim);
-        color:var(--accent);border:none;border-radius:6px;cursor:pointer;
-        opacity:0;transition:opacity 0.2s;z-index:5;
+        padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;
+        background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
+        border-radius:4px;cursor:pointer;line-height:14px;
       `;
+      toolbar.appendChild(btn);
 
-      (el as HTMLElement).style.position = "relative";
-      el.appendChild(btn);
+      // Insert toolbar before the <pre> content
+      el.insertBefore(toolbar, el.firstChild);
+
+      // Show toolbar on hover
+      el.addEventListener("mouseenter", () => { toolbar.style.opacity = "1"; });
+      el.addEventListener("mouseleave", () => { toolbar.style.opacity = "0"; });
 
       btn.addEventListener("click", async () => {
         const codeEl = el.querySelector("code");
         const asciiText = codeEl?.textContent || el.textContent || "";
         if (!asciiText.trim()) return;
 
-        btn.textContent = "Converting...";
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><circle cx="8" cy="8" r="6" stroke-dasharray="28" stroke-dashoffset="8" stroke-linecap="round"/></svg>';
         btn.style.opacity = "1";
+        btn.style.display = "flex";
+        btn.style.alignItems = "center";
+        btn.style.justifyContent = "center";
 
         try {
           const res = await fetch("/api/ascii-to-mermaid", {
@@ -825,24 +893,88 @@ export default function MdEditor() {
           if (!renderedHtml) throw new Error("No output");
 
           const originalHtml = el.innerHTML;
+          const srcText = el.querySelector("code")?.textContent || "";
 
-          (el as HTMLElement).innerHTML = `
-            <div style="padding:1rem;overflow-x:auto">${renderedHtml}</div>
-            <details style="margin:0;border-top:1px solid var(--border-dim)">
-              <summary style="padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none">Show source</summary>
-              <div style="overflow-x:auto">${originalHtml}</div>
-            </details>`;
+          // Clear and rebuild via DOM
+          (el as HTMLElement).innerHTML = "";
+
+          // Toolbar row at top (flow layout, not overlapping)
+          const postToolbar = document.createElement("div");
+          postToolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0";
+
+          // "Rendered" label
+          const label = document.createElement("span");
+          label.textContent = "Rendered";
+          label.style.cssText = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text-faint);border:1px solid var(--border-dim);border-radius:4px;line-height:14px";
+          postToolbar.appendChild(label);
+
+          // Copy source button
+          const copyBtn = document.createElement("button");
+          copyBtn.title = "Copy source";
+          copyBtn.style.cssText = "padding:4px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;display:flex;align-items:center";
+          const copySvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="9" height="10" rx="1"/><path d="M2 6v7a1 1 0 001 1h7"/></svg>';
+          const checkSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 8 7 11 12 5"/></svg>';
+          copyBtn.innerHTML = copySvg;
+          copyBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(srcText).then(() => {
+              copyBtn.innerHTML = checkSvg;
+              setTimeout(() => { copyBtn.innerHTML = copySvg; }, 1500);
+            });
+          });
+          postToolbar.appendChild(copyBtn);
+          el.appendChild(postToolbar);
+
+          // Rendered content
+          const content = document.createElement("div");
+          content.style.cssText = "padding:1rem;overflow-x:auto";
+          content.innerHTML = renderedHtml;
+          el.appendChild(content);
+
+          // Source details
+          const details = document.createElement("details");
+          details.style.cssText = "margin:0;border-top:1px solid var(--border-dim)";
+          const summary = document.createElement("summary");
+          summary.textContent = "Show source";
+          summary.style.cssText = "padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none";
+          details.appendChild(summary);
+          const srcDiv = document.createElement("div");
+          srcDiv.style.cssText = "overflow-x:auto";
+          srcDiv.innerHTML = originalHtml;
+          details.appendChild(srcDiv);
+          el.appendChild(details);
         } catch {
-          btn.textContent = "Failed — click to retry";
-          btn.style.color = "#ef4444";
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
           setTimeout(() => {
-            btn.textContent = "Render as diagram";
-            btn.style.color = "var(--accent)";
-          }, 3000);
+            btn.textContent = "Render";
+            btn.style.display = "";
+          }, 2000);
+        }
+      });
+      // Auto-trigger AI render if diagram mode is "ai"
+      if (diagramModeRef.current === "ai") {
+        btn.click();
+      }
+    });
+  }, [html, isLoading, theme, diagramMode]);
+
+  // Math: double-click to edit in MathEditor
+  useEffect(() => {
+    if (!previewRef.current || isLoading) return;
+    const mathEls = previewRef.current.querySelectorAll(".math-rendered[data-math-src]");
+    mathEls.forEach((el) => {
+      if ((el as HTMLElement).dataset.mathHandled) return;
+      (el as HTMLElement).dataset.mathHandled = "1";
+      el.addEventListener("dblclick", (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const src = decodeURIComponent((el as HTMLElement).dataset.mathSrc || "");
+        if (src) {
+          setInitialMath(src);
+          setShowMathModal(true);
         }
       });
     });
-  }, [html, isLoading, theme]);
+  }, [html, isLoading]);
 
   // Load shared content from URL on mount
   useEffect(() => {
@@ -887,7 +1019,7 @@ export default function MdEditor() {
   // Preview: click to scroll to source + double-click to inline edit
   // Uses comrak's data-sourcepos="startLine:startCol-endLine:endCol" for accurate mapping
   useEffect(() => {
-    if (!previewRef.current || viewMode !== "split") return;
+    if (!previewRef.current || viewMode === "editor") return;
     const preview = previewRef.current;
 
     // Parse sourcepos attribute → { startLine, endLine }
@@ -919,6 +1051,8 @@ export default function MdEditor() {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button,a,input")) return;
+      // Don't steal focus from contenteditable inline edit
+      if (target.closest("[contenteditable=true]")) return;
 
       const sourceEl = target.closest("[data-sourcepos]") as HTMLElement | null;
       if (!sourceEl) return;
@@ -951,10 +1085,12 @@ export default function MdEditor() {
     // Double-click → inline edit text
     const handleDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
+      // Already in edit mode — let native text selection work
+      if (target.closest("[contenteditable=true]")) return;
       // Skip table cells — handled by handleTableDblClick
       if (target.closest("td,th,table")) return;
-      // Skip mermaid, katex
-      if (target.closest(".mermaid-container,.katex")) return;
+      // Skip mermaid, math
+      if (target.closest(".mermaid-container,.math-rendered")) return;
 
       // Code block → mini editor modal
       const preEl = target.closest("pre") as HTMLElement | null;
@@ -1121,12 +1257,16 @@ export default function MdEditor() {
 
       const safeCommit = () => {
         if (committed) return;
+        // If element is still focused (e.g. user clicked back into it), don't commit
+        if (document.activeElement === editable) return;
         committed = true;
-        editable.removeEventListener("blur", safeCommit);
         commit();
       };
 
-      editable.addEventListener("blur", safeCommit);
+      editable.addEventListener("blur", () => {
+        // Delay to allow re-focus within the same element (clicking inside contenteditable)
+        setTimeout(safeCommit, 150);
+      });
       editable.addEventListener("keydown", (ke) => {
         const kev = ke as KeyboardEvent;
 
@@ -1621,6 +1761,15 @@ export default function MdEditor() {
     if (!markdown.trim()) return;
     setShareState("sharing");
     try {
+      // If already shared, just copy the existing URL
+      if (docId) {
+        const url = `${window.location.origin}/${docId}`;
+        await copyToClipboard(url);
+        setShareState("copied");
+        setTimeout(() => setShareState("idle"), 3000);
+        return;
+      }
+
       try {
         // Try server-side short URL
         const { url, editToken } = await createShortUrl(markdown, title);
@@ -1642,7 +1791,7 @@ export default function MdEditor() {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 3000);
     }
-  }, [markdown, title]);
+  }, [markdown, title, docId]);
 
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
@@ -1694,18 +1843,19 @@ export default function MdEditor() {
   }, [markdown, title]);
 
   // Update existing document
+  const [updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
   const handleUpdate = useCallback(async () => {
     if (!docId || !markdown.trim()) return;
     const token = getEditToken(docId);
     if (!token) return;
-    setShareState("sharing");
+    setUpdateState("updating");
     try {
       await updateDocument(docId, token, markdown, title);
-      setShareState("copied");
-      setTimeout(() => setShareState("idle"), 3000);
+      setUpdateState("done");
+      setTimeout(() => setUpdateState("idle"), 3000);
     } catch {
-      setShareState("error");
-      setTimeout(() => setShareState("idle"), 3000);
+      setUpdateState("error");
+      setTimeout(() => setUpdateState("idle"), 3000);
     }
   }, [docId, markdown, title]);
 
@@ -1899,75 +2049,129 @@ export default function MdEditor() {
               ))}
           </div>
 
-          {/* Stats — desktop only */}
-          <div className="items-center gap-2 font-mono hidden md:flex" style={{ color: "var(--text-muted)" }}>
-            <span>{charCount.toLocaleString()} chars</span>
-            <span style={{ color: "var(--border)" }}>·</span>
-            <span>{renderTime.toFixed(1)}ms</span>
-          </div>
-
-          {/* View mode toggle */}
-          <div className="flex items-center rounded-md p-0.5" style={{ background: "var(--toggle-bg)" }}>
-            {(isMobile
-              ? (["editor", "split", "preview"] as ViewMode[])
-              : (["editor", "split", "preview"] as ViewMode[])
-            ).map((mode) => (
+          {/* View mode toggle — layout icons */}
+          <div className="flex items-center gap-1">
+            {([
+              { mode: "editor" as ViewMode, title: "Editor only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/></svg> },
+              { mode: "split" as ViewMode, title: "Editor + Preview", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="8" y1="0" x2="8" y2="12"/></svg> },
+              { mode: "preview" as ViewMode, title: "Preview only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="4" y1="4" x2="12" y2="4" strokeWidth=".8"/><line x1="4" y1="6.5" x2="10" y2="6.5" strokeWidth=".8"/><line x1="4" y1="9" x2="8" y2="9" strokeWidth=".8"/></svg> },
+            ]).map(({ mode, title, icon }) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="px-2 py-0.5 rounded text-[10px] font-mono transition-colors"
+                className="p-1 rounded transition-colors"
                 style={{
-                  background: viewMode === mode ? "var(--toggle-active)" : "transparent",
-                  color: viewMode === mode ? "var(--text-primary)" : "var(--text-muted)",
+                  color: viewMode === mode ? "var(--accent)" : "var(--text-muted)",
+                  opacity: viewMode === mode ? 1 : 0.7,
                 }}
+                title={title}
               >
-                {mode === "editor" ? "MD" : mode === "split" ? "Split" : "Render"}
+                {icon}
               </button>
             ))}
+          </div>
+
+          {/* Diagram render mode toggle */}
+          <div className="relative group">
+            <button
+              onClick={toggleDiagramMode}
+              className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center gap-1"
+              style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M3.5 12.5l1.5-1.5M11 5l1.5-1.5"/><circle cx="8" cy="8" r="3"/>
+              </svg>
+              {diagramMode === "ai" ? "AI Render ON" : "AI Render OFF"}
+            </button>
+            {/* Tooltip on hover */}
+            <div className="absolute top-full mt-1.5 right-0 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+              {diagramMode === "ai" ? (
+                <>
+                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI Render ON</p>
+                  <p>ASCII art diagrams (box-drawing characters) are automatically converted to styled visuals using AI.</p>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Default</p>
+                  <p>ASCII art shows as monospace text. Hover to see a Render button for manual AI conversion.</p>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="px-2 py-1 rounded-md transition-colors text-[11px]"
+            className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center"
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              {theme === "dark"
+                ? <><circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 3.4l1-1"/></>
+                : <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/>
+              }
+            </svg>
           </button>
 
           {/* Actions */}
           <div className="flex items-center gap-1">
             {isOwner && docId ? (
-              <button
-                onClick={handleUpdate}
-                disabled={shareState === "sharing"}
-                className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
-                style={{
-                  background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "rgba(59, 130, 246, 0.15)",
-                  color: shareState === "copied" ? "#4ade80" : "#60a5fa",
-                }}
-                title="Update shared document"
-              >
-                {shareState === "copied" ? "Updated!" : shareState === "sharing" ? "..." : "Update"}
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={handleUpdate}
+                  disabled={updateState === "updating"}
+                  className="px-2 sm:px-2.5 h-6 rounded-md font-mono transition-colors text-[11px] sm:text-xs flex items-center gap-1"
+                  style={{
+                    background: updateState === "done" ? "rgba(34, 197, 94, 0.2)" : "rgba(59, 130, 246, 0.15)",
+                    color: updateState === "done" ? "#4ade80" : "#60a5fa",
+                  }}
+                >
+                  {updateState === "updating" ? (
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                  ) : updateState === "done" ? "Updated!" : "Update"}
+                </button>
+                <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                  <p style={{ color: "#60a5fa", fontWeight: 600, marginBottom: 4 }}>Update</p>
+                  <p>Push your latest changes to the same shared URL. Anyone with the link will see the updated version.</p>
+                </div>
+              </div>
             ) : null}
-            <button
-              onClick={handleShare}
-              disabled={shareState === "sharing"}
-              className="px-2 sm:px-2.5 py-1 rounded-md font-mono transition-colors text-[11px] sm:text-xs"
-              style={{
-                background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
-                color: shareState === "copied" ? "#4ade80" : "var(--accent)",
-              }}
-              title="Share (⌘S)"
-            >
-              {shareButtonLabel}
-            </button>
+            <div className="relative group">
+              <button
+                onClick={handleShare}
+                disabled={shareState === "sharing"}
+                className="px-2 sm:px-2.5 h-6 rounded-md font-mono transition-colors text-[11px] sm:text-xs flex items-center gap-1"
+                style={{
+                  background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
+                  color: shareState === "copied" ? "#4ade80" : "var(--accent)",
+                }}
+              >
+                {shareState === "sharing" ? (
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                ) : shareButtonLabel}
+              </button>
+              <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                {docId ? (
+                  <>
+                    <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Copy Link</p>
+                    <p>Copy the shared URL to clipboard again. The link stays the same — use Update to push changes.</p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share</p>
+                    <p>Create a short URL for this document. The link is copied to clipboard automatically. <span style={{ color: "var(--text-faint)" }}>Cmd+S</span></p>
+                  </>
+                )}
+              </div>
+            </div>
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="px-2 py-1 rounded-md transition-colors font-mono"
+                className="px-2 h-6 rounded-md transition-colors font-mono flex items-center"
                 style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
                 ···
@@ -2042,6 +2246,13 @@ export default function MdEditor() {
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       New Mermaid Diagram
+                    </button>
+                    <button
+                      onClick={() => { setInitialMath(undefined); setShowMathModal(true); setShowMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      New Math Equation
                     </button>
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
@@ -2170,7 +2381,10 @@ export default function MdEditor() {
                   setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
                 }}
               >
-                <span className="text-[10px]" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }}>•</span>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                  <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                  <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                </svg>
                 <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                 <button
                   onClick={(e) => {
@@ -2178,10 +2392,10 @@ export default function MdEditor() {
                     const rect = (e.target as HTMLElement).getBoundingClientRect();
                     setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id });
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] px-1 py-0.5 rounded shrink-0"
-                  style={{ color: "var(--text-faint)" }}
+                  className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ color: "var(--text-muted)", padding: "2px" }}
                 >
-                  ···
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
                 </button>
               </div>
             ))}
@@ -2354,7 +2568,7 @@ export default function MdEditor() {
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
-        <span className="truncate">mdcore v0.1.0 · Rust → WASM</span>
+        <span className="truncate">{charCount.toLocaleString()} chars</span>
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>
             ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
@@ -2474,9 +2688,16 @@ export default function MdEditor() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowMermaidModal(false); setCanvasMermaid(undefined); } }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setShowMermaidModal(false); setCanvasMermaid(undefined); } }}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
         >
           <div
             className="flex flex-col"
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: "var(--background)",
               border: "1px solid var(--border)",
@@ -2520,6 +2741,50 @@ export default function MdEditor() {
                 doRender(newMarkdown);
                 setCanvasMermaid(undefined);
                 setShowMermaidModal(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Math Editor Modal */}
+      {showMathModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowMathModal(false); setInitialMath(undefined); } }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setShowMathModal(false); setInitialMath(undefined); } }}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              overflow: "hidden",
+              width: "95vw",
+              height: "80vh",
+              maxWidth: "1200px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <MathEditor
+              initialMath={initialMath}
+              onCancel={() => {
+                setShowMathModal(false);
+                setInitialMath(undefined);
+              }}
+              onGenerate={(md) => {
+                const newMarkdown = markdown ? markdown + "\n\n" + md : md;
+                setMarkdown(newMarkdown);
+                doRender(newMarkdown);
+                setInitialMath(undefined);
+                setShowMathModal(false);
               }}
             />
           </div>
