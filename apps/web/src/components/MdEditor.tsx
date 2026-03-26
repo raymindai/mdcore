@@ -2075,13 +2075,19 @@ export default function MdEditor() {
           <div className="relative group">
             <button
               onClick={toggleDiagramMode}
-              className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center gap-1"
+              className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center gap-1.5"
               style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
             >
+              {/* Tree/graph icon */}
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M3.5 12.5l1.5-1.5M11 5l1.5-1.5"/><circle cx="8" cy="8" r="3"/>
+                <circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/>
               </svg>
-              {diagramMode === "ai" ? "AI Render ON" : "AI Render OFF"}
+              <span>AI Render</span>
+              {/* Mini toggle */}
+              <span className="relative inline-flex items-center" style={{ width: 22, height: 12 }}>
+                <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
+                <span className="absolute rounded-full transition-transform" style={{ width: 8, height: 8, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(12px)" : "translateX(2px)" }} />
+              </span>
             </button>
             {/* Tooltip on hover */}
             <div className="absolute top-full mt-1.5 right-0 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
