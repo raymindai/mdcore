@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { languages } from "@codemirror/language-data";
+// language-data removed — dynamic chunk loading fails in Next.js
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from "@codemirror/language";
@@ -138,7 +138,7 @@ export function useCodeMirror({
         themeCompartment.current.of(isDark ? darkColorTheme : lightColorTheme),
         syntaxHighlighting(markdownHighlight),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        markdown({ base: markdownLanguage }),
         highlightSelectionMatches(),
         EditorView.lineWrapping,
         cmPlaceholder(placeholder || ""),
