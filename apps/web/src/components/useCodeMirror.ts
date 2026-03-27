@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import { EditorState, Compartment } from "@codemirror/state";
-import { EditorView, keymap, placeholder as cmPlaceholder } from "@codemirror/view";
+import { EditorView, keymap, placeholder as cmPlaceholder, drawSelection } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 // language-data removed — dynamic chunk loading fails in Next.js
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
@@ -139,6 +139,7 @@ export function useCodeMirror({
         syntaxHighlighting(markdownHighlight),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         markdown({ base: markdownLanguage }),
+        drawSelection(), // shows selection even when unfocused
         highlightSelectionMatches(),
         EditorView.lineWrapping,
         cmPlaceholder(placeholder || ""),
