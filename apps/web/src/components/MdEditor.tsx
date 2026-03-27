@@ -2055,14 +2055,10 @@ export default function MdEditor() {
         const idx = parseInt(choice) - 1;
         const key = idx >= 0 && idx < keys.length ? keys[idx] : keys.find(k => k.toLowerCase().includes(choice.toLowerCase())) || keys[0];
         const template = templates[key];
-        if (template === "") {
-          // Open visual editor
-          setCanvasMermaid("");
-          setShowMermaidModal(true);
-          return;
-        }
-        insert = `${suffix}\`\`\`mermaid\n${template}\n\`\`\`\n`;
-        break;
+        // Open visual editor with selected template pre-loaded
+        setCanvasMermaid(template);
+        setShowMermaidModal(true);
+        return; // modal handles insertion
       }
     }
 
