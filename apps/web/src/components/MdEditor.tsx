@@ -2049,7 +2049,7 @@ export default function MdEditor() {
     const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
     const row = "| " + Array.from({ length: cols }, () => "cell").join(" | ") + " |";
     const tableRows = Array.from({ length: rows }, () => row).join("\n");
-    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n`;
+    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n\n`;
     setMarkdown(newMd);
     doRender(newMd);
   }, [doRender, setMarkdown]);
@@ -2062,7 +2062,7 @@ export default function MdEditor() {
     switch (type) {
       case "code":
         // Insert code block with placeholder — double-click to edit in modal
-        insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n`;
+        insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n\n`;
         break;
       case "math":
         setInitialMath("");
@@ -3003,7 +3003,7 @@ export default function MdEditor() {
                     }
                   }
                 } else {
-                  newMarkdown = markdown ? markdown + "\n\n" + md : md;
+                  newMarkdown = markdown ? markdown + "\n\n" + md + "\n" : md + "\n";
                 }
                 setMarkdown(newMarkdown);
                 doRender(newMarkdown);

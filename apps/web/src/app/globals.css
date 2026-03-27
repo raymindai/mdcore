@@ -929,8 +929,23 @@ textarea::selection {
    Suppress browser native table/object controls in contentEditable
    ======================================== */
 [contenteditable] table,
+[contenteditable] table *,
 [contenteditable] img {
-  -webkit-user-modify: read-only;
+  -webkit-user-modify: read-only !important;
+  -moz-user-modify: read-only !important;
+}
+/* Hide Chrome's table drag handles and column resize */
+[contenteditable] table td::after,
+[contenteditable] table th::after,
+[contenteditable] table td::before,
+[contenteditable] table th::before {
+  display: none !important;
+  content: none !important;
+}
+/* Prevent selection highlight on non-editable islands */
+[contenteditable="false"] {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* ========================================
