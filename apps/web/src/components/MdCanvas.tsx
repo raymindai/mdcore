@@ -852,20 +852,35 @@ export default function MdCanvas({
         style={{ borderBottom: "1px solid var(--border-dim)" }}
       >
         <div className="flex items-center gap-2">
-          <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Mermaid
+          <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--accent)" }}>
+            Mermaid Diagrams
           </span>
-          {(() => {
-            const dt = rawCodeMode
-              ? DIAGRAM_TYPES.find(d => d.id === detectDiagramType(rawCode))
-              : DIAGRAM_TYPES.find(d => d.id === "flowchart");
+          {/* Diagram type selector */}
+          {[
+            { id: "flowchart", label: "Flow", code: "graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E" },
+            { id: "sequence", label: "Seq", code: "sequenceDiagram\n    participant A as User\n    participant B as System\n    A->>B: Request\n    B-->>A: Response" },
+            { id: "pie", label: "Pie", code: "pie title Distribution\n    \"A\" : 40\n    \"B\" : 30\n    \"C\" : 30" },
+            { id: "mindmap", label: "Mind", code: "mindmap\n  root((Topic))\n    Branch 1\n      Sub 1\n    Branch 2\n      Sub 2" },
+            { id: "timeline", label: "Time", code: "timeline\n    title Timeline\n    2024 : Phase 1\n    2025 : Phase 2" },
+            { id: "class", label: "Class", code: "classDiagram\n    class Animal {\n        +String name\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog" },
+            { id: "state", label: "State", code: "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Active: start\n    Active --> [*]: done" },
+            { id: "er", label: "ER", code: "erDiagram\n    USER ||--o{ ORDER : places\n    ORDER ||--|{ LINE_ITEM : contains" },
+          ].map(({ id, label, code }) => {
+            const currentType = rawCodeMode ? detectDiagramType(rawCode) : "flowchart";
             return (
-              <span className="px-2 rounded-md text-[10px] font-mono font-semibold leading-[24px]"
-                style={{ background: "var(--accent-dim)", color: "var(--accent)", height: 24, display: "inline-flex", alignItems: "center" }}>
-                {dt?.label || "Diagram"}
-              </span>
+              <button
+                key={id}
+                onClick={() => { setRawCode(code); setRawCodeMode(true); }}
+                className="px-1.5 py-0.5 rounded-md text-[10px] font-mono transition-colors"
+                style={{
+                  background: currentType === id ? "var(--accent-dim)" : "var(--toggle-bg)",
+                  color: currentType === id ? "var(--accent)" : "var(--text-muted)",
+                }}
+              >
+                {label}
+              </button>
             );
-          })()}
+          })}
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="px-2 rounded-md font-mono text-[11px] leading-[24px]"

@@ -926,6 +926,14 @@ textarea::selection {
 }
 
 /* ========================================
+   Suppress browser native table/object controls in contentEditable
+   ======================================== */
+[contenteditable] table,
+[contenteditable] img {
+  -webkit-user-modify: read-only;
+}
+
+/* ========================================
    CodeMirror 6 Integration
    ======================================== */
 .cm-editor {

@@ -2091,6 +2091,11 @@ export default function MdEditor() {
     article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram, table").forEach(el => {
       (el as HTMLElement).contentEditable = "false";
     });
+    // Suppress browser object resizing/table controls
+    try {
+      document.execCommand("enableObjectResizing", false, "false");
+      document.execCommand("enableInlineTableEditing", false, "false");
+    } catch { /* not supported in all browsers */ }
   }, [html]);
 
   const shareButtonLabel = {
@@ -2632,7 +2637,24 @@ export default function MdEditor() {
             </div>
             {/* WYSIWYG Formatting Toolbar */}
             <WysiwygToolbar onInsert={handleInsertBlock} onInsertTable={handleInsertTable} />
-            <div className="flex-1 overflow-auto" ref={previewRef}>
+            <div className="flex-1 overflow-auto" ref={previewRef} onClick={(e) => {
+              // Click on empty space below content → focus article and place cursor at end
+              if (e.target === e.currentTarget) {
+                const article = e.currentTarget.querySelector("article");
+                if (article) {
+                  article.focus();
+                  // Place cursor at end of content
+                  const sel = window.getSelection();
+                  if (sel) {
+                    const range = document.createRange();
+                    range.selectNodeContents(article);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                  }
+                }
+              }
+            }}>
               <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -2955,32 +2977,6 @@ export default function MdEditor() {
               boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
             }}
           >
-            {/* Diagram type selector */}
-            <div className="flex items-center gap-1 px-3 py-2 text-[11px] shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-              <span className="mr-2 font-medium" style={{ color: "var(--text-muted)" }}>Type:</span>
-              {[
-                { label: "Flowchart", code: "graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E" },
-                { label: "Sequence", code: "sequenceDiagram\n    participant A as User\n    participant B as System\n    A->>B: Request\n    B-->>A: Response" },
-                { label: "Pie", code: "pie title Distribution\n    \"A\" : 40\n    \"B\" : 30\n    \"C\" : 30" },
-                { label: "Mindmap", code: "mindmap\n  root((Topic))\n    Branch 1\n      Sub 1\n    Branch 2\n      Sub 2" },
-                { label: "Timeline", code: "timeline\n    title Timeline\n    2024 : Phase 1\n    2025 : Phase 2\n    2026 : Phase 3" },
-                { label: "Class", code: "classDiagram\n    class Animal {\n        +String name\n        +move()\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog" },
-                { label: "State", code: "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Active: start\n    Active --> Idle: stop\n    Active --> [*]: done" },
-                { label: "ER", code: "erDiagram\n    USER ||--o{ ORDER : places\n    ORDER ||--|{ LINE_ITEM : contains" },
-              ].map(({ label, code }) => (
-                <button
-                  key={label}
-                  onClick={() => setCanvasMermaid(code)}
-                  className="px-2 py-1 rounded-md transition-colors"
-                  style={{
-                    background: canvasMermaid?.startsWith(code.split("\n")[0]) ? "var(--accent-dim)" : "var(--toggle-bg)",
-                    color: canvasMermaid?.startsWith(code.split("\n")[0]) ? "var(--accent)" : "var(--text-muted)",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             <MdCanvas
               initialMermaid={canvasMermaid}
               onCancel={() => {
