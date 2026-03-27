@@ -2007,9 +2007,19 @@ export default function MdEditor() {
     let insert = "";
 
     switch (type) {
-      case "table":
-        insert = `${suffix}| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| cell | cell | cell |\n| cell | cell | cell |\n`;
+      case "table": {
+        const sizeInput = prompt("Table size (columns x rows):", "3x3");
+        if (!sizeInput) return;
+        const match = sizeInput.match(/(\d+)\s*[x×]\s*(\d+)/i);
+        const cols = Math.max(1, Math.min(10, match ? parseInt(match[1]) : 3));
+        const rows = Math.max(1, Math.min(20, match ? parseInt(match[2]) : 3));
+        const header = "| " + Array.from({ length: cols }, (_, i) => `Column ${i + 1}`).join(" | ") + " |";
+        const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
+        const row = "| " + Array.from({ length: cols }, () => " ").join(" | ") + " |";
+        const tableRows = Array.from({ length: rows }, () => row).join("\n");
+        insert = `${suffix}${header}\n${separator}\n${tableRows}\n`;
         break;
+      }
       case "code": {
         // Open code modal with empty content
         setShowMathModal(false);
@@ -2022,10 +2032,38 @@ export default function MdEditor() {
         setInitialMath("");
         setShowMathModal(true);
         return; // modal handles insertion
-      case "mermaid":
-        setCanvasMermaid("");
-        setShowMermaidModal(true);
-        return; // modal handles insertion
+      case "mermaid": {
+        const templates: Record<string, string> = {
+          "Flowchart": "graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E",
+          "Sequence": "sequenceDiagram\n    participant A as User\n    participant B as System\n    A->>B: Request\n    B-->>A: Response",
+          "Pie Chart": "pie title Distribution\n    \"Category A\" : 40\n    \"Category B\" : 30\n    \"Category C\" : 30",
+          "Mindmap": "mindmap\n  root((Main Topic))\n    Branch 1\n      Sub 1\n      Sub 2\n    Branch 2\n      Sub 3",
+          "Timeline": "timeline\n    title Project Timeline\n    2024 : Phase 1\n    2025 : Phase 2\n    2026 : Phase 3",
+          "Class Diagram": "classDiagram\n    class Animal {\n        +String name\n        +move()\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog",
+          "State Diagram": "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Active: start\n    Active --> Idle: stop\n    Active --> [*]: done",
+          "ER Diagram": "erDiagram\n    USER ||--o{ ORDER : places\n    ORDER ||--|{ LINE_ITEM : contains\n    PRODUCT ||--o{ LINE_ITEM : includes",
+          "Empty (Visual Editor)": "",
+        };
+        const choice = prompt(
+          "Mermaid diagram type:\n\n" +
+          Object.keys(templates).map((k, i) => `${i + 1}. ${k}`).join("\n") +
+          "\n\nEnter number or name:",
+          "1"
+        );
+        if (!choice) return;
+        const keys = Object.keys(templates);
+        const idx = parseInt(choice) - 1;
+        const key = idx >= 0 && idx < keys.length ? keys[idx] : keys.find(k => k.toLowerCase().includes(choice.toLowerCase())) || keys[0];
+        const template = templates[key];
+        if (template === "") {
+          // Open visual editor
+          setCanvasMermaid("");
+          setShowMermaidModal(true);
+          return;
+        }
+        insert = `${suffix}\`\`\`mermaid\n${template}\n\`\`\`\n`;
+        break;
+      }
     }
 
     if (insert) {
