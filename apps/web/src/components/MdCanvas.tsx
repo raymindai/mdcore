@@ -622,6 +622,8 @@ export default function MdCanvas({
     setSelectedId(null);
     setEditingId(null);
     setEditingEdge(null);
+    // Force re-render after DOM settles so edge points use correct measurements
+    requestAnimationFrame(() => forceUpdate(v => v + 1));
   }, [initialMermaid]);
 
   // Add node on double-click canvas
