@@ -844,51 +844,33 @@ export default function MdCanvas({
     return { x: node.x + 70, y: node.y + 20 };
   };
 
+  // Get the point on the node boundary closest to a target point
+  const getNodeEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
+    const cx = node.x + 70, cy = node.y + 20;
+    const hw = 72, hh = 22; // half width, half height (slightly larger than node)
+    const dx = targetX - cx, dy = targetY - cy;
+    if (dx === 0 && dy === 0) return { x: cx, y: cy };
+    // Find intersection with rectangle boundary
+    const scaleX = Math.abs(dx) / hw;
+    const scaleY = Math.abs(dy) / hh;
+    const scale = Math.max(scaleX, scaleY);
+    if (scale === 0) return { x: cx, y: cy };
+    return { x: cx + dx / scale, y: cy + dy / scale };
+  };
+
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--background)" }}>
-      {/* Toolbar */}
+      {/* Header row */}
       <div
-        className="flex items-center justify-between px-3 sm:px-4 py-2 text-xs flex-wrap gap-2"
+        className="flex items-center justify-between px-3 sm:px-4 py-2 text-xs"
         style={{ borderBottom: "1px solid var(--border-dim)" }}
       >
         <div className="flex items-center gap-2">
           <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--accent)" }}>
             Mermaid Diagrams
           </span>
-          {/* Diagram type selector — all supported types, full names */}
-          {DIAGRAM_TYPES.map((dt) => {
-            const currentType = rawCodeMode ? detectDiagramType(rawCode) : "flowchart";
-            return (
-              <button
-                key={dt.id}
-                onClick={() => {
-                  if (dt.id === "flowchart") {
-                    // Flowchart uses the canvas editor
-                    const result = mermaidToCanvas(dt.template);
-                    if (result) {
-                      setNodes(result.nodes);
-                      setEdges(result.edges);
-                      setDirection((result.direction === "TD" || result.direction === "LR") ? result.direction : "LR");
-                    }
-                    setRawCodeMode(false);
-                  } else {
-                    setRawCode(dt.template);
-                    setRawCodeMode(true);
-                  }
-                }}
-                className="px-1.5 py-0.5 rounded-md text-[10px] transition-colors whitespace-nowrap"
-                style={{
-                  background: currentType === dt.id ? "var(--accent-dim)" : "var(--toggle-bg)",
-                  color: currentType === dt.id ? "var(--accent)" : "var(--text-muted)",
-                }}
-              >
-                {dt.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Help */}
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="px-2 rounded-md font-mono text-[11px] leading-[24px]"
@@ -900,6 +882,8 @@ export default function MdCanvas({
           >
             Help
           </button>
+        </div>
+        <div className="flex items-center gap-2">
           {/* Layout options */}
           <div className="flex gap-1 mr-1" style={{ borderRight: "1px solid var(--border-dim)", paddingRight: 8 }}>
             {LAYOUTS.map((l) => (
@@ -944,6 +928,42 @@ export default function MdCanvas({
             Apply
           </button>
         </div>
+      </div>
+
+      {/* Diagram type selector row */}
+      <div
+        className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-xs overflow-x-auto"
+        style={{ borderBottom: "1px solid var(--border-dim)" }}
+      >
+        {DIAGRAM_TYPES.map((dt) => {
+          const currentType = rawCodeMode ? detectDiagramType(rawCode) : "flowchart";
+          return (
+            <button
+              key={dt.id}
+              onClick={() => {
+                if (dt.id === "flowchart") {
+                  const result = mermaidToCanvas(dt.template);
+                  if (result) {
+                    setNodes(result.nodes);
+                    setEdges(result.edges);
+                    setDirection((result.direction === "TD" || result.direction === "LR") ? result.direction : "LR");
+                  }
+                  setRawCodeMode(false);
+                } else {
+                  setRawCode(dt.template);
+                  setRawCodeMode(true);
+                }
+              }}
+              className="px-2 py-1 rounded-md text-[11px] transition-colors whitespace-nowrap shrink-0"
+              style={{
+                background: currentType === dt.id ? "var(--accent-dim)" : "var(--toggle-bg)",
+                color: currentType === dt.id ? "var(--accent)" : "var(--text-muted)",
+              }}
+            >
+              {dt.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Import panel */}
@@ -1098,8 +1118,11 @@ export default function MdCanvas({
           </defs>
 
           {edges.map((edge, i) => {
-            const from = getNodeCenter(edge.from);
-            const to = getNodeCenter(edge.to);
+            const fromCenter = getNodeCenter(edge.from);
+            const toCenter = getNodeCenter(edge.to);
+            // Use boundary points so arrows are visible on node edges
+            const from = getNodeEdgePoint(edge.from, toCenter.x, toCenter.y);
+            const to = getNodeEdgePoint(edge.to, fromCenter.x, fromCenter.y);
             const midX = (from.x + to.x) / 2;
             const midY = (from.y + to.y) / 2;
 
@@ -1107,10 +1130,10 @@ export default function MdCanvas({
             const dx = to.x - from.x;
             const dy = to.y - from.y;
             const isHorizontalish = Math.abs(dx) > Math.abs(dy);
-            const cx1 = isHorizontalish ? from.x + dx * 0.5 : from.x;
-            const cy1 = isHorizontalish ? from.y : from.y + dy * 0.5;
-            const cx2 = isHorizontalish ? to.x - dx * 0.5 : to.x;
-            const cy2 = isHorizontalish ? to.y : to.y - dy * 0.5;
+            const cx1 = isHorizontalish ? from.x + dx * 0.4 : from.x;
+            const cy1 = isHorizontalish ? from.y : from.y + dy * 0.4;
+            const cx2 = isHorizontalish ? to.x - dx * 0.4 : to.x;
+            const cy2 = isHorizontalish ? to.y : to.y - dy * 0.4;
             const pathD = `M ${from.x} ${from.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${to.x} ${to.y}`;
 
             return (
