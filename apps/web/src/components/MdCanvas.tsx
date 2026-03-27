@@ -838,60 +838,56 @@ export default function MdCanvas({
     }
   }, [importCode]);
 
-  // Get node visual center and dimensions by measuring the inner shape element
-  const getNodeCenter = (nodeId: string) => {
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return { x: 0, y: 0 };
-    // Measure the outer canvas-node div for position
-    const outerEl = canvasRef.current?.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null;
-    if (outerEl) {
-      const w = outerEl.offsetWidth;
-      const h = outerEl.offsetHeight;
-      return { x: node.x + w / 2, y: node.y + h / 2 };
+  // Get visual center + bounds using getBoundingClientRect (handles CSS transforms)
+  const getShapeVisualRect = (nodeId: string) => {
+    const canvas = canvasRef.current;
+    const shapeEl = canvas?.querySelector(`[data-shape-el="${nodeId}"]`) as HTMLElement | null;
+    if (!canvas || !shapeEl) {
+      const node = nodes.find(n => n.id === nodeId);
+      return node ? { cx: node.x + 70, cy: node.y + 20, hw: 70, hh: 20 } : { cx: 0, cy: 0, hw: 0, hh: 0 };
     }
-    return { x: node.x + 70, y: node.y + 20 };
+    const canvasRect = canvas.getBoundingClientRect();
+    const shapeRect = shapeEl.getBoundingClientRect();
+    // Convert to canvas-relative coordinates (accounts for scroll)
+    const cx = shapeRect.left - canvasRect.left + canvas.scrollLeft + shapeRect.width / 2;
+    const cy = shapeRect.top - canvasRect.top + canvas.scrollTop + shapeRect.height / 2;
+    return { cx, cy, hw: shapeRect.width / 2, hh: shapeRect.height / 2 };
   };
 
-  // Calculate intersection of line from node center toward target with node boundary
+  const getNodeCenter = (nodeId: string) => {
+    const r = getShapeVisualRect(nodeId);
+    return { x: r.cx, y: r.cy };
+  };
+
   const getEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
-    const node = nodes.find((n) => n.id === nodeId);
+    const node = nodes.find(n => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
 
-    const center = getNodeCenter(nodeId);
-    const dx = targetX - center.x;
-    const dy = targetY - center.y;
-    if (dx === 0 && dy === 0) return { x: center.x, y: center.y };
-
-    // Measure the inner shape element for actual visual bounds
-    const shapeEl = canvasRef.current?.querySelector(`[data-shape-el="${nodeId}"]`) as HTMLElement | null;
+    const r = getShapeVisualRect(nodeId);
+    const dx = targetX - r.cx;
+    const dy = targetY - r.cy;
+    if (dx === 0 && dy === 0) return { x: r.cx, y: r.cy - r.hh };
 
     if (node.shape === "circle") {
-      // Circle: getBoundingClientRect gives actual visual size
-      const r = shapeEl ? Math.max(shapeEl.offsetWidth, shapeEl.offsetHeight) / 2 : 45;
+      const radius = Math.max(r.hw, r.hh);
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist === 0) return center;
-      return { x: center.x + (dx / dist) * r, y: center.y + (dy / dist) * r };
+      return { x: r.cx + (dx / dist) * radius, y: r.cy + (dy / dist) * radius };
     }
 
     if (node.shape === "diamond") {
-      // Diamond is a square rotated 45°. The CSS width/height is the pre-rotation size.
-      // Visual half-diagonal = CSS_size / 2 (distance from center to any corner)
-      const cssSize = shapeEl ? shapeEl.offsetWidth : 80; // pre-rotation size
-      const halfDiag = cssSize / 2; // This is the distance from center to corner
-      // Diamond boundary: |dx| + |dy| = halfDiag * sqrt(2) / sqrt(2) = halfDiag
-      // Actually for a rotated square: |dx|/halfDiag + |dy|/halfDiag = 1
-      const sum = (Math.abs(dx) + Math.abs(dy)) / halfDiag;
-      if (sum === 0) return center;
-      return { x: center.x + dx / sum, y: center.y + dy / sum };
+      // Visual diamond: getBoundingClientRect gives the rotated bounding box
+      // The diamond points are at (cx, cy-hh), (cx+hw, cy), (cx, cy+hh), (cx-hw, cy)
+      // Boundary: |dx|/hw + |dy|/hh = 1
+      const scale = Math.abs(dx) / r.hw + Math.abs(dy) / r.hh;
+      if (scale === 0) return { x: r.cx, y: r.cy - r.hh };
+      return { x: r.cx + dx / scale, y: r.cy + dy / scale };
     }
 
-    // Rectangle (round, square)
-    const hw = shapeEl ? shapeEl.offsetWidth / 2 : 70;
-    const hh = shapeEl ? shapeEl.offsetHeight / 2 : 20;
-    const scaleX = Math.abs(dx) > 0 ? hw / Math.abs(dx) : Infinity;
-    const scaleY = Math.abs(dy) > 0 ? hh / Math.abs(dy) : Infinity;
+    // Rectangle (round, square): ray-rect intersection
+    const scaleX = Math.abs(dx) > 0 ? r.hw / Math.abs(dx) : Infinity;
+    const scaleY = Math.abs(dy) > 0 ? r.hh / Math.abs(dy) : Infinity;
     const s = Math.min(scaleX, scaleY);
-    return { x: center.x + dx * s, y: center.y + dy * s };
+    return { x: r.cx + dx * s, y: r.cy + dy * s };
   };
 
   return (
