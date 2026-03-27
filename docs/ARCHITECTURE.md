@@ -2,7 +2,12 @@
 
 > "유니버설 엔진"이 되려면 뭘로 만들어야 하는가?
 >
-> Last updated: 2026-03-20
+> Last updated: 2026-03-23
+>
+> ⚠️ **전략 업데이트 (2026-03-23)**: 기술 결정(Rust/WASM/comrak)은 전부 유효.
+> 변경된 것은 우선순위: 엔진 표면 확장(npm, CLI, VS Code 등)보다 **mdfy.cc 바이럴 루프**(뱃지 + Chrome 익스텐션)를 먼저 완성.
+> 컴파일 타겟에 **macOS QuickLook** (aarch64-apple-darwin)도 추가됨.
+> 상세: `updatedDirection.md` v5.0 참조.
 
 ---
 

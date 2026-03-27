@@ -1,5 +1,10 @@
 # The Markdown Infrastructure Manifesto
 
+> ⚠️ **전략 업데이트 (2026-03-23)**: 엔진 철학은 유효하나, 제품 포지셔닝이 업데이트되었다.
+> "Engine over Editor" → "Markdown은 엔진이지 인터페이스가 아니다" (사용자는 MD를 몰라도 된다).
+> mdfy.cc는 쇼케이스가 아니라 핵심 사업이다. 바이럴 뱃지 + 크로스 AI 레이어가 해자.
+> 상세: `updatedDirection.md` v5.0 참조.
+
 ## Markdown has converged as the interface layer between AI and humans.
 
 This is not a prediction. It is an observation.
@@ -138,13 +143,13 @@ And the team that builds the infrastructure for that layer will be building on t
 
 ## What we are not
 
-We are not an editor company. We are not competing with Obsidian, Notion, or Typora.
+~~We are not an editor company. We are not competing with Obsidian, Notion, or Typora.~~ *(Updated: mdfy.cc is now positioned as the core product — a web-native document publishing tool. mditor provides WYSIWYG + Source modes so users don't need to know Markdown. See updatedDirection.md v5.0.)*
 
 We are not a conversion tool. We are not competing with Pandoc on format transformation.
 
 We are not a standard body. We are not trying to replace CommonMark or define the "right" Markdown.
 
-We are the engine layer beneath all of these. The one dependency that makes every Markdown tool better, faster, and more consistent. The infrastructure that should have existed five years ago and now must exist because the scale demands it.
+We are the engine layer beneath the product — and the product is the publishing layer for AI outputs. The fastest way from thought to shared document. No AI company will build a cross-AI publishing tool. That structural gap is our moat.
 
 ---
 

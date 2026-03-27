@@ -30,11 +30,21 @@
   ],
   "rewrites": [
     {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mdcore.ai" }],
+      "destination": "/mdcore-ai/:path*"
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "mdcore.ai" }],
+      "destination": "/mdcore-ai"
+    },
+    {
       "source": "/:id([A-Za-z0-9_-]{6,10})",
       "destination": "/d/:id"
     },
     {
-      "source": "/((?!_next|api|d|about|embed|favicon.ico|.*\\.wasm).*)",
+      "source": "/((?!_next|api|d|about|embed|mdcore-ai|favicon.ico|.*\\.wasm).*)",
       "destination": "/"
     }
   ]

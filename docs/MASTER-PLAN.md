@@ -1,10 +1,17 @@
 # MDCORE — Master Plan
 
-> 이 문서는 mdcore/mdfy 사업의 유일한 기준 문서(Single Source of Truth)이다.
-> 이전 문서들(로드맵 v1, v2, Business Review DOCX)은 이 문서로 대체된다.
+> ⚠️ **이 문서는 `updatedDirection.md` v5.0에 의해 전략 방향이 업데이트되었다.**
+> 기술 구현 세부사항과 사용자 여정은 유효하나, 전략 방향/해자/수익 모델/우선순위는 updatedDirection.md가 기준이다.
 >
-> Last updated: 2026-03-20
-> Version: 4.0 (경쟁 분석 강화, 양방향 변환, MD flavor 감지, 공유/협업 방향 반영)
+> 주요 변경 (v5.0):
+> - "콘텐츠 인프라 소유" → "AI 출력 → 즉시 퍼블리셔블 URL" (크로스 AI 레이어)
+> - 해자 추가: 바이럴 뱃지, 크로스 AI 포지셔닝, 공유 = 배포
+> - 수익 모델: Pro $12/mo → $8/mo (시장 검증 가격), Free에 7일 만료 + 바이럴 뱃지
+> - mditor: WYSIWYG Writer 모드 도입 (MD를 몰라도 사용 가능)
+> - 우선순위: 바이럴 뱃지 + Chrome 익스텐션 먼저, 나머지 순차 확장
+>
+> Last updated: 2026-03-23
+> Version: 4.1 (updatedDirection.md v5.0 반영)
 
 ---
 
