@@ -865,14 +865,15 @@ export default function MdCanvas({
     const dy = targetY - cy;
     if (dx === 0 && dy === 0) return { x: cx, y: cy - dims.h / 2 };
 
-    const pad = 8; // padding so line clearly starts outside the shape
+    // Line ends exactly at shape boundary (arrow marker handles the visual gap)
     if (node.shape === "circle") {
-      const r = dims.w / 2 + pad;
+      const r = dims.w / 2;
       const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist === 0) return { x: cx, y: cy - r };
       return { x: cx + (dx / dist) * r, y: cy + (dy / dist) * r };
     }
     if (node.shape === "diamond") {
-      const half = dims.w / 2 + pad;
+      const half = dims.w / 2;
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
       const scale = (absDx + absDy) / half;
@@ -880,8 +881,8 @@ export default function MdCanvas({
       return { x: cx + dx / scale, y: cy + dy / scale };
     }
     // Rectangle (round, square)
-    const hw = dims.w / 2 + pad;
-    const hh = dims.h / 2 + pad;
+    const hw = dims.w / 2;
+    const hh = dims.h / 2;
     const scaleX = Math.abs(dx) / hw;
     const scaleY = Math.abs(dy) / hh;
     const scale = Math.max(scaleX, scaleY);
@@ -1135,14 +1136,14 @@ export default function MdCanvas({
         {/* Edges SVG */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
           <defs>
-            <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
+            <marker id="arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--text-faint)" />
             </marker>
-            <marker id="arr-start" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
-              <polygon points="0 0, 8 3, 0 6" fill="var(--text-faint)" />
+            <marker id="arr-start" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--text-faint)" />
             </marker>
-            <marker id="arr-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" fill="var(--accent)" />
+            <marker id="arr-accent" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--accent)" />
             </marker>
           </defs>
 
@@ -1155,14 +1156,15 @@ export default function MdCanvas({
             const midX = (from.x + to.x) / 2;
             const midY = (from.y + to.y) / 2;
 
-            // Curved path with control point offset
-            const dx = to.x - from.x;
-            const dy = to.y - from.y;
-            const isHorizontalish = Math.abs(dx) > Math.abs(dy);
-            const cx1 = isHorizontalish ? from.x + dx * 0.4 : from.x;
-            const cy1 = isHorizontalish ? from.y : from.y + dy * 0.4;
-            const cx2 = isHorizontalish ? to.x - dx * 0.4 : to.x;
-            const cy2 = isHorizontalish ? to.y : to.y - dy * 0.4;
+            // Smooth curve — straight-ish with gentle bend
+            const edgeDx = to.x - from.x;
+            const edgeDy = to.y - from.y;
+            const isHorizontalish = Math.abs(edgeDx) > Math.abs(edgeDy);
+            // Control points: slight offset perpendicular to straight line
+            const cx1 = isHorizontalish ? from.x + edgeDx * 0.3 : from.x;
+            const cy1 = isHorizontalish ? from.y : from.y + edgeDy * 0.3;
+            const cx2 = isHorizontalish ? to.x - edgeDx * 0.3 : to.x;
+            const cy2 = isHorizontalish ? to.y : to.y - edgeDy * 0.3;
             const pathD = `M ${from.x} ${from.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${to.x} ${to.y}`;
 
             return (
