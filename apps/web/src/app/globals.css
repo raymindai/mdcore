@@ -394,36 +394,7 @@ body {
   cursor: text;
 }
 
-/* Table cell menu button */
-.mdcore-rendered .cell-menu-btn {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
-  line-height: 18px;
-  text-align: center;
-  color: var(--accent);
-  background: var(--accent-dim);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-  padding: 0;
-  font-family: system-ui;
-}
-
-/* Only show cell menu in editable context (not when table is contentEditable=false) */
-.mdcore-rendered table:not([contenteditable="false"]) td:hover .cell-menu-btn,
-.mdcore-rendered table:not([contenteditable="false"]) th:hover .cell-menu-btn {
-  opacity: 0.7;
-}
-
-.mdcore-rendered table:not([contenteditable="false"]) .cell-menu-btn:hover {
-  opacity: 1 !important;
-}
+/* Table cell menu button — removed, use right-click instead */
 
 /* Description lists */
 .mdcore-rendered dt {

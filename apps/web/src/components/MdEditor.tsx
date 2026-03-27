@@ -1566,25 +1566,9 @@ export default function MdEditor() {
       });
     };
 
-    // Add menu buttons to table cells
-    preview.querySelectorAll("td, th").forEach((cell) => {
-      if (cell.querySelector(".cell-menu-btn")) return; // already has one
-      (cell as HTMLElement).style.position = "relative";
-      const btn = document.createElement("button");
-      btn.className = "cell-menu-btn";
-      btn.textContent = "▾";
-      btn.title = "Edit row/column";
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        // Trigger context menu at button position
-        const rect = btn.getBoundingClientRect();
-        const fakeEvent = { target: cell, clientX: rect.right, clientY: rect.bottom, preventDefault: () => {} };
-        openTableMenu(fakeEvent as unknown as MouseEvent, cell as HTMLTableCellElement);
-      });
-      cell.appendChild(btn);
-    });
+    // cell-menu-btn removed — use right-click for table operations
 
-    // Table context menu logic (shared by right-click and button)
+    // Table context menu logic (right-click only)
     const openTableMenu = (me: MouseEvent, cell: HTMLTableCellElement) => {
       const table = cell.closest("table");
       if (!table) return;
