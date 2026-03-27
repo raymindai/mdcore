@@ -1229,7 +1229,7 @@ export default function MdEditor() {
       }
     }
 
-    // Click in preview → scroll source pane to corresponding position
+    // Click in preview → scroll + highlight corresponding block in source
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button,a,input")) return;
@@ -1239,8 +1239,18 @@ export default function MdEditor() {
       const pos = getSourcePos(sourceEl);
       if (!pos) return;
       const actualStart = pos.startLine + frontmatterOffset;
-      // Just scroll source — don't steal focus (user is editing in preview)
+      const actualEnd = pos.endLine + frontmatterOffset;
+      const freshLines = markdownRef.current.split("\n");
+      let startChar = 0;
+      for (let i = 0; i < actualStart && i < freshLines.length; i++) {
+        startChar += freshLines[i].length + 1;
+      }
+      let endChar = startChar;
+      for (let i = actualStart; i <= actualEnd && i < freshLines.length; i++) {
+        endChar += freshLines[i].length + 1;
+      }
       cmScrollToLine(actualStart);
+      cmSetSelection(startChar, endChar);
     };
 
     // contentEditable on the article handles Word-like editing natively.
@@ -2660,13 +2670,13 @@ export default function MdEditor() {
                   <span key={key} className="hidden sm:inline px-1 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>+{key}</span>
                 ))}
               </div>
-              <div className="flex items-center gap-1 normal-case">
+              <div className="flex items-center gap-1.5 normal-case">
                 {/* Copy MD */}
                 <div className="relative group">
                   <button
                     onClick={() => { navigator.clipboard.writeText(markdownRef.current); }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md border transition-colors hover:text-[var(--accent)] hover:border-[var(--accent)]"
-                    style={{ color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
                     <span className="text-[10px] font-medium">Copy</span>
@@ -2677,8 +2687,8 @@ export default function MdEditor() {
                 <div className="relative group">
                   <button
                     onClick={handleDownloadMd}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md border transition-colors hover:text-[var(--accent)] hover:border-[var(--accent)]"
-                    style={{ color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
                     <span className="text-[10px] font-medium">.md</span>
