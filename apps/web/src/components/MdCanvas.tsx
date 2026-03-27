@@ -838,56 +838,25 @@ export default function MdCanvas({
     }
   }, [importCode]);
 
-  // Get node dimensions based on shape
-  const getNodeDims = (node: CanvasNode) => {
-    switch (node.shape) {
-      case "circle": return { w: 90, h: 90 };
-      case "diamond": return { w: 80, h: 80 };
-      default: return { w: 140, h: 40 }; // round, square
-    }
-  };
-
   const getNodeCenter = (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
-    const dims = getNodeDims(node);
-    return { x: node.x + dims.w / 2, y: node.y + dims.h / 2 };
+    // Use actual shape size for center
+    if (node.shape === "circle") return { x: node.x + 45, y: node.y + 45 };
+    if (node.shape === "diamond") return { x: node.x + 40, y: node.y + 40 };
+    return { x: node.x + 70, y: node.y + 20 }; // round/square default
   };
 
-  // Get the point on the node boundary closest to a target point
-  const getNodeEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return { x: 0, y: 0 };
-    const dims = getNodeDims(node);
-    const cx = node.x + dims.w / 2;
-    const cy = node.y + dims.h / 2;
-    const dx = targetX - cx;
-    const dy = targetY - cy;
-    if (dx === 0 && dy === 0) return { x: cx, y: cy - dims.h / 2 };
-
-    // Line ends exactly at shape boundary (arrow marker handles the visual gap)
-    if (node.shape === "circle") {
-      const r = dims.w / 2;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist === 0) return { x: cx, y: cy - r };
-      return { x: cx + (dx / dist) * r, y: cy + (dy / dist) * r };
-    }
-    if (node.shape === "diamond") {
-      const half = dims.w / 2;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-      const scale = (absDx + absDy) / half;
-      if (scale === 0) return { x: cx, y: cy - half };
-      return { x: cx + dx / scale, y: cy + dy / scale };
-    }
-    // Rectangle (round, square)
-    const hw = dims.w / 2;
-    const hh = dims.h / 2;
-    const scaleX = Math.abs(dx) / hw;
-    const scaleY = Math.abs(dy) / hh;
-    const scale = Math.max(scaleX, scaleY);
-    if (scale === 0) return { x: cx, y: cy - hh };
-    return { x: cx + dx / scale, y: cy + dy / scale };
+  // Shorten a line segment from both ends by a fixed pixel amount
+  const shortenLine = (x1: number, y1: number, x2: number, y2: number, amount: number) => {
+    const dx = x2 - x1, dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < amount * 2) return { sx: x1, sy: y1, ex: x2, ey: y2 };
+    const r = amount / dist;
+    return {
+      sx: x1 + dx * r, sy: y1 + dy * r,
+      ex: x2 - dx * r, ey: y2 - dy * r,
+    };
   };
 
   return (
@@ -1136,36 +1105,27 @@ export default function MdCanvas({
         {/* Edges SVG */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
           <defs>
-            <marker id="arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
-              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--text-faint)" />
+            <marker id="arr" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+              <polygon points="0 0, 12 4, 0 8" fill="var(--text-muted)" />
             </marker>
-            <marker id="arr-start" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
-              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--text-faint)" />
+            <marker id="arr-start" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse">
+              <polygon points="0 0, 12 4, 0 8" fill="var(--text-muted)" />
             </marker>
-            <marker id="arr-accent" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
-              <path d="M0 0 L10 4 L0 8 L2 4 Z" fill="var(--accent)" />
+            <marker id="arr-accent" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
+              <polygon points="0 0, 12 4, 0 8" fill="var(--accent)" />
             </marker>
           </defs>
 
           {edges.map((edge, i) => {
-            const fromCenter = getNodeCenter(edge.from);
-            const toCenter = getNodeCenter(edge.to);
-            // Use boundary points so arrows are visible on node edges
-            const from = getNodeEdgePoint(edge.from, toCenter.x, toCenter.y);
-            const to = getNodeEdgePoint(edge.to, fromCenter.x, fromCenter.y);
-            const midX = (from.x + to.x) / 2;
-            const midY = (from.y + to.y) / 2;
+            const fc = getNodeCenter(edge.from);
+            const tc = getNodeCenter(edge.to);
+            // Shorten line so it starts/ends at shape edge (not center)
+            const { sx, sy, ex, ey } = shortenLine(fc.x, fc.y, tc.x, tc.y, 35);
+            const midX = (sx + ex) / 2;
+            const midY = (sy + ey) / 2;
 
-            // Smooth curve — straight-ish with gentle bend
-            const edgeDx = to.x - from.x;
-            const edgeDy = to.y - from.y;
-            const isHorizontalish = Math.abs(edgeDx) > Math.abs(edgeDy);
-            // Control points: slight offset perpendicular to straight line
-            const cx1 = isHorizontalish ? from.x + edgeDx * 0.3 : from.x;
-            const cy1 = isHorizontalish ? from.y : from.y + edgeDy * 0.3;
-            const cx2 = isHorizontalish ? to.x - edgeDx * 0.3 : to.x;
-            const cy2 = isHorizontalish ? to.y : to.y - edgeDy * 0.3;
-            const pathD = `M ${from.x} ${from.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${to.x} ${to.y}`;
+            // Simple straight line (clean, PowerPoint-like)
+            const pathD = `M ${sx} ${sy} L ${ex} ${ey}`;
 
             return (
               <g key={i}>
@@ -1216,8 +1176,8 @@ export default function MdCanvas({
 
           {connectState && (
             <line
-              x1={getNodeEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).x}
-              y1={getNodeEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).y}
+              x1={shortenLine(getNodeCenter(connectState.fromId).x, getNodeCenter(connectState.fromId).y, connectState.mouseX, connectState.mouseY, 35).sx}
+              y1={shortenLine(getNodeCenter(connectState.fromId).x, getNodeCenter(connectState.fromId).y, connectState.mouseX, connectState.mouseY, 35).sy}
               x2={connectState.mouseX} y2={connectState.mouseY}
               stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="6 3"
               markerEnd="url(#arr-accent)"
