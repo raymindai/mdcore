@@ -2355,13 +2355,7 @@ export default function MdEditor() {
             </div>
           </div>
 
-          {/* Engine badge — xl only */}
-          <span
-            className="px-2 py-0.5 rounded-md font-mono text-[10px] tracking-wide hidden xl:inline"
-            style={{ background: "var(--accent-dim)", color: "var(--accent)", opacity: 0.7 }}
-          >
-            RUST→WASM
-          </span>
+          {/* Engine badge moved to footer */}
         </div>
       </header>
 
@@ -2424,7 +2418,7 @@ export default function MdEditor() {
             className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
           >
-            <span>Documents</span>
+            <span style={{ color: "var(--accent)" }}>Documents</span>
             <button
               onClick={addTab}
               className="text-[10px] px-1.5 py-0.5 rounded"
@@ -2496,12 +2490,12 @@ export default function MdEditor() {
           pct = Math.max(20, Math.min(80, pct));
           splitPercentRef.current = pct;
           // Update DOM directly to avoid re-render (preserves Mermaid SVGs)
-          const editorPane = splitContainerRef.current.querySelector("[data-pane='editor']") as HTMLElement;
-          if (editorPane) {
+          const renderPane = splitContainerRef.current.querySelector("[data-pane='render']") as HTMLElement;
+          if (renderPane) {
             if (isMobile) {
-              editorPane.style.height = `${pct}%`;
+              renderPane.style.height = `${pct}%`;
             } else {
-              editorPane.style.width = `${pct}%`;
+              renderPane.style.width = `${pct}%`;
             }
           }
         }}
@@ -2511,14 +2505,20 @@ export default function MdEditor() {
         {/* Render pane (left/top) */}
         {viewMode !== "editor" && (
           <div
-            className="flex-1 min-w-0 flex flex-col"
-            style={{ background: "var(--background)" }}
+            data-pane="render"
+            className="flex flex-col min-w-0"
+            style={{
+              background: "var(--background)",
+              width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
+              height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
+              flexShrink: 0,
+            }}
           >
             <div
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span>Render</span>
+              <span style={{ color: "var(--accent)" }}>Render</span>
               <div className="flex items-center gap-2">
                 {isSharedDoc && (
                   <button
@@ -2605,18 +2605,13 @@ export default function MdEditor() {
         {viewMode !== "preview" && (
           <div
             data-pane="editor"
-            className="flex flex-col"
-            style={{
-              width: viewMode === "split" && !isMobile ? `${100 - splitPercentRef.current}%` : "100%",
-              height: viewMode === "split" && isMobile ? `${100 - splitPercentRef.current}%` : undefined,
-              flexShrink: 0,
-            }}
+            className="flex-1 min-w-0 flex flex-col"
           >
             <div
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span>Markdown</span>
+              <span style={{ color: "var(--accent)" }}>Markdown</span>
               <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>source</span>
             </div>
             <div
@@ -2628,43 +2623,16 @@ export default function MdEditor() {
       </div>
       </div>{/* end main content wrapper */}
 
-      {/* Footer */}
+      {/* Footer — Left: Help + links, Right: stats + badges */}
       <footer
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
-        <div className="flex items-center gap-3 truncate">
-          <span>{charCount.toLocaleString()} chars</span>
-          {/* Flavor badge */}
-          <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
-            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Detected Markdown flavor: {flavor}
-            </div>
-          </div>
-          {/* Engine badge */}
-          <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>RUST+WASM</span>
-            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
-            </div>
-          </div>
-          {/* Render time */}
-          <div className="relative group hidden sm:block">
-            <span style={{ color: "var(--text-faint)" }}>{renderTime.toFixed(0)}ms</span>
-            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              WASM engine render time
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          {/* Help — keyboard shortcuts */}
+        {/* Left: Help + navigation */}
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative group">
             <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
-            <div className="absolute bottom-full right-0 mb-1 w-56 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+            <div className="absolute bottom-full left-0 mb-1 w-56 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
               <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
               <div className="space-y-1 text-[10px]">
@@ -2694,6 +2662,31 @@ export default function MdEditor() {
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="https://mdcore.ai" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">mdcore.ai</a>
+        </div>
+        {/* Right: stats + engine badges */}
+        <div className="flex items-center gap-3 shrink-0">
+          <span>{charCount.toLocaleString()} chars</span>
+          <div className="relative group hidden sm:block">
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Detected Markdown flavor: {flavor}
+            </div>
+          </div>
+          <div className="relative group hidden sm:block">
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>RUST+WASM</span>
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
+            </div>
+          </div>
+          <div className="relative group hidden sm:block">
+            <span style={{ color: "var(--text-faint)" }}>{renderTime.toFixed(0)}ms</span>
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              WASM engine render time
+            </div>
+          </div>
         </div>
       </footer>
 
