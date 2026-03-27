@@ -49,7 +49,8 @@ function highlightCode(html: string): string {
       // Extract lang from pre attrs (lang="xxx") or code attrs (class="language-xxx")
       const preLangMatch = preAttrs.match(/lang="(\w+)"/);
       const codeLangMatch = codeAttrs.match(/language-(\w+)/);
-      const lang = preLangMatch?.[1] || codeLangMatch?.[1] || null;
+      const rawLang = preLangMatch?.[1] || codeLangMatch?.[1] || null;
+      const lang = rawLang === "text" ? null : rawLang; // "text" is not a real language
 
       // Skip mermaid blocks — handled by DOM in useEffect
       if (lang === "mermaid") return match;

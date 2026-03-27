@@ -507,6 +507,19 @@ function WysiwygToolbar({ onInsert, onInsertTable }: {
   const [blockType, setBlockType] = useState("p");
   const [showTableGrid, setShowTableGrid] = useState(false);
   const [tableHover, setTableHover] = useState({ col: 0, row: 0 });
+  const tableGridRef = useRef<HTMLDivElement>(null);
+
+  // Close table grid on outside click
+  useEffect(() => {
+    if (!showTableGrid) return;
+    const handler = (e: MouseEvent) => {
+      if (tableGridRef.current && !tableGridRef.current.contains(e.target as Node)) {
+        setShowTableGrid(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showTableGrid]);
 
   useEffect(() => {
     const update = () => {
@@ -609,7 +622,7 @@ function WysiwygToolbar({ onInsert, onInsertTable }: {
       {sep}
       {/* Insert special elements */}
       {/* Table grid picker */}
-      <div className="relative" onMouseLeave={() => setShowTableGrid(false)}>
+      <div className="relative" ref={tableGridRef}>
         <TBtn tip="Insert table" onClick={() => setShowTableGrid(v => !v)}>
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
         </TBtn>
@@ -2049,7 +2062,7 @@ export default function MdEditor() {
     const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
     const row = "| " + Array.from({ length: cols }, () => "cell").join(" | ") + " |";
     const tableRows = Array.from({ length: rows }, () => row).join("\n");
-    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n\n`;
+    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n`;
     setMarkdown(newMd);
     doRender(newMd);
   }, [doRender, setMarkdown]);
@@ -2062,7 +2075,7 @@ export default function MdEditor() {
     switch (type) {
       case "code":
         // Insert code block with placeholder — double-click to edit in modal
-        insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n\n`;
+        insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n`;
         break;
       case "math":
         setInitialMath("");
@@ -2090,6 +2103,15 @@ export default function MdEditor() {
     // Code blocks, mermaid, math, tables: non-editable (use double-click for special editors)
     article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram, table").forEach(el => {
       (el as HTMLElement).contentEditable = "false";
+      // Ensure there's an editable element after each non-editable block
+      // so cursor can be placed after it
+      const next = el.nextElementSibling;
+      if (!next || next.getAttribute("contenteditable") === "false") {
+        const spacer = document.createElement("p");
+        spacer.innerHTML = "<br>";
+        spacer.className = "ce-spacer";
+        el.parentNode?.insertBefore(spacer, el.nextSibling);
+      }
     });
     // Suppress browser object resizing/table controls
     try {
