@@ -249,9 +249,17 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
     }
   }
 
-  // Position nodes using tree layout
+  // All calculations use CENTER coordinates, then convert to top-left at the end
+  // This ensures alignment regardless of node visual size differences
+  const HALF_W = NODE_W / 2; // half of estimated node width
+  const HALF_H = NODE_H / 2;
+
   const positioned = new Set<string>();
   let globalCrossOffset = 0;
+
+  // cx/cy store CENTER positions temporarily
+  const centerX = new Map<string, number>();
+  const centerY = new Map<string, number>();
 
   function positionTree(id: string, depth: number, crossStart: number) {
     if (positioned.has(id)) return;
@@ -261,19 +269,17 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
     if (!node) return;
 
     const kids = (childrenMap.get(id) || []).filter((k) => !positioned.has(k));
-    const mySize = subtreeSize.get(id) || 1;
 
     if (kids.length === 0) {
-      // Leaf node: place at crossStart
+      // Leaf node
       if (isHorizontal) {
-        node.x = 80 + depth * GAP_MAIN;
-        node.y = 80 + crossStart * GAP_CROSS;
+        centerX.set(id, 80 + HALF_W + depth * GAP_MAIN);
+        centerY.set(id, 80 + HALF_H + crossStart * GAP_CROSS);
       } else {
-        node.x = 80 + crossStart * GAP_CROSS;
-        node.y = 80 + depth * GAP_MAIN;
+        centerX.set(id, 80 + HALF_W + crossStart * GAP_CROSS);
+        centerY.set(id, 80 + HALF_H + depth * GAP_MAIN);
       }
     } else {
-      // Parent: position children first, then center self
       let offset = crossStart;
       for (const kid of kids) {
         const kidSize = subtreeSize.get(kid) || 1;
@@ -281,17 +287,18 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
         offset += kidSize;
       }
 
-      // Center parent between first and last child
-      const firstKid = nodeMap.get(kids[0]);
-      const lastKid = nodeMap.get(kids[kids.length - 1]);
-      if (firstKid && lastKid) {
-        if (isHorizontal) {
-          node.x = 80 + depth * GAP_MAIN;
-          node.y = (firstKid.y + lastKid.y) / 2;
-        } else {
-          node.x = (firstKid.x + lastKid.x) / 2;
-          node.y = 80 + depth * GAP_MAIN;
-        }
+      // Center parent between first and last child (using CENTER coords)
+      const firstCx = centerX.get(kids[0]) || 0;
+      const lastCx = centerX.get(kids[kids.length - 1]) || 0;
+      const firstCy = centerY.get(kids[0]) || 0;
+      const lastCy = centerY.get(kids[kids.length - 1]) || 0;
+
+      if (isHorizontal) {
+        centerX.set(id, 80 + HALF_W + depth * GAP_MAIN);
+        centerY.set(id, (firstCy + lastCy) / 2);
+      } else {
+        centerX.set(id, (firstCx + lastCx) / 2);
+        centerY.set(id, 80 + HALF_H + depth * GAP_MAIN);
       }
     }
   }
@@ -302,22 +309,21 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
     globalCrossOffset += size;
   }
 
-  // Position any remaining unpositioned nodes
+  // Unpositioned nodes
   for (const node of nodes) {
     if (!positioned.has(node.id)) {
       if (isHorizontal) {
-        node.x = 80;
-        node.y = 80 + globalCrossOffset * GAP_CROSS;
+        centerX.set(node.id, 80 + HALF_W);
+        centerY.set(node.id, 80 + HALF_H + globalCrossOffset * GAP_CROSS);
       } else {
-        node.x = 80 + globalCrossOffset * GAP_CROSS;
-        node.y = 80;
+        centerX.set(node.id, 80 + HALF_W + globalCrossOffset * GAP_CROSS);
+        centerY.set(node.id, 80 + HALF_H);
       }
       globalCrossOffset++;
     }
   }
 
-  // Fix merge nodes (nodes with multiple parents): center between parents
-  // and place one level below the deepest parent
+  // Fix merge nodes: center between parents using CENTER coords
   const parentMap = new Map<string, string[]>();
   for (const e of edges) {
     const parents = parentMap.get(e.to) || [];
@@ -328,24 +334,22 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
   for (const node of nodes) {
     const parents = parentMap.get(node.id);
     if (!parents || parents.length < 2) continue;
-
-    // This is a merge node — center it between its parents
-    const parentNodes = parents.map(pid => nodeMap.get(pid)).filter(Boolean) as CanvasNode[];
-    if (parentNodes.length < 2) continue;
+    const pCentersX = parents.map(pid => centerX.get(pid) || 0);
+    const pCentersY = parents.map(pid => centerY.get(pid) || 0);
 
     if (isHorizontal) {
-      // Center vertically between parents, one step after deepest parent
-      const minY = Math.min(...parentNodes.map(p => p.y));
-      const maxY = Math.max(...parentNodes.map(p => p.y));
-      node.y = (minY + maxY) / 2;
-      node.x = Math.max(...parentNodes.map(p => p.x)) + GAP_MAIN;
+      centerY.set(node.id, (Math.min(...pCentersY) + Math.max(...pCentersY)) / 2);
+      centerX.set(node.id, Math.max(...pCentersX) + GAP_MAIN);
     } else {
-      // Center horizontally between parents, one step below deepest parent
-      const minX = Math.min(...parentNodes.map(p => p.x));
-      const maxX = Math.max(...parentNodes.map(p => p.x));
-      node.x = (minX + maxX) / 2;
-      node.y = Math.max(...parentNodes.map(p => p.y)) + GAP_MAIN;
+      centerX.set(node.id, (Math.min(...pCentersX) + Math.max(...pCentersX)) / 2);
+      centerY.set(node.id, Math.max(...pCentersY) + GAP_MAIN);
     }
+  }
+
+  // Convert CENTER coordinates to top-left (node.x, node.y)
+  for (const node of nodes) {
+    node.x = (centerX.get(node.id) || 0) - HALF_W;
+    node.y = (centerY.get(node.id) || 0) - HALF_H;
   }
 }
 
