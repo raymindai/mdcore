@@ -415,12 +415,13 @@ body {
   font-family: system-ui;
 }
 
-.mdcore-rendered td:hover .cell-menu-btn,
-.mdcore-rendered th:hover .cell-menu-btn {
+/* Only show cell menu in editable context (not when table is contentEditable=false) */
+.mdcore-rendered table:not([contenteditable="false"]) td:hover .cell-menu-btn,
+.mdcore-rendered table:not([contenteditable="false"]) th:hover .cell-menu-btn {
   opacity: 0.7;
 }
 
-.mdcore-rendered .cell-menu-btn:hover {
+.mdcore-rendered table:not([contenteditable="false"]) .cell-menu-btn:hover {
   opacity: 1 !important;
 }
 
