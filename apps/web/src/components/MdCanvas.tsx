@@ -838,56 +838,60 @@ export default function MdCanvas({
     }
   }, [importCode]);
 
-  // Measure actual DOM node dimensions (canvasRef declared above)
-  const getNodeRect = (nodeId: string) => {
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return { cx: 0, cy: 0, w: 0, h: 0, shape: "round" as CanvasNode["shape"] };
-    // Try to measure actual DOM element
-    const el = canvasRef.current?.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null;
-    if (el) {
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      return { cx: node.x + w / 2, cy: node.y + h / 2, w, h, shape: node.shape };
-    }
-    // Fallback
-    const fw = node.shape === "circle" ? 90 : node.shape === "diamond" ? 80 : 140;
-    const fh = node.shape === "circle" ? 90 : node.shape === "diamond" ? 80 : 40;
-    return { cx: node.x + fw / 2, cy: node.y + fh / 2, w: fw, h: fh, shape: node.shape };
-  };
-
+  // Get node visual center and dimensions by measuring the inner shape element
   const getNodeCenter = (nodeId: string) => {
-    const r = getNodeRect(nodeId);
-    return { x: r.cx, y: r.cy };
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
+    // Measure the outer canvas-node div for position
+    const outerEl = canvasRef.current?.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null;
+    if (outerEl) {
+      const w = outerEl.offsetWidth;
+      const h = outerEl.offsetHeight;
+      return { x: node.x + w / 2, y: node.y + h / 2 };
+    }
+    return { x: node.x + 70, y: node.y + 20 };
   };
 
-  // Calculate intersection of line from center toward target with node boundary
+  // Calculate intersection of line from node center toward target with node boundary
   const getEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
-    const r = getNodeRect(nodeId);
-    const dx = targetX - r.cx;
-    const dy = targetY - r.cy;
-    if (dx === 0 && dy === 0) return { x: r.cx, y: r.cy - r.h / 2 };
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
 
-    if (r.shape === "circle") {
-      const radius = r.w / 2;
+    const center = getNodeCenter(nodeId);
+    const dx = targetX - center.x;
+    const dy = targetY - center.y;
+    if (dx === 0 && dy === 0) return { x: center.x, y: center.y };
+
+    // Measure the inner shape element for actual visual bounds
+    const shapeEl = canvasRef.current?.querySelector(`[data-shape-el="${nodeId}"]`) as HTMLElement | null;
+
+    if (node.shape === "circle") {
+      // Circle: getBoundingClientRect gives actual visual size
+      const r = shapeEl ? Math.max(shapeEl.offsetWidth, shapeEl.offsetHeight) / 2 : 45;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      return { x: r.cx + (dx / dist) * radius, y: r.cy + (dy / dist) * radius };
+      if (dist === 0) return center;
+      return { x: center.x + (dx / dist) * r, y: center.y + (dy / dist) * r };
     }
 
-    if (r.shape === "diamond") {
-      // Diamond: |dx|/hw + |dy|/hh = 1 on the boundary
-      const hw = r.w / 2, hh = r.h / 2;
-      const sum = Math.abs(dx) / hw + Math.abs(dy) / hh;
-      if (sum === 0) return { x: r.cx, y: r.cy - hh };
-      return { x: r.cx + dx / sum, y: r.cy + dy / sum };
+    if (node.shape === "diamond") {
+      // Diamond is a square rotated 45°. The CSS width/height is the pre-rotation size.
+      // Visual half-diagonal = CSS_size / 2 (distance from center to any corner)
+      const cssSize = shapeEl ? shapeEl.offsetWidth : 80; // pre-rotation size
+      const halfDiag = cssSize / 2; // This is the distance from center to corner
+      // Diamond boundary: |dx| + |dy| = halfDiag * sqrt(2) / sqrt(2) = halfDiag
+      // Actually for a rotated square: |dx|/halfDiag + |dy|/halfDiag = 1
+      const sum = (Math.abs(dx) + Math.abs(dy)) / halfDiag;
+      if (sum === 0) return center;
+      return { x: center.x + dx / sum, y: center.y + dy / sum };
     }
 
-    // Rectangle (round, square): find intersection with rect edges
-    const hw = r.w / 2, hh = r.h / 2;
-    // Scale factor to reach rectangle boundary
-    const sx = Math.abs(dx) > 0 ? hw / Math.abs(dx) : Infinity;
-    const sy = Math.abs(dy) > 0 ? hh / Math.abs(dy) : Infinity;
-    const s = Math.min(sx, sy);
-    return { x: r.cx + dx * s, y: r.cy + dy * s };
+    // Rectangle (round, square)
+    const hw = shapeEl ? shapeEl.offsetWidth / 2 : 70;
+    const hh = shapeEl ? shapeEl.offsetHeight / 2 : 20;
+    const scaleX = Math.abs(dx) > 0 ? hw / Math.abs(dx) : Infinity;
+    const scaleY = Math.abs(dy) > 0 ? hh / Math.abs(dy) : Infinity;
+    const s = Math.min(scaleX, scaleY);
+    return { x: center.x + dx * s, y: center.y + dy * s };
   };
 
   return (
@@ -1307,6 +1311,7 @@ export default function MdCanvas({
             onDoubleClick={(e) => { e.stopPropagation(); setEditingId(node.id); }}
           >
             <div
+              data-shape-el={node.id}
               className="px-3 py-2 text-sm transition-colors relative"
               style={{
                 background: "var(--surface)",
