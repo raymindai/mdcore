@@ -38,8 +38,8 @@ interface SelectionBox {
 const shapeCSS: Record<CanvasNode["shape"], React.CSSProperties> = {
   round: { borderRadius: "20px" },
   square: { borderRadius: "4px" },
-  circle: { borderRadius: "50%", width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
-  diamond: { transform: "rotate(45deg)", borderRadius: "4px", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px" },
+  circle: { borderRadius: "50%", width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", margin: "0 auto" },
+  diamond: { transform: "rotate(45deg)", borderRadius: "4px", width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", margin: "0 auto" },
 };
 
 // SVG mini icons for shape selector
