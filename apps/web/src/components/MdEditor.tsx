@@ -2084,17 +2084,31 @@ export default function MdEditor() {
     if (!previewRef.current) return;
     const article = previewRef.current.querySelector("article");
     if (!article) return;
-    // Code blocks, mermaid, math, tables: non-editable (use double-click for special editors)
-    article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram, table").forEach(el => {
+    // Non-editable blocks: code, mermaid, math, tables, images, ascii diagrams
+    const nonEditableSelector = "pre, .mermaid-container, .mermaid-rendered, .math-rendered, .katex-display, .ascii-diagram, table, img";
+    article.querySelectorAll(nonEditableSelector).forEach(el => {
       (el as HTMLElement).contentEditable = "false";
-      // Ensure there's an editable element after each non-editable block
-      // so cursor can be placed after it
+
+      // Add editable spacer AFTER if missing — so cursor can be placed below
       const next = el.nextElementSibling;
-      if (!next || next.getAttribute("contenteditable") === "false") {
-        const spacer = document.createElement("p");
-        spacer.innerHTML = "<br>";
-        spacer.className = "ce-spacer";
-        el.parentNode?.insertBefore(spacer, el.nextSibling);
+      if (!next || (next.getAttribute("contenteditable") === "false" && !next.classList.contains("ce-spacer"))) {
+        if (!el.nextElementSibling?.classList.contains("ce-spacer")) {
+          const spacer = document.createElement("p");
+          spacer.innerHTML = "<br>";
+          spacer.className = "ce-spacer";
+          el.parentNode?.insertBefore(spacer, el.nextSibling);
+        }
+      }
+
+      // Add editable spacer BEFORE if missing — so cursor can be placed above
+      const prev = el.previousElementSibling;
+      if (!prev || (prev.getAttribute("contenteditable") === "false" && !prev.classList.contains("ce-spacer"))) {
+        if (!el.previousElementSibling?.classList.contains("ce-spacer")) {
+          const spacer = document.createElement("p");
+          spacer.innerHTML = "<br>";
+          spacer.className = "ce-spacer";
+          el.parentNode?.insertBefore(spacer, el);
+        }
       }
     });
     // Suppress browser object resizing/table controls
