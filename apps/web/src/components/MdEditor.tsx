@@ -11,6 +11,8 @@ import {
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
 import MathEditor from "@/components/MathEditor";
+import { useCodeMirror } from "@/components/useCodeMirror";
+import FloatingToolbar from "@/components/FloatingToolbar";
 import {
   createShareUrl,
   createShortUrl,
@@ -469,6 +471,150 @@ interface Tab {
 
 let tabIdCounter = 1;
 
+// ─── WYSIWYG Fixed Toolbar ───
+function WysiwygToolbar() {
+  const exec = (cmd: string, value?: string) => {
+    document.execCommand(cmd, false, value);
+  };
+  const toggleBlock = (tag: string) => {
+    document.execCommand("formatBlock", false, tag);
+  };
+
+  const btnBase = "p-1.5 rounded transition-colors hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]";
+  const sep = <div className="w-px h-4 mx-0.5" style={{ background: "var(--border-dim)" }} />;
+
+  return (
+    <div
+      className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto text-xs shrink-0"
+      style={{ borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      {/* Undo/Redo */}
+      <button className={btnBase} onClick={() => exec("undo")} title="Undo">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("redo")} title="Redo">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+      </button>
+      {sep}
+
+      {/* Headings */}
+      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h1")} title="Heading 1">H1</button>
+      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h2")} title="Heading 2">H2</button>
+      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h3")} title="Heading 3">H3</button>
+      <button className={`${btnBase} font-semibold text-[10px]`} onClick={() => toggleBlock("h4")} title="Heading 4">H4</button>
+      <button className={`${btnBase} text-[10px]`} onClick={() => toggleBlock("p")} title="Normal text">P</button>
+      {sep}
+
+      {/* Text style */}
+      <button className={`${btnBase} font-bold`} onClick={() => exec("bold")} title="Bold (Cmd+B)">B</button>
+      <button className={`${btnBase} italic`} onClick={() => exec("italic")} title="Italic (Cmd+I)">I</button>
+      <button className={btnBase} style={{ textDecoration: "underline" }} onClick={() => exec("underline")} title="Underline">U</button>
+      <button className={btnBase} style={{ textDecoration: "line-through" }} onClick={() => exec("strikeThrough")} title="Strikethrough">S</button>
+      <button className={btnBase} onClick={() => exec("superscript")} title="Superscript">
+        <span className="text-[10px]">X<sup className="text-[7px]">2</sup></span>
+      </button>
+      <button className={btnBase} onClick={() => exec("subscript")} title="Subscript">
+        <span className="text-[10px]">X<sub className="text-[7px]">2</sub></span>
+      </button>
+      <button className={`${btnBase} font-mono text-[10px]`} onClick={() => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const range = sel.getRangeAt(0);
+        const code = document.createElement("code");
+        range.surroundContents(code);
+      }} title="Inline code">&lt;/&gt;</button>
+      <button className={btnBase} onClick={() => exec("hiliteColor", "rgba(251,146,60,0.2)")} title="Highlight">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--accent)" opacity="0.6"><rect x="1" y="10" width="14" height="4" rx="1"/><path d="M4 10V4l4-2 4 2v6" fill="none" stroke="currentColor" strokeWidth="1.2"/></svg>
+      </button>
+      {sep}
+
+      {/* Font size */}
+      <button className={btnBase} onClick={() => exec("fontSize", "2")} title="Small text">
+        <span className="text-[9px] font-medium">A</span>
+      </button>
+      <button className={btnBase} onClick={() => exec("fontSize", "4")} title="Normal text">
+        <span className="text-[12px] font-medium">A</span>
+      </button>
+      <button className={btnBase} onClick={() => exec("fontSize", "6")} title="Large text">
+        <span className="text-[15px] font-medium">A</span>
+      </button>
+      {sep}
+
+      {/* Text color */}
+      <button className={btnBase} onClick={() => exec("foreColor", "var(--accent)")} title="Accent color">
+        <span style={{ color: "var(--accent)", fontWeight: 700 }}>A</span>
+      </button>
+      <button className={btnBase} onClick={() => exec("foreColor", "#ef4444")} title="Red">
+        <span style={{ color: "#ef4444", fontWeight: 700 }}>A</span>
+      </button>
+      <button className={btnBase} onClick={() => exec("foreColor", "#22c55e")} title="Green">
+        <span style={{ color: "#22c55e", fontWeight: 700 }}>A</span>
+      </button>
+      <button className={btnBase} onClick={() => exec("foreColor", "#3b82f6")} title="Blue">
+        <span style={{ color: "#3b82f6", fontWeight: 700 }}>A</span>
+      </button>
+      {sep}
+
+      {/* Lists */}
+      <button className={btnBase} onClick={() => exec("insertUnorderedList")} title="Bullet list">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="3" cy="12" r="1.2"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("insertOrderedList")} title="Numbered list">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5.5" fontSize="5" fontWeight="600">1</text><text x="1" y="9.5" fontSize="5" fontWeight="600">2</text><text x="1" y="13.5" fontSize="5" fontWeight="600">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("indent")} title="Indent (Tab)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("outdent")} title="Outdent (Shift+Tab)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+      </button>
+      {sep}
+
+      {/* Block */}
+      <button className={btnBase} onClick={() => toggleBlock("blockquote")} title="Quote">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("insertHorizontalRule")} title="Horizontal rule">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </button>
+      {sep}
+
+      {/* Link & Image */}
+      <button className={btnBase} onClick={() => {
+        const url = prompt("URL:");
+        if (url) exec("createLink", url);
+      }} title="Link (Cmd+K)">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6.5 9.5l3-3M7 11l-1.5 1.5a2.12 2.12 0 01-3-3L4 8m5-1l1.5-1.5a2.12 2.12 0 013 3L12 10" strokeLinecap="round"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => {
+        const url = prompt("Image URL:");
+        if (url) exec("insertImage", url);
+      }} title="Image">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      {sep}
+
+      {/* Alignment */}
+      <button className={btnBase} onClick={() => exec("justifyLeft")} title="Align left">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="2" y1="7" x2="10" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("justifyCenter")} title="Align center">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="4" y1="7" x2="12" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button className={btnBase} onClick={() => exec("justifyRight")} title="Align right">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      {sep}
+
+      {/* Clear formatting */}
+      <button className={btnBase} onClick={() => exec("removeFormat")} title="Clear formatting">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 3h8l-3 10M2 13l12-10"/></svg>
+      </button>
+    </div>
+  );
+}
+
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
@@ -569,7 +715,30 @@ export default function MdEditor() {
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // CodeMirror 6 editor — replaces plain textarea
+  const handleChangeRef = useRef<(value: string) => void>(() => {});
+  const handlePasteForCM = useCallback((text: string, html: string): string | null => {
+    if (html && isHtmlContent(html)) {
+      return htmlToMarkdown(html);
+    }
+    if (text && !html && isHtmlContent(text)) {
+      return htmlToMarkdown(text);
+    }
+    return null;
+  }, []);
+  const {
+    containerRef: editorContainerRef,
+    focus: cmFocus,
+    setDoc: cmSetDoc,
+    scrollToLine: cmScrollToLine,
+    setSelection: cmSetSelection,
+  } = useCodeMirror({
+    initialDoc: markdown,
+    onChange: (value: string) => handleChangeRef.current(value),
+    onPaste: handlePasteForCM,
+    theme,
+    placeholder: "Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything...",
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Set default view mode based on screen size
@@ -1017,6 +1186,10 @@ export default function MdEditor() {
   }, []);
 
   // Preview: click to scroll to source + double-click to inline edit
+  // Ref for latest markdown (avoids stale closures in preview event handlers)
+  const markdownRef = useRef(markdown);
+  markdownRef.current = markdown;
+
   // Uses comrak's data-sourcepos="startLine:startCol-endLine:endCol" for accurate mapping
   useEffect(() => {
     if (!previewRef.current || viewMode === "editor") return;
@@ -1031,8 +1204,8 @@ export default function MdEditor() {
       return { startLine: parseInt(match[1]) - 1, endLine: parseInt(match[2]) - 1 }; // 0-indexed
     };
 
-    // Account for frontmatter offset
-    const lines = markdown.split("\n");
+    // Account for frontmatter offset — use ref for fresh data in async handlers
+    const lines = markdownRef.current.split("\n");
     let frontmatterOffset = 0;
     if (lines[0]?.trim() === "---") {
       for (let i = 1; i < lines.length; i++) {
@@ -1047,42 +1220,24 @@ export default function MdEditor() {
       }
     }
 
-    // Click → scroll to source + highlight the block
+    // Click in preview → scroll source pane to corresponding position
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest("button,a,input")) return;
-      // Don't steal focus from contenteditable inline edit
-      if (target.closest("[contenteditable=true]")) return;
 
       const sourceEl = target.closest("[data-sourcepos]") as HTMLElement | null;
       if (!sourceEl) return;
-
       const pos = getSourcePos(sourceEl);
       if (!pos) return;
-
       const actualStart = pos.startLine + frontmatterOffset;
-      const actualEnd = pos.endLine + frontmatterOffset;
-
-      if (textareaRef.current) {
-        const ta = textareaRef.current;
-        const lineHeight = ta.scrollHeight / (lines.length || 1);
-        ta.scrollTo({ top: Math.max(0, actualStart * lineHeight - ta.clientHeight / 3), behavior: "smooth" });
-
-        // Select the entire block to highlight it
-        let startChar = 0;
-        for (let i = 0; i < actualStart && i < lines.length; i++) {
-          startChar += lines[i].length + 1;
-        }
-        let endChar = startChar;
-        for (let i = actualStart; i <= actualEnd && i < lines.length; i++) {
-          endChar += lines[i].length + 1;
-        }
-        ta.focus();
-        ta.setSelectionRange(startChar, endChar);
-      }
+      // Just scroll source — don't steal focus (user is editing in preview)
+      cmScrollToLine(actualStart);
     };
 
-    // Double-click → inline edit text
+    // contentEditable on the article handles Word-like editing natively.
+    // Double-click only for special elements (code blocks, mermaid, math).
+
+    // Double-click → code block modal / special elements
     const handleDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
       // Already in edit mode — let native text selection work
@@ -1105,7 +1260,7 @@ export default function MdEditor() {
 
         const actualStart = pos.startLine + frontmatterOffset;
         const actualEnd = pos.endLine + frontmatterOffset;
-        const mdLines = markdown.split("\n");
+        const mdLines = markdownRef.current.split("\n");
 
         // Extract the code block content (lines between ``` fences)
         const originalCode = mdLines.slice(actualStart + 1, actualEnd).join("\n");
@@ -1196,134 +1351,7 @@ export default function MdEditor() {
         return;
       }
 
-      // Text elements → contenteditable inline edit
-      const editable = target.closest("h1,h2,h3,h4,h5,h6,p,li,dt,dd,blockquote > p") as HTMLElement | null;
-      if (!editable) return;
-      if (target.closest("code")) return;
-
-      const sourceEl = editable.closest("[data-sourcepos]") as HTMLElement | null;
-      if (!sourceEl) return;
-      const pos = getSourcePos(sourceEl);
-      if (!pos) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const originalText = editable.textContent || "";
-      editable.setAttribute("contenteditable", "true");
-      editable.style.outline = "1px solid var(--accent)";
-      editable.style.outlineOffset = "2px";
-      editable.style.borderRadius = "4px";
-      editable.focus();
-
-      const commit = () => {
-        editable.removeAttribute("contenteditable");
-        editable.style.outline = "";
-        editable.style.outlineOffset = "";
-        editable.style.borderRadius = "";
-
-        const newText = editable.textContent || "";
-        if (newText !== originalText) {
-          const actualStart = pos.startLine + frontmatterOffset;
-          const actualEnd = pos.endLine + frontmatterOffset;
-          const mdLines = markdown.split("\n");
-
-          // For single-line elements, replace inline text
-          if (actualStart === actualEnd && actualStart < mdLines.length) {
-            // Preserve MD syntax (# , - , | etc) and replace text content
-            const line = mdLines[actualStart];
-            const prefixMatch = line.match(/^(\s*(?:#{1,6}\s|[-*+]\s|\d+\.\s|>\s|(?:\|[^|]*\|)?\s*)?)(.*)$/);
-            if (prefixMatch) {
-              mdLines[actualStart] = prefixMatch[1] + newText;
-            } else {
-              mdLines[actualStart] = newText;
-            }
-          } else {
-            // Multi-line: replace all lines with new text
-            const firstLine = mdLines[actualStart];
-            const prefixMatch = firstLine.match(/^(\s*(?:#{1,6}\s|>\s)?)/);
-            const prefix = prefixMatch ? prefixMatch[1] : "";
-            mdLines.splice(actualStart, actualEnd - actualStart + 1, prefix + newText);
-          }
-
-          const newMd = mdLines.join("\n");
-          setMarkdown(newMd);
-          doRender(newMd);
-        }
-      };
-
-      const isListItem = editable.tagName === "LI";
-      let committed = false;
-
-      const safeCommit = () => {
-        if (committed) return;
-        // If element is still focused (e.g. user clicked back into it), don't commit
-        if (document.activeElement === editable) return;
-        committed = true;
-        commit();
-      };
-
-      editable.addEventListener("blur", () => {
-        // Delay to allow re-focus within the same element (clicking inside contenteditable)
-        setTimeout(safeCommit, 150);
-      });
-      editable.addEventListener("keydown", (ke) => {
-        const kev = ke as KeyboardEvent;
-
-        if (kev.key === "Escape") {
-          committed = true;
-          editable.removeEventListener("blur", safeCommit);
-          editable.removeAttribute("contenteditable");
-          editable.style.outline = "";
-          editable.style.outlineOffset = "";
-          editable.style.borderRadius = "";
-          editable.textContent = originalText;
-          return;
-        }
-
-        if (kev.key === "Enter" && isListItem) {
-          kev.preventDefault();
-          safeCommit();
-          // Add a new list item in MD source
-          const actualStart = pos.startLine + frontmatterOffset;
-          const mdLines = markdown.split("\n");
-          const currentLine = mdLines[actualStart] || "";
-          const prefixMatch = currentLine.match(/^(\s*)([-*+]|\d+\.)\s/);
-          if (prefixMatch) {
-            const indent = prefixMatch[1];
-            const marker = prefixMatch[2];
-            const newMarker = /^\d+$/.test(marker) ? (parseInt(marker) + 1) + "." : marker;
-            mdLines.splice(actualStart + 1, 0, `${indent}${newMarker} `);
-            const newMd = mdLines.join("\n");
-            setMarkdown(newMd);
-            doRender(newMd);
-          }
-          return;
-        }
-
-        if (kev.key === "Enter") {
-          kev.preventDefault();
-          editable.blur();
-          return;
-        }
-
-        if (kev.key === "Tab") {
-          kev.preventDefault();
-          if (!isListItem) return;
-          safeCommit();
-          const actualStart = pos.startLine + frontmatterOffset;
-          const mdLines = markdown.split("\n");
-          if (kev.shiftKey) {
-            mdLines[actualStart] = mdLines[actualStart].replace(/^  /, "");
-          } else {
-            mdLines[actualStart] = "  " + mdLines[actualStart];
-          }
-          const newMd = mdLines.join("\n");
-          setMarkdown(newMd);
-          doRender(newMd);
-          return;
-        }
-      });
+      // Text editing is now handled by single-click (handleClick → handleEditClick)
     };
 
     preview.addEventListener("click", handleClick);
@@ -1372,7 +1400,7 @@ export default function MdEditor() {
       if (checkboxIndex === -1) return;
 
       // Find the nth task list item in markdown source
-      const lines = markdown.split("\n");
+      const lines = markdownRef.current.split("\n");
       let found = 0;
       for (let i = 0; i < lines.length; i++) {
         if (/^\s*- \[([ xX])\]/.test(lines[i])) {
@@ -1440,7 +1468,7 @@ export default function MdEditor() {
         cell.textContent = newText;
 
         if (newText !== currentText) {
-          const lines = markdown.split("\n");
+          const lines = markdownRef.current.split("\n");
           for (let i = 0; i < lines.length; i++) {
             if (lines[i].includes("|") && lines[i].includes(currentText)) {
               lines[i] = lines[i].replace(currentText, newText);
@@ -1654,7 +1682,7 @@ export default function MdEditor() {
     }
   }, [showMenu]);
 
-  // Debounced render
+  // Debounced render — called when CM6 content changes
   const handleChange = useCallback(
     (value: string) => {
       setMarkdown(value);
@@ -1663,6 +1691,33 @@ export default function MdEditor() {
     },
     [doRender]
   );
+  // Keep CM6 onChange ref in sync
+  handleChangeRef.current = handleChange;
+
+  // Sync external markdown changes (undo/redo, tab switch, inline edit) → CM6
+  useEffect(() => {
+    cmSetDoc(markdown);
+  }, [markdown, cmSetDoc]);
+
+  // WYSIWYG: contentEditable preview → markdown source sync
+  const wysiwygEditingRef = useRef(false);
+  const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleWysiwygInput = useCallback(() => {
+    wysiwygEditingRef.current = true;
+    if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
+    wysiwygDebounce.current = setTimeout(() => {
+      const article = previewRef.current?.querySelector("article");
+      if (!article) return;
+      // Strip copy buttons and other UI elements before converting
+      const clone = article.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll(".code-copy-btn, .mermaid-edit-btn, .code-lang-label").forEach(el => el.remove());
+      const newMd = htmlToMarkdown(clone.innerHTML);
+      setMarkdown(newMd);
+      cmSetDoc(newMd);
+      // Reset after a tick so next render from source doesn't clobber the DOM
+      setTimeout(() => { wysiwygEditingRef.current = false; }, 100);
+    }, 500);
+  }, [setMarkdown, cmSetDoc]);
 
   // File drop handler
   const handleDrop = useCallback(
@@ -1708,53 +1763,7 @@ export default function MdEditor() {
     setIsDragging(false);
   }, []);
 
-  // Paste handler — detect HTML and convert to MD
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const htmlData = e.clipboardData.getData("text/html");
-      const textData = e.clipboardData.getData("text/plain");
-
-      // If clipboard has HTML and it looks like real HTML (not just markdown)
-      if (htmlData && isHtmlContent(htmlData)) {
-        e.preventDefault();
-        const converted = htmlToMarkdown(htmlData);
-        const textarea = e.currentTarget;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newValue =
-          markdown.slice(0, start) + converted + markdown.slice(end);
-        setMarkdown(newValue);
-        setIsSharedDoc(false);
-        doRender(newValue);
-        // Set cursor position after inserted text
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd =
-            start + converted.length;
-        }, 0);
-        return;
-      }
-
-      // Otherwise let default paste handle it (plain text / markdown)
-      // But if it's plain text that looks like HTML, also convert
-      if (textData && !htmlData && isHtmlContent(textData)) {
-        e.preventDefault();
-        const converted = htmlToMarkdown(textData);
-        const textarea = e.currentTarget;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newValue =
-          markdown.slice(0, start) + converted + markdown.slice(end);
-        setMarkdown(newValue);
-        setIsSharedDoc(false);
-        doRender(newValue);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd =
-            start + converted.length;
-        }, 0);
-      }
-    },
-    [markdown, doRender]
-  );
+  // Paste handling is now done inside useCodeMirror hook via onPaste callback
 
   // Share — try short URL first, fallback to hash-based
   const handleShare = useCallback(async () => {
@@ -1945,14 +1954,42 @@ export default function MdEditor() {
           prev === "split" ? "preview" : prev === "preview" ? "editor" : "split"
         );
       }
-      if (e.key === "Escape" && textareaRef.current) {
-        textareaRef.current.focus();
+      if (e.key === "Escape") {
+        cmFocus();
+      }
+      // WYSIWYG shortcuts — only when editing in preview (contentEditable)
+      const inPreview = document.activeElement?.closest("article.mdcore-rendered");
+      if (inPreview && mod) {
+        if (e.key === "b") {
+          e.preventDefault();
+          document.execCommand("bold");
+        }
+        if (e.key === "i") {
+          e.preventDefault();
+          document.execCommand("italic");
+        }
+        if (e.key === "k") {
+          e.preventDefault();
+          const url = prompt("URL:");
+          if (url) document.execCommand("createLink", false, url);
+        }
       }
     };
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [handleShare, handleCopyHtml, undo, redo]);
+
+  // Protect special elements from contentEditable — make them non-editable islands
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const article = previewRef.current.querySelector("article");
+    if (!article) return;
+    // Code blocks, mermaid, math: non-editable (use double-click modal)
+    article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram").forEach(el => {
+      (el as HTMLElement).contentEditable = "false";
+    });
+  }, [html]);
 
   const shareButtonLabel = {
     idle: "Share",
@@ -2466,19 +2503,9 @@ export default function MdEditor() {
                 {viewMode === "split" ? "⌘\\ to toggle" : "input"}
               </span>
             </div>
-            <textarea
-              ref={textareaRef}
-              className="flex-1 p-3 sm:p-5 bg-transparent font-mono text-[13px] resize-none outline-none"
-              style={{
-                color: "var(--editor-text)",
-                caretColor: "var(--accent)",
-                lineHeight: "1.65",
-              }}
-              value={markdown}
-              onChange={(e) => handleChange(e.target.value)}
-              onPaste={handlePaste}
-              spellCheck={false}
-              placeholder="Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything..."
+            <div
+              ref={editorContainerRef}
+              className="flex-1 min-h-0 overflow-hidden"
             />
           </div>
         )}
@@ -2518,10 +2545,13 @@ export default function MdEditor() {
                     Edit →
                   </button>
                 )}
-                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>double-click to edit</span>
+                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>click to edit</span>
               </div>
             </div>
+            {/* WYSIWYG Formatting Toolbar */}
+            <WysiwygToolbar />
             <div className="flex-1 overflow-auto" ref={previewRef}>
+              <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3">
                   <div
@@ -2535,17 +2565,23 @@ export default function MdEditor() {
               ) : html ? (
                 <article
                   ref={(el) => {
-                    // Only update innerHTML when html actually changes
                     if (el && el.getAttribute("data-html-hash") !== String(html.length)) {
-                      el.innerHTML = html;
+                      // Only update if change came from source (not from contentEditable editing)
+                      if (!wysiwygEditingRef.current) {
+                        el.innerHTML = html;
+                      }
                       el.setAttribute("data-html-hash", String(html.length));
                     }
                   }}
-                  className={`mdcore-rendered max-w-none ${
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleWysiwygInput}
+                  className={`mdcore-rendered max-w-none focus:outline-none ${
                     viewMode === "preview"
                       ? "p-4 sm:p-8 mx-auto max-w-3xl"
                       : "p-3 sm:p-6"
                   }`}
+                  style={{ cursor: "text" }}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full gap-4 px-4" style={{ color: "var(--text-muted)" }}>

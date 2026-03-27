@@ -247,12 +247,14 @@ body {
   font-size: 0.8125rem;
   text-transform: uppercase;
   letter-spacing: 0.025em;
+  text-align: left;
 }
 
 .mdcore-rendered td {
   padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border-dim);
   min-height: 2rem;
+  text-align: left;
 }
 
 .mdcore-rendered td:empty::after {
@@ -792,7 +794,7 @@ textarea::selection {
    ======================================== */
 @media print {
   /* Hide everything except the preview content */
-  header, footer, textarea, .code-copy-btn,
+  header, footer, textarea, .cm-editor, .code-copy-btn,
   [data-print-hide] {
     display: none !important;
   }
@@ -893,4 +895,42 @@ textarea::selection {
     border-color: #ddd !important;
     box-shadow: none !important;
   }
+}
+
+/* ========================================
+   Tiptap WYSIWYG Preview
+   ======================================== */
+.tiptap-preview-wrapper {
+  height: 100%;
+}
+.tiptap-preview-wrapper .tiptap {
+  height: 100%;
+  overflow: auto;
+}
+.tiptap-preview-wrapper .tiptap:focus {
+  outline: none;
+}
+/* Tiptap uses .mdcore-rendered class so existing styles apply automatically */
+.tiptap-editor .tiptap-link {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tiptap-editor p.is-editor-empty:first-child::before {
+  color: var(--text-faint);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  font-style: italic;
+}
+
+/* ========================================
+   CodeMirror 6 Integration
+   ======================================== */
+.cm-editor {
+  height: 100%;
+}
+.cm-editor .cm-scroller {
+  overflow: auto !important;
 }
