@@ -2118,6 +2118,22 @@ export default function MdEditor() {
       document.execCommand("enableObjectResizing", false, "false");
       document.execCommand("enableInlineTableEditing", false, "false");
     } catch { /* not supported in all browsers */ }
+
+    // MutationObserver: remove any browser-injected table controls (▾ dropdowns)
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLElement) {
+            // Chrome adds elements with data-column / data-row or specific classes
+            if (node.tagName === "DIV" && (node.style.position === "absolute" || node.getAttribute("data-column") !== null)) {
+              node.remove();
+            }
+          }
+        }
+      }
+    });
+    observer.observe(article, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [html]);
 
   const shareButtonLabel = {

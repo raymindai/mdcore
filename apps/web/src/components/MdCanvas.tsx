@@ -881,6 +881,9 @@ export default function MdCanvas({
               </button>
             );
           })}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Help */}
           <button
             onClick={() => setShowGuide(!showGuide)}
             className="px-2 rounded-md font-mono text-[11px] leading-[24px]"
@@ -892,8 +895,6 @@ export default function MdCanvas({
           >
             Help
           </button>
-        </div>
-        <div className="flex items-center gap-2">
           {/* Layout options */}
           <div className="flex gap-1 mr-1" style={{ borderRight: "1px solid var(--border-dim)", paddingRight: 8 }}>
             {LAYOUTS.map((l) => (
