@@ -2169,17 +2169,6 @@ export default function MdEditor() {
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
-            className="px-1.5 py-1 rounded transition-colors shrink-0"
-            style={{ color: showSidebar ? "var(--accent)" : "var(--text-muted)", background: showSidebar ? "var(--accent-dim)" : "transparent" }}
-            title="Toggle documents sidebar"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="1" y="2" width="14" height="12" rx="2" />
-              <line x1="5.5" y1="2" x2="5.5" y2="14" />
-            </svg>
-          </button>
           <h1
             className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
             onClick={handleClear}
@@ -2506,30 +2495,89 @@ export default function MdEditor() {
         onClick={() => { if (docContextMenu) setDocContextMenu(null); }}
       >
 
-      {/* Sidebar */}
-      {showSidebar && (
+      {/* Sidebar — collapsed: icon bar, expanded: file list + profile */}
+      {!showSidebar ? (
+        /* Collapsed: narrow icon bar */
+        <div
+          className="flex flex-col items-center py-2 gap-1 shrink-0"
+          style={{ width: 40, background: "var(--background)", borderRight: "1px solid var(--border-dim)" }}
+        >
+          {/* Open sidebar */}
+          <div className="relative group">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="w-8 h-8 flex items-center justify-center rounded-md transition-colors"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
+            </button>
+            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Open sidebar
+            </div>
+          </div>
+          {/* New document */}
+          <div className="relative group">
+            <button
+              onClick={addTab}
+              className="w-8 h-8 flex items-center justify-center rounded-md transition-colors"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+            </button>
+            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              New document
+            </div>
+          </div>
+          <div className="flex-1" />
+          {/* Profile/Login */}
+          <div className="relative group">
+            <button
+              className="w-8 h-8 flex items-center justify-center rounded-md transition-colors"
+              style={{ color: "var(--text-faint)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+            </button>
+            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Sign in (coming soon)
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Expanded: file list + profile */
         <>
         <div
-          className="flex flex-col shrink-0 overflow-y-auto"
+          className="flex flex-col shrink-0 overflow-hidden"
           data-pane="sidebar"
           style={{ width: sidebarWidth, background: "var(--background)" }}
         >
-          {/* Header — matches Markdown/Render headers */}
+          {/* Header */}
           <div
-            className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+            className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
           >
-            <span style={{ color: "var(--accent)" }}>MD Files</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSidebar(false)}
+                className="p-0.5 rounded transition-colors"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
+              </button>
+              <span style={{ color: "var(--accent)" }}>MD Files</span>
+            </div>
             <button
               onClick={addTab}
-              className="text-[10px] px-1.5 py-0.5 rounded"
+              className="text-[10px] px-1.5 py-0.5 rounded transition-colors"
               style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
             >
               + New
             </button>
           </div>
           {/* Document list */}
-          <div className="p-2 space-y-0.5 flex-1">
+          <div className="p-2 space-y-0.5 flex-1 overflow-y-auto">
             {tabs.map((tab) => (
               <div
                 key={tab.id}
@@ -2562,6 +2610,15 @@ export default function MdEditor() {
                 </button>
               </div>
             ))}
+          </div>
+          {/* Profile / Login — bottom */}
+          <div
+            className="shrink-0 px-3 py-2 flex items-center gap-2 text-xs cursor-pointer transition-colors"
+            style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" className="shrink-0"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+            <span className="truncate">Sign in</span>
+            <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Soon</span>
           </div>
         </div>
         {/* Sidebar resize handle */}
