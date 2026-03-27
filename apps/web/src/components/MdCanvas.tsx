@@ -838,25 +838,56 @@ export default function MdCanvas({
     }
   }, [importCode]);
 
-  const getNodeCenter = (nodeId: string) => {
+  // Measure actual DOM node dimensions (canvasRef declared above)
+  const getNodeRect = (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return { x: 0, y: 0 };
-    // Use actual shape size for center
-    if (node.shape === "circle") return { x: node.x + 45, y: node.y + 45 };
-    if (node.shape === "diamond") return { x: node.x + 40, y: node.y + 40 };
-    return { x: node.x + 70, y: node.y + 20 }; // round/square default
+    if (!node) return { cx: 0, cy: 0, w: 0, h: 0, shape: "round" as CanvasNode["shape"] };
+    // Try to measure actual DOM element
+    const el = canvasRef.current?.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null;
+    if (el) {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      return { cx: node.x + w / 2, cy: node.y + h / 2, w, h, shape: node.shape };
+    }
+    // Fallback
+    const fw = node.shape === "circle" ? 90 : node.shape === "diamond" ? 80 : 140;
+    const fh = node.shape === "circle" ? 90 : node.shape === "diamond" ? 80 : 40;
+    return { cx: node.x + fw / 2, cy: node.y + fh / 2, w: fw, h: fh, shape: node.shape };
   };
 
-  // Shorten a line segment from both ends by a fixed pixel amount
-  const shortenLine = (x1: number, y1: number, x2: number, y2: number, amount: number) => {
-    const dx = x2 - x1, dy = y2 - y1;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < amount * 2) return { sx: x1, sy: y1, ex: x2, ey: y2 };
-    const r = amount / dist;
-    return {
-      sx: x1 + dx * r, sy: y1 + dy * r,
-      ex: x2 - dx * r, ey: y2 - dy * r,
-    };
+  const getNodeCenter = (nodeId: string) => {
+    const r = getNodeRect(nodeId);
+    return { x: r.cx, y: r.cy };
+  };
+
+  // Calculate intersection of line from center toward target with node boundary
+  const getEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
+    const r = getNodeRect(nodeId);
+    const dx = targetX - r.cx;
+    const dy = targetY - r.cy;
+    if (dx === 0 && dy === 0) return { x: r.cx, y: r.cy - r.h / 2 };
+
+    if (r.shape === "circle") {
+      const radius = r.w / 2;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return { x: r.cx + (dx / dist) * radius, y: r.cy + (dy / dist) * radius };
+    }
+
+    if (r.shape === "diamond") {
+      // Diamond: |dx|/hw + |dy|/hh = 1 on the boundary
+      const hw = r.w / 2, hh = r.h / 2;
+      const sum = Math.abs(dx) / hw + Math.abs(dy) / hh;
+      if (sum === 0) return { x: r.cx, y: r.cy - hh };
+      return { x: r.cx + dx / sum, y: r.cy + dy / sum };
+    }
+
+    // Rectangle (round, square): find intersection with rect edges
+    const hw = r.w / 2, hh = r.h / 2;
+    // Scale factor to reach rectangle boundary
+    const sx = Math.abs(dx) > 0 ? hw / Math.abs(dx) : Infinity;
+    const sy = Math.abs(dy) > 0 ? hh / Math.abs(dy) : Infinity;
+    const s = Math.min(sx, sy);
+    return { x: r.cx + dx * s, y: r.cy + dy * s };
   };
 
   return (
@@ -1119,13 +1150,12 @@ export default function MdCanvas({
           {edges.map((edge, i) => {
             const fc = getNodeCenter(edge.from);
             const tc = getNodeCenter(edge.to);
-            // Shorten line so it starts/ends at shape edge (not center)
-            const { sx, sy, ex, ey } = shortenLine(fc.x, fc.y, tc.x, tc.y, 35);
-            const midX = (sx + ex) / 2;
-            const midY = (sy + ey) / 2;
+            const from = getEdgePoint(edge.from, tc.x, tc.y);
+            const to = getEdgePoint(edge.to, fc.x, fc.y);
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
 
-            // Simple straight line (clean, PowerPoint-like)
-            const pathD = `M ${sx} ${sy} L ${ex} ${ey}`;
+            const pathD = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
 
             return (
               <g key={i}>
@@ -1176,8 +1206,8 @@ export default function MdCanvas({
 
           {connectState && (
             <line
-              x1={shortenLine(getNodeCenter(connectState.fromId).x, getNodeCenter(connectState.fromId).y, connectState.mouseX, connectState.mouseY, 35).sx}
-              y1={shortenLine(getNodeCenter(connectState.fromId).x, getNodeCenter(connectState.fromId).y, connectState.mouseX, connectState.mouseY, 35).sy}
+              x1={getEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).x}
+              y1={getEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).y}
               x2={connectState.mouseX} y2={connectState.mouseY}
               stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="6 3"
               markerEnd="url(#arr-accent)"
@@ -1270,6 +1300,7 @@ export default function MdCanvas({
           return (
           <div
             key={node.id}
+            data-node-id={node.id}
             className="canvas-node absolute group"
             style={{ left: node.x, top: node.y, zIndex: isSelected ? 10 : 2, minWidth: 120 }}
             onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
