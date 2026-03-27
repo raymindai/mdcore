@@ -2522,44 +2522,52 @@ export default function MdEditor() {
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <span style={{ color: "var(--accent)" }}>Beautified MD</span>
-              <div className="flex items-center gap-1.5 normal-case">
+              <div className="flex items-center gap-2 normal-case">
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
                 )}
-                {/* AI ASCII Render toggle */}
-                <button
-                  onClick={toggleDiagramMode}
-                  className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors"
-                  style={{
-                    background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)",
-                    color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)",
-                    borderColor: diagramMode === "ai" ? "var(--accent)" : "var(--border-dim)",
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/></svg>
-                  <span className="text-[10px] font-medium">AI ASCII Render</span>
-                </button>
-                {/* Export dropdown — click toggle */}
-                <div className="relative">
+                {/* AI ASCII Render — mini toggle + hover tooltip */}
+                <div className="relative group hidden sm:block">
+                  <button
+                    onClick={toggleDiagramMode}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
+                  >
+                    <span className="text-[10px] font-medium">AI ASCII Render</span>
+                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
+                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
+                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(11px)" : "translateX(2px)" }} />
+                    </span>
+                  </button>
+                  <div className="absolute top-full right-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                    {diagramMode === "ai" ? (
+                      <><p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render ON</p><p>ASCII art diagrams are automatically converted to styled visuals using AI (Gemini).</p></>
+                    ) : (
+                      <><p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render OFF</p><p>ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams.</p></>
+                    )}
+                  </div>
+                </div>
+                {/* Export dropdown */}
+                <div className="relative hidden sm:block">
                   <button
                     onClick={() => setShowExportMenu(prev => !prev)}
-                    className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 2v8M5 7l3 3 3-3"/></svg>
                     <span className="text-[10px] font-medium">Export</span>
                   </button>
                   {showExportMenu && (
                     <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-50"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
-                      {[
-                        { label: "PDF (Print)", action: handleExportPdf },
-                        { label: "Copy as HTML", action: handleCopyHtml },
-                        { label: "Copy for Docs / Email", action: handleCopyRichText },
-                        { label: "Copy for Slack", action: handleCopySlack },
-                      ].map(({ label, action }) => (
-                        <button key={label} onClick={() => { action(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>{label}</button>
-                      ))}
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Export</div>
+                      <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>PDF (Print)</button>
+                      <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy as</div>
+                      <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>HTML</button>
+                      <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Google Docs / Email</button>
+                      <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Slack</button>
                     </div>
                   )}
                 </div>
