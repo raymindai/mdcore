@@ -804,6 +804,7 @@ export default function MdEditor() {
     if (!tab) return;
     setActiveTabId(tabId);
     setMarkdownRaw(tab.markdown);
+    setHtml(""); // clear stale preview
     undoStack.current = [tab.markdown];
     redoStack.current = [];
     doRenderRef.current(tab.markdown);
@@ -813,13 +814,16 @@ export default function MdEditor() {
     // Save current tab
     setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
     const id = `tab-${tabIdCounter++}`;
-    const newTab: Tab = { id, title: "Untitled", markdown: "" };
+    const initialMd = "# Untitled\n\n";
+    const newTab: Tab = { id, title: "Untitled", markdown: initialMd };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(id);
-    setMarkdownRaw("");
-    undoStack.current = [""];
+    setMarkdownRaw(initialMd);
+    setTitle("Untitled");
+    setHtml(""); // clear stale preview immediately
+    undoStack.current = [initialMd];
     redoStack.current = [];
-    doRenderRef.current("");
+    doRenderRef.current(initialMd);
   }, [activeTabId, markdown, title]);
 
   const closeTab = useCallback((tabId: string) => {
@@ -1720,7 +1724,7 @@ export default function MdEditor() {
       cmSetDoc(newMd);
       // Reset after a tick so next render from source doesn't clobber the DOM
       setTimeout(() => { wysiwygEditingRef.current = false; }, 100);
-    }, 500);
+    }, 150);
   }, [setMarkdown, cmSetDoc]);
 
   // File drop handler
@@ -2104,46 +2108,28 @@ export default function MdEditor() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
-          {/* Flavor badges — desktop only */}
-          <div className="items-center gap-1.5 hidden lg:flex">
-            <span
-              className="px-2 py-0.5 rounded-md font-mono font-medium"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-            >
-              {flavor}
-            </span>
-            {Object.entries(flavorDetails)
-              .filter(([, v]) => v)
-              .map(([key]) => (
-                <span
-                  key={key}
-                  className="px-1.5 py-0.5 rounded-md font-mono"
-                  style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}
-                >
-                  +{key}
-                </span>
-              ))}
-          </div>
+          {/* Flavor badges moved to footer */}
 
-          {/* View mode toggle — layout icons */}
+          {/* View mode toggle — layout icons with instant tooltips */}
           <div className="flex items-center gap-1">
             {([
-              { mode: "editor" as ViewMode, title: "Editor only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/></svg> },
-              { mode: "split" as ViewMode, title: "Editor + Preview", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="8" y1="0" x2="8" y2="12"/></svg> },
-              { mode: "preview" as ViewMode, title: "Preview only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="4" y1="4" x2="12" y2="4" strokeWidth=".8"/><line x1="4" y1="6.5" x2="10" y2="6.5" strokeWidth=".8"/><line x1="4" y1="9" x2="8" y2="9" strokeWidth=".8"/></svg> },
-            ]).map(({ mode, title, icon }) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className="p-1 rounded transition-colors"
-                style={{
-                  color: viewMode === mode ? "var(--accent)" : "var(--text-muted)",
-                  opacity: viewMode === mode ? 1 : 0.7,
-                }}
-                title={title}
-              >
-                {icon}
-              </button>
+              { mode: "editor" as ViewMode, tip: "Markdown only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/></svg> },
+              { mode: "split" as ViewMode, tip: "Render + Markdown (Cmd+\\)", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="8" y1="0" x2="8" y2="12"/></svg> },
+              { mode: "preview" as ViewMode, tip: "Render only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="4" y1="4" x2="12" y2="4" strokeWidth=".8"/><line x1="4" y1="6.5" x2="10" y2="6.5" strokeWidth=".8"/><line x1="4" y1="9" x2="8" y2="9" strokeWidth=".8"/></svg> },
+            ]).map(({ mode, tip, icon }) => (
+              <div key={mode} className="relative group">
+                <button
+                  onClick={() => setViewMode(mode)}
+                  className="p-1 rounded transition-colors"
+                  style={{ color: viewMode === mode ? "var(--accent)" : "var(--text-muted)", opacity: viewMode === mode ? 1 : 0.7 }}
+                >
+                  {icon}
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                  {tip}
+                </div>
+              </div>
             ))}
           </div>
 
@@ -2522,48 +2508,7 @@ export default function MdEditor() {
         onMouseUp={() => { isDraggingSplit.current = false; }}
         onMouseLeave={() => { isDraggingSplit.current = false; }}
       >
-        {/* Editor pane */}
-        {viewMode !== "preview" && (
-          <div
-            data-pane="editor"
-            className="flex flex-col"
-            style={{
-              width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
-              height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
-              flexShrink: 0,
-            }}
-          >
-            <div
-              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
-            >
-              <span>Markdown</span>
-              <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>
-                {viewMode === "split" ? "⌘\\ to toggle" : "input"}
-              </span>
-            </div>
-            <div
-              ref={editorContainerRef}
-              className="flex-1 min-h-0 overflow-hidden"
-            />
-          </div>
-        )}
-
-        {/* Resize handle */}
-        {viewMode === "split" && (
-          <div
-            className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
-            style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
-            onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
-          >
-            <div
-              className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8"}`}
-              style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.4 }}
-            />
-          </div>
-        )}
-
-        {/* Preview pane */}
+        {/* Render pane (left/top) */}
         {viewMode !== "editor" && (
           <div
             className="flex-1 min-w-0 flex flex-col"
@@ -2623,22 +2568,61 @@ export default function MdEditor() {
                   style={{ cursor: "text" }}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-4 px-4" style={{ color: "var(--text-muted)" }}>
-                  <div className="text-4xl sm:text-5xl opacity-30">📝</div>
-                  <p className="text-sm text-center">
-                    {isMobile ? "Tap MD to start writing" : "Type or paste Markdown on the left"}
-                  </p>
-                  <p className="text-xs text-center" style={{ color: "var(--text-faint)" }}>
-                    Supports GFM · Obsidian · MDX · Pandoc · KaTeX · Mermaid
-                  </p>
-                  {!isMobile && (
-                    <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
-                      or drag & drop a .md file anywhere
-                    </p>
-                  )}
-                </div>
+                <article
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleWysiwygInput}
+                  className={`mdcore-rendered max-w-none focus:outline-none ${
+                    viewMode === "preview"
+                      ? "p-4 sm:p-8 mx-auto max-w-3xl"
+                      : "p-3 sm:p-6"
+                  }`}
+                  style={{ cursor: "text", minHeight: "100%" }}
+                  data-placeholder="true"
+                >
+                  <p style={{ color: "var(--text-faint)" }}>Start typing here...</p>
+                </article>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Resize handle */}
+        {viewMode === "split" && (
+          <div
+            className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
+            style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
+            onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
+          >
+            <div
+              className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8"}`}
+              style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.4 }}
+            />
+          </div>
+        )}
+
+        {/* Markdown pane (right/bottom) */}
+        {viewMode !== "preview" && (
+          <div
+            data-pane="editor"
+            className="flex flex-col"
+            style={{
+              width: viewMode === "split" && !isMobile ? `${100 - splitPercentRef.current}%` : "100%",
+              height: viewMode === "split" && isMobile ? `${100 - splitPercentRef.current}%` : undefined,
+              flexShrink: 0,
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
+            >
+              <span>Markdown</span>
+              <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>source</span>
+            </div>
+            <div
+              ref={editorContainerRef}
+              className="flex-1 min-h-0 overflow-hidden"
+            />
           </div>
         )}
       </div>
@@ -2649,36 +2633,67 @@ export default function MdEditor() {
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
-        <span className="truncate">{charCount.toLocaleString()} chars</span>
+        <div className="flex items-center gap-3 truncate">
+          <span>{charCount.toLocaleString()} chars</span>
+          {/* Flavor badge */}
+          <div className="relative group hidden sm:block">
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
+            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Detected Markdown flavor: {flavor}
+            </div>
+          </div>
+          {/* Engine badge */}
+          <div className="relative group hidden sm:block">
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>RUST+WASM</span>
+            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
+            </div>
+          </div>
+          {/* Render time */}
+          <div className="relative group hidden sm:block">
+            <span style={{ color: "var(--text-faint)" }}>{renderTime.toFixed(0)}ms</span>
+            <div className="absolute bottom-full left-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              WASM engine render time
+            </div>
+          </div>
+        </div>
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>
-            ⌘S share · ⌘⇧C copy HTML · ⌘\ toggle view
-          </span>
-          <a
-            href="/about"
-            className="transition-colors"
-            style={{ color: "var(--text-muted)" }}
-          >
-            About
-          </a>
-          <a
-            href="https://github.com/raymindai/mdcore"
-            className="transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
-          <a
-            href="https://mdcore.ai"
-            className="transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            mdcore.ai
-          </a>
+          {/* Help — keyboard shortcuts */}
+          <div className="relative group">
+            <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
+            <div className="absolute bottom-full right-0 mb-1 w-56 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
+              <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
+              <div className="space-y-1 text-[10px]">
+                {[
+                  ["Cmd+B", "Bold"],
+                  ["Cmd+I", "Italic"],
+                  ["Cmd+K", "Insert link"],
+                  ["Cmd+S", "Share / copy URL"],
+                  ["Cmd+Shift+C", "Copy as HTML"],
+                  ["Cmd+Z", "Undo"],
+                  ["Cmd+Shift+Z", "Redo"],
+                  ["Cmd+\\", "Toggle view mode"],
+                  ["Escape", "Focus markdown editor"],
+                  ["Dbl-click code", "Edit code block"],
+                  ["Dbl-click math", "Edit equation"],
+                  ["Dbl-click diagram", "Edit diagram"],
+                  ["Dbl-click table", "Edit cell"],
+                ].map(([key, desc]) => (
+                  <div key={key} className="flex justify-between">
+                    <span style={{ color: "var(--text-faint)" }}>{key}</span>
+                    <span>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
+          <a href="https://github.com/raymindai/mdcore" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://mdcore.ai" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">mdcore.ai</a>
         </div>
       </footer>
 
@@ -2696,6 +2711,30 @@ export default function MdEditor() {
           }}
         >
           {[
+            { label: "Rename", action: () => {
+              const tab = tabs.find(t => t.id === docContextMenu.tabId);
+              if (!tab) return;
+              const newName = prompt("Document name:", tab.title);
+              if (newName !== null && newName.trim()) {
+                const trimmed = newName.trim();
+                setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
+                // If active tab, also update the markdown H1 heading
+                if (tab.id === activeTabId) {
+                  const md = markdownRef.current;
+                  const lines = md.split("\n");
+                  const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
+                  if (h1Idx >= 0) {
+                    lines[h1Idx] = `# ${trimmed}`;
+                  } else {
+                    lines.unshift(`# ${trimmed}`, "");
+                  }
+                  const newMd = lines.join("\n");
+                  setMarkdown(newMd);
+                  doRender(newMd);
+                  setTitle(trimmed);
+                }
+              }
+            }},
             { label: "Duplicate", action: () => {
               const tab = tabs.find(t => t.id === docContextMenu.tabId);
               if (tab) {
