@@ -622,8 +622,13 @@ export default function MdCanvas({
     setSelectedId(null);
     setEditingId(null);
     setEditingEdge(null);
-    // Force re-render after DOM settles so edge points use correct measurements
-    requestAnimationFrame(() => forceUpdate(v => v + 1));
+    // Force re-renders after DOM fully settles (layout + paint)
+    // Double rAF ensures CSS margin/transform are applied before measuring
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        forceUpdate(v => v + 1);
+      });
+    });
   }, [initialMermaid]);
 
   // Add node on double-click canvas
@@ -767,8 +772,9 @@ export default function MdCanvas({
         return { ...n, shape: shapes[(idx + 1) % shapes.length] };
       })
     );
-    // DOM updates async — force re-render after DOM settles so edges recalculate
-    requestAnimationFrame(() => forceUpdate(v => v + 1));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => forceUpdate(v => v + 1));
+    });
   }, []);
 
   const deleteSelected = useCallback(() => {
