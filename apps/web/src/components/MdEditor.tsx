@@ -702,6 +702,7 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showQr, setShowQr] = useState(false);
@@ -1677,18 +1678,19 @@ export default function MdEditor() {
     };
   }, [html, isLoading, markdown, doRender]);
 
-  // Close menu on outside click
+  // Close menus on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
       }
+      setShowExportMenu(false);
     };
-    if (showMenu) {
+    if (showMenu || showExportMenu) {
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
     }
-  }, [showMenu]);
+  }, [showMenu, showExportMenu]);
 
   // Debounced render — called when CM6 content changes
   const handleChange = useCallback(
@@ -2065,7 +2067,7 @@ export default function MdEditor() {
 
       {/* Header */}
       <header
-        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm"
+        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm relative"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -2124,82 +2126,48 @@ export default function MdEditor() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
-          {/* Flavor badges moved to footer */}
-
-          {/* View mode toggle — layout icons with instant tooltips */}
-          <div className="flex items-center gap-1">
-            {([
-              { mode: "editor" as ViewMode, tip: "Source MD only", icon: (
-                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                  <path d="M4 4l-1.5 2L4 8M12 4l1.5 2L12 8M7 9l2-6" strokeWidth=".9" strokeLinecap="round"/>
-                </svg>
-              )},
-              { mode: "split" as ViewMode, tip: "Beautified + Source (Cmd+\\)", icon: (
-                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                  <line x1="9.5" y1="1" x2="9.5" y2="11"/>
-                  <line x1="3" y1="4" x2="7" y2="4" strokeWidth=".8"/><line x1="3" y1="6" x2="6" y2="6" strokeWidth=".8"/><line x1="3" y1="8" x2="7.5" y2="8" strokeWidth=".8"/>
-                </svg>
-              )},
-              { mode: "preview" as ViewMode, tip: "Beautified MD only", icon: (
-                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                  <line x1="4" y1="3.5" x2="12" y2="3.5" strokeWidth=".8"/><line x1="4" y1="6" x2="10" y2="6" strokeWidth=".8"/><line x1="4" y1="8.5" x2="11" y2="8.5" strokeWidth=".8"/>
-                </svg>
-              )},
-            ]).map(({ mode, tip, icon }) => (
-              <div key={mode} className="relative group">
-                <button
-                  onClick={() => setViewMode(mode)}
-                  className="p-1 rounded transition-colors"
-                  style={{ color: viewMode === mode ? "var(--accent)" : "var(--text-muted)", opacity: viewMode === mode ? 1 : 0.7 }}
-                >
-                  {icon}
-                </button>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                  {tip}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Diagram render mode toggle */}
-          <div className="relative group">
-            <button
-              onClick={toggleDiagramMode}
-              className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center gap-1.5"
-              style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
-            >
-              {/* Tree/graph icon */}
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/>
+        {/* Center: Layout toggle */}
+        <div className="flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+          {([
+            { mode: "preview" as ViewMode, tip: "Beautified MD only", icon: (
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                <line x1="4" y1="3.5" x2="12" y2="3.5" strokeWidth=".8"/><line x1="4" y1="6" x2="10" y2="6" strokeWidth=".8"/><line x1="4" y1="8.5" x2="11" y2="8.5" strokeWidth=".8"/>
               </svg>
-              <span>AI Render</span>
-              {/* Mini toggle */}
-              <span className="relative inline-flex items-center" style={{ width: 22, height: 12 }}>
-                <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
-                <span className="absolute rounded-full transition-transform" style={{ width: 8, height: 8, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(12px)" : "translateX(2px)" }} />
-              </span>
-            </button>
-            {/* Tooltip on hover */}
-            <div className="absolute top-full mt-1.5 right-0 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-              {diagramMode === "ai" ? (
-                <>
-                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI Render ON</p>
-                  <p>ASCII art diagrams (box-drawing characters) are automatically converted to styled visuals using AI.</p>
-                </>
-              ) : (
-                <>
-                  <p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Default</p>
-                  <p>ASCII art shows as monospace text. Hover to see a Render button for manual AI conversion.</p>
-                </>
-              )}
+            )},
+            { mode: "split" as ViewMode, tip: "Beautified + Source (Cmd+\\)", icon: (
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                <line x1="9.5" y1="1" x2="9.5" y2="11"/>
+                <line x1="3" y1="4" x2="7" y2="4" strokeWidth=".8"/><line x1="3" y1="6" x2="6" y2="6" strokeWidth=".8"/><line x1="3" y1="8" x2="7.5" y2="8" strokeWidth=".8"/>
+              </svg>
+            )},
+            { mode: "editor" as ViewMode, tip: "Source MD only", icon: (
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                <path d="M4 4l-1.5 2L4 8M12 4l1.5 2L12 8M7 9l2-6" strokeWidth=".9" strokeLinecap="round"/>
+              </svg>
+            )},
+          ]).map(({ mode, tip, icon }) => (
+            <div key={mode} className="relative group">
+              <button
+                onClick={() => setViewMode(mode)}
+                className="p-1 rounded transition-colors"
+                style={{ color: viewMode === mode ? "var(--accent)" : "var(--text-muted)", opacity: viewMode === mode ? 1 : 0.7 }}
+              >
+                {icon}
+              </button>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                {tip}
+              </div>
             </div>
-          </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
+
+          {/* AI Render moved to Beautified MD panel header */}
 
           {/* Theme toggle */}
           <button
@@ -2558,32 +2526,42 @@ export default function MdEditor() {
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
                 )}
-                {/* AI Render toggle — compact */}
+                {/* AI ASCII Render toggle */}
                 <button
                   onClick={toggleDiagramMode}
-                  className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors"
-                  style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
+                  className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors"
+                  style={{
+                    background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)",
+                    color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)",
+                    borderColor: diagramMode === "ai" ? "var(--accent)" : "var(--border-dim)",
+                  }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/></svg>
-                  <span>AI</span>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/></svg>
+                  <span className="text-[10px] font-medium">AI ASCII Render</span>
                 </button>
-                {/* Export dropdown */}
-                <div className="relative group">
-                  <button className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors" style={{ color: "var(--text-faint)" }}>
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 2v8M4 6l4 4 4-4M3 12h10"/></svg>
-                    <span>Export</span>
+                {/* Export dropdown — click toggle */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExportMenu(prev => !prev)}
+                    className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 13h10"/></svg>
+                    <span className="text-[10px] font-medium">Export</span>
                   </button>
-                  <div className="absolute top-full right-0 mt-1 w-44 rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50"
-                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
-                    {[
-                      { label: "PDF (Print)", action: handleExportPdf },
-                      { label: "Copy as HTML", action: handleCopyHtml },
-                      { label: "Copy for Docs/Email", action: handleCopyRichText },
-                      { label: "Copy for Slack", action: handleCopySlack },
-                    ].map(({ label, action }) => (
-                      <button key={label} onClick={action} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>{label}</button>
-                    ))}
-                  </div>
+                  {showExportMenu && (
+                    <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-50"
+                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
+                      {[
+                        { label: "PDF (Print)", action: handleExportPdf },
+                        { label: "Copy as HTML", action: handleCopyHtml },
+                        { label: "Copy for Docs / Email", action: handleCopyRichText },
+                        { label: "Copy for Slack", action: handleCopySlack },
+                      ].map(({ label, action }) => (
+                        <button key={label} onClick={() => { action(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>{label}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -2668,23 +2646,36 @@ export default function MdEditor() {
             >
               <div className="flex items-center gap-1.5">
                 <span style={{ color: "var(--accent)" }}>Source MD</span>
-                {/* Syntax hints */}
-                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>{flavor}{Object.entries(flavorDetails).filter(([,v])=>v).map(([k])=> ` +${k}`).join("")}</span>
+                {/* Syntax badges */}
+                <span className="hidden sm:inline px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
+                {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
+                  <span key={key} className="hidden sm:inline px-1 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>+{key}</span>
+                ))}
               </div>
               <div className="flex items-center gap-1 normal-case">
-                {/* Copy raw MD */}
+                {/* Copy MD */}
                 <div className="relative group">
-                  <button onClick={() => { navigator.clipboard.writeText(markdownRef.current); }} className="p-0.5 rounded transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-faint)" }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(markdownRef.current); }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md border transition-colors hover:text-[var(--accent)] hover:border-[var(--accent)]"
+                    style={{ color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                    <span className="text-[10px] font-medium">Copy</span>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy MD</div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
                 </div>
                 {/* Download .md */}
                 <div className="relative group">
-                  <button onClick={handleDownloadMd} className="p-0.5 rounded transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-faint)" }}>
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
+                  <button
+                    onClick={handleDownloadMd}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md border transition-colors hover:text-[var(--accent)] hover:border-[var(--accent)]"
+                    style={{ color: "var(--text-muted)", borderColor: "var(--border-dim)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
+                    <span className="text-[10px] font-medium">.md</span>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download .md</div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
                 </div>
               </div>
             </div>
