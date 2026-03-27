@@ -1159,14 +1159,14 @@ export default function MdCanvas({
         {/* Edges SVG */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
           <defs>
-            <marker id="arr" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
-              <polygon points="0 0, 12 4, 0 8" fill="var(--text-muted)" />
+            <marker id="arr" markerWidth="6" markerHeight="4" refX="5.5" refY="2" orient="auto">
+              <polygon points="0 0, 6 2, 0 4" fill="var(--text-muted)" />
             </marker>
-            <marker id="arr-start" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse">
-              <polygon points="0 0, 12 4, 0 8" fill="var(--text-muted)" />
+            <marker id="arr-start" markerWidth="6" markerHeight="4" refX="0.5" refY="2" orient="auto-start-reverse">
+              <polygon points="0 0, 6 2, 0 4" fill="var(--text-muted)" />
             </marker>
-            <marker id="arr-accent" markerWidth="12" markerHeight="8" refX="11" refY="4" orient="auto">
-              <polygon points="0 0, 12 4, 0 8" fill="var(--accent)" />
+            <marker id="arr-accent" markerWidth="6" markerHeight="4" refX="5.5" refY="2" orient="auto">
+              <polygon points="0 0, 6 2, 0 4" fill="var(--accent)" />
             </marker>
           </defs>
 

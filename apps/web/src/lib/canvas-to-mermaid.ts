@@ -218,8 +218,8 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
   const isHorizontal = direction === "LR" || direction === "RL";
   const NODE_W = 160;
   const NODE_H = 60;
-  const GAP_MAIN = isHorizontal ? NODE_W + 40 : NODE_H + 40; // along flow direction
-  const GAP_CROSS = isHorizontal ? NODE_H + 20 : NODE_W + 20; // perpendicular
+  const GAP_MAIN = isHorizontal ? NODE_W + 60 : NODE_H + 80; // along flow direction (more vertical spacing)
+  const GAP_CROSS = isHorizontal ? NODE_H + 30 : NODE_W + 60; // perpendicular (more horizontal spacing)
 
   // Calculate subtree sizes (number of leaf descendants) for centering
   const subtreeSize = new Map<string, number>();
@@ -266,11 +266,11 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
     if (kids.length === 0) {
       // Leaf node: place at crossStart
       if (isHorizontal) {
-        node.x = 40 + depth * GAP_MAIN;
-        node.y = 40 + crossStart * GAP_CROSS;
+        node.x = 80 + depth * GAP_MAIN;
+        node.y = 80 + crossStart * GAP_CROSS;
       } else {
-        node.x = 40 + crossStart * GAP_CROSS;
-        node.y = 40 + depth * GAP_MAIN;
+        node.x = 80 + crossStart * GAP_CROSS;
+        node.y = 80 + depth * GAP_MAIN;
       }
     } else {
       // Parent: position children first, then center self
@@ -286,11 +286,11 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
       const lastKid = nodeMap.get(kids[kids.length - 1]);
       if (firstKid && lastKid) {
         if (isHorizontal) {
-          node.x = 40 + depth * GAP_MAIN;
+          node.x = 80 + depth * GAP_MAIN;
           node.y = (firstKid.y + lastKid.y) / 2;
         } else {
           node.x = (firstKid.x + lastKid.x) / 2;
-          node.y = 40 + depth * GAP_MAIN;
+          node.y = 80 + depth * GAP_MAIN;
         }
       }
     }
