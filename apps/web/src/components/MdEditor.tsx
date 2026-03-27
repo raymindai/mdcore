@@ -2655,7 +2655,7 @@ export default function MdEditor() {
             }}
           >
             <div
-              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <span style={{ color: "var(--accent)" }}>Beautified MD</span>
@@ -2698,10 +2698,10 @@ export default function MdEditor() {
                   {showExportMenu && (
                     <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-50"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Export</div>
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-normal" style={{ color: "var(--text-faint)" }}>Export</div>
                       <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>PDF (Print)</button>
                       <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy as</div>
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-normal" style={{ color: "var(--text-faint)" }}>Copy as</div>
                       <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>HTML</button>
                       <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Google Docs / Email</button>
                       <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Slack</button>
@@ -2803,7 +2803,7 @@ export default function MdEditor() {
             className="flex-1 min-w-0 flex flex-col"
           >
             <div
-              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
+              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <div className="flex items-center gap-1.5">
