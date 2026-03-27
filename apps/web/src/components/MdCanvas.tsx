@@ -754,6 +754,8 @@ export default function MdCanvas({
     setNodes((prev) => prev.map((n) => (n.id === nodeId ? { ...n, text } : n)));
   }, []);
 
+  // Force a second render after shape change so edge points use updated DOM measurements
+  const [, forceUpdate] = useState(0);
   const cycleShape = useCallback((nodeId: string) => {
     setNodes((prev) =>
       prev.map((n) => {
@@ -763,6 +765,8 @@ export default function MdCanvas({
         return { ...n, shape: shapes[(idx + 1) % shapes.length] };
       })
     );
+    // DOM updates async — force re-render after DOM settles so edges recalculate
+    requestAnimationFrame(() => forceUpdate(v => v + 1));
   }, []);
 
   const deleteSelected = useCallback(() => {
@@ -1174,7 +1178,16 @@ export default function MdCanvas({
             const midX = (from.x + to.x) / 2;
             const midY = (from.y + to.y) / 2;
 
-            const pathD = `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+            // Smooth cubic bezier curve
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const isMoreHorizontal = Math.abs(dx) > Math.abs(dy);
+            // Control points: bend in the dominant direction
+            const cx1 = isMoreHorizontal ? from.x + dx * 0.4 : from.x;
+            const cy1 = isMoreHorizontal ? from.y : from.y + dy * 0.4;
+            const cx2 = isMoreHorizontal ? to.x - dx * 0.4 : to.x;
+            const cy2 = isMoreHorizontal ? to.y : to.y - dy * 0.4;
+            const pathD = `M ${from.x} ${from.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${to.x} ${to.y}`;
 
             return (
               <g key={i}>
