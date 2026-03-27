@@ -838,25 +838,55 @@ export default function MdCanvas({
     }
   }, [importCode]);
 
+  // Get node dimensions based on shape
+  const getNodeDims = (node: CanvasNode) => {
+    switch (node.shape) {
+      case "circle": return { w: 90, h: 90 };
+      case "diamond": return { w: 80, h: 80 };
+      default: return { w: 140, h: 40 }; // round, square
+    }
+  };
+
   const getNodeCenter = (nodeId: string) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
-    return { x: node.x + 70, y: node.y + 20 };
+    const dims = getNodeDims(node);
+    return { x: node.x + dims.w / 2, y: node.y + dims.h / 2 };
   };
 
   // Get the point on the node boundary closest to a target point
   const getNodeEdgePoint = (nodeId: string, targetX: number, targetY: number) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
-    const cx = node.x + 70, cy = node.y + 20;
-    const hw = 72, hh = 22; // half width, half height (slightly larger than node)
-    const dx = targetX - cx, dy = targetY - cy;
-    if (dx === 0 && dy === 0) return { x: cx, y: cy };
-    // Find intersection with rectangle boundary
+    const dims = getNodeDims(node);
+    const cx = node.x + dims.w / 2;
+    const cy = node.y + dims.h / 2;
+    const dx = targetX - cx;
+    const dy = targetY - cy;
+    if (dx === 0 && dy === 0) return { x: cx, y: cy - dims.h / 2 };
+
+    if (node.shape === "circle") {
+      // Circle: intersection with circle boundary
+      const r = dims.w / 2 + 2; // small padding
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      return { x: cx + (dx / dist) * r, y: cy + (dy / dist) * r };
+    }
+    if (node.shape === "diamond") {
+      // Diamond: intersection with rotated square (diamond shape)
+      const half = dims.w / 2 + 2;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+      const scale = (absDx + absDy) / half;
+      if (scale === 0) return { x: cx, y: cy - half };
+      return { x: cx + dx / scale, y: cy + dy / scale };
+    }
+    // Rectangle (round, square): intersection with rectangle boundary
+    const hw = dims.w / 2 + 2;
+    const hh = dims.h / 2 + 2;
     const scaleX = Math.abs(dx) / hw;
     const scaleY = Math.abs(dy) / hh;
     const scale = Math.max(scaleX, scaleY);
-    if (scale === 0) return { x: cx, y: cy };
+    if (scale === 0) return { x: cx, y: cy - hh };
     return { x: cx + dx / scale, y: cy + dy / scale };
   };
 
