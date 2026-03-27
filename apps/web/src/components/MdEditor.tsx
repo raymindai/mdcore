@@ -471,146 +471,150 @@ interface Tab {
 
 let tabIdCounter = 1;
 
-// ─── WYSIWYG Fixed Toolbar ───
-function WysiwygToolbar() {
-  const exec = (cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
-  };
-  const toggleBlock = (tag: string) => {
-    document.execCommand("formatBlock", false, tag);
+// ─── Toolbar Button with instant tooltip ───
+function TBtn({ tip, active, onClick, children }: {
+  tip: string; active?: boolean; onClick: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="relative group shrink-0">
+      <button
+        className={`w-7 h-7 flex items-center justify-center rounded transition-colors
+          ${active
+            ? "bg-[var(--accent-dim)] text-[var(--accent)]"
+            : "hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
+          }`}
+        onClick={onClick}
+      >
+        {children}
+      </button>
+      <div
+        className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap
+          opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+      >
+        {tip}
+      </div>
+    </div>
+  );
+}
+
+// ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
+function WysiwygToolbar({ onInsert }: { onInsert: (type: "table" | "code" | "math" | "mermaid") => void }) {
+  const [active, setActive] = useState<Record<string, boolean>>({});
+  const [blockType, setBlockType] = useState("p");
+
+  useEffect(() => {
+    const update = () => {
+      const sel = window.getSelection();
+      if (!sel || !sel.anchorNode) return;
+      const el = sel.anchorNode instanceof HTMLElement ? sel.anchorNode : sel.anchorNode.parentElement;
+      if (!el?.closest("article.mdcore-rendered")) return;
+
+      setActive({
+        bold: document.queryCommandState("bold"),
+        italic: document.queryCommandState("italic"),
+        strikethrough: document.queryCommandState("strikeThrough"),
+        ul: document.queryCommandState("insertUnorderedList"),
+        ol: document.queryCommandState("insertOrderedList"),
+        code: !!el?.closest("code"),
+      });
+
+      const block = document.queryCommandValue("formatBlock").toLowerCase().replace(/[<>]/g, "");
+      if (block && /^h[1-6]$|^p$|^blockquote$/.test(block)) {
+        setBlockType(block);
+      } else {
+        const heading = el?.closest("h1,h2,h3,h4,h5,h6,blockquote,p,li");
+        if (heading) {
+          const tag = heading.tagName.toLowerCase();
+          setBlockType(tag === "li" ? "p" : tag);
+        }
+      }
+    };
+    document.addEventListener("selectionchange", update);
+    return () => document.removeEventListener("selectionchange", update);
+  }, []);
+
+  const exec = (cmd: string, value?: string) => document.execCommand(cmd, false, value);
+  const fmtBlock = (tag: string) => document.execCommand("formatBlock", false, tag);
+  const wrapCode = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+    try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
   };
 
-  const btnBase = "p-1.5 rounded transition-colors hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]";
-  const sep = <div className="w-px h-4 mx-0.5" style={{ background: "var(--border-dim)" }} />;
+  const sep = <div className="w-px h-5 shrink-0 mx-0.5" style={{ background: "var(--border-dim)" }} />;
+  const I = 14;
 
   return (
     <div
-      className="flex items-center gap-0.5 px-2 py-1 overflow-x-auto text-xs shrink-0"
+      className="flex flex-wrap items-center gap-0.5 px-2 py-0.5 shrink-0"
       style={{ borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {/* Undo/Redo */}
-      <button className={btnBase} onClick={() => exec("undo")} title="Undo">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("redo")} title="Redo">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
-      </button>
+      <TBtn tip="Undo (Cmd+Z)" onClick={() => exec("undo")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+      </TBtn>
+      <TBtn tip="Redo (Cmd+Shift+Z)" onClick={() => exec("redo")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+      </TBtn>
       {sep}
-
-      {/* Headings */}
-      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h1")} title="Heading 1">H1</button>
-      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h2")} title="Heading 2">H2</button>
-      <button className={`${btnBase} font-bold text-[11px]`} onClick={() => toggleBlock("h3")} title="Heading 3">H3</button>
-      <button className={`${btnBase} font-semibold text-[10px]`} onClick={() => toggleBlock("h4")} title="Heading 4">H4</button>
-      <button className={`${btnBase} text-[10px]`} onClick={() => toggleBlock("p")} title="Normal text">P</button>
+      <TBtn tip="Heading 1" active={blockType==="h1"} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></TBtn>
+      <TBtn tip="Heading 2" active={blockType==="h2"} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></TBtn>
+      <TBtn tip="Heading 3" active={blockType==="h3"} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></TBtn>
+      <TBtn tip="Heading 4" active={blockType==="h4"} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></TBtn>
+      <TBtn tip="Heading 5" active={blockType==="h5"} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></TBtn>
+      <TBtn tip="Heading 6" active={blockType==="h6"} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></TBtn>
+      <TBtn tip="Paragraph" active={blockType==="p"} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></TBtn>
       {sep}
-
-      {/* Text style */}
-      <button className={`${btnBase} font-bold`} onClick={() => exec("bold")} title="Bold (Cmd+B)">B</button>
-      <button className={`${btnBase} italic`} onClick={() => exec("italic")} title="Italic (Cmd+I)">I</button>
-      <button className={btnBase} style={{ textDecoration: "underline" }} onClick={() => exec("underline")} title="Underline">U</button>
-      <button className={btnBase} style={{ textDecoration: "line-through" }} onClick={() => exec("strikeThrough")} title="Strikethrough">S</button>
-      <button className={btnBase} onClick={() => exec("superscript")} title="Superscript">
-        <span className="text-[10px]">X<sup className="text-[7px]">2</sup></span>
-      </button>
-      <button className={btnBase} onClick={() => exec("subscript")} title="Subscript">
-        <span className="text-[10px]">X<sub className="text-[7px]">2</sub></span>
-      </button>
-      <button className={`${btnBase} font-mono text-[10px]`} onClick={() => {
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        const range = sel.getRangeAt(0);
-        const code = document.createElement("code");
-        range.surroundContents(code);
-      }} title="Inline code">&lt;/&gt;</button>
-      <button className={btnBase} onClick={() => exec("hiliteColor", "rgba(251,146,60,0.2)")} title="Highlight">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--accent)" opacity="0.6"><rect x="1" y="10" width="14" height="4" rx="1"/><path d="M4 10V4l4-2 4 2v6" fill="none" stroke="currentColor" strokeWidth="1.2"/></svg>
-      </button>
+      <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></TBtn>
+      <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></TBtn>
+      <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></TBtn>
+      <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}><span className="font-mono text-[10px]">{`</>`}</span></TBtn>
       {sep}
-
-      {/* Font size */}
-      <button className={btnBase} onClick={() => exec("fontSize", "2")} title="Small text">
-        <span className="text-[9px] font-medium">A</span>
-      </button>
-      <button className={btnBase} onClick={() => exec("fontSize", "4")} title="Normal text">
-        <span className="text-[12px] font-medium">A</span>
-      </button>
-      <button className={btnBase} onClick={() => exec("fontSize", "6")} title="Large text">
-        <span className="text-[15px] font-medium">A</span>
-      </button>
+      <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+      </TBtn>
+      <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+      </TBtn>
+      <TBtn tip="Indent" onClick={() => exec("indent")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+      </TBtn>
+      <TBtn tip="Outdent" onClick={() => exec("outdent")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+      </TBtn>
       {sep}
-
-      {/* Text color */}
-      <button className={btnBase} onClick={() => exec("foreColor", "var(--accent)")} title="Accent color">
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>A</span>
-      </button>
-      <button className={btnBase} onClick={() => exec("foreColor", "#ef4444")} title="Red">
-        <span style={{ color: "#ef4444", fontWeight: 700 }}>A</span>
-      </button>
-      <button className={btnBase} onClick={() => exec("foreColor", "#22c55e")} title="Green">
-        <span style={{ color: "#22c55e", fontWeight: 700 }}>A</span>
-      </button>
-      <button className={btnBase} onClick={() => exec("foreColor", "#3b82f6")} title="Blue">
-        <span style={{ color: "#3b82f6", fontWeight: 700 }}>A</span>
-      </button>
+      <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+      </TBtn>
+      <TBtn tip="Horizontal rule → ---" onClick={() => exec("insertHorizontalRule")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </TBtn>
       {sep}
-
-      {/* Lists */}
-      <button className={btnBase} onClick={() => exec("insertUnorderedList")} title="Bullet list">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="3" cy="12" r="1.2"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("insertOrderedList")} title="Numbered list">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5.5" fontSize="5" fontWeight="600">1</text><text x="1" y="9.5" fontSize="5" fontWeight="600">2</text><text x="1" y="13.5" fontSize="5" fontWeight="600">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("indent")} title="Indent (Tab)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("outdent")} title="Outdent (Shift+Tab)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
-      </button>
+      <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => { const u = prompt("URL:"); if (u) exec("createLink", u); }}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
+      </TBtn>
+      <TBtn tip="Image → ![alt](url)" onClick={() => { const u = prompt("Image URL:"); if (u) exec("insertImage", u); }}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </TBtn>
       {sep}
-
-      {/* Block */}
-      <button className={btnBase} onClick={() => toggleBlock("blockquote")} title="Quote">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("insertHorizontalRule")} title="Horizontal rule">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
-      </button>
+      <TBtn tip="Clear formatting" onClick={() => exec("removeFormat")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
+      </TBtn>
       {sep}
-
-      {/* Link & Image */}
-      <button className={btnBase} onClick={() => {
-        const url = prompt("URL:");
-        if (url) exec("createLink", url);
-      }} title="Link (Cmd+K)">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6.5 9.5l3-3M7 11l-1.5 1.5a2.12 2.12 0 01-3-3L4 8m5-1l1.5-1.5a2.12 2.12 0 013 3L12 10" strokeLinecap="round"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => {
-        const url = prompt("Image URL:");
-        if (url) exec("insertImage", url);
-      }} title="Image">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </button>
-      {sep}
-
-      {/* Alignment */}
-      <button className={btnBase} onClick={() => exec("justifyLeft")} title="Align left">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="2" y1="7" x2="10" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("justifyCenter")} title="Align center">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="4" y1="7" x2="12" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
-      </button>
-      <button className={btnBase} onClick={() => exec("justifyRight")} title="Align right">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="2" y1="3" x2="14" y2="3"/><line x1="6" y1="7" x2="14" y2="7"/><line x1="2" y1="11" x2="14" y2="11"/></svg>
-      </button>
-      {sep}
-
-      {/* Clear formatting */}
-      <button className={btnBase} onClick={() => exec("removeFormat")} title="Clear formatting">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 3h8l-3 10M2 13l12-10"/></svg>
-      </button>
+      {/* Insert special elements */}
+      <TBtn tip="Insert table" onClick={() => onInsert("table")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
+      </TBtn>
+      <TBtn tip="Insert code block" onClick={() => onInsert("code")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4"/></svg>
+      </TBtn>
+      <TBtn tip="Insert math equation" onClick={() => onInsert("math")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" fontSize="11" fontFamily="serif" fontStyle="italic">fx</text></svg>
+      </TBtn>
+      <TBtn tip="Insert Mermaid diagram" onClick={() => onInsert("mermaid")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="4" y="1" width="8" height="4" rx="1"/><rect x="1" y="11" width="5" height="4" rx="1"/><rect x="10" y="11" width="5" height="4" rx="1"/><path d="M8 5v3M8 8L3.5 11M8 8l4.5 3"/></svg>
+      </TBtn>
     </div>
   );
 }
@@ -1980,13 +1984,48 @@ export default function MdEditor() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleShare, handleCopyHtml, undo, redo]);
 
+  // Insert special blocks (table, code, math, mermaid)
+  const handleInsertBlock = useCallback((type: "table" | "code" | "math" | "mermaid") => {
+    const md = markdownRef.current;
+    const suffix = md.endsWith("\n") ? "\n" : "\n\n";
+    let insert = "";
+
+    switch (type) {
+      case "table":
+        insert = `${suffix}| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| cell | cell | cell |\n| cell | cell | cell |\n`;
+        break;
+      case "code": {
+        // Open code modal with empty content
+        setShowMathModal(false);
+        setShowMermaidModal(false);
+        // Insert empty code block, user can double-click to edit
+        insert = `${suffix}\`\`\`\n\n\`\`\`\n`;
+        break;
+      }
+      case "math":
+        setInitialMath("");
+        setShowMathModal(true);
+        return; // modal handles insertion
+      case "mermaid":
+        setCanvasMermaid("");
+        setShowMermaidModal(true);
+        return; // modal handles insertion
+    }
+
+    if (insert) {
+      const newMd = md + insert;
+      setMarkdown(newMd);
+      doRender(newMd);
+    }
+  }, [doRender, setMarkdown]);
+
   // Protect special elements from contentEditable — make them non-editable islands
   useEffect(() => {
     if (!previewRef.current) return;
     const article = previewRef.current.querySelector("article");
     if (!article) return;
-    // Code blocks, mermaid, math: non-editable (use double-click modal)
-    article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram").forEach(el => {
+    // Code blocks, mermaid, math, tables: non-editable (use double-click for special editors)
+    article.querySelectorAll("pre, .mermaid-container, .mermaid-rendered, .math-rendered, .ascii-diagram, table").forEach(el => {
       (el as HTMLElement).contentEditable = "false";
     });
   }, [html]);
@@ -2549,7 +2588,7 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            <WysiwygToolbar />
+            <WysiwygToolbar onInsert={handleInsertBlock} />
             <div className="flex-1 overflow-auto" ref={previewRef}>
               <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (

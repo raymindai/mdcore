@@ -9,51 +9,41 @@ interface FloatingToolbarProps {
 export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [active, setActive] = useState<Record<string, boolean>>({});
+  const [blockType, setBlockType] = useState("p");
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const updateToolbar = useCallback(() => {
     const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
-      setPos(null);
-      return;
-    }
-
-    // Only show if selection is inside our container
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { setPos(null); return; }
     const container = containerRef.current;
     if (!container) return;
     const anchor = sel.anchorNode;
-    if (!anchor || !container.contains(anchor)) {
-      setPos(null);
-      return;
-    }
-
-    // Don't show for code blocks, math, mermaid
+    if (!anchor || !container.contains(anchor)) { setPos(null); return; }
     const el = anchor instanceof HTMLElement ? anchor : anchor.parentElement;
-    if (el?.closest("pre, .mermaid-container, .math-rendered, code")) {
-      setPos(null);
-      return;
-    }
+    if (el?.closest("pre, .mermaid-container, .math-rendered, code, table")) { setPos(null); return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (rect.width === 0) { setPos(null); return; }
 
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    if (rect.width === 0) {
-      setPos(null);
-      return;
-    }
-
-    // Position above the selection
-    setPos({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 8,
-    });
-
-    // Check active states
+    setPos({ x: rect.left + rect.width / 2, y: rect.top - 8 });
     setActive({
       bold: document.queryCommandState("bold"),
       italic: document.queryCommandState("italic"),
       strikethrough: document.queryCommandState("strikeThrough"),
-      underline: document.queryCommandState("underline"),
+      ul: document.queryCommandState("insertUnorderedList"),
+      ol: document.queryCommandState("insertOrderedList"),
+      code: !!el?.closest("code"),
     });
+
+    const block = document.queryCommandValue("formatBlock").toLowerCase().replace(/[<>]/g, "");
+    if (block && /^h[1-6]$|^p$|^blockquote$/.test(block)) {
+      setBlockType(block);
+    } else {
+      const heading = el?.closest("h1,h2,h3,h4,h5,h6,blockquote,p,li");
+      if (heading) {
+        const tag = heading.tagName.toLowerCase();
+        setBlockType(tag === "li" ? "p" : tag);
+      }
+    }
   }, [containerRef]);
 
   useEffect(() => {
@@ -61,97 +51,123 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
     return () => document.removeEventListener("selectionchange", updateToolbar);
   }, [updateToolbar]);
 
-  // Hide on scroll
   useEffect(() => {
-    const container = containerRef.current?.closest(".overflow-auto");
-    if (!container) return;
-    const onScroll = () => setPos(null);
-    container.addEventListener("scroll", onScroll);
-    return () => container.removeEventListener("scroll", onScroll);
+    const scroller = containerRef.current?.closest(".overflow-auto");
+    if (!scroller) return;
+    const hide = () => setPos(null);
+    scroller.addEventListener("scroll", hide);
+    return () => scroller.removeEventListener("scroll", hide);
   }, [containerRef]);
 
   const exec = useCallback((cmd: string, value?: string) => {
     document.execCommand(cmd, false, value);
-    // Re-focus the editable area
     containerRef.current?.querySelector("article")?.focus();
     updateToolbar();
   }, [containerRef, updateToolbar]);
 
-  const toggleHeading = useCallback((level: number) => {
+  const fmtBlock = useCallback((tag: string) => {
     const sel = window.getSelection();
     if (!sel || !sel.rangeCount) return;
     const node = sel.anchorNode;
     const block = node instanceof HTMLElement ? node : node?.parentElement;
-    const heading = block?.closest("h1,h2,h3,h4,h5,h6");
-
-    if (heading && heading.tagName === `H${level}`) {
-      // Remove heading — convert to paragraph
+    const heading = block?.closest("h1,h2,h3,h4,h5,h6,blockquote");
+    if (heading && heading.tagName.toLowerCase() === tag) {
       document.execCommand("formatBlock", false, "p");
     } else {
-      document.execCommand("formatBlock", false, `h${level}`);
-    }
-    updateToolbar();
-  }, [updateToolbar]);
-
-  const insertLink = useCallback(() => {
-    const url = prompt("URL:");
-    if (url) {
-      document.execCommand("createLink", false, url);
+      document.execCommand("formatBlock", false, tag);
     }
     updateToolbar();
   }, [updateToolbar]);
 
   if (!pos) return null;
 
-  const btnClass = "px-2 py-1.5 rounded text-xs font-medium transition-colors hover:bg-[var(--accent-dim)]";
-  const activeClass = "bg-[var(--accent-dim)] text-[var(--accent)]";
+  const I = 14;
+  const b = "w-7 h-7 flex items-center justify-center rounded transition-colors hover:bg-[var(--accent-dim)] hover:text-[var(--accent)] shrink-0";
+  const on = "bg-[var(--accent-dim)] text-[var(--accent)]";
+  const sep = <div className="w-px h-5 shrink-0 mx-0.5" style={{ background: "var(--border)" }} />;
+
+  // Clamp position so toolbar doesn't overflow viewport
+  const clampedX = Math.max(200, Math.min(pos.x, window.innerWidth - 200));
 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 flex items-center gap-0.5 px-1 py-0.5 rounded-lg shadow-xl border"
+      className="fixed z-50 flex flex-wrap items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-xl border max-w-[90vw]"
       style={{
-        left: pos.x,
-        top: pos.y,
+        left: clampedX, top: pos.y,
         transform: "translate(-50%, -100%)",
-        background: "var(--surface)",
-        borderColor: "var(--border)",
+        background: "var(--surface)", borderColor: "var(--border)",
         boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
       }}
-      onMouseDown={(e) => e.preventDefault()} // prevent blur
+      onMouseDown={(e) => e.preventDefault()}
     >
-      {/* Text style — compact for floating context */}
-      <button className={`${btnClass} ${active.bold ? activeClass : ""}`} onClick={() => exec("bold")} title="Bold" style={{ fontWeight: 700 }}>B</button>
-      <button className={`${btnClass} ${active.italic ? activeClass : ""}`} onClick={() => exec("italic")} title="Italic" style={{ fontStyle: "italic" }}>I</button>
-      <button className={`${btnClass} ${active.underline ? activeClass : ""}`} onClick={() => exec("underline")} title="Underline" style={{ textDecoration: "underline" }}>U</button>
-      <button className={`${btnClass} ${active.strikethrough ? activeClass : ""}`} onClick={() => exec("strikeThrough")} title="Strikethrough" style={{ textDecoration: "line-through" }}>S</button>
-      <button className={`${btnClass} font-mono text-[10px]`} onClick={() => {
-        const sel = window.getSelection();
-        if (sel && !sel.isCollapsed && sel.rangeCount) {
-          const range = sel.getRangeAt(0);
-          const code = document.createElement("code");
-          range.surroundContents(code);
-        }
-      }} title="Inline code">&lt;/&gt;</button>
-
-      <div className="w-px h-5 mx-0.5" style={{ background: "var(--border)" }} />
+      {/* Undo / Redo */}
+      <button className={b} onClick={() => exec("undo")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+      </button>
+      <button className={b} onClick={() => exec("redo")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+      </button>
+      {sep}
 
       {/* Headings */}
-      <button className={btnClass} onClick={() => toggleHeading(1)} title="Heading 1">H1</button>
-      <button className={btnClass} onClick={() => toggleHeading(2)} title="Heading 2">H2</button>
-      <button className={btnClass} onClick={() => toggleHeading(3)} title="Heading 3">H3</button>
+      <button className={`${b} ${blockType === "h1" ? on : ""}`} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></button>
+      <button className={`${b} ${blockType === "h2" ? on : ""}`} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></button>
+      <button className={`${b} ${blockType === "h3" ? on : ""}`} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></button>
+      <button className={`${b} ${blockType === "h4" ? on : ""}`} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></button>
+      <button className={`${b} ${blockType === "h5" ? on : ""}`} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></button>
+      <button className={`${b} ${blockType === "h6" ? on : ""}`} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></button>
+      <button className={`${b} ${blockType === "p" ? on : ""}`} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></button>
+      {sep}
 
-      <div className="w-px h-5 mx-0.5" style={{ background: "var(--border)" }} />
+      {/* Inline */}
+      <button className={`${b} ${active.bold ? on : ""}`} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></button>
+      <button className={`${b} ${active.italic ? on : ""}`} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></button>
+      <button className={`${b} ${active.strikethrough ? on : ""}`} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></button>
+      <button className={`${b} ${active.code ? on : ""}`} onClick={() => {
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed && sel.rangeCount) {
+          try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
+        }
+      }}><span className="font-mono text-[10px]">{`</>`}</span></button>
+      {sep}
 
-      {/* Link & Color */}
-      <button className={btnClass} onClick={insertLink} title="Link">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6.5 9.5l3-3M7 11l-1.5 1.5a2.12 2.12 0 01-3-3L4 8m5-1l1.5-1.5a2.12 2.12 0 013 3L12 10" strokeLinecap="round"/></svg>
+      {/* Lists */}
+      <button className={`${b} ${active.ul ? on : ""}`} onClick={() => exec("insertUnorderedList")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
       </button>
-      <button className={btnClass} onClick={() => exec("hiliteColor", "rgba(251,146,60,0.2)")} title="Highlight">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="var(--accent)" opacity="0.6"><rect x="1" y="10" width="14" height="4" rx="1"/></svg>
+      <button className={`${b} ${active.ol ? on : ""}`} onClick={() => exec("insertOrderedList")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
       </button>
-      <button className={btnClass} onClick={() => exec("removeFormat")} title="Clear formatting">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 3h8l-3 10M2 13l12-10"/></svg>
+      <button className={b} onClick={() => exec("indent")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+      </button>
+      <button className={b} onClick={() => exec("outdent")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+      </button>
+      {sep}
+
+      {/* Block */}
+      <button className={`${b} ${blockType === "blockquote" ? on : ""}`} onClick={() => fmtBlock("blockquote")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+      </button>
+      <button className={b} onClick={() => exec("insertHorizontalRule")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </button>
+      {sep}
+
+      {/* Link, Image */}
+      <button className={b} onClick={() => { const u = prompt("URL:"); if (u) exec("createLink", u); }}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
+      </button>
+      <button className={b} onClick={() => { const u = prompt("Image URL:"); if (u) exec("insertImage", u); }}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      {sep}
+
+      {/* Clear */}
+      <button className={b} onClick={() => exec("removeFormat")}>
+        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
       </button>
     </div>
   );
