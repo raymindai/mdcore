@@ -499,9 +499,14 @@ function TBtn({ tip, active, onClick, children }: {
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert }: { onInsert: (type: "table" | "code" | "math" | "mermaid") => void }) {
+function WysiwygToolbar({ onInsert, onInsertTable }: {
+  onInsert: (type: "code" | "math" | "mermaid") => void;
+  onInsertTable: (cols: number, rows: number) => void;
+}) {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
+  const [showTableGrid, setShowTableGrid] = useState(false);
+  const [tableHover, setTableHover] = useState({ col: 0, row: 0 });
 
   useEffect(() => {
     const update = () => {
@@ -603,9 +608,44 @@ function WysiwygToolbar({ onInsert }: { onInsert: (type: "table" | "code" | "mat
       </TBtn>
       {sep}
       {/* Insert special elements */}
-      <TBtn tip="Insert table" onClick={() => onInsert("table")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
-      </TBtn>
+      {/* Table grid picker */}
+      <div className="relative" onMouseLeave={() => setShowTableGrid(false)}>
+        <TBtn tip="Insert table" onClick={() => setShowTableGrid(v => !v)}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
+        </TBtn>
+        {showTableGrid && (
+          <div className="absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl z-50"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}
+            onMouseDown={(e) => e.preventDefault()}>
+            <div className="text-[10px] mb-1.5 text-center" style={{ color: "var(--text-muted)" }}>
+              {tableHover.col > 0 ? `${tableHover.col} x ${tableHover.row}` : "Select size"}
+            </div>
+            <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+              {Array.from({ length: 36 }, (_, i) => {
+                const col = (i % 6) + 1;
+                const row = Math.floor(i / 6) + 1;
+                const isActive = col <= tableHover.col && row <= tableHover.row;
+                return (
+                  <div
+                    key={i}
+                    className="w-4 h-4 rounded-sm border cursor-pointer transition-colors"
+                    style={{
+                      borderColor: isActive ? "var(--accent)" : "var(--border-dim)",
+                      background: isActive ? "var(--accent-dim)" : "transparent",
+                    }}
+                    onMouseEnter={() => setTableHover({ col, row })}
+                    onClick={() => {
+                      onInsertTable(col, row);
+                      setShowTableGrid(false);
+                      setTableHover({ col: 0, row: 0 });
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
       <TBtn tip="Insert code block" onClick={() => onInsert("code")}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4"/></svg>
       </TBtn>
@@ -1259,11 +1299,12 @@ export default function MdEditor() {
     // Double-click → code block modal / special elements
     const handleDblClick = (e: Event) => {
       const target = e.target as HTMLElement;
-      // Already in edit mode — let native text selection work
-      if (target.closest("[contenteditable=true]")) return;
+      // Only handle double-click on non-editable islands (code, table, mermaid, math)
+      const nonEditable = target.closest("[contenteditable=false]");
+      if (!nonEditable) return; // inside editable content — let native dblclick work
       // Skip table cells — handled by handleTableDblClick
       if (target.closest("td,th,table")) return;
-      // Skip mermaid, math
+      // Skip mermaid, math — handled separately
       if (target.closest(".mermaid-container,.math-rendered")) return;
 
       // Code block → mini editor modal
@@ -2001,16 +2042,24 @@ export default function MdEditor() {
   }, [handleShare, handleCopyHtml, undo, redo]);
 
   // Insert special blocks (table, code, math, mermaid)
-  const handleInsertBlock = useCallback((type: "table" | "code" | "math" | "mermaid") => {
+  const handleInsertTable = useCallback((cols: number, rows: number) => {
+    const md = markdownRef.current;
+    const suffix = md.endsWith("\n") ? "\n" : "\n\n";
+    const header = "| " + Array.from({ length: cols }, (_, i) => `Column ${i + 1}`).join(" | ") + " |";
+    const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
+    const row = "| " + Array.from({ length: cols }, () => "cell").join(" | ") + " |";
+    const tableRows = Array.from({ length: rows }, () => row).join("\n");
+    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n`;
+    setMarkdown(newMd);
+    doRender(newMd);
+  }, [doRender, setMarkdown]);
+
+  const handleInsertBlock = useCallback((type: "code" | "math" | "mermaid") => {
     const md = markdownRef.current;
     const suffix = md.endsWith("\n") ? "\n" : "\n\n";
     let insert = "";
 
     switch (type) {
-      case "table":
-        // Insert 3x3 default table — user can add/remove rows/cols via right-click menu
-        insert = `${suffix}| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n|  |  |  |\n`;
-        break;
       case "code":
         // Insert code block with placeholder — double-click to edit in modal
         insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n`;
@@ -2582,7 +2631,7 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            <WysiwygToolbar onInsert={handleInsertBlock} />
+            <WysiwygToolbar onInsert={handleInsertBlock} onInsertTable={handleInsertTable} />
             <div className="flex-1 overflow-auto" ref={previewRef}>
               <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
@@ -2906,6 +2955,32 @@ export default function MdEditor() {
               boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
             }}
           >
+            {/* Diagram type selector */}
+            <div className="flex items-center gap-1 px-3 py-2 text-[11px] shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+              <span className="mr-2 font-medium" style={{ color: "var(--text-muted)" }}>Type:</span>
+              {[
+                { label: "Flowchart", code: "graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E" },
+                { label: "Sequence", code: "sequenceDiagram\n    participant A as User\n    participant B as System\n    A->>B: Request\n    B-->>A: Response" },
+                { label: "Pie", code: "pie title Distribution\n    \"A\" : 40\n    \"B\" : 30\n    \"C\" : 30" },
+                { label: "Mindmap", code: "mindmap\n  root((Topic))\n    Branch 1\n      Sub 1\n    Branch 2\n      Sub 2" },
+                { label: "Timeline", code: "timeline\n    title Timeline\n    2024 : Phase 1\n    2025 : Phase 2\n    2026 : Phase 3" },
+                { label: "Class", code: "classDiagram\n    class Animal {\n        +String name\n        +move()\n    }\n    class Dog {\n        +bark()\n    }\n    Animal <|-- Dog" },
+                { label: "State", code: "stateDiagram-v2\n    [*] --> Idle\n    Idle --> Active: start\n    Active --> Idle: stop\n    Active --> [*]: done" },
+                { label: "ER", code: "erDiagram\n    USER ||--o{ ORDER : places\n    ORDER ||--|{ LINE_ITEM : contains" },
+              ].map(({ label, code }) => (
+                <button
+                  key={label}
+                  onClick={() => setCanvasMermaid(code)}
+                  className="px-2 py-1 rounded-md transition-colors"
+                  style={{
+                    background: canvasMermaid?.startsWith(code.split("\n")[0]) ? "var(--accent-dim)" : "var(--toggle-bg)",
+                    color: canvasMermaid?.startsWith(code.split("\n")[0]) ? "var(--accent)" : "var(--text-muted)",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <MdCanvas
               initialMermaid={canvasMermaid}
               onCancel={() => {
