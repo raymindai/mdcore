@@ -855,20 +855,34 @@ export default function MdCanvas({
           <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--accent)" }}>
             Mermaid Diagrams
           </span>
-          {/* Diagram type selector — all supported types */}
+          {/* Diagram type selector — all supported types, full names */}
           {DIAGRAM_TYPES.map((dt) => {
             const currentType = rawCodeMode ? detectDiagramType(rawCode) : "flowchart";
             return (
               <button
                 key={dt.id}
-                onClick={() => { setRawCode(dt.template); setRawCodeMode(true); }}
-                className="px-1.5 py-0.5 rounded-md text-[10px] font-mono transition-colors"
+                onClick={() => {
+                  if (dt.id === "flowchart") {
+                    // Flowchart uses the canvas editor
+                    const result = mermaidToCanvas(dt.template);
+                    if (result) {
+                      setNodes(result.nodes);
+                      setEdges(result.edges);
+                      setDirection((result.direction === "TD" || result.direction === "LR") ? result.direction : "LR");
+                    }
+                    setRawCodeMode(false);
+                  } else {
+                    setRawCode(dt.template);
+                    setRawCodeMode(true);
+                  }
+                }}
+                className="px-1.5 py-0.5 rounded-md text-[10px] transition-colors whitespace-nowrap"
                 style={{
                   background: currentType === dt.id ? "var(--accent-dim)" : "var(--toggle-bg)",
                   color: currentType === dt.id ? "var(--accent)" : "var(--text-muted)",
                 }}
               >
-                {dt.icon}
+                {dt.label}
               </button>
             );
           })}

@@ -445,33 +445,11 @@ function EntityRelEditor({ code, onChange, config }: EditorProps & {
 
 export function DiagramFormEditor({ code, onChange }: EditorProps) {
   const type = detectDiagramType(code);
-  const [showTypePicker, setShowTypePicker] = React.useState(false);
+  // showTypePicker removed — handled by header type selector
 
   const wrapper = (children: React.ReactNode) => (
     <div className="p-5 space-y-5 overflow-auto">
-      {/* Type switcher */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setShowTypePicker(!showTypePicker)}
-          className="text-[10px] px-2 py-1 rounded font-mono"
-          style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
-        >
-          Switch type
-        </button>
-        {showTypePicker && (
-          <div className="flex gap-1 flex-wrap">
-            {DIAGRAM_TYPES.filter(dt => dt.id !== type).map(dt => (
-              <button key={dt.id}
-                onClick={() => { onChange(dt.template); setShowTypePicker(false); }}
-                className="text-[10px] px-2 py-1 rounded"
-                style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}
-              >
-                {dt.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Type switcher removed — handled by header type selector */}
       {children}
     </div>
   );
