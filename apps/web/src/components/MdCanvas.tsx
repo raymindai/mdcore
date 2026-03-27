@@ -865,24 +865,23 @@ export default function MdCanvas({
     const dy = targetY - cy;
     if (dx === 0 && dy === 0) return { x: cx, y: cy - dims.h / 2 };
 
+    const pad = 8; // padding so line clearly starts outside the shape
     if (node.shape === "circle") {
-      // Circle: intersection with circle boundary
-      const r = dims.w / 2 + 2; // small padding
+      const r = dims.w / 2 + pad;
       const dist = Math.sqrt(dx * dx + dy * dy);
       return { x: cx + (dx / dist) * r, y: cy + (dy / dist) * r };
     }
     if (node.shape === "diamond") {
-      // Diamond: intersection with rotated square (diamond shape)
-      const half = dims.w / 2 + 2;
+      const half = dims.w / 2 + pad;
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
       const scale = (absDx + absDy) / half;
       if (scale === 0) return { x: cx, y: cy - half };
       return { x: cx + dx / scale, y: cy + dy / scale };
     }
-    // Rectangle (round, square): intersection with rectangle boundary
-    const hw = dims.w / 2 + 2;
-    const hh = dims.h / 2 + 2;
+    // Rectangle (round, square)
+    const hw = dims.w / 2 + pad;
+    const hh = dims.h / 2 + pad;
     const scaleX = Math.abs(dx) / hw;
     const scaleY = Math.abs(dy) / hh;
     const scale = Math.max(scaleX, scaleY);
@@ -1215,8 +1214,8 @@ export default function MdCanvas({
 
           {connectState && (
             <line
-              x1={getNodeCenter(connectState.fromId).x}
-              y1={getNodeCenter(connectState.fromId).y}
+              x1={getNodeEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).x}
+              y1={getNodeEdgePoint(connectState.fromId, connectState.mouseX, connectState.mouseY).y}
               x2={connectState.mouseX} y2={connectState.mouseY}
               stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="6 3"
               markerEnd="url(#arr-accent)"
