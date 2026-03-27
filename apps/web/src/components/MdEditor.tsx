@@ -714,7 +714,7 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(200);
   const isDraggingSidebar = useRef(false);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
-  const splitPercentRef = useRef(50);
+  const splitPercentRef = useRef(60);
   const isDraggingSplit = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -2090,12 +2090,29 @@ export default function MdEditor() {
             <span style={{ color: "var(--text-muted)" }}>.cc</span>
           </h1>
           {title && (
-            <span
-              className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline truncate max-w-[200px]"
+            <button
+              className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline hover:text-[var(--accent)] transition-colors"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
+              onClick={() => {
+                const newName = prompt("Document name:", title);
+                if (newName !== null && newName.trim()) {
+                  const trimmed = newName.trim();
+                  setTitle(trimmed);
+                  setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: trimmed } : t));
+                  const md = markdownRef.current;
+                  const lines = md.split("\n");
+                  const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
+                  if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
+                  else { lines.unshift(`# ${trimmed}`, ""); }
+                  const newMd = lines.join("\n");
+                  setMarkdown(newMd);
+                  doRender(newMd);
+                }
+              }}
+              title="Click to rename"
             >
               {title}
-            </span>
+            </button>
           )}
           {isSharedDoc && (
             <span
@@ -2113,9 +2130,25 @@ export default function MdEditor() {
           {/* View mode toggle — layout icons with instant tooltips */}
           <div className="flex items-center gap-1">
             {([
-              { mode: "editor" as ViewMode, tip: "Markdown only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/></svg> },
-              { mode: "split" as ViewMode, tip: "Render + Markdown (Cmd+\\)", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="8" y1="0" x2="8" y2="12"/></svg> },
-              { mode: "preview" as ViewMode, tip: "Render only", icon: <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1"><rect x=".5" y=".5" width="15" height="11" rx="1"/><line x1="4" y1="4" x2="12" y2="4" strokeWidth=".8"/><line x1="4" y1="6.5" x2="10" y2="6.5" strokeWidth=".8"/><line x1="4" y1="9" x2="8" y2="9" strokeWidth=".8"/></svg> },
+              { mode: "editor" as ViewMode, tip: "Source MD only", icon: (
+                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                  <path d="M4 4l-1.5 2L4 8M12 4l1.5 2L12 8M7 9l2-6" strokeWidth=".9" strokeLinecap="round"/>
+                </svg>
+              )},
+              { mode: "split" as ViewMode, tip: "Beautified + Source (Cmd+\\)", icon: (
+                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                  <line x1="9.5" y1="1" x2="9.5" y2="11"/>
+                  <line x1="3" y1="4" x2="7" y2="4" strokeWidth=".8"/><line x1="3" y1="6" x2="6" y2="6" strokeWidth=".8"/><line x1="3" y1="8" x2="7.5" y2="8" strokeWidth=".8"/>
+                </svg>
+              )},
+              { mode: "preview" as ViewMode, tip: "Beautified MD only", icon: (
+                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                  <line x1="4" y1="3.5" x2="12" y2="3.5" strokeWidth=".8"/><line x1="4" y1="6" x2="10" y2="6" strokeWidth=".8"/><line x1="4" y1="8.5" x2="11" y2="8.5" strokeWidth=".8"/>
+                </svg>
+              )},
             ]).map(({ mode, tip, icon }) => (
               <div key={mode} className="relative group">
                 <button
@@ -2239,10 +2272,12 @@ export default function MdEditor() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="px-2 h-6 rounded-md transition-colors font-mono flex items-center"
+                className="px-1.5 h-6 rounded-md transition-colors flex items-center"
                 style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
-                ···
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/>
+                </svg>
               </button>
               {showMenu && (
                 <div
@@ -2418,7 +2453,7 @@ export default function MdEditor() {
             className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
           >
-            <span style={{ color: "var(--accent)" }}>Documents</span>
+            <span style={{ color: "var(--accent)" }}>MD Files</span>
             <button
               onClick={addTab}
               className="text-[10px] px-1.5 py-0.5 rounded"
@@ -2518,18 +2553,38 @@ export default function MdEditor() {
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span style={{ color: "var(--accent)" }}>Render</span>
-              <div className="flex items-center gap-2">
+              <span style={{ color: "var(--accent)" }}>Beautified MD</span>
+              <div className="flex items-center gap-1.5 normal-case">
                 {isSharedDoc && (
-                  <button
-                    onClick={handleEditShared}
-                    className="transition-colors normal-case"
-                    style={{ color: "var(--accent)", opacity: 0.7 }}
-                  >
-                    Edit →
-                  </button>
+                  <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
                 )}
-                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>click to edit</span>
+                {/* AI Render toggle — compact */}
+                <button
+                  onClick={toggleDiagramMode}
+                  className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors"
+                  style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="3" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="12" cy="13" r="2"/><path d="M8 5v3M6.5 9.5L4.5 11M9.5 9.5l2 2"/></svg>
+                  <span>AI</span>
+                </button>
+                {/* Export dropdown */}
+                <div className="relative group">
+                  <button className="hidden sm:flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors" style={{ color: "var(--text-faint)" }}>
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 2v8M4 6l4 4 4-4M3 12h10"/></svg>
+                    <span>Export</span>
+                  </button>
+                  <div className="absolute top-full right-0 mt-1 w-44 rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
+                    {[
+                      { label: "PDF (Print)", action: handleExportPdf },
+                      { label: "Copy as HTML", action: handleCopyHtml },
+                      { label: "Copy for Docs/Email", action: handleCopyRichText },
+                      { label: "Copy for Slack", action: handleCopySlack },
+                    ].map(({ label, action }) => (
+                      <button key={label} onClick={action} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>{label}</button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
@@ -2611,8 +2666,27 @@ export default function MdEditor() {
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-wider"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span style={{ color: "var(--accent)" }}>Markdown</span>
-              <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>source</span>
+              <div className="flex items-center gap-1.5">
+                <span style={{ color: "var(--accent)" }}>Source MD</span>
+                {/* Syntax hints */}
+                <span className="hidden sm:inline" style={{ color: "var(--text-faint)" }}>{flavor}{Object.entries(flavorDetails).filter(([,v])=>v).map(([k])=> ` +${k}`).join("")}</span>
+              </div>
+              <div className="flex items-center gap-1 normal-case">
+                {/* Copy raw MD */}
+                <div className="relative group">
+                  <button onClick={() => { navigator.clipboard.writeText(markdownRef.current); }} className="p-0.5 rounded transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-faint)" }}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy MD</div>
+                </div>
+                {/* Download .md */}
+                <div className="relative group">
+                  <button onClick={handleDownloadMd} className="p-0.5 rounded transition-colors hover:text-[var(--accent)]" style={{ color: "var(--text-faint)" }}>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download .md</div>
+                </div>
+              </div>
             </div>
             <div
               ref={editorContainerRef}
@@ -2674,14 +2748,17 @@ export default function MdEditor() {
             </div>
           </div>
           <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>RUST+WASM</span>
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
               Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
             </div>
           </div>
           <div className="relative group hidden sm:block">
-            <span style={{ color: "var(--text-faint)" }}>{renderTime.toFixed(0)}ms</span>
+            <span className="flex items-center gap-0.5" style={{ color: "var(--accent)" }}>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M9 1L4 9h4l-1 6 5-8H8l1-6z"/></svg>
+              {renderTime.toFixed(0)}ms
+            </span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
               WASM engine render time
