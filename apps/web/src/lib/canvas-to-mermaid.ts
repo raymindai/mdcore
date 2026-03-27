@@ -306,13 +306,45 @@ function autoLayout(nodes: CanvasNode[], edges: CanvasEdge[], direction: Directi
   for (const node of nodes) {
     if (!positioned.has(node.id)) {
       if (isHorizontal) {
-        node.x = 40;
-        node.y = 40 + globalCrossOffset * GAP_CROSS;
+        node.x = 80;
+        node.y = 80 + globalCrossOffset * GAP_CROSS;
       } else {
-        node.x = 40 + globalCrossOffset * GAP_CROSS;
-        node.y = 40;
+        node.x = 80 + globalCrossOffset * GAP_CROSS;
+        node.y = 80;
       }
       globalCrossOffset++;
+    }
+  }
+
+  // Fix merge nodes (nodes with multiple parents): center between parents
+  // and place one level below the deepest parent
+  const parentMap = new Map<string, string[]>();
+  for (const e of edges) {
+    const parents = parentMap.get(e.to) || [];
+    parents.push(e.from);
+    parentMap.set(e.to, parents);
+  }
+
+  for (const node of nodes) {
+    const parents = parentMap.get(node.id);
+    if (!parents || parents.length < 2) continue;
+
+    // This is a merge node — center it between its parents
+    const parentNodes = parents.map(pid => nodeMap.get(pid)).filter(Boolean) as CanvasNode[];
+    if (parentNodes.length < 2) continue;
+
+    if (isHorizontal) {
+      // Center vertically between parents, one step after deepest parent
+      const minY = Math.min(...parentNodes.map(p => p.y));
+      const maxY = Math.max(...parentNodes.map(p => p.y));
+      node.y = (minY + maxY) / 2;
+      node.x = Math.max(...parentNodes.map(p => p.x)) + GAP_MAIN;
+    } else {
+      // Center horizontally between parents, one step below deepest parent
+      const minX = Math.min(...parentNodes.map(p => p.x));
+      const maxX = Math.max(...parentNodes.map(p => p.x));
+      node.x = (minX + maxX) / 2;
+      node.y = Math.max(...parentNodes.map(p => p.y)) + GAP_MAIN;
     }
   }
 }
