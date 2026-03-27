@@ -883,11 +883,30 @@ export default function MdCanvas({
       return { x: r.cx + dx / scale, y: r.cy + dy / scale };
     }
 
-    // Rectangle (round, square): ray-rect intersection
+    // Rectangle: ray-rect intersection
     const scaleX = Math.abs(dx) > 0 ? r.hw / Math.abs(dx) : Infinity;
     const scaleY = Math.abs(dy) > 0 ? r.hh / Math.abs(dy) : Infinity;
     const s = Math.min(scaleX, scaleY);
-    return { x: r.cx + dx * s, y: r.cy + dy * s };
+    let px = r.cx + dx * s;
+    let py = r.cy + dy * s;
+
+    // For "round" shape: adjust corner points inward along the border-radius curve
+    if (node.shape === "round") {
+      const br = 20; // border-radius
+      const cornerX = r.cx + (r.hw - br) * Math.sign(dx);
+      const cornerY = r.cy + (r.hh - br) * Math.sign(dy);
+      // Check if point is in a corner region
+      if (Math.abs(px - r.cx) > r.hw - br && Math.abs(py - r.cy) > r.hh - br) {
+        // Point is in rounded corner — project onto circle arc
+        const cdx = px - cornerX, cdy = py - cornerY;
+        const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+        if (cdist > 0) {
+          px = cornerX + (cdx / cdist) * br;
+          py = cornerY + (cdy / cdist) * br;
+        }
+      }
+    }
+    return { x: px, y: py };
   };
 
   return (
