@@ -542,10 +542,12 @@ function TBtn({ tip, active, onClick, children }: {
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup }: {
+function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert }: {
   onInsert: (type: "code" | "math" | "mermaid") => void;
   onInsertTable: (cols: number, rows: number) => void;
   onInputPopup: (config: { label: string; onSubmit: (v: string) => void }) => void;
+  cmWrap: (prefix: string, suffix?: string) => void;
+  cmInsert: (text: string) => void;
 }) {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
@@ -596,12 +598,59 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup }: {
     return () => document.removeEventListener("selectionchange", update);
   }, []);
 
-  const exec = (cmd: string, value?: string) => document.execCommand(cmd, false, value);
-  const fmtBlock = (tag: string) => document.execCommand("formatBlock", false, tag);
+  // Detect if focus is in Source MD (CM6) or Beautified MD (contentEditable)
+  const isInCM6 = () => !!document.activeElement?.closest(".cm-editor");
+
+  // Smart exec: routes to execCommand (Beautified) or CM6 wrap (Source)
+  const exec = (cmd: string, value?: string) => {
+    if (isInCM6()) {
+      const mdMap: Record<string, [string, string?]> = {
+        bold: ["**"],
+        italic: ["*"],
+        strikeThrough: ["~~"],
+        insertUnorderedList: ["- "],
+        insertOrderedList: ["1. "],
+      };
+      if (cmd === "createLink" && value) {
+        cmWrap("[", `](${value})`);
+      } else if (cmd === "insertImage" && value) {
+        cmWrap("![", `](${value})`);
+      } else {
+        const wrap = mdMap[cmd];
+        if (wrap) {
+          if (cmd === "insertUnorderedList" || cmd === "insertOrderedList") {
+            cmInsert(wrap[0]);
+          } else {
+            cmWrap(wrap[0], wrap[1]);
+          }
+        }
+      }
+    } else {
+      document.execCommand(cmd, false, value);
+    }
+  };
+
+  const fmtBlock = (tag: string) => {
+    if (isInCM6()) {
+      const prefixMap: Record<string, string> = {
+        h1: "# ", h2: "## ", h3: "### ", h4: "#### ", h5: "##### ", h6: "###### ",
+        p: "", blockquote: "> ",
+      };
+      const prefix = prefixMap[tag];
+      if (prefix !== undefined) cmInsert(prefix);
+    } else {
+      document.execCommand("formatBlock", false, tag);
+    }
+  };
+
   const wrapCode = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
-    try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
+    if (isInCM6()) {
+      cmWrap("`");
+    } else {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
+    }
   };
 
   const sep = <div className="w-px h-5 shrink-0 mx-0.5" style={{ background: "var(--border-dim)" }} />;
@@ -837,6 +886,8 @@ export default function MdEditor() {
     scrollToLine: cmScrollToLine,
     setSelection: cmSetSelection,
     refresh: cmRefresh,
+    wrapSelection: cmWrapSelection,
+    insertAtCursor: cmInsertAtCursor,
   } = useCodeMirror({
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
@@ -2519,6 +2570,14 @@ export default function MdEditor() {
         </div>
       </header>
 
+      {/* Formatting toolbar — works for both Beautified MD and Source MD */}
+      <WysiwygToolbar
+        onInsert={handleInsertBlock}
+        onInsertTable={handleInsertTable}
+        onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
+        cmWrap={cmWrapSelection}
+        cmInsert={cmInsertAtCursor}
+      />
 
       {/* AI conversation banner */}
       {showAiBanner && (
@@ -2786,7 +2845,7 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            <WysiwygToolbar onInsert={handleInsertBlock} onInsertTable={handleInsertTable} onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })} />
+            {/* Toolbar moved to main layout between header and content */}
             <div className="flex-1 overflow-auto" ref={previewRef} onClick={(e) => {
               // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {

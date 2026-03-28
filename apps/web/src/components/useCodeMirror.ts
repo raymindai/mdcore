@@ -106,6 +106,8 @@ export interface UseCodeMirrorReturn {
   setSelection: (from: number, to: number) => void;
   getCursorPos: () => number;
   refresh: () => void;
+  wrapSelection: (prefix: string, suffix?: string) => void;
+  insertAtCursor: (text: string) => void;
 }
 
 export function useCodeMirror({
@@ -250,6 +252,37 @@ export function useCodeMirror({
     viewRef.current?.requestMeasure();
   }, []);
 
+  /** Wrap current selection with prefix/suffix (e.g. "**" for bold) */
+  const wrapSelection = useCallback((prefix: string, suffix?: string) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const s = suffix ?? prefix;
+    const { from, to } = view.state.selection.main;
+    const selected = view.state.doc.sliceString(from, to);
+    // If already wrapped, unwrap
+    if (selected.startsWith(prefix) && selected.endsWith(s)) {
+      view.dispatch({ changes: { from, to, insert: selected.slice(prefix.length, -s.length) } });
+    } else {
+      view.dispatch({
+        changes: { from, to, insert: prefix + selected + s },
+        selection: { anchor: from + prefix.length, head: to + prefix.length },
+      });
+    }
+    view.focus();
+  }, []);
+
+  /** Insert text at cursor (for block insertions like headings, lists) */
+  const insertAtCursor = useCallback((text: string) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const pos = view.state.selection.main.head;
+    const line = view.state.doc.lineAt(pos);
+    view.dispatch({
+      changes: { from: line.from, to: line.from, insert: text },
+    });
+    view.focus();
+  }, []);
+
   return {
     containerRef,
     view: viewRef.current,
@@ -260,5 +293,7 @@ export function useCodeMirror({
     setSelection,
     getCursorPos,
     refresh,
+    wrapSelection,
+    insertAtCursor,
   };
 }
