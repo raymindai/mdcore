@@ -1009,7 +1009,7 @@ export default function MdEditor() {
 
           // Toolbar: Edit | Copy
           const toolbar = document.createElement("div");
-          toolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0;opacity:0;transition:opacity 0.15s";
+          toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap;opacity:0;transition:opacity 0.15s";
 
           const btnStyle = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;border-radius:4px;cursor:pointer;line-height:14px";
 
@@ -1090,7 +1090,7 @@ export default function MdEditor() {
 
       // Toolbar at top of container (flow layout, not overlapping content)
       const toolbar = document.createElement("div");
-      toolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0;opacity:0;transition:opacity 0.15s";
+      toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap;opacity:0;transition:opacity 0.15s";
 
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
@@ -1140,7 +1140,7 @@ export default function MdEditor() {
 
           // Toolbar row at top (flow layout, not overlapping)
           const postToolbar = document.createElement("div");
-          postToolbar.style.cssText = "display:flex;justify-content:flex-end;gap:6px;padding:8px 10px 0";
+          postToolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
 
           // "Rendered" label
           const label = document.createElement("span");
