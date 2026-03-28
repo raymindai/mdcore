@@ -88,19 +88,20 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
   const sep = <div className="w-px h-5 shrink-0 mx-0.5" style={{ background: "var(--border)" }} />;
 
   // Clamp position so toolbar stays within viewport
-  const toolbarW = toolbarRef.current?.offsetWidth || 400;
+  const toolbarW = toolbarRef.current?.offsetWidth || 500;
   const toolbarH = toolbarRef.current?.offsetHeight || 40;
   const pad = 8;
-  const clampedX = Math.max(toolbarW / 2 + pad, Math.min(pos.x, window.innerWidth - toolbarW / 2 - pad));
-  const clampedY = Math.max(toolbarH + pad, pos.y); // don't go above viewport
+  // Calculate left position (no transform needed)
+  const rawLeft = pos.x - toolbarW / 2;
+  const clampedLeft = Math.max(pad, Math.min(rawLeft, window.innerWidth - toolbarW - pad));
+  const clampedTop = Math.max(pad, pos.y - toolbarH - 8);
 
   return (
     <div
       ref={toolbarRef}
       className="fixed z-[9998] flex flex-wrap items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-xl border max-w-[90vw]"
       style={{
-        left: clampedX, top: clampedY,
-        transform: "translate(-50%, -100%)",
+        left: clampedLeft, top: clampedTop,
         background: "var(--surface)", borderColor: "var(--border)",
         boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
       }}
