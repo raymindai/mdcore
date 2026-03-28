@@ -212,8 +212,9 @@ body {
   position: relative;
 }
 
-.mdcore-rendered pre:hover .code-copy-btn {
-  opacity: 1 !important;
+.mdcore-rendered .code-copy-btn:hover {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
 }
 
 .mdcore-rendered pre code {

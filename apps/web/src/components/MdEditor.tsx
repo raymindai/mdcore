@@ -763,6 +763,7 @@ export default function MdEditor() {
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
   const [initialMath, setInitialMath] = useState<string | undefined>();
+  const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [sidebarWidth, setSidebarWidth] = useState(200);
@@ -1199,7 +1200,10 @@ export default function MdEditor() {
         ev.stopPropagation();
         ev.preventDefault();
         const src = decodeURIComponent((el as HTMLElement).dataset.mathSrc || "");
+        const mode = (el as HTMLElement).dataset.mathMode;
         if (src) {
+          // Store original MD syntax for replacement
+          mathOriginalRef.current = mode === "display" ? `$$\n${src}\n$$` : `$${src}$`;
           setInitialMath(src);
           setShowMathModal(true);
         }
@@ -2063,6 +2067,7 @@ export default function MdEditor() {
         break;
       case "math":
         setInitialMath("");
+        mathOriginalRef.current = null; // new math, not editing existing
         setShowMathModal(true);
         return;
       case "mermaid":
@@ -3126,10 +3131,18 @@ export default function MdEditor() {
                 setInitialMath(undefined);
               }}
               onGenerate={(md) => {
-                const newMarkdown = markdown ? markdown + "\n\n" + md : md;
+                let newMarkdown: string;
+                if (mathOriginalRef.current && markdown.includes(mathOriginalRef.current)) {
+                  // Replace existing math expression
+                  newMarkdown = markdown.replace(mathOriginalRef.current, md);
+                } else {
+                  // Insert new
+                  newMarkdown = markdown ? markdown + "\n\n" + md + "\n" : md + "\n";
+                }
                 setMarkdown(newMarkdown);
                 doRender(newMarkdown);
                 setInitialMath(undefined);
+                mathOriginalRef.current = null;
                 setShowMathModal(false);
               }}
             />

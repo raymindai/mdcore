@@ -23,8 +23,7 @@ export function postProcessHtml(html: string): string {
   // Process KaTeX math
   result = processKatex(result);
 
-  // Add copy buttons to code blocks
-  result = addCodeCopyButtons(result);
+  // Copy buttons are now added inside highlightCode's code-header
 
   // Remove disabled from checkboxes so they're clickable
   result = result.replace(/ disabled=""/g, "");
@@ -64,8 +63,8 @@ function highlightCode(html: string): string {
           : hljs.highlightAuto(decoded).value;
         // Preserve data-sourcepos from original pre tag
         const sourcepos = preAttrs.match(/data-sourcepos="[^"]+"/)?.[0] || "";
-        const langLabel = lang ? `<span class="code-lang-label" style="position:absolute;top:6px;left:12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none;z-index:1">${lang}</span>` : "";
-        return `<pre ${sourcepos}${lang ? ` lang="${lang}"` : ""} style="position:relative">${langLabel}<code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
+        const codeHeader = `<div class="code-header" style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);border-bottom:1px solid var(--border-dim)">${lang ? `<span style="text-transform:uppercase;letter-spacing:0.5px">${lang}</span>` : '<span></span>'}<button class="code-copy-btn" onclick="navigator.clipboard.writeText(this.closest('pre').querySelector('code').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="padding:2px 8px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;font-size:10px;font-family:ui-monospace,monospace">Copy</button></div>`;
+        return `<pre ${sourcepos}${lang ? ` lang="${lang}"` : ""} style="position:relative">${codeHeader}<code class="hljs${lang ? ` language-${lang}` : ""}">${highlighted}</code></pre>`;
       } catch {
         return match;
       }
