@@ -105,6 +105,7 @@ export interface UseCodeMirrorReturn {
   scrollToLine: (line: number) => void;
   setSelection: (from: number, to: number) => void;
   getCursorPos: () => number;
+  refresh: () => void;
 }
 
 export function useCodeMirror({
@@ -245,6 +246,10 @@ export function useCodeMirror({
     return viewRef.current?.state.selection.main.head ?? 0;
   }, []);
 
+  const refresh = useCallback(() => {
+    viewRef.current?.requestMeasure();
+  }, []);
+
   return {
     containerRef,
     view: viewRef.current,
@@ -254,5 +259,6 @@ export function useCodeMirror({
     scrollToLine,
     setSelection,
     getCursorPos,
+    refresh,
   };
 }

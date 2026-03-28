@@ -791,6 +791,7 @@ export default function MdEditor() {
     setDoc: cmSetDoc,
     scrollToLine: cmScrollToLine,
     setSelection: cmSetSelection,
+    refresh: cmRefresh,
   } = useCodeMirror({
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
@@ -806,6 +807,13 @@ export default function MdEditor() {
       setViewMode("split"); // vertical split on mobile
     }
   }, [isMobile]);
+
+  // Refresh CM6 when editor pane becomes visible
+  useEffect(() => {
+    if (viewMode !== "preview") {
+      requestAnimationFrame(() => cmRefresh());
+    }
+  }, [viewMode, cmRefresh]);
 
   const renderIdRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
