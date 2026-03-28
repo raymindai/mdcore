@@ -50,6 +50,18 @@ const baseTheme = EditorView.baseTheme({
     color: "var(--text-faint)",
     fontStyle: "italic",
   },
+  // Matching word highlight (same word selected elsewhere)
+  ".cm-selectionMatch": {
+    backgroundColor: "var(--accent-dim) !important",
+  },
+  // Search match highlight
+  ".cm-searchMatch": {
+    backgroundColor: "var(--accent-dim) !important",
+    outline: "1px solid var(--accent)",
+  },
+  ".cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "var(--accent-dim) !important",
+  },
 });
 
 // Markdown-specific syntax highlighting
