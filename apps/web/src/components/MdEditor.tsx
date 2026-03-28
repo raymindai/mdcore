@@ -598,7 +598,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
     return () => document.removeEventListener("selectionchange", update);
   }, []);
 
-  // Detect if focus is in Source MD (CM6) or Beautified MD (contentEditable)
+  // Detect if focus is in SOURCE MD (CM6) or BEAUTIFIED MD (contentEditable)
   const isInCM6 = () => !!document.activeElement?.closest(".cm-editor");
 
   // Smart exec: routes to execCommand (Beautified) or CM6 wrap (Source)
@@ -1210,7 +1210,7 @@ export default function MdEditor() {
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
       btn.textContent = "Render";
-      btn.title = "Convert ASCII art to visual diagram using AI. Turn on AI ASCII Render for auto-conversion.";
+      btn.title = "Convert ASCII art to visual diagram using AI. Turn on AI ASCII RENDER for auto-conversion.";
       btn.style.cssText = `
         padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;
         background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
@@ -2353,49 +2353,33 @@ export default function MdEditor() {
           )}
         </div>
 
-        {/* Center: Layout toggle */}
-        <div className="flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+        {/* Center: Layout tabs */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-md overflow-hidden"
+          style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+        >
           {([
-            { mode: "preview" as ViewMode, tip: "Beautified MD only", icon: (
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                <line x1="4" y1="3.5" x2="12" y2="3.5" strokeWidth=".8"/><line x1="4" y1="6" x2="10" y2="6" strokeWidth=".8"/><line x1="4" y1="8.5" x2="11" y2="8.5" strokeWidth=".8"/>
-              </svg>
-            )},
-            { mode: "split" as ViewMode, tip: "Beautified + Source (Cmd+\\)", icon: (
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                <line x1="9.5" y1="1" x2="9.5" y2="11"/>
-                <line x1="3" y1="4" x2="7" y2="4" strokeWidth=".8"/><line x1="3" y1="6" x2="6" y2="6" strokeWidth=".8"/><line x1="3" y1="8" x2="7.5" y2="8" strokeWidth=".8"/>
-              </svg>
-            )},
-            { mode: "editor" as ViewMode, tip: "Source MD only", icon: (
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                <path d="M4 4l-1.5 2L4 8M12 4l1.5 2L12 8M7 9l2-6" strokeWidth=".9" strokeLinecap="round"/>
-              </svg>
-            )},
-          ]).map(({ mode, tip, icon }) => (
-            <div key={mode} className="relative group">
-              <button
-                onClick={() => setViewMode(mode)}
-                className="p-1 rounded transition-colors"
-                style={{ color: viewMode === mode ? "var(--accent)" : "var(--text-muted)", opacity: viewMode === mode ? 1 : 0.7 }}
-              >
-                {icon}
-              </button>
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                {tip}
-              </div>
-            </div>
+            { mode: "preview" as ViewMode, label: "BEAUTIFIED" },
+            { mode: "split" as ViewMode, label: "SPLIT" },
+            { mode: "editor" as ViewMode, label: "SOURCE" },
+          ]).map(({ mode, label }) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className="px-3 py-1 text-[10px] font-mono font-medium transition-colors"
+              style={{
+                background: viewMode === mode ? "var(--accent-dim)" : "transparent",
+                color: viewMode === mode ? "var(--accent)" : "var(--text-faint)",
+              }}
+            >
+              {label}
+            </button>
           ))}
-          {/* Toolbar toggle moved to Beautified MD header */}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
 
-          {/* AI Render moved to Beautified MD panel header */}
+          {/* AI Render moved to BEAUTIFIED MD panel header */}
 
           {/* Theme toggle */}
           <button
@@ -2643,7 +2627,7 @@ export default function MdEditor() {
           data-pane="sidebar"
           style={{ width: sidebarWidth, background: "var(--background)" }}
         >
-          {/* Header — toggle button + MD Files + New */}
+          {/* Header — toggle button + MD FILES + New */}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
@@ -2657,7 +2641,7 @@ export default function MdEditor() {
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
               </button>
-              <span style={{ color: "var(--accent)" }}>MD Files</span>
+              <span style={{ color: "var(--accent)" }}>MD FILES</span>
             </div>
             <button
               onClick={addTab}
@@ -2803,7 +2787,7 @@ export default function MdEditor() {
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
-              <span style={{ color: "var(--accent)" }}>Beautified MD</span>
+              <span style={{ color: "var(--accent)" }}>BEAUTIFIED MD</span>
               <div className="flex items-center gap-2 normal-case">
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
@@ -2815,21 +2799,21 @@ export default function MdEditor() {
                     className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
                     style={{ background: showToolbar ? "var(--accent-dim)" : "var(--toggle-bg)", color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
                   >
-                    <span className="text-[10px] font-medium">Toolbar</span>
+                    <span className="text-[10px] font-medium">TOOLBAR</span>
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showToolbar ? "var(--accent)" : "var(--text-faint)", opacity: showToolbar ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: showToolbar ? "translateX(11px)" : "translateX(2px)" }} />
                     </span>
                   </button>
                 </div>
-                {/* AI ASCII Render — mini toggle + hover tooltip */}
+                {/* AI ASCII RENDER — mini toggle + hover tooltip */}
                 <div className="relative group hidden sm:block">
                   <button
                     onClick={toggleDiagramMode}
                     className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
                   >
-                    <span className="text-[10px] font-medium">AI ASCII Render</span>
+                    <span className="text-[10px] font-medium">AI ASCII RENDER</span>
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(11px)" : "translateX(2px)" }} />
@@ -2838,9 +2822,9 @@ export default function MdEditor() {
                   <div className="absolute top-full right-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                     {diagramMode === "ai" ? (
-                      <><p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render ON</p><p>ASCII art diagrams are automatically converted to styled visuals using AI (Gemini).</p></>
+                      <><p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI ASCII RENDER ON</p><p>ASCII art diagrams are automatically converted to styled visuals using AI (Gemini).</p></>
                     ) : (
-                      <><p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render OFF</p><p>ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams.</p></>
+                      <><p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII RENDER OFF</p><p>ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams.</p></>
                     )}
                   </div>
                 </div>
@@ -2852,7 +2836,7 @@ export default function MdEditor() {
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 2v8M5 7l3 3 3-3"/></svg>
-                    <span className="text-[10px] font-medium">Export</span>
+                    <span className="text-[10px] font-medium">EXPORT</span>
                   </button>
                   {showExportMenu && (
                     <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-50"
@@ -2870,7 +2854,7 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            {/* Formatting toolbar — Beautified MD only */}
+            {/* Formatting toolbar — BEAUTIFIED MD only */}
             {showToolbar && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
@@ -2976,7 +2960,7 @@ export default function MdEditor() {
               onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5">
-                <span style={{ color: "var(--accent)" }}>Source MD</span>
+                <span style={{ color: "var(--accent)" }}>SOURCE MD</span>
                 {/* Syntax badges with hover tooltips */}
                 <div className="relative group hidden sm:block">
                   <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
@@ -3082,7 +3066,7 @@ export default function MdEditor() {
         {/* Right: stats + engine badges */}
         <div className="flex items-center gap-3 shrink-0">
           <span>{charCount.toLocaleString()} chars</span>
-          {/* Flavor badges moved to Source MD header */}
+          {/* Flavor badges moved to SOURCE MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
