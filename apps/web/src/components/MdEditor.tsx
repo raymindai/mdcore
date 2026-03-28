@@ -2830,7 +2830,9 @@ export default function MdEditor() {
                 {/* Syntax badges with hover tooltips */}
                 <div className="relative group hidden sm:block">
                   <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
-                  <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Detected Markdown flavor: {flavor}</div>
+                  <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    {{ gfm: "GitHub Flavored Markdown", commonmark: "CommonMark (standard)", obsidian: "Obsidian-flavored Markdown", mdx: "MDX (Markdown + JSX)", pandoc: "Pandoc Markdown" }[flavor] || `Markdown flavor: ${flavor}`}
+                  </div>
                 </div>
                 {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
                   <div key={key} className="relative group hidden sm:block">
