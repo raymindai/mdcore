@@ -37,10 +37,10 @@ const baseTheme = EditorView.baseTheme({
     backgroundColor: "transparent",
   },
   ".cm-selectionBackground": {
-    backgroundColor: "var(--accent-dim) !important",
+    backgroundColor: "rgba(251, 146, 60, 0.25) !important",
   },
   "&.cm-focused .cm-selectionBackground": {
-    backgroundColor: "var(--accent-dim) !important",
+    backgroundColor: "rgba(251, 146, 60, 0.3) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--accent)",
