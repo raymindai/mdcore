@@ -37,10 +37,10 @@ const baseTheme = EditorView.baseTheme({
     backgroundColor: "transparent",
   },
   ".cm-selectionBackground": {
-    backgroundColor: "rgba(251, 146, 60, 0.25) !important",
+    backgroundColor: "var(--accent-dim) !important",
   },
   "&.cm-focused .cm-selectionBackground": {
-    backgroundColor: "rgba(251, 146, 60, 0.3) !important",
+    backgroundColor: "var(--accent-dim) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--accent)",
@@ -50,9 +50,10 @@ const baseTheme = EditorView.baseTheme({
     color: "var(--text-faint)",
     fontStyle: "italic",
   },
-  // Matching word highlight (same word selected elsewhere)
+  // Matching word highlight (same word found elsewhere — subtle, distinct from selection)
   ".cm-selectionMatch": {
-    backgroundColor: "var(--accent-dim) !important",
+    backgroundColor: "rgba(255, 255, 255, 0.07) !important",
+    borderBottom: "1px solid var(--text-faint)",
   },
   // Search match highlight
   ".cm-searchMatch": {
