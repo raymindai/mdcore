@@ -2827,10 +2827,18 @@ export default function MdEditor() {
             >
               <div className="flex items-center gap-1.5">
                 <span style={{ color: "var(--accent)" }}>Source MD</span>
-                {/* Syntax badges */}
-                <span className="hidden sm:inline px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
+                {/* Syntax badges with hover tooltips */}
+                <div className="relative group hidden sm:block">
+                  <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
+                  <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Detected Markdown flavor: {flavor}</div>
+                </div>
                 {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
-                  <span key={key} className="hidden sm:inline px-1 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>+{key}</span>
+                  <div key={key} className="relative group hidden sm:block">
+                    <span className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>+{key}</span>
+                    <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      {key === "math" ? "Math equations detected (KaTeX)" : key === "mermaid" ? "Mermaid diagrams detected" : key === "wikilinks" ? "Wiki-style links detected" : key === "jsx" ? "JSX/MDX syntax detected" : `${key} detected`}
+                    </div>
+                  </div>
                 ))}
               </div>
               <div className="flex items-center gap-1.5 normal-case">
@@ -2911,13 +2919,7 @@ export default function MdEditor() {
         {/* Right: stats + engine badges */}
         <div className="flex items-center gap-3 shrink-0">
           <span>{charCount.toLocaleString()} chars</span>
-          <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Detected Markdown flavor: {flavor}
-            </div>
-          </div>
+          {/* Flavor badges moved to Source MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
