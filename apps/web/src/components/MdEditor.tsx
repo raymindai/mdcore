@@ -849,6 +849,7 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(true);
+  const [focusedPane, setFocusedPane] = useState<"beautified" | "source">("beautified");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -2592,17 +2593,6 @@ export default function MdEditor() {
         </div>
       </header>
 
-      {/* Formatting toolbar — works for both Beautified MD and Source MD */}
-      {showToolbar && (
-        <WysiwygToolbar
-          onInsert={handleInsertBlock}
-          onInsertTable={handleInsertTable}
-          onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
-          cmWrap={cmWrapSelection}
-          cmInsert={cmInsertAtCursor}
-        />
-      )}
-
       {/* AI conversation banner */}
       {showAiBanner && (
         <div
@@ -2869,8 +2859,18 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            {/* Toolbar moved to main layout between header and content */}
-            <div className="flex-1 overflow-auto" ref={previewRef} onClick={(e) => {
+            {/* Formatting toolbar — shown when this pane is focused */}
+            {showToolbar && focusedPane === "beautified" && (
+              <WysiwygToolbar
+                onInsert={handleInsertBlock}
+                onInsertTable={handleInsertTable}
+                onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
+                cmWrap={cmWrapSelection}
+                cmInsert={cmInsertAtCursor}
+              />
+            )}
+            <div className="flex-1 overflow-auto" ref={previewRef} onFocus={() => setFocusedPane("beautified")} onClick={(e) => {
+              setFocusedPane("beautified");
               // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {
                 const article = e.currentTarget.querySelector("article");
@@ -3010,9 +3010,21 @@ export default function MdEditor() {
                 </div>
               </div>
             </div>
+            {/* Formatting toolbar — shown when this pane is focused */}
+            {showToolbar && focusedPane === "source" && (
+              <WysiwygToolbar
+                onInsert={handleInsertBlock}
+                onInsertTable={handleInsertTable}
+                onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
+                cmWrap={cmWrapSelection}
+                cmInsert={cmInsertAtCursor}
+              />
+            )}
             <div
               ref={editorContainerRef}
               className="flex-1 min-h-0 overflow-hidden"
+              onFocus={() => setFocusedPane("source")}
+              onClick={() => setFocusedPane("source")}
             />
           </div>
       </div>
