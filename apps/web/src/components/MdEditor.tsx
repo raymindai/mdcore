@@ -658,7 +658,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 
   return (
     <div
-      className="flex flex-wrap items-center justify-center gap-0.5 px-2 py-0.5 shrink-0"
+      className="flex flex-wrap items-center justify-center gap-0.5 px-2 py-0.5 shrink-0 relative z-[90]"
       style={{ borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       onMouseDown={(e) => e.preventDefault()}
     >
@@ -2284,7 +2284,7 @@ export default function MdEditor() {
 
       {/* Header */}
       <header
-        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm relative"
+        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

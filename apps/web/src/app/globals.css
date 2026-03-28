@@ -928,6 +928,8 @@ textarea::selection {
   pointer-events: auto;
 }
 
+/* Z-index: nothing here, handled inline */
+
 /* ========================================
    CodeMirror 6 Integration
    ======================================== */
