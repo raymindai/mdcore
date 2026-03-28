@@ -471,6 +471,49 @@ interface Tab {
 
 let tabIdCounter = 1;
 
+// ─── Inline Input Popup (replaces prompt()) ───
+function InlineInput({ label, defaultValue, onSubmit, onCancel, position }: {
+  label: string; defaultValue?: string;
+  onSubmit: (value: string) => void; onCancel: () => void;
+  position?: { x: number; y: number };
+}) {
+  const [value, setValue] = useState(defaultValue || "");
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
+  return (
+    <div className="fixed inset-0 z-[9999]" onClick={onCancel}>
+      <div
+        className="absolute rounded-lg shadow-xl p-3 flex flex-col gap-2"
+        style={{
+          left: position?.x ?? "50%", top: position?.y ?? "50%",
+          transform: position ? "translate(-50%, 0)" : "translate(-50%, -50%)",
+          background: "var(--surface)", border: "1px solid var(--border)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 280,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <label className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{label}</label>
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && value.trim()) { onSubmit(value.trim()); }
+            if (e.key === "Escape") { onCancel(); }
+          }}
+          className="px-3 py-1.5 rounded-md text-sm outline-none"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          placeholder={label}
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={onCancel} className="px-3 py-1 text-[11px] rounded-md" style={{ color: "var(--text-muted)", background: "var(--toggle-bg)" }}>Cancel</button>
+          <button onClick={() => value.trim() && onSubmit(value.trim())} className="px-3 py-1 text-[11px] rounded-md font-medium" style={{ background: "var(--accent)", color: "#000" }}>OK</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Toolbar Button with instant tooltip ───
 function TBtn({ tip, active, onClick, children }: {
   tip: string; active?: boolean; onClick: () => void; children: React.ReactNode;
@@ -499,9 +542,10 @@ function TBtn({ tip, active, onClick, children }: {
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert, onInsertTable }: {
+function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup }: {
   onInsert: (type: "code" | "math" | "mermaid") => void;
   onInsertTable: (cols: number, rows: number) => void;
+  onInputPopup: (config: { label: string; onSubmit: (v: string) => void }) => void;
 }) {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
@@ -609,10 +653,10 @@ function WysiwygToolbar({ onInsert, onInsertTable }: {
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
       </TBtn>
       {sep}
-      <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => { const u = prompt("URL:"); if (u) exec("createLink", u); }}>
+      <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
       </TBtn>
-      <TBtn tip="Image → ![alt](url)" onClick={() => { const u = prompt("Image URL:"); if (u) exec("insertImage", u); }}>
+      <TBtn tip="Image → ![alt](url)" onClick={() => onInputPopup({ label: "Image URL", onSubmit: (u) => exec("insertImage", u) })}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </TBtn>
       {sep}
@@ -756,6 +800,7 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [showQr, setShowQr] = useState(false);
@@ -2050,8 +2095,7 @@ export default function MdEditor() {
         }
         if (e.key === "k") {
           e.preventDefault();
-          const url = prompt("URL:");
-          if (url) document.execCommand("createLink", false, url);
+          setInlineInput({ label: "URL", onSubmit: (u) => { document.execCommand("createLink", false, u); setInlineInput(null); } });
         }
       }
     };
@@ -2206,20 +2250,23 @@ export default function MdEditor() {
               className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline hover:text-[var(--accent)] transition-colors"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
               onClick={() => {
-                const newName = prompt("Document name:", title);
-                if (newName !== null && newName.trim()) {
-                  const trimmed = newName.trim();
-                  setTitle(trimmed);
-                  setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: trimmed } : t));
-                  const md = markdownRef.current;
-                  const lines = md.split("\n");
-                  const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
-                  if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
-                  else { lines.unshift(`# ${trimmed}`, ""); }
-                  const newMd = lines.join("\n");
-                  setMarkdown(newMd);
-                  doRender(newMd);
-                }
+                setInlineInput({
+                  label: "Document name",
+                  defaultValue: title,
+                  onSubmit: (trimmed) => {
+                    setTitle(trimmed);
+                    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: trimmed } : t));
+                    const md = markdownRef.current;
+                    const lines = md.split("\n");
+                    const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
+                    if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
+                    else { lines.unshift(`# ${trimmed}`, ""); }
+                    const newMd = lines.join("\n");
+                    setMarkdown(newMd);
+                    doRender(newMd);
+                    setInlineInput(null);
+                  },
+                });
               }}
               title="Click to rename"
             >
@@ -2739,7 +2786,7 @@ export default function MdEditor() {
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            <WysiwygToolbar onInsert={handleInsertBlock} onInsertTable={handleInsertTable} />
+            <WysiwygToolbar onInsert={handleInsertBlock} onInsertTable={handleInsertTable} onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })} />
             <div className="flex-1 overflow-auto" ref={previewRef} onClick={(e) => {
               // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {
@@ -2888,6 +2935,17 @@ export default function MdEditor() {
       </div>
       </div>{/* end main content wrapper */}
 
+      {/* Inline input popup (replaces all prompt() dialogs) */}
+      {inlineInput && (
+        <InlineInput
+          label={inlineInput.label}
+          defaultValue={inlineInput.defaultValue}
+          onSubmit={inlineInput.onSubmit}
+          onCancel={() => setInlineInput(null)}
+          position={inlineInput.position}
+        />
+      )}
+
       {/* Footer — Left: Help + links, Right: stats + badges */}
       <footer
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
@@ -2969,26 +3027,25 @@ export default function MdEditor() {
             { label: "Rename", action: () => {
               const tab = tabs.find(t => t.id === docContextMenu.tabId);
               if (!tab) return;
-              const newName = prompt("Document name:", tab.title);
-              if (newName !== null && newName.trim()) {
-                const trimmed = newName.trim();
-                setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
-                // If active tab, also update the markdown H1 heading
-                if (tab.id === activeTabId) {
-                  const md = markdownRef.current;
-                  const lines = md.split("\n");
-                  const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
-                  if (h1Idx >= 0) {
-                    lines[h1Idx] = `# ${trimmed}`;
-                  } else {
-                    lines.unshift(`# ${trimmed}`, "");
+              setInlineInput({
+                label: "Document name",
+                defaultValue: tab.title,
+                onSubmit: (trimmed) => {
+                  setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
+                  if (tab.id === activeTabId) {
+                    const md = markdownRef.current;
+                    const lines = md.split("\n");
+                    const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
+                    if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
+                    else { lines.unshift(`# ${trimmed}`, ""); }
+                    const newMd = lines.join("\n");
+                    setMarkdown(newMd);
+                    doRender(newMd);
+                    setTitle(trimmed);
                   }
-                  const newMd = lines.join("\n");
-                  setMarkdown(newMd);
-                  doRender(newMd);
-                  setTitle(trimmed);
-                }
-              }
+                  setInlineInput(null);
+                },
+              });
             }},
             { label: "Duplicate", action: () => {
               const tab = tabs.find(t => t.id === docContextMenu.tabId);

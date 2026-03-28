@@ -10,6 +10,7 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
+  const [inputPopup, setInputPopup] = useState<{ label: string; onSubmit: (v: string) => void } | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
   const updateToolbar = useCallback(() => {
@@ -157,10 +158,10 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
       {sep}
 
       {/* Link, Image */}
-      <button className={b} onClick={() => { const u = prompt("URL:"); if (u) exec("createLink", u); }}>
+      <button className={b} onClick={() => setInputPopup({ label: "URL", onSubmit: (u) => { exec("createLink", u); setInputPopup(null); } })}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
       </button>
-      <button className={b} onClick={() => { const u = prompt("Image URL:"); if (u) exec("insertImage", u); }}>
+      <button className={b} onClick={() => setInputPopup({ label: "Image URL", onSubmit: (u) => { exec("insertImage", u); setInputPopup(null); } })}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
       {sep}
@@ -169,6 +170,16 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
       <button className={b} onClick={() => exec("removeFormat")}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
       </button>
+      {/* Inline input popup */}
+      {inputPopup && (
+        <div className="fixed inset-0 z-[9999]" onClick={() => setInputPopup(null)} onMouseDown={(e) => e.stopPropagation()}>
+          <div className="absolute rounded-lg shadow-xl p-3 flex flex-col gap-2" style={{ left: pos.x, top: pos.y - 80, transform: "translate(-50%, -100%)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 260 }} onClick={(e) => e.stopPropagation()}>
+            <label className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{inputPopup.label}</label>
+            <input autoFocus className="px-3 py-1.5 rounded-md text-sm outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder={inputPopup.label}
+              onKeyDown={(e) => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) inputPopup.onSubmit(v); } if (e.key === "Escape") setInputPopup(null); }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
