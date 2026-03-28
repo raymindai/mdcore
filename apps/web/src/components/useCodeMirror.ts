@@ -50,10 +50,10 @@ const baseTheme = EditorView.baseTheme({
     color: "var(--text-faint)",
     fontStyle: "italic",
   },
-  // Matching word highlight (same word found elsewhere — subtle, distinct from selection)
+  // Matching word highlight — muted cool tone vs warm accent selection
   ".cm-selectionMatch": {
-    backgroundColor: "rgba(255, 255, 255, 0.07) !important",
-    borderBottom: "1px solid var(--text-faint)",
+    backgroundColor: "rgba(148, 163, 184, 0.15) !important",
+    borderRadius: "2px",
   },
   // Search match highlight
   ".cm-searchMatch": {
