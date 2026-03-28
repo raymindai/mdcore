@@ -2775,7 +2775,7 @@ export default function MdEditor() {
                   onInput={handleWysiwygInput}
                   className={`mdcore-rendered max-w-none focus:outline-none ${
                     viewMode === "preview"
-                      ? "p-4 sm:p-8 mx-auto max-w-3xl"
+                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6"
                   }`}
                   style={{ cursor: "text" }}
@@ -2787,7 +2787,7 @@ export default function MdEditor() {
                   onInput={handleWysiwygInput}
                   className={`mdcore-rendered max-w-none focus:outline-none ${
                     viewMode === "preview"
-                      ? "p-4 sm:p-8 mx-auto max-w-3xl"
+                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6"
                   }`}
                   style={{ cursor: "text", minHeight: "100%" }}
