@@ -720,7 +720,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
         </TBtn>
         {showTableGrid && (
-          <div className="absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl z-50"
+          <div className="absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl z-[9998]"
             style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}
             onMouseDown={(e) => e.preventDefault()}>
             <div className="text-[10px] mb-1.5 text-center" style={{ color: "var(--text-muted)" }}>
@@ -2262,7 +2262,7 @@ export default function MdEditor() {
 
   return (
     <div
-      className="flex flex-col h-screen"
+      className="flex flex-col h-screen overflow-hidden"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -2271,7 +2271,7 @@ export default function MdEditor() {
       {/* Drag overlay */}
       {isDragging && (
         <div
-          className="absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed rounded-lg m-2"
+          className="absolute inset-0 z-[9998] flex items-center justify-center border-2 border-dashed rounded-lg m-2"
           style={{ background: "var(--drag-bg)", borderColor: "var(--accent)" }}
         >
           <div className="text-center">
@@ -3168,7 +3168,7 @@ export default function MdEditor() {
       {/* QR Code Modal */}
       {showQr && docId && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
           onClick={() => setShowQr(false)}
         >
@@ -3201,7 +3201,7 @@ export default function MdEditor() {
       {/* Mermaid Editor Modal */}
       {showMermaidModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
           onClick={(e) => { if (e.target === e.currentTarget) { setShowMermaidModal(false); setCanvasMermaid(undefined); } }}
           onKeyDown={(e) => { if (e.key === "Escape") { setShowMermaidModal(false); setCanvasMermaid(undefined); } }}
@@ -3265,7 +3265,7 @@ export default function MdEditor() {
       {/* Math Editor Modal */}
       {showMathModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
           onClick={(e) => { if (e.target === e.currentTarget) { setShowMathModal(false); setInitialMath(undefined); } }}
           onKeyDown={(e) => { if (e.key === "Escape") { setShowMathModal(false); setInitialMath(undefined); } }}
