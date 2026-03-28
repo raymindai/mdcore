@@ -2333,24 +2333,6 @@ export default function MdEditor() {
               SHARED
             </span>
           )}
-          {/* Toolbar toggle */}
-          <div className="relative group">
-            <button
-              onClick={() => setShowToolbar(!showToolbar)}
-              className="p-1 rounded transition-colors"
-              style={{ color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="2" width="14" height="3" rx="1"/>
-                <line x1="3" y1="8" x2="7" y2="8"/><line x1="9" y1="8" x2="13" y2="8"/>
-                <line x1="3" y1="11" x2="6" y2="11"/><line x1="8" y1="11" x2="13" y2="11"/>
-              </svg>
-            </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              {showToolbar ? "Hide toolbar" : "Show toolbar"}
-            </div>
-          </div>
         </div>
 
         {/* Center: Layout toggle */}
@@ -2390,6 +2372,27 @@ export default function MdEditor() {
               </div>
             </div>
           ))}
+          {/* Toolbar toggle */}
+          <div className="w-px h-4 mx-1" style={{ background: "var(--border-dim)" }} />
+          <div className="relative group">
+            <button
+              onClick={() => setShowToolbar(!showToolbar)}
+              className="p-1 rounded transition-colors"
+              style={{ color: showToolbar ? "var(--accent)" : "var(--text-muted)", opacity: showToolbar ? 1 : 0.5 }}
+            >
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
+                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
+                <line x1="1" y1="4" x2="15" y2="4" strokeWidth=".8"/>
+                <text x="4" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontWeight="700" fontFamily="system-ui">B</text>
+                <text x="7.5" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontStyle="italic" fontFamily="system-ui">I</text>
+                <text x="10.5" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontFamily="system-ui">U</text>
+              </svg>
+            </button>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              {showToolbar ? "Hide formatting toolbar" : "Show formatting toolbar"}
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
