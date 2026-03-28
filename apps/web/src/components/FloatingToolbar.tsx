@@ -93,7 +93,7 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 flex flex-wrap items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-xl border max-w-[90vw]"
+      className="fixed z-[9998] flex flex-wrap items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-xl border max-w-[90vw]"
       style={{
         left: clampedX, top: pos.y,
         transform: "translate(-50%, -100%)",
