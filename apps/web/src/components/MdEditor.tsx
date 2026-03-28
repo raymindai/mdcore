@@ -2479,8 +2479,8 @@ export default function MdEditor() {
               </button>
               {showMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl"
-                  style={{ zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)" }}
+                  className="fixed w-48 rounded-lg shadow-xl"
+                  style={{ zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", top: menuRef.current ? menuRef.current.getBoundingClientRect().bottom + 4 : 0, right: 8 }}
                 >
                   <div className="py-1">
                     <button
