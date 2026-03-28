@@ -658,7 +658,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 
   return (
     <div
-      className="flex flex-wrap items-center gap-0.5 px-2 py-0.5 shrink-0"
+      className="flex flex-wrap items-center justify-center gap-0.5 px-2 py-0.5 shrink-0"
       style={{ borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       onMouseDown={(e) => e.preventDefault()}
     >
