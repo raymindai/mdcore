@@ -1088,13 +1088,14 @@ export default function MdEditor() {
     asciiDiagrams.forEach((el) => {
       if (el.querySelector(".ascii-render-btn")) return; // already has button
 
-      // Toolbar at top of container (flow layout, not overlapping content)
+      // Toolbar at top — always visible
       const toolbar = document.createElement("div");
-      toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap;opacity:0;transition:opacity 0.15s";
+      toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
 
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
       btn.textContent = "Render";
+      btn.title = "Convert ASCII art to visual diagram using AI. Turn on AI ASCII Render for auto-conversion.";
       btn.style.cssText = `
         padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;
         background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
@@ -1102,12 +1103,22 @@ export default function MdEditor() {
       `;
       toolbar.appendChild(btn);
 
-      // Insert toolbar before the <pre> content
-      el.insertBefore(toolbar, el.firstChild);
+      // Copy button — matches code block copy style
+      const srcText = el.querySelector("code")?.textContent || el.textContent || "";
+      const copyBtn = document.createElement("button");
+      copyBtn.title = "Copy ASCII source";
+      copyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg><span style="margin-left:4px">Copy</span>';
+      copyBtn.style.cssText = "display:flex;align-items:center;padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;line-height:14px";
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(srcText).then(() => {
+          const orig = copyBtn.innerHTML;
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => { copyBtn.innerHTML = orig; }, 1500);
+        });
+      });
+      toolbar.appendChild(copyBtn);
 
-      // Show toolbar on hover
-      el.addEventListener("mouseenter", () => { toolbar.style.opacity = "1"; });
-      el.addEventListener("mouseleave", () => { toolbar.style.opacity = "0"; });
+      el.insertBefore(toolbar, el.firstChild);
 
       btn.addEventListener("click", async () => {
         const codeEl = el.querySelector("code");
@@ -1148,20 +1159,19 @@ export default function MdEditor() {
           label.style.cssText = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text-faint);border:1px solid var(--border-dim);border-radius:4px;line-height:14px";
           postToolbar.appendChild(label);
 
-          // Copy source button
-          const copyBtn = document.createElement("button");
-          copyBtn.title = "Copy source";
-          copyBtn.style.cssText = "padding:4px;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;display:flex;align-items:center";
-          const copySvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="9" height="10" rx="1"/><path d="M2 6v7a1 1 0 001 1h7"/></svg>';
-          const checkSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 8 7 11 12 5"/></svg>';
-          copyBtn.innerHTML = copySvg;
-          copyBtn.addEventListener("click", () => {
+          // Copy source button — matches code block copy style
+          const postCopyBtn = document.createElement("button");
+          postCopyBtn.title = "Copy ASCII source";
+          postCopyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg><span style="margin-left:4px">Copy</span>';
+          postCopyBtn.style.cssText = "display:flex;align-items:center;padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;line-height:14px";
+          postCopyBtn.addEventListener("click", () => {
             navigator.clipboard.writeText(srcText).then(() => {
-              copyBtn.innerHTML = checkSvg;
-              setTimeout(() => { copyBtn.innerHTML = copySvg; }, 1500);
+              const orig = postCopyBtn.innerHTML;
+              postCopyBtn.textContent = "Copied!";
+              setTimeout(() => { postCopyBtn.innerHTML = orig; }, 1500);
             });
           });
-          postToolbar.appendChild(copyBtn);
+          postToolbar.appendChild(postCopyBtn);
           el.appendChild(postToolbar);
 
           // Rendered content
