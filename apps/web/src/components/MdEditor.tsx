@@ -2814,12 +2814,12 @@ export default function MdEditor() {
           </div>
         )}
 
-        {/* Markdown pane (right/bottom) */}
-        {viewMode !== "preview" && (
-          <div
-            data-pane="editor"
-            className="flex-1 min-w-0 flex flex-col"
-          >
+        {/* Markdown pane (right/bottom) — always in DOM, hidden via CSS to keep CM6 alive */}
+        <div
+          data-pane="editor"
+          className="flex-1 min-w-0 flex flex-col"
+          style={{ display: viewMode === "preview" ? "none" : undefined }}
+        >
             <div
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
@@ -2865,7 +2865,6 @@ export default function MdEditor() {
               className="flex-1 min-h-0 overflow-hidden"
             />
           </div>
-        )}
       </div>
       </div>{/* end main content wrapper */}
 
