@@ -848,6 +848,7 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -2332,6 +2333,24 @@ export default function MdEditor() {
               SHARED
             </span>
           )}
+          {/* Toolbar toggle */}
+          <div className="relative group">
+            <button
+              onClick={() => setShowToolbar(!showToolbar)}
+              className="p-1 rounded transition-colors"
+              style={{ color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="2" width="14" height="3" rx="1"/>
+                <line x1="3" y1="8" x2="7" y2="8"/><line x1="9" y1="8" x2="13" y2="8"/>
+                <line x1="3" y1="11" x2="6" y2="11"/><line x1="8" y1="11" x2="13" y2="11"/>
+              </svg>
+            </button>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              {showToolbar ? "Hide toolbar" : "Show toolbar"}
+            </div>
+          </div>
         </div>
 
         {/* Center: Layout toggle */}
@@ -2571,13 +2590,15 @@ export default function MdEditor() {
       </header>
 
       {/* Formatting toolbar — works for both Beautified MD and Source MD */}
-      <WysiwygToolbar
-        onInsert={handleInsertBlock}
-        onInsertTable={handleInsertTable}
-        onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
-        cmWrap={cmWrapSelection}
-        cmInsert={cmInsertAtCursor}
-      />
+      {showToolbar && (
+        <WysiwygToolbar
+          onInsert={handleInsertBlock}
+          onInsertTable={handleInsertTable}
+          onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
+          cmWrap={cmWrapSelection}
+          cmInsert={cmInsertAtCursor}
+        />
+      )}
 
       {/* AI conversation banner */}
       {showAiBanner && (
