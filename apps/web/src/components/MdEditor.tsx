@@ -2521,7 +2521,7 @@ export default function MdEditor() {
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
               </button>
-              <span style={{ color: "var(--accent)" }}>MD Files</span>
+              <span style={{ color: "var(--accent)", cursor: "pointer" }} onDoubleClick={() => setShowSidebar(!showSidebar)}>MD Files</span>
             </div>
             <button
               onClick={addTab}
@@ -2666,7 +2666,7 @@ export default function MdEditor() {
               className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
-              <span style={{ color: "var(--accent)" }}>Beautified MD</span>
+              <span style={{ color: "var(--accent)", cursor: "pointer" }} onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}>Beautified MD</span>
               <div className="flex items-center gap-2 normal-case">
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
@@ -2815,7 +2815,7 @@ export default function MdEditor() {
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}
             >
               <div className="flex items-center gap-1.5">
-                <span style={{ color: "var(--accent)" }}>Source MD</span>
+                <span style={{ color: "var(--accent)", cursor: "pointer" }} onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}>Source MD</span>
                 {/* Syntax badges */}
                 <span className="hidden sm:inline px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
                 {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
