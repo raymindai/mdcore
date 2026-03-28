@@ -662,59 +662,76 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       style={{ borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       onMouseDown={(e) => e.preventDefault()}
     >
-      <TBtn tip="Undo (Cmd+Z)" onClick={() => exec("undo")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
-      </TBtn>
-      <TBtn tip="Redo (Cmd+Shift+Z)" onClick={() => exec("redo")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
-      </TBtn>
+      {/* Undo/Redo */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Undo (Cmd+Z)" onClick={() => exec("undo")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+        </TBtn>
+        <TBtn tip="Redo (Cmd+Shift+Z)" onClick={() => exec("redo")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+        </TBtn>
+      </div>
       {sep}
-      <TBtn tip="Heading 1" active={blockType==="h1"} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></TBtn>
-      <TBtn tip="Heading 2" active={blockType==="h2"} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></TBtn>
-      <TBtn tip="Heading 3" active={blockType==="h3"} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></TBtn>
-      <TBtn tip="Heading 4" active={blockType==="h4"} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></TBtn>
-      <TBtn tip="Heading 5" active={blockType==="h5"} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></TBtn>
-      <TBtn tip="Heading 6" active={blockType==="h6"} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></TBtn>
-      <TBtn tip="Paragraph" active={blockType==="p"} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></TBtn>
+      {/* Headings */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Heading 1" active={blockType==="h1"} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></TBtn>
+        <TBtn tip="Heading 2" active={blockType==="h2"} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></TBtn>
+        <TBtn tip="Heading 3" active={blockType==="h3"} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></TBtn>
+        <TBtn tip="Heading 4" active={blockType==="h4"} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></TBtn>
+        <TBtn tip="Heading 5" active={blockType==="h5"} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></TBtn>
+        <TBtn tip="Heading 6" active={blockType==="h6"} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></TBtn>
+        <TBtn tip="Paragraph" active={blockType==="p"} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></TBtn>
+      </div>
       {sep}
-      <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></TBtn>
-      <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></TBtn>
-      <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></TBtn>
-      <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}><span className="font-mono text-[10px]">{`</>`}</span></TBtn>
+      {/* Text style */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></TBtn>
+        <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></TBtn>
+        <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></TBtn>
+        <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}><span className="font-mono text-[10px]">{`</>`}</span></TBtn>
+      </div>
       {sep}
-      <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
-      </TBtn>
-      <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
-      </TBtn>
-      <TBtn tip="Indent" onClick={() => exec("indent")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
-      </TBtn>
-      <TBtn tip="Outdent" onClick={() => exec("outdent")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
-      </TBtn>
+      {/* Lists */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+        </TBtn>
+        <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+        </TBtn>
+        <TBtn tip="Indent" onClick={() => exec("indent")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+        </TBtn>
+        <TBtn tip="Outdent" onClick={() => exec("outdent")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+        </TBtn>
+      </div>
       {sep}
-      <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
-      </TBtn>
-      <TBtn tip="Horizontal rule → ---" onClick={() => exec("insertHorizontalRule")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
-      </TBtn>
+      {/* Block elements */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+        </TBtn>
+        <TBtn tip="Horizontal rule → ---" onClick={() => exec("insertHorizontalRule")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+        </TBtn>
+      </div>
       {sep}
-      <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
-      </TBtn>
-      <TBtn tip="Image → ![alt](url)" onClick={() => onInputPopup({ label: "Image URL", onSubmit: (u) => exec("insertImage", u) })}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
-      </TBtn>
+      {/* Insert */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
+        </TBtn>
+        <TBtn tip="Image → ![alt](url)" onClick={() => onInputPopup({ label: "Image URL", onSubmit: (u) => exec("insertImage", u) })}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </TBtn>
+        <TBtn tip="Clear formatting" onClick={() => exec("removeFormat")}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
+        </TBtn>
+      </div>
       {sep}
-      <TBtn tip="Clear formatting" onClick={() => exec("removeFormat")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
-      </TBtn>
-      {sep}
-      {/* Insert special elements */}
-      {/* Table grid picker */}
+      {/* Insert */}
+      <div className="flex items-center gap-0.5 shrink-0">
       <div className="relative" ref={tableGridRef}>
         <TBtn tip="Insert table" onClick={() => setShowTableGrid(v => !v)}>
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
@@ -761,6 +778,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       <TBtn tip="Insert Mermaid diagram" onClick={() => onInsert("mermaid")}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="4" y="1" width="8" height="4" rx="1"/><rect x="1" y="11" width="5" height="4" rx="1"/><rect x="10" y="11" width="5" height="4" rx="1"/><path d="M8 5v3M8 8L3.5 11M8 8l4.5 3"/></svg>
       </TBtn>
+      </div>
     </div>
   );
 }
@@ -2372,27 +2390,7 @@ export default function MdEditor() {
               </div>
             </div>
           ))}
-          {/* Toolbar toggle */}
-          <div className="w-px h-4 mx-1" style={{ background: "var(--border-dim)" }} />
-          <div className="relative group">
-            <button
-              onClick={() => setShowToolbar(!showToolbar)}
-              className="p-1 rounded transition-colors"
-              style={{ color: showToolbar ? "var(--accent)" : "var(--text-muted)", opacity: showToolbar ? 1 : 0.5 }}
-            >
-              <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x=".5" y=".5" width="15" height="11" rx="1.5"/>
-                <line x1="1" y1="4" x2="15" y2="4" strokeWidth=".8"/>
-                <text x="4" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontWeight="700" fontFamily="system-ui">B</text>
-                <text x="7.5" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontStyle="italic" fontFamily="system-ui">I</text>
-                <text x="10.5" y="3.2" fontSize="3" fill="currentColor" stroke="none" fontFamily="system-ui">U</text>
-              </svg>
-            </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              {showToolbar ? "Hide formatting toolbar" : "Show formatting toolbar"}
-            </div>
-          </div>
+          {/* Toolbar toggle moved to Beautified MD header */}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
@@ -2810,6 +2808,20 @@ export default function MdEditor() {
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
                 )}
+                {/* Toolbar toggle */}
+                <div className="relative group hidden sm:block">
+                  <button
+                    onClick={() => setShowToolbar(!showToolbar)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    style={{ background: showToolbar ? "var(--accent-dim)" : "var(--toggle-bg)", color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
+                  >
+                    <span className="text-[10px] font-medium">Toolbar</span>
+                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
+                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showToolbar ? "var(--accent)" : "var(--text-faint)", opacity: showToolbar ? 1 : 0.3 }} />
+                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: showToolbar ? "translateX(11px)" : "translateX(2px)" }} />
+                    </span>
+                  </button>
+                </div>
                 {/* AI ASCII Render — mini toggle + hover tooltip */}
                 <div className="relative group hidden sm:block">
                   <button
