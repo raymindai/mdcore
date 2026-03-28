@@ -2272,10 +2272,10 @@ export default function MdEditor() {
   }, [html]);
 
   const shareButtonLabel = {
-    idle: "Share",
+    idle: "SHARE",
     sharing: "...",
-    copied: "Copied!",
-    error: "Failed",
+    copied: "COPIED!",
+    error: "FAILED",
   }[shareState];
 
   return (
@@ -2353,25 +2353,40 @@ export default function MdEditor() {
           )}
         </div>
 
-        {/* Center: Layout tabs */}
+        {/* Center: Layout tabs with icons */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-md overflow-hidden"
-          style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-lg p-0.5"
+          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
         >
           {([
-            { mode: "preview" as ViewMode, label: "BEAUTIFIED" },
-            { mode: "split" as ViewMode, label: "SPLIT" },
-            { mode: "editor" as ViewMode, label: "SOURCE" },
-          ]).map(({ mode, label }) => (
+            { mode: "preview" as ViewMode, label: "BEAUTIFIED", icon: (
+              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <line x1="3" y1="3" x2="13" y2="3" strokeWidth="1"/><line x1="3" y1="6" x2="11" y2="6" strokeWidth="1"/><line x1="3" y1="9" x2="12" y2="9" strokeWidth="1"/>
+              </svg>
+            )},
+            { mode: "split" as ViewMode, label: "SPLIT", icon: (
+              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <rect x="1" y="1" width="14" height="10" rx="1.5"/>
+                <line x1="9" y1="1" x2="9" y2="11"/>
+              </svg>
+            )},
+            { mode: "editor" as ViewMode, label: "SOURCE", icon: (
+              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5" strokeLinecap="round"/>
+              </svg>
+            )},
+          ]).map(({ mode, label, icon }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className="px-3 py-1 text-[10px] font-mono font-medium transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono font-medium transition-all"
               style={{
-                background: viewMode === mode ? "var(--accent-dim)" : "transparent",
-                color: viewMode === mode ? "var(--accent)" : "var(--text-faint)",
+                background: viewMode === mode ? "var(--background)" : "transparent",
+                color: viewMode === mode ? "var(--text-primary)" : "var(--text-faint)",
+                boxShadow: viewMode === mode ? "0 1px 3px rgba(0,0,0,0.2)" : "none",
               }}
             >
+              {icon}
               {label}
             </button>
           ))}
@@ -2649,7 +2664,7 @@ export default function MdEditor() {
               style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             >
               <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
-              New
+              NEW
             </button>
           </div>
           {/* Document list */}
@@ -2986,7 +3001,7 @@ export default function MdEditor() {
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                    <span className="text-[10px] font-medium">Copy</span>
+                    <span className="text-[10px] font-medium">COPY</span>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
                 </div>
@@ -2998,7 +3013,7 @@ export default function MdEditor() {
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
-                    <span className="text-[10px] font-medium">.md</span>
+                    <span className="text-[10px] font-medium">.MD</span>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
                 </div>
