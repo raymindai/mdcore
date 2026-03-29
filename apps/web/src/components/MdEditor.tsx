@@ -13,6 +13,8 @@ import MdCanvas from "@/components/MdCanvas";
 import MathEditor from "@/components/MathEditor";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
+import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
+import { useAuth } from "@/lib/useAuth";
 import {
   createShareUrl,
   createShortUrl,
@@ -463,10 +465,20 @@ function useTheme() {
   return { theme, toggleTheme };
 }
 
+interface Folder {
+  id: string;
+  name: string;
+  collapsed: boolean;
+}
+
 interface Tab {
   id: string;
   title: string;
   markdown: string;
+  folderId?: string;       // null = root level
+  cloudId?: string;        // Supabase document id
+  deleted?: boolean;       // soft delete → trash
+  deletedAt?: number;      // timestamp for auto-purge
 }
 
 let tabIdCounter = 1;
@@ -786,6 +798,19 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
+  const { user, profile, loading: authLoading, isAuthenticated, signInWithGoogle, signInWithGitHub, signInWithEmail, signOut } = useAuth();
+  const [showAuthMenu, setShowAuthMenu] = useState(false);
+  const [authEmailInput, setAuthEmailInput] = useState("");
+  const [authEmailSent, setAuthEmailSent] = useState(false);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [showTrash, setShowTrash] = useState(false);
+  const [dragTabId, setDragTabId] = useState<string | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  const [showCloudDocs, setShowCloudDocs] = useState(false);
+  const [cloudDocs, setCloudDocs] = useState<{ id: string; title: string; updated_at: string; view_count: number }[]>([]);
+  const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
+  const [mdfyLoading, setMdfyLoading] = useState(false);
+  const [showFlavorMenu, setShowFlavorMenu] = useState(false);
 
   // Diagram rendering mode: "default" (mermaid.js/ASCII) or "ai" (Gemini HTML)
   type DiagramMode = "default" | "ai";
@@ -859,6 +884,8 @@ export default function MdEditor() {
   const [renderTime, setRenderTime] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [charCount, setCharCount] = useState(0);
+  const [wordCount, setWordCount] = useState(0);
+  const [lineCount, setLineCount] = useState(0);
   const [shareState, setShareState] = useState<
     "idle" | "sharing" | "copied" | "error"
   >("idle");
@@ -867,6 +894,8 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(true);
+  const [narrowView, setNarrowView] = useState(false);
+  const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -879,8 +908,9 @@ export default function MdEditor() {
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [sidebarWidth, setSidebarWidth] = useState(200);
+  const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   const splitPercentRef = useRef(60);
   const isDraggingSplit = useRef(false);
@@ -958,6 +988,8 @@ export default function MdEditor() {
       }
       setRenderTime(elapsed);
       setCharCount(md.length);
+      setWordCount(md.trim() ? md.trim().split(/\s+/).length : 0);
+      setLineCount(md.split("\n").length);
       setIsLoading(false);
 
       // Detect AI conversation
@@ -976,17 +1008,24 @@ export default function MdEditor() {
 
   // ─── Tab management ───
   const switchTab = useCallback((tabId: string) => {
-    // Save current tab
-    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
-    const tab = tabs.find((t) => t.id === tabId);
-    if (!tab) return;
-    setActiveTabId(tabId);
-    setMarkdownRaw(tab.markdown);
-    setHtml(""); // clear stale preview
-    undoStack.current = [tab.markdown];
-    redoStack.current = [];
-    doRenderRef.current(tab.markdown);
-  }, [tabs, activeTabId, markdown, title]);
+    // Save current tab, then load new tab from the latest tabs state
+    setTabs((prev) => {
+      const updated = prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || t.title || "Untitled" } : t);
+      const tab = updated.find((t) => t.id === tabId);
+      if (tab) {
+        // Schedule state updates after setTabs completes
+        setTimeout(() => {
+          setActiveTabId(tabId);
+          setMarkdownRaw(tab.markdown);
+          setHtml("");
+          undoStack.current = [tab.markdown];
+          redoStack.current = [];
+          doRenderRef.current(tab.markdown);
+        }, 0);
+      }
+      return updated;
+    });
+  }, [activeTabId, markdown, title]);
 
   const addTab = useCallback(() => {
     // Save current tab
@@ -1916,34 +1955,38 @@ export default function MdEditor() {
 
   // File drop handler
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const files = Array.from(e.dataTransfer.files).filter(
-        f => f.name.endsWith(".md") || f.name.endsWith(".markdown") || f.name.endsWith(".txt") || f.type === "text/markdown" || f.type === "text/plain"
-      );
+      const files = Array.from(e.dataTransfer.files);
 
-      files.forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const text = ev.target?.result as string;
-          if (!text) return;
+      for (let idx = 0; idx < files.length; idx++) {
+        try {
+          const file = files[idx];
+          const { markdown: md, title: name } = await importFile(file);
+          if (!md) continue;
+          const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
+          let tabId: string;
 
           if (idx === 0 && !markdown.trim()) {
-            // First file into current empty tab
-            setMarkdown(text);
+            setMarkdown(md);
             setIsSharedDoc(false);
-            doRender(text);
+            doRender(md);
+            tabId = activeTabId;
+            setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: name, markdown: md } : t));
           } else {
-            // Additional files → new tabs
-            const id = `tab-${tabIdCounter++}`;
-            const name = file.name.replace(/\.(md|markdown|txt)$/, "");
-            setTabs((prev) => [...prev, { id, title: name, markdown: text }]);
+            tabId = `tab-${tabIdCounter++}`;
+            setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+            setTimeout(() => switchTab(tabId), 50);
           }
           if (!isMobile) setViewMode("split");
-        };
-        reader.readAsText(file);
-      });
+          if (isPlainFormat && md.length > 50) {
+            setMdfyPrompt({ text: md, filename: file.name, tabId });
+          }
+        } catch (err) {
+          console.error(`Failed to import ${files[idx].name}:`, err);
+        }
+      }
     },
     [doRender, isMobile, markdown]
   );
@@ -1976,7 +2019,7 @@ export default function MdEditor() {
 
       try {
         // Try server-side short URL
-        const { url, editToken } = await createShortUrl(markdown, title);
+        const { url, editToken } = await createShortUrl(markdown, title, { userId: user?.id });
         const newDocId = url.split("/").pop()!;
         saveEditToken(newDocId, editToken);
         setDocId(newDocId);
@@ -2034,17 +2077,83 @@ export default function MdEditor() {
     setShowMenu(false);
   }, [markdown]);
 
-  // Download .md file
-  const handleDownloadMd = useCallback(() => {
-    const blob = new Blob([markdown], { type: "text/markdown" });
+  // Download helpers
+  const downloadFile = useCallback((content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title || "document"}.md`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }, []);
+
+  const handleDownloadMd = useCallback(() => {
+    downloadFile(markdown, `${title || "document"}.md`, "text/markdown");
     setShowMenu(false);
-  }, [markdown, title]);
+  }, [markdown, title, downloadFile]);
+
+  const handleDownloadHtml = useCallback(() => {
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title || "Document"}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 768px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  code { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; }
+  blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 1rem; color: #666; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  img { max-width: 100%; }
+  h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+</style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+    downloadFile(fullHtml, `${title || "document"}.html`, "text/html");
+    setShowExportMenu(false);
+  }, [html, title, downloadFile]);
+
+  const handleDownloadTxt = useCallback(() => {
+    // Strip markdown syntax for plain text
+    const plain = markdown
+      .replace(/^#{1,6}\s+/gm, "")           // headings
+      .replace(/\*\*(.*?)\*\*/g, "$1")         // bold
+      .replace(/\*(.*?)\*/g, "$1")             // italic
+      .replace(/~~(.*?)~~/g, "$1")             // strikethrough
+      .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*\n?/g, "")) // code blocks
+      .replace(/`(.*?)`/g, "$1")               // inline code
+      .replace(/!\[.*?\]\(.*?\)/g, "")          // images
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")       // links
+      .replace(/^[\-\*]\s+/gm, "• ")           // unordered lists
+      .replace(/^\d+\.\s+/gm, (m) => m)        // keep ordered lists
+      .replace(/^>\s+/gm, "  ")                // blockquotes
+      .replace(/---+/g, "────────────────");    // horizontal rules
+    downloadFile(plain, `${title || "document"}.txt`, "text/plain");
+    setShowExportMenu(false);
+  }, [markdown, title, downloadFile]);
+
+  const handleCopyPlainText = useCallback(async () => {
+    const plain = markdown
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/~~(.*?)~~/g, "$1")
+      .replace(/`{3}[\s\S]*?`{3}/g, (m) => m.replace(/`{3}.*\n?/g, ""))
+      .replace(/`(.*?)`/g, "$1")
+      .replace(/!\[.*?\]\(.*?\)/g, "")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/^[\-\*]\s+/gm, "• ")
+      .replace(/^>\s+/gm, "  ");
+    await copyToClipboard(plain);
+    setShowExportMenu(false);
+  }, [markdown]);
 
   // Update existing document
   const [updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
@@ -2294,7 +2403,8 @@ export default function MdEditor() {
         >
           <div className="text-center">
             <div className="text-4xl mb-3 opacity-60">•</div>
-            <p className="text-lg font-medium" style={{ color: "var(--accent)" }}>Drop your .md file</p>
+            <p className="text-lg font-medium" style={{ color: "var(--accent)" }}>Drop your file</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, RST, JSON, TXT</p>
             <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Supports .md, .markdown, .txt</p>
           </div>
         </div>
@@ -2319,6 +2429,7 @@ export default function MdEditor() {
             <button
               className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline hover:text-[var(--accent)] transition-colors"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
+              title="Click to rename"
               onClick={() => {
                 setInlineInput({
                   label: "Document name",
@@ -2338,7 +2449,6 @@ export default function MdEditor() {
                   },
                 });
               }}
-              title="Click to rename"
             >
               {title}
             </button>
@@ -2361,7 +2471,8 @@ export default function MdEditor() {
           {([
             { mode: "preview" as ViewMode, label: "BEAUTIFIED", icon: (
               <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <line x1="3" y1="3" x2="13" y2="3" strokeWidth="1"/><line x1="3" y1="6" x2="11" y2="6" strokeWidth="1"/><line x1="3" y1="9" x2="12" y2="9" strokeWidth="1"/>
+                <path d="M1 6s3-4.5 7-4.5S15 6 15 6s-3 4.5-7 4.5S1 6 1 6z"/>
+                <circle cx="8" cy="6" r="2"/>
               </svg>
             )},
             { mode: "split" as ViewMode, label: "SPLIT", icon: (
@@ -2370,7 +2481,7 @@ export default function MdEditor() {
                 <line x1="9" y1="1" x2="9" y2="11"/>
               </svg>
             )},
-            { mode: "editor" as ViewMode, label: "SOURCE", icon: (
+            { mode: "editor" as ViewMode, label: "MDFIED", icon: (
               <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                 <path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5" strokeLinecap="round"/>
               </svg>
@@ -2439,15 +2550,18 @@ export default function MdEditor() {
               <button
                 onClick={handleShare}
                 disabled={shareState === "sharing"}
-                className="px-2 sm:px-2.5 h-6 rounded-md font-mono transition-colors text-[11px] sm:text-xs flex items-center gap-1"
+                className="px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1.5"
                 style={{
                   background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
                   color: shareState === "copied" ? "#4ade80" : "var(--accent)",
                 }}
               >
                 {shareState === "sharing" ? (
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
-                ) : shareButtonLabel}
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/></svg>
+                )}
+                {shareButtonLabel}
               </button>
               <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -2624,7 +2738,7 @@ export default function MdEditor() {
           if (isDraggingSidebar.current) {
             const wrapper = e.currentTarget;
             const rect = wrapper.getBoundingClientRect();
-            const w = Math.max(140, Math.min(400, e.clientX - rect.left));
+            const w = Math.max(160, Math.min(400, e.clientX - rect.left));
             setSidebarWidth(w);
             const el = wrapper.querySelector('[data-pane="sidebar"]') as HTMLElement;
             if (el) el.style.width = `${w}px`;
@@ -2638,9 +2752,9 @@ export default function MdEditor() {
       {showSidebar ? (
         <>
         <div
-          className="flex flex-col shrink-0 overflow-hidden"
+          className="flex flex-col shrink-0"
           data-pane="sidebar"
-          style={{ width: sidebarWidth, background: "var(--background)" }}
+          style={{ width: sidebarWidth, minWidth: 160, background: "var(--background)" }}
         >
           {/* Header — toggle button + MD FILES + New */}
           <div
@@ -2649,58 +2763,500 @@ export default function MdEditor() {
             onDoubleClick={() => setShowSidebar(false)}
           >
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setShowSidebar(false)}
-                className="p-1 rounded transition-colors"
-                style={{ color: "var(--accent)" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
-              </button>
+              <div className="relative group">
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  className="p-1 rounded transition-colors"
+                  style={{ color: "var(--accent)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
+                </button>
+                <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                  Close sidebar
+                </div>
+              </div>
               <span style={{ color: "var(--accent)" }}>MD FILES</span>
             </div>
-            <button
-              onClick={addTab}
-              className="flex items-center gap-1 px-1.5 py-1 rounded-md transition-colors text-[10px]"
-              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-            >
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
-              NEW
-            </button>
+            <div className="flex items-stretch gap-1">
+              <div className="relative group flex">
+                <button
+                  onClick={() => importFileRef.current?.click()}
+                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 3v7M5 7.5L8 10l3-2.5"/><path d="M3 10v3h10v-3"/></svg>
+                  {sidebarWidth >= 200 && "IMPORT"}
+                </button>
+                <div className="absolute top-full left-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Import Files</p>
+                  <p style={{ marginBottom: 4 }}>Select multiple files at once. Supported formats:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {["MD", "PDF", "DOCX", "PPTX", "XLSX", "HTML", "CSV", "LaTeX", "RST", "RTF", "JSON", "XML", "TXT"].map(f => (
+                      <span key={f} className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>{f}</span>
+                    ))}
+                  </div>
+                  <div className="mt-2 space-y-0.5 text-[9px]" style={{ color: "var(--text-faint)" }}>
+                    <div>PDF: max 4MB</div>
+                    <div>PPTX / XLSX / Office: max 10MB</div>
+                    <div>Text formats: no limit</div>
+                    <div>AI structuring (mdfy): up to 30K chars</div>
+                  </div>
+                  <p className="mt-1.5" style={{ color: "var(--text-faint)" }}>Or drag & drop files anywhere</p>
+                </div>
+              </div>
+              <div className="relative group flex">
+                <button
+                  onClick={addTab}
+                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+                </button>
+                <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                  Create a new blank document
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Document list */}
-          <div className="p-2 space-y-0.5 flex-1 overflow-y-auto">
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
-                style={{
-                  background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                  color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+          {/* Hidden file input for import */}
+          <input
+            ref={importFileRef}
+            type="file"
+            accept={getSupportedAcceptString()}
+            multiple
+            className="hidden"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files || []);
+              for (let idx = 0; idx < files.length; idx++) {
+                try {
+                  const file = files[idx];
+                  const { markdown: md, title: name } = await importFile(file);
+                  if (!md) continue;
+                  const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
+                  let tabId: string;
+                  if (idx === 0 && !markdown.trim()) {
+                    setMarkdown(md);
+                    setIsSharedDoc(false);
+                    doRender(md);
+                    tabId = activeTabId;
+                    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: name, markdown: md } : t));
+                  } else {
+                    tabId = `tab-${tabIdCounter++}`;
+                    setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+                    // Switch to the newly imported tab
+                    setTimeout(() => switchTab(tabId), 50);
+                  }
+                  if (!isMobile) setViewMode("split");
+                  if (isPlainFormat && md.length > 50) {
+                    setMdfyPrompt({ text: md, filename: file.name, tabId });
+                  }
+                } catch (err) {
+                  console.error(`Failed to import ${files[idx].name}:`, err);
+                }
+              }
+              e.target.value = "";
+            }}
+          />
+          {/* Document list with folders */}
+          <div className="flex-1 overflow-y-auto">
+            {/* New Folder button */}
+            <div className="px-2 pt-2 pb-1">
+              <button
+                onClick={() => {
+                  const id = `folder-${Date.now()}`;
+                  setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
+                  setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => {
+                    setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+                    setInlineInput(null);
+                  }});
                 }}
-                onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
-                onContextMenu={(e) => {
+                className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md transition-colors w-full"
+                style={{ color: "var(--text-faint)" }}
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
+                NEW FOLDER
+              </button>
+            </div>
+
+            {/* Root-level documents (no folder) */}
+            <div className="px-2 space-y-0.5">
+              {tabs.filter(t => !t.deleted && !t.folderId).map((tab) => (
+                <div
+                  key={tab.id}
+                  draggable
+                  onDragStart={() => setDragTabId(tab.id)}
+                  onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                  style={{
+                    background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                    color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                    opacity: dragTabId === tab.id ? 0.4 : 1,
+                  }}
+                  onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                  onContextMenu={(e) => { e.preventDefault(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                    <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                    <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                  </svg>
+                  <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                  <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                    className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Folders */}
+            {folders.map(folder => {
+              const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
+              return (
+                <div key={folder.id} className="mt-1">
+                  <div
+                    className={`flex items-center gap-1.5 px-2 mx-2 py-1.5 rounded-md cursor-pointer text-[11px] font-mono transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                    style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent" }}
+                    onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverTarget(folder.id); }}
+                    onDragLeave={() => setDragOverTarget(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragTabId) {
+                        setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
+                      }
+                      setDragTabId(null);
+                      setDragOverTarget(null);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setInlineInput({ label: "Rename folder", defaultValue: folder.name, onSubmit: (name) => {
+                        setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name } : f));
+                        setInlineInput(null);
+                      }});
+                    }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                      style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                    </svg>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.2"><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                    <span className="truncate flex-1">{folder.name}</span>
+                    <span className="text-[9px] opacity-50">{folderTabs.length}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Move all folder docs to root, then delete folder
+                        setTabs(prev => prev.map(t => t.folderId === folder.id ? { ...t, folderId: undefined } : t));
+                        setFolders(prev => prev.filter(f => f.id !== folder.id));
+                      }}
+                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--text-faint)", padding: "2px" }}
+                      title="Delete folder (keeps documents)"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                    </button>
+                  </div>
+                  {!folder.collapsed && (
+                    <div className="pl-4 px-2 space-y-0.5 mt-0.5">
+                      {folderTabs.map((tab) => (
+                        <div
+                          key={tab.id}
+                          draggable
+                          onDragStart={() => setDragTabId(tab.id)}
+                          onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                          style={{
+                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                            opacity: dragTabId === tab.id ? 0.4 : 1,
+                          }}
+                          onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                          onContextMenu={(e) => { e.preventDefault(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                          </svg>
+                          <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Drop zone for removing from folder (root drop) */}
+            {dragTabId && (
+              <div
+                className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
+                style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "root" ? "var(--accent-dim)" : "transparent" }}
+                onDragOver={(e) => { e.preventDefault(); setDragOverTarget("root"); }}
+                onDragLeave={() => setDragOverTarget(null)}
+                onDrop={(e) => {
                   e.preventDefault();
-                  setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id });
+                  if (dragTabId) setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: undefined } : t));
+                  setDragTabId(null);
+                  setDragOverTarget(null);
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                  <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                  <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                </svg>
-                <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id });
-                  }}
-                  className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: "var(--text-muted)", padding: "2px" }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
-                </button>
+                Move to root
               </div>
-            ))}
+            )}
+
+            {/* Cloud Documents section */}
+            {isAuthenticated && (
+              <div className="mt-3 px-2">
+                <button
+                  onClick={async () => {
+                    setShowCloudDocs(!showCloudDocs);
+                    if (!showCloudDocs && user) {
+                      try {
+                        const res = await fetch("/api/user/documents", { headers: { "x-user-id": user.id } });
+                        if (res.ok) {
+                          const { documents } = await res.json();
+                          setCloudDocs(documents || []);
+                        }
+                      } catch { /* ignore */ }
+                    }
+                  }}
+                  className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-[11px] font-mono transition-colors"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    style={{ transform: showCloudDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
+                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                  </svg>
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.2"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                  CLOUD
+                  <span className="text-[9px] opacity-50">{cloudDocs.length}</span>
+                </button>
+                {showCloudDocs && (
+                  <div className="space-y-0.5 mt-1">
+                    {cloudDocs.length === 0 ? (
+                      <div className="px-2 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                        Shared documents will appear here
+                      </div>
+                    ) : cloudDocs.map(doc => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
+                        style={{ color: "var(--text-muted)" }}
+                        onClick={() => {
+                          window.location.href = `/${doc.id}`;
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                        <span className="truncate flex-1">{doc.title || "Untitled"}</span>
+                        <span className="text-[9px] opacity-40">{doc.view_count} views</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Trash section */}
+            {tabs.some(t => t.deleted) && (
+              <div className="mt-3 px-2 pb-2">
+                <button
+                  onClick={() => setShowTrash(!showTrash)}
+                  className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-[11px] font-mono transition-colors"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
+                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                  </svg>
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+                  TRASH
+                  <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
+                </button>
+                {showTrash && (
+                  <div className="space-y-0.5 mt-1">
+                    {tabs.filter(t => t.deleted).map(tab => (
+                      <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
+                          <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                          <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                        </svg>
+                        <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
+                        <button onClick={() => setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t))}
+                          className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
+                          Restore
+                        </button>
+                        <button onClick={() => setTabs(prev => prev.filter(t => t.id !== tab.id))}
+                          className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
+                      className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
+                      style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                    >
+                      Empty Trash
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Account section at bottom */}
+          <div className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
+            {authLoading ? (
+              <div className="flex items-center gap-2 px-2 py-1.5 text-[11px]" style={{ color: "var(--text-faint)" }}>
+                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowAuthMenu(!showAuthMenu)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
+                >
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full shrink-0" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                      {(profile?.display_name || user?.email || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-[11px] truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
+                    <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
+                  </div>
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
+                </button>
+                {showAuthMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
+                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl py-1 z-[9999]"
+                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                      <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)", borderBottom: "1px solid var(--border-dim)" }}>
+                        <div className="font-medium" style={{ color: "var(--text-primary)" }}>{profile?.display_name}</div>
+                        <div className="truncate">{user?.email}</div>
+                        <div className="mt-1 px-1 py-0.5 rounded inline-block font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>
+                          {(profile?.plan || "free").toUpperCase()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          setShowAuthMenu(false);
+                          setShowCloudDocs(true);
+                          if (user) {
+                            try {
+                              const res = await fetch("/api/user/documents", { headers: { "x-user-id": user.id } });
+                              if (res.ok) { const { documents } = await res.json(); setCloudDocs(documents || []); }
+                            } catch { /* ignore */ }
+                          }
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                        My Documents
+                      </button>
+                      <button
+                        onClick={() => { signOut(); setShowAuthMenu(false); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 12l3.5-4-3.5-4M14 8H6"/></svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setShowAuthMenu(!showAuthMenu)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-[11px] hover:bg-[var(--accent-dim)]"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+                  Sign In
+                </button>
+                {showAuthMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
+                    <div className="absolute bottom-full left-0 mb-1 w-64 rounded-lg shadow-xl p-3 z-[9999]"
+                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                      <p className="text-[11px] font-medium mb-3" style={{ color: "var(--text-primary)" }}>Sign in to mdfy.cc</p>
+                      {/* OAuth buttons */}
+                      <button
+                        onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] mb-1.5 transition-colors hover:brightness-110"
+                        style={{ background: "#4285F4", color: "#fff" }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Continue with Google
+                      </button>
+                      <button
+                        onClick={() => { signInWithGitHub(); setShowAuthMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] mb-2 transition-colors hover:brightness-110"
+                        style={{ background: "#24292f", color: "#fff" }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                        Continue with GitHub
+                      </button>
+                      <div className="flex items-center gap-2 my-2">
+                        <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
+                        <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>OR</span>
+                        <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
+                      </div>
+                      {/* Email magic link */}
+                      {authEmailSent ? (
+                        <div className="text-[11px] text-center py-2" style={{ color: "var(--accent)" }}>
+                          Check your email for the login link
+                        </div>
+                      ) : (
+                        <div className="flex gap-1">
+                          <input
+                            type="email"
+                            placeholder="email@example.com"
+                            value={authEmailInput}
+                            onChange={(e) => setAuthEmailInput(e.target.value)}
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter" && authEmailInput.trim()) {
+                                const { error } = await signInWithEmail(authEmailInput.trim());
+                                if (!error) setAuthEmailSent(true);
+                              }
+                            }}
+                            className="flex-1 px-2 py-1.5 rounded-md text-[11px] outline-none"
+                            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                          />
+                          <button
+                            onClick={async () => {
+                              if (authEmailInput.trim()) {
+                                const { error } = await signInWithEmail(authEmailInput.trim());
+                                if (!error) setAuthEmailSent(true);
+                              }
+                            }}
+                            className="px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors"
+                            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                          >
+                            Send
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-[9px] mt-2 text-center" style={{ color: "var(--text-faint)" }}>
+                        Save documents to your account, access anywhere
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
         {/* Sidebar resize handle */}
@@ -2746,12 +3302,20 @@ export default function MdEditor() {
           </div>
           <div className="flex-1" />
           <div className="relative group pb-2">
-            <button className="p-1 rounded transition-colors" style={{ color: "var(--text-faint)" }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+            <button
+              onClick={() => { setShowSidebar(true); setTimeout(() => setShowAuthMenu(true), 100); }}
+              className="p-1 rounded transition-colors"
+              style={{ color: isAuthenticated ? "var(--accent)" : "var(--text-faint)" }}
+            >
+              {isAuthenticated && profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+              )}
             </button>
             <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Sign in (coming soon)
+              {isAuthenticated ? profile?.display_name || user?.email : "Sign in"}
             </div>
           </div>
         </div>
@@ -2770,7 +3334,7 @@ export default function MdEditor() {
           } else {
             pct = ((e.clientX - rect.left) / rect.width) * 100;
           }
-          pct = Math.max(20, Math.min(80, pct));
+          pct = Math.max(25, Math.min(75, pct));
           splitPercentRef.current = pct;
           // Update DOM directly to avoid re-render (preserves Mermaid SVGs)
           const renderPane = splitContainerRef.current.querySelector("[data-pane='render']") as HTMLElement;
@@ -2802,7 +3366,7 @@ export default function MdEditor() {
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
-              <span style={{ color: "var(--accent)" }}>BEAUTIFIED MD</span>
+              <span style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
               <div className="flex items-center gap-2 normal-case">
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
@@ -2811,9 +3375,10 @@ export default function MdEditor() {
                 <div className="relative group hidden sm:block">
                   <button
                     onClick={() => setShowToolbar(!showToolbar)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: showToolbar ? "var(--accent-dim)" : "var(--toggle-bg)", color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
                   >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
                     <span className="text-[10px] font-medium">TOOLBAR</span>
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showToolbar ? "var(--accent)" : "var(--text-faint)", opacity: showToolbar ? 1 : 0.3 }} />
@@ -2821,13 +3386,29 @@ export default function MdEditor() {
                     </span>
                   </button>
                 </div>
+                {/* Narrow view toggle */}
+                <div className="relative group hidden sm:block">
+                  <button
+                    onClick={() => setNarrowView(!narrowView)}
+                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
+                    style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+                    <span className="text-[10px] font-medium">NARROW</span>
+                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
+                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowView ? "var(--accent)" : "var(--text-faint)", opacity: narrowView ? 1 : 0.3 }} />
+                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowView ? "translateX(11px)" : "translateX(2px)" }} />
+                    </span>
+                  </button>
+                </div>
                 {/* AI ASCII RENDER — mini toggle + hover tooltip */}
                 <div className="relative group hidden sm:block">
                   <button
                     onClick={toggleDiagramMode}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
                   >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
                     <span className="text-[10px] font-medium">AI ASCII RENDER</span>
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
@@ -2847,22 +3428,54 @@ export default function MdEditor() {
                 <div className="relative hidden sm:block">
                   <button
                     onClick={() => setShowExportMenu(prev => !prev)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 2v8M5 7l3 3 3-3"/></svg>
-                    <span className="text-[10px] font-medium">EXPORT</span>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
                   </button>
                   {showExportMenu && (
-                    <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-50"
-                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)" }}>
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-normal" style={{ color: "var(--text-faint)" }}>Export</div>
-                      <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>PDF (Print)</button>
+                    <div className="absolute top-full right-0 mt-1 w-56 rounded-lg shadow-xl py-1 z-[9999]"
+                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                      {/* Download section */}
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Download</div>
+                      <button onClick={() => { handleDownloadMd(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/></svg>
+                        Markdown (.md)
+                      </button>
+                      <button onClick={handleDownloadHtml} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg>
+                        HTML (.html)
+                      </button>
+                      <button onClick={handleDownloadTxt} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="3" y="1" width="10" height="14" rx="1"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>
+                        Plain Text (.txt)
+                      </button>
                       <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-normal" style={{ color: "var(--text-faint)" }}>Copy as</div>
-                      <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>HTML</button>
-                      <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Google Docs / Email</button>
-                      <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Slack</button>
+                      {/* Print section */}
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Print</div>
+                      <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="1" y="5" width="14" height="7" rx="1"/><path d="M4 5V2h8v3M4 9h8v5H4z"/></svg>
+                        PDF / Print
+                      </button>
+                      <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                      {/* Copy as section */}
+                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy to Clipboard</div>
+                      <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5"/></svg>
+                        Raw HTML
+                      </button>
+                      <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 8.5h4M5 11h5"/></svg>
+                        Rich Text (Docs / Email)
+                      </button>
+                      <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 9.5a1.5 1.5 0 110-3H5v1.5A1.5 1.5 0 013.5 9.5zm3 0A1.5 1.5 0 015 8V3.5a1.5 1.5 0 113 0V8a1.5 1.5 0 01-1.5 1.5zm6-3a1.5 1.5 0 110 3H11V8a1.5 1.5 0 011.5-1.5zm-3 0A1.5 1.5 0 0111 8v4.5a1.5 1.5 0 11-3 0V8a1.5 1.5 0 011.5-1.5z"/></svg>
+                        Slack (mrkdwn)
+                      </button>
+                      <button onClick={() => { handleCopyPlainText(); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="3" y="1" width="10" height="14" rx="1"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>
+                        Plain Text
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2922,10 +3535,10 @@ export default function MdEditor() {
                   contentEditable
                   suppressContentEditableWarning
                   onInput={handleWysiwygInput}
-                  className={`mdcore-rendered max-w-none focus:outline-none ${
-                    viewMode === "preview"
+                  className={`mdcore-rendered focus:outline-none ${
+                    viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6"
+                      : "p-3 sm:p-6 max-w-none"
                   }`}
                   style={{ cursor: "text" }}
                 />
@@ -2934,10 +3547,10 @@ export default function MdEditor() {
                   contentEditable
                   suppressContentEditableWarning
                   onInput={handleWysiwygInput}
-                  className={`mdcore-rendered max-w-none focus:outline-none ${
-                    viewMode === "preview"
+                  className={`mdcore-rendered focus:outline-none ${
+                    viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6"
+                      : "p-3 sm:p-6 max-w-none"
                   }`}
                   style={{ cursor: "text", minHeight: "100%" }}
                   data-placeholder="true"
@@ -2975,13 +3588,79 @@ export default function MdEditor() {
               onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5">
-                <span style={{ color: "var(--accent)" }}>SOURCE MD</span>
-                {/* Syntax badges with hover tooltips */}
-                <div className="relative group hidden sm:block">
-                  <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{flavor}</span>
-                  <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                    {{ gfm: "GitHub Flavored Markdown", commonmark: "CommonMark (standard)", obsidian: "Obsidian-flavored Markdown", mdx: "MDX (Markdown + JSX)", pandoc: "Pandoc Markdown" }[flavor] || `Markdown flavor: ${flavor}`}
-                  </div>
+                <span style={{ color: "var(--accent)" }}>MDFIED</span>
+                {/* Flavor badge — click to convert */}
+                <div className="relative hidden sm:block">
+                  <button
+                    onClick={() => setShowFlavorMenu(!showFlavorMenu)}
+                    className="px-1.5 py-0.5 rounded font-mono cursor-pointer transition-colors hover:brightness-110"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                  >
+                    {flavor.toUpperCase()} ▾
+                  </button>
+                  {showFlavorMenu && (
+                    <>
+                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowFlavorMenu(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-56 rounded-lg shadow-xl py-1 z-[9999]"
+                        style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                        <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
+                          Current: {{ gfm: "GitHub Flavored", commonmark: "CommonMark", obsidian: "Obsidian", mdx: "MDX", pandoc: "Pandoc" }[flavor] || flavor}
+                        </div>
+                        <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                        <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Convert to</div>
+                        {[
+                          { id: "gfm", name: "GFM (GitHub)", desc: "Tables, task lists, strikethrough, autolinks" },
+                          { id: "commonmark", name: "CommonMark", desc: "Standard Markdown — maximum compatibility" },
+                          { id: "obsidian", name: "Obsidian", desc: "Wikilinks, callouts, embeds" },
+                        ].filter(f => f.id !== flavor).map(target => (
+                          <button
+                            key={target.id}
+                            onClick={async () => {
+                              setShowFlavorMenu(false);
+                              const md = markdownRef.current;
+                              let converted = md;
+                              // Conversion rules
+                              if (flavor === "obsidian" && target.id !== "obsidian") {
+                                // [[wikilinks]] → [text](text)
+                                converted = converted.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "[$2]($1)");
+                                converted = converted.replace(/\[\[([^\]]+)\]\]/g, "[$1]($1)");
+                                // > [!note] callouts → > **Note:**
+                                converted = converted.replace(/^>\s*\[!(\w+)\]\s*(.*)$/gm, "> **$1:** $2");
+                              }
+                              if (target.id === "obsidian" && flavor !== "obsidian") {
+                                // [text](url) where text === url → [[text]]
+                                converted = converted.replace(/\[([^\]]+)\]\(\1\)/g, "[[$1]]");
+                              }
+                              if (flavor === "mdx") {
+                                // Remove JSX components
+                                converted = converted.replace(/<[A-Z]\w+[^>]*\/>/g, "");
+                                converted = converted.replace(/<[A-Z]\w+[^>]*>[\s\S]*?<\/[A-Z]\w+>/g, "");
+                                // Remove import statements
+                                converted = converted.replace(/^import\s+.*$/gm, "");
+                                // Remove export default
+                                converted = converted.replace(/^export\s+default\s+.*$/gm, "");
+                              }
+                              if (target.id === "commonmark") {
+                                // Strikethrough ~~text~~ → text (not in CommonMark)
+                                converted = converted.replace(/~~([^~]+)~~/g, "$1");
+                                // Task lists → plain lists
+                                converted = converted.replace(/^(\s*)- \[[ x]\] /gm, "$1- ");
+                              }
+                              // Clean up excessive blank lines
+                              converted = converted.replace(/\n{3,}/g, "\n\n").trim();
+                              setMarkdown(converted);
+                              doRender(converted);
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <div style={{ color: "var(--text-primary)" }}>{target.name}</div>
+                            <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>{target.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
                 {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
                   <div key={key} className="relative group hidden sm:block">
@@ -2993,15 +3672,29 @@ export default function MdEditor() {
                 ))}
               </div>
               <div className="flex items-center gap-1.5 normal-case">
+                {/* Narrow view toggle */}
+                <div className="relative group hidden sm:block">
+                  <button
+                    onClick={() => setNarrowSource(!narrowSource)}
+                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
+                    style={{ background: narrowSource ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowSource ? "var(--accent)" : "var(--text-muted)" }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+                    <span className="text-[10px] font-medium">NARROW</span>
+                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
+                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowSource ? "var(--accent)" : "var(--text-faint)", opacity: narrowSource ? 1 : 0.3 }} />
+                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowSource ? "translateX(11px)" : "translateX(2px)" }} />
+                    </span>
+                  </button>
+                </div>
                 {/* Copy MD */}
                 <div className="relative group">
                   <button
                     onClick={() => { navigator.clipboard.writeText(markdownRef.current); }}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                    <span className="text-[10px] font-medium">COPY</span>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
                 </div>
@@ -3009,20 +3702,21 @@ export default function MdEditor() {
                 <div className="relative group">
                   <button
                     onClick={handleDownloadMd}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
-                    <span className="text-[10px] font-medium">.MD</span>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
                 </div>
               </div>
             </div>
-            <div
-              ref={editorContainerRef}
-              className="flex-1 min-h-0 overflow-hidden"
-            />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <div
+                ref={editorContainerRef}
+                className={narrowSource ? "max-w-3xl mx-auto h-full" : "h-full"}
+              />
+            </div>
           </div>
       </div>
       </div>{/* end main content wrapper */}
@@ -3072,6 +3766,28 @@ export default function MdEditor() {
                   </div>
                 ))}
               </div>
+              <div className="my-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
+              <p className="font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>Import</p>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {["MD", "PDF", "DOCX", "PPTX", "XLSX", "HTML", "CSV", "LaTeX", "RST", "RTF", "JSON", "XML", "TXT"].map(f => (
+                  <span key={f} className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>{f}</span>
+                ))}
+              </div>
+              <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Drag & drop or use IMPORT in sidebar</p>
+              <div className="my-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
+              <p className="font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>Export</p>
+              <div className="space-y-0.5 text-[10px]">
+                {[
+                  ["Download", "MD, HTML, TXT"],
+                  ["Print", "PDF"],
+                  ["Clipboard", "HTML, Rich Text, Slack, Plain"],
+                ].map(([cat, fmts]) => (
+                  <div key={cat} className="flex justify-between">
+                    <span style={{ color: "var(--text-faint)" }}>{cat}</span>
+                    <span>{fmts}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
@@ -3080,7 +3796,11 @@ export default function MdEditor() {
         </div>
         {/* Right: stats + engine badges */}
         <div className="flex items-center gap-3 shrink-0">
+          <span>{wordCount.toLocaleString()} words</span>
+          <span style={{ color: "var(--border)" }}>·</span>
           <span>{charCount.toLocaleString()} chars</span>
+          <span style={{ color: "var(--border)" }}>·</span>
+          <span>{lineCount.toLocaleString()} lines</span>
           {/* Flavor badges moved to SOURCE MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
@@ -3160,7 +3880,21 @@ export default function MdEditor() {
                 URL.revokeObjectURL(url);
               }
             }},
-            ...(tabs.length > 1 ? [{ label: "Delete", action: () => closeTab(docContextMenu.tabId), danger: true }] : []),
+            ...folders.map(f => ({
+              label: `Move to ${f.name}`,
+              action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
+            })),
+            ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
+              label: "Move to root",
+              action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
+            }] : []),
+            ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
+              setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+              if (docContextMenu.tabId === activeTabId) {
+                const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
+                if (remaining.length) switchTab(remaining[0].id);
+              }
+            }, danger: true }] : []),
           ].map((item) => (
             <button
               key={item.label}
@@ -3171,6 +3905,63 @@ export default function MdEditor() {
               {item.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* mdfy AI structuring prompt */}
+      {mdfyPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => !mdfyLoading && setMdfyPrompt(null)}>
+          <div className="rounded-xl p-5 w-80" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
+            <div className="mb-3">
+              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--accent)" }}>mdfy</span> this document?</span>
+            </div>
+            <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
+              This file was imported as raw text — all formatting (headings, lists, tables, emphasis) was lost during extraction.
+            </p>
+            <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+              <strong style={{ color: "var(--accent)" }}>mdfy</strong> uses AI to detect the original structure and rebuild it as clean Markdown — headings, bullet points, tables, code blocks, and more.
+            </p>
+            <div className="flex gap-2">
+              <button
+                disabled={mdfyLoading}
+                onClick={() => setMdfyPrompt(null)}
+                className="flex-1 px-3 py-2 rounded-md text-[11px] font-medium transition-colors"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+              >
+                Keep Raw
+              </button>
+              <button
+                disabled={mdfyLoading}
+                onClick={async () => {
+                  setMdfyLoading(true);
+                  try {
+                    const structured = await mdfyText(mdfyPrompt.text, mdfyPrompt.filename);
+                    // Update the tab with structured markdown
+                    setTabs(prev => prev.map(t => t.id === mdfyPrompt.tabId ? { ...t, markdown: structured } : t));
+                    if (mdfyPrompt.tabId === activeTabId) {
+                      setMarkdown(structured);
+                      doRender(structured);
+                    }
+                  } catch (err) {
+                    console.error("mdfy failed:", err);
+                  }
+                  setMdfyLoading(false);
+                  setMdfyPrompt(null);
+                }}
+                className="flex-1 px-3 py-2 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+              >
+                {mdfyLoading ? (
+                  <>
+                    <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>mdfy it</>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

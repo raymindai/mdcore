@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number };
+  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number; userId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown, title, password, expiresIn } = body;
+  const { markdown, title, password, expiresIn, userId } = body;
   if (!markdown || typeof markdown !== "string") {
     return NextResponse.json(
       { error: "markdown is required" },
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     edit_token: editToken,
     password_hash: passwordHash,
     expires_at: expiresAt,
+    user_id: userId || null,
   });
 
   if (error) {

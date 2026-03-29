@@ -101,7 +101,7 @@ interface ShortUrlResult {
 export async function createShortUrl(
   markdown: string,
   title?: string,
-  options?: { password?: string; expiresIn?: number }
+  options?: { password?: string; expiresIn?: number; userId?: string }
 ): Promise<ShortUrlResult> {
   const res = await fetch("/api/docs", {
     method: "POST",
@@ -111,6 +111,7 @@ export async function createShortUrl(
       title,
       password: options?.password,
       expiresIn: options?.expiresIn,
+      userId: options?.userId,
     }),
   });
 

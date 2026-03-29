@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
     if (Array.isArray(config.externals)) {
       config.externals.push({ mermaid: "mermaid" });
     }
+    // pdf-parse: keep as external for server-side only (avoid webpack bundling issues)
+    if (config.name === "server") {
+      config.externals = config.externals || [];
+      if (Array.isArray(config.externals)) {
+        config.externals.push("pdf-parse", "officeparser");
+      }
+    }
     return config;
   },
   async rewrites() {
