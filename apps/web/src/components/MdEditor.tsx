@@ -31,36 +31,44 @@ import {
 
 const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
-> **The universal Markdown engine for the AI era.**
-> Paste any Markdown — from any AI, any tool, any flavor. Rendered instantly via Rust + WASM.
+> **The fastest way from thought to shared document.**
+> Import anything. Render beautifully. Share instantly.
 
-## Quick Start
+## Get Started
 
-1. **Paste** any Markdown in the editor
-2. **Preview** renders instantly (split view)
-3. **Share** with a short URL — \`mdfy.cc/{id}\`
+1. **Type or paste** anything — Markdown, plain text, Claude Code output
+2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
+3. **Edit** inline in the Beautified view, or use Source (MDFIED) for raw Markdown
+4. **Share** with one click — generates a short URL like \`mdfy.cc/abc123\`
 
-## Interactive Features
+## What You Can Do
 
-- **Double-click** any text in preview to edit inline
-- **Click** preview elements to jump to source
-- **Right-click** table cells for row/column options
-- **Double-click** diagrams to open the visual editor
-- **Drag & drop** .md files (multiple files → new tabs)
+- **WYSIWYG editing** — click any text in Beautified view and start typing
+- **AI mdfy** — import a PDF or paste raw text, then let AI structure it as Markdown
+- **Multi-format import** — drag & drop PDF, DOCX, PPTX, XLSX, or 10+ other formats
+- **Export anywhere** — download as MD/HTML/TXT, print PDF, copy for Docs/Email/Slack
+- **Flavor conversion** — click the flavor badge (GFM ▾) to convert between formats
+- **Folders + Trash** — organize with folders, drag to move, soft delete with restore
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
+| ⌘B | Bold |
+| ⌘I | Italic |
+| ⌘K | Insert link |
 | ⌘S | Share (copy URL) |
-| ⌘Z | Undo |
-| ⌘⇧Z | Redo |
+| ⌘Z / ⌘⇧Z | Undo / Redo |
 | ⌘⇧C | Copy HTML |
 | ⌘\\\\ | Toggle view mode |
 
+## Sign In for More
+
+Sign in (sidebar bottom) to unlock cloud sync, short URLs, and AI mdfy structuring. Free forever — no credit card needed.
+
 ---
 
-*Powered by **mdcore engine v0.1.0** — Rust → WASM*
+*Powered by **mdcore engine v0.1.0** — Rust + WASM*
 `;
 
 const SAMPLE_FORMATTING = `# Markdown Syntax Guide
@@ -415,17 +423,117 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 \`\`\`
 `;
 
+const SAMPLE_IMPORT_EXPORT = `# Import & Export Guide
+
+## Import — 13+ Formats
+
+Drop any file onto mdfy.cc or click **IMPORT** in the sidebar.
+
+| Format | How it works |
+|--------|-------------|
+| **PDF** | Server-side text extraction (max 4MB) |
+| **DOCX** | Word → HTML → Markdown via mammoth |
+| **PPTX / XLSX** | Office text extraction via officeparser (max 10MB) |
+| **HTML** | Turndown converts to clean Markdown |
+| **CSV** | Auto-converted to Markdown table |
+| **LaTeX** | Sections, math, formatting → Markdown |
+| **RST** | reStructuredText headings, links → Markdown |
+| **RTF / JSON / XML / TXT** | Text extraction with format hints |
+
+### AI mdfy Structuring
+
+After importing, you'll see **"mdfy this document?"** — click **mdfy it** to let AI:
+
+- Detect headings from context
+- Rebuild lists, tables, code blocks
+- Add emphasis and formatting
+- Preserve all original content
+
+> Works great for PDF imports where formatting is lost during text extraction.
+
+## Export — Every Destination
+
+Click the **Export** icon in the Beautified header.
+
+### Download
+- **Markdown (.md)** — raw source
+- **HTML (.html)** — styled, self-contained
+- **Plain Text (.txt)** — formatting stripped
+
+### Print
+- **PDF** — via browser print dialog
+
+### Clipboard
+- **Raw HTML** — for web use
+- **Rich Text** — paste into Google Docs, Email, Word
+- **Slack (mrkdwn)** — formatted for Slack
+- **Plain Text** — no formatting
+`;
+
+const SAMPLE_FEATURES = `# Key Features
+
+## WYSIWYG Editing
+
+Click anywhere in the **Beautified** view to start editing. Format with the toolbar or keyboard shortcuts.
+
+> No need to learn Markdown syntax — just type naturally.
+
+## Flavor Detection & Conversion
+
+mdfy.cc auto-detects your Markdown flavor:
+
+- **GFM** — GitHub Flavored Markdown (tables, task lists, strikethrough)
+- **CommonMark** — Standard, maximum compatibility
+- **Obsidian** — Wikilinks, callouts, embeds
+- **MDX** — Markdown + JSX components
+- **Pandoc** — Citations, footnotes, definition lists
+
+Click the **flavor badge** (e.g. \`GFM ▾\`) in the MDFIED header to convert between flavors.
+
+## CLI Output Support
+
+Paste output from **Claude Code** or any terminal — unicode tables and checkmarks auto-convert:
+
+\`\`\`
+┌──────────┬────────┐         | Feature  | Status |
+│ Feature  │ Status │   →     |----------|--------|
+├──────────┼────────┤         | Auth     | Done   |
+│ Auth     │ ✅     │         | Export   | Done   |
+└──────────┴────────┘
+\`\`\`
+
+## Narrow View
+
+Toggle **NARROW** in the panel header to constrain content width for comfortable reading — like a book layout.
+
+## Folders & Organization
+
+- Create folders via **New Folder** at sidebar bottom
+- **Drag & drop** documents between folders
+- **Right-click** folders to rename or delete
+- **Trash** section with restore and permanent delete
+- **Sort** by newest, oldest, A→Z, Z→A
+`;
+
 /** Extract title from markdown (first # heading, or first line) */
 function extractTitleFromMd(md: string): string {
   const match = md.match(/^#\s+(.+)/m);
   return match ? match[1].trim() : "Untitled";
 }
 
+const EXAMPLES_FOLDER_ID = "folder-examples";
+
+const INITIAL_FOLDERS: Folder[] = [
+  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: true },
+];
+
 const INITIAL_TABS: Tab[] = [
   { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID, readonly: true },
 ];
 
 type ViewMode = "split" | "preview" | "editor";
@@ -480,6 +588,7 @@ interface Tab {
   cloudId?: string;        // Supabase document id
   deleted?: boolean;       // soft delete → trash
   deletedAt?: number;      // timestamp for auto-purge
+  readonly?: boolean;      // example docs — not editable
 }
 
 let tabIdCounter = 1;
@@ -804,8 +913,9 @@ export default function MdEditor() {
   const [authEmailInput, setAuthEmailInput] = useState("");
   const [authEmailSent, setAuthEmailSent] = useState(false);
   const [folders, setFolders] = useState<Folder[]>(() => {
-    if (typeof window === "undefined") return [];
-    try { const s = localStorage.getItem("mdfy-folders"); return s ? JSON.parse(s) : []; } catch { return []; }
+    if (typeof window === "undefined") return INITIAL_FOLDERS;
+    try { const s = localStorage.getItem("mdfy-folders"); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length > 0) return p; } } catch { /* */ }
+    return INITIAL_FOLDERS;
   });
   const [showTrash, setShowTrash] = useState(false);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
@@ -832,14 +942,24 @@ export default function MdEditor() {
     localStorage.setItem("mdfy-diagram-mode", next);
   }, [diagramMode]);
 
-  // Tab system — persist to localStorage
+  // Tab system — persist to localStorage (version check to refresh samples)
+  const TABS_VERSION = "2";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
-      const saved = localStorage.getItem("mdfy-tabs");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const ver = localStorage.getItem("mdfy-tabs-version");
+      if (ver === TABS_VERSION) {
+        const saved = localStorage.getItem("mdfy-tabs");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } else {
+        // New version — reset to show updated samples
+        localStorage.setItem("mdfy-tabs-version", TABS_VERSION);
+        localStorage.removeItem("mdfy-tabs");
+        localStorage.removeItem("mdfy-folders");
+        localStorage.removeItem("mdfy-active-tab");
       }
     } catch { /* ignore */ }
     return INITIAL_TABS;
@@ -3583,7 +3703,7 @@ ${html}
             </div>
             {/* WYSIWYG Formatting Toolbar */}
             {/* Formatting toolbar — BEAUTIFIED MD only */}
-            {showToolbar && (
+            {showToolbar && !activeTab?.readonly && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
                 onInsertTable={handleInsertTable}
@@ -3634,23 +3754,23 @@ ${html}
                       el.setAttribute("data-html-hash", hash);
                     }
                   }}
-                  contentEditable
+                  contentEditable={!activeTab?.readonly}
                   suppressContentEditableWarning
-                  onInput={handleWysiwygInput}
-                  onPaste={handleWysiwygPaste}
+                  onInput={activeTab?.readonly ? undefined : handleWysiwygInput}
+                  onPaste={activeTab?.readonly ? undefined : handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6 max-w-none"
                   }`}
-                  style={{ cursor: "text" }}
+                  style={{ cursor: activeTab?.readonly ? "default" : "text" }}
                 />
               ) : (
                 <article
-                  contentEditable
+                  contentEditable={!activeTab?.readonly}
                   suppressContentEditableWarning
-                  onInput={handleWysiwygInput}
-                  onPaste={handleWysiwygPaste}
+                  onInput={activeTab?.readonly ? undefined : handleWysiwygInput}
+                  onPaste={activeTab?.readonly ? undefined : handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
