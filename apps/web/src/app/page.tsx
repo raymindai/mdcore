@@ -31,6 +31,11 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
         </span>
       </div>
 
+      {/* Tagline */}
+      <p className="text-xs tracking-wide" style={{ color: "var(--text-faint)" }}>
+        Paste anything. Share beautifully.
+      </p>
+
       {/* Animated bar */}
       <div
         className="w-32 h-0.5 rounded-full overflow-hidden"
