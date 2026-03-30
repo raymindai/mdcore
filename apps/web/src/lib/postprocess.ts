@@ -152,9 +152,9 @@ function styleAsciiDiagrams(html: string): string {
   const boxCharsRegex = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/g;
   const MIN_BOX_CHARS = 5;
 
-  // Only detect in code blocks — not in paragraphs (too many false positives)
+  // Detect in code blocks — handles both raw <pre><code> and <pre><div class="code-header">...</div><code>
   const result = html.replace(
-    /<pre([^>]*)><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+    /<pre([^>]*)>(?:<div class="code-header"[\s\S]*?<\/div>)?<code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
     (match, preAttrs, codeAttrs, content) => {
       if (/lang="mermaid"/.test(preAttrs) || /language-mermaid/.test(codeAttrs)) return match;
       const decoded = decodeHtmlEntities(content);
@@ -176,9 +176,8 @@ function wrapAsciiDiagram(content: string, sourcepos: string): string {
     return `<div ${sourcepos}>${htmlTable}</div>`;
   }
 
-  // Otherwise: styled ASCII diagram (strip any code-header from highlightCode to avoid duplicate copy button)
-  const cleanContent = content.replace(/<div class="code-header"[\s\S]*?<\/div>/, "");
-  return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${cleanContent}</code></pre></div>`;
+  // Otherwise: styled ASCII diagram (code-header already excluded by regex match)
+  return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre></div>`;
 }
 
 /**
