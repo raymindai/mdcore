@@ -1067,7 +1067,9 @@ export default function MdEditor() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
+  const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
+  const [editorPaneUnderNarrowWidth, setEditorPaneUnderNarrowWidth] = useState(false);
   const splitPercentRef = useRef(60);
   const isDraggingSplit = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -1128,8 +1130,8 @@ export default function MdEditor() {
       for (const entry of entries) {
         const el = entry.target as HTMLElement;
         const w = entry.contentRect.width;
-        if (el.dataset.pane === "render") setRenderPaneNarrow(w < 500);
-        if (el.dataset.pane === "editor") setEditorPaneNarrow(w < 500);
+        if (el.dataset.pane === "render") { setRenderPaneNarrow(w < 500); setRenderPaneUnderNarrowWidth(w < 768); }
+        if (el.dataset.pane === "editor") { setEditorPaneNarrow(w < 500); setEditorPaneUnderNarrowWidth(w < 768); }
       }
     });
     // Observe both panes directly
@@ -3596,8 +3598,8 @@ ${html}
                     Show formatting toolbar with bold, italic, headings, lists, and more.
                   </div>
                 </div>
-                {/* Narrow view toggle — hidden on mobile and when pane is narrow */}
-                <div className="relative group" style={{ display: isMobile || renderPaneNarrow ? "none" : undefined }}>
+                {/* Narrow view toggle — hidden when pane is already narrower than max-w-3xl (768px) */}
+                <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowView(!narrowView)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
@@ -3896,8 +3898,8 @@ ${html}
                 ))}
               </div>
               <div className="flex items-center gap-1.5 normal-case shrink-0 flex-nowrap">
-                {/* Narrow view toggle — hidden on mobile and when pane is narrow */}
-                <div className="relative group" style={{ display: isMobile || editorPaneNarrow ? "none" : undefined }}>
+                {/* Narrow view toggle — hidden when pane is already narrower than max-w-3xl (768px) */}
+                <div className="relative group" style={{ display: isMobile || editorPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowSource(!narrowSource)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
