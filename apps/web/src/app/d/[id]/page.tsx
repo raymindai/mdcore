@@ -11,11 +11,24 @@ async function getDocument(id: string) {
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, password_hash, expires_at")
+    .select("id, markdown, title, created_at, password_hash, expires_at, user_id")
     .eq("id", id)
     .single();
 
-  return data;
+  if (!data) return null;
+
+  // Check if document owner is a Pro user (hide badge)
+  let ownerPlan = "free";
+  if (data.user_id) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", data.user_id)
+      .single();
+    if (profile?.plan) ownerPlan = profile.plan;
+  }
+
+  return { ...data, ownerPlan };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -73,6 +86,7 @@ export default async function DocPage({ params }: Props) {
       title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
       isProtected={isProtected}
       isExpired={!!isExpired}
+      showBadge={doc.ownerPlan !== "pro"}
     />
   );
 }

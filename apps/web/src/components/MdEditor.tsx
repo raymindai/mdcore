@@ -2093,8 +2093,8 @@ export default function MdEditor() {
         window.history.replaceState(null, "", `/${newDocId}`);
       } else {
         try {
-          // Not logged in: try short URL without user_id
-          const { url, editToken } = await createShortUrl(markdown, title);
+          // Not logged in: short URL with 7-day expiry, no user_id
+          const { url, editToken } = await createShortUrl(markdown, title, { expiresIn: 7 * 24 });
           const newDocId = url.split("/").pop()!;
           saveEditToken(newDocId, editToken);
           setDocId(newDocId);
@@ -2114,7 +2114,7 @@ export default function MdEditor() {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 3000);
     }
-  }, [markdown, title, docId]);
+  }, [markdown, title, docId, isAuthenticated, user, profile]);
 
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
