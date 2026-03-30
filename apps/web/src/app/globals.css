@@ -74,8 +74,8 @@
   --badge-muted-color: #71717a;
   --menu-bg: #ffffff;
   --menu-hover: rgba(244, 244, 245, 0.8);
-  --toggle-bg: rgba(244, 244, 245, 0.8);
-  --toggle-active: #e4e4e7;
+  --toggle-bg: #e4e4e7;
+  --toggle-active: #d4d4d8;
   --drag-bg: rgba(255, 255, 255, 0.9);
 }
 
