@@ -3752,14 +3752,15 @@ ${html}
             }}>
               <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full gap-3">
-                  <div
-                    className="w-6 h-6 border-2 rounded-full animate-spin"
-                    style={{ borderColor: "var(--accent-dim)", borderTopColor: "var(--accent)" }}
-                  />
-                  <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-                    Loading WASM engine...
-                  </span>
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <div className="flex items-baseline">
+                    <span className="text-lg font-extrabold" style={{ color: "var(--accent)" }}>md</span>
+                    <span className="text-lg font-extrabold" style={{ color: "var(--text-primary)" }}>fy</span>
+                    <span className="text-lg font-extrabold" style={{ color: "var(--text-faint)" }}>.cc</span>
+                  </div>
+                  <div className="w-20 h-0.5 rounded-full overflow-hidden" style={{ background: "var(--border-dim)" }}>
+                    <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
+                  </div>
                 </div>
               ) : html ? (
                 <article
