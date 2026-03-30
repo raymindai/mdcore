@@ -918,6 +918,7 @@ export default function MdEditor() {
     return INITIAL_FOLDERS;
   });
   const [showTrash, setShowTrash] = useState(false);
+  const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [showCloudDocs, setShowCloudDocs] = useState(false);
@@ -3013,7 +3014,7 @@ ${html}
           }
         }}
         onMouseUp={() => { isDraggingSidebar.current = false; }}
-        onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); }}
+        onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); if (sidebarContextMenu) setSidebarContextMenu(null); }}
       >
 
       {/* Sidebar */}
@@ -3129,7 +3130,12 @@ ${html}
             }}
           />
           {/* Document list with folders */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" onContextMenu={(e) => {
+            // Only show sidebar context menu if right-clicking on empty area (not on a document/folder)
+            if ((e.target as HTMLElement).closest("[data-tab-item], [data-folder-item]")) return;
+            e.preventDefault();
+            setSidebarContextMenu({ x: e.clientX, y: e.clientY });
+          }}>
             {/* Root-level documents (no folder) */}
             <div className="px-2 space-y-0.5">
               {tabs.filter(t => !t.deleted && !t.folderId).sort((a, b) => {
@@ -3407,29 +3413,6 @@ ${html}
                 {(sortMode === "oldest" || sortMode === "za") && <path d="M15 8l-2 2.5 2 2.5" strokeWidth="1.5"/>}
               </svg>
               {sidebarWidth >= 200 && <span>{{ newest: "Newest", oldest: "Oldest", az: "A→Z", za: "Z→A" }[sortMode]}</span>}
-            </button>
-            <div className="h-4 shrink-0" style={{ width: 1, background: "var(--border-dim)" }} />
-            <button
-              onClick={() => {
-                // Add a fresh Examples folder with all sample docs
-                const fId = `folder-examples-${Date.now()}`;
-                const newTabs = [
-                  { id: `tab-${Date.now()}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId },
-                  { id: `tab-${Date.now()}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId },
-                  { id: `tab-${Date.now()}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId },
-                  { id: `tab-${Date.now()}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId },
-                  { id: `tab-${Date.now()}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId },
-                  { id: `tab-${Date.now()}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId },
-                ];
-                setFolders(prev => [...prev, { id: fId, name: "Examples", collapsed: false }]);
-                setTabs(prev => [...prev, ...newTabs]);
-              }}
-              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-faint)" }}
-              title="Add a fresh Examples folder with sample documents"
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="shrink-0"><path d="M2 2v12h12V5l-3-3H2z"/><path d="M8 7v5M6 10h4"/></svg>
-              {sidebarWidth >= 240 && <span>Restore Examples</span>}
             </button>
           </div>
           {/* Account section at bottom */}
@@ -4376,6 +4359,38 @@ ${html}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sidebar context menu */}
+      {sidebarContextMenu && (
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setSidebarContextMenu(null)} />
+          <div className="fixed rounded-lg shadow-xl py-1" style={{ left: sidebarContextMenu.x, top: sidebarContextMenu.y, zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", width: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+            <button onClick={() => { addTab(); setSidebarContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Document</button>
+            <button onClick={() => {
+              const id = `folder-${Date.now()}`;
+              setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
+              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); setInlineInput(null); }});
+              setSidebarContextMenu(null);
+            }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
+            <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+            <button onClick={() => {
+              const fId = `folder-examples-${Date.now()}`;
+              const t = Date.now();
+              const newTabs = [
+                { id: `tab-${t}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId },
+                { id: `tab-${t}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId },
+                { id: `tab-${t}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId },
+                { id: `tab-${t}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId },
+                { id: `tab-${t}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId },
+                { id: `tab-${t}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId },
+              ];
+              setFolders(prev => [...prev, { id: fId, name: "Examples", collapsed: false }]);
+              setTabs(prev => [...prev, ...newTabs]);
+              setSidebarContextMenu(null);
+            }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Restore Examples</button>
+          </div>
+        </>
       )}
 
       {/* Folder context menu */}
