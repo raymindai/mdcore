@@ -529,11 +529,11 @@ const INITIAL_FOLDERS: Folder[] = [
 
 const INITIAL_TABS: Tab[] = [
   { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME },
-  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID },
 ];
 
 type ViewMode = "split" | "preview" | "editor";
@@ -3157,7 +3157,6 @@ ${html}
                     <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
                   </svg>
                   <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                  {tab.readonly && <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-40"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>}
                   <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                     className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
@@ -3246,8 +3245,7 @@ ${html}
                             <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
                           </svg>
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                          {tab.readonly && <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-40"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>}
-                          <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                                  <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
                           </button>
@@ -3409,6 +3407,29 @@ ${html}
                 {(sortMode === "oldest" || sortMode === "za") && <path d="M15 8l-2 2.5 2 2.5" strokeWidth="1.5"/>}
               </svg>
               {sidebarWidth >= 200 && <span>{{ newest: "Newest", oldest: "Oldest", az: "A→Z", za: "Z→A" }[sortMode]}</span>}
+            </button>
+            <div className="h-4 shrink-0" style={{ width: 1, background: "var(--border-dim)" }} />
+            <button
+              onClick={() => {
+                // Add a fresh Examples folder with all sample docs
+                const fId = `folder-examples-${Date.now()}`;
+                const newTabs = [
+                  { id: `tab-${Date.now()}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId },
+                  { id: `tab-${Date.now()}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId },
+                  { id: `tab-${Date.now()}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId },
+                  { id: `tab-${Date.now()}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId },
+                  { id: `tab-${Date.now()}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId },
+                  { id: `tab-${Date.now()}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId },
+                ];
+                setFolders(prev => [...prev, { id: fId, name: "Examples", collapsed: false }]);
+                setTabs(prev => [...prev, ...newTabs]);
+              }}
+              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-faint)" }}
+              title="Add a fresh Examples folder with sample documents"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="shrink-0"><path d="M2 2v12h12V5l-3-3H2z"/><path d="M8 7v5M6 10h4"/></svg>
+              {sidebarWidth >= 240 && <span>Restore Examples</span>}
             </button>
           </div>
           {/* Account section at bottom */}
@@ -3728,7 +3749,7 @@ ${html}
             </div>
             {/* WYSIWYG Formatting Toolbar */}
             {/* Formatting toolbar — BEAUTIFIED MD only */}
-            {showToolbar && !activeTab?.readonly && (
+            {showToolbar && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
                 onInsertTable={handleInsertTable}
@@ -3780,23 +3801,23 @@ ${html}
                       el.setAttribute("data-html-hash", hash);
                     }
                   }}
-                  contentEditable={!activeTab?.readonly}
+                  contentEditable
                   suppressContentEditableWarning
-                  onInput={activeTab?.readonly ? undefined : handleWysiwygInput}
-                  onPaste={activeTab?.readonly ? undefined : handleWysiwygPaste}
+                  onInput={handleWysiwygInput}
+                  onPaste={handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6 max-w-none"
                   }`}
-                  style={{ cursor: activeTab?.readonly ? "default" : "text" }}
+                  style={{ cursor: "text" }}
                 />
               ) : (
                 <article
-                  contentEditable={!activeTab?.readonly}
+                  contentEditable
                   suppressContentEditableWarning
-                  onInput={activeTab?.readonly ? undefined : handleWysiwygInput}
-                  onPaste={activeTab?.readonly ? undefined : handleWysiwygPaste}
+                  onInput={handleWysiwygInput}
+                  onPaste={handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
