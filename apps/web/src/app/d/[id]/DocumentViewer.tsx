@@ -29,6 +29,7 @@ export default function DocumentViewer({
   const [theme, setThemeState] = useState<Theme>("dark");
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
+  const [narrowView, setNarrowView] = useState(true);
   const [unlocked, setUnlocked] = useState(!isProtected);
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -208,9 +209,22 @@ export default function DocumentViewer({
             {copied ? (
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 8 7 11 12 5"/></svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 2H6a2 2 0 00-2 2v1M10 2h2a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-1M10 2v3"/></svg>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6.5 9.5l3-3"/><path d="M9 4l1.5-1.5a2.12 2.12 0 013 3L12 7"/><path d="M7 9L5.5 10.5a2.12 2.12 0 01-3-3L4 6"/></svg>
             )}
             {copied ? "Copied" : "Link"}
+          </button>
+          {/* Narrow toggle */}
+          <button
+            onClick={() => setNarrowView(!narrowView)}
+            className="h-6 px-2 rounded-md transition-colors flex items-center gap-1.5"
+            style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
+            title={narrowView ? "Wide view" : "Narrow view"}
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+            <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
+              <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowView ? "var(--accent)" : "var(--text-faint)", opacity: narrowView ? 1 : 0.3 }} />
+              <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowView ? "translateX(11px)" : "translateX(2px)" }} />
+            </span>
           </button>
           {/* Theme */}
           <button
@@ -304,7 +318,7 @@ export default function DocumentViewer({
           </div>
         ) : html ? (
           <article
-            className="mdcore-rendered max-w-none p-4 sm:p-8 mx-auto max-w-3xl"
+            className={`mdcore-rendered p-4 sm:p-8 ${narrowView ? "mx-auto max-w-3xl" : "max-w-none"}`}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
