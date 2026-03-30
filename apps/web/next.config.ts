@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["pdf-parse", "officeparser"],
   webpack(config) {
     config.experiments = {
       ...config.experiments,
@@ -11,13 +12,6 @@ const nextConfig: NextConfig = {
     if (!config.externals) config.externals = [];
     if (Array.isArray(config.externals)) {
       config.externals.push({ mermaid: "mermaid" });
-    }
-    // pdf-parse: keep as external for server-side only (avoid webpack bundling issues)
-    if (config.name === "server") {
-      config.externals = config.externals || [];
-      if (Array.isArray(config.externals)) {
-        config.externals.push("pdf-parse", "officeparser");
-      }
     }
     return config;
   },
