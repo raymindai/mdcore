@@ -591,7 +591,7 @@ interface Tab {
   readonly?: boolean;      // example docs — not editable
 }
 
-let tabIdCounter = 1;
+let tabIdCounter = Date.now();
 
 // ─── Inline Input Popup (replaces prompt()) ───
 function InlineInput({ label, defaultValue, onSubmit, onCancel, position }: {
