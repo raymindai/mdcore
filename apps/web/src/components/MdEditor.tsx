@@ -1227,7 +1227,7 @@ export default function MdEditor() {
     const currentTabId = activeTabIdRef.current;
 
     const id = `tab-${tabIdCounter++}`;
-    const newTab: Tab = { id, title: "Untitled", markdown: "" };
+    const newTab: Tab = { id, title: "Untitled", markdown: "# Untitled\n\n" };
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
