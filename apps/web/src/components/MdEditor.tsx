@@ -943,7 +943,7 @@ export default function MdEditor() {
   }, [diagramMode]);
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "3";
+  const TABS_VERSION = "4";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
@@ -1191,13 +1191,21 @@ export default function MdEditor() {
   doRenderRef.current = doRender;
 
   // ─── Tab management ───
+  // Helper: save current tab's markdown (and derive title from content if not readonly)
+  const saveCurrentTab = useCallback((prev: Tab[]) => {
+    return prev.map((t) => {
+      if (t.id !== activeTabId) return t;
+      if (t.readonly) return t;
+      const derivedTitle = extractTitleFromMd(markdown) || t.title || "Untitled";
+      return { ...t, markdown, title: derivedTitle };
+    });
+  }, [activeTabId, markdown]);
+
   const switchTab = useCallback((tabId: string) => {
-    // Save current tab, then load new tab from the latest tabs state
     setTabs((prev) => {
-      const updated = prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: t.readonly ? t.title : (title || t.title || "Untitled") } : t);
+      const updated = saveCurrentTab(prev);
       const tab = updated.find((t) => t.id === tabId);
       if (tab) {
-        // Schedule state updates after setTabs completes
         setTimeout(() => {
           setActiveTabId(tabId);
           setMarkdownRaw(tab.markdown);
@@ -1209,11 +1217,10 @@ export default function MdEditor() {
       }
       return updated;
     });
-  }, [activeTabId, markdown, title]);
+  }, [saveCurrentTab]);
 
   const addTab = useCallback(() => {
-    // Save current tab
-    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: t.readonly ? t.title : (title || t.title || "Untitled") } : t));
+    setTabs((prev) => saveCurrentTab(prev));
     const id = `tab-${tabIdCounter++}`;
     const initialMd = "";
     const newTab: Tab = { id, title: "Untitled", markdown: initialMd };
@@ -1221,11 +1228,11 @@ export default function MdEditor() {
     setActiveTabId(id);
     setMarkdownRaw(initialMd);
     setTitle("Untitled");
-    setHtml(""); // clear stale preview immediately
+    setHtml("");
     undoStack.current = [initialMd];
     redoStack.current = [];
     doRenderRef.current(initialMd);
-  }, [activeTabId, markdown, title]);
+  }, [saveCurrentTab]);
 
   const closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
