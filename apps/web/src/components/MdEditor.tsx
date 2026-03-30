@@ -944,7 +944,7 @@ export default function MdEditor() {
   }, [diagramMode]);
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "5";
+  const TABS_VERSION = "6";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
@@ -953,7 +953,12 @@ export default function MdEditor() {
         const saved = localStorage.getItem("mdfy-tabs");
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Deduplicate by ID
+            const seen = new Set<string>();
+            const deduped = parsed.filter((t: Tab) => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+            return deduped;
+          }
         }
       } else {
         // New version — reset to show updated samples
