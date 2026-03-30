@@ -209,7 +209,7 @@ export default function DocumentViewer({
             {copied ? (
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 8 7 11 12 5"/></svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6.5 9.5l3-3"/><path d="M9 4l1.5-1.5a2.12 2.12 0 013 3L12 7"/><path d="M7 9L5.5 10.5a2.12 2.12 0 01-3-3L4 6"/></svg>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 10l4-4"/><path d="M8.5 3.5L10 2a2 2 0 012.83 2.83L11.5 6.17"/><path d="M4.5 9.83L3.17 11.17A2 2 0 006 14l1.5-1.5"/></svg>
             )}
             {copied ? "Copied" : "Link"}
           </button>
