@@ -524,7 +524,7 @@ function extractTitleFromMd(md: string): string {
 const EXAMPLES_FOLDER_ID = "folder-examples";
 
 const INITIAL_FOLDERS: Folder[] = [
-  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: true },
+  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: false },
 ];
 
 const INITIAL_TABS: Tab[] = [
@@ -943,7 +943,7 @@ export default function MdEditor() {
   }, [diagramMode]);
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "2";
+  const TABS_VERSION = "3";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
