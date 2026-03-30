@@ -943,7 +943,7 @@ export default function MdEditor() {
   }, [diagramMode]);
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "4";
+  const TABS_VERSION = "5";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
@@ -1191,48 +1191,56 @@ export default function MdEditor() {
   doRenderRef.current = doRender;
 
   // ─── Tab management ───
-  // Helper: save current tab's markdown (and derive title from content if not readonly)
-  const saveCurrentTab = useCallback((prev: Tab[]) => {
-    return prev.map((t) => {
-      if (t.id !== activeTabId) return t;
-      if (t.readonly) return t;
-      const derivedTitle = extractTitleFromMd(markdown) || t.title || "Untitled";
-      return { ...t, markdown, title: derivedTitle };
-    });
-  }, [activeTabId, markdown]);
+  const loadTab = useCallback((tab: Tab) => {
+    setActiveTabId(tab.id);
+    setMarkdownRaw(tab.markdown);
+    setHtml("");
+    undoStack.current = [tab.markdown];
+    redoStack.current = [];
+    doRenderRef.current(tab.markdown);
+  }, []);
 
   const switchTab = useCallback((tabId: string) => {
+    // Use refs to get current values (avoid stale closures)
+    const currentMd = markdownRef.current;
+    const currentTabId = activeTabIdRef.current;
+
     setTabs((prev) => {
-      const updated = saveCurrentTab(prev);
-      const tab = updated.find((t) => t.id === tabId);
-      if (tab) {
-        setTimeout(() => {
-          setActiveTabId(tabId);
-          setMarkdownRaw(tab.markdown);
-          setHtml("");
-          undoStack.current = [tab.markdown];
-          redoStack.current = [];
-          doRenderRef.current(tab.markdown);
-        }, 0);
+      // Save current tab
+      const saved = prev.map((t) => {
+        if (t.id !== currentTabId || t.readonly) return t;
+        const derivedTitle = extractTitleFromMd(currentMd) || t.title || "Untitled";
+        return { ...t, markdown: currentMd, title: derivedTitle };
+      });
+      // Load target tab
+      const target = saved.find((t) => t.id === tabId);
+      if (target) {
+        // Use queueMicrotask to ensure setTabs finishes first
+        queueMicrotask(() => loadTab(target));
       }
-      return updated;
+      return saved;
     });
-  }, [saveCurrentTab]);
+  }, [loadTab]);
 
   const addTab = useCallback(() => {
-    setTabs((prev) => saveCurrentTab(prev));
+    const currentMd = markdownRef.current;
+    const currentTabId = activeTabIdRef.current;
+
     const id = `tab-${tabIdCounter++}`;
-    const initialMd = "";
-    const newTab: Tab = { id, title: "Untitled", markdown: initialMd };
-    setTabs((prev) => [...prev, newTab]);
-    setActiveTabId(id);
-    setMarkdownRaw(initialMd);
+    const newTab: Tab = { id, title: "Untitled", markdown: "" };
+
+    setTabs((prev) => {
+      const saved = prev.map((t) => {
+        if (t.id !== currentTabId || t.readonly) return t;
+        const derivedTitle = extractTitleFromMd(currentMd) || t.title || "Untitled";
+        return { ...t, markdown: currentMd, title: derivedTitle };
+      });
+      return [...saved, newTab];
+    });
+
+    loadTab(newTab);
     setTitle("Untitled");
-    setHtml("");
-    undoStack.current = [initialMd];
-    redoStack.current = [];
-    doRenderRef.current(initialMd);
-  }, [saveCurrentTab]);
+  }, [loadTab]);
 
   const closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
