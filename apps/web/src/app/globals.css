@@ -95,6 +95,11 @@ body {
   line-height: 1.8;
   word-wrap: break-word;
 }
+.mdcore-rendered[data-placeholder="true"]:empty::before {
+  content: "Start typing here...";
+  color: var(--text-faint);
+  pointer-events: none;
+}
 
 /* Headings */
 .mdcore-rendered h1 {

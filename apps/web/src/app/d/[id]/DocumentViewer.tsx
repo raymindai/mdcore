@@ -315,6 +315,15 @@ export default function DocumentViewer({
         )}
       </div>
 
+      {/* Published with mdfy.cc badge (Free tier) */}
+      <div className="flex justify-center py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <a href="https://mdfy.cc" target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono transition-opacity hover:opacity-80"
+          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", color: "var(--text-muted)" }}>
+          Published with <span style={{ color: "var(--accent)" }}>mdfy</span>.cc
+        </a>
+      </div>
+
       {/* Footer */}
       <footer
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"

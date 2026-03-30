@@ -14,6 +14,7 @@ import MathEditor from "@/components/MathEditor";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
+import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import { useAuth } from "@/lib/useAuth";
 import {
   createShareUrl,
@@ -893,9 +894,9 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(true);
-  const [narrowView, setNarrowView] = useState(false);
-  const [narrowSource, setNarrowSource] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(false);
+  const [narrowView, setNarrowView] = useState(true);
+  const [narrowSource, setNarrowSource] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -912,6 +913,11 @@ export default function MdEditor() {
   const isDraggingSidebar = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
+  const [dragFolderId, setDragFolderId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
+  const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
+  const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
   const splitPercentRef = useRef(60);
   const isDraggingSplit = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -925,6 +931,10 @@ export default function MdEditor() {
     }
     if (text && !html && isHtmlContent(text)) {
       return htmlToMarkdown(text);
+    }
+    // Detect CLI/terminal output and convert to markdown
+    if (text && isCliOutput(text)) {
+      return cliToMarkdown(text);
     }
     return null;
   }, []);
@@ -959,6 +969,28 @@ export default function MdEditor() {
       requestAnimationFrame(() => cmRefresh());
     }
   }, [viewMode, cmRefresh]);
+
+  // Track pane widths for responsive button labels
+  useEffect(() => {
+    const container = splitContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const el = entry.target as HTMLElement;
+        const w = entry.contentRect.width;
+        if (el.dataset.pane === "render") setRenderPaneNarrow(w < 500);
+        if (el.dataset.pane === "editor") setEditorPaneNarrow(w < 500);
+      }
+    });
+    // Observe both panes directly
+    const renderPane = container.querySelector('[data-pane="render"]');
+    const editorPane = container.querySelector('[data-pane="editor"]');
+    if (renderPane) observer.observe(renderPane);
+    if (editorPane) observer.observe(editorPane);
+    // Also observe container for full-width mode changes
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [viewMode]);
 
   const renderIdRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
@@ -1031,7 +1063,7 @@ export default function MdEditor() {
     // Save current tab
     setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
     const id = `tab-${tabIdCounter++}`;
-    const initialMd = "# Untitled\n\nStart writing here...\n";
+    const initialMd = "";
     const newTab: Tab = { id, title: "Untitled", markdown: initialMd };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(id);
@@ -1936,6 +1968,32 @@ export default function MdEditor() {
   // WYSIWYG: contentEditable preview → markdown source sync
   const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Handle paste in Beautified — convert CLI output or HTML to markdown, then re-render
+  const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text/plain");
+    const html = e.clipboardData.getData("text/html");
+
+    // Check for CLI output first
+    if (text && isCliOutput(text)) {
+      e.preventDefault();
+      const converted = cliToMarkdown(text);
+      setMarkdown(converted);
+      cmSetDoc(converted);
+      doRender(converted);
+      return;
+    }
+
+    // Check for HTML paste
+    if (html && isHtmlContent(html)) {
+      e.preventDefault();
+      const md = htmlToMarkdown(html);
+      // Insert at cursor position in contentEditable
+      document.execCommand("insertText", false, md);
+      return;
+    }
+  }, [setMarkdown, cmSetDoc, doRender]);
+
   const handleWysiwygInput = useCallback(() => {
     wysiwygEditingRef.current = true;
     if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
@@ -1993,8 +2051,11 @@ export default function MdEditor() {
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-  }, []);
+    // Only show file drop overlay for external file drags, not internal sidebar drags
+    if (e.dataTransfer.types.includes("Files") && !dragTabId && !dragFolderId) {
+      setIsDragging(true);
+    }
+  }, [dragTabId, dragFolderId]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -2017,20 +2078,35 @@ export default function MdEditor() {
         return;
       }
 
-      try {
-        // Try server-side short URL
-        const { url, editToken } = await createShortUrl(markdown, title, { userId: user?.id });
+      if (isAuthenticated && user) {
+        // Logged in: short URL with user_id, Free tier gets 7-day expiry
+        const isPro = profile?.plan === "pro";
+        const { url, editToken } = await createShortUrl(markdown, title, {
+          userId: user.id,
+          expiresIn: isPro ? undefined : 7 * 24, // Free: 7 days
+        });
         const newDocId = url.split("/").pop()!;
         saveEditToken(newDocId, editToken);
         setDocId(newDocId);
         setIsOwner(true);
         await copyToClipboard(url);
         window.history.replaceState(null, "", `/${newDocId}`);
-      } catch {
-        // Fallback to hash-based sharing
-        const url = await createShareUrl(markdown);
-        await copyToClipboard(url);
-        window.history.replaceState(null, "", url.split(window.location.origin)[1]);
+      } else {
+        try {
+          // Not logged in: try short URL without user_id
+          const { url, editToken } = await createShortUrl(markdown, title);
+          const newDocId = url.split("/").pop()!;
+          saveEditToken(newDocId, editToken);
+          setDocId(newDocId);
+          setIsOwner(true);
+          await copyToClipboard(url);
+          window.history.replaceState(null, "", `/${newDocId}`);
+        } catch {
+          // Fallback to hash-based sharing
+          const url = await createShareUrl(markdown);
+          await copyToClipboard(url);
+          window.history.replaceState(null, "", url.split(window.location.origin)[1]);
+        }
       }
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 3000);
@@ -2173,11 +2249,12 @@ ${html}
   }, [docId, markdown, title]);
 
   // Delete document
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
   const handleDelete = useCallback(async () => {
     if (!docId) return;
+    if (!confirmDeleteDoc) { setConfirmDeleteDoc(true); return; }
     const token = getEditToken(docId);
     if (!token) return;
-    if (!window.confirm("Delete this shared document?")) return;
     try {
       await deleteDocument(docId, token);
       setDocId(null);
@@ -2186,6 +2263,7 @@ ${html}
     } catch {
       // ignore
     }
+    setConfirmDeleteDoc(false);
     setShowMenu(false);
   }, [docId]);
 
@@ -2498,7 +2576,7 @@ ${html}
               }}
             >
               {icon}
-              {label}
+              <span className="hidden lg:inline">{label}</span>
             </button>
           ))}
         </div>
@@ -2507,10 +2585,10 @@ ${html}
 
           {/* AI Render moved to BEAUTIFIED MD panel header */}
 
-          {/* Theme toggle */}
+          {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
             onClick={toggleTheme}
-            className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center"
+            className="px-2 h-6 rounded-md transition-colors text-[11px] hidden sm:flex items-center"
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
@@ -2561,7 +2639,7 @@ ${html}
                 ) : (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/></svg>
                 )}
-                {shareButtonLabel}
+                <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
               <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -2675,6 +2753,13 @@ ${html}
                       New tab
                     </button>
                     <button
+                      onClick={() => { toggleTheme(); setShowMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {theme === "dark" ? "Light mode" : "Dark mode"}
+                    </button>
+                    <button
                       onClick={handleClear}
                       className="w-full text-left px-3 py-2 text-xs transition-colors"
                       style={{ color: "var(--text-muted)" }}
@@ -2684,13 +2769,23 @@ ${html}
                     {isOwner && docId && (
                       <>
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
-                        <button
-                          onClick={handleDelete}
-                          className="w-full text-left px-3 py-2 text-xs transition-colors"
-                          style={{ color: "#ef4444" }}
-                        >
-                          Delete shared doc
-                        </button>
+                        {confirmDeleteDoc ? (
+                          <div className="px-3 py-2">
+                            <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>Delete this shared document?</p>
+                            <div className="flex gap-1">
+                              <button onClick={() => setConfirmDeleteDoc(false)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                              <button onClick={handleDelete} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={handleDelete}
+                            className="w-full text-left px-3 py-2 text-xs transition-colors"
+                            style={{ color: "#ef4444" }}
+                          >
+                            Delete shared doc
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -2745,7 +2840,7 @@ ${html}
           }
         }}
         onMouseUp={() => { isDraggingSidebar.current = false; }}
-        onClick={() => { if (docContextMenu) setDocContextMenu(null); }}
+        onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); }}
       >
 
       {/* Sidebar */}
@@ -2862,28 +2957,14 @@ ${html}
           />
           {/* Document list with folders */}
           <div className="flex-1 overflow-y-auto">
-            {/* New Folder button */}
-            <div className="px-2 pt-2 pb-1">
-              <button
-                onClick={() => {
-                  const id = `folder-${Date.now()}`;
-                  setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-                  setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => {
-                    setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
-                    setInlineInput(null);
-                  }});
-                }}
-                className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-md transition-colors w-full"
-                style={{ color: "var(--text-faint)" }}
-              >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
-                NEW FOLDER
-              </button>
-            </div>
-
             {/* Root-level documents (no folder) */}
             <div className="px-2 space-y-0.5">
-              {tabs.filter(t => !t.deleted && !t.folderId).map((tab) => (
+              {tabs.filter(t => !t.deleted && !t.folderId).sort((a, b) => {
+                if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+                if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+                const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
+                return sortMode === "oldest" ? ai - bi : bi - ai;
+              }).map((tab) => (
                 <div
                   key={tab.id}
                   draggable
@@ -2912,15 +2993,24 @@ ${html}
             </div>
 
             {/* Folders */}
-            {folders.map(folder => {
+            <div className="px-2">
+            {[...folders].sort((a, b) => {
+              if (sortMode === "az") return a.name.localeCompare(b.name);
+              if (sortMode === "za") return b.name.localeCompare(a.name);
+              const ai = folders.indexOf(a), bi = folders.indexOf(b);
+              return sortMode === "oldest" ? ai - bi : bi - ai;
+            }).map(folder => {
               const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
               return (
                 <div key={folder.id} className="mt-1">
                   <div
-                    className={`flex items-center gap-1.5 px-2 mx-2 py-1.5 rounded-md cursor-pointer text-[11px] font-mono transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                    style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent" }}
+                    draggable
+                    onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
+                    onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
+                    className={`flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                    style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                     onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverTarget(folder.id); }}
+                    onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
                     onDragLeave={() => setDragOverTarget(null)}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -2928,40 +3018,41 @@ ${html}
                         setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
                       }
                       setDragTabId(null);
+                      setDragFolderId(null);
                       setDragOverTarget(null);
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      setInlineInput({ label: "Rename folder", defaultValue: folder.name, onSubmit: (name) => {
-                        setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name } : f));
-                        setInlineInput(null);
-                      }});
+                      setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
                     }}
                   >
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
                       style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
                       <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                     </svg>
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.2"><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--accent)" : "none"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: folder.collapsed ? 1 : 0.6 }}><path d="M1 4h5l2-2h7v11H1z"/></svg>
                     <span className="truncate flex-1">{folder.name}</span>
                     <span className="text-[9px] opacity-50">{folderTabs.length}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Move all folder docs to root, then delete folder
-                        setTabs(prev => prev.map(t => t.folderId === folder.id ? { ...t, folderId: undefined } : t));
-                        setFolders(prev => prev.filter(f => f.id !== folder.id));
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
                       }}
                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: "var(--text-faint)", padding: "2px" }}
-                      title="Delete folder (keeps documents)"
+                      style={{ color: "var(--text-muted)", padding: "2px" }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
                     </button>
                   </div>
                   {!folder.collapsed && (
                     <div className="pl-4 px-2 space-y-0.5 mt-0.5">
-                      {folderTabs.map((tab) => (
+                      {[...folderTabs].sort((a, b) => {
+                        if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+                        if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+                        const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
+                        return sortMode === "oldest" ? ai - bi : bi - ai;
+                      }).map((tab) => (
                         <div
                           key={tab.id}
                           draggable
@@ -2992,6 +3083,7 @@ ${html}
                 </div>
               );
             })}
+            </div>
 
             {/* Drop zone for removing from folder (root drop) */}
             {dragTabId && (
@@ -3063,52 +3155,86 @@ ${html}
               </div>
             )}
 
-            {/* Trash section */}
+            {/* Trash section — same visual structure as folders */}
             {tabs.some(t => t.deleted) && (
-              <div className="mt-3 px-2 pb-2">
-                <button
-                  onClick={() => setShowTrash(!showTrash)}
-                  className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-[11px] font-mono transition-colors"
-                  style={{ color: "var(--text-faint)" }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                  </svg>
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
-                  TRASH
-                  <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
-                </button>
-                {showTrash && (
-                  <div className="space-y-0.5 mt-1">
-                    {tabs.filter(t => t.deleted).map(tab => (
-                      <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
-                          <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                          <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                        </svg>
-                        <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
-                        <button onClick={() => setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t))}
-                          className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
-                          Restore
-                        </button>
-                        <button onClick={() => setTabs(prev => prev.filter(t => t.id !== tab.id))}
-                          className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
-                          Delete
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
-                      className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
-                      style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
-                    >
+              <div className="px-2 mt-1">
+                <div key="trash-header" className="mt-1">
+                  <div
+                    className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
+                    style={{ color: "var(--text-faint)" }}
+                    onClick={() => setShowTrash(!showTrash)}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
+                      style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
+                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                    </svg>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill={showTrash ? "none" : "var(--text-faint)"} stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showTrash ? 0.6 : 1 }}><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+                    <span className="truncate flex-1">Trash</span>
+                    <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
+                  </div>
+                  {showTrash && (
+                    <div className="pl-4 space-y-0.5 mt-0.5">
+                      {tabs.filter(t => t.deleted).map(tab => (
+                        <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
+                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                          </svg>
+                          <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
+                          <button onClick={() => setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t))}
+                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
+                            Restore
+                          </button>
+                          <button onClick={() => setTabs(prev => prev.filter(t => t.id !== tab.id))}
+                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
+                        className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
+                        style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                      >
                       Empty Trash
                     </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+          </div>
+          {/* Folder + Sort actions — above account */}
+          <div className="shrink-0 px-3 py-1.5 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border-dim)" }}>
+            <button
+              onClick={() => {
+                const id = `folder-${Date.now()}`;
+                setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
+                setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => {
+                  setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+                  setInlineInput(null);
+                }});
+              }}
+              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-faint)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="shrink-0"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
+              {sidebarWidth >= 200 && <span>New Folder</span>}
+            </button>
+            <div className="h-4 shrink-0" style={{ width: 1, background: "var(--border-dim)" }} />
+            <button
+              onClick={() => setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest")}
+              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-faint)" }}
+              title={`Sort: ${sortMode === "newest" ? "Newest first" : sortMode === "oldest" ? "Oldest first" : sortMode === "az" ? "A → Z" : "Z → A"}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+                <path d="M2 4h12M2 8h8M2 12h5"/>
+                {(sortMode === "newest" || sortMode === "az") && <path d="M13 8l2 2.5-2 2.5" strokeWidth="1.5"/>}
+                {(sortMode === "oldest" || sortMode === "za") && <path d="M15 8l-2 2.5 2 2.5" strokeWidth="1.5"/>}
+              </svg>
+              {sidebarWidth >= 200 && <span>{{ newest: "Newest", oldest: "Oldest", az: "A→Z", za: "Z→A" }[sortMode]}</span>}
+            </button>
           </div>
           {/* Account section at bottom */}
           <div className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
@@ -3177,85 +3303,14 @@ ${html}
                 )}
               </div>
             ) : (
-              <div className="relative">
-                <button
-                  onClick={() => setShowAuthMenu(!showAuthMenu)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-[11px] hover:bg-[var(--accent-dim)]"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
-                  Sign In
-                </button>
-                {showAuthMenu && (
-                  <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
-                    <div className="absolute bottom-full left-0 mb-1 w-64 rounded-lg shadow-xl p-3 z-[9999]"
-                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                      <p className="text-[11px] font-medium mb-3" style={{ color: "var(--text-primary)" }}>Sign in to mdfy.cc</p>
-                      {/* OAuth buttons */}
-                      <button
-                        onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] mb-1.5 transition-colors hover:brightness-110"
-                        style={{ background: "#4285F4", color: "#fff" }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                        Continue with Google
-                      </button>
-                      <button
-                        onClick={() => { signInWithGitHub(); setShowAuthMenu(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-[11px] mb-2 transition-colors hover:brightness-110"
-                        style={{ background: "#24292f", color: "#fff" }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
-                        Continue with GitHub
-                      </button>
-                      <div className="flex items-center gap-2 my-2">
-                        <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
-                        <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>OR</span>
-                        <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
-                      </div>
-                      {/* Email magic link */}
-                      {authEmailSent ? (
-                        <div className="text-[11px] text-center py-2" style={{ color: "var(--accent)" }}>
-                          Check your email for the login link
-                        </div>
-                      ) : (
-                        <div className="flex gap-1">
-                          <input
-                            type="email"
-                            placeholder="email@example.com"
-                            value={authEmailInput}
-                            onChange={(e) => setAuthEmailInput(e.target.value)}
-                            onKeyDown={async (e) => {
-                              if (e.key === "Enter" && authEmailInput.trim()) {
-                                const { error } = await signInWithEmail(authEmailInput.trim());
-                                if (!error) setAuthEmailSent(true);
-                              }
-                            }}
-                            className="flex-1 px-2 py-1.5 rounded-md text-[11px] outline-none"
-                            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-                          />
-                          <button
-                            onClick={async () => {
-                              if (authEmailInput.trim()) {
-                                const { error } = await signInWithEmail(authEmailInput.trim());
-                                if (!error) setAuthEmailSent(true);
-                              }
-                            }}
-                            className="px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors"
-                            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-                          >
-                            Send
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-[9px] mt-2 text-center" style={{ color: "var(--text-faint)" }}>
-                        Save documents to your account, access anywhere
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
+              <button
+                onClick={() => setShowAuthMenu(true)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" className="shrink-0"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+                {sidebarWidth >= 180 ? "Sign In / Sign Up" : "Sign In"}
+              </button>
             )}
           </div>
         </div>
@@ -3353,63 +3408,72 @@ ${html}
         {viewMode !== "editor" && (
           <div
             data-pane="render"
-            className="flex flex-col min-w-0"
+            className="flex flex-col"
             style={{
               background: "var(--background)",
               width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
               height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
               flexShrink: 0,
+              minWidth: viewMode === "split" && !isMobile ? 280 : undefined,
             }}
           >
             <div
-              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
-              <span style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
-              <div className="flex items-center gap-2 normal-case">
+              <span className="shrink-0" style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
+              <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
                 {isSharedDoc && (
                   <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
                 )}
                 {/* Toolbar toggle */}
-                <div className="relative group hidden sm:block">
+                <div className="relative group">
                   <button
                     onClick={() => setShowToolbar(!showToolbar)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: showToolbar ? "var(--accent-dim)" : "var(--toggle-bg)", color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
-                    <span className="text-[10px] font-medium">TOOLBAR</span>
+                    {!renderPaneNarrow && <span className="text-[10px] font-medium">TOOLBAR</span>}
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showToolbar ? "var(--accent)" : "var(--text-faint)", opacity: showToolbar ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: showToolbar ? "translateX(11px)" : "translateX(2px)" }} />
                     </span>
                   </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-44 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                    Show formatting toolbar with bold, italic, headings, lists, and more.
+                  </div>
                 </div>
-                {/* Narrow view toggle */}
-                <div className="relative group hidden sm:block">
+                {/* Narrow view toggle — hidden on mobile and when pane is narrow */}
+                <div className="relative group" style={{ display: isMobile || renderPaneNarrow ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowView(!narrowView)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
-                    <span className="text-[10px] font-medium">NARROW</span>
+                    {!renderPaneNarrow && <span className="text-[10px] font-medium">NARROW</span>}
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowView ? "var(--accent)" : "var(--text-faint)", opacity: narrowView ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowView ? "translateX(11px)" : "translateX(2px)" }} />
                     </span>
                   </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    Limit content width for comfortable reading
+                  </div>
                 </div>
                 {/* AI ASCII RENDER — mini toggle + hover tooltip */}
-                <div className="relative group hidden sm:block">
+                <div className="relative group">
                   <button
                     onClick={toggleDiagramMode}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
-                    <span className="text-[10px] font-medium">AI ASCII RENDER</span>
+                    {!renderPaneNarrow && <span className="text-[10px] font-medium">AI ASCII RENDER</span>}
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(11px)" : "translateX(2px)" }} />
@@ -3425,7 +3489,7 @@ ${html}
                   </div>
                 </div>
                 {/* Export dropdown */}
-                <div className="relative hidden sm:block">
+                <div className="relative group">
                   <button
                     onClick={() => setShowExportMenu(prev => !prev)}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
@@ -3433,6 +3497,12 @@ ${html}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
                   </button>
+                  {!showExportMenu && (
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      Export (download, print, copy)
+                    </div>
+                  )}
                   {showExportMenu && (
                     <div className="absolute top-full right-0 mt-1 w-56 rounded-lg shadow-xl py-1 z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
@@ -3524,17 +3594,20 @@ ${html}
               ) : html ? (
                 <article
                   ref={(el) => {
-                    if (el && el.getAttribute("data-html-hash") !== String(html.length)) {
+                    // Use a proper hash to detect actual content changes
+                    const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
+                    if (el && el.getAttribute("data-html-hash") !== hash) {
                       // Only update if change came from source (not from contentEditable editing)
                       if (!wysiwygEditingRef.current) {
                         el.innerHTML = html;
                       }
-                      el.setAttribute("data-html-hash", String(html.length));
+                      el.setAttribute("data-html-hash", hash);
                     }
                   }}
                   contentEditable
                   suppressContentEditableWarning
                   onInput={handleWysiwygInput}
+                  onPaste={handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
@@ -3547,6 +3620,7 @@ ${html}
                   contentEditable
                   suppressContentEditableWarning
                   onInput={handleWysiwygInput}
+                  onPaste={handleWysiwygPaste}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
@@ -3554,9 +3628,8 @@ ${html}
                   }`}
                   style={{ cursor: "text", minHeight: "100%" }}
                   data-placeholder="true"
-                >
-                  <p style={{ color: "var(--text-faint)" }}>Start typing here...</p>
-                </article>
+                  dangerouslySetInnerHTML={{ __html: "" }}
+                />
               )}
             </div>
           </div>
@@ -3579,18 +3652,18 @@ ${html}
         {/* Markdown pane (right/bottom) — always in DOM, hidden via CSS to keep CM6 alive */}
         <div
           data-pane="editor"
-          className="flex-1 min-w-0 flex flex-col"
-          style={{ display: viewMode === "preview" ? "none" : undefined }}
+          className="flex-1 flex flex-col"
+          style={{ display: viewMode === "preview" ? "none" : undefined, minWidth: viewMode === "split" && !isMobile ? 280 : undefined }}
         >
             <div
-              className="flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
-              <div className="flex items-center gap-1.5">
-                <span style={{ color: "var(--accent)" }}>MDFIED</span>
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                <span className="shrink-0" style={{ color: "var(--accent)" }}>MDFIED</span>
                 {/* Flavor badge — click to convert */}
-                <div className="relative hidden sm:block">
+                <div className="relative">
                   <button
                     onClick={() => setShowFlavorMenu(!showFlavorMenu)}
                     className="px-1.5 py-0.5 rounded font-mono cursor-pointer transition-colors hover:brightness-110"
@@ -3649,6 +3722,7 @@ ${html}
                               // Clean up excessive blank lines
                               converted = converted.replace(/\n{3,}/g, "\n\n").trim();
                               setMarkdown(converted);
+                              cmSetDoc(converted);
                               doRender(converted);
                             }}
                             className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
@@ -3671,21 +3745,25 @@ ${html}
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-1.5 normal-case">
-                {/* Narrow view toggle */}
-                <div className="relative group hidden sm:block">
+              <div className="flex items-center gap-1.5 normal-case shrink-0 flex-nowrap">
+                {/* Narrow view toggle — hidden on mobile and when pane is narrow */}
+                <div className="relative group" style={{ display: isMobile || editorPaneNarrow ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowSource(!narrowSource)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
                     style={{ background: narrowSource ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowSource ? "var(--accent)" : "var(--text-muted)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
-                    <span className="text-[10px] font-medium">NARROW</span>
+                    {!editorPaneNarrow && <span className="text-[10px] font-medium">NARROW</span>}
                     <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
                       <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowSource ? "var(--accent)" : "var(--text-faint)", opacity: narrowSource ? 1 : 0.3 }} />
                       <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowSource ? "translateX(11px)" : "translateX(2px)" }} />
                     </span>
                   </button>
+                  <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    Limit content width for comfortable editing
+                  </div>
                 </div>
                 {/* Copy MD */}
                 <div className="relative group">
@@ -3832,7 +3910,8 @@ ${html}
             zIndex: 9999,
             background: "var(--menu-bg)",
             border: "1px solid var(--border)",
-            minWidth: 150,
+            width: 160,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           }}
         >
           {[
@@ -3909,6 +3988,143 @@ ${html}
       )}
 
       {/* mdfy AI structuring prompt */}
+      {/* Sign In / Sign Up modal */}
+      {showAuthMenu && !isAuthenticated && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => { setShowAuthMenu(false); setAuthEmailSent(false); }}>
+          <div className="rounded-xl w-[560px] max-w-[90vw] max-h-[90vh] overflow-y-auto" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 16px 64px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 text-center">
+              <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                Sign in to <span style={{ color: "var(--accent)" }}>mdfy</span>.cc
+              </h2>
+              <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Save, sync, and publish your documents</p>
+            </div>
+
+            {/* OAuth buttons */}
+            <div className="px-6 space-y-2">
+              <button
+                onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-colors hover:brightness-110"
+                style={{ background: "#4285F4", color: "#fff" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Continue with Google
+              </button>
+              <button
+                onClick={() => { signInWithGitHub(); setShowAuthMenu(false); }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-colors hover:brightness-110"
+                style={{ background: "#24292f", color: "#fff" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                Continue with GitHub
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 px-6 my-3">
+              <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
+              <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>OR</span>
+              <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
+            </div>
+
+            {/* Email */}
+            <div className="px-6 mb-4">
+              {authEmailSent ? (
+                <div className="text-[12px] text-center py-3 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                  Check your email for the login link
+                </div>
+              ) : (
+                <div className="flex gap-1.5">
+                  <input
+                    type="email"
+                    placeholder="email@example.com"
+                    value={authEmailInput}
+                    onChange={(e) => setAuthEmailInput(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter" && authEmailInput.trim()) {
+                        const { error } = await signInWithEmail(authEmailInput.trim());
+                        if (!error) setAuthEmailSent(true);
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 rounded-lg text-[12px] outline-none"
+                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (authEmailInput.trim()) {
+                        const { error } = await signInWithEmail(authEmailInput.trim());
+                        if (!error) setAuthEmailSent(true);
+                      }
+                    }}
+                    className="px-3 py-2 rounded-lg text-[11px] font-medium transition-colors"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                  >
+                    Send Link
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="h-px mx-6" style={{ background: "var(--border-dim)" }} />
+
+            {/* Tiers comparison */}
+            <div className="px-6 py-4">
+              <div className="grid grid-cols-3 gap-2">
+                {/* Without account */}
+                <div className="rounded-lg p-3" style={{ border: "1px solid var(--border-dim)", opacity: 0.6 }}>
+                  <div className="text-[10px] font-bold mb-2" style={{ color: "var(--text-faint)" }}>No Account</div>
+                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-faint)" }}>
+                    <li className="flex items-start gap-1"><span>+</span>Instant rendering</li>
+                    <li className="flex items-start gap-1"><span>+</span>Import / Export</li>
+                    <li className="flex items-start gap-1"><span>+</span>Share via hash URL</li>
+                    <li className="flex items-start gap-1"><span>-</span>Local only</li>
+                    <li className="flex items-start gap-1"><span>-</span>No cloud sync</li>
+                    <li className="flex items-start gap-1"><span>-</span>No short URLs</li>
+                  </ul>
+                </div>
+                {/* Free tier */}
+                <div className="rounded-lg p-3" style={{ border: "1px solid var(--border-dim)" }}>
+                  <div className="text-[10px] font-bold mb-2" style={{ color: "var(--text-primary)" }}>Free</div>
+                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Unlimited documents</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>7-day expiry</span></li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.cc badge</span></li>
+                  </ul>
+                </div>
+                {/* Pro tier */}
+                <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent)" }}>
+                  <div className="flex items-center gap-1 mb-2">
+                    <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>Pro</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>$8/mo</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>COMING SOON</span>
+                  </div>
+                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Everything in Free</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No expiry</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No badge</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Custom domain</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>View analytics</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Password protect</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Priority AI mdfy</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-5 text-center">
+              <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>
+                Sign up is free. No credit card required.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mdfyPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => !mdfyLoading && setMdfyPrompt(null)}>
           <div className="rounded-xl p-5 w-80" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
@@ -3963,6 +4179,66 @@ ${html}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Folder context menu */}
+      {folderContextMenu && (
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setFolderContextMenu(null)} />
+          <div
+            className="fixed rounded-lg shadow-xl py-1"
+            style={{
+              left: folderContextMenu.x,
+              top: folderContextMenu.y,
+              zIndex: 9999,
+              background: "var(--menu-bg)",
+              border: "1px solid var(--border)",
+              width: 160,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+          >
+            {[
+              { label: "Rename", action: () => {
+                const folder = folders.find(f => f.id === folderContextMenu.folderId);
+                if (!folder) return;
+                setInlineInput({ label: "Folder name", defaultValue: folder.name, onSubmit: (name) => {
+                  setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name } : f));
+                  setInlineInput(null);
+                }});
+              }},
+              { label: "Collapse / Expand", action: () => {
+                setFolders(prev => prev.map(f => f.id === folderContextMenu.folderId ? { ...f, collapsed: !f.collapsed } : f));
+              }},
+              { label: "Delete folder", action: () => {
+                setFolderContextMenu(prev => prev ? { ...prev, confirmDelete: true } : null);
+              }, danger: true, noClose: true },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={() => { item.action(); if (!(item as { noClose?: boolean }).noClose) setFolderContextMenu(null); }}
+                className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
+                style={{ color: (item as { danger?: boolean }).danger ? "#ef4444" : "var(--text-secondary)" }}
+              >
+                {item.label}
+              </button>
+            ))}
+            {folderContextMenu.confirmDelete && (
+              <>
+                <div className="px-3 py-1.5 text-[10px]" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
+                  Documents will be moved to root.
+                </div>
+                <div className="flex gap-1 px-2 pb-1">
+                  <button onClick={() => setFolderContextMenu(null)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                  <button onClick={() => {
+                    setTabs(prev => prev.map(t => t.folderId === folderContextMenu.folderId ? { ...t, folderId: undefined } : t));
+                    setFolders(prev => prev.filter(f => f.id !== folderContextMenu.folderId));
+                    setFolderContextMenu(null);
+                  }} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
       )}
 
       {/* QR Code Modal */}
