@@ -3131,9 +3131,9 @@ ${html}
           />
           {/* Document list with folders */}
           <div className="flex-1 overflow-y-auto" onContextMenu={(e) => {
-            // Only show sidebar context menu if right-clicking on empty area (not on a document/folder)
-            if ((e.target as HTMLElement).closest("[data-tab-item], [data-folder-item]")) return;
             e.preventDefault();
+            setDocContextMenu(null);
+            setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
             {/* Root-level documents (no folder) */}
@@ -3156,7 +3156,7 @@ ${html}
                     opacity: dragTabId === tab.id ? 0.4 : 1,
                   }}
                   onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
-                  onContextMenu={(e) => { e.preventDefault(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
                     <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
@@ -3202,6 +3202,7 @@ ${html}
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
                     }}
                   >
@@ -3244,7 +3245,7 @@ ${html}
                             opacity: dragTabId === tab.id ? 0.4 : 1,
                           }}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
-                          onContextMenu={(e) => { e.preventDefault(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
                             <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
