@@ -1045,8 +1045,8 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
-  const [narrowView, setNarrowView] = useState(true);
-  const [narrowSource, setNarrowSource] = useState(true);
+  const [narrowView, setNarrowView] = useState(false);
+  const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
