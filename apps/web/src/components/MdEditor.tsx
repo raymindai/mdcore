@@ -1438,6 +1438,11 @@ export default function MdEditor() {
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
+    // Remove any leftover code-header Copy buttons from highlightCode
+    asciiDiagrams.forEach(el => {
+      el.querySelectorAll(".code-header, .code-copy-btn").forEach(btn => btn.remove());
+    });
+
     asciiDiagrams.forEach((el) => {
       if (el.querySelector(".ascii-render-btn")) return; // already has button
 
