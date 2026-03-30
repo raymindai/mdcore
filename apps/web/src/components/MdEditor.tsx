@@ -803,7 +803,10 @@ export default function MdEditor() {
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [authEmailInput, setAuthEmailInput] = useState("");
   const [authEmailSent, setAuthEmailSent] = useState(false);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { const s = localStorage.getItem("mdfy-folders"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [showTrash, setShowTrash] = useState(false);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -829,17 +832,44 @@ export default function MdEditor() {
     localStorage.setItem("mdfy-diagram-mode", next);
   }, [diagramMode]);
 
-  // Tab system
-  const [tabs, setTabs] = useState<Tab[]>(INITIAL_TABS);
-  const [activeTabId, setActiveTabId] = useState("tab-welcome");
+  // Tab system — persist to localStorage
+  const [tabs, setTabs] = useState<Tab[]>(() => {
+    if (typeof window === "undefined") return INITIAL_TABS;
+    try {
+      const saved = localStorage.getItem("mdfy-tabs");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return INITIAL_TABS;
+  });
+  const [activeTabId, setActiveTabId] = useState(() => {
+    if (typeof window === "undefined") return "tab-welcome";
+    return localStorage.getItem("mdfy-active-tab") || tabs[0]?.id || "tab-welcome";
+  });
   const activeTabIdRef = useRef(activeTabId);
   activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
-  const [markdown, setMarkdownRaw] = useState(SAMPLE_WELCOME);
-  const undoStack = useRef<string[]>([SAMPLE_WELCOME]);
+  const initialMd = activeTab?.markdown || SAMPLE_WELCOME;
+  const [markdown, setMarkdownRaw] = useState(initialMd);
+  const undoStack = useRef<string[]>([initialMd]);
   const redoStack = useRef<string[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Persist tabs + folders + active tab to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const updatedTabs = tabs.map(t => t.id === activeTabId ? { ...t, markdown } : t);
+        localStorage.setItem("mdfy-tabs", JSON.stringify(updatedTabs));
+        localStorage.setItem("mdfy-active-tab", activeTabId);
+        localStorage.setItem("mdfy-folders", JSON.stringify(folders));
+      } catch { /* quota exceeded */ }
+    }, 500); // Debounce to avoid excessive writes
+    return () => clearTimeout(timer);
+  }, [tabs, activeTabId, markdown, folders]);
 
   // Wrapper that tracks undo history
   const setMarkdown = useCallback((val: string) => {
@@ -3819,7 +3849,7 @@ ${html}
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="relative group">
             <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
-            <div className="absolute bottom-full left-0 mb-1 w-56 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+            <div className="absolute bottom-full left-0 mb-1 w-72 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
               <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
               <div className="space-y-1 text-[10px]">
