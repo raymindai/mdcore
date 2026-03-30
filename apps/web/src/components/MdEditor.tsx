@@ -1194,7 +1194,7 @@ export default function MdEditor() {
   const switchTab = useCallback((tabId: string) => {
     // Save current tab, then load new tab from the latest tabs state
     setTabs((prev) => {
-      const updated = prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || t.title || "Untitled" } : t);
+      const updated = prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: t.readonly ? t.title : (title || t.title || "Untitled") } : t);
       const tab = updated.find((t) => t.id === tabId);
       if (tab) {
         // Schedule state updates after setTabs completes
@@ -1213,7 +1213,7 @@ export default function MdEditor() {
 
   const addTab = useCallback(() => {
     // Save current tab
-    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: title || "Untitled" } : t));
+    setTabs((prev) => prev.map((t) => t.id === activeTabId ? { ...t, markdown, title: t.readonly ? t.title : (title || t.title || "Untitled") } : t));
     const id = `tab-${tabIdCounter++}`;
     const initialMd = "";
     const newTab: Tab = { id, title: "Untitled", markdown: initialMd };
@@ -1433,7 +1433,7 @@ export default function MdEditor() {
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
       btn.textContent = "Render";
-      btn.title = "Convert ASCII art to visual diagram using AI. Turn on AI ASCII RENDER for auto-conversion.";
+      btn.title = "Convert to visual diagram using AI (Gemini). Enable AI ASCII RENDER toggle in the header to auto-convert all ASCII diagrams.";
       btn.style.cssText = `
         padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;
         background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
@@ -2158,8 +2158,9 @@ export default function MdEditor() {
       const newMd = htmlToMarkdown(clone.innerHTML);
       setMarkdown(newMd);
       cmSetDoc(newMd);
-      // Reset after a tick so next render from source doesn't clobber the DOM
-      setTimeout(() => { wysiwygEditingRef.current = false; }, 100);
+      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
+      // (setMarkdown → doRender → html state → ref callback must all see wysiwygEditingRef=true)
+      setTimeout(() => { wysiwygEditingRef.current = false; }, 500);
     }, 150);
   }, [setMarkdown, cmSetDoc]);
 
@@ -3136,6 +3137,7 @@ ${html}
                     <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
                   </svg>
                   <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                  {tab.readonly && <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-40"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>}
                   <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                     className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
@@ -3224,6 +3226,7 @@ ${html}
                             <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
                           </svg>
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          {tab.readonly && <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 opacity-40"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>

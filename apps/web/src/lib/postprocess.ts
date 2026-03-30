@@ -176,8 +176,9 @@ function wrapAsciiDiagram(content: string, sourcepos: string): string {
     return `<div ${sourcepos}>${htmlTable}</div>`;
   }
 
-  // Otherwise: styled ASCII diagram
-  return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre></div>`;
+  // Otherwise: styled ASCII diagram (strip any code-header from highlightCode to avoid duplicate copy button)
+  const cleanContent = content.replace(/<div class="code-header"[\s\S]*?<\/div>/, "");
+  return `<div class="ascii-diagram" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${cleanContent}</code></pre></div>`;
 }
 
 /**
