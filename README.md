@@ -1,8 +1,8 @@
 # mdcore
 
-**The universal Markdown engine for the AI era.**
+**The fastest way from thought to shared document.**
 
-One Rust codebase. Every Markdown flavor. Every surface.
+Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.
 
 ```
                     mdcore engine (Rust)
@@ -19,50 +19,118 @@ One Rust codebase. Every Markdown flavor. Every surface.
 
 ## What is this?
 
-mdcore is a Markdown parsing, rendering, and conversion engine built in Rust. It compiles to:
+mdcore is a Markdown parsing, rendering, and conversion engine built in Rust. The web product **[mdfy.cc](https://mdfy.cc)** is the first surface built on top of the engine.
 
-- **WASM** — runs in browsers, edge functions, Deno
-- **Native Node addon** — via napi-rs (planned)
-- **Standalone binary** — CLI tool (planned)
-- **Mobile libraries** — via UniFFI (planned)
-
-The web product **[mdfy.cc](https://mdfy.cc)** is the first surface built on top of the engine.
+mdfy.cc is not just a renderer — it's a full document platform:
+- **Import** any file format (PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, and more)
+- **Edit** inline with WYSIWYG or source Markdown
+- **AI mdfy** — AI-powered structuring turns raw text into clean Markdown
+- **Share** with a single click — short URL with beautiful rendered output
+- **Export** to MD, HTML, TXT, PDF, or copy as rich text for Docs/Email/Slack
 
 ## Features
 
-- **Full GFM support** — tables, task lists, footnotes, strikethrough, autolinks
-- **Flavor auto-detection** — automatically detects GFM, Obsidian, MDX, Pandoc, CommonMark
-- **Math rendering** — KaTeX for inline and display math
-- **Mermaid diagrams** — client-side diagram rendering
-- **Syntax highlighting** — via syntect (Rust) with 20+ language support
-- **Bidirectional** — MD→HTML (and X→MD planned)
-- **Frontmatter** — detects and strips YAML, TOML, JSON frontmatter
-- **TOC extraction** — automatic table of contents generation
-- **Wikilinks** — Obsidian-style `[[links]]`
-- **URL sharing** — compress Markdown into URL hash, no server needed
+### Editor
+- **WYSIWYG editing** — edit directly in the rendered preview like a word processor
+- **Source editing** — CodeMirror 6 with Markdown-aware highlighting
+- **Split view** — side-by-side Beautified + MDFIED (source) panels
+- **Floating toolbar** — context-aware formatting on text selection
+- **Narrow view** — constrain content width for comfortable reading
+
+### Import (13 formats)
+- **Documents** — MD, PDF, DOCX, PPTX, XLSX, HTML, RTF
+- **Data** — CSV, JSON, XML
+- **Academic** — LaTeX, RST (reStructuredText)
+- **Plain text** — TXT
+- **CLI output** — auto-detects Claude Code / terminal output (unicode tables, checkmarks)
+- **AI mdfy** — post-import AI structuring via Gemini
+
+### Export
+- **Download** — Markdown, HTML, Plain Text
+- **Print** — PDF via browser print
+- **Clipboard** — Raw HTML, Rich Text (Google Docs/Email), Slack mrkdwn, Plain Text
+- **Share** — Short URL, QR Code, Embed code (iframe)
+
+### Rendering
+- **Full GFM** — tables, task lists, footnotes, strikethrough, autolinks
+- **Math** — KaTeX for inline and display equations
+- **Mermaid** — flowcharts, sequence diagrams, gantt charts
+- **190+ languages** — syntax highlighting via highlight.js
+- **Flavor detection** — auto-detects GFM, Obsidian, MDX, Pandoc, CommonMark
+- **Flavor conversion** — convert between GFM, CommonMark, Obsidian with one click
+
+### Organization
+- **Folders** — create, rename, drag-and-drop documents between folders
+- **Trash** — soft delete with restore
+- **Sorting** — newest, oldest, A→Z, Z→A
+- **Cloud sync** — sign in to save documents across devices
+
+### Auth & Sharing
+- **Google / GitHub OAuth** + Email magic link
+- **Free tier** — unlimited documents, cloud sync, 7-day expiry, mdfy.cc badge
+- **Pro tier** — no expiry, no badge, custom domain, analytics, password protection (coming soon)
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Core Engine | Rust + comrak |
+| WASM | wasm-bindgen + wasm-pack |
+| Web App | Next.js 15 + React 19 + TailwindCSS v4 |
+| Source Editor | CodeMirror 6 |
+| Math | KaTeX |
+| Diagrams | Mermaid.js |
+| DOCX Import | mammoth |
+| Office Import | officeparser (PPTX, XLSX) |
+| PDF Import | pdf-parse (server-side) |
+| AI Structuring | Gemini API |
+| HTML → MD | Turndown + GFM plugin |
+| Auth | Supabase Auth (@supabase/ssr) |
+| Database | Supabase PostgreSQL |
+| Hosting | Vercel |
 
 ## Project Structure
 
 ```
 mdcore/
 ├── packages/
-│   ├── engine/          # Rust core engine
+│   ├── engine/              # Rust core engine
 │   │   └── src/
-│   │       ├── lib.rs       # Main API: render(), detectFlavor()
-│   │       ├── flavor.rs    # MD flavor auto-detection
-│   │       └── render.rs    # HTML rendering via comrak
-│   └── wasm/            # WASM build output
-│       └── pkg/
+│   │       ├── lib.rs       # WASM bindings
+│   │       ├── render.rs    # HTML rendering via comrak
+│   │       └── flavor.rs    # MD flavor detection
+│   └── wasm/                # WASM build output
 ├── apps/
-│   └── web/             # Next.js 15 web app (mdfy.cc)
+│   └── web/                 # Next.js 15 web app (mdfy.cc)
 │       └── src/
+│           ├── app/
+│           │   ├── api/
+│           │   │   ├── docs/          # Document CRUD
+│           │   │   ├── import/pdf/    # PDF text extraction
+│           │   │   ├── import/office/ # PPTX/XLSX extraction
+│           │   │   ├── import/mdfy/   # AI structuring
+│           │   │   ├── user/          # User documents
+│           │   │   └── og/            # OG image generation
+│           │   ├── auth/callback/     # OAuth callback
+│           │   ├── d/[id]/            # SSR document viewer
+│           │   ├── embed/[id]/        # Embed viewer
+│           │   └── about/             # About page
 │           ├── lib/
-│           │   ├── engine.ts      # WASM engine wrapper
-│           │   ├── postprocess.ts # KaTeX + Mermaid post-processing
-│           │   └── share.ts       # URL-based sharing
+│           │   ├── engine.ts          # WASM engine wrapper
+│           │   ├── postprocess.ts     # KaTeX + Mermaid + highlight.js
+│           │   ├── file-import.ts     # Multi-format import
+│           │   ├── cli-to-md.ts       # CLI output → Markdown
+│           │   ├── html-to-md.ts      # HTML → Markdown (Turndown)
+│           │   ├── share.ts           # URL sharing + document API
+│           │   ├── useAuth.ts         # Auth hook
+│           │   └── supabase*.ts       # Supabase clients
 │           └── components/
-│               └── MdEditor.tsx   # Main editor component
-└── package.json         # Monorepo root
+│               ├── MdEditor.tsx       # Main editor (WYSIWYG + Source)
+│               ├── FloatingToolbar.tsx # Selection toolbar
+│               ├── useCodeMirror.ts   # CM6 hook
+│               ├── MdCanvas.tsx       # Mermaid visual editor
+│               └── MathEditor.tsx     # KaTeX equation editor
+└── package.json
 ```
 
 ## Quick Start
@@ -73,88 +141,64 @@ mdcore/
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/)
 - Node.js 18+
 
-### Build the engine
-
-```bash
-cd packages/engine
-cargo test                    # Run 16 tests
-wasm-pack build --target bundler --out-dir ../wasm/pkg --release
-```
-
 ### Run the web app
 
 ```bash
 cd apps/web
 npm install
-npm run dev
+npm run dev    # → http://localhost:3000
 ```
 
-### Use the engine in your project
+### Build the engine
 
-```typescript
-import { render, detectFlavor } from "@mdcore/engine";
-
-// Render Markdown to HTML
-const result = render("# Hello **world**");
-console.log(result.html);
-// → <h1>Hello <strong>world</strong></h1>
-
-// Detect flavor
-const flavor = detectFlavor(obsidianContent);
-console.log(flavor.primary);   // "obsidian"
-console.log(flavor.wikilinks); // true
-console.log(flavor.confidence); // 0.85
+```bash
+cd packages/engine
+cargo test
+wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release
 ```
 
-## API
+### Environment variables
 
-### `render(markdown: string): RenderResult`
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+GEMINI_API_KEY=your-gemini-key
+```
 
-Parse and render Markdown to HTML.
-
-Returns:
-- `html` — Rendered HTML string
-- `flavor` — Detected flavor info (primary, math, mermaid, wikilinks, jsx, frontmatter, confidence)
-- `title` — Extracted first H1 (or undefined)
-- `toc_json` — JSON string of table of contents entries
-
-### `detectFlavor(markdown: string): FlavorInfo`
-
-Detect the Markdown flavor without rendering.
-
-### `renderWithOptions(markdown: string, options: string): RenderResult`
-
-Render with custom options (JSON string).
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Core Engine | Rust + comrak + syntect |
-| WASM | wasm-bindgen + wasm-pack |
-| Web App | Next.js 15 + TailwindCSS |
-| Math | KaTeX |
-| Diagrams | Mermaid.js |
-| Types | Auto-generated TypeScript |
-
-## Keyboard Shortcuts (mdfy.cc)
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `⌘S` | Share (copy URL to clipboard) |
-| `⌘⇧C` | Copy rendered HTML |
-| `⌘\` | Toggle view mode (Split / Preview / Editor) |
+| `⌘B` | Bold |
+| `⌘I` | Italic |
+| `⌘K` | Insert link |
+| `⌘S` | Share (copy URL) |
+| `⌘⇧C` | Copy HTML |
+| `⌘Z` | Undo |
+| `⌘⇧Z` | Redo |
+| `⌘\` | Toggle view mode |
 | `Esc` | Focus editor |
+| Double-click | Edit code/math/diagram/table inline |
 
 ## Roadmap
 
-- [ ] napi-rs Node.js native bindings
-- [ ] `@mdcore/terminal` — CLI Markdown renderer
-- [ ] X→MD conversion (HTML, PDF, DOCX → Markdown)
-- [ ] VS Code extension
-- [ ] Obsidian plugin
-- [ ] Interactive editing (tables, diagrams)
-- [ ] Canvas mode (Excalidraw for MD)
+- [x] WYSIWYG editing (contentEditable on rendered HTML)
+- [x] Multi-format import (PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, RST)
+- [x] AI mdfy structuring (Gemini)
+- [x] CLI output auto-conversion
+- [x] Folders + Trash + Sorting
+- [x] Auth (Google/GitHub/Email)
+- [x] Cloud sync + document ownership
+- [x] Viral badge ("Published with mdfy.cc")
+- [x] Flavor conversion (GFM ↔ CommonMark ↔ Obsidian)
+- [ ] Stripe billing (Pro $8/mo)
+- [ ] Custom domains
+- [ ] View analytics
+- [ ] Chrome extension (ChatGPT/Claude → mdfy.cc)
+- [ ] `@mdcore/engine` npm package
+- [ ] `@mdcore/terminal` CLI renderer
+- [ ] VS Code / Obsidian plugins
 - [ ] Mobile SDK (UniFFI → Swift/Kotlin)
 
 ## License
@@ -163,6 +207,6 @@ MIT
 
 ---
 
-**mdcore** — *The Markdown Engine for the AI Era*
+**mdcore** — *The fastest way from thought to shared document.*
 
-[mdcore.ai](https://mdcore.ai) · [mdfy.cc](https://mdfy.cc) · [mdcore.md](https://mdcore.md)
+[mdfy.cc](https://mdfy.cc) · [mdcore.ai](https://mdcore.ai)
