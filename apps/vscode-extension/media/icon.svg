@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <rect width="128" height="128" rx="16" fill="#09090b"/>
+  <rect x="2" y="2" width="124" height="124" rx="14" stroke="#27272a" stroke-width="2"/>
+  <text x="64" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="42" fill="#fb923c">md</text>
+  <text x="64" y="105" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="18" fill="#71717a">fy</text>
+</svg>

@@ -1,0 +1,117 @@
+{
+  "name": "mdfy-vscode",
+  "displayName": "mdfy.cc — Markdown Publisher",
+  "description": "Preview and publish Markdown documents to mdfy.cc with one click. Beautiful rendering with GFM, KaTeX math, Mermaid diagrams, and code highlighting.",
+  "version": "0.1.0",
+  "publisher": "raymindai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raymindai/mdcore"
+  },
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "markdown",
+    "preview",
+    "publish",
+    "mdfy",
+    "mermaid",
+    "katex",
+    "gfm"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdfy.preview",
+        "title": "mdfy: Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "mdfy.publish",
+        "title": "mdfy: Publish to mdfy.cc",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "mdfy.update",
+        "title": "mdfy: Update on mdfy.cc",
+        "icon": "$(sync)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdfy.preview",
+          "when": "editorLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "mdfy.publish",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@1"
+        },
+        {
+          "command": "mdfy.update",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mdfy.preview",
+        "key": "ctrl+shift+m",
+        "mac": "cmd+shift+m",
+        "when": "editorLangId == markdown"
+      }
+    ],
+    "configuration": {
+      "title": "mdfy.cc",
+      "properties": {
+        "mdfy.apiBaseUrl": {
+          "type": "string",
+          "default": "https://mdfy.cc",
+          "description": "Base URL for the mdfy.cc API"
+        },
+        "mdfy.theme": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "dark",
+            "light"
+          ],
+          "default": "auto",
+          "description": "Preview theme. 'auto' follows VS Code's color theme."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./tsconfig.json",
+    "watch": "tsc -watch -p ./tsconfig.json",
+    "lint": "eslint src --ext ts",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "marked": "^12.0.0"
+  }
+}

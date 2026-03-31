@@ -331,6 +331,130 @@ export default function PluginsPage() {
         </div>
       </section>
 
+      {/* ───────── VS CODE EXTENSION ───────── */}
+      <section
+        style={{
+          maxWidth: 1080,
+          margin: "0 auto",
+          padding: "0 24px 60px",
+        }}
+      >
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "36px 32px",
+              borderBottom: "1px solid var(--border-dim)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "#18181b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid #27272a",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007ACC" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M4 4l8 4v8l-8 4V4z"/><path d="M12 8l8-4v16l-8-4"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    VS Code Extension
+                  </h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+                    mdfy.cc — Markdown Publisher
+                  </p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Preview Markdown with mdfy.cc rendering quality, and publish directly to mdfy.cc from your editor. Live preview, one-click publish, status bar integration.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent-dim)", color: "var(--accent)" }}>Free</span>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--toggle-bg)", color: "var(--text-faint)" }}>TypeScript</span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 1,
+              background: "var(--border-dim)",
+            }}
+          >
+            {[
+              {
+                title: "Live Preview",
+                items: ["Cmd+Shift+M to open preview panel", "Updates as you type", "GFM, KaTeX, Mermaid, 190+ languages", "Dark/Light theme (follows VS Code)"],
+              },
+              {
+                title: "Publish to mdfy.cc",
+                items: ["One command to create shared URL", "Copy URL / Open in Browser", "Update existing document", "Edit tokens stored in workspace"],
+              },
+              {
+                title: "Editor Integration",
+                items: ["Status bar shows \"mdfy\" on .md files", "Click status bar to quick-publish", "Context menu in editor", "Configurable API endpoint"],
+              },
+            ].map((section) => (
+              <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, marginTop: 0 }}>{section.title}</h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {section.items.map((item) => (
+                    <li key={item} style={{ fontSize: 13, color: "var(--text-muted)", padding: "4px 0", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ color: "var(--accent)", flexShrink: 0 }}>+</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
+              Install (Development)
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { step: "1", text: "cd apps/vscode-extension && npm install" },
+                { step: "2", text: "npm run compile" },
+                { step: "3", text: "Press F5 in VS Code to launch Extension Development Host" },
+                { step: "4", text: "Open any .md file and press Cmd+Shift+M to preview" },
+              ].map((s) => (
+                <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
+                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
+              VS Code Marketplace submission coming soon.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── MACOS QUICKLOOK ───────── */}
       <section
         style={{
@@ -471,7 +595,6 @@ export default function PluginsPage() {
           }}
         >
           {[
-            { name: "VS Code Extension", desc: "Preview and publish .md files directly from your editor", status: "Planned" },
             { name: "Obsidian Plugin", desc: "Publish Obsidian notes to mdfy.cc with one command", status: "Planned" },
             { name: "Raycast Extension", desc: "Quick capture and publish from Raycast", status: "Planned" },
             { name: "CLI Tool", desc: "mdfy render file.md — terminal Markdown rendering", status: "Planned" },
