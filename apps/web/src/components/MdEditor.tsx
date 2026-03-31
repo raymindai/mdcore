@@ -3826,9 +3826,7 @@ ${html}
                     >
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
                       {!renderPaneNarrow && <span className="text-[10px] font-medium">HISTORY</span>}
-                      {versions.length > 0 && (
-                        <span className="flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full text-[8px] font-bold" style={{ background: "var(--accent)", color: "var(--bg)" }}>{versions.length}</span>
-                      )}
+                      {versions.length > 0 && <span className="text-[9px] opacity-50">{versions.length}</span>}
                     </button>
                     {!showHistory && (
                       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
