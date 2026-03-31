@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id")
     .eq("id", id)
     .single();
 
@@ -56,10 +56,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .eq("id", id)
     .then(() => {});
 
-  // Don't expose password_hash
+  // Don't expose password_hash or edit_token internals
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash: _ph, ...safeData } = data;
-  return NextResponse.json({ ...safeData, hasPassword });
+  const { password_hash: _ph, user_id: _uid, ...safeData } = data;
+  return NextResponse.json({ ...safeData, hasPassword, editMode: data.edit_mode || "token" });
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
@@ -72,29 +72,62 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     );
   }
 
-  let body: { editToken?: string; markdown?: string; title?: string };
+  let body: { editToken?: string; markdown?: string; title?: string; userId?: string; changeSummary?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { editToken, markdown, title } = body;
-  if (!editToken) {
-    return NextResponse.json({ error: "editToken required" }, { status: 401 });
-  }
+  const { editToken, markdown, title, userId, changeSummary } = body;
 
-  // Verify edit token
+  // Fetch document with permissions
   const { data: doc } = await supabase
     .from("documents")
-    .select("edit_token")
+    .select("edit_token, markdown, title, user_id, edit_mode")
     .eq("id", id)
     .single();
 
-  if (!doc || doc.edit_token !== editToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!doc) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Permission check based on edit_mode
+  const editMode = doc.edit_mode || "token";
+  if (editMode === "owner") {
+    // Only the document owner can edit
+    if (!userId || userId !== doc.user_id) {
+      return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
+    }
+  } else if (editMode === "token") {
+    // Need valid editToken
+    if (!editToken || doc.edit_token !== editToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+  }
+  // editMode === "public" → anyone can edit, no check needed
+
+  // Save current version to history before updating
+  const { data: latestVersion } = await supabase
+    .from("document_versions")
+    .select("version_number")
+    .eq("document_id", id)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .single();
+
+  const nextVersion = (latestVersion?.version_number || 0) + 1;
+
+  await supabase.from("document_versions").insert({
+    document_id: id,
+    markdown: doc.markdown,
+    title: doc.title,
+    version_number: nextVersion,
+    created_by: userId || null,
+    change_summary: changeSummary || null,
+  });
+
+  // Update the document
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (markdown !== undefined) updates.markdown = markdown;
   if (title !== undefined) updates.title = title;
@@ -108,7 +141,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, version: nextVersion });
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {

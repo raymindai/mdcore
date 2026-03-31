@@ -101,7 +101,7 @@ interface ShortUrlResult {
 export async function createShortUrl(
   markdown: string,
   title?: string,
-  options?: { password?: string; expiresIn?: number; userId?: string }
+  options?: { password?: string; expiresIn?: number; userId?: string; editMode?: string }
 ): Promise<ShortUrlResult> {
   const res = await fetch("/api/docs", {
     method: "POST",
@@ -112,6 +112,7 @@ export async function createShortUrl(
       password: options?.password,
       expiresIn: options?.expiresIn,
       userId: options?.userId,
+      editMode: options?.editMode,
     }),
   });
 
@@ -128,14 +129,37 @@ export async function updateDocument(
   id: string,
   editToken: string,
   markdown: string,
-  title?: string
+  title?: string,
+  options?: { userId?: string; changeSummary?: string }
 ): Promise<void> {
   const res = await fetch(`/api/docs/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ markdown, title, editToken }),
+    body: JSON.stringify({
+      markdown,
+      title,
+      editToken,
+      userId: options?.userId,
+      changeSummary: options?.changeSummary,
+    }),
   });
   if (!res.ok) throw new Error("Failed to update document");
+}
+
+export async function fetchVersions(id: string): Promise<{
+  versions: { id: number; version_number: number; title: string | null; created_at: string; change_summary: string | null }[];
+}> {
+  const res = await fetch(`/api/docs/${id}/versions`);
+  if (!res.ok) throw new Error("Failed to fetch versions");
+  return res.json();
+}
+
+export async function fetchVersion(docId: string, versionId: number): Promise<{
+  version: { id: number; markdown: string; title: string | null; version_number: number; created_at: string };
+}> {
+  const res = await fetch(`/api/docs/${docId}/versions/${versionId}`);
+  if (!res.ok) throw new Error("Failed to fetch version");
+  return res.json();
 }
 
 export async function deleteDocument(

@@ -22,14 +22,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number; userId?: string };
+  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number; userId?: string; editMode?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown, title, password, expiresIn, userId } = body;
+  const { markdown, title, password, expiresIn, userId, editMode } = body;
   if (!markdown || typeof markdown !== "string") {
     return NextResponse.json(
       { error: "markdown is required" },
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     passwordHash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
   }
 
-  // Expiration: expiresIn is in hours
+  // Expiration: expiresIn is in hours (user-specified only)
   const expiresAt = expiresIn
     ? new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString()
     : null;
@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
     password_hash: passwordHash,
     expires_at: expiresAt,
     user_id: userId || null,
+    edit_mode: editMode || "token",
   });
 
   if (error) {
