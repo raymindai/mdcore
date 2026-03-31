@@ -244,6 +244,7 @@ export default function DocumentViewer({
             onClick={() => window.print()}
             className={btnClass}
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+            title="Print / Save as PDF"
           >
             PDF
           </button>

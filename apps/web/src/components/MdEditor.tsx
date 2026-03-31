@@ -1507,6 +1507,9 @@ export default function MdEditor() {
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
 
+    // Clean up previous dynamically-created ASCII toolbar elements (removing them also removes their listeners)
+    previewRef.current.querySelectorAll(".ascii-render-btn, .ascii-toolbar").forEach(el => el.remove());
+
     const asciiDiagrams = previewRef.current.querySelectorAll(".ascii-diagram");
     if (asciiDiagrams.length === 0) return;
 
@@ -1516,10 +1519,10 @@ export default function MdEditor() {
     });
 
     asciiDiagrams.forEach((el) => {
-      if (el.querySelector(".ascii-render-btn")) return; // already has button
 
       // Toolbar at top — always visible
       const toolbar = document.createElement("div");
+      toolbar.className = "ascii-toolbar";
       toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
 
       const btn = document.createElement("button");
