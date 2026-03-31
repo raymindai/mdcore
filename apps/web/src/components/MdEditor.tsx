@@ -3875,9 +3875,6 @@ ${html}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
-                {isSharedDoc && (
-                  <button onClick={handleEditShared} className="transition-colors" style={{ color: "var(--accent)", opacity: 0.7 }}>Edit →</button>
-                )}
                 {/* Toolbar toggle */}
                 <div className="relative group">
                   <button
