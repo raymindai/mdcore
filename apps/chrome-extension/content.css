@@ -42,6 +42,7 @@
   font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.3px;
+  display: inline-flex;
 }
 
 .mdfy-logo-md { color: #fb923c; }
@@ -58,9 +59,9 @@
 /* ─── Per-Message Mini Button ─── */
 
 .mdfy-mini-btn {
-  position: sticky;
+  position: absolute;
   top: 8px;
-  float: right;
+  right: 8px;
   z-index: 2147483646;
   display: flex;
   align-items: center;
@@ -79,7 +80,6 @@
   line-height: 1;
   opacity: 0;
   pointer-events: none;
-  margin: 8px 8px 0 0;
 }
 
 /* Show on hover of the parent message */
@@ -103,8 +103,8 @@
   opacity: 0.3;
 }
 
-.mdfy-mini-md { color: #fb923c; }
-.mdfy-mini-fy { color: #fafafa; }
+.mdfy-mini-md { color: #fb923c; display: inline; }
+.mdfy-mini-fy { color: #fafafa; display: inline; margin-left: -1px; }
 .mdfy-mini-label { color: #52525b; margin-left: 2px; font-weight: 500; }
 
 /* ─── Toast Notification ─── */

@@ -12,11 +12,6 @@ export const metadata: Metadata = {
   },
 };
 
-const navLinks = [
-  { href: "/about", label: "About" },
-  { href: "/plugins", label: "Plugins", active: true },
-];
-
 export default function PluginsPage() {
   return (
     <div
@@ -28,26 +23,8 @@ export default function PluginsPage() {
       }}
     >
       {/* ───────── NAV ───────── */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          borderBottom: "1px solid var(--border-dim)",
-          background: "var(--header-bg)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1080,
-            margin: "0 auto",
-            padding: "14px 24px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+      <nav style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid var(--border-dim)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <Link href="/" style={{ textDecoration: "none" }}>
               <span style={{ color: "var(--accent)", fontSize: 22, fontWeight: 800 }}>md</span>
@@ -55,46 +32,13 @@ export default function PluginsPage() {
               <span style={{ color: "var(--text-muted)", fontSize: 22, fontWeight: 800 }}>.cc</span>
             </Link>
             <div style={{ display: "flex", gap: 16 }}>
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  style={{
-                    color: link.active ? "var(--accent)" : "var(--text-muted)",
-                    fontSize: 13,
-                    fontWeight: link.active ? 600 : 400,
-                    textDecoration: "none",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
+              <Link href="/plugins" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Plugins</Link>
             </div>
           </div>
-
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a
-              href="https://github.com/raymindai/mdcore"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}
-            >
-              GitHub
-            </a>
-            <Link
-              href="/"
-              style={{
-                background: "var(--accent-dim)",
-                color: "var(--accent)",
-                padding: "6px 16px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              Open Editor
-            </Link>
+            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>GitHub</a>
+            <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
           </div>
         </div>
       </nav>
@@ -145,8 +89,99 @@ export default function PluginsPage() {
             marginTop: 24,
           }}
         >
-          Capture AI conversations, preview Markdown files, and publish documents — without leaving your workflow.
+          Capture from any AI, preview in Finder, publish from your editor.
+          Every document gets a permanent URL — editable, versioned, and readable by humans and AIs across every platform.
         </p>
+      </section>
+
+      {/* ───────── USE CASES ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>
+          What you can do
+        </h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+          {[
+            {
+              scenario: "Research across AIs",
+              steps: "ChatGPT researches → Extension captures → mdfy.cc/abc123 → Paste URL in Claude → Claude refines",
+              why: "Move knowledge between AIs without copy-paste formatting nightmares. The document is the bridge.",
+              color: "#fb923c",
+            },
+            {
+              scenario: "Capture → Publish → Share in 3 seconds",
+              steps: "See a great AI response → Click mdfy button → Beautiful URL auto-generated → Send to anyone",
+              why: "Recipient sees a polished document, not a raw chat screenshot. No app needed to view it.",
+              color: "#4ade80",
+            },
+            {
+              scenario: "AI-readable document references",
+              steps: "Publish to mdfy.cc/abc123 → Tell any AI \"read mdfy.cc/abc123\" → AI fetches and understands",
+              why: "mdfy.cc URLs work as context for any AI. Your documents become reusable knowledge across conversations.",
+              color: "#c4b5fd",
+            },
+            {
+              scenario: "Preview any .md file in Finder",
+              steps: "Select file → Press Space → Full rendering with code, math, diagrams → Click \"Open in mdfy.cc\" to edit",
+              why: "macOS QuickLook shows raw Markdown by default. mdfy QuickLook shows it beautifully rendered.",
+              color: "#60a5fa",
+            },
+            {
+              scenario: "Publish from your editor",
+              steps: "Write in VS Code → Cmd+Shift+M preview → One command to publish → Share URL with team",
+              why: "Never leave your editor. Write, preview, publish. The URL updates when you push changes.",
+              color: "#fbbf24",
+            },
+            {
+              scenario: "Build reports from multiple AI sessions",
+              steps: "Capture ChatGPT analysis → Capture Claude code review → Capture Gemini summary → Combine in mdfy.cc → Single URL",
+              why: "Each AI has strengths. Combine outputs from multiple AIs into one professional document.",
+              color: "#f472b6",
+            },
+          ].map((uc) => (
+            <div key={uc.scenario} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px" }}>{uc.scenario}</h3>
+              <p style={{ fontSize: 11, color: uc.color, margin: "0 0 10px", fontFamily: "var(--font-geist-mono), monospace", lineHeight: 1.5 }}>{uc.steps}</p>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>{uc.why}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ───────── SHORT URL AS AI REFERENCE ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
+              Short URLs that AIs can read
+            </h2>
+            <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.7 }}>
+              Every mdfy.cc document has a short URL. Share it with humans or paste it into any AI conversation.
+              Claude, ChatGPT, and Gemini can all fetch and understand the content — your documents become
+              reusable context across AI sessions and platforms.
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0, lineHeight: 1.6 }}>
+              No login wall. No paywall. The URL works everywhere — browsers, AI chats, Slack, email, embeds.
+            </p>
+          </div>
+          <div style={{ background: "var(--background)", borderRadius: 12, padding: "20px", border: "1px solid var(--border-dim)" }}>
+            <p style={{ fontSize: 11, fontFamily: "var(--font-geist-mono), monospace", color: "var(--text-faint)", margin: "0 0 12px" }}>Example</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-dim)", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace" }}>
+                <span style={{ color: "var(--text-faint)" }}>You:</span>{" "}
+                <span style={{ color: "var(--text-secondary)" }}>Read mdfy.cc/abc123 and summarize the key points</span>
+              </div>
+              <div style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-dim)", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace" }}>
+                <span style={{ color: "var(--accent)" }}>AI:</span>{" "}
+                <span style={{ color: "var(--text-muted)" }}>Based on the document at mdfy.cc/abc123, here are the key points...</span>
+              </div>
+              <div style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-dim)", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace" }}>
+                <span style={{ color: "var(--text-faint)" }}>You:</span>{" "}
+                <span style={{ color: "var(--text-secondary)" }}>Now compare with mdfy.cc/def456</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ───────── CHROME EXTENSION ───────── */}
@@ -206,7 +241,8 @@ export default function PluginsPage() {
                 </div>
               </div>
               <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                One-click capture from ChatGPT, Claude, and Gemini. Turn any AI conversation into a beautiful, shareable document on mdfy.cc.
+                One-click capture from ChatGPT, Claude, and Gemini. Turn any AI conversation into a beautiful, shareable document.
+                The captured URL works as context in other AI conversations — move knowledge between AIs effortlessly.
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -676,31 +712,63 @@ export default function PluginsPage() {
       </section>
 
       {/* ───────── FOOTER ───────── */}
-      <footer
-        style={{
-          borderTop: "1px solid var(--border-dim)",
-          padding: "20px 24px",
-          textAlign: "center",
-        }}
-      >
-        <p
-          style={{
-            color: "var(--text-faint)",
-            fontSize: 12,
-            fontFamily: "var(--font-geist-mono), monospace",
-            margin: 0,
-          }}
-        >
-          mdcore v0.1.0 · Rust + WASM · powered by{" "}
-          <a
-            href="https://mdcore.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "var(--text-muted)", textDecoration: "none" }}
-          >
-            mdcore.ai
-          </a>
-        </p>
+      <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "48px 24px 32px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 40 }}>
+            <div>
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ color: "var(--accent)", fontSize: 18, fontWeight: 800 }}>md</span>
+                <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 800 }}>fy</span>
+                <span style={{ color: "var(--text-faint)", fontSize: 18, fontWeight: 800 }}>.cc</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
+                The fastest way from thought to shared document.
+                Permanent URL. Always editable. Cross-AI.
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Product</p>
+              {[
+                { label: "Editor", href: "/" },
+                { label: "About", href: "/about" },
+                { label: "Plugins", href: "/plugins" },
+                { label: "Pricing", href: "/about#pricing" },
+              ].map((l) => (
+                <Link key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</Link>
+              ))}
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Resources</p>
+              {[
+                { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
+                { label: "Chrome Extension", href: "/plugins" },
+                { label: "VS Code Extension", href: "/plugins" },
+              ].map((l) => (
+                <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
+              ))}
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Company</p>
+              {[
+                { label: "Contact", href: "mailto:hi@raymind.ai" },
+                { label: "Twitter / X", href: "#" },
+                { label: "Terms of Service", href: "#" },
+                { label: "Privacy Policy", href: "#" },
+              ].map((l) => (
+                <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
+              ))}
+            </div>
+          </div>
+          <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace", margin: 0 }}>
+              A product of{" "}
+              <a href="https://raymind.ai" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Raymind.AI</a>
+            </p>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace", margin: 0 }}>
+              &copy; 2026 mdfy.cc. All rights reserved.
+            </p>
+          </div>
+        </div>
       </footer>
     </div>
   );
