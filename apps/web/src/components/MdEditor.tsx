@@ -1050,7 +1050,7 @@ export default function MdEditor() {
     "idle" | "sharing" | "copied" | "error"
   >("idle");
   const [viewMode, setViewMode] = useState<ViewMode>("split");
-  const [isSharedDoc, setIsSharedDoc] = useState(false);
+  const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
@@ -1060,6 +1060,8 @@ export default function MdEditor() {
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  // Can edit: either not a shared doc, or user is the owner
+  const canEdit = !isSharedDoc || isOwner;
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -1677,10 +1679,16 @@ export default function MdEditor() {
             setMarkdown(doc.markdown);
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
+            setIsSharedDoc(true);
             const token = getEditToken(fromId);
-            if (token) setIsOwner(true);
+            if (token) {
+              setIsOwner(true);
+              if (!isMobile) setViewMode("split");
+            } else {
+              // Read-only: preview only
+              setViewMode("preview");
+            }
             await doRender(doc.markdown);
-            if (!isMobile) setViewMode("split");
             return;
           }
         } catch {
@@ -3874,6 +3882,27 @@ ${html}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
+              {isSharedDoc && !isOwner && (
+                <button
+                  onClick={() => {
+                    // Duplicate: create a new local tab with this content
+                    const id = `tab-${Date.now()}`;
+                    const md = markdownRef.current;
+                    const t = title ? `${title} (copy)` : "Untitled (copy)";
+                    setTabs(prev => [...prev, { id, title: t, markdown: md }]);
+                    setIsSharedDoc(false);
+                    setDocId(null);
+                    setIsOwner(false);
+                    window.history.replaceState(null, "", "/");
+                    loadTab({ id, title: t, markdown: md });
+                  }}
+                  className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
+                  style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                  Duplicate to edit
+                </button>
+              )}
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
                 {/* Toolbar toggle */}
                 <div className="relative group">
@@ -4021,7 +4050,7 @@ ${html}
             </div>
             {/* WYSIWYG Formatting Toolbar */}
             {/* Formatting toolbar — BEAUTIFIED MD only */}
-            {showToolbar && (
+            {showToolbar && canEdit && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
                 onInsertTable={handleInsertTable}
@@ -4074,23 +4103,23 @@ ${html}
                       el.setAttribute("data-html-hash", hash);
                     }
                   }}
-                  contentEditable
+                  contentEditable={canEdit}
                   suppressContentEditableWarning
-                  onInput={handleWysiwygInput}
-                  onPaste={handleWysiwygPaste}
+                  onInput={canEdit ? handleWysiwygInput : undefined}
+                  onPaste={canEdit ? handleWysiwygPaste : undefined}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6 max-w-none"
                   }`}
-                  style={{ cursor: "text" }}
+                  style={{ cursor: canEdit ? "text" : "default" }}
                 />
               ) : (
                 <article
-                  contentEditable
+                  contentEditable={canEdit}
                   suppressContentEditableWarning
-                  onInput={handleWysiwygInput}
-                  onPaste={handleWysiwygPaste}
+                  onInput={canEdit ? handleWysiwygInput : undefined}
+                  onPaste={canEdit ? handleWysiwygPaste : undefined}
                   className={`mdcore-rendered focus:outline-none ${
                     viewMode === "preview" || narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
