@@ -1,9 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="20" fill="#09090b"/>
-  <text x="64" y="82" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-weight="800" font-size="56" text-anchor="middle" letter-spacing="-2">
-    <tspan fill="#fb923c">md</tspan>
+  <rect width="128" height="128" rx="24" fill="#09090b"/>
+  <text x="64" y="78" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-weight="800" font-size="64" letter-spacing="-3">
+    <tspan fill="#fb923c">m</tspan><tspan fill="#e5e5e5">d</tspan>
   </text>
-  <text x="64" y="106" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-weight="600" font-size="18" text-anchor="middle" fill="#52525b" letter-spacing="0.5">
-    <tspan>fy.cc</tspan>
-  </text>
+  <text x="64" y="102" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-weight="500" font-size="16" fill="#52525b" letter-spacing="1">fy.cc</text>
 </svg>

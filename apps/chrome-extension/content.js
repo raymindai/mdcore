@@ -146,6 +146,15 @@
       bq.textContent = lines.map((l) => "> " + l).join("\n");
     });
 
+    // Process images
+    clone.querySelectorAll("img").forEach((img) => {
+      const src = img.getAttribute("src") || "";
+      const alt = img.getAttribute("alt") || "image";
+      if (src) {
+        img.textContent = "![" + alt + "](" + src + ")";
+      }
+    });
+
     // Process tables
     clone.querySelectorAll("table").forEach((table) => {
       let md = "\n";
@@ -383,6 +392,85 @@
     return md;
   }
 
+  // ─── Image Upload ───
+
+  async function uploadImageToMdfy(imageUrl) {
+    try {
+      // Fetch the image as blob
+      const res = await fetch(imageUrl);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (!blob.type.startsWith("image/")) return null;
+
+      // Upload to mdfy.cc
+      const formData = new FormData();
+      formData.append("file", blob, "image." + (blob.type.split("/")[1] || "png"));
+
+      // Try to get userId from cookie/storage
+      const userId = await getUserId();
+      if (!userId) return null; // Not logged in, can't upload
+
+      const uploadRes = await fetch(MDFY_URL + "/api/upload", {
+        method: "POST",
+        headers: { "x-user-id": userId },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) return null;
+      const { url } = await uploadRes.json();
+      return url;
+    } catch {
+      return null;
+    }
+  }
+
+  async function getUserId() {
+    // Try to get user info from mdfy.cc cookies via background script
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ action: "get-user-id" }, (response) => {
+          resolve(response?.userId || null);
+        });
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  async function processMarkdownImages(markdown) {
+    // Find all image references: ![alt](url)
+    const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const matches = [...markdown.matchAll(imgRegex)];
+
+    if (matches.length === 0) return markdown;
+
+    // Check if user is logged in
+    const userId = await getUserId();
+    if (!userId) {
+      if (matches.some(m => !m[2].startsWith("http"))) return markdown;
+      // Warn user about temporary images
+      showToast("Sign in to mdfy.cc to permanently save images");
+      return markdown;
+    }
+
+    // Upload each image and replace URL
+    let result = markdown;
+    for (const match of matches) {
+      const originalUrl = match[2];
+      // Skip already-permanent URLs (mdfy.cc storage)
+      if (originalUrl.includes("supabase") || originalUrl.includes("mdfy.cc")) continue;
+      // Skip data URLs (already embedded)
+      if (originalUrl.startsWith("data:")) continue;
+
+      const permanentUrl = await uploadImageToMdfy(originalUrl);
+      if (permanentUrl) {
+        result = result.replace(originalUrl, permanentUrl);
+      }
+    }
+
+    return result;
+  }
+
   // ─── Send to mdfy.cc ───
 
   async function sendToMdfy(markdown) {
@@ -390,6 +478,9 @@
       showToast("No content found to capture");
       return;
     }
+
+    // Upload images to permanent storage before sending
+    markdown = await processMarkdownImages(markdown);
 
     const compressed = await compressToBase64Url(markdown);
     const url = MDFY_URL + "/#md=" + compressed;
@@ -517,6 +608,19 @@
         const container = document.createElement("div");
         container.appendChild(range.cloneContents());
         const markdown = htmlToMarkdown(container);
+        sendResponse({ markdown });
+      } else {
+        sendResponse({ markdown: null });
+      }
+      return true;
+    }
+
+    if (request.action === "capture-page") {
+      // On AI pages: extract conversation
+      // On other pages: return null (background.js will handle it)
+      if (platform) {
+        const messages = extractConversation();
+        const markdown = formatConversation(messages);
         sendResponse({ markdown });
       } else {
         sendResponse({ markdown: null });

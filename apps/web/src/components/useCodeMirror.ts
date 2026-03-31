@@ -105,6 +105,7 @@ export interface UseCodeMirrorOptions {
   initialDoc: string;
   onChange: (value: string) => void;
   onPaste?: (text: string, html: string) => string | null;
+  onPasteImage?: (file: File) => void;
   theme: "dark" | "light";
   placeholder?: string;
 }
@@ -127,6 +128,7 @@ export function useCodeMirror({
   initialDoc,
   onChange,
   onPaste,
+  onPasteImage,
   theme,
   placeholder,
 }: UseCodeMirrorOptions): UseCodeMirrorReturn {
@@ -135,11 +137,13 @@ export function useCodeMirror({
   const themeCompartment = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   const onPasteRef = useRef(onPaste);
+  const onPasteImageRef = useRef(onPasteImage);
   const isExternalUpdate = useRef(false); // suppress onChange during setDoc
 
   // Keep refs up to date
   onChangeRef.current = onChange;
   onPasteRef.current = onPaste;
+  onPasteImageRef.current = onPasteImage;
 
   // Initialize editor
   useEffect(() => {
@@ -172,6 +176,17 @@ export function useCodeMirror({
         // Paste handler
         EditorView.domEventHandlers({
           paste(event, view) {
+            // Check for pasted image file
+            const items = Array.from(event.clipboardData?.items || []);
+            const imageItem = items.find(item => item.type.startsWith("image/"));
+            if (imageItem && onPasteImageRef.current) {
+              const file = imageItem.getAsFile();
+              if (file) {
+                event.preventDefault();
+                onPasteImageRef.current(file);
+                return true;
+              }
+            }
             const htmlData = event.clipboardData?.getData("text/html") || "";
             const textData = event.clipboardData?.getData("text/plain") || "";
             const result = onPasteRef.current?.(textData, htmlData);

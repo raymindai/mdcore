@@ -115,28 +115,70 @@ async function detectPlatform() {
 function showNotOnAiPage() {
   platformDot.classList.remove("active");
   platformDot.classList.add("inactive");
-  platformNameEl.classList.remove("active");
-  platformNameEl.textContent = "Not on an AI chat page";
-  btnCapture.disabled = true;
+  platformDot.style.background = "#60a5fa";
+  platformNameEl.classList.add("active");
+  platformNameEl.textContent = "Any webpage";
+  document.getElementById("platform-hint").textContent = "Capture this page as Markdown";
+  // Enable capture button but change label
+  btnCapture.disabled = false;
+  btnCapture.querySelector(".btn-label").textContent = "Capture This Page";
+  btnCapture.querySelector(".btn-desc").textContent = "Page content → clean Markdown document";
+  btnCapture.dataset.mode = "page";
 }
 
 // ─── Actions ───
 
 btnCapture.addEventListener("click", async () => {
+  const isPageMode = btnCapture.dataset.mode === "page";
   setStatus("Capturing...");
   btnCapture.disabled = true;
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      action: "capture-conversation",
-    });
+    if (isPageMode) {
+      // Capture full page via background script's page extraction
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const title = document.title;
+          const url = window.location.href;
+          const main = document.querySelector("main, article, [role='main'], .content, .post-content, .entry-content") || document.body;
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll("nav, footer, header, aside, script, style, noscript, iframe, .sidebar, .nav, .menu, .ad, [role='navigation'], [role='banner']").forEach(el => el.remove());
 
-    if (response && response.markdown) {
-      await openInMdfy(response.markdown);
+          clone.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => { h.textContent = "\n" + "#".repeat(parseInt(h.tagName[1])) + " " + h.textContent.trim() + "\n"; });
+          clone.querySelectorAll("pre").forEach(pre => { const code = pre.querySelector("code"); const text = code ? code.textContent : pre.textContent; let lang = ""; const lc = (code || pre).className.match(/language-(\w+)|lang-(\w+)/); if (lc) lang = lc[1] || lc[2]; pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n"; });
+          clone.querySelectorAll("code").forEach(c => { if (!c.closest("pre")) c.textContent = "`" + c.textContent + "`"; });
+          clone.querySelectorAll("strong, b").forEach(el => { el.textContent = "**" + el.textContent + "**"; });
+          clone.querySelectorAll("em, i").forEach(el => { el.textContent = "*" + el.textContent + "*"; });
+          clone.querySelectorAll("a").forEach(a => { const href = a.getAttribute("href"); const t = a.textContent; if (href && t && href.startsWith("http")) a.textContent = "[" + t + "](" + href + ")"; });
+          clone.querySelectorAll("ul > li").forEach(li => { li.textContent = "- " + li.textContent.trim(); });
+          clone.querySelectorAll("ol > li").forEach((li, i) => { li.textContent = (i + 1) + ". " + li.textContent.trim(); });
+          clone.querySelectorAll("table").forEach(table => { let m = "\n"; table.querySelectorAll("tr").forEach((row, ri) => { const cells = Array.from(row.querySelectorAll("th, td")).map(c => c.textContent.trim()); m += "| " + cells.join(" | ") + " |\n"; if (ri === 0) m += "| " + cells.map(() => "---").join(" | ") + " |\n"; }); table.textContent = m; });
+          clone.querySelectorAll("blockquote").forEach(bq => { bq.textContent = bq.textContent.trim().split("\n").map(l => "> " + l).join("\n"); });
+
+          let md = "# " + title + "\n\n> Source: " + url + "\n\n---\n\n";
+          let text = (clone.innerText || clone.textContent || "").replace(/\n{3,}/g, "\n\n").trim();
+          return md + text;
+        },
+      });
+      if (result?.result) {
+        await openInMdfy(result.result);
+      } else {
+        setStatus("No content found", "error");
+      }
     } else {
-      setStatus("No conversation found", "error");
+      // AI conversation capture
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: "capture-conversation",
+      });
+
+      if (response && response.markdown) {
+        await openInMdfy(response.markdown);
+      } else {
+        setStatus("No conversation found", "error");
+      }
     }
   } catch (err) {
     // Content script might not be loaded — try injecting
@@ -147,7 +189,6 @@ btnCapture.addEventListener("click", async () => {
         target: { tabId: tab.id },
         files: ["content.js"],
       });
-      // Wait briefly for script to initialize
       await new Promise((r) => setTimeout(r, 200));
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: "capture-conversation",

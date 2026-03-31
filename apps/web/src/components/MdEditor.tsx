@@ -666,12 +666,13 @@ function TBtn({ tip, active, onClick, children }: {
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert }: {
+function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload }: {
   onInsert: (type: "code" | "math" | "mermaid") => void;
   onInsertTable: (cols: number, rows: number) => void;
   onInputPopup: (config: { label: string; onSubmit: (v: string) => void }) => void;
   cmWrap: (prefix: string, suffix?: string) => void;
   cmInsert: (text: string) => void;
+  onImageUpload: () => void;
 }) {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
@@ -846,7 +847,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
         <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
         </TBtn>
-        <TBtn tip="Image → ![alt](url)" onClick={() => onInputPopup({ label: "Image URL", onSubmit: (u) => exec("insertImage", u) })}>
+        <TBtn tip="Upload image" onClick={() => onImageUpload()}>
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </TBtn>
         <TBtn tip="Clear formatting" onClick={() => exec("removeFormat")}>
@@ -1079,6 +1080,7 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
@@ -1092,6 +1094,28 @@ export default function MdEditor() {
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
+  // ─── Image upload helper ───
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    if (!user) {
+      setShowAuthMenu(true);
+      return null;
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "x-user-id": user.id },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Upload failed" }));
+      if (err.requiresAuth) setShowAuthMenu(true);
+      return null;
+    }
+    const { url } = await res.json();
+    return url;
+  }, [user]);
+
   // CodeMirror 6 editor — replaces plain textarea
   const handleChangeRef = useRef<(value: string) => void>(() => {});
   const handlePasteForCM = useCallback((text: string, html: string): string | null => {
@@ -1107,6 +1131,29 @@ export default function MdEditor() {
     }
     return null;
   }, []);
+  const cmSetDocRef = useRef<((doc: string) => void) | null>(null);
+  const markdownForImageRef = useRef(markdown);
+  markdownForImageRef.current = markdown;
+  const handlePasteImageForCM = useCallback(async (file: File) => {
+    const placeholder = `![Uploading ${file.name}...]()\n`;
+    const withPlaceholder = markdownForImageRef.current + placeholder;
+    setMarkdown(withPlaceholder);
+    doRenderRef.current(withPlaceholder);
+    cmSetDocRef.current?.(withPlaceholder);
+    const url = await uploadImage(file);
+    const current = markdownForImageRef.current;
+    if (url) {
+      const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
+      setMarkdown(updated);
+      doRenderRef.current(updated);
+      cmSetDocRef.current?.(updated);
+    } else {
+      const updated = current.replace(placeholder, "");
+      setMarkdown(updated);
+      doRenderRef.current(updated);
+      cmSetDocRef.current?.(updated);
+    }
+  }, [uploadImage, setMarkdown]);
   const {
     containerRef: editorContainerRef,
     focus: cmFocus,
@@ -1120,9 +1167,11 @@ export default function MdEditor() {
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
     onPaste: handlePasteForCM,
+    onPasteImage: handlePasteImageForCM,
     theme,
     placeholder: "Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything...",
   });
+  cmSetDocRef.current = cmSetDoc;
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Set default view mode based on screen size
@@ -2161,6 +2210,33 @@ export default function MdEditor() {
 
   // Handle paste in Beautified — convert CLI output or HTML to markdown, then re-render
   const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
+    // Check for pasted image
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find(item => item.type.startsWith("image/"));
+    if (imageItem) {
+      e.preventDefault();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+      const placeholder = `![Uploading ${file.name || "image"}...]()\n`;
+      document.execCommand("insertText", false, placeholder);
+      (async () => {
+        const url = await uploadImage(file);
+        const current = markdownForImageRef.current;
+        if (url) {
+          const updated = current.replace(placeholder, `![${file.name || "image"}](${url})\n`);
+          setMarkdown(updated);
+          doRender(updated);
+          cmSetDoc(updated);
+        } else {
+          const updated = current.replace(placeholder, "");
+          setMarkdown(updated);
+          doRender(updated);
+          cmSetDoc(updated);
+        }
+      })();
+      return;
+    }
+
     const text = e.clipboardData.getData("text/plain");
     const html = e.clipboardData.getData("text/html");
 
@@ -2182,7 +2258,7 @@ export default function MdEditor() {
       document.execCommand("insertText", false, md);
       return;
     }
-  }, [setMarkdown, cmSetDoc, doRender]);
+  }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
   const handleWysiwygInput = useCallback(() => {
     wysiwygEditingRef.current = true;
@@ -2208,6 +2284,23 @@ export default function MdEditor() {
       e.preventDefault();
       setIsDragging(false);
       const files = Array.from(e.dataTransfer.files);
+
+      // Handle image file drops — upload and insert markdown
+      const imageFiles = files.filter(f => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        let current = markdownForImageRef.current;
+        for (const img of imageFiles) {
+          const url = await uploadImage(img);
+          if (url) {
+            const imgMd = `![${img.name}](${url})\n\n`;
+            current = current + imgMd;
+            setMarkdown(current);
+            doRender(current);
+            cmSetDoc(current);
+          }
+        }
+        return;
+      }
 
       for (let idx = 0; idx < files.length; idx++) {
         try {
@@ -2237,7 +2330,7 @@ export default function MdEditor() {
         }
       }
     },
-    [doRender, isMobile, markdown]
+    [doRender, isMobile, markdown, uploadImage, cmSetDoc]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -3277,6 +3370,36 @@ ${html}
               e.target.value = "";
             }}
           />
+          {/* Hidden file input for image upload */}
+          <input
+            ref={imageFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const placeholder = `![Uploading ${file.name}...]()\n`;
+              const withPlaceholder = markdownForImageRef.current + placeholder;
+              setMarkdown(withPlaceholder);
+              doRender(withPlaceholder);
+              cmSetDoc(withPlaceholder);
+              const url = await uploadImage(file);
+              const current = markdownForImageRef.current;
+              if (url) {
+                const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
+                setMarkdown(updated);
+                doRender(updated);
+                cmSetDoc(updated);
+              } else {
+                const updated = current.replace(placeholder, "");
+                setMarkdown(updated);
+                doRender(updated);
+                cmSetDoc(updated);
+              }
+              e.target.value = "";
+            }}
+          />
           {/* Document list with folders */}
           <div className="flex-1 overflow-y-auto" onContextMenu={(e) => {
             e.preventDefault();
@@ -3908,6 +4031,7 @@ ${html}
                 onInputPopup={(config) => setInlineInput({ ...config, onSubmit: (v) => { config.onSubmit(v); setInlineInput(null); } })}
                 cmWrap={cmWrapSelection}
                 cmInsert={cmInsertAtCursor}
+                onImageUpload={() => imageFileRef.current?.click()}
               />
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {

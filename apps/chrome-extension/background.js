@@ -2,6 +2,7 @@
  * mdfy.cc Chrome Extension — Background Service Worker
  *
  * Handles context menu and message passing.
+ * Works on AI chat pages (full conversation capture) and any page (selection/page capture).
  */
 
 const MDFY_URL = "https://mdfy.cc";
@@ -30,48 +31,169 @@ async function compressToBase64Url(text) {
   }
 }
 
-// ─── Context Menu ───
+async function sendToMdfy(text) {
+  if (!text) return;
+  const compressed = await compressToBase64Url(text);
+  const url = MDFY_URL + "/#md=" + compressed;
+  if (url.length <= MAX_URL_BYTES) {
+    chrome.tabs.create({ url });
+  } else {
+    chrome.tabs.create({ url: MDFY_URL });
+  }
+}
+
+// ─── Context Menus ───
 
 chrome.runtime.onInstalled.addListener(() => {
+  // Selection → send to mdfy
   chrome.contextMenus.create({
     id: "mdfy-send-selection",
-    title: "Send to mdfy.cc",
+    title: "Send selection to mdfy.cc",
     contexts: ["selection"],
+  });
+
+  // Page → capture full page as MD
+  chrome.contextMenus.create({
+    id: "mdfy-capture-page",
+    title: "Send this page to mdfy.cc",
+    contexts: ["page"],
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== "mdfy-send-selection") return;
-
-  const text = info.selectionText;
-  if (!text) return;
-
-  const compressed = await compressToBase64Url(text);
-  const url = MDFY_URL + "/#md=" + compressed;
-
-  if (url.length <= MAX_URL_BYTES) {
-    chrome.tabs.create({ url });
-  } else {
-    // For large selections, try to get richer content from the content script
+  if (info.menuItemId === "mdfy-send-selection") {
+    // Try rich extraction from content script first
     try {
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: "capture-selection",
       });
       if (response && response.markdown) {
-        const compressedMd = await compressToBase64Url(response.markdown);
-        const mdUrl = MDFY_URL + "/#md=" + compressedMd;
-        if (mdUrl.length <= MAX_URL_BYTES) {
-          chrome.tabs.create({ url: mdUrl });
-          return;
-        }
+        await sendToMdfy(response.markdown);
+        return;
       }
     } catch {
-      // Content script not available — just use plain text
+      // Content script not available on this page
     }
 
-    // Fallback: open mdfy.cc without content
-    // The user will need to paste manually
-    chrome.tabs.create({ url: MDFY_URL });
+    // Fallback: use plain selection text
+    if (info.selectionText) {
+      await sendToMdfy(info.selectionText);
+    }
+  }
+
+  if (info.menuItemId === "mdfy-capture-page") {
+    try {
+      // Try content script first (for AI pages, gets conversation)
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        action: "capture-page",
+      });
+      if (response && response.markdown) {
+        await sendToMdfy(response.markdown);
+        return;
+      }
+    } catch {
+      // Content script not available
+    }
+
+    // Fallback: inject a script to extract page content
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // Lightweight page-to-markdown extraction
+          const title = document.title;
+          const url = window.location.href;
+
+          // Try to find main content area
+          const main = document.querySelector("main, article, [role='main'], .content, .post-content, .entry-content")
+            || document.body;
+
+          // Clone and clean
+          const clone = main.cloneNode(true);
+
+          // Remove noise elements
+          clone.querySelectorAll("nav, footer, header, aside, script, style, noscript, iframe, .sidebar, .nav, .menu, .ad, .advertisement, [role='navigation'], [role='banner'], [role='complementary']").forEach(el => el.remove());
+
+          // Extract text with basic structure
+          let md = "";
+          if (title) md += "# " + title + "\n\n";
+          md += "> Source: " + url + "\n\n---\n\n";
+
+          // Process headings
+          clone.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(h => {
+            const level = parseInt(h.tagName[1]);
+            h.textContent = "\n" + "#".repeat(level) + " " + h.textContent.trim() + "\n";
+          });
+
+          // Process code blocks
+          clone.querySelectorAll("pre").forEach(pre => {
+            const code = pre.querySelector("code");
+            const text = code ? code.textContent : pre.textContent;
+            let lang = "";
+            const langClass = (code || pre).className.match(/language-(\w+)|lang-(\w+)/);
+            if (langClass) lang = langClass[1] || langClass[2];
+            pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
+          });
+
+          // Process inline code
+          clone.querySelectorAll("code").forEach(code => {
+            if (code.closest("pre")) return;
+            code.textContent = "`" + code.textContent + "`";
+          });
+
+          // Process bold/italic
+          clone.querySelectorAll("strong, b").forEach(el => { el.textContent = "**" + el.textContent + "**"; });
+          clone.querySelectorAll("em, i").forEach(el => { el.textContent = "*" + el.textContent + "*"; });
+
+          // Process links
+          clone.querySelectorAll("a").forEach(a => {
+            const href = a.getAttribute("href");
+            const text = a.textContent;
+            if (href && text && href.startsWith("http")) {
+              a.textContent = "[" + text + "](" + href + ")";
+            }
+          });
+
+          // Process lists
+          clone.querySelectorAll("ul > li").forEach(li => { li.textContent = "- " + li.textContent.trim(); });
+          clone.querySelectorAll("ol > li").forEach((li, i) => { li.textContent = (i + 1) + ". " + li.textContent.trim(); });
+
+          // Process tables
+          clone.querySelectorAll("table").forEach(table => {
+            let tableMd = "\n";
+            const rows = table.querySelectorAll("tr");
+            rows.forEach((row, rowIndex) => {
+              const cells = row.querySelectorAll("th, td");
+              const cellTexts = Array.from(cells).map(c => c.textContent.trim());
+              tableMd += "| " + cellTexts.join(" | ") + " |\n";
+              if (rowIndex === 0) {
+                tableMd += "| " + cellTexts.map(() => "---").join(" | ") + " |\n";
+              }
+            });
+            table.textContent = tableMd;
+          });
+
+          // Process blockquotes
+          clone.querySelectorAll("blockquote").forEach(bq => {
+            const lines = bq.textContent.trim().split("\n");
+            bq.textContent = lines.map(l => "> " + l).join("\n");
+          });
+
+          // Get text
+          let text = clone.innerText || clone.textContent || "";
+          text = text.replace(/\n{3,}/g, "\n\n").trim();
+          md += text;
+
+          return md;
+        },
+      });
+      if (result?.result) {
+        await sendToMdfy(result.result);
+      }
+    } catch (err) {
+      // Last resort: just open mdfy.cc
+      chrome.tabs.create({ url: MDFY_URL });
+    }
   }
 });
 
@@ -83,5 +205,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.tabs.create({ url });
     sendResponse({ ok: true });
     return true;
+  }
+
+  if (request.action === "get-user-id") {
+    // Try to get user auth from mdfy.cc cookies/storage
+    // This requires the "cookies" permission for mdfy.cc domain
+    chrome.cookies.get({ url: MDFY_URL, name: "sb-auth-token" }, (cookie) => {
+      if (cookie && cookie.value) {
+        try {
+          // Supabase auth token is a JWT — extract user ID from payload
+          const parts = cookie.value.split(".");
+          if (parts.length >= 2) {
+            const payload = JSON.parse(atob(parts[1]));
+            sendResponse({ userId: payload.sub || null });
+            return;
+          }
+        } catch { /* ignore */ }
+      }
+      sendResponse({ userId: null });
+    });
+    return true; // async response
   }
 });

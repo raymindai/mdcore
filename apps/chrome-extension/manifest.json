@@ -3,7 +3,8 @@
   "name": "mdfy.cc — Publish AI Output",
   "version": "1.0.0",
   "description": "One-click capture from ChatGPT, Claude, and Gemini. Publish as a beautiful document on mdfy.cc",
-  "permissions": ["activeTab", "contextMenus", "storage"],
+  "permissions": ["activeTab", "contextMenus", "storage", "scripting", "cookies"],
+  "host_permissions": ["https://mdfy.cc/*"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
