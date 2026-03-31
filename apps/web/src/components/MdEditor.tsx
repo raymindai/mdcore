@@ -3537,7 +3537,7 @@ ${html}
                   className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                   style={{
                     background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                    color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                    color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                     opacity: dragTabId === tab.id ? 0.4 : 1,
                   }}
                   onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
@@ -3578,7 +3578,7 @@ ${html}
                     onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
                     onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
                     className={`flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                    style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
+                    style={{ color: "var(--text-secondary)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                     onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                     onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
                     onDragLeave={() => setDragOverTarget(null)}
@@ -3632,7 +3632,7 @@ ${html}
                           className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
                           style={{
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-muted)",
+                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                             opacity: dragTabId === tab.id ? 0.4 : 1,
                           }}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
@@ -3685,7 +3685,7 @@ ${html}
               <div className="px-2 mt-1">
                 <div
                   className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
-                  style={{ color: "var(--text-muted)" }}
+                  style={{ color: "var(--text-secondary)" }}
                   onClick={async () => {
                     setShowCloudDocs(!showCloudDocs);
                     if (!showCloudDocs && user) {
@@ -3700,7 +3700,7 @@ ${html}
                     style={{ transform: showCloudDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                     <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                   </svg>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showCloudDocs ? 0.6 : 1 }}><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showCloudDocs ? 0.7 : 1 }}><path d="M3 12a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 6a3.5 3.5 0 01.5 7H3z"/></svg>
                   <span className="truncate flex-1">Cloud</span>
                   <span className="text-[9px] opacity-50">{cloudDocs.length}</span>
                 </div>
@@ -3736,14 +3736,14 @@ ${html}
                 <div key="trash-header" className="mt-1">
                   <div
                     className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
-                    style={{ color: "var(--text-faint)" }}
+                    style={{ color: "var(--text-secondary)" }}
                     onClick={() => setShowTrash(!showTrash)}
                   >
                     <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                       <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                     </svg>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill={showTrash ? "none" : "var(--text-faint)"} stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showTrash ? 0.6 : 1 }}><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill={showTrash ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showTrash ? 0.7 : 1 }}><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
                     <span className="truncate flex-1">Trash</span>
                     <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
                   </div>
