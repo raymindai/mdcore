@@ -3907,6 +3907,16 @@ ${html}
                               }
                               // Clean up excessive blank lines
                               converted = converted.replace(/\n{3,}/g, "\n\n").trim();
+                              if (converted === md) {
+                                // Nothing to convert — show brief inline feedback via button text swap
+                                const btn = document.activeElement as HTMLElement;
+                                if (btn) {
+                                  const orig = btn.innerHTML;
+                                  btn.innerHTML = `<div style="color:var(--text-faint);font-size:10px">Already compatible</div>`;
+                                  setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                                }
+                                return;
+                              }
                               setMarkdown(converted);
                               cmSetDoc(converted);
                               doRender(converted);
