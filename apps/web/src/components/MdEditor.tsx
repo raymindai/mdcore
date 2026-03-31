@@ -3875,8 +3875,8 @@ ${html}
                         className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
-                        My Documents
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 5h6M5 8h4M5 11h5" strokeLinecap="round"/></svg>
+                        My Published Docs
                       </button>
                       <button
                         onClick={() => { signOut(); setShowAuthMenu(false); }}
