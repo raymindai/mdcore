@@ -3680,37 +3680,34 @@ ${html}
               </div>
             )}
 
-            {/* Cloud Documents section */}
+            {/* Cloud Documents section — folder-like structure */}
             {isAuthenticated && (
-              <div className="mt-3 px-2">
-                <button
+              <div className="px-2 mt-1">
+                <div
+                  className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
+                  style={{ color: "var(--text-muted)" }}
                   onClick={async () => {
                     setShowCloudDocs(!showCloudDocs);
                     if (!showCloudDocs && user) {
                       try {
                         const res = await fetch("/api/user/documents", { headers: { "x-user-id": user.id } });
-                        if (res.ok) {
-                          const { documents } = await res.json();
-                          setCloudDocs(documents || []);
-                        }
+                        if (res.ok) { const { documents } = await res.json(); setCloudDocs(documents || []); }
                       } catch { /* ignore */ }
                     }
                   }}
-                  className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-md text-[11px] font-mono transition-colors"
-                  style={{ color: "var(--text-muted)" }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
                     style={{ transform: showCloudDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                     <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                   </svg>
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.2"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
-                  CLOUD
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showCloudDocs ? 0.6 : 1 }}><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                  <span className="truncate flex-1">Cloud</span>
                   <span className="text-[9px] opacity-50">{cloudDocs.length}</span>
-                </button>
+                </div>
                 {showCloudDocs && (
-                  <div className="space-y-0.5 mt-1">
+                  <div className="pl-4 space-y-0.5 mt-0.5">
                     {cloudDocs.length === 0 ? (
-                      <div className="px-2 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                      <div className="px-2.5 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
                         Shared documents will appear here
                       </div>
                     ) : cloudDocs.map(doc => (
@@ -3718,13 +3715,14 @@ ${html}
                         key={doc.id}
                         className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
                         style={{ color: "var(--text-muted)" }}
-                        onClick={() => {
-                          window.location.href = `/${doc.id}`;
-                        }}
+                        onClick={() => { window.location.href = `/?from=${doc.id}`; }}
                       >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0"><path d="M3 11a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 5 3.5 3.5 0 0114 12H3z"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0">
+                          <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                          <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                        </svg>
                         <span className="truncate flex-1">{doc.title || "Untitled"}</span>
-                        <span className="text-[9px] opacity-40">{doc.view_count} views</span>
+                        <span className="text-[9px] opacity-40">{doc.view_count}</span>
                       </div>
                     ))}
                   </div>
