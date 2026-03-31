@@ -4063,6 +4063,7 @@ ${html}
             </div>
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
+          <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</a>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="https://mdcore.ai" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">mdcore.ai</a>
         </div>

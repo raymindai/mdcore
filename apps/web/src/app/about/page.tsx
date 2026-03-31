@@ -128,6 +128,9 @@ export default function AboutPage() {
           </Link>
 
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>
+              Plugins
+            </Link>
             <a
               href="https://github.com/raymindai/mdcore"
               target="_blank"
