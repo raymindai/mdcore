@@ -4,68 +4,166 @@
   <meta charset="utf-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       width: 320px;
       background: #09090b;
       color: #fafafa;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       padding: 20px;
     }
-    .logo {
-      font-size: 24px;
-      font-weight: 800;
+
+    /* ─── Header ─── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 16px;
     }
-    .logo .md { color: #fb923c; }
-    .logo .fy { color: #fafafa; }
-    .logo .cc { color: #71717a; }
-    .desc {
-      font-size: 13px;
-      color: #a1a1aa;
-      line-height: 1.5;
-      margin-bottom: 20px;
+
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
     }
+
+    .logo-md { color: #fb923c; }
+    .logo-fy { color: #fafafa; }
+    .logo-cc { color: #52525b; }
+
+    .version {
+      font-size: 11px;
+      color: #52525b;
+      font-weight: 500;
+    }
+
+    /* ─── Platform Detection ─── */
+    .platform-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .platform-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .platform-dot.active { background: #4ade80; }
+    .platform-dot.inactive { background: #52525b; }
+
+    .platform-name {
+      color: #a1a1aa;
+      font-weight: 500;
+    }
+
+    .platform-name.active {
+      color: #fafafa;
+    }
+
+    /* ─── Buttons ─── */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
     button {
       width: 100%;
-      padding: 10px;
+      padding: 10px 14px;
       border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      margin-bottom: 8px;
-      transition: opacity 0.15s;
+      transition: opacity 0.12s, transform 0.1s;
+      font-family: inherit;
     }
-    button:hover { opacity: 0.85; }
+
+    button:hover { opacity: 0.88; }
+    button:active { transform: scale(0.98); }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .btn-primary {
       background: rgba(251, 146, 60, 0.15);
       color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.2);
     }
+
     .btn-secondary {
       background: #18181b;
       color: #a1a1aa;
       border: 1px solid #27272a;
     }
+
+    /* ─── Status ─── */
     .status {
       font-size: 12px;
-      color: #71717a;
+      color: #52525b;
       text-align: center;
-      margin-top: 12px;
+      min-height: 16px;
+      transition: color 0.15s;
     }
+
     .status.success { color: #4ade80; }
     .status.error { color: #ef4444; }
+
+    /* ─── Footer ─── */
+    .footer {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #1a1a1e;
+      text-align: center;
+    }
+
+    .footer a {
+      color: #52525b;
+      font-size: 11px;
+      text-decoration: none;
+      transition: color 0.12s;
+    }
+
+    .footer a:hover {
+      color: #fb923c;
+    }
   </style>
 </head>
 <body>
-  <div class="logo">
-    <span class="md">md</span><span class="fy">fy</span><span class="cc">.cc</span>
+  <div class="header">
+    <div class="logo">
+      <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
+    </div>
+    <span class="version">v1.0</span>
   </div>
-  <p class="desc">Save the current page or AI conversation as a beautiful Markdown document.</p>
 
-  <button class="btn-primary" id="save-page">Save Page as Markdown</button>
-  <button class="btn-secondary" id="save-selection">Save Selection</button>
+  <div class="platform-badge" id="platform-badge">
+    <span class="platform-dot inactive" id="platform-dot"></span>
+    <span class="platform-name" id="platform-name">Detecting...</span>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="btn-capture" disabled>Capture this conversation</button>
+    <button class="btn-secondary" id="btn-selection">Capture selection</button>
+  </div>
 
   <div class="status" id="status"></div>
+
+  <div class="footer">
+    <a href="https://mdfy.cc" target="_blank">mdfy.cc</a>
+  </div>
 
   <script src="popup.js"></script>
 </body>

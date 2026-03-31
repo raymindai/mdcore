@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "mdfy.cc — Save to Markdown",
-  "version": "0.1.0",
-  "description": "Save ChatGPT, Claude, and any webpage content as beautiful Markdown documents on mdfy.cc",
-  "permissions": ["activeTab", "contextMenus"],
+  "name": "mdfy.cc — Publish AI Output",
+  "version": "1.0.0",
+  "description": "One-click capture from ChatGPT, Claude, and Gemini. Publish as a beautiful document on mdfy.cc",
+  "permissions": ["activeTab", "contextMenus", "storage"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -19,12 +19,14 @@
   "content_scripts": [
     {
       "matches": [
-        "https://chatgpt.com/*",
         "https://chat.openai.com/*",
-        "https://claude.ai/*"
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*"
       ],
       "js": ["content.js"],
-      "css": ["content.css"]
+      "css": ["content.css"],
+      "run_at": "document_idle"
     }
   ],
   "background": {
