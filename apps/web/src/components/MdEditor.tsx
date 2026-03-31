@@ -3874,8 +3874,7 @@ ${html}
                         ].filter(f => f.id !== flavor).map(target => (
                           <button
                             key={target.id}
-                            onClick={async () => {
-                              setShowFlavorMenu(false);
+                            onClick={async (e) => {
                               const md = markdownRef.current;
                               let converted = md;
                               // Conversion rules
@@ -3908,15 +3907,14 @@ ${html}
                               // Clean up excessive blank lines
                               converted = converted.replace(/\n{3,}/g, "\n\n").trim();
                               if (converted === md) {
-                                // Nothing to convert — show brief inline feedback via button text swap
-                                const btn = document.activeElement as HTMLElement;
-                                if (btn) {
-                                  const orig = btn.innerHTML;
-                                  btn.innerHTML = `<div style="color:var(--text-faint);font-size:10px">Already compatible</div>`;
-                                  setTimeout(() => { btn.innerHTML = orig; }, 1500);
-                                }
+                                // Nothing to convert — show inline feedback on the clicked button
+                                const btn = e.currentTarget as HTMLElement;
+                                const orig = btn.innerHTML;
+                                btn.innerHTML = `<div style="color:var(--text-faint);font-size:10px;padding:2px 0">Already compatible</div>`;
+                                setTimeout(() => { btn.innerHTML = orig; }, 1500);
                                 return;
                               }
+                              setShowFlavorMenu(false);
                               setMarkdown(converted);
                               cmSetDoc(converted);
                               doRender(converted);
