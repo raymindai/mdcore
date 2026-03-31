@@ -6,11 +6,10 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 320px;
+      width: 340px;
       background: #09090b;
       color: #fafafa;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 20px;
     }
 
     /* ─── Header ─── */
@@ -18,11 +17,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid #1a1a1e;
     }
 
     .logo {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 800;
       letter-spacing: -0.5px;
     }
@@ -31,10 +31,15 @@
     .logo-fy { color: #fafafa; }
     .logo-cc { color: #52525b; }
 
-    .version {
-      font-size: 11px;
+    .tagline {
+      font-size: 10px;
       color: #52525b;
       font-weight: 500;
+    }
+
+    /* ─── Content ─── */
+    .content {
+      padding: 16px 20px;
     }
 
     /* ─── Platform Detection ─── */
@@ -42,12 +47,11 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 10px 12px;
       border-radius: 8px;
       background: #18181b;
       border: 1px solid #27272a;
-      margin-bottom: 16px;
-      font-size: 13px;
+      margin-bottom: 14px;
     }
 
     .platform-dot {
@@ -58,23 +62,29 @@
     }
 
     .platform-dot.active { background: #4ade80; }
-    .platform-dot.inactive { background: #52525b; }
+    .platform-dot.inactive { background: #3f3f46; }
+
+    .platform-info { flex: 1; }
 
     .platform-name {
-      color: #a1a1aa;
-      font-weight: 500;
+      font-size: 13px;
+      font-weight: 600;
+      color: #71717a;
+    }
+    .platform-name.active { color: #fafafa; }
+
+    .platform-hint {
+      font-size: 10px;
+      color: #52525b;
+      margin-top: 2px;
     }
 
-    .platform-name.active {
-      color: #fafafa;
-    }
-
-    /* ─── Buttons ─── */
+    /* ─── Actions ─── */
     .actions {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     button {
@@ -85,20 +95,23 @@
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.12s, transform 0.1s;
+      transition: all 0.12s;
       font-family: inherit;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    button:hover { opacity: 0.88; }
-    button:active { transform: scale(0.98); }
+    button:hover:not(:disabled) { opacity: 0.88; }
+    button:active:not(:disabled) { transform: scale(0.98); }
     button:disabled {
-      opacity: 0.4;
+      opacity: 0.35;
       cursor: not-allowed;
-      transform: none;
     }
 
     .btn-primary {
-      background: rgba(251, 146, 60, 0.15);
+      background: rgba(251, 146, 60, 0.12);
       color: #fb923c;
       border: 1px solid rgba(251, 146, 60, 0.2);
     }
@@ -109,36 +122,96 @@
       border: 1px solid #27272a;
     }
 
+    .btn-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    .btn-text { flex: 1; }
+    .btn-label { display: block; }
+    .btn-desc {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      color: #52525b;
+      margin-top: 2px;
+    }
+    .btn-primary .btn-desc { color: rgba(251, 146, 60, 0.5); }
+
     /* ─── Status ─── */
     .status {
-      font-size: 12px;
-      color: #52525b;
+      font-size: 11px;
+      color: #3f3f46;
       text-align: center;
       min-height: 16px;
       transition: color 0.15s;
     }
-
     .status.success { color: #4ade80; }
     .status.error { color: #ef4444; }
 
+    /* ─── How it works ─── */
+    .how-section {
+      padding: 12px 20px 16px;
+      border-top: 1px solid #1a1a1e;
+    }
+
+    .how-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #3f3f46;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .how-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .how-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 11px;
+      color: #52525b;
+      line-height: 1.4;
+    }
+
+    .how-num {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: #18181b;
+      color: #fb923c;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
     /* ─── Footer ─── */
     .footer {
-      margin-top: 14px;
-      padding-top: 12px;
+      padding: 10px 20px;
       border-top: 1px solid #1a1a1e;
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .footer a {
-      color: #52525b;
-      font-size: 11px;
+      color: #3f3f46;
+      font-size: 10px;
       text-decoration: none;
       transition: color 0.12s;
     }
-
-    .footer a:hover {
-      color: #fb923c;
-    }
+    .footer a:hover { color: #fb923c; }
   </style>
 </head>
 <body>
@@ -146,23 +219,64 @@
     <div class="logo">
       <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
     </div>
-    <span class="version">v1.0</span>
+    <span class="tagline">Publish AI Output</span>
   </div>
 
-  <div class="platform-badge" id="platform-badge">
-    <span class="platform-dot inactive" id="platform-dot"></span>
-    <span class="platform-name" id="platform-name">Detecting...</span>
+  <div class="content">
+    <div class="platform-badge" id="platform-badge">
+      <span class="platform-dot inactive" id="platform-dot"></span>
+      <div class="platform-info">
+        <div class="platform-name" id="platform-name">Detecting...</div>
+        <div class="platform-hint" id="platform-hint"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="btn-capture" disabled>
+        <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <rect x="3" y="3" width="14" height="14" rx="2"/>
+          <path d="M7 7h6M7 10h4M7 13h5"/>
+        </svg>
+        <span class="btn-text">
+          <span class="btn-label">Capture Full Conversation</span>
+          <span class="btn-desc">All messages → beautiful Markdown document</span>
+        </span>
+      </button>
+      <button class="btn-secondary" id="btn-selection">
+        <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M5 3v14M15 3v14M3 5h2M3 15h2M15 5h2M15 15h2"/>
+        </svg>
+        <span class="btn-text">
+          <span class="btn-label">Capture Selection</span>
+          <span class="btn-desc">Highlighted text from any page</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="status" id="status"></div>
   </div>
 
-  <div class="actions">
-    <button class="btn-primary" id="btn-capture" disabled>Capture this conversation</button>
-    <button class="btn-secondary" id="btn-selection">Capture selection</button>
+  <div class="how-section">
+    <div class="how-title">How it works</div>
+    <div class="how-steps">
+      <div class="how-step">
+        <span class="how-num">1</span>
+        <span>Open any AI chat (ChatGPT, Claude, Gemini)</span>
+      </div>
+      <div class="how-step">
+        <span class="how-num">2</span>
+        <span>Click <b style="color:#fb923c">Capture</b> or the floating <b style="color:#fb923c">mdfy</b> button on the page</span>
+      </div>
+      <div class="how-step">
+        <span class="how-num">3</span>
+        <span>Your conversation opens as a shareable document on mdfy.cc</span>
+      </div>
+    </div>
   </div>
-
-  <div class="status" id="status"></div>
 
   <div class="footer">
     <a href="https://mdfy.cc" target="_blank">mdfy.cc</a>
+    <a href="https://mdfy.cc/about" target="_blank">About</a>
   </div>
 
   <script src="popup.js"></script>

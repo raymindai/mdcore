@@ -423,8 +423,8 @@
   function createFloatingButton() {
     const btn = document.createElement("button");
     btn.id = "mdfy-float-btn";
-    btn.innerHTML = '<span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span>';
-    btn.title = "Capture conversation to mdfy.cc";
+    btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">Capture</span>';
+    btn.title = "Capture this AI conversation and publish on mdfy.cc";
     document.body.appendChild(btn);
 
     btn.addEventListener("click", async () => {
@@ -473,7 +473,7 @@
 
       const miniBtn = document.createElement("button");
       miniBtn.className = "mdfy-mini-btn";
-      miniBtn.innerHTML = '<span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span>';
+      miniBtn.innerHTML = '<span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span><span class="mdfy-mini-label">this</span>';
       miniBtn.title = "Send this message to mdfy.cc";
 
       miniBtn.addEventListener("click", async (e) => {
