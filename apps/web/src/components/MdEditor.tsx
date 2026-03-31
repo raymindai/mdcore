@@ -3910,7 +3910,7 @@ ${html}
                                 // Nothing to convert — show inline feedback on the clicked button
                                 const btn = e.currentTarget as HTMLElement;
                                 const orig = btn.innerHTML;
-                                btn.innerHTML = `<div style="color:var(--text-faint);font-size:10px;padding:2px 0">Already compatible</div>`;
+                                btn.innerHTML = `<div style="color:var(--accent);font-size:10px;padding:4px 0;text-align:center;font-weight:600">Already compatible</div>`;
                                 setTimeout(() => { btn.innerHTML = orig; }, 1500);
                                 return;
                               }
