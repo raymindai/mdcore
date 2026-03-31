@@ -25,6 +25,8 @@ import {
   deleteDocument,
   extractFromUrl,
   copyToClipboard,
+  fetchVersions,
+  fetchVersion,
 } from "@/lib/share";
 
 // ─── Sample documents for default tabs ───
@@ -1061,6 +1063,15 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const [showMermaidModal, setShowMermaidModal] = useState(false);
+  // History panel state
+  const [showHistory, setShowHistory] = useState(false);
+  const [versions, setVersions] = useState<{ id: number; version_number: number; title: string | null; created_at: string; change_summary: string | null; markdown?: string }[]>([]);
+  const [previewVersion, setPreviewVersion] = useState<number | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [restoringVersion, setRestoringVersion] = useState<number | null>(null);
+  // Permission / edit mode state
+  const [editMode, setEditMode] = useState<"owner" | "token" | "public">("token");
+  const [showEditModeMenu, setShowEditModeMenu] = useState(false);
   const [initialMath, setInitialMath] = useState<string | undefined>();
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
   const [showMathModal, setShowMathModal] = useState(false);
@@ -2119,12 +2130,13 @@ export default function MdEditor() {
         setShowMenu(false);
       }
       setShowExportMenu(false);
+      setShowEditModeMenu(false);
     };
-    if (showMenu || showExportMenu) {
+    if (showMenu || showExportMenu || showEditModeMenu) {
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
     }
-  }, [showMenu, showExportMenu]);
+  }, [showMenu, showExportMenu, showEditModeMenu]);
 
   // Debounced render — called when CM6 content changes
   const handleChange = useCallback(
@@ -2243,6 +2255,87 @@ export default function MdEditor() {
 
   // Paste handling is now done inside useCodeMirror hook via onPaste callback
 
+  // ─── Relative time helper ───
+  const relativeTime = useCallback((dateStr: string) => {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diff = now - then;
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return "Just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(months / 12)}y ago`;
+  }, []);
+
+  // ─── History panel handlers ───
+  const loadVersions = useCallback(async () => {
+    if (!docId) return;
+    setHistoryLoading(true);
+    try {
+      const data = await fetchVersions(docId);
+      setVersions(data.versions || []);
+    } catch {
+      setVersions([]);
+    }
+    setHistoryLoading(false);
+  }, [docId]);
+
+  const handleToggleHistory = useCallback(() => {
+    if (!showHistory && docId) {
+      loadVersions();
+    }
+    setShowHistory(!showHistory);
+    setPreviewVersion(null);
+  }, [showHistory, docId, loadVersions]);
+
+  const handlePreviewVersion = useCallback(async (versionId: number) => {
+    if (!docId) return;
+    if (previewVersion === versionId) {
+      // Toggle off — restore current content
+      setPreviewVersion(null);
+      doRender(markdown);
+      return;
+    }
+    setPreviewVersion(versionId);
+    try {
+      const data = await fetchVersion(docId, versionId);
+      if (data.version?.markdown) {
+        const result = await renderMarkdown(data.version.markdown);
+        const processed = postProcessHtml(result.html);
+        setHtml(processed);
+      }
+    } catch {
+      // ignore
+    }
+  }, [docId, previewVersion, markdown, doRender]);
+
+  const handleRestoreVersion = useCallback(async (versionId: number) => {
+    if (!docId) return;
+    const token = getEditToken(docId);
+    if (!token) return;
+    setRestoringVersion(versionId);
+    try {
+      const data = await fetchVersion(docId, versionId);
+      if (data.version?.markdown) {
+        await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { changeSummary: `Restored to version ${data.version.version_number}` });
+        setMarkdown(data.version.markdown);
+        doRender(data.version.markdown);
+        if (data.version.title) setTitle(data.version.title);
+        setPreviewVersion(null);
+        await loadVersions();
+      }
+    } catch {
+      // ignore
+    }
+    setRestoringVersion(null);
+  }, [docId, doRender, loadVersions]);
+
   // Share — try short URL first, fallback to hash-based
   const handleShare = useCallback(async () => {
     if (!markdown.trim()) return;
@@ -2263,6 +2356,7 @@ export default function MdEditor() {
         const { url, editToken } = await createShortUrl(markdown, title, {
           userId: user.id,
           expiresIn: isPro ? undefined : 7 * 24, // Free: 7 days
+          editMode,
         });
         const newDocId = url.split("/").pop()!;
         saveEditToken(newDocId, editToken);
@@ -2293,7 +2387,7 @@ export default function MdEditor() {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 3000);
     }
-  }, [markdown, title, docId, isAuthenticated, user, profile]);
+  }, [markdown, title, docId, isAuthenticated, user, profile, editMode]);
 
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
@@ -2418,14 +2512,17 @@ ${html}
     if (!token) return;
     setUpdateState("updating");
     try {
-      await updateDocument(docId, token, markdown, title);
+      await updateDocument(docId, token, markdown, title, {
+        userId: user?.id,
+        changeSummary: undefined,
+      });
       setUpdateState("done");
       setTimeout(() => setUpdateState("idle"), 3000);
     } catch {
       setUpdateState("error");
       setTimeout(() => setUpdateState("idle"), 3000);
     }
-  }, [docId, markdown, title]);
+  }, [docId, markdown, title, user]);
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
@@ -2803,6 +2900,52 @@ ${html}
                 </div>
               </div>
             ) : null}
+            {/* Permission selector — visible when authenticated and doc not yet shared */}
+            {isAuthenticated && !docId && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowEditModeMenu(!showEditModeMenu)}
+                  className="flex items-center gap-1 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                >
+                  {editMode === "owner" ? (
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1"/><path d="M6 7V5a2 2 0 114 0v2"/></svg>
+                  ) : editMode === "public" ? (
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12"/></svg>
+                  ) : (
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg>
+                  )}
+                  <span className="hidden sm:inline">{editMode === "owner" ? "Only me" : editMode === "public" ? "Public" : "With link"}</span>
+                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
+                </button>
+                {showEditModeMenu && (
+                  <div
+                    className="absolute top-full right-0 mt-1 w-52 rounded-lg shadow-xl py-1 z-[9999]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                  >
+                    <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Who can edit</div>
+                    {([
+                      { value: "owner" as const, label: "Only me", desc: "Only you can edit this document", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
+                      { value: "token" as const, label: "Anyone with link", desc: "Anyone with the edit token can edit", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg> },
+                      { value: "public" as const, label: "Public", desc: "Anyone can edit without a token", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12"/></svg> },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { setEditMode(opt.value); setShowEditModeMenu(false); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                        style={{ color: editMode === opt.value ? "var(--accent)" : "var(--text-secondary)" }}
+                      >
+                        {opt.icon}
+                        <div>
+                          <div className="font-medium">{opt.label}{editMode === opt.value && " \u2713"}</div>
+                          <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>{opt.desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="relative group">
               <button
                 onClick={handleShare}
@@ -3673,6 +3816,28 @@ ${html}
                     )}
                   </div>
                 </div>
+                {/* History toggle — only when document has been shared */}
+                {docId && (
+                  <div className="relative group">
+                    <button
+                      onClick={handleToggleHistory}
+                      className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
+                      style={{ background: showHistory ? "var(--accent-dim)" : "var(--toggle-bg)", color: showHistory ? "var(--accent)" : "var(--text-muted)" }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      {!renderPaneNarrow && <span className="text-[10px] font-medium">HISTORY</span>}
+                      {versions.length > 0 && (
+                        <span className="flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full text-[8px] font-bold" style={{ background: "var(--accent)", color: "var(--bg)" }}>{versions.length}</span>
+                      )}
+                    </button>
+                    {!showHistory && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                        Version history
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Export dropdown */}
                 <div className="relative group">
                   <button
@@ -3747,7 +3912,7 @@ ${html}
                 cmInsert={cmInsertAtCursor}
               />
             )}
-            <div className="flex-1 overflow-auto" ref={previewRef} onClick={(e) => {
+            <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {
                 const article = e.currentTarget.querySelector("article");
@@ -3816,6 +3981,106 @@ ${html}
                   data-placeholder="true"
                   dangerouslySetInnerHTML={{ __html: "" }}
                 />
+              )}
+              {/* ─── Version History Panel (slide-out overlay) ─── */}
+              {showHistory && docId && (
+                <div
+                  className="absolute top-0 right-0 h-full flex flex-col z-[100]"
+                  style={{
+                    width: "min(320px, 100%)",
+                    background: "var(--surface)",
+                    borderLeft: "1px solid var(--border)",
+                    boxShadow: "-4px 0 24px rgba(0,0,0,0.2)",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* History header */}
+                  <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                    <div className="flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ color: "var(--accent)" }}><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>Version History</span>
+                      {versions.length > 0 && (
+                        <span className="text-[9px] px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{versions.length}</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) doRender(markdown); }}
+                      className="flex items-center justify-center w-5 h-5 rounded transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                    </button>
+                  </div>
+                  {/* Version list */}
+                  <div className="flex-1 overflow-y-auto">
+                    {historyLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite", color: "var(--accent)" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                      </div>
+                    ) : versions.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" style={{ color: "var(--text-faint)", marginBottom: 8 }}><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>No versions yet</p>
+                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>Versions are created each time you update the document.</p>
+                      </div>
+                    ) : (
+                      <div className="py-1">
+                        {versions.map((v, i) => {
+                          const isCurrent = i === 0;
+                          const isPreviewing = previewVersion === v.id;
+                          return (
+                            <div
+                              key={v.id}
+                              className="px-3 py-2 transition-colors cursor-pointer"
+                              style={{
+                                background: isPreviewing ? "var(--accent-dim)" : "transparent",
+                                borderBottom: "1px solid var(--border-dim)",
+                              }}
+                              onClick={() => handlePreviewVersion(v.id)}
+                            >
+                              <div className="flex items-center justify-between mb-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-semibold" style={{ color: isPreviewing ? "var(--accent)" : "var(--text-primary)" }}>
+                                    v{v.version_number}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="text-[8px] px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Current</span>
+                                  )}
+                                  {isPreviewing && (
+                                    <span className="text-[8px] px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}>Previewing</span>
+                                  )}
+                                </div>
+                                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{relativeTime(v.created_at)}</span>
+                              </div>
+                              {v.change_summary && (
+                                <p className="text-[10px] mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{v.change_summary}</p>
+                              )}
+                              {v.title && (
+                                <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--text-faint)" }}>{v.title}</p>
+                              )}
+                              {/* Restore button — not shown on current version */}
+                              {!isCurrent && isOwner && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v.id); }}
+                                  disabled={restoringVersion === v.id}
+                                  className="mt-1.5 flex items-center gap-1 h-5 px-2 rounded text-[10px] font-medium transition-colors"
+                                  style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
+                                >
+                                  {restoringVersion === v.id ? (
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                                  ) : (
+                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8a6 6 0 1111.5-2.3"/><path d="M2 3v5h5"/></svg>
+                                  )}
+                                  {restoringVersion === v.id ? "Restoring..." : "Restore"}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </div>
