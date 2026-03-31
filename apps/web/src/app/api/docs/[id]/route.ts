@@ -56,10 +56,15 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .eq("id", id)
     .then(() => {});
 
-  // Don't expose password_hash or edit_token internals
+  // Don't expose password_hash or raw user_id
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password_hash: _ph, user_id: _uid, ...safeData } = data;
-  return NextResponse.json({ ...safeData, hasPassword, editMode: data.edit_mode || "token" });
+
+  // Check if requester is the owner (via header)
+  const requesterId = _req.headers.get("x-user-id");
+  const isOwnedByRequester = !!(requesterId && data.user_id && requesterId === data.user_id);
+
+  return NextResponse.json({ ...safeData, hasPassword, editMode: data.edit_mode || "token", isOwner: isOwnedByRequester });
 }
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
@@ -93,19 +98,20 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   // Permission check based on edit_mode
+  // Owner (by user_id) can always edit regardless of mode
+  const isDocOwner = !!(userId && doc.user_id && userId === doc.user_id);
   const editMode = doc.edit_mode || "token";
-  if (editMode === "owner") {
-    // Only the document owner can edit
-    if (!userId || userId !== doc.user_id) {
+
+  if (!isDocOwner) {
+    if (editMode === "owner") {
       return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
+    } else if (editMode === "token") {
+      if (!editToken || doc.edit_token !== editToken) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      }
     }
-  } else if (editMode === "token") {
-    // Need valid editToken
-    if (!editToken || doc.edit_token !== editToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+    // editMode === "public" → anyone can edit, no check needed
   }
-  // editMode === "public" → anyone can edit, no check needed
 
   // Save current version to history before updating
   const { data: latestVersion } = await supabase

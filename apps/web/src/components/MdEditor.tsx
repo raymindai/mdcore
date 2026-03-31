@@ -1061,8 +1061,9 @@ export default function MdEditor() {
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  // Can edit: either not a shared doc, or user is the owner
-  const canEdit = !isSharedDoc || isOwner;
+  const [docEditMode, setDocEditMode] = useState<"owner" | "token" | "public">("token");
+  // Can edit: not shared, or owner, or public doc
+  const canEdit = !isSharedDoc || isOwner || docEditMode === "public";
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -1675,16 +1676,30 @@ export default function MdEditor() {
       const fromId = params.get("from");
       if (fromId) {
         try {
-          const res = await fetch(`/api/docs/${fromId}`);
+          // Send user ID if logged in for ownership check
+          const headers: Record<string, string> = {};
+          if (user?.id) headers["x-user-id"] = user.id;
+          const res = await fetch(`/api/docs/${fromId}`, { headers });
           if (res.ok) {
             const doc = await res.json();
             setMarkdown(doc.markdown);
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
             setIsSharedDoc(true);
+            setDocEditMode(doc.editMode || "token");
+
             const token = getEditToken(fromId);
-            if (token) {
+            const ownerByToken = !!token;
+            const ownerByAccount = !!doc.isOwner; // server checked user_id match
+            const isPublicDoc = doc.editMode === "public";
+
+            if (ownerByToken || ownerByAccount) {
               setIsOwner(true);
+              // If owner by account but no local token, save the edit token won't work
+              // but they can still edit via userId in PATCH
+              if (!isMobile) setViewMode("split");
+            } else if (isPublicDoc) {
+              // Public doc: anyone can edit
               if (!isMobile) setViewMode("split");
             } else {
               // Read-only: preview only, mark tab as shared
@@ -2613,10 +2628,11 @@ ${html}
   const handleUpdate = useCallback(async () => {
     if (!docId || !markdown.trim()) return;
     const token = getEditToken(docId);
-    if (!token) return;
+    // Can update if: has token, or is owner by account, or doc is public
+    if (!token && !user?.id && docEditMode !== "public") return;
     setUpdateState("updating");
     try {
-      await updateDocument(docId, token, markdown, title, {
+      await updateDocument(docId, token || "", markdown, title, {
         userId: user?.id,
         changeSummary: undefined,
       });
@@ -2982,7 +2998,7 @@ ${html}
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            {isOwner && docId ? (
+            {canEdit && docId ? (
               <div className="relative group">
                 <button
                   onClick={handleUpdate}
