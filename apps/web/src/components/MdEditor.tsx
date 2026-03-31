@@ -2639,7 +2639,7 @@ ${html}
 
   const shareButtonLabel = {
     idle: "SHARE",
-    sharing: "...",
+    sharing: "",
     copied: "COPIED!",
     error: "FAILED",
   }[shareState];
@@ -3975,7 +3975,7 @@ ${html}
                 </div>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-auto">
               <div
                 ref={editorContainerRef}
                 className={narrowSource ? "max-w-3xl mx-auto h-full" : "h-full"}
