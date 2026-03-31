@@ -2341,19 +2341,10 @@ export default function MdEditor() {
           const { markdown: md, title: name } = await importFile(file);
           if (!md) continue;
           const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
-          let tabId: string;
-
-          if (idx === 0 && !markdown.trim()) {
-            setMarkdown(md);
-            setIsSharedDoc(false);
-            doRender(md);
-            tabId = activeTabId;
-            setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: name, markdown: md } : t));
-          } else {
-            tabId = `tab-${tabIdCounter++}`;
-            setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
-            setTimeout(() => switchTab(tabId), 50);
-          }
+          // Always create a new tab for imports
+          const tabId = `tab-${tabIdCounter++}`;
+          setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+          setTimeout(() => switchTab(tabId), 50);
           if (!isMobile) setViewMode("split");
           if (isPlainFormat && md.length > 50) {
             setMdfyPrompt({ text: md, filename: file.name, tabId });
@@ -3061,8 +3052,8 @@ ${html}
                 </div>
               </div>
             ) : null}
-            {/* Permission selector — visible when authenticated and doc not yet shared */}
-            {isAuthenticated && !docId && (
+            {/* Permission selector — visible when authenticated (before share or as owner) */}
+            {isAuthenticated && (!docId || isOwner) && (
               <div className="relative">
                 <button
                   onClick={() => setShowEditModeMenu(!showEditModeMenu)}
@@ -3092,7 +3083,14 @@ ${html}
                     ]).map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() => { setEditMode(opt.value); setShowEditModeMenu(false); }}
+                        onClick={async () => {
+                          setEditMode(opt.value);
+                          setShowEditModeMenu(false);
+                          // If doc already shared, update on server
+                          if (docId && user?.id) {
+                            try { await changeEditMode(docId, user.id, opt.value); setDocEditMode(opt.value); } catch { /* ignore */ }
+                          }
+                        }}
                         className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                         style={{ color: editMode === opt.value ? "var(--accent)" : "var(--text-secondary)" }}
                       >
@@ -3471,19 +3469,10 @@ ${html}
                   const { markdown: md, title: name } = await importFile(file);
                   if (!md) continue;
                   const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
-                  let tabId: string;
-                  if (idx === 0 && !markdown.trim()) {
-                    setMarkdown(md);
-                    setIsSharedDoc(false);
-                    doRender(md);
-                    tabId = activeTabId;
-                    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: name, markdown: md } : t));
-                  } else {
-                    tabId = `tab-${tabIdCounter++}`;
-                    setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
-                    // Switch to the newly imported tab
-                    setTimeout(() => switchTab(tabId), 50);
-                  }
+                  // Always create a new tab for imports
+                  const tabId = `tab-${tabIdCounter++}`;
+                  setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+                  setTimeout(() => switchTab(tabId), 50);
                   if (!isMobile) setViewMode("split");
                   if (isPlainFormat && md.length > 50) {
                     setMdfyPrompt({ text: md, filename: file.name, tabId });
