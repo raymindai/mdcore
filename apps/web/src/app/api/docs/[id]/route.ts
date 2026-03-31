@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -77,11 +78,69 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     );
   }
 
-  let body: { editToken?: string; markdown?: string; title?: string; userId?: string; changeSummary?: string };
+  let body: { action?: string; editToken?: string; markdown?: string; title?: string; userId?: string; changeSummary?: string; editMode?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // ─── Action: rotate-token ───
+  if (body.action === "rotate-token") {
+    const { userId } = body;
+    if (!userId) {
+      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    }
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!doc.user_id || doc.user_id !== userId) {
+      return NextResponse.json({ error: "Only the owner can rotate the token" }, { status: 403 });
+    }
+    const newToken = nanoid(32);
+    const { error } = await supabase
+      .from("documents")
+      .update({ edit_token: newToken })
+      .eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: "Failed to rotate token" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, editToken: newToken });
+  }
+
+  // ─── Action: change-edit-mode ───
+  if (body.action === "change-edit-mode") {
+    const { userId, editMode: newEditMode } = body;
+    if (!userId) {
+      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    }
+    if (!newEditMode || !["owner", "token", "public"].includes(newEditMode)) {
+      return NextResponse.json({ error: "Invalid editMode" }, { status: 400 });
+    }
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+    if (!doc) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!doc.user_id || doc.user_id !== userId) {
+      return NextResponse.json({ error: "Only the owner can change edit mode" }, { status: 403 });
+    }
+    const { error } = await supabase
+      .from("documents")
+      .update({ edit_mode: newEditMode })
+      .eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: "Failed to change edit mode" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, editMode: newEditMode });
   }
 
   const { editToken, markdown, title, userId, changeSummary } = body;

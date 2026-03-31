@@ -162,6 +162,26 @@ export async function fetchVersion(docId: string, versionId: number): Promise<{
   return res.json();
 }
 
+export async function rotateEditToken(id: string, userId: string): Promise<string> {
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "rotate-token", userId }),
+  });
+  if (!res.ok) throw new Error("Failed to rotate token");
+  const { editToken } = await res.json();
+  return editToken;
+}
+
+export async function changeEditMode(id: string, userId: string, editMode: string): Promise<void> {
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "change-edit-mode", userId, editMode }),
+  });
+  if (!res.ok) throw new Error("Failed to change edit mode");
+}
+
 export async function deleteDocument(
   id: string,
   editToken: string

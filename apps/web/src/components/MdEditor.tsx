@@ -23,6 +23,8 @@ import {
   getEditToken,
   updateDocument,
   deleteDocument,
+  rotateEditToken,
+  changeEditMode,
   extractFromUrl,
   copyToClipboard,
   fetchVersions,
@@ -2203,6 +2205,8 @@ export default function MdEditor() {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
+        setShowDocEditModeMenu(false);
+        setConfirmRotateToken(false);
       }
       setShowExportMenu(false);
       setShowEditModeMenu(false);
@@ -2643,6 +2647,40 @@ ${html}
       setTimeout(() => setUpdateState("idle"), 3000);
     }
   }, [docId, markdown, title, user]);
+
+  // Document settings (owner only)
+  const [showDocSettings, setShowDocSettings] = useState(false);
+  const [showDocEditModeMenu, setShowDocEditModeMenu] = useState(false);
+  const [confirmRotateToken, setConfirmRotateToken] = useState(false);
+  const [rotatingToken, setRotatingToken] = useState(false);
+  const [changingEditMode, setChangingEditMode] = useState(false);
+
+  const handleRotateToken = useCallback(async () => {
+    if (!docId || !user?.id) return;
+    if (!confirmRotateToken) { setConfirmRotateToken(true); return; }
+    setRotatingToken(true);
+    try {
+      const newToken = await rotateEditToken(docId, user.id);
+      saveEditToken(docId, newToken);
+    } catch {
+      // ignore
+    }
+    setRotatingToken(false);
+    setConfirmRotateToken(false);
+  }, [docId, user, confirmRotateToken]);
+
+  const handleChangeDocEditMode = useCallback(async (newMode: "owner" | "token" | "public") => {
+    if (!docId || !user?.id) return;
+    setChangingEditMode(true);
+    try {
+      await changeEditMode(docId, user.id, newMode);
+      setDocEditMode(newMode);
+    } catch {
+      // ignore
+    }
+    setChangingEditMode(false);
+    setShowDocEditModeMenu(false);
+  }, [docId, user]);
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
@@ -3210,6 +3248,63 @@ ${html}
                     </button>
                     {isOwner && docId && (
                       <>
+                        <hr style={{ borderColor: "var(--border)" }} className="my-1" />
+                        <div className="px-3 py-1.5">
+                          <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
+                          {/* Change permissions */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowDocEditModeMenu(!showDocEditModeMenu)}
+                              className="w-full text-left text-xs py-1.5 transition-colors flex items-center justify-between"
+                              style={{ color: "var(--text-tertiary)" }}
+                              disabled={changingEditMode}
+                            >
+                              <span>Permissions</span>
+                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                {docEditMode === "owner" ? "Only me" : docEditMode === "public" ? "Public" : "With link"}
+                              </span>
+                            </button>
+                            {showDocEditModeMenu && (
+                              <div className="mt-1 mb-1 rounded-md overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
+                                {([
+                                  { value: "owner" as const, label: "Only me", desc: "Only you can edit" },
+                                  { value: "token" as const, label: "With link", desc: "Anyone with the edit link" },
+                                  { value: "public" as const, label: "Public", desc: "Anyone can edit" },
+                                ] as const).map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => handleChangeDocEditMode(opt.value)}
+                                    className="w-full text-left px-2.5 py-1.5 text-[11px] transition-colors"
+                                    style={{ color: docEditMode === opt.value ? "var(--accent)" : "var(--text-secondary)" }}
+                                  >
+                                    <div className="font-medium">{opt.label}{docEditMode === opt.value && " \u2713"}</div>
+                                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{opt.desc}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {/* Rotate edit token */}
+                          {confirmRotateToken ? (
+                            <div className="py-1.5">
+                              <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>This will invalidate all existing edit links.</p>
+                              <div className="flex gap-1">
+                                <button onClick={() => setConfirmRotateToken(false)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                                <button onClick={handleRotateToken} disabled={rotatingToken} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                                  {rotatingToken ? "Rotating..." : "Confirm"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleRotateToken}
+                              className="w-full text-left text-xs py-1.5 transition-colors"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              Rotate edit token
+                            </button>
+                          )}
+                        </div>
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         {confirmDeleteDoc ? (
                           <div className="px-3 py-2">

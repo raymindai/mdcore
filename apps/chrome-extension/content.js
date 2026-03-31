@@ -212,62 +212,49 @@
   function extractClaude() {
     const messages = [];
 
-    // Claude conversation structure
-    // User messages and assistant messages alternate
-    // Try multiple selectors for robustness
-    const userMsgs = document.querySelectorAll(
-      "[data-testid='user-message'], .font-user-message, [data-is-streaming='false'] .whitespace-pre-wrap"
-    );
-    const assistantMsgs = document.querySelectorAll(
-      "[data-testid='chat-message-text'], .font-claude-message, [class*='claude-message']"
-    );
+    // Claude 2025 DOM structure:
+    // User messages:     [data-testid="user-message"] with .font-user-message
+    // Assistant messages: .font-claude-response containing .standard-markdown
+    // Each turn is a sibling div under the scrollable conversation area
 
-    // If the specific selectors work, use them
-    if (assistantMsgs.length > 0) {
-      // Try to get all messages in order from the conversation container
-      const allTurns = document.querySelectorAll(
-        "[data-testid='conversation-turn'], .group\\/conversation-turn, [class*='conversation-turn']"
-      );
+    // Find user messages
+    const userEls = document.querySelectorAll("[data-testid='user-message']");
+    // Find assistant messages
+    const assistantEls = document.querySelectorAll(".font-claude-response");
 
-      if (allTurns.length > 0) {
-        allTurns.forEach((turn) => {
-          const isHuman = turn.querySelector(
-            "[data-testid='user-message'], .font-user-message, [class*='human-turn']"
-          );
-          const contentEl = turn.querySelector(
-            "[data-testid='chat-message-text'], .font-claude-message, .whitespace-pre-wrap, [class*='message-content']"
-          );
-          if (contentEl) {
-            messages.push({
-              role: isHuman ? "user" : "assistant",
-              content: htmlToMarkdown(contentEl),
-            });
-          }
-        });
-      } else {
-        // Fallback: just grab assistant messages
-        assistantMsgs.forEach((msg) => {
-          messages.push({ role: "assistant", content: htmlToMarkdown(msg) });
-        });
-      }
+    if (userEls.length === 0 && assistantEls.length === 0) {
+      // Fallback: nothing found
       return messages;
     }
 
-    // Broad fallback: look for the main conversation container
-    const mainContent = document.querySelector("main, [role='main']");
-    if (mainContent) {
-      // Try to find alternating message blocks
-      const blocks = mainContent.querySelectorAll("[class*='message'], [class*='Message'], [data-testid]");
-      blocks.forEach((block) => {
-        const text = htmlToMarkdown(block);
-        if (text.length > 5) {
-          const isUser = block.getAttribute("data-testid")?.includes("user") ||
-                         block.className?.includes("human") ||
-                         block.className?.includes("user");
-          messages.push({ role: isUser ? "user" : "assistant", content: text });
-        }
-      });
-    }
+    // Collect all messages with their DOM position for ordering
+    const allMsgs = [];
+
+    userEls.forEach((el) => {
+      const text = htmlToMarkdown(el);
+      if (text.length > 2) {
+        allMsgs.push({ role: "user", content: text, el });
+      }
+    });
+
+    assistantEls.forEach((el) => {
+      const text = htmlToMarkdown(el);
+      if (text.length > 2) {
+        allMsgs.push({ role: "assistant", content: text, el });
+      }
+    });
+
+    // Sort by DOM order
+    allMsgs.sort((a, b) => {
+      const pos = a.el.compareDocumentPosition(b.el);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+
+    allMsgs.forEach((m) => {
+      messages.push({ role: m.role, content: m.content });
+    });
 
     return messages;
   }
@@ -444,23 +431,16 @@
 
     if (matches.length === 0) return markdown;
 
-    // Check if user is logged in
+    // If logged in, upload images to mdfy.cc permanent storage
     const userId = await getUserId();
-    if (!userId) {
-      if (matches.some(m => !m[2].startsWith("http"))) return markdown;
-      // Warn user about temporary images
-      showToast("Sign in to mdfy.cc to permanently save images");
-      return markdown;
-    }
+    if (!userId) return markdown; // Keep original URLs as-is
 
-    // Upload each image and replace URL
     let result = markdown;
     for (const match of matches) {
       const originalUrl = match[2];
-      // Skip already-permanent URLs (mdfy.cc storage)
       if (originalUrl.includes("supabase") || originalUrl.includes("mdfy.cc")) continue;
-      // Skip data URLs (already embedded)
       if (originalUrl.startsWith("data:")) continue;
+      if (!originalUrl.startsWith("http")) continue;
 
       const permanentUrl = await uploadImageToMdfy(originalUrl);
       if (permanentUrl) {
@@ -482,11 +462,39 @@
     // Upload images to permanent storage before sending
     markdown = await processMarkdownImages(markdown);
 
+    // Try authenticated sharing first (creates a permanent short URL)
+    const userId = await getUserId();
+    if (userId) {
+      try {
+        // Extract title from first heading or first line
+        const titleMatch = markdown.match(/^#\s+(.+)/m);
+        const title = titleMatch ? titleMatch[1].trim().slice(0, 100) : "Captured from " + platformName();
+
+        const res = await fetch(MDFY_URL + "/api/docs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markdown, userId, title }),
+        });
+
+        if (res.ok) {
+          const { id } = await res.json();
+          const docUrl = MDFY_URL + "/" + id;
+          showToast("Published to mdfy.cc/" + id);
+          window.open(docUrl, "_blank");
+          return;
+        }
+      } catch {
+        // Fall through to hash-based fallback
+      }
+    }
+
+    // Fallback: hash-based URL (no account needed)
     const compressed = await compressToBase64Url(markdown);
     const url = MDFY_URL + "/#md=" + compressed;
 
     // Check if URL is within safe length
     if (url.length <= MAX_URL_BYTES) {
+      showToast(userId ? "Opened in mdfy.cc" : "Opened in mdfy.cc (sign in for permanent URL)");
       window.open(url, "_blank");
     } else {
       // Content too large for URL — copy to clipboard
@@ -539,7 +547,7 @@
       case "chatgpt":
         return "[data-message-author-role='assistant']";
       case "claude":
-        return "[data-testid='chat-message-text'], .font-claude-message";
+        return ".font-claude-response";
       case "gemini":
         return "model-response, .model-response, [data-message-author='model']";
       default:
