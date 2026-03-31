@@ -591,6 +591,7 @@ interface Tab {
   deleted?: boolean;       // soft delete → trash
   deletedAt?: number;      // timestamp for auto-purge
   readonly?: boolean;      // example docs — not editable
+  shared?: boolean;        // opened from shared URL (not mine)
 }
 
 let tabIdCounter = Date.now();
@@ -1663,6 +1664,7 @@ export default function MdEditor() {
       if (shared) {
         setMarkdown(shared);
         setIsSharedDoc(true);
+        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, shared: true, title: extractTitleFromMd(shared) || "Shared Document", markdown: shared } : t));
         setViewMode("preview");
         await doRender(shared);
         return;
@@ -1685,7 +1687,8 @@ export default function MdEditor() {
               setIsOwner(true);
               if (!isMobile) setViewMode("split");
             } else {
-              // Read-only: preview only
+              // Read-only: preview only, mark tab as shared
+              setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, shared: true, title: doc.title || "Shared Document", markdown: doc.markdown } : t));
               setViewMode("preview");
             }
             await doRender(doc.markdown);
@@ -3437,10 +3440,16 @@ ${html}
                   onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                    <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                    <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                  </svg>
+                  {tab.shared ? (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                      <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                      <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                    </svg>
+                  )}
                   <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                   <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                     className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
@@ -3526,10 +3535,16 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                          </svg>
+                          {tab.shared ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                              <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                            </svg>
+                          )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                   <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
