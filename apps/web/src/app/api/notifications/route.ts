@@ -56,9 +56,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { recipientEmail, type = "share", documentId, fromUserId, fromUserName, message } = body;
+  /* eslint-disable prefer-const */
+  let { recipientEmail, type = "share", documentId, fromUserId, fromUserName, message } = body;
+  /* eslint-enable prefer-const */
   if (!recipientEmail || !documentId) {
     return NextResponse.json({ error: "recipientEmail and documentId required" }, { status: 400 });
+  }
+
+  // Resolve __owner__ to actual owner email
+  if (recipientEmail === "__owner__") {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id")
+      .eq("id", documentId)
+      .single();
+    if (!doc?.user_id) return NextResponse.json({ error: "Document owner not found" }, { status: 404 });
+    // Get owner's email from auth.users via profiles or auth
+    const { data: ownerAuth } = await supabase.auth.admin.getUserById(doc.user_id);
+    if (!ownerAuth?.user?.email) return NextResponse.json({ error: "Owner email not found" }, { status: 404 });
+    recipientEmail = ownerAuth.user.email;
   }
 
   const { error } = await supabase.from("notifications").insert({

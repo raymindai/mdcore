@@ -3930,7 +3930,7 @@ ${html}
                         const ai = folders.indexOf(a), bi = folders.indexOf(b);
                         return sortMode === "oldest" ? ai - bi : bi - ai;
                       }).map(folder => {
-                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && t.permission !== "readonly" && t.permission !== "editable");
+                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -4044,7 +4044,8 @@ ${html}
 
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
-              const sharedTabs = tabs.filter(t => !t.deleted && (t.permission === "readonly" || t.permission === "editable"));
+              // Shared tabs not in any folder (organized ones show under My Documents folders)
+              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable"));
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
               // Merge recentDocs + notification-based shared docs
               const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
@@ -4065,14 +4066,18 @@ ${html}
                   </div>
                   {showSharedDocs && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
-                      {/* Shared tabs already open */}
+                      {/* Shared tabs already open — draggable to folders */}
                       {sharedTabs.map((tab) => (
                         <div
                           key={tab.id}
-                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                          draggable
+                          onDragStart={() => setDragTabId(tab.id)}
+                          onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                            opacity: dragTabId === tab.id ? 0.4 : 1,
                           }}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
@@ -4418,6 +4423,41 @@ ${html}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
+              {/* Request to edit — for readonly shared docs */}
+              {isSharedDoc && !canEdit && docId && user?.email && (
+                <button
+                  onClick={async () => {
+                    try {
+                      // Get doc owner info from server
+                      const res = await fetch(`/api/docs/${docId}`, { headers: { "x-user-id": user?.id || "", "x-user-email": user.email! } });
+                      if (!res.ok) return;
+                      // Send request notification to owner
+                      await fetch("/api/notifications", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          recipientEmail: "__owner__", // special: resolved server-side
+                          type: "edit_request",
+                          documentId: docId,
+                          fromUserId: user.id,
+                          fromUserName: user.email?.split("@")[0],
+                          message: `requested edit access to "${title || "Untitled"}"`,
+                        }),
+                      });
+                      // Show confirmation
+                      setShareState("copied");
+                      setTimeout(() => setShareState("idle"), 3000);
+                    } catch { /* ignore */ }
+                  }}
+                  className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
+                  style={{ background: shareState === "copied" ? "rgba(74,222,128,0.15)" : "rgba(96,165,250,0.15)", color: shareState === "copied" ? "#4ade80" : "#60a5fa" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                    <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
+                  </svg>
+                  {shareState === "copied" ? "Request sent" : "Request to edit"}
+                </button>
+              )}
               {isSharedDoc && !isOwner && (
                 <button
                   onClick={() => {
