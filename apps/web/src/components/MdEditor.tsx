@@ -4336,8 +4336,8 @@ ${html}
                 </button>
               )}
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
-                {/* Toolbar toggle */}
-                <div className="relative group">
+                {/* Toolbar toggle — only when editing is allowed */}
+                {canEdit && <div className="relative group">
                   <button
                     onClick={() => setShowToolbar(!showToolbar)}
                     className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
@@ -4354,7 +4354,7 @@ ${html}
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                     Show formatting toolbar with bold, italic, headings, lists, and more.
                   </div>
-                </div>
+                </div>}
                 {/* Narrow view toggle — hidden when pane is already narrower than max-w-3xl (768px) */}
                 <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
