@@ -4214,7 +4214,9 @@ ${html}
                               if (user?.id) headers["x-user-id"] = user.id;
                               const res = await fetch(`/api/docs/${doc.id}`, { headers });
                               if (!res.ok) {
-                                if (res.status === 404) setRecentDocs(prev => prev.filter(d => d.id !== doc.id));
+                                // Remove dead doc from all lists
+                                setRecentDocs(prev => prev.filter(d => d.id !== doc.id));
+                                setNotifications(prev => prev.filter(n => n.documentId !== doc.id));
                                 return;
                               }
                               const d = await res.json();

@@ -18,19 +18,25 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
 
-  const notifications = (data || []).map((n) => {
-    const doc = n.documents as unknown as { id: string; title: string } | null;
-    return {
-      id: n.id,
-      type: n.type,
-      documentId: n.document_id,
-      documentTitle: doc?.title || "Untitled",
-      fromUserName: n.from_user_name,
-      message: n.message,
-      read: n.read,
-      createdAt: n.created_at,
-    };
-  });
+  const notifications = (data || [])
+    .filter((n) => {
+      // Skip notifications for deleted documents
+      const doc = n.documents as unknown as { id: string } | null;
+      return !!doc;
+    })
+    .map((n) => {
+      const doc = n.documents as unknown as { id: string; title: string };
+      return {
+        id: n.id,
+        type: n.type,
+        documentId: n.document_id,
+        documentTitle: doc.title || "Untitled",
+        fromUserName: n.from_user_name,
+        message: n.message,
+        read: n.read,
+        createdAt: n.created_at,
+      };
+    });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
