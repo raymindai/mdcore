@@ -124,17 +124,26 @@ export default function DocumentViewer({
   // Mermaid rendering
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
-
     const mermaidPres = previewRef.current.querySelectorAll('pre[lang="mermaid"]');
     if (mermaidPres.length === 0) return;
-
     const isDark = theme === "dark";
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mermaid = (window as any).mermaid;
-    if (!mermaid) return;
-
     (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let mermaid = (window as any).mermaid;
+      if (!mermaid) {
+        // Wait for CDN to load (up to 5s)
+        await new Promise<void>((resolve) => {
+          let tries = 0;
+          const check = setInterval(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((window as any).mermaid || tries++ > 50) { clearInterval(check); resolve(); }
+          }, 100);
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mermaid = (window as any).mermaid;
+        if (!mermaid) return;
+      }
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
@@ -216,7 +225,7 @@ export default function DocumentViewer({
           </Link>
           {title && (
             <span
-              className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline truncate max-w-[300px]"
+              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[120px] sm:max-w-[300px]"
               style={{
                 color: "var(--text-muted)",
                 borderLeft: "1px solid var(--border)",
@@ -312,13 +321,47 @@ export default function DocumentViewer({
               This document is shared with specific people.
               Sign in with an authorized email, or ask the owner for access.
             </p>
-            <Link
-              href="/"
-              className="mt-2 px-5 py-2 rounded-lg text-sm font-medium"
-              style={{ background: "var(--accent)", color: "#000" }}
-            >
-              Sign in
-            </Link>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={async () => {
+                  try {
+                    const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+                    const supabase = getSupabaseBrowserClient();
+                    await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: { redirectTo: window.location.href },
+                    });
+                  } catch { window.location.href = "/"; }
+                }}
+                className="px-5 py-2 rounded-lg text-sm font-medium"
+                style={{ background: "var(--accent)", color: "#000" }}
+              >
+                Sign in with Google
+              </button>
+              <button
+                onClick={async () => {
+                  // Request access from owner
+                  try {
+                    await fetch("/api/notifications", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        recipientEmail: "__owner__",
+                        type: "access_request",
+                        documentId: id,
+                        message: "requested access to this document",
+                      }),
+                    });
+                    const btn = document.activeElement as HTMLButtonElement;
+                    if (btn) { btn.textContent = "Request sent"; btn.style.color = "#4ade80"; }
+                  } catch { /* ignore */ }
+                }}
+                className="px-5 py-2 rounded-lg text-sm font-medium"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              >
+                Request access
+              </button>
+            </div>
           </div>
         ) : isExpired ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">

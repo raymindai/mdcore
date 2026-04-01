@@ -3266,9 +3266,9 @@ ${html}
 
   const shareButtonLabel = {
     idle: "SHARE",
-    sharing: "",
+    sharing: "SHARE",
     copied: "COPIED!",
-    error: "FAILED",
+    error: "RETRY",
   }[shareState];
 
   return (
@@ -3311,7 +3311,7 @@ ${html}
           </h1>
           {title && (
             <button
-              className="text-xs sm:text-sm pl-2 sm:pl-3 hidden sm:inline hover:text-[var(--accent)] transition-colors"
+              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
               title="Click to rename"
               onClick={() => {
@@ -4556,17 +4556,15 @@ ${html}
               {/* Request to edit — for readonly shared docs */}
               {isSharedDoc && !canEdit && docId && user?.email && (
                 <button
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    const btn = e.currentTarget;
+                    if (btn.dataset.sent === "true") return;
                     try {
-                      // Get doc owner info from server
-                      const res = await fetch(`/api/docs/${docId}`, { headers: { "x-user-id": user?.id || "", "x-user-email": user.email! } });
-                      if (!res.ok) return;
-                      // Send request notification to owner
                       await fetch("/api/notifications", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                          recipientEmail: "__owner__", // special: resolved server-side
+                          recipientEmail: "__owner__",
                           type: "edit_request",
                           documentId: docId,
                           fromUserId: user.id,
@@ -4574,18 +4572,19 @@ ${html}
                           message: `requested edit access to "${title || "Untitled"}"`,
                         }),
                       });
-                      // Show confirmation
-                      setShareState("copied");
-                      setTimeout(() => setShareState("idle"), 3000);
+                      btn.dataset.sent = "true";
+                      btn.textContent = "Request sent";
+                      btn.style.background = "rgba(74,222,128,0.15)";
+                      btn.style.color = "#4ade80";
                     } catch { /* ignore */ }
                   }}
                   className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
-                  style={{ background: shareState === "copied" ? "rgba(74,222,128,0.15)" : "rgba(96,165,250,0.15)", color: shareState === "copied" ? "#4ade80" : "#60a5fa" }}
+                  style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
                 >
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
                     <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
                   </svg>
-                  {shareState === "copied" ? "Request sent" : "Request to edit"}
+                  Request to edit
                 </button>
               )}
               {isSharedDoc && !canEdit && (
