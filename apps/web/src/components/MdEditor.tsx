@@ -2740,7 +2740,8 @@ export default function MdEditor() {
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     const cid = currentTab?.cloudId || docId;
 
-    if (cid && isOwner && isAuthenticated && user) {
+    const isMine = !currentTab?.permission || currentTab.permission === "mine";
+    if (cid && isMine && isAuthenticated && user) {
       // Publish the draft first if needed
       if (currentTab?.isDraft) {
         try {
@@ -2757,7 +2758,7 @@ export default function MdEditor() {
     }
 
     // Non-owner with existing doc — just copy the link
-    if (cid && !isOwner) {
+    if (cid && !isMine) {
       const url = `${window.location.origin}/${cid}`;
       await copyToClipboard(url);
       setShareState("copied");
