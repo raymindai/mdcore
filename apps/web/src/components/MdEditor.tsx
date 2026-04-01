@@ -4002,11 +4002,7 @@ ${html}
           </div>
 
           {/* ── Recently Visited — separate section below My Documents ── */}
-          {(() => {
-            const openCloudIds = new Set(tabs.filter(t => !t.deleted && t.cloudId).map(t => t.cloudId));
-            const filteredRecent = recentDocs.filter(d => !openCloudIds.has(d.id));
-            if (filteredRecent.length === 0) return null;
-            return (
+          {recentDocs.length > 0 && (
               <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
                 <div
                   className="flex items-center gap-1.5 px-3 py-2 cursor-pointer text-[10px] font-mono tracking-wider"
@@ -4021,11 +4017,11 @@ ${html}
                     <circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v2.5l1.5 1"/>
                   </svg>
                   <span className="flex-1">Recently Visited</span>
-                  <span>{filteredRecent.length}</span>
+                  <span>{recentDocs.length}</span>
                 </div>
                 {showRecent && (
                   <div className="px-2 pb-2 space-y-0.5">
-                    {filteredRecent.slice(0, 15).map((doc) => (
+                    {recentDocs.slice(0, 15).map((doc) => (
                       <div
                         key={doc.id}
                         role="button"
@@ -4034,6 +4030,13 @@ ${html}
                         style={{ color: "var(--text-muted)" }}
                         onClick={async (e) => {
                           e.stopPropagation();
+                          // If already open in a tab, switch to it
+                          const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
+                          if (existing) {
+                            switchTab(existing.id);
+                            return;
+                          }
+                          // Otherwise fetch and open in a new tab
                           try {
                             const headers: Record<string, string> = {};
                             if (user?.id) headers["x-user-id"] = user.id;
@@ -4041,7 +4044,6 @@ ${html}
                             if (!res.ok) return;
                             const d = await res.json();
                             const perm = doc.isOwner ? "mine" : doc.editMode === "public" ? "editable" : "readonly";
-                            // Open as a new tab (don't overwrite current tab)
                             const newId = `tab-${Date.now()}`;
                             const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" };
                             setTabs(prev => {
@@ -4077,8 +4079,7 @@ ${html}
                   </div>
                 )}
               </div>
-            );
-          })()}
+          )}
 
           {/* Folder + Sort actions — above account */}
           <div className="shrink-0 px-3 py-1.5 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border-dim)" }}>
