@@ -1262,6 +1262,7 @@ export default function MdEditor() {
   const renderIdRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
     const thisRender = ++renderIdRef.current;
+    setIsLoading(true);
     try {
       const start = performance.now();
       const result = await renderMarkdown(md);
@@ -3338,58 +3339,7 @@ ${html}
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            {/* Permission selector — visible when authenticated (before share or as owner) */}
-            {isAuthenticated && (!docId || isOwner) && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowEditModeMenu(!showEditModeMenu)}
-                  className="flex items-center gap-1 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                >
-                  {editMode === "owner" ? (
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1"/><path d="M6 7V5a2 2 0 114 0v2"/></svg>
-                  ) : editMode === "public" ? (
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12"/></svg>
-                  ) : (
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg>
-                  )}
-                  <span className="hidden sm:inline">{(editMode === "owner" || editMode === "account" || editMode === "token") ? "Only me" : "Anyone with link"}</span>
-                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
-                </button>
-                {showEditModeMenu && (
-                  <div
-                    className="absolute top-full right-0 mt-1 w-52 rounded-lg shadow-xl py-1 z-[9999]"
-                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
-                  >
-                    <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Who can edit</div>
-                    {([
-                      { value: "owner" as const, label: "Only me", desc: "Only you can edit this document", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
-                      { value: "public" as const, label: "Anyone with link", desc: "Anyone who opens this link can edit", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg> },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={async () => {
-                          setEditMode(opt.value);
-                          setShowEditModeMenu(false);
-                          // If doc already shared, update on server
-                          if (docId && user?.id) {
-                            try { await changeEditMode(docId, user.id, opt.value); setDocEditMode(opt.value); } catch { /* ignore */ }
-                          }
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                        style={{ color: editMode === opt.value ? "var(--accent)" : "var(--text-secondary)" }}
-                      >
-                        {opt.icon}
-                        <div>
-                          <div className="font-medium">{opt.label}{editMode === opt.value && " \u2713"}</div>
-                          <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>{opt.desc}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Permission selector removed — now managed inside Share Modal */}
             <div className="relative group">
               <button
                 onClick={handleShare}
@@ -3403,7 +3353,7 @@ ${html}
                 {shareState === "sharing" ? (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                 ) : (
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
                 )}
                 <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
@@ -3810,21 +3760,16 @@ ${html}
               const myTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
               const myTabCount = myTabs.length;
               return (
-                <div className="px-2 pt-2">
+                <div className="pt-3">
                   <div
-                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
-                    style={{ color: "var(--text-faint)" }}
+                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
                     onClick={() => setShowMyDocs(!showMyDocs)}
                   >
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
-                      style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                    </svg>
-                    <span className="flex-1">My Documents</span>
-                    <span>{myTabCount}</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--text-faint)" : "var(--text-muted)" }}>My Documents</span>
+                    {!showMyDocs && myTabCount > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>}
                   </div>
                   {showMyDocs && (
-                    <div className="space-y-0.5 pb-1">
+                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {myTabs.filter(t => !t.folderId).sort((a, b) => {
                         if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
@@ -3867,13 +3812,13 @@ ${html}
                       }).map(folder => {
                         const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && t.permission !== "readonly" && t.permission !== "editable");
                         return (
-                          <div key={folder.id} className="mt-1">
+                          <div key={folder.id} className="mt-0.5">
                             <div
                               draggable
                               onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
                               onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
-                              className={`flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                              style={{ color: "var(--text-secondary)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
+                              className={`flex items-center gap-1.5 px-1.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                              style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
                               onDragLeave={() => setDragOverTarget(null)}
@@ -3896,23 +3841,23 @@ ${html}
                                 style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
                                 <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                               </svg>
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--accent)" : "none"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: folder.collapsed ? 1 : 0.6 }}><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--text-faint)" : "none"} stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0"><path d="M1 4h5l2-2h7v11H1z"/></svg>
                               <span className="truncate flex-1">{folder.name}</span>
-                              <span className="text-[9px] opacity-50">{folderTabs.length}</span>
+                              <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                   setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
                                 }}
-                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-5"
                                 style={{ color: "var(--text-muted)", padding: "2px" }}
                               >
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
                               </button>
                             </div>
                             {!folder.collapsed && (
-                              <div className="pl-4 px-2 space-y-0.5 mt-0.5">
+                              <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {[...folderTabs].sort((a, b) => {
                                   if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                                   if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
@@ -3984,22 +3929,18 @@ ${html}
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
               const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
               const totalShared = sharedTabs.length + extraShared.length;
-              return (
-                <div className="px-2 pt-2">
+              return (<>
+                <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                <div>
                   <div
-                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
-                    style={{ color: "var(--text-faint)" }}
+                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
                     onClick={() => setShowSharedDocs(!showSharedDocs)}
                   >
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
-                      style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                    </svg>
-                    <span className="flex-1">Shared with me</span>
-                    <span>{totalShared}</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--text-faint)" : "var(--text-muted)" }}>Shared with me</span>
+                    {!showSharedDocs && totalShared > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>}
                   </div>
                   {showSharedDocs && (
-                    <div className="space-y-0.5 pb-1">
+                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Shared tabs already open */}
                       {sharedTabs.map((tab) => (
                         <div
@@ -4014,11 +3955,11 @@ ${html}
                         >
                           {tab.permission === "readonly" ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                              <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
                             </svg>
                           ) : (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                              <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
                             </svg>
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
@@ -4067,11 +4008,11 @@ ${html}
                         >
                           {doc.editMode === "public" ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                              <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
                             </svg>
                           ) : (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                              <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
                             </svg>
                           )}
                           <span className="truncate flex-1">{doc.title || "Untitled"}</span>
@@ -4083,28 +4024,24 @@ ${html}
                     </div>
                   )}
                 </div>
-              );
+              </>);
             })()}
 
             {/* ── Section 3: TRASH ── */}
             {(() => {
               const trashTabs = tabs.filter(t => t.deleted);
-              return (
-                <div className="px-2 pt-2">
+              return (<>
+                <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                <div>
                   <div
-                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
-                    style={{ color: "var(--text-faint)" }}
+                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
                     onClick={() => setShowTrash(!showTrash)}
                   >
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
-                      style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                    </svg>
-                    <span className="flex-1">Trash</span>
-                    <span>{trashTabs.length}</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--text-faint)" : "var(--text-muted)" }}>Trash</span>
+                    {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
                   </div>
                   {showTrash && (
-                    <div className="space-y-0.5 pb-1">
+                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
@@ -4124,7 +4061,20 @@ ${html}
                       ))}
                       {trashTabs.length > 0 && (
                         <button
-                          onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
+                          onClick={(e) => {
+                            const btn = e.currentTarget;
+                            if (btn.dataset.confirm === "true") {
+                              setTabs(prev => prev.filter(t => !t.deleted));
+                              btn.dataset.confirm = "";
+                              btn.textContent = "Empty Trash";
+                              btn.style.color = "var(--text-faint)";
+                            } else {
+                              btn.dataset.confirm = "true";
+                              btn.textContent = `Delete ${trashTabs.length} permanently?`;
+                              btn.style.color = "#ef4444";
+                              setTimeout(() => { btn.dataset.confirm = ""; btn.textContent = "Empty Trash"; btn.style.color = "var(--text-faint)"; }, 3000);
+                            }
+                          }}
                           className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
                           style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                         >
@@ -4137,7 +4087,7 @@ ${html}
                     </div>
                   )}
                 </div>
-              );
+              </>);
             })()}
           </div>
 
@@ -4347,16 +4297,31 @@ ${html}
               {isSharedDoc && !isOwner && (
                 <button
                   onClick={() => {
-                    // Duplicate: create a new local tab with this content
+                    // Duplicate: create a new doc on server with this content — it's MY document
                     const id = `tab-${Date.now()}`;
-                    const md = markdownRef.current;
+                    const origMd = markdownRef.current;
                     const t = title ? `${title} (copy)` : "Untitled (copy)";
-                    setTabs(prev => [...prev, { id, title: t, markdown: md }]);
+                    // Update the h1 in markdown to include (copy)
+                    const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
+                    const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
+                    setTabs(prev => [...prev, newTab]);
                     setIsSharedDoc(false);
-                    setDocId(null);
-                    setIsOwner(false);
-                    window.history.replaceState(null, "", "/");
-                    loadTab({ id, title: t, markdown: md });
+                    setIsOwner(true);
+                    setDocEditMode("owner");
+                    loadTab(newTab);
+                    // Auto-create on server
+                    autoSave.createDocument({
+                      markdown: md,
+                      title: t,
+                      userId: user?.id,
+                      anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                    }).then(result => {
+                      if (result) {
+                        setTabs(prev => prev.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab));
+                        setDocId(result.id);
+                        window.history.replaceState(null, "", `/?doc=${result.id}`);
+                      }
+                    });
                   }}
                   className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
                   style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
@@ -5012,7 +4977,18 @@ ${html}
               const tab = tabs.find(t => t.id === docContextMenu.tabId);
               if (tab) {
                 const id = `tab-${tabIdCounter++}`;
-                setTabs(prev => [...prev, { ...tab, id, title: tab.title + " (copy)" }]);
+                const t = tab.title + " (copy)";
+                setTabs(prev => [...prev, { id, title: t, markdown: tab.markdown, permission: "mine", shared: false, isDraft: true }]);
+                autoSave.createDocument({
+                  markdown: tab.markdown,
+                  title: t,
+                  userId: user?.id,
+                  anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                }).then(result => {
+                  if (result) {
+                    setTabs(prev => prev.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x));
+                  }
+                });
               }
             }},
             { label: "Share", action: () => {
