@@ -2754,6 +2754,15 @@ export default function MdEditor() {
       return;
     }
 
+    // Non-owner with existing doc — just copy the link
+    if (cid && !isOwner) {
+      const url = `${window.location.origin}/${cid}`;
+      await copyToClipboard(url);
+      setShareState("copied");
+      setTimeout(() => setShareState("idle"), 3000);
+      return;
+    }
+
     // Not yet shared — create the document first
     setShareState("sharing");
     try {
@@ -3799,7 +3808,7 @@ ${html}
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
               const myTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
-              const myTabCount = myTabs.length + folders.reduce((sum, f) => sum + tabs.filter(t => !t.deleted && t.folderId === f.id && t.permission !== "readonly" && t.permission !== "editable").length, 0);
+              const myTabCount = myTabs.length;
               return (
                 <div className="px-2 pt-2">
                   <div

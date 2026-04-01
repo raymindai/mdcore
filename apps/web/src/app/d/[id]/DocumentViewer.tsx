@@ -34,7 +34,7 @@ export default function DocumentViewer({
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [narrowView, setNarrowView] = useState(true);
-  const [unlocked, setUnlocked] = useState(!isProtected);
+  const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
