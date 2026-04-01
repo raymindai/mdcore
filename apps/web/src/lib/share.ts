@@ -206,8 +206,9 @@ export async function deleteDocument(
 export async function setAllowedEmails(
   id: string,
   userId: string,
-  emails: string[]
-): Promise<string[]> {
+  emails: string[],
+  editors?: string[]
+): Promise<{ allowedEmails: string[]; allowedEditors: string[] }> {
   const res = await fetch(`/api/docs/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -215,11 +216,12 @@ export async function setAllowedEmails(
       action: "set-allowed-emails",
       userId,
       allowedEmails: emails,
+      allowedEditors: editors,
     }),
   });
   if (!res.ok) throw new Error("Failed to update access");
   const data = await res.json();
-  return data.allowedEmails || [];
+  return { allowedEmails: data.allowedEmails || [], allowedEditors: data.allowedEditors || [] };
 }
 
 // ─── Edit token management (localStorage) ───

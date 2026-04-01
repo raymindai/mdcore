@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors")
     .eq("id", id)
     .single();
 
@@ -81,15 +81,19 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   // Don't expose sensitive fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, ...safeData } = data;
+  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, ...safeData } = data;
+
+  // Check if requester is an allowed editor (for non-owner edit access)
+  const requesterEmail = _req.headers.get("x-user-email") || "";
+  const isAllowedEditor = (data.allowed_editors || []).some((e: string) => e.toLowerCase() === requesterEmail.toLowerCase());
 
   return NextResponse.json({
     ...safeData,
     hasPassword,
     editMode: data.edit_mode || "token",
     isOwner: isOwnedByRequester,
-    // Owner gets to see who has access
-    ...(isOwnedByRequester ? { allowedEmails: data.allowed_emails || [] } : {}),
+    isEditor: isAllowedEditor,
+    ...(isOwnedByRequester ? { allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
   });
 }
 
@@ -106,7 +110,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     markdown?: string;
     title?: string;
     userId?: string;
+    userEmail?: string;
     allowedEmails?: string[];
+    allowedEditors?: string[];
     anonymousId?: string;
     changeSummary?: string;
     editMode?: string;
@@ -157,21 +163,25 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true, editMode: newEditMode });
   }
 
-  // ─── Action: set-allowed-emails ───
+  // ─── Action: set-allowed-emails (viewers + editors) ───
   if (body.action === "set-allowed-emails") {
-    const { userId, allowedEmails } = body;
+    const { userId, allowedEmails, allowedEditors } = body;
     if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-    if (!Array.isArray(allowedEmails)) return NextResponse.json({ error: "allowedEmails must be an array" }, { status: 400 });
     const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!doc.user_id || doc.user_id !== userId) {
       return NextResponse.json({ error: "Only the owner can manage access" }, { status: 403 });
     }
-    // Normalize emails to lowercase, remove empty
-    const cleaned = allowedEmails.map(e => e.trim().toLowerCase()).filter(e => e.includes("@"));
-    const { error } = await supabase.from("documents").update({ allowed_emails: cleaned }).eq("id", id);
+    const updates: Record<string, unknown> = {};
+    if (Array.isArray(allowedEmails)) {
+      updates.allowed_emails = allowedEmails.map((e: string) => e.trim().toLowerCase()).filter((e: string) => e.includes("@"));
+    }
+    if (Array.isArray(allowedEditors)) {
+      updates.allowed_editors = allowedEditors.map((e: string) => e.trim().toLowerCase()).filter((e: string) => e.includes("@"));
+    }
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
-    return NextResponse.json({ ok: true, allowedEmails: cleaned });
+    return NextResponse.json({ ok: true, allowedEmails: updates.allowed_emails, allowedEditors: updates.allowed_editors });
   }
 
   // ─── Action: snapshot (create version history entry without updating content) ───
@@ -224,7 +234,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { data: doc } = await supabase
       .from("documents")
-      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at")
+      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at, allowed_editors")
       .eq("id", id)
       .single();
 
@@ -235,14 +245,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Document expired" }, { status: 410 });
     }
 
-    // Permission check: respects edit_mode
+    // Permission check: respects edit_mode + allowed_editors
     const isOwner =
       !!(userId && doc.user_id && userId === doc.user_id) ||
       !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
     const hasToken = !!(editToken && doc.edit_token === editToken);
+    const userEmail = body.userEmail || "";
+    const isAllowedEditor = (doc.allowed_editors || []).some((e: string) => e.toLowerCase() === userEmail.toLowerCase());
     const editModeVal = doc.edit_mode || "token";
 
-    if (!isOwner) {
+    if (!isOwner && !isAllowedEditor) {
       if (editModeVal === "owner" || editModeVal === "account" || editModeVal === "view") {
         return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
       } else if (editModeVal === "token") {

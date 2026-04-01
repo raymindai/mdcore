@@ -10,8 +10,9 @@ interface ShareModalProps {
   ownerEmail: string;
   currentEditMode: string;
   initialAllowedEmails: string[];
+  initialAllowedEditors: string[];
   onClose: () => void;
-  onEditModeChange: (mode: "owner" | "public") => void;
+  onEditModeChange: (mode: "owner" | "view" | "public") => void;
   onAllowedEmailsChange: (emails: string[]) => void;
 }
 
@@ -22,12 +23,14 @@ export default function ShareModal({
   ownerEmail,
   currentEditMode,
   initialAllowedEmails,
+  initialAllowedEditors,
   onClose,
   onEditModeChange,
   onAllowedEmailsChange,
 }: ShareModalProps) {
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
+  const [editors, setEditors] = useState<string[]>(initialAllowedEditors);
   const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone-view" | "anyone">(
     currentEditMode === "public" ? "anyone" : currentEditMode === "view" ? "anyone-view" : "restricted"
   );
@@ -43,37 +46,43 @@ export default function ShareModal({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
+  const saveAccess = useCallback(async (newEmails: string[], newEditors: string[]) => {
+    setSaving(true);
+    try {
+      const result = await setAllowedEmails(docId, userId, newEmails, newEditors);
+      setEmails(result.allowedEmails);
+      setEditors(result.allowedEditors);
+      onAllowedEmailsChange(result.allowedEmails);
+    } catch { /* revert on error */ }
+    setSaving(false);
+  }, [docId, userId, onAllowedEmailsChange]);
+
   const addEmail = useCallback(async (input: string) => {
     const newEmails = input
       .split(/[,;\s]+/)
       .map(e => e.trim().toLowerCase())
       .filter(e => e.includes("@") && !emails.includes(e) && e !== ownerEmail.toLowerCase());
-
     if (newEmails.length === 0) return;
-
     const updated = [...emails, ...newEmails];
     setEmails(updated);
     setEmailInput("");
-    setSaving(true);
-    try {
-      const result = await setAllowedEmails(docId, userId, updated);
-      setEmails(result);
-      onAllowedEmailsChange(result);
-    } catch { /* revert on error */ }
-    setSaving(false);
-  }, [emails, docId, userId, ownerEmail, onAllowedEmailsChange]);
+    await saveAccess(updated, editors);
+  }, [emails, editors, ownerEmail, saveAccess]);
 
   const removeEmail = useCallback(async (email: string) => {
-    const updated = emails.filter(e => e !== email);
-    setEmails(updated);
-    setSaving(true);
-    try {
-      const result = await setAllowedEmails(docId, userId, updated);
-      setEmails(result);
-      onAllowedEmailsChange(result);
-    } catch { /* revert */ }
-    setSaving(false);
-  }, [emails, docId, userId, onAllowedEmailsChange]);
+    const updatedEmails = emails.filter(e => e !== email);
+    const updatedEditors = editors.filter(e => e !== email);
+    setEmails(updatedEmails);
+    setEditors(updatedEditors);
+    await saveAccess(updatedEmails, updatedEditors);
+  }, [emails, editors, saveAccess]);
+
+  const toggleRole = useCallback(async (email: string) => {
+    const isEditor = editors.includes(email);
+    const updatedEditors = isEditor ? editors.filter(e => e !== email) : [...editors, email];
+    setEditors(updatedEditors);
+    await saveAccess(emails, updatedEditors);
+  }, [emails, editors, saveAccess]);
 
   const handleAccessChange = useCallback(async (mode: "restricted" | "anyone-view" | "anyone") => {
     setGeneralAccess(mode);
@@ -201,9 +210,13 @@ export default function ShareModal({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
-                    Viewer
-                  </span>
+                  <button
+                    onClick={() => toggleRole(email)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors"
+                    style={{ color: editors.includes(email) ? "var(--accent)" : "var(--text-faint)", background: editors.includes(email) ? "var(--accent-dim)" : "var(--toggle-bg)" }}
+                  >
+                    {editors.includes(email) ? "Editor" : "Viewer"}
+                  </button>
                   <button
                     onClick={() => removeEmail(email)}
                     className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"

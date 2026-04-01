@@ -943,6 +943,7 @@ export default function MdEditor() {
   const [serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
+  const [allowedEditors, setAllowedEditorsState] = useState<string[]>([]);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
   const [mdfyLoading, setMdfyLoading] = useState(false);
   const [showFlavorMenu, setShowFlavorMenu] = useState(false);
@@ -1766,6 +1767,7 @@ export default function MdEditor() {
             setDocId(fromId);
             setDocEditMode(doc.editMode || "token");
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
+            if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
 
             const token = getEditToken(fromId);
             const ownerByToken = !!token;
@@ -1779,7 +1781,7 @@ export default function MdEditor() {
               setIsOwner(true);
               setIsSharedDoc(false);
               if (!isMobile) setViewMode("split");
-            } else if (isPublicDoc) {
+            } else if (isPublicDoc || doc.isEditor) {
               perm = "editable";
               setIsSharedDoc(true);
               if (!isMobile) setViewMode("split");
@@ -5333,6 +5335,7 @@ ${html}
           ownerEmail={user.email || ""}
           currentEditMode={docEditMode}
           initialAllowedEmails={allowedEmails}
+          initialAllowedEditors={allowedEditors}
           onClose={() => setShowShareModal(false)}
           onEditModeChange={(mode) => { setDocEditMode(mode); setEditMode(mode); }}
           onAllowedEmailsChange={setAllowedEmailsState}
