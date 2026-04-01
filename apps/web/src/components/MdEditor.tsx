@@ -3268,14 +3268,17 @@ ${html}
           {autoSave.error && !autoSave.isSaving && (
             <span className="text-[10px] font-mono shrink-0 hidden sm:inline" style={{ color: "#ef4444" }}>{autoSave.error}</span>
           )}
-          {isSharedDoc && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-            >
-              SHARED
-            </span>
-          )}
+          {(() => {
+            const ct = tabs.find(t => t.id === activeTabId);
+            const perm = ct?.permission;
+            if (perm === "readonly") return (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>VIEW ONLY</span>
+            );
+            if (perm === "editable") return (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>EDITABLE</span>
+            );
+            return null;
+          })()}
         </div>
 
         {/* Center: Layout tabs with icons */}
