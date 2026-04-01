@@ -3700,7 +3700,7 @@ ${html}
                     style={{ transform: showCloudDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                     <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                   </svg>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showCloudDocs ? 0.7 : 1 }}><path d="M3 12a4 4 0 01-.5-7.97A5.5 5.5 0 0113.5 6a3.5 3.5 0 01.5 7H3z"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.8" className="shrink-0" style={{ opacity: showCloudDocs ? 0.7 : 1 }} strokeLinejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
                   <span className="truncate flex-1">Cloud</span>
                   <span className="text-[9px] opacity-50">{cloudDocs.length}</span>
                 </div>
@@ -3743,7 +3743,7 @@ ${html}
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                       <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                     </svg>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill={showTrash ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: showTrash ? 0.7 : 1 }}><path d="M3 4h10M5 4V3h6v1M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={showTrash ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.8" className="shrink-0" style={{ opacity: showTrash ? 0.7 : 1 }} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6"/></svg>
                     <span className="truncate flex-1">Trash</span>
                     <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
                   </div>

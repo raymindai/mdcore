@@ -7,7 +7,7 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   loading: () => (
     <div
       className="flex flex-col items-center justify-center h-screen gap-6"
-      style={{ background: "var(--background)" }}
+      style={{ background: "#09090b" }}
     >
       {/* Logo */}
       <div className="flex items-baseline">
