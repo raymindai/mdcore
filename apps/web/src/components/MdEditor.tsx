@@ -4074,6 +4074,8 @@ ${html}
               // Shared tabs not in any folder (organized ones show under My Documents folders)
               const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable"));
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
+              // Unread notification document IDs — for orange dot indicator
+              const unreadDocIds = new Set(notifications.filter(n => !n.read && n.documentId).map(n => n.documentId));
               // Merge recentDocs + notification-based shared docs
               const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
               const notifDocs = notifications
@@ -4144,6 +4146,9 @@ ${html}
                             </svg>
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          {tab.cloudId && unreadDocIds.has(tab.cloudId) && (
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                          )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
@@ -4239,6 +4244,9 @@ ${html}
                             </svg>
                           )}
                           <span className="truncate flex-1">{doc.title || "Untitled"}</span>
+                          {unreadDocIds.has(doc.id) && (
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                          )}
                         </div>
                       ))}
                       {totalShared === 0 && (
