@@ -1326,6 +1326,9 @@ export default function MdEditor() {
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
     setIsOwner(tab.permission === "mine" || !tab.permission);
     setIsEditor(tab.permission === "editable");
+    // Reset share modal state for the new tab (will be loaded when modal opens)
+    setAllowedEmailsState([]);
+    setAllowedEditorsState([]);
     // Update browser URL to reflect current document
     if (tab.cloudId) {
       window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
@@ -2787,13 +2790,25 @@ export default function MdEditor() {
           setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
         } catch { /* ignore */ }
       }
-      // Sync title to server before opening share modal
-      if (cid && title) {
-        fetch(`/api/docs/${cid}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "auto-save", title, userId: user.id }),
-        }).catch(() => {});
+      // Sync title + fetch sharing info before opening modal
+      if (cid) {
+        if (title) {
+          fetch(`/api/docs/${cid}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "auto-save", title, userId: user.id }),
+          }).catch(() => {});
+        }
+        // Fetch current sharing state
+        try {
+          const res = await fetch(`/api/docs/${cid}`, { headers: { "x-user-id": user.id, "x-user-email": user.email || "" } });
+          if (res.ok) {
+            const doc = await res.json();
+            if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
+            if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
+            if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
+          }
+        } catch { /* ignore */ }
       }
       setShowShareModal(true);
       return;
@@ -4094,12 +4109,14 @@ ${html}
               // Shared tabs not in any folder (organized ones show under My Documents folders)
               const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable"));
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
+              // All my document cloudIds — to exclude from shared section
+              const myCloudIds = new Set(tabs.filter(t => !t.deleted && (!t.permission || t.permission === "mine") && t.cloudId).map(t => t.cloudId!));
               // Unread notification document IDs — for orange dot indicator
               const unreadDocIds = new Set(notifications.filter(n => !n.read && n.documentId).map(n => n.documentId));
-              // Merge recentDocs + notification-based shared docs
-              const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
+              // Merge recentDocs + notification-based shared docs (exclude my own docs)
+              const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id) && !myCloudIds.has(d.id));
               const notifDocs = notifications
-                .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
+                .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
                 .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view" }));
               const allExtra = [...extraShared, ...notifDocs];
               const totalShared = sharedTabs.length + allExtra.length;
