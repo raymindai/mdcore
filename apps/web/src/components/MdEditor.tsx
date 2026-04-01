@@ -1321,7 +1321,8 @@ export default function MdEditor() {
     undoStack.current = [tab.markdown];
     redoStack.current = [];
     doRenderRef.current(tab.markdown);
-    // Update permission state based on tab
+    // Update permission + doc state based on tab
+    setDocId(tab.cloudId || null);
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
     setIsOwner(tab.permission === "mine" || !tab.permission);
     setIsEditor(tab.permission === "editable");
@@ -3883,7 +3884,7 @@ ${html}
               return (
                 <div className="pt-3">
                   <div
-                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
                     onClick={() => setShowMyDocs(!showMyDocs)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--text-faint)" : "var(--text-muted)" }}>My Documents</span>
@@ -4084,7 +4085,7 @@ ${html}
                 <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
                 <div>
                   <div
-                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
                     onClick={() => setShowSharedDocs(!showSharedDocs)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--text-faint)" : "var(--text-muted)" }}>Shared with me</span>
@@ -4256,7 +4257,7 @@ ${html}
                 <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
                 <div>
                   <div
-                    className="flex items-center gap-1.5 px-3 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
                     onClick={() => setShowTrash(!showTrash)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--text-faint)" : "var(--text-muted)" }}>Trash</span>
