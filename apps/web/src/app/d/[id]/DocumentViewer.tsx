@@ -38,6 +38,30 @@ export default function DocumentViewer({
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // For restricted docs: try client-side fetch with user credentials
+  useEffect(() => {
+    if (!isRestricted || unlocked) return;
+    // Try to get user session from Supabase and re-fetch
+    (async () => {
+      try {
+        const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+        const supabase = getSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) return;
+        const res = await fetch(`/api/docs/${id}`, {
+          headers: { "x-user-id": user.id, "x-user-email": user.email },
+        });
+        if (res.ok) {
+          const doc = await res.json();
+          setMarkdown(doc.markdown);
+          if (doc.title) setTitle(doc.title);
+          setUnlocked(true);
+          setIsLoading(true); // trigger render
+        }
+      } catch { /* no session or not authorized */ }
+    })();
+  }, [id, isRestricted, unlocked]);
+
   // Theme
   useEffect(() => {
     const saved = localStorage.getItem("mdfy-theme") as Theme | null;

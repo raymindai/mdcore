@@ -78,6 +78,7 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
       markdown: string;
       title?: string;
       userId?: string;
+      userEmail?: string;
       anonymousId?: string;
       editToken?: string;
     }) => {
@@ -105,6 +106,7 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
               markdown: args.markdown,
               title: args.title,
               userId: args.userId,
+              userEmail: args.userEmail,
               anonymousId: args.anonymousId,
               editToken: args.editToken,
             }),

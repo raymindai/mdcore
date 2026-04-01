@@ -1078,6 +1078,7 @@ export default function MdEditor() {
         markdown: val,
         title: currentTab.title,
         userId: user?.id,
+        userEmail: user?.email,
         anonymousId,
         editToken: currentTab.editToken,
       });
@@ -1960,6 +1961,7 @@ export default function MdEditor() {
         markdown: markdownRef.current,
         title: currentTab.title,
         userId: user?.id,
+        userEmail: user?.email,
         anonymousId: (!user?.id) ? getAnonymousId() : undefined,
         editToken: currentTab.editToken,
       });
@@ -4586,7 +4588,7 @@ ${html}
                   {shareState === "copied" ? "Request sent" : "Request to edit"}
                 </button>
               )}
-              {isSharedDoc && !isOwner && (
+              {isSharedDoc && !canEdit && (
                 <button
                   onClick={() => {
                     // Duplicate: create a new doc on server with this content — it's MY document
