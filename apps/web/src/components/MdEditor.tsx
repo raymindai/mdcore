@@ -3429,16 +3429,36 @@ ${html}
                           key={n.id}
                           className="w-full text-left px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)] flex items-start gap-2.5"
                           style={{ borderBottom: "1px solid var(--border-dim)" }}
-                          onClick={() => {
+                          onClick={async () => {
                             setShowNotifications(false);
-                            if (n.documentId) {
-                              // Open the shared document
-                              const existing = tabs.find(t => !t.deleted && t.cloudId === n.documentId);
-                              if (existing) {
-                                switchTab(existing.id);
-                              } else {
-                                window.location.href = `/?from=${n.documentId}`;
+                            if (!n.documentId) return;
+                            // Check if already open as a tab
+                            const existing = tabs.find(t => !t.deleted && t.cloudId === n.documentId);
+                            if (existing) {
+                              switchTab(existing.id);
+                              return;
+                            }
+                            // Fetch and open as new tab
+                            try {
+                              const headers: Record<string, string> = {};
+                              if (user?.id) headers["x-user-id"] = user.id;
+                              if (user?.email) headers["x-user-email"] = user.email;
+                              const res = await fetch(`/api/docs/${n.documentId}`, { headers });
+                              if (!res.ok) {
+                                setNotifications(prev => prev.filter(x => x.documentId !== n.documentId));
+                                return;
                               }
+                              const d = await res.json();
+                              const perm = d.isOwner ? "mine" : (d.isEditor || d.editMode === "public") ? "editable" : "readonly";
+                              const newId = `tab-${Date.now()}`;
+                              const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" };
+                              setTabs(prev => {
+                                const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
+                                return [...saved, newTab];
+                              });
+                              loadTab(newTab);
+                            } catch {
+                              window.location.href = `/?from=${n.documentId}`;
                             }
                           }}
                         >
