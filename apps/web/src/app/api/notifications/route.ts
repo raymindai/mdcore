@@ -1,0 +1,108 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseClient } from "@/lib/supabase";
+
+// GET — fetch notifications for logged-in user
+export async function GET(req: NextRequest) {
+  const email = req.headers.get("x-user-email");
+  if (!email) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, type, document_id, from_user_name, message, read, created_at, documents(id, title)")
+    .eq("recipient_email", email.toLowerCase())
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+
+  const notifications = (data || []).map((n) => {
+    const doc = n.documents as unknown as { id: string; title: string } | null;
+    return {
+      id: n.id,
+      type: n.type,
+      documentId: n.document_id,
+      documentTitle: doc?.title || "Untitled",
+      fromUserName: n.from_user_name,
+      message: n.message,
+      read: n.read,
+      createdAt: n.created_at,
+    };
+  });
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  return NextResponse.json({ notifications, unreadCount });
+}
+
+// POST — create notification (called server-side when sharing)
+export async function POST(req: NextRequest) {
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  let body: {
+    recipientEmail: string;
+    type?: string;
+    documentId: string;
+    fromUserId?: string;
+    fromUserName?: string;
+    message?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { recipientEmail, type = "share", documentId, fromUserId, fromUserName, message } = body;
+  if (!recipientEmail || !documentId) {
+    return NextResponse.json({ error: "recipientEmail and documentId required" }, { status: 400 });
+  }
+
+  const { error } = await supabase.from("notifications").insert({
+    recipient_email: recipientEmail.toLowerCase(),
+    type,
+    document_id: documentId,
+    from_user_id: fromUserId || null,
+    from_user_name: fromUserName || null,
+    message: message || null,
+  });
+
+  if (error) return NextResponse.json({ error: "Failed to create" }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
+
+// PATCH — mark notifications as read
+export async function PATCH(req: NextRequest) {
+  const email = req.headers.get("x-user-email");
+  if (!email) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  let body: { ids?: number[]; markAllRead?: boolean };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (body.markAllRead) {
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("recipient_email", email.toLowerCase())
+      .eq("read", false);
+  } else if (body.ids && body.ids.length > 0) {
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .in("id", body.ids)
+      .eq("recipient_email", email.toLowerCase());
+  }
+
+  return NextResponse.json({ ok: true });
+}

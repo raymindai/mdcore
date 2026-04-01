@@ -944,6 +944,9 @@ export default function MdEditor() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [allowedEditors, setAllowedEditorsState] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<{ id: number; type: string; documentId: string; documentTitle: string; fromUserName: string; message: string; read: boolean; createdAt: string }[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
   const [mdfyLoading, setMdfyLoading] = useState(false);
   const [showFlavorMenu, setShowFlavorMenu] = useState(false);
@@ -2004,6 +2007,25 @@ export default function MdEditor() {
       })
       .catch(() => {});
   }, [user?.id, authLoading]);
+
+  // Notification polling (every 30s for logged-in users)
+  useEffect(() => {
+    if (!user?.email) { setNotifications([]); setUnreadCount(0); return; }
+    const fetchNotifs = () => {
+      fetch("/api/notifications", { headers: { "x-user-email": user.email! } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(interval);
+  }, [user?.email]);
 
   // Preview: click to scroll to source + double-click to inline edit
   // Ref for latest markdown (avoids stale closures in preview event handlers)
@@ -3346,7 +3368,82 @@ ${html}
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            {/* Permission selector removed — now managed inside Share Modal */}
+            {/* Notifications bell */}
+            {user?.email && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowNotifications(!showNotifications);
+                    if (!showNotifications && unreadCount > 0) {
+                      // Mark all as read
+                      fetch("/api/notifications", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", "x-user-email": user.email! },
+                        body: JSON.stringify({ markAllRead: true }),
+                      }).then(() => { setUnreadCount(0); setNotifications(prev => prev.map(n => ({ ...n, read: true }))); }).catch(() => {});
+                    }
+                  }}
+                  className="relative h-6 w-6 rounded-md flex items-center justify-center transition-colors"
+                  style={{ background: showNotifications ? "var(--accent-dim)" : "var(--toggle-bg)", color: showNotifications ? "var(--accent)" : "var(--text-muted)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M4 6a4 4 0 018 0c0 2 1 3.5 2 4.5H2c1-1 2-2.5 2-4.5z"/><path d="M6 11v.5a2 2 0 004 0V11"/>
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--accent)", color: "#000" }}>
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <div
+                    className="absolute top-full right-0 mt-1 w-72 max-h-80 overflow-auto rounded-lg shadow-xl z-[9999]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                  >
+                    <div className="px-3 py-2 text-[10px] font-semibold" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
+                      Notifications
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-[11px]" style={{ color: "var(--text-faint)" }}>No notifications</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          className="w-full text-left px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)] flex items-start gap-2.5"
+                          style={{ borderBottom: "1px solid var(--border-dim)" }}
+                          onClick={() => {
+                            setShowNotifications(false);
+                            if (n.documentId) {
+                              // Open the shared document
+                              const existing = tabs.find(t => !t.deleted && t.cloudId === n.documentId);
+                              if (existing) {
+                                switchTab(existing.id);
+                              } else {
+                                window.location.href = `/?from=${n.documentId}`;
+                              }
+                            }
+                          }}
+                        >
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                            {n.fromUserName?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] leading-relaxed" style={{ color: n.read ? "var(--text-muted)" : "var(--text-primary)" }}>
+                              <span className="font-medium">{n.fromUserName}</span> {n.message}
+                            </p>
+                            <p className="text-[9px] mt-0.5" style={{ color: "var(--text-faint)" }}>
+                              {new Date(n.createdAt).toLocaleDateString()} {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                          {!n.read && <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" style={{ background: "var(--accent)" }} />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="relative group">
               <button
                 onClick={handleShare}
@@ -3932,10 +4029,14 @@ ${html}
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
               const sharedTabs = tabs.filter(t => !t.deleted && (t.permission === "readonly" || t.permission === "editable"));
-              // Merge recentDocs (non-owned) that aren't already open as tabs
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
+              // Merge recentDocs + notification-based shared docs
               const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
-              const totalShared = sharedTabs.length + extraShared.length;
+              const notifDocs = notifications
+                .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
+                .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view" }));
+              const allExtra = [...extraShared, ...notifDocs];
+              const totalShared = sharedTabs.length + allExtra.length;
               return (<>
                 <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
                 <div>
@@ -3977,7 +4078,7 @@ ${html}
                         </div>
                       ))}
                       {/* Recent shared docs not yet open as tabs */}
-                      {extraShared.map((doc) => (
+                      {allExtra.map((doc) => (
                         <div
                           key={`shared-${doc.id}`}
                           role="button"

@@ -67,7 +67,21 @@ export default function ShareModal({
     setEmails(updated);
     setEmailInput("");
     await saveAccess(updated, editors);
-  }, [emails, editors, ownerEmail, saveAccess]);
+    // Send notifications to new people
+    for (const email of newEmails) {
+      fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientEmail: email,
+          documentId: docId,
+          fromUserId: userId,
+          fromUserName: ownerEmail.split("@")[0],
+          message: `shared "${title || "Untitled"}" with you`,
+        }),
+      }).catch(() => {});
+    }
+  }, [emails, editors, ownerEmail, saveAccess, docId, userId, title]);
 
   const removeEmail = useCallback(async (email: string) => {
     const updatedEmails = emails.filter(e => e !== email);
