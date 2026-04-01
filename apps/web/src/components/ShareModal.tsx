@@ -195,7 +195,9 @@ export default function ShareModal({
               </div>
 
               {/* Shared people */}
-              {emails.map((email) => (
+              {emails.map((email) => {
+                const isEditor = editors.includes(email);
+                return (
                 <div
                   key={email}
                   className="flex items-center gap-3 px-3 py-2.5"
@@ -203,20 +205,40 @@ export default function ShareModal({
                 >
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
+                    style={{ background: isEditor ? "var(--accent-dim)" : "rgba(96,165,250,0.15)", color: isEditor ? "var(--accent)" : "#60a5fa" }}
                   >
                     {email[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
+                    <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>{isEditor ? "Can view and edit" : "Can view only"}</p>
                   </div>
-                  <button
-                    onClick={() => toggleRole(email)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded cursor-pointer transition-colors"
-                    style={{ color: editors.includes(email) ? "var(--accent)" : "var(--text-faint)", background: editors.includes(email) ? "var(--accent-dim)" : "var(--toggle-bg)" }}
-                  >
-                    {editors.includes(email) ? "Editor" : "Viewer"}
-                  </button>
+                  {/* Role selector — two inline buttons */}
+                  <div className="flex shrink-0 rounded overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                    <button
+                      onClick={() => isEditor && toggleRole(email)}
+                      className="text-[9px] px-2 py-1 transition-colors"
+                      style={{
+                        background: !isEditor ? "var(--surface)" : "transparent",
+                        color: !isEditor ? "var(--text-primary)" : "var(--text-faint)",
+                        fontWeight: !isEditor ? 600 : 400,
+                      }}
+                    >
+                      Viewer
+                    </button>
+                    <button
+                      onClick={() => !isEditor && toggleRole(email)}
+                      className="text-[9px] px-2 py-1 transition-colors"
+                      style={{
+                        background: isEditor ? "var(--accent-dim)" : "transparent",
+                        color: isEditor ? "var(--accent)" : "var(--text-faint)",
+                        fontWeight: isEditor ? 600 : 400,
+                        borderLeft: "1px solid var(--border-dim)",
+                      }}
+                    >
+                      Editor
+                    </button>
+                  </div>
                   <button
                     onClick={() => removeEmail(email)}
                     className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
@@ -228,7 +250,8 @@ export default function ShareModal({
                     </svg>
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
