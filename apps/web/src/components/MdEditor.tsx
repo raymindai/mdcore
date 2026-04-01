@@ -1160,6 +1160,7 @@ export default function MdEditor() {
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
+  const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -1421,13 +1422,9 @@ export default function MdEditor() {
     setTabs(newTabs);
     if (tabId === activeTabId) {
       const next = newTabs[Math.min(idx, newTabs.length - 1)];
-      setActiveTabId(next.id);
-      setMarkdownRaw(next.markdown);
-      undoStack.current = [next.markdown];
-      redoStack.current = [];
-      doRenderRef.current(next.markdown);
+      loadTab(next); // Use loadTab to properly sync all state (docId, URL, permissions)
     }
-  }, [tabs, activeTabId]);
+  }, [tabs, activeTabId, loadTab]);
 
   // Mermaid rendering after DOM update
   // Finds <pre lang="mermaid"> directly in DOM (no regex on HTML strings)
@@ -3342,10 +3339,10 @@ ${html}
           )}
           {/* Save status indicator — compact */}
           {autoSave.isSaving && (
-            <span className="text-[10px] font-mono shrink-0 hidden sm:inline" style={{ color: "var(--text-faint)" }}>Saving...</span>
+            <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
           )}
           {autoSave.error && !autoSave.isSaving && (
-            <span className="text-[10px] font-mono shrink-0 hidden sm:inline" style={{ color: "#ef4444" }}>{autoSave.error}</span>
+            <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
           )}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
@@ -3427,17 +3424,10 @@ ${html}
                 <button
                   onClick={() => {
                     setShowNotifications(!showNotifications);
-                    if (!showNotifications && unreadCount > 0) {
-                      // Mark all as read
-                      fetch("/api/notifications", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json", "x-user-email": user.email! },
-                        body: JSON.stringify({ markAllRead: true }),
-                      }).then(() => { setUnreadCount(0); setNotifications(prev => prev.map(n => ({ ...n, read: true }))); }).catch(() => {});
-                    }
                   }}
                   className="relative h-6 w-6 rounded-md flex items-center justify-center transition-colors"
                   style={{ background: showNotifications ? "var(--accent-dim)" : "var(--toggle-bg)", color: showNotifications ? "var(--accent)" : "var(--text-muted)" }}
+                  aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
                 >
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M4 6a4 4 0 018 0c0 2 1 3.5 2 4.5H2c1-1 2-2.5 2-4.5z"/><path d="M6 11v.5a2 2 0 004 0V11"/>
@@ -3466,6 +3456,16 @@ ${html}
                           style={{ borderBottom: "1px solid var(--border-dim)" }}
                           onClick={async () => {
                             setShowNotifications(false);
+                            // Mark this notification as read
+                            if (!n.read) {
+                              setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+                              setUnreadCount(prev => Math.max(0, prev - 1));
+                              fetch("/api/notifications", {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json", "x-user-email": user?.email || "" },
+                                body: JSON.stringify({ ids: [n.id] }),
+                              }).catch(() => {});
+                            }
                             if (!n.documentId) return;
                             // Check if already open as a tab
                             const existing = tabs.find(t => !t.deleted && t.cloudId === n.documentId);
@@ -4151,10 +4151,10 @@ ${html}
                     {showSharedDocs && (
                       <>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
+                          onClick={(e) => { e.stopPropagation(); setSharedSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-faint)" }}
-                          title={`Sort: ${sortMode}`}
+                          title={`Sort: ${sharedSortMode}`}
                         >
                           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
                         </button>
