@@ -389,6 +389,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  // Delete visit history for this document (cleanup)
+  await supabase.from("visit_history").delete().eq("document_id", id);
+
   const { error } = await supabase.from("documents").delete().eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
 
