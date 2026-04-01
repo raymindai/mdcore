@@ -3886,6 +3886,31 @@ ${html}
                     onClick={() => setShowMyDocs(!showMyDocs)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--text-faint)" : "var(--text-muted)" }}>My Documents</span>
+                    {showMyDocs && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title={`Sort: ${sortMode}`}
+                        >
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const id = `folder-${Date.now()}`;
+                            setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
+                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); setInlineInput(null); }});
+                          }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="New folder"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
+                        </button>
+                      </>
+                    )}
                     {!showMyDocs && myTabCount > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>}
                   </div>
                   {showMyDocs && (
@@ -4062,6 +4087,16 @@ ${html}
                     onClick={() => setShowSharedDocs(!showSharedDocs)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--text-faint)" : "var(--text-muted)" }}>Shared with me</span>
+                    {showSharedDocs && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
+                        className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-faint)" }}
+                        title={`Sort: ${sortMode}`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+                      </button>
+                    )}
                     {!showSharedDocs && totalShared > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>}
                   </div>
                   {showSharedDocs && (
@@ -4220,38 +4255,7 @@ ${html}
             })()}
           </div>
 
-          {/* Folder + Sort actions — above account */}
-          <div className="shrink-0 px-3 py-1.5 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border-dim)" }}>
-            <button
-              onClick={() => {
-                const id = `folder-${Date.now()}`;
-                setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-                setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => {
-                  setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
-                  setInlineInput(null);
-                }});
-              }}
-              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-faint)" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" className="shrink-0"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
-              {sidebarWidth >= 200 && <span>New Folder</span>}
-            </button>
-            <div className="h-4 shrink-0" style={{ width: 1, background: "var(--border-dim)" }} />
-            <button
-              onClick={() => setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest")}
-              className="flex items-center gap-1.5 text-xs h-6 px-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-faint)" }}
-              title={`Sort: ${sortMode === "newest" ? "Newest first" : sortMode === "oldest" ? "Oldest first" : sortMode === "az" ? "A → Z" : "Z → A"}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
-                <path d="M2 4h12M2 8h8M2 12h5"/>
-                {(sortMode === "newest" || sortMode === "az") && <path d="M13 8l2 2.5-2 2.5" strokeWidth="1.5"/>}
-                {(sortMode === "oldest" || sortMode === "za") && <path d="M15 8l-2 2.5 2 2.5" strokeWidth="1.5"/>}
-              </svg>
-              {sidebarWidth >= 200 && <span>{{ newest: "Newest", oldest: "Oldest", az: "A→Z", za: "Z→A" }[sortMode]}</span>}
-            </button>
-          </div>
+          {/* Folder + Sort actions moved to section headers */}
           {/* Account section at bottom */}
           <div className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
             {authLoading ? (
