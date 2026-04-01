@@ -938,7 +938,9 @@ export default function MdEditor() {
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
-  const [showRecent, setShowRecent] = useState(false);
+  const [showMyDocs, setShowMyDocs] = useState(true);
+  const [showSharedDocs, setShowSharedDocs] = useState(true);
+  const [serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
@@ -1967,20 +1969,33 @@ export default function MdEditor() {
     }).catch(() => {});
   }, [tabs, user?.id]);
 
-  // Fetch recently visited documents for logged-in users (once on auth ready)
+  // Fetch recently visited (shared with me) + server docs for logged-in users
   useEffect(() => {
     if (authLoading) return;
     if (!user?.id) {
-      setRecentDocs([]); // Clear on sign-out
+      setRecentDocs([]);
+      setServerDocs([]);
       return;
     }
+    // Fetch recent visits — filter to non-owned docs only (Shared With Me)
     fetch("/api/user/recent", {
       headers: { "x-user-id": user.id },
     })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.recent) {
-          setRecentDocs(data.recent);
+          setRecentDocs(data.recent.filter((d: { isOwner: boolean }) => !d.isOwner));
+        }
+      })
+      .catch(() => {});
+    // Fetch user's own documents from server
+    fetch("/api/user/documents", {
+      headers: { "x-user-id": user.id },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.documents) {
+          setServerDocs(data.documents);
         }
       })
       .catch(() => {});
@@ -3774,116 +3789,35 @@ ${html}
               e.target.value = "";
             }}
           />
-          {/* Document list with folders */}
+          {/* Document list — 3 permanent sections */}
           <div className="flex-1 overflow-y-auto" onContextMenu={(e) => {
             e.preventDefault();
             setDocContextMenu(null);
             setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
-            {/* Root-level documents (no folder) */}
-            <div className="px-2 space-y-0.5">
-              {tabs.filter(t => !t.deleted && !t.folderId).sort((a, b) => {
-                if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
-                if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
-                return sortMode === "oldest" ? ai - bi : bi - ai;
-              }).map((tab) => (
-                <div
-                  key={tab.id}
-                  draggable
-                  onDragStart={() => setDragTabId(tab.id)}
-                  onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                  style={{
-                    background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                    color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
-                    opacity: dragTabId === tab.id ? 0.4 : 1,
-                  }}
-                  onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
-                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                >
-                  {/* Permission badge: 📄 mine / 🔗 editable / 👁 readonly */}
-                  {tab.permission === "readonly" ? (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                      <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
-                    </svg>
-                  ) : tab.permission === "editable" ? (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                      <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                      <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                    </svg>
-                  )}
-                  <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                  <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                    className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Folders */}
-            <div className="px-2">
-            {[...folders].sort((a, b) => {
-              if (sortMode === "az") return a.name.localeCompare(b.name);
-              if (sortMode === "za") return b.name.localeCompare(a.name);
-              const ai = folders.indexOf(a), bi = folders.indexOf(b);
-              return sortMode === "oldest" ? ai - bi : bi - ai;
-            }).map(folder => {
-              const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
+            {/* ── Section 1: MY DOCUMENTS ── */}
+            {(() => {
+              const myTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
+              const myTabCount = myTabs.length + folders.reduce((sum, f) => sum + tabs.filter(t => !t.deleted && t.folderId === f.id && t.permission !== "readonly" && t.permission !== "editable").length, 0);
               return (
-                <div key={folder.id} className="mt-1">
+                <div className="px-2 pt-2">
                   <div
-                    draggable
-                    onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
-                    onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
-                    className={`flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                    style={{ color: "var(--text-secondary)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
-                    onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
-                    onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
-                    onDragLeave={() => setDragOverTarget(null)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragTabId) {
-                        setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
-                      }
-                      setDragTabId(null);
-                      setDragFolderId(null);
-                      setDragOverTarget(null);
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
-                    }}
+                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
+                    style={{ color: "var(--text-faint)" }}
+                    onClick={() => setShowMyDocs(!showMyDocs)}
                   >
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
-                      style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
+                      style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                       <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                     </svg>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--accent)" : "none"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: folder.collapsed ? 1 : 0.6 }}><path d="M1 4h5l2-2h7v11H1z"/></svg>
-                    <span className="truncate flex-1">{folder.name}</span>
-                    <span className="text-[9px] opacity-50">{folderTabs.length}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
-                      }}
-                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: "var(--text-muted)", padding: "2px" }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
-                    </button>
+                    <span className="flex-1">My Documents</span>
+                    <span>{myTabCount}</span>
                   </div>
-                  {!folder.collapsed && (
-                    <div className="pl-4 px-2 space-y-0.5 mt-0.5">
-                      {[...folderTabs].sort((a, b) => {
+                  {showMyDocs && (
+                    <div className="space-y-0.5 pb-1">
+                      {/* Root-level documents (no folder, mine only) */}
+                      {myTabs.filter(t => !t.folderId).sort((a, b) => {
                         if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                         if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
                         const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
@@ -3894,7 +3828,7 @@ ${html}
                           draggable
                           onDragStart={() => setDragTabId(tab.id)}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -3903,74 +3837,266 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.permission === "readonly" ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
-                            </svg>
-                          ) : tab.permission === "editable" ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
-                            </svg>
-                          ) : (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                              <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                            </svg>
-                          )}
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                          </svg>
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                                  <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                          <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
                           </button>
                         </div>
                       ))}
+
+                      {/* Folders */}
+                      {[...folders].sort((a, b) => {
+                        if (sortMode === "az") return a.name.localeCompare(b.name);
+                        if (sortMode === "za") return b.name.localeCompare(a.name);
+                        const ai = folders.indexOf(a), bi = folders.indexOf(b);
+                        return sortMode === "oldest" ? ai - bi : bi - ai;
+                      }).map(folder => {
+                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && t.permission !== "readonly" && t.permission !== "editable");
+                        return (
+                          <div key={folder.id} className="mt-1">
+                            <div
+                              draggable
+                              onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
+                              onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
+                              className={`flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                              style={{ color: "var(--text-secondary)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
+                              onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
+                              onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
+                              onDragLeave={() => setDragOverTarget(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (dragTabId) {
+                                  setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
+                                }
+                                setDragTabId(null);
+                                setDragFolderId(null);
+                                setDragOverTarget(null);
+                              }}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
+                              }}
+                            >
+                              <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
+                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                                <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                              </svg>
+                              <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--accent)" : "none"} stroke="var(--accent)" strokeWidth="1.2" className="shrink-0" style={{ opacity: folder.collapsed ? 1 : 0.6 }}><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                              <span className="truncate flex-1">{folder.name}</span>
+                              <span className="text-[9px] opacity-50">{folderTabs.length}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
+                                }}
+                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ color: "var(--text-muted)", padding: "2px" }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                              </button>
+                            </div>
+                            {!folder.collapsed && (
+                              <div className="pl-4 px-2 space-y-0.5 mt-0.5">
+                                {[...folderTabs].sort((a, b) => {
+                                  if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+                                  if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+                                  const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
+                                  return sortMode === "oldest" ? ai - bi : bi - ai;
+                                }).map((tab) => (
+                                  <div
+                                    key={tab.id}
+                                    draggable
+                                    onDragStart={() => setDragTabId(tab.id)}
+                                    onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                                    className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                                    style={{
+                                      background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                                      color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                                      opacity: dragTabId === tab.id ? 0.4 : 1,
+                                    }}
+                                    onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                                      <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                                      <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                                    </svg>
+                                    <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                                    <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Drop zone for removing from folder (root drop) */}
+                      {dragTabId && (
+                        <div
+                          className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
+                          style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "root" ? "var(--accent-dim)" : "transparent" }}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverTarget("root"); }}
+                          onDragLeave={() => setDragOverTarget(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragTabId) setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: undefined } : t));
+                            setDragTabId(null);
+                            setDragOverTarget(null);
+                          }}
+                        >
+                          Move to root
+                        </div>
+                      )}
+
+                      {myTabs.length === 0 && folders.length === 0 && (
+                        <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>No documents yet</div>
+                      )}
                     </div>
                   )}
                 </div>
               );
-            })}
-            </div>
+            })()}
 
-            {/* Drop zone for removing from folder (root drop) */}
-            {dragTabId && (
-              <div
-                className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
-                style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "root" ? "var(--accent-dim)" : "transparent" }}
-                onDragOver={(e) => { e.preventDefault(); setDragOverTarget("root"); }}
-                onDragLeave={() => setDragOverTarget(null)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragTabId) setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: undefined } : t));
-                  setDragTabId(null);
-                  setDragOverTarget(null);
-                }}
-              >
-                Move to root
-              </div>
-            )}
-
-            {/* Cloud Documents section removed — all docs auto-save to cloud now */}
-
-            {/* Trash section — same visual structure as folders */}
-            {tabs.some(t => t.deleted) && (
-              <div className="px-2 mt-1">
-                <div key="trash-header" className="mt-1">
+            {/* ── Section 2: SHARED WITH ME ── */}
+            {(() => {
+              const sharedTabs = tabs.filter(t => !t.deleted && (t.permission === "readonly" || t.permission === "editable"));
+              // Merge recentDocs (non-owned) that aren't already open as tabs
+              const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
+              const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id));
+              const totalShared = sharedTabs.length + extraShared.length;
+              return (
+                <div className="px-2 pt-2">
                   <div
-                    className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
-                    style={{ color: "var(--text-secondary)" }}
+                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
+                    style={{ color: "var(--text-faint)" }}
+                    onClick={() => setShowSharedDocs(!showSharedDocs)}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
+                      style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
+                      <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                    </svg>
+                    <span className="flex-1">Shared with me</span>
+                    <span>{totalShared}</span>
+                  </div>
+                  {showSharedDocs && (
+                    <div className="space-y-0.5 pb-1">
+                      {/* Shared tabs already open */}
+                      {sharedTabs.map((tab) => (
+                        <div
+                          key={tab.id}
+                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                          style={{
+                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                          }}
+                          onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                        >
+                          {tab.permission === "readonly" ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                            </svg>
+                          )}
+                          <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
+                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                      {/* Recent shared docs not yet open as tabs */}
+                      {extraShared.map((doc) => (
+                        <div
+                          key={`shared-${doc.id}`}
+                          role="button"
+                          tabIndex={0}
+                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
+                          style={{ color: "var(--text-muted)" }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
+                            if (existing) { switchTab(existing.id); return; }
+                            try {
+                              const headers: Record<string, string> = {};
+                              if (user?.id) headers["x-user-id"] = user.id;
+                              const res = await fetch(`/api/docs/${doc.id}`, { headers });
+                              if (!res.ok) {
+                                if (res.status === 404) setRecentDocs(prev => prev.filter(d => d.id !== doc.id));
+                                return;
+                              }
+                              const d = await res.json();
+                              const perm = doc.editMode === "public" ? "editable" : "readonly";
+                              const newId = `tab-${Date.now()}`;
+                              const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true };
+                              setTabs(prev => {
+                                const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
+                                return [...saved, newTab];
+                              });
+                              loadTab(newTab);
+                              setDocId(doc.id);
+                              setDocEditMode(d.editMode || "token");
+                              setIsOwner(false);
+                              setIsSharedDoc(true);
+                              setTitle(d.title || "Untitled");
+                            } catch { window.location.href = `/?from=${doc.id}`; }
+                          }}
+                        >
+                          {doc.editMode === "public" ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                            </svg>
+                          )}
+                          <span className="truncate flex-1">{doc.title || "Untitled"}</span>
+                        </div>
+                      ))}
+                      {totalShared === 0 && (
+                        <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>No shared documents</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── Section 3: TRASH ── */}
+            {(() => {
+              const trashTabs = tabs.filter(t => t.deleted);
+              return (
+                <div className="px-2 pt-2">
+                  <div
+                    className="flex items-center gap-1.5 px-1 py-1.5 cursor-pointer text-[10px] font-mono tracking-wider uppercase"
+                    style={{ color: "var(--text-faint)" }}
                     onClick={() => setShowTrash(!showTrash)}
                   >
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
+                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
                       <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
                     </svg>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill={showTrash ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.8" className="shrink-0" style={{ opacity: showTrash ? 0.7 : 1 }} strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M10 11v6M14 11v6"/></svg>
-                    <span className="truncate flex-1">Trash</span>
-                    <span className="text-[9px] opacity-50">{tabs.filter(t => t.deleted).length}</span>
+                    <span className="flex-1">Trash</span>
+                    <span>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
-                    <div className="pl-4 space-y-0.5 mt-0.5">
-                      {tabs.filter(t => t.deleted).map(tab => (
+                    <div className="space-y-0.5 pb-1">
+                      {trashTabs.map(tab => (
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
                             <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
@@ -3987,99 +4113,24 @@ ${html}
                           </button>
                         </div>
                       ))}
-                      <button
-                        onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
-                        className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
-                        style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
-                      >
-                      Empty Trash
-                    </button>
+                      {trashTabs.length > 0 && (
+                        <button
+                          onClick={() => setTabs(prev => prev.filter(t => !t.deleted))}
+                          className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
+                          style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                        >
+                          Empty Trash
+                        </button>
+                      )}
+                      {trashTabs.length === 0 && (
+                        <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>Trash is empty</div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
-
-          {/* ── Recently Visited — separate section below My Documents ── */}
-          {recentDocs.length > 0 && (
-              <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-                <div
-                  className="flex items-center gap-1.5 px-3 py-2 cursor-pointer text-[10px] font-mono tracking-wider"
-                  style={{ color: "var(--text-faint)", textTransform: "uppercase" }}
-                  onClick={() => setShowRecent(!showRecent)}
-                >
-                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"
-                    style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                  </svg>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v2.5l1.5 1"/>
-                  </svg>
-                  <span className="flex-1">Recently Visited</span>
-                  <span>{recentDocs.length}</span>
-                </div>
-                {showRecent && (
-                  <div className="px-2 pb-2 space-y-0.5">
-                    {recentDocs.slice(0, 15).map((doc) => (
-                      <div
-                        key={doc.id}
-                        role="button"
-                        tabIndex={0}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
-                        style={{ color: "var(--text-muted)" }}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          // If already open in a tab, switch to it
-                          const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
-                          if (existing) {
-                            switchTab(existing.id);
-                            return;
-                          }
-                          // Otherwise fetch and open in a new tab
-                          try {
-                            const headers: Record<string, string> = {};
-                            if (user?.id) headers["x-user-id"] = user.id;
-                            const res = await fetch(`/api/docs/${doc.id}`, { headers });
-                            if (!res.ok) return;
-                            const d = await res.json();
-                            const perm = doc.isOwner ? "mine" : doc.editMode === "public" ? "editable" : "readonly";
-                            const newId = `tab-${Date.now()}`;
-                            const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" };
-                            setTabs(prev => {
-                              const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
-                              return [...saved, newTab];
-                            });
-                            loadTab(newTab);
-                            setDocId(doc.id);
-                            setDocEditMode(d.editMode || "token");
-                            setIsOwner(doc.isOwner);
-                            setIsSharedDoc(perm !== "mine");
-                            setTitle(d.title || "Untitled");
-                          } catch { window.location.href = `/?from=${doc.id}`; }
-                        }}
-                      >
-                        {doc.isOwner ? (
-                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0">
-                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                          </svg>
-                        ) : doc.editMode === "public" ? (
-                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
-                          </svg>
-                        ) : (
-                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                            <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
-                          </svg>
-                        )}
-                        <span className="truncate flex-1">{doc.title || "Untitled"}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-          )}
 
           {/* Folder + Sort actions — above account */}
           <div className="shrink-0 px-3 py-1.5 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border-dim)" }}>
