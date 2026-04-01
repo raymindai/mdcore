@@ -33,7 +33,6 @@ export default function ShareModal({
   );
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showAccessMenu, setShowAccessMenu] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +77,6 @@ export default function ShareModal({
 
   const handleAccessChange = useCallback(async (mode: "restricted" | "anyone") => {
     setGeneralAccess(mode);
-    setShowAccessMenu(false);
     const editMode = mode === "anyone" ? "public" : "owner";
     try {
       await changeEditMode(docId, userId, editMode);
@@ -222,83 +220,41 @@ export default function ShareModal({
           </div>
         )}
 
-        {/* General access */}
+        {/* General access — toggle between Restricted and Anyone with link */}
         <div className="px-5 pb-4">
           <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             General access
           </label>
-          <div className="relative">
-            <button
-              onClick={() => setShowAccessMenu(!showAccessMenu)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
-              style={{ background: "var(--background)", border: "1px solid var(--border)" }}
-            >
-              {/* Icon */}
-              {generalAccess === "restricted" ? (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--toggle-bg)" }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-muted)" strokeWidth="1.3" strokeLinecap="round">
-                    <rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/>
-                  </svg>
-                </div>
-              ) : (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,222,128,0.1)" }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4ade80" strokeWidth="1.3" strokeLinecap="round">
-                    <circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/>
-                  </svg>
-                </div>
-              )}
-              <div className="flex-1">
-                <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
-                  {generalAccess === "restricted" ? "Restricted" : "Anyone with the link"}
-                </p>
-                <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>
-                  {generalAccess === "restricted"
-                    ? "Only people with access can open"
-                    : "Anyone on the internet with the link can edit"}
-                </p>
-              </div>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 6l4 4 4-4"/>
+          <button
+            onClick={() => handleAccessChange(generalAccess === "restricted" ? "anyone" : "restricted")}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
+            style={{ background: "var(--background)", border: "1px solid var(--border)" }}
+          >
+            {generalAccess === "restricted" ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-muted)" strokeWidth="1.3" strokeLinecap="round" className="shrink-0">
+                <rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/>
               </svg>
-            </button>
-
-            {/* Dropdown */}
-            {showAccessMenu && (
-              <div
-                className="absolute top-full left-0 right-0 mt-1 rounded-lg shadow-xl py-1 z-10"
-                style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
-              >
-                <button
-                  onClick={() => handleAccessChange("restricted")}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--menu-hover)]"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                    <rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/>
-                  </svg>
-                  <div>
-                    <p className="text-xs font-medium" style={{ color: generalAccess === "restricted" ? "var(--accent)" : "var(--text-secondary)" }}>
-                      Restricted {generalAccess === "restricted" && "\u2713"}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Only people with access</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleAccessChange("anyone")}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-[var(--menu-hover)]"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                    <circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/>
-                  </svg>
-                  <div>
-                    <p className="text-xs font-medium" style={{ color: generalAccess === "anyone" ? "var(--accent)" : "var(--text-secondary)" }}>
-                      Anyone with the link {generalAccess === "anyone" && "\u2713"}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Anyone can edit</p>
-                  </div>
-                </button>
-              </div>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4ade80" strokeWidth="1.3" strokeLinecap="round" className="shrink-0">
+                <circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/>
+              </svg>
             )}
-          </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                {generalAccess === "restricted" ? "Restricted" : "Anyone with the link"}
+              </p>
+              <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                {generalAccess === "restricted"
+                  ? "Only people added above can open"
+                  : "Anyone with the link can edit"}
+              </p>
+            </div>
+            {/* Toggle switch */}
+            <span className="relative inline-flex items-center shrink-0" style={{ width: 28, height: 16 }}>
+              <span className="absolute inset-0 rounded-full transition-colors" style={{ background: generalAccess === "anyone" ? "var(--accent)" : "var(--border)" }} />
+              <span className="absolute rounded-full transition-transform" style={{ width: 12, height: 12, top: 2, background: "#fff", transform: generalAccess === "anyone" ? "translateX(14px)" : "translateX(2px)" }} />
+            </span>
+          </button>
         </div>
 
         {/* Footer */}
