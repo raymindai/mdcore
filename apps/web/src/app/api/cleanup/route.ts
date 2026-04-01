@@ -91,32 +91,7 @@ export async function POST(req: NextRequest) {
     results.orphanedVisits = 0;
   }
 
-  // 4. Delete empty documents older than 1 day (markdown is null, empty, or just whitespace/heading)
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: emptyDocs } = await supabase
-    .from("documents")
-    .select("id, markdown")
-    .lt("updated_at", oneDayAgo)
-    .limit(200);
-
-  if (emptyDocs) {
-    const emptyIds = emptyDocs
-      .filter((d) => {
-        const md = (d.markdown || "").trim();
-        return !md || md === "# Untitled" || md === "# Untitled\n\n" || md.length < 10;
-      })
-      .map((d) => d.id);
-
-    if (emptyIds.length > 0) {
-      await supabase.from("visit_history").delete().in("document_id", emptyIds);
-      await supabase.from("notifications").delete().in("document_id", emptyIds);
-      await supabase.from("document_versions").delete().in("document_id", emptyIds);
-      await supabase.from("documents").delete().in("id", emptyIds);
-    }
-    results.emptyDocuments = emptyIds.length;
-  } else {
-    results.emptyDocuments = 0;
-  }
+  // 4. Empty document cleanup removed — users may intentionally have short/empty docs
 
   const total = Object.values(results).reduce((a, b) => a + b, 0);
 
