@@ -1106,8 +1106,9 @@ export default function MdEditor() {
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "public">("token");
+  const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
   // Can edit: not shared, or owner, or public doc
+  // view mode: anyone can view, only owner edits. public mode: anyone can edit.
   const canEdit = !isSharedDoc || isOwner || docEditMode === "public";
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
@@ -1120,7 +1121,7 @@ export default function MdEditor() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [restoringVersion, setRestoringVersion] = useState<number | null>(null);
   // Permission / edit mode state
-  const [editMode, setEditMode] = useState<"owner" | "account" | "token" | "public">("owner");
+  const [editMode, setEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("owner");
   const [showEditModeMenu, setShowEditModeMenu] = useState(false);
   const [initialMath, setInitialMath] = useState<string | undefined>();
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement

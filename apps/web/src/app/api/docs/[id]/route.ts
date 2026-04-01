@@ -144,7 +144,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (body.action === "change-edit-mode") {
     const { userId, editMode: newEditMode } = body;
     if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-    if (!newEditMode || !["owner", "account", "token", "public"].includes(newEditMode)) {
+    if (!newEditMode || !["owner", "account", "token", "view", "public"].includes(newEditMode)) {
       return NextResponse.json({ error: "Invalid editMode" }, { status: 400 });
     }
     const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
@@ -243,7 +243,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const editModeVal = doc.edit_mode || "token";
 
     if (!isOwner) {
-      if (editModeVal === "owner" || editModeVal === "account") {
+      if (editModeVal === "owner" || editModeVal === "account" || editModeVal === "view") {
         return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
       } else if (editModeVal === "token") {
         if (!hasToken) {
@@ -314,7 +314,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const editMode = doc.edit_mode || "token";
 
   if (!isDocOwner) {
-    if (editMode === "owner" || editMode === "account") {
+    if (editMode === "owner" || editMode === "account" || editMode === "view") {
       return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
     } else if (editMode === "token") {
       if (!editToken || doc.edit_token !== editToken) {

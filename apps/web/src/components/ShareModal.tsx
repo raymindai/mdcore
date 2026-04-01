@@ -28,8 +28,8 @@ export default function ShareModal({
 }: ShareModalProps) {
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
-  const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone">(
-    currentEditMode === "public" ? "anyone" : "restricted"
+  const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone-view" | "anyone">(
+    currentEditMode === "public" ? "anyone" : currentEditMode === "view" ? "anyone-view" : "restricted"
   );
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -75,9 +75,9 @@ export default function ShareModal({
     setSaving(false);
   }, [emails, docId, userId, onAllowedEmailsChange]);
 
-  const handleAccessChange = useCallback(async (mode: "restricted" | "anyone") => {
+  const handleAccessChange = useCallback(async (mode: "restricted" | "anyone-view" | "anyone") => {
     setGeneralAccess(mode);
-    const editMode = mode === "anyone" ? "public" : "owner";
+    const editMode = mode === "anyone" ? "public" : mode === "anyone-view" ? "view" : "owner";
     try {
       await changeEditMode(docId, userId, editMode);
       onEditModeChange(editMode as "owner" | "public");
@@ -225,36 +225,38 @@ export default function ShareModal({
           <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             General access
           </label>
-          <button
-            onClick={() => handleAccessChange(generalAccess === "restricted" ? "anyone" : "restricted")}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
-            style={{ background: "var(--background)", border: "1px solid var(--border)" }}
-          >
-            {generalAccess === "restricted" ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-muted)" strokeWidth="1.3" strokeLinecap="round" className="shrink-0">
-                <rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/>
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4ade80" strokeWidth="1.3" strokeLinecap="round" className="shrink-0">
-                <circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/>
-              </svg>
-            )}
-            <div className="flex-1">
-              <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
-                {generalAccess === "restricted" ? "Restricted" : "Anyone with the link"}
-              </p>
-              <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>
-                {generalAccess === "restricted"
-                  ? "Only people added above can open"
-                  : "Anyone with the link can edit"}
-              </p>
-            </div>
-            {/* Toggle switch */}
-            <span className="relative inline-flex items-center shrink-0" style={{ width: 28, height: 16 }}>
-              <span className="absolute inset-0 rounded-full transition-colors" style={{ background: generalAccess === "anyone" ? "var(--accent)" : "var(--border)" }} />
-              <span className="absolute rounded-full transition-transform" style={{ width: 12, height: 12, top: 2, background: "#fff", transform: generalAccess === "anyone" ? "translateX(14px)" : "translateX(2px)" }} />
-            </span>
-          </button>
+          <div className="flex flex-col gap-1.5">
+            {([
+              { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
+              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/></svg> },
+              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/></svg> },
+            ]).map((opt) => {
+              const selected = generalAccess === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => !selected && handleAccessChange(opt.value)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors"
+                  style={{
+                    background: selected ? "var(--accent-dim)" : "var(--background)",
+                    border: selected ? "1px solid var(--accent)" : "1px solid var(--border-dim)",
+                  }}
+                >
+                  {/* Radio circle */}
+                  <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center" style={{ border: selected ? "none" : "2px solid var(--border)" }}>
+                    {selected && <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "var(--accent)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#000" }} />
+                    </span>}
+                  </span>
+                  <span className="shrink-0" style={{ color: selected ? "var(--accent)" : "var(--text-faint)" }}>{opt.icon}</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium" style={{ color: selected ? "var(--text-primary)" : "var(--text-muted)" }}>{opt.label}</p>
+                    <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>{opt.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Footer */}
