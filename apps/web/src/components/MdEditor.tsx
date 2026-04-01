@@ -979,9 +979,18 @@ export default function MdEditor() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Deduplicate by ID
-            const seen = new Set<string>();
-            const deduped = parsed.filter((t: Tab) => { if (seen.has(t.id)) return false; seen.add(t.id); return true; });
+            // Deduplicate by ID and cloudId
+            const seenIds = new Set<string>();
+            const seenCloudIds = new Set<string>();
+            const deduped = parsed.filter((t: Tab) => {
+              if (seenIds.has(t.id)) return false;
+              seenIds.add(t.id);
+              if (t.cloudId) {
+                if (seenCloudIds.has(t.cloudId)) return false;
+                seenCloudIds.add(t.cloudId);
+              }
+              return true;
+            });
             return deduped;
           }
         }
@@ -1014,7 +1023,16 @@ export default function MdEditor() {
     const timer = setTimeout(() => {
       try {
         const updatedTabs = tabs.map(t => t.id === activeTabId ? { ...t, markdown } : t);
-        localStorage.setItem("mdfy-tabs", JSON.stringify(updatedTabs));
+        // Deduplicate by cloudId before persisting
+        const seenCloud = new Set<string>();
+        const cleanTabs = updatedTabs.filter(t => {
+          if (t.cloudId) {
+            if (seenCloud.has(t.cloudId)) return false;
+            seenCloud.add(t.cloudId);
+          }
+          return true;
+        });
+        localStorage.setItem("mdfy-tabs", JSON.stringify(cleanTabs));
         localStorage.setItem("mdfy-active-tab", activeTabId);
         localStorage.setItem("mdfy-folders", JSON.stringify(folders));
       } catch {
