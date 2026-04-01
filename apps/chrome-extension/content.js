@@ -473,7 +473,7 @@
         const res = await fetch(MDFY_URL + "/api/docs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown, userId, title }),
+          body: JSON.stringify({ markdown, userId, title, editMode: "account" }),
         });
 
         if (res.ok) {

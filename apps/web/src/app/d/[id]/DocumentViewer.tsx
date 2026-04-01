@@ -253,6 +253,12 @@ export default function DocumentViewer({
             href={`/?from=${id}`}
             className={btnClass}
             style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            onClick={() => {
+              // Pass password to editor via sessionStorage (not URL for security)
+              if (passwordInput) {
+                sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
+              }
+            }}
           >
             Edit
           </Link>

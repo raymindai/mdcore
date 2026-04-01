@@ -101,7 +101,7 @@ interface ShortUrlResult {
 export async function createShortUrl(
   markdown: string,
   title?: string,
-  options?: { password?: string; expiresIn?: number; userId?: string; editMode?: string }
+  options?: { password?: string; expiresIn?: number; userId?: string; anonymousId?: string; editMode?: string }
 ): Promise<ShortUrlResult> {
   const res = await fetch("/api/docs", {
     method: "POST",
@@ -112,6 +112,7 @@ export async function createShortUrl(
       password: options?.password,
       expiresIn: options?.expiresIn,
       userId: options?.userId,
+      anonymousId: options?.anonymousId,
       editMode: options?.editMode,
     }),
   });
@@ -130,7 +131,7 @@ export async function updateDocument(
   editToken: string,
   markdown: string,
   title?: string,
-  options?: { userId?: string; changeSummary?: string }
+  options?: { userId?: string; anonymousId?: string; changeSummary?: string }
 ): Promise<void> {
   const res = await fetch(`/api/docs/${id}`, {
     method: "PATCH",
@@ -140,6 +141,7 @@ export async function updateDocument(
       title,
       editToken,
       userId: options?.userId,
+      anonymousId: options?.anonymousId,
       changeSummary: options?.changeSummary,
     }),
   });
@@ -184,12 +186,17 @@ export async function changeEditMode(id: string, userId: string, editMode: strin
 
 export async function deleteDocument(
   id: string,
-  editToken: string
+  editToken: string,
+  options?: { userId?: string; anonymousId?: string }
 ): Promise<void> {
   const res = await fetch(`/api/docs/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ editToken }),
+    body: JSON.stringify({
+      editToken,
+      userId: options?.userId,
+      anonymousId: options?.anonymousId,
+    }),
   });
   if (!res.ok) throw new Error("Failed to delete document");
 }

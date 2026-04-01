@@ -22,25 +22,30 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { markdown?: string; title?: string; password?: string; expiresIn?: number; userId?: string; editMode?: string };
+  let body: {
+    markdown?: string;
+    title?: string;
+    password?: string;
+    expiresIn?: number;
+    userId?: string;
+    anonymousId?: string;
+    editMode?: string;
+    isDraft?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown, title, password, expiresIn, userId, editMode } = body;
-  if (!markdown || typeof markdown !== "string") {
-    return NextResponse.json(
-      { error: "markdown is required" },
-      { status: 400 }
-    );
+  const { markdown = "", title, password, expiresIn, userId, anonymousId, editMode, isDraft } = body;
+
+  // Allow empty markdown for auto-save (draft creation)
+  if (typeof markdown !== "string") {
+    return NextResponse.json({ error: "markdown must be a string" }, { status: 400 });
   }
   if (markdown.length > 500_000) {
-    return NextResponse.json(
-      { error: "Document too large (max 500KB)" },
-      { status: 413 }
-    );
+    return NextResponse.json({ error: "Document too large (max 500KB)" }, { status: 413 });
   }
 
   const id = nanoid(8);
@@ -60,6 +65,11 @@ export async function POST(req: NextRequest) {
     ? new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString()
     : null;
 
+  // Determine edit mode:
+  // - logged in user → "account" (only owner edits)
+  // - anonymous → "token" (edit_token = ownership proof)
+  const resolvedEditMode = editMode || (userId ? "account" : "token");
+
   const { error } = await supabase.from("documents").insert({
     id,
     markdown,
@@ -68,7 +78,9 @@ export async function POST(req: NextRequest) {
     password_hash: passwordHash,
     expires_at: expiresAt,
     user_id: userId || null,
-    edit_mode: editMode || "token",
+    anonymous_id: (!userId && anonymousId) ? anonymousId : null,
+    edit_mode: resolvedEditMode,
+    is_draft: isDraft ?? false,
   });
 
   if (error) {

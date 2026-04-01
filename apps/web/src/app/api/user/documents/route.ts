@@ -3,7 +3,9 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const userId = req.headers.get("x-user-id");
-  if (!userId) {
+  const anonymousId = req.headers.get("x-anonymous-id");
+
+  if (!userId && !anonymousId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -12,12 +14,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("documents")
-    .select("id, title, created_at, updated_at, view_count")
-    .eq("user_id", userId)
+    .select("id, title, created_at, updated_at, view_count, is_draft, edit_mode")
     .order("updated_at", { ascending: false })
-    .limit(50);
+    .limit(100);
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  } else if (anonymousId) {
+    query = query.eq("anonymous_id", anonymousId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });

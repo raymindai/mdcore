@@ -11,11 +11,14 @@ async function getDocument(id: string) {
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, password_hash, expires_at, user_id")
+    .select("id, markdown, title, created_at, password_hash, expires_at, user_id, is_draft")
     .eq("id", id)
     .single();
 
   if (!data) return null;
+
+  // Draft documents are not publicly viewable
+  if (data.is_draft) return null;
 
   // Check if document owner is a Pro user (hide badge)
   let ownerPlan = "free";

@@ -33,25 +33,33 @@ export default function EmbedPage() {
     })();
   }, [id]);
 
-  // Mermaid rendering
+  // Mermaid rendering — match comrak output: <pre lang="mermaid"><code>...</code></pre>
   useEffect(() => {
     if (!previewRef.current || isLoading) return;
-    const containers = previewRef.current.querySelectorAll(".mermaid-container");
-    if (containers.length === 0) return;
+    const mermaidPres = previewRef.current.querySelectorAll('pre[lang="mermaid"]');
+    if (mermaidPres.length === 0) return;
 
-    import("mermaid").then((m) => {
-      m.default.initialize({ startOnLoad: false, theme: "dark", fontFamily: "ui-monospace, monospace", fontSize: 13 });
-      containers.forEach(async (c) => {
-        const pre = c.querySelector("pre.mermaid");
-        if (!pre) return;
-        const code = pre.textContent || "";
-        const mId = c.getAttribute("data-mermaid-id") || "mermaid-0";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mermaid = (window as any).mermaid;
+    if (!mermaid) return;
+
+    mermaid.initialize({ startOnLoad: false, theme: "dark", fontFamily: "system-ui, sans-serif", fontSize: 14 });
+
+    (async () => {
+      for (let i = 0; i < mermaidPres.length; i++) {
+        const pre = mermaidPres[i];
+        const codeEl = pre.querySelector("code");
+        const code = (codeEl?.textContent || pre.textContent || "").trim();
+        if (!code) continue;
         try {
-          const { svg } = await m.default.render(mId, code);
-          c.innerHTML = `<div class="mermaid-rendered">${svg}</div>`;
-        } catch { /* ignore */ }
-      });
-    });
+          const { svg } = await mermaid.render(`mermaid-embed-${Date.now()}-${i}`, code);
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-container";
+          wrapper.innerHTML = `<div class="mermaid-rendered">${svg}</div>`;
+          pre.replaceWith(wrapper);
+        } catch { /* ignore render errors */ }
+      }
+    })();
   }, [html, isLoading]);
 
   return (

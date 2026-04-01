@@ -16,6 +16,8 @@ import FloatingToolbar from "@/components/FloatingToolbar";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import { useAuth } from "@/lib/useAuth";
+import { useAutoSave } from "@/lib/useAutoSave";
+import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
 import {
   createShareUrl,
   createShortUrl,
@@ -532,12 +534,12 @@ const INITIAL_FOLDERS: Folder[] = [
 ];
 
 const INITIAL_TABS: Tab[] = [
-  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME },
-  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID, readonly: true },
 ];
 
 type ViewMode = "split" | "preview" | "editor";
@@ -590,10 +592,13 @@ interface Tab {
   markdown: string;
   folderId?: string;       // null = root level
   cloudId?: string;        // Supabase document id
+  editToken?: string;      // for token-based ownership
   deleted?: boolean;       // soft delete → trash
   deletedAt?: number;      // timestamp for auto-purge
   readonly?: boolean;      // example docs — not editable
   shared?: boolean;        // opened from shared URL (not mine)
+  isDraft?: boolean;       // auto-saved but not yet published
+  permission?: "mine" | "editable" | "readonly";  // for sidebar badge
 }
 
 let tabIdCounter = Date.now();
@@ -915,6 +920,9 @@ export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
   const { user, profile, loading: authLoading, isAuthenticated, signInWithGoogle, signInWithGitHub, signInWithEmail, signOut } = useAuth();
+  // Only use anonymousId when not logged in
+  const anonymousId = (!user?.id && typeof window !== "undefined") ? getAnonymousId() : "";
+  const autoSave = useAutoSave({ debounceMs: 2500 });
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [authEmailInput, setAuthEmailInput] = useState("");
   const [authEmailSent, setAuthEmailSent] = useState(false);
@@ -927,8 +935,9 @@ export default function MdEditor() {
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
-  const [showCloudDocs, setShowCloudDocs] = useState(false);
-  const [cloudDocs, setCloudDocs] = useState<{ id: string; title: string; updated_at: string; view_count: number }[]>([]);
+  // Cloud docs section removed — all docs auto-save to cloud
+  const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
+  const [showRecent, setShowRecent] = useState(false);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
   const [mdfyLoading, setMdfyLoading] = useState(false);
   const [showFlavorMenu, setShowFlavorMenu] = useState(false);
@@ -998,12 +1007,26 @@ export default function MdEditor() {
         localStorage.setItem("mdfy-tabs", JSON.stringify(updatedTabs));
         localStorage.setItem("mdfy-active-tab", activeTabId);
         localStorage.setItem("mdfy-folders", JSON.stringify(folders));
-      } catch { /* quota exceeded */ }
-    }, 500); // Debounce to avoid excessive writes
+      } catch {
+        // Quota exceeded — try saving without markdown bodies for cloud-synced tabs
+        try {
+          const lightTabs = tabs.map(t => {
+            if (t.cloudId) {
+              // Cloud-synced: strip markdown body (will reload from server)
+              return { ...t, markdown: "" };
+            }
+            return t.id === activeTabId ? { ...t, markdown } : t;
+          });
+          localStorage.setItem("mdfy-tabs", JSON.stringify(lightTabs));
+          localStorage.setItem("mdfy-active-tab", activeTabId);
+          localStorage.setItem("mdfy-folders", JSON.stringify(folders));
+        } catch { /* truly out of space */ }
+      }
+    }, 500);
     return () => clearTimeout(timer);
   }, [tabs, activeTabId, markdown, folders]);
 
-  // Wrapper that tracks undo history
+  // Wrapper that tracks undo history + triggers auto-save
   const setMarkdown = useCallback((val: string) => {
     setMarkdownRaw(val);
     // Debounce undo snapshots (don't save every keystroke)
@@ -1012,11 +1035,24 @@ export default function MdEditor() {
       const last = undoStack.current[undoStack.current.length - 1];
       if (val !== last) {
         undoStack.current.push(val);
-        if (undoStack.current.length > 100) undoStack.current.shift(); // cap at 100
-        redoStack.current = []; // clear redo on new change
+        if (undoStack.current.length > 100) undoStack.current.shift();
+        redoStack.current = [];
       }
     }, 500);
-  }, []);
+
+    // Auto-save to server if document has a cloudId
+    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+    if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
+      autoSave.scheduleSave({
+        cloudId: currentTab.cloudId,
+        markdown: val,
+        title: currentTab.title,
+        userId: user?.id,
+        anonymousId,
+        editToken: currentTab.editToken,
+      });
+    }
+  }, [tabs, user?.id, anonymousId, autoSave]);
 
   const undo = useCallback(() => {
     if (undoStack.current.length <= 1) return;
@@ -1063,7 +1099,7 @@ export default function MdEditor() {
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
-  const [docEditMode, setDocEditMode] = useState<"owner" | "token" | "public">("token");
+  const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "public">("token");
   // Can edit: not shared, or owner, or public doc
   const canEdit = !isSharedDoc || isOwner || docEditMode === "public";
   const [showQr, setShowQr] = useState(false);
@@ -1270,6 +1306,12 @@ export default function MdEditor() {
     undoStack.current = [tab.markdown];
     redoStack.current = [];
     doRenderRef.current(tab.markdown);
+    // Update browser URL to reflect current document
+    if (tab.cloudId) {
+      window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
+    } else {
+      window.history.replaceState(null, "", "/");
+    }
   }, []);
 
   const switchTab = useCallback((tabId: string) => {
@@ -1294,12 +1336,13 @@ export default function MdEditor() {
     });
   }, [loadTab]);
 
-  const addTab = useCallback(() => {
+  const addTab = useCallback(async () => {
     const currentMd = markdownRef.current;
     const currentTabId = activeTabIdRef.current;
 
     const id = `tab-${tabIdCounter++}`;
-    const newTab: Tab = { id, title: "Untitled", markdown: "# Untitled\n\n" };
+    const initialMd = "# Untitled\n\n";
+    const newTab: Tab = { id, title: "Untitled", markdown: initialMd, isDraft: true, permission: "mine" };
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -1312,7 +1355,22 @@ export default function MdEditor() {
 
     loadTab(newTab);
     setTitle("Untitled");
-  }, [loadTab]);
+
+    // Auto-create on server (ensure anonymous ID for non-logged-in users)
+    const anonId = user?.id ? undefined : ensureAnonymousId();
+    const result = await autoSave.createDocument({
+      markdown: initialMd,
+      title: "Untitled",
+      userId: user?.id,
+      anonymousId: anonId,
+    });
+    if (result) {
+      setTabs(prev => prev.map(t => t.id === id ? { ...t, cloudId: result.id, editToken: result.editToken } : t));
+      setDocId(result.id);
+      // Update URL without navigation
+      window.history.replaceState(null, "", `/?doc=${result.id}`);
+    }
+  }, [loadTab, autoSave, user?.id, anonymousId]);
 
   const closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
@@ -1662,8 +1720,9 @@ export default function MdEditor() {
     });
   }, [html, isLoading]);
 
-  // Load shared content from URL on mount
+  // Load shared content from URL — wait for auth to resolve first
   useEffect(() => {
+    if (authLoading) return; // Wait until auth state is known
     (async () => {
       // Check hash-based sharing first
       const shared = await extractFromUrl();
@@ -1676,41 +1735,70 @@ export default function MdEditor() {
         return;
       }
 
-      // Check ?from= parameter (editing a shared doc)
+      // Check ?from= or ?doc= parameter
       const params = new URLSearchParams(window.location.search);
-      const fromId = params.get("from");
+      const fromId = params.get("from") || params.get("doc");
       if (fromId) {
         try {
-          // Send user ID if logged in for ownership check
           const headers: Record<string, string> = {};
           if (user?.id) headers["x-user-id"] = user.id;
+          if (anonymousId) headers["x-anonymous-id"] = anonymousId;
+          // Check for password from viewer (stored in sessionStorage)
+          const savedPw = sessionStorage.getItem(`mdfy-pw-${fromId}`);
+          if (savedPw) {
+            headers["x-document-password"] = savedPw;
+            sessionStorage.removeItem(`mdfy-pw-${fromId}`); // One-time use
+          }
           const res = await fetch(`/api/docs/${fromId}`, { headers });
           if (res.ok) {
             const doc = await res.json();
-            setMarkdown(doc.markdown);
+            setMarkdownRaw(doc.markdown); // Use raw setter to avoid triggering auto-save during load
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
-            setIsSharedDoc(true);
             setDocEditMode(doc.editMode || "token");
 
             const token = getEditToken(fromId);
             const ownerByToken = !!token;
-            const ownerByAccount = !!doc.isOwner; // server checked user_id match
+            const ownerByAccount = !!doc.isOwner;
             const isPublicDoc = doc.editMode === "public";
 
+            // Determine permission
+            let perm: "mine" | "editable" | "readonly" = "readonly";
             if (ownerByToken || ownerByAccount) {
+              perm = "mine";
               setIsOwner(true);
-              // If owner by account but no local token, save the edit token won't work
-              // but they can still edit via userId in PATCH
+              setIsSharedDoc(false);
               if (!isMobile) setViewMode("split");
             } else if (isPublicDoc) {
-              // Public doc: anyone can edit
+              perm = "editable";
+              setIsSharedDoc(true);
               if (!isMobile) setViewMode("split");
             } else {
-              // Read-only: preview only, mark tab as shared
-              setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, shared: true, title: doc.title || "Shared Document", markdown: doc.markdown } : t));
+              perm = "readonly";
+              setIsSharedDoc(true);
               setViewMode("preview");
             }
+
+            // Update tab with cloudId and permission
+            setTabs(prev => prev.map(t => t.id === activeTabId ? {
+              ...t,
+              cloudId: fromId,
+              editToken: token || undefined,
+              title: doc.title || "Shared Document",
+              markdown: doc.markdown,
+              permission: perm,
+              shared: perm !== "mine",
+            } : t));
+
+            // Record visit (fire-and-forget)
+            if (user?.id) {
+              fetch("/api/user/visit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-user-id": user.id },
+                body: JSON.stringify({ documentId: fromId }),
+              }).catch(() => {});
+            }
+
             await doRender(doc.markdown);
             return;
           }
@@ -1722,7 +1810,137 @@ export default function MdEditor() {
       await doRender(markdown);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading]);
+
+  // Migrate anonymous documents to user account on sign-in (only on actual sign-in transition)
+  const prevUserRef = useRef<string | undefined>(undefined); // undefined = not initialized
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth to resolve
+
+    const prevId = prevUserRef.current;
+    const currentId = user?.id;
+
+    // Only migrate on actual sign-in transition: was anonymous → now logged in
+    // Read anonymousId directly from localStorage because the reactive `anonymousId` is already "" when user signs in
+    const savedAnonId = typeof window !== "undefined" ? localStorage.getItem("mdfy-anon-id") || "" : "";
+    if (currentId && prevId === "" && savedAnonId) {
+      fetch("/api/user/migrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-user-id": currentId },
+        body: JSON.stringify({ anonymousId: savedAnonId }),
+      }).then(res => res.json()).then(data => {
+        if (data.migrated > 0) {
+          clearAnonymousId();
+          setTabs(prev => prev.map(t => t.cloudId ? { ...t, permission: "mine" } : t));
+        }
+      }).catch(() => {});
+    }
+
+    // Track: "" means anonymous, user.id means logged in, undefined means not yet initialized
+    prevUserRef.current = currentId || "";
+  }, [user?.id, authLoading, anonymousId]);
+
+  // Auto-create cloud IDs for tabs that don't have one (one-time migration, after auth resolves)
+  const migrationDoneRef = useRef(false);
+  useEffect(() => {
+    if (authLoading || migrationDoneRef.current) return;
+    migrationDoneRef.current = true;
+
+    const tabsToMigrate = tabs.filter(t => !t.cloudId && !t.readonly && !t.deleted && t.markdown.length > 5);
+    if (tabsToMigrate.length === 0) return;
+
+    const uid = user?.id;
+    const anonId = uid ? undefined : ensureAnonymousId();
+
+    (async () => {
+      for (const tab of tabsToMigrate.slice(0, 5)) {
+        const result = await autoSave.createDocument({
+          markdown: tab.markdown,
+          title: tab.title,
+          userId: uid,
+          anonymousId: anonId,
+        });
+        if (result) {
+          setTabs(prev => prev.map(t => t.id === tab.id
+            ? { ...t, cloudId: result.id, editToken: result.editToken, isDraft: true, permission: "mine" }
+            : t
+          ));
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading]);
+
+  // Rehydrate cloud tabs that have empty markdown (e.g., after localStorage quota fallback)
+  useEffect(() => {
+    if (authLoading) return;
+    const emptyCloudTabs = tabs.filter(t => t.cloudId && !t.markdown && !t.readonly && !t.deleted);
+    if (emptyCloudTabs.length === 0) return;
+
+    (async () => {
+      for (const tab of emptyCloudTabs) {
+        try {
+          const headers: Record<string, string> = {};
+          if (user?.id) headers["x-user-id"] = user.id;
+          if (anonymousId) headers["x-anonymous-id"] = anonymousId;
+          const res = await fetch(`/api/docs/${tab.cloudId}`, { headers });
+          if (res.ok) {
+            const doc = await res.json();
+            if (doc.markdown) {
+              setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, markdown: doc.markdown, title: doc.title || t.title } : t));
+              // If this is the active tab, update the editor too
+              if (tab.id === activeTabIdRef.current) {
+                setMarkdownRaw(doc.markdown);
+                doRender(doc.markdown);
+              }
+            }
+          }
+        } catch { /* silent — localStorage still has the tab metadata */ }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading]);
+
+  // Flush pending auto-save before page unload (refresh, close, navigate)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+      if (!currentTab?.cloudId || currentTab.readonly || currentTab.deleted) return;
+
+      // Use sendBeacon for reliable delivery during unload
+      const payload = JSON.stringify({
+        action: "auto-save",
+        markdown: markdownRef.current,
+        title: currentTab.title,
+        userId: user?.id,
+        anonymousId: (!user?.id) ? getAnonymousId() : undefined,
+        editToken: currentTab.editToken,
+      });
+      navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([payload], { type: "application/json" }));
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [tabs, user?.id]);
+
+  // Fetch recently visited documents for logged-in users (once on auth ready)
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.id) {
+      setRecentDocs([]); // Clear on sign-out
+      return;
+    }
+    fetch("/api/user/recent", {
+      headers: { "x-user-id": user.id },
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.recent) {
+          setRecentDocs(data.recent);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id, authLoading]);
 
   // Preview: click to scroll to source + double-click to inline edit
   // Ref for latest markdown (avoids stale closures in preview event handlers)
@@ -2440,7 +2658,7 @@ export default function MdEditor() {
     try {
       const data = await fetchVersion(docId, versionId);
       if (data.version?.markdown) {
-        await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { changeSummary: `Restored to version ${data.version.version_number}` });
+        await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { userId: user?.id, anonymousId: !user?.id ? getAnonymousId() : undefined, changeSummary: `Restored to version ${data.version.version_number}` });
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
         if (data.version.title) setTitle(data.version.title);
@@ -2480,17 +2698,18 @@ export default function MdEditor() {
         setDocId(newDocId);
         setIsOwner(true);
         await copyToClipboard(url);
-        window.history.replaceState(null, "", `/${newDocId}`);
+        window.history.replaceState(null, "", `/?doc=${newDocId}`);
       } else {
         try {
-          // Not logged in: short URL with 7-day expiry, no user_id
-          const { url, editToken } = await createShortUrl(markdown, title, { expiresIn: 7 * 24 });
+          // Not logged in: short URL with anonymousId
+          const anonId = ensureAnonymousId();
+          const { url, editToken } = await createShortUrl(markdown, title, { anonymousId: anonId });
           const newDocId = url.split("/").pop()!;
           saveEditToken(newDocId, editToken);
           setDocId(newDocId);
           setIsOwner(true);
           await copyToClipboard(url);
-          window.history.replaceState(null, "", `/${newDocId}`);
+          window.history.replaceState(null, "", `/?doc=${newDocId}`);
         } catch {
           // Fallback to hash-based sharing
           const url = await createShareUrl(markdown);
@@ -2632,6 +2851,7 @@ ${html}
     try {
       await updateDocument(docId, token || "", markdown, title, {
         userId: user?.id,
+        anonymousId: !user?.id ? getAnonymousId() : undefined,
         changeSummary: undefined,
       });
       setUpdateState("done");
@@ -2959,6 +3179,13 @@ ${html}
               {title}
             </button>
           )}
+          {/* Save status indicator — compact */}
+          {autoSave.isSaving && (
+            <span className="text-[10px] font-mono shrink-0 hidden sm:inline" style={{ color: "var(--text-faint)" }}>Saving...</span>
+          )}
+          {autoSave.error && !autoSave.isSaving && (
+            <span className="text-[10px] font-mono shrink-0 hidden sm:inline" style={{ color: "#ef4444" }}>{autoSave.error}</span>
+          )}
           {isSharedDoc && (
             <span
               className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0"
@@ -3262,7 +3489,7 @@ ${html}
                             >
                               <span>Permissions</span>
                               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                                {docEditMode === "owner" ? "Only me" : docEditMode === "public" ? "Public" : "With link"}
+                                {(docEditMode === "owner" || docEditMode === "account") ? "Only me" : docEditMode === "public" ? "Public" : "With link"}
                               </span>
                             </button>
                             {showDocEditModeMenu && (
@@ -3543,7 +3770,12 @@ ${html}
                   onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                 >
-                  {tab.shared ? (
+                  {/* Permission badge: 📄 mine / 🔗 editable / 👁 readonly */}
+                  {tab.permission === "readonly" ? (
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                      <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                    </svg>
+                  ) : tab.permission === "editable" ? (
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
                     </svg>
@@ -3638,7 +3870,11 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.shared ? (
+                          {tab.permission === "readonly" ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                              <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                            </svg>
+                          ) : tab.permission === "editable" ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
                               <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
                             </svg>
@@ -3680,55 +3916,7 @@ ${html}
               </div>
             )}
 
-            {/* Cloud Documents section — folder-like structure */}
-            {isAuthenticated && (
-              <div className="px-2 mt-1">
-                <div
-                  className="flex items-center gap-1.5 pl-0 pr-2.5 py-2 rounded-md cursor-pointer text-xs transition-colors group"
-                  style={{ color: "var(--text-secondary)" }}
-                  onClick={async () => {
-                    setShowCloudDocs(!showCloudDocs);
-                    if (!showCloudDocs && user) {
-                      try {
-                        const res = await fetch("/api/user/documents", { headers: { "x-user-id": user.id } });
-                        if (res.ok) { const { documents } = await res.json(); setCloudDocs(documents || []); }
-                      } catch { /* ignore */ }
-                    }
-                  }}
-                >
-                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
-                    style={{ transform: showCloudDocs ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
-                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                  </svg>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill={showCloudDocs ? "none" : "var(--accent)"} stroke="var(--accent)" strokeWidth="1.8" className="shrink-0" style={{ opacity: showCloudDocs ? 0.7 : 1 }} strokeLinejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
-                  <span className="truncate flex-1">Cloud</span>
-                  <span className="text-[9px] opacity-50">{cloudDocs.length}</span>
-                </div>
-                {showCloudDocs && (
-                  <div className="pl-4 space-y-0.5 mt-0.5">
-                    {cloudDocs.length === 0 ? (
-                      <div className="px-2.5 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
-                        Shared documents will appear here
-                      </div>
-                    ) : cloudDocs.map(doc => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
-                        style={{ color: "var(--text-muted)" }}
-                        onClick={() => { window.location.href = `/?from=${doc.id}`; }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0">
-                          <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                          <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                        </svg>
-                        <span className="truncate flex-1">{doc.title || "Untitled"}</span>
-                        <span className="text-[9px] opacity-40">{doc.view_count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Cloud Documents section removed — all docs auto-save to cloud now */}
 
             {/* Trash section — same visual structure as folders */}
             {tabs.some(t => t.deleted) && (
@@ -3779,6 +3967,82 @@ ${html}
               </div>
             )}
           </div>
+
+          {/* ── Recently Visited — separate section below My Documents ── */}
+          {(() => {
+            const openCloudIds = new Set(tabs.filter(t => !t.deleted && t.cloudId).map(t => t.cloudId));
+            const filteredRecent = recentDocs.filter(d => !openCloudIds.has(d.id));
+            if (filteredRecent.length === 0) return null;
+            return (
+              <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2 cursor-pointer text-[10px] font-mono tracking-wider"
+                  style={{ color: "var(--text-faint)", textTransform: "uppercase" }}
+                  onClick={() => setShowRecent(!showRecent)}
+                >
+                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}>
+                    <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
+                  </svg>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v2.5l1.5 1"/>
+                  </svg>
+                  <span className="flex-1">Recently Visited</span>
+                  <span>{filteredRecent.length}</span>
+                </div>
+                {showRecent && (
+                  <div className="px-2 pb-2 space-y-0.5">
+                    {filteredRecent.slice(0, 15).map((doc) => (
+                      <div
+                        key={doc.id}
+                        role="button"
+                        tabIndex={0}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
+                        style={{ color: "var(--text-muted)" }}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const headers: Record<string, string> = {};
+                            if (user?.id) headers["x-user-id"] = user.id;
+                            const res = await fetch(`/api/docs/${doc.id}`, { headers });
+                            if (!res.ok) return;
+                            const d = await res.json();
+                            setMarkdownRaw(d.markdown);
+                            if (d.title) setTitle(d.title);
+                            setDocId(doc.id);
+                            setDocEditMode(d.editMode || "token");
+                            const perm = doc.isOwner ? "mine" : doc.editMode === "public" ? "editable" : "readonly";
+                            setIsOwner(doc.isOwner);
+                            setIsSharedDoc(perm !== "mine");
+                            setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, cloudId: doc.id, title: d.title || "Untitled", markdown: d.markdown, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" } : t));
+                            doRender(d.markdown);
+                            window.history.replaceState(null, "", `/?doc=${doc.id}`);
+                          } catch { window.location.href = `/?from=${doc.id}`; }
+                        }}
+                      >
+                        {doc.isOwner ? (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0">
+                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                          </svg>
+                        ) : doc.editMode === "public" ? (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 6.9L10.2 4.1M5.8 9.1l4.4 2.8"/>
+                          </svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                            <circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="2"/><path d="M2 8h3M11 8h3"/>
+                          </svg>
+                        )}
+                        <span className="truncate flex-1">{doc.title || "Untitled"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Folder + Sort actions — above account */}
           <div className="shrink-0 px-3 py-1.5 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border-dim)" }}>
             <button
@@ -3848,23 +4112,7 @@ ${html}
                           {(profile?.plan || "free").toUpperCase()}
                         </div>
                       </div>
-                      <button
-                        onClick={async () => {
-                          setShowAuthMenu(false);
-                          setShowCloudDocs(true);
-                          if (user) {
-                            try {
-                              const res = await fetch("/api/user/documents", { headers: { "x-user-id": user.id } });
-                              if (res.ok) { const { documents } = await res.json(); setCloudDocs(documents || []); }
-                            } catch { /* ignore */ }
-                          }
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 5h6M5 8h4M5 11h5" strokeLinecap="round"/></svg>
-                        My Published Docs
-                      </button>
+                      {/* My Published Docs button removed — all docs visible in sidebar */}
                       <button
                         onClick={() => { signOut(); setShowAuthMenu(false); }}
                         className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
