@@ -1755,6 +1755,7 @@ export default function MdEditor() {
         try {
           const headers: Record<string, string> = {};
           if (user?.id) headers["x-user-id"] = user.id;
+          if (user?.email) headers["x-user-email"] = user.email;
           if (anonymousId) headers["x-anonymous-id"] = anonymousId;
           // Check for password from viewer (stored in sessionStorage)
           const savedPw = sessionStorage.getItem(`mdfy-pw-${fromId}`);
@@ -1897,6 +1898,7 @@ export default function MdEditor() {
         try {
           const headers: Record<string, string> = {};
           if (user?.id) headers["x-user-id"] = user.id;
+          if (user?.email) headers["x-user-email"] = user.email;
           if (anonymousId) headers["x-anonymous-id"] = anonymousId;
           const res = await fetch(`/api/docs/${tab.cloudId}`, { headers });
           if (res.ok) {
@@ -2776,6 +2778,14 @@ export default function MdEditor() {
           });
           setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
         } catch { /* ignore */ }
+      }
+      // Sync title to server before opening share modal
+      if (cid && title) {
+        fetch(`/api/docs/${cid}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "auto-save", title, userId: user.id }),
+        }).catch(() => {});
       }
       setShowShareModal(true);
       return;
