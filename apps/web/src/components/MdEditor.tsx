@@ -13,6 +13,7 @@ import MdCanvas from "@/components/MdCanvas";
 import MathEditor from "@/components/MathEditor";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
+import ShareModal from "@/components/ShareModal";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import { useAuth } from "@/lib/useAuth";
@@ -938,6 +939,8 @@ export default function MdEditor() {
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
   const [showRecent, setShowRecent] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
   const [mdfyLoading, setMdfyLoading] = useState(false);
   const [showFlavorMenu, setShowFlavorMenu] = useState(false);
@@ -1043,6 +1046,8 @@ export default function MdEditor() {
     // Auto-save to server if document has a cloudId
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
+      // Create session snapshot on first edit
+      maybeCreateSessionSnapshot(currentTab.cloudId);
       autoSave.scheduleSave({
         cloudId: currentTab.cloudId,
         markdown: val,
@@ -1113,7 +1118,7 @@ export default function MdEditor() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [restoringVersion, setRestoringVersion] = useState<number | null>(null);
   // Permission / edit mode state
-  const [editMode, setEditMode] = useState<"owner" | "token" | "public">("token");
+  const [editMode, setEditMode] = useState<"owner" | "account" | "token" | "public">("owner");
   const [showEditModeMenu, setShowEditModeMenu] = useState(false);
   const [initialMath, setInitialMath] = useState<string | undefined>();
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
@@ -1756,6 +1761,7 @@ export default function MdEditor() {
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
             setDocEditMode(doc.editMode || "token");
+            if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
 
             const token = getEditToken(fromId);
             const ownerByToken = !!token;
@@ -1908,6 +1914,7 @@ export default function MdEditor() {
       if (!currentTab?.cloudId || currentTab.readonly || currentTab.deleted) return;
 
       // Use sendBeacon for reliable delivery during unload
+      // 1. Save current content
       const payload = JSON.stringify({
         action: "auto-save",
         markdown: markdownRef.current,
@@ -1917,10 +1924,47 @@ export default function MdEditor() {
         editToken: currentTab.editToken,
       });
       navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([payload], { type: "application/json" }));
+
+      // 2. Create session-end snapshot (version history)
+      if (sessionSnapshotCreated.current.has(currentTab.cloudId)) {
+        const snapshotPayload = JSON.stringify({
+          action: "snapshot",
+          userId: user?.id,
+          anonymousId: (!user?.id) ? getAnonymousId() : undefined,
+          editToken: currentTab.editToken,
+          changeSummary: "Session end",
+        });
+        navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([snapshotPayload], { type: "application/json" }));
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [tabs, user?.id]);
+
+  // Session-based version snapshots:
+  // - Create a snapshot when editing session begins (first edit on a doc with cloudId)
+  // - Create a snapshot on beforeunload (session end)
+  const sessionSnapshotCreated = useRef<Set<string>>(new Set());
+
+  // Trigger snapshot on first edit of a document in this session
+  const maybeCreateSessionSnapshot = useCallback((cloudId: string) => {
+    if (sessionSnapshotCreated.current.has(cloudId)) return;
+    sessionSnapshotCreated.current.add(cloudId);
+
+    // Fire-and-forget: create snapshot of current server content
+    const currentTab = tabs.find(t => t.cloudId === cloudId);
+    fetch(`/api/docs/${cloudId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "snapshot",
+        userId: user?.id,
+        anonymousId: (!user?.id) ? getAnonymousId() : undefined,
+        editToken: currentTab?.editToken,
+        changeSummary: "Session start",
+      }),
+    }).catch(() => {});
   }, [tabs, user?.id]);
 
   // Fetch recently visited documents for logged-in users (once on auth ready)
@@ -2671,59 +2715,72 @@ export default function MdEditor() {
     setRestoringVersion(null);
   }, [docId, doRender, loadVersions]);
 
-  // Share — try short URL first, fallback to hash-based
+  // Share — open modal for owners, quick copy for non-owners
   const handleShare = useCallback(async () => {
     if (!markdown.trim()) return;
+
+    // If doc already has a cloudId and user is owner, open share modal
+    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+    const cid = currentTab?.cloudId || docId;
+
+    if (cid && isOwner && isAuthenticated && user) {
+      // Publish the draft first if needed
+      if (currentTab?.isDraft) {
+        try {
+          await fetch(`/api/docs/${cid}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "publish", userId: user.id }),
+          });
+          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
+        } catch { /* ignore */ }
+      }
+      setShowShareModal(true);
+      return;
+    }
+
+    // Not yet shared — create the document first
     setShareState("sharing");
     try {
-      // If already shared, just copy the existing URL
-      if (docId) {
-        const url = `${window.location.origin}/${docId}`;
-        await copyToClipboard(url);
-        setShareState("copied");
-        setTimeout(() => setShareState("idle"), 3000);
-        return;
-      }
-
       if (isAuthenticated && user) {
-        // Logged in: short URL with user_id, Free tier gets 7-day expiry
-        const isPro = profile?.plan === "pro";
         const { url, editToken } = await createShortUrl(markdown, title, {
           userId: user.id,
-          expiresIn: isPro ? undefined : 7 * 24, // Free: 7 days
           editMode,
         });
         const newDocId = url.split("/").pop()!;
         saveEditToken(newDocId, editToken);
         setDocId(newDocId);
         setIsOwner(true);
-        await copyToClipboard(url);
+        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false } : t));
         window.history.replaceState(null, "", `/?doc=${newDocId}`);
+        // Open share modal immediately after creation
+        setShareState("idle");
+        setShowShareModal(true);
       } else {
         try {
-          // Not logged in: short URL with anonymousId
           const anonId = ensureAnonymousId();
           const { url, editToken } = await createShortUrl(markdown, title, { anonymousId: anonId });
           const newDocId = url.split("/").pop()!;
           saveEditToken(newDocId, editToken);
           setDocId(newDocId);
           setIsOwner(true);
+          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false } : t));
           await copyToClipboard(url);
           window.history.replaceState(null, "", `/?doc=${newDocId}`);
+          setShareState("copied");
+          setTimeout(() => setShareState("idle"), 3000);
         } catch {
-          // Fallback to hash-based sharing
           const url = await createShareUrl(markdown);
           await copyToClipboard(url);
-          window.history.replaceState(null, "", url.split(window.location.origin)[1]);
+          setShareState("copied");
+          setTimeout(() => setShareState("idle"), 3000);
         }
       }
-      setShareState("copied");
-      setTimeout(() => setShareState("idle"), 3000);
     } catch {
       setShareState("error");
       setTimeout(() => setShareState("idle"), 3000);
     }
-  }, [markdown, title, docId, isAuthenticated, user, profile, editMode]);
+  }, [markdown, title, docId, tabs, isOwner, isAuthenticated, user, editMode]);
 
   // Copy HTML
   const handleCopyHtml = useCallback(async () => {
@@ -3257,28 +3314,6 @@ ${html}
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            {canEdit && docId ? (
-              <div className="relative group">
-                <button
-                  onClick={handleUpdate}
-                  disabled={updateState === "updating"}
-                  className="px-2 sm:px-2.5 h-6 rounded-md font-mono transition-colors text-[11px] sm:text-xs flex items-center gap-1"
-                  style={{
-                    background: updateState === "done" ? "rgba(34, 197, 94, 0.2)" : "rgba(59, 130, 246, 0.15)",
-                    color: updateState === "done" ? "#4ade80" : "#60a5fa",
-                  }}
-                >
-                  {updateState === "updating" ? (
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
-                  ) : updateState === "done" ? "Updated!" : "Update"}
-                </button>
-                <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                  <p style={{ color: "#60a5fa", fontWeight: 600, marginBottom: 4 }}>Update</p>
-                  <p>Push your latest changes to the same shared URL. Anyone with the link will see the updated version.</p>
-                </div>
-              </div>
-            ) : null}
             {/* Permission selector — visible when authenticated (before share or as owner) */}
             {isAuthenticated && (!docId || isOwner) && (
               <div className="relative">
@@ -3294,7 +3329,7 @@ ${html}
                   ) : (
                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg>
                   )}
-                  <span className="hidden sm:inline">{editMode === "owner" ? "Only me" : editMode === "public" ? "Public" : "With link"}</span>
+                  <span className="hidden sm:inline">{(editMode === "owner" || editMode === "account" || editMode === "token") ? "Only me" : "Anyone with link"}</span>
                   <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
                 </button>
                 {showEditModeMenu && (
@@ -3305,8 +3340,7 @@ ${html}
                     <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Who can edit</div>
                     {([
                       { value: "owner" as const, label: "Only me", desc: "Only you can edit this document", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
-                      { value: "token" as const, label: "Anyone with link", desc: "Anyone with the edit token can edit", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg> },
-                      { value: "public" as const, label: "Public", desc: "Anyone can edit without a token", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12"/></svg> },
+                      { value: "public" as const, label: "Anyone with link", desc: "Anyone who opens this link can edit", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M10 13l3-3M6 3a3 3 0 110 6 3 3 0 010-6z"/><path d="M2 13c0-2.2 1.8-4 4-4"/></svg> },
                     ]).map((opt) => (
                       <button
                         key={opt.value}
@@ -3489,15 +3523,14 @@ ${html}
                             >
                               <span>Permissions</span>
                               <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                                {(docEditMode === "owner" || docEditMode === "account") ? "Only me" : docEditMode === "public" ? "Public" : "With link"}
+                                {(docEditMode === "owner" || docEditMode === "account" || docEditMode === "token") ? "Only me" : "Anyone with link"}
                               </span>
                             </button>
                             {showDocEditModeMenu && (
                               <div className="mt-1 mb-1 rounded-md overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
                                 {([
                                   { value: "owner" as const, label: "Only me", desc: "Only you can edit" },
-                                  { value: "token" as const, label: "With link", desc: "Anyone with the edit link" },
-                                  { value: "public" as const, label: "Public", desc: "Anyone can edit" },
+                                  { value: "public" as const, label: "Anyone with link", desc: "Anyone who opens this link can edit" },
                                 ] as const).map((opt) => (
                                   <button
                                     key={opt.value}
@@ -4007,16 +4040,20 @@ ${html}
                             const res = await fetch(`/api/docs/${doc.id}`, { headers });
                             if (!res.ok) return;
                             const d = await res.json();
-                            setMarkdownRaw(d.markdown);
-                            if (d.title) setTitle(d.title);
+                            const perm = doc.isOwner ? "mine" : doc.editMode === "public" ? "editable" : "readonly";
+                            // Open as a new tab (don't overwrite current tab)
+                            const newId = `tab-${Date.now()}`;
+                            const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" };
+                            setTabs(prev => {
+                              const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
+                              return [...saved, newTab];
+                            });
+                            loadTab(newTab);
                             setDocId(doc.id);
                             setDocEditMode(d.editMode || "token");
-                            const perm = doc.isOwner ? "mine" : doc.editMode === "public" ? "editable" : "readonly";
                             setIsOwner(doc.isOwner);
                             setIsSharedDoc(perm !== "mine");
-                            setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, cloudId: doc.id, title: d.title || "Untitled", markdown: d.markdown, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" } : t));
-                            doRender(d.markdown);
-                            window.history.replaceState(null, "", `/?doc=${doc.id}`);
+                            setTitle(d.title || "Untitled");
                           } catch { window.location.href = `/?from=${doc.id}`; }
                         }}
                       >
@@ -5243,6 +5280,21 @@ ${html}
             )}
           </div>
         </>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (docId || tabs.find(t => t.id === activeTabId)?.cloudId) && user && (
+        <ShareModal
+          docId={(docId || tabs.find(t => t.id === activeTabId)?.cloudId)!}
+          title={title}
+          userId={user.id}
+          ownerEmail={user.email || ""}
+          currentEditMode={docEditMode}
+          initialAllowedEmails={allowedEmails}
+          onClose={() => setShowShareModal(false)}
+          onEditModeChange={(mode) => { setDocEditMode(mode); setEditMode(mode); }}
+          onAllowedEmailsChange={setAllowedEmailsState}
+        />
       )}
 
       {/* QR Code Modal */}

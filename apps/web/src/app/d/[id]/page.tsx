@@ -11,7 +11,7 @@ async function getDocument(id: string) {
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, password_hash, expires_at, user_id, is_draft")
+    .select("id, markdown, title, created_at, password_hash, expires_at, user_id, is_draft, edit_mode, allowed_emails")
     .eq("id", id)
     .single();
 
@@ -81,15 +81,18 @@ export default async function DocPage({ params }: Props) {
 
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
   const isProtected = !!doc.password_hash;
+  const isRestricted = (doc.allowed_emails || []).length > 0;
 
   return (
     <DocumentViewer
       id={doc.id}
-      markdown={isExpired ? "" : (isProtected ? "" : doc.markdown)}
+      markdown={isExpired ? "" : (isProtected ? "" : (isRestricted ? "" : doc.markdown))}
       title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
       isProtected={isProtected}
       isExpired={!!isExpired}
+      isRestricted={isRestricted}
       showBadge={doc.ownerPlan !== "pro"}
+      editMode={doc.edit_mode || "token"}
     />
   );
 }

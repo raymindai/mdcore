@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails")
     .eq("id", id)
     .single();
 
@@ -35,6 +35,18 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
     if (!isDraftOwner) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  }
+
+  // Email-restricted access: if allowed_emails is set, only those emails (+ owner) can access
+  const allowedEmails: string[] = data.allowed_emails || [];
+  if (allowedEmails.length > 0) {
+    const requesterId = _req.headers.get("x-user-id");
+    const requesterEmail = _req.headers.get("x-user-email") || "";
+    const isOwner = !!(requesterId && data.user_id && requesterId === data.user_id);
+    const isAllowed = allowedEmails.some(e => e.toLowerCase() === requesterEmail.toLowerCase());
+    if (!isOwner && !isAllowed) {
+      return NextResponse.json({ error: "Access restricted", restricted: true, message: "This document is restricted to specific people." }, { status: 403 });
     }
   }
 
@@ -69,13 +81,15 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   // Don't expose sensitive fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, ...safeData } = data;
+  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, ...safeData } = data;
 
   return NextResponse.json({
     ...safeData,
     hasPassword,
     editMode: data.edit_mode || "token",
     isOwner: isOwnedByRequester,
+    // Owner gets to see who has access
+    ...(isOwnedByRequester ? { allowedEmails: data.allowed_emails || [] } : {}),
   });
 }
 
@@ -92,6 +106,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     markdown?: string;
     title?: string;
     userId?: string;
+    allowedEmails?: string[];
     anonymousId?: string;
     changeSummary?: string;
     editMode?: string;
@@ -140,6 +155,67 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const { error } = await supabase.from("documents").update({ edit_mode: newEditMode }).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to change edit mode" }, { status: 500 });
     return NextResponse.json({ ok: true, editMode: newEditMode });
+  }
+
+  // ─── Action: set-allowed-emails ───
+  if (body.action === "set-allowed-emails") {
+    const { userId, allowedEmails } = body;
+    if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+    if (!Array.isArray(allowedEmails)) return NextResponse.json({ error: "allowedEmails must be an array" }, { status: 400 });
+    const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!doc.user_id || doc.user_id !== userId) {
+      return NextResponse.json({ error: "Only the owner can manage access" }, { status: 403 });
+    }
+    // Normalize emails to lowercase, remove empty
+    const cleaned = allowedEmails.map(e => e.trim().toLowerCase()).filter(e => e.includes("@"));
+    const { error } = await supabase.from("documents").update({ allowed_emails: cleaned }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    return NextResponse.json({ ok: true, allowedEmails: cleaned });
+  }
+
+  // ─── Action: snapshot (create version history entry without updating content) ───
+  if (body.action === "snapshot") {
+    const { userId, anonymousId, editToken, changeSummary } = body;
+
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("edit_token, markdown, title, user_id, anonymous_id")
+      .eq("id", id)
+      .single();
+
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Permission: owner or token holder
+    const isOwner =
+      !!(userId && doc.user_id && userId === doc.user_id) ||
+      !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
+    const hasToken = !!(editToken && doc.edit_token === editToken);
+    if (!isOwner && !hasToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Create version snapshot of current content
+    const { data: latestVersion } = await supabase
+      .from("document_versions")
+      .select("version_number")
+      .eq("document_id", id)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .single();
+
+    const nextVersion = (latestVersion?.version_number || 0) + 1;
+
+    await supabase.from("document_versions").insert({
+      document_id: id,
+      markdown: doc.markdown,
+      title: doc.title,
+      version_number: nextVersion,
+      created_by: userId || null,
+      change_summary: changeSummary || "Session snapshot",
+    });
+
+    return NextResponse.json({ ok: true, version: nextVersion });
   }
 
   // ─── Action: auto-save (no version history) ───

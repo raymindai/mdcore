@@ -13,14 +13,18 @@ export default function DocumentViewer({
   title: initialTitle,
   isProtected = false,
   isExpired = false,
+  isRestricted = false,
   showBadge = true,
+  editMode = "token",
 }: {
   id: string;
   markdown: string;
   title: string | null;
   isProtected?: boolean;
   isExpired?: boolean;
+  isRestricted?: boolean;
   showBadge?: boolean;
+  editMode?: string;
 }) {
   const [html, setHtml] = useState("");
   const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -197,6 +201,14 @@ export default function DocumentViewer({
               {title}
             </span>
           )}
+          {editMode === "public" && (
+            <span
+              className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 hidden sm:inline"
+              style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+            >
+              Editable
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -248,26 +260,43 @@ export default function DocumentViewer({
           >
             PDF
           </button>
-          {/* Edit */}
+          {/* Edit — label depends on edit mode */}
           <Link
             href={`/?from=${id}`}
             className={btnClass}
             style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
             onClick={() => {
-              // Pass password to editor via sessionStorage (not URL for security)
               if (passwordInput) {
                 sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
               }
             }}
           >
-            Edit
+            {editMode === "public" ? "Edit" : "Open in Editor"}
           </Link>
         </div>
       </header>
 
       {/* Content */}
       <div className="flex-1 overflow-auto" ref={previewRef}>
-        {isExpired ? (
+        {isRestricted && !unlocked ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6" style={{ maxWidth: 440, margin: "0 auto" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
+              <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/>
+            </svg>
+            <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>You need access</p>
+            <p className="text-sm text-center" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
+              This document is shared with specific people.
+              Sign in with an authorized email, or ask the owner for access.
+            </p>
+            <Link
+              href="/"
+              className="mt-2 px-5 py-2 rounded-lg text-sm font-medium"
+              style={{ background: "var(--accent)", color: "#000" }}
+            >
+              Sign in
+            </Link>
+          </div>
+        ) : isExpired ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
               <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>

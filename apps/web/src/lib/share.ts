@@ -201,6 +201,27 @@ export async function deleteDocument(
   if (!res.ok) throw new Error("Failed to delete document");
 }
 
+// ─── Access management ───
+
+export async function setAllowedEmails(
+  id: string,
+  userId: string,
+  emails: string[]
+): Promise<string[]> {
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "set-allowed-emails",
+      userId,
+      allowedEmails: emails,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to update access");
+  const data = await res.json();
+  return data.allowedEmails || [];
+}
+
 // ─── Edit token management (localStorage) ───
 
 const TOKEN_STORAGE_KEY = "mdfy-edit-tokens";
