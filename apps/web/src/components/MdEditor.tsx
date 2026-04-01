@@ -1112,8 +1112,9 @@ export default function MdEditor() {
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
   // Can edit: not shared, or owner, or public doc
-  // view mode: anyone can view, only owner edits. public mode: anyone can edit.
-  const canEdit = !isSharedDoc || isOwner || docEditMode === "public";
+  const [isEditor, setIsEditor] = useState(false);
+  // view/owner mode: only owner + allowed editors. public mode: anyone can edit.
+  const canEdit = !isSharedDoc || isOwner || isEditor || docEditMode === "public";
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -1319,6 +1320,10 @@ export default function MdEditor() {
     undoStack.current = [tab.markdown];
     redoStack.current = [];
     doRenderRef.current(tab.markdown);
+    // Update permission state based on tab
+    setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
+    setIsOwner(tab.permission === "mine" || !tab.permission);
+    setIsEditor(tab.permission === "editable");
     // Update browser URL to reflect current document
     if (tab.cloudId) {
       window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
@@ -1788,6 +1793,7 @@ export default function MdEditor() {
             } else if (isPublicDoc || doc.isEditor) {
               perm = "editable";
               setIsSharedDoc(true);
+              setIsEditor(!!doc.isEditor);
               if (!isMobile) setViewMode("split");
             } else {
               perm = "readonly";
