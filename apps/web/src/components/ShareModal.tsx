@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { setAllowedEmails, changeEditMode, copyToClipboard } from "@/lib/share";
+import { showToast } from "@/components/Toast";
 
 interface ShareModalProps {
   docId: string;
@@ -53,7 +54,7 @@ export default function ShareModal({
       setEmails(result.allowedEmails);
       setEditors(result.allowedEditors);
       onAllowedEmailsChange(result.allowedEmails);
-    } catch { /* revert on error */ }
+    } catch { showToast("Failed to update access", "error"); }
     setSaving(false);
   }, [docId, userId, onAllowedEmailsChange]);
 
@@ -103,8 +104,9 @@ export default function ShareModal({
     const editMode = mode === "anyone" ? "public" : mode === "anyone-view" ? "view" : "owner";
     try {
       await changeEditMode(docId, userId, editMode);
-      onEditModeChange(editMode as "owner" | "public");
-    } catch { /* ignore */ }
+      onEditModeChange(editMode as "owner" | "view" | "public");
+      showToast(mode === "restricted" ? "Access restricted" : mode === "anyone-view" ? "Anyone can view" : "Anyone can edit", "success");
+    } catch { showToast("Failed to change access", "error"); }
   }, [docId, userId, onEditModeChange]);
 
   const handleCopyLink = useCallback(async () => {

@@ -14,6 +14,7 @@ import MathEditor from "@/components/MathEditor";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import ShareModal from "@/components/ShareModal";
+import ToastContainer, { showToast } from "@/components/Toast";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import { useAuth } from "@/lib/useAuth";
@@ -45,12 +46,12 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 1. **Type or paste** anything — Markdown, plain text, Claude Code output
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
-3. **Edit** inline in the Beautified view, or use Source (MDFIED) for raw Markdown
+3. **Edit** inline in the Preview view, or use Source (SOURCE) for raw Markdown
 4. **Share** with one click — generates a short URL like \`mdfy.cc/abc123\`
 
 ## What You Can Do
 
-- **WYSIWYG editing** — click any text in Beautified view and start typing
+- **WYSIWYG editing** — click any text in Preview view and start typing
 - **AI mdfy** — import a PDF or paste raw text, then let AI structure it as Markdown
 - **Multi-format import** — drag & drop PDF, DOCX, PPTX, XLSX, or 10+ other formats
 - **Export anywhere** — download as MD/HTML/TXT, print PDF, copy for Docs/Email/Slack
@@ -460,7 +461,7 @@ After importing, you'll see **"mdfy this document?"** — click **mdfy it** to l
 
 ## Export — Every Destination
 
-Click the **Export** icon in the Beautified header.
+Click the **Export** icon in the Preview header.
 
 ### Download
 - **Markdown (.md)** — raw source
@@ -481,7 +482,7 @@ const SAMPLE_FEATURES = `# Key Features
 
 ## WYSIWYG Editing
 
-Click anywhere in the **Beautified** view to start editing. Format with the toolbar or keyboard shortcuts.
+Click anywhere in the **Preview** view to start editing. Format with the toolbar or keyboard shortcuts.
 
 > No need to learn Markdown syntax — just type naturally.
 
@@ -495,7 +496,7 @@ mdfy.cc auto-detects your Markdown flavor:
 - **MDX** — Markdown + JSX components
 - **Pandoc** — Citations, footnotes, definition lists
 
-Click the **flavor badge** (e.g. \`GFM ▾\`) in the MDFIED header to convert between flavors.
+Click the **flavor badge** (e.g. \`GFM ▾\`) in the SOURCE header to convert between flavors.
 
 ## CLI Output Support
 
@@ -733,10 +734,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
     return () => document.removeEventListener("selectionchange", update);
   }, []);
 
-  // Detect if focus is in SOURCE MD (CM6) or BEAUTIFIED MD (contentEditable)
+  // Detect if focus is in SOURCE MD (CM6) or PREVIEW MD (contentEditable)
   const isInCM6 = () => !!document.activeElement?.closest(".cm-editor");
 
-  // Smart exec: routes to execCommand (Beautified) or CM6 wrap (Source)
+  // Smart exec: routes to execCommand (Preview) or CM6 wrap (Source)
   const exec = (cmd: string, value?: string) => {
     if (isInCM6()) {
       const mdMap: Record<string, [string, string?]> = {
@@ -2574,7 +2575,7 @@ export default function MdEditor() {
   const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Handle paste in Beautified — convert CLI output or HTML to markdown, then re-render
+  // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
   const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
     // Check for pasted image
     const items = Array.from(e.clipboardData.items);
@@ -2805,7 +2806,7 @@ export default function MdEditor() {
             body: JSON.stringify({ action: "publish", userId: user.id }),
           });
           setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
-        } catch { /* ignore */ }
+        } catch { showToast("Failed to publish document", "error"); }
       }
       // Sync title + fetch sharing info before opening modal
       if (cid) {
@@ -2879,6 +2880,7 @@ export default function MdEditor() {
       }
     } catch {
       setShareState("error");
+      showToast("Failed to share. Check your connection.", "error");
       setTimeout(() => setShareState("idle"), 3000);
     }
   }, [markdown, title, docId, tabs, isOwner, isAuthenticated, user, editMode]);
@@ -3344,6 +3346,9 @@ ${html}
           {autoSave.error && !autoSave.isSaving && (
             <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
           )}
+          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
+            <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
+          )}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
@@ -3363,7 +3368,7 @@ ${html}
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
         >
           {([
-            { mode: "preview" as ViewMode, label: "BEAUTIFIED", icon: (
+            { mode: "preview" as ViewMode, label: "PREVIEW", icon: (
               <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                 <path d="M1 6s3-4.5 7-4.5S15 6 15 6s-3 4.5-7 4.5S1 6 1 6z"/>
                 <circle cx="8" cy="6" r="2"/>
@@ -3375,7 +3380,7 @@ ${html}
                 <line x1="9" y1="1" x2="9" y2="11"/>
               </svg>
             )},
-            { mode: "editor" as ViewMode, label: "MDFIED", icon: (
+            { mode: "editor" as ViewMode, label: "SOURCE", icon: (
               <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
                 <path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5" strokeLinecap="round"/>
               </svg>
@@ -3399,7 +3404,7 @@ ${html}
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
 
-          {/* AI Render moved to BEAUTIFIED MD panel header */}
+          {/* AI Render moved to PREVIEW MD panel header */}
 
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
@@ -3820,7 +3825,7 @@ ${html}
                   Close sidebar
                 </div>
               </div>
-              <span style={{ color: "var(--accent)" }}>MD FILES</span>
+              <span style={{ color: "var(--accent)" }}>DOCUMENTS</span>
             </div>
             <div className="flex items-stretch gap-1">
               <div className="relative group flex">
@@ -4552,7 +4557,7 @@ ${html}
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
-              <span className="shrink-0" style={{ color: "var(--accent)" }}>BEAUTIFIED</span>
+              <span className="shrink-0" style={{ color: "var(--accent)" }}>PREVIEW</span>
               {/* Request to edit — for readonly shared docs */}
               {isSharedDoc && !canEdit && docId && user?.email && (
                 <button
@@ -4769,7 +4774,7 @@ ${html}
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            {/* Formatting toolbar — BEAUTIFIED MD only */}
+            {/* Formatting toolbar — PREVIEW MD only */}
             {showToolbar && canEdit && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
@@ -4980,7 +4985,7 @@ ${html}
               onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                <span className="shrink-0" style={{ color: "var(--accent)" }}>MDFIED</span>
+                <span className="shrink-0" style={{ color: "var(--accent)" }}>SOURCE</span>
                 {/* Flavor badge — click to convert */}
                 <div className="relative">
                   <button
@@ -5627,6 +5632,9 @@ ${html}
           onAllowedEmailsChange={setAllowedEmailsState}
         />
       )}
+
+      {/* Toast notifications */}
+      <ToastContainer />
 
       {/* QR Code Modal */}
       {showQr && docId && (
