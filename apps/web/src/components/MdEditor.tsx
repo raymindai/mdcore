@@ -5223,10 +5223,13 @@ ${html}
                 </div>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-auto">
+            <div
+              className="flex-1 min-h-0"
+              style={narrowSource ? { paddingLeft: "max(0px, calc(50% - 384px))", paddingRight: "max(0px, calc(50% - 384px))" } : undefined}
+            >
               <div
                 ref={editorContainerRef}
-                className={narrowSource ? "max-w-3xl mx-auto h-full" : "h-full"}
+                className="h-full"
               />
             </div>
           </div>
