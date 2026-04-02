@@ -166,13 +166,17 @@ export class PreviewPanel {
       themeClass = themeSetting;
     }
 
+    const cdnBase = "https://cdnjs.cloudflare.com/ajax/libs";
+
     return `<!DOCTYPE html>
 <html lang="en" data-theme="${themeClass}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https: data:; font-src ${webview.cspSource};">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; script-src 'nonce-${nonce}' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src ${webview.cspSource} https: data:; font-src ${webview.cspSource} https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;">
   <link rel="stylesheet" href="${cssUri}">
+  <link rel="stylesheet" href="${cdnBase}/highlight.js/11.11.1/styles/github-dark.min.css">
+  <link rel="stylesheet" href="${cdnBase}/KaTeX/0.16.40/katex.min.css">
   <title>mdfy Preview</title>
 </head>
 <body>
@@ -204,8 +208,44 @@ export class PreviewPanel {
     <span id="sync-status">Ready</span>
   </div>
 
+  <!-- Syntax highlighting -->
+  <script nonce="${nonce}" src="${cdnBase}/highlight.js/11.11.1/highlight.min.js"></script>
+  <!-- KaTeX math rendering -->
+  <script nonce="${nonce}" src="${cdnBase}/KaTeX/0.16.40/katex.min.js"></script>
+  <!-- Mermaid diagrams -->
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@11.13.0/dist/mermaid.min.js"></script>
+
   <script nonce="${nonce}">
     window.__initialMarkdown = ${JSON.stringify(markdown)};
+
+    // Post-process: syntax highlighting
+    document.querySelectorAll('pre code').forEach(function(block) {
+      if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+    });
+
+    // Post-process: KaTeX math
+    document.querySelectorAll('[data-math-style]').forEach(function(el) {
+      if (typeof katex !== 'undefined') {
+        try {
+          katex.render(el.textContent || '', el, {
+            displayMode: el.getAttribute('data-math-style') === 'display',
+            throwOnError: false
+          });
+        } catch(e) {}
+      }
+    });
+
+    // Post-process: Mermaid diagrams
+    if (typeof mermaid !== 'undefined') {
+      mermaid.initialize({ startOnLoad: false, theme: '${themeClass === "dark" ? "dark" : "default"}' });
+      document.querySelectorAll('pre[lang="mermaid"] code, code.language-mermaid').forEach(function(el) {
+        var container = document.createElement('div');
+        container.className = 'mermaid';
+        container.textContent = el.textContent;
+        el.closest('pre').replaceWith(container);
+      });
+      mermaid.run();
+    }
   </script>
   <script nonce="${nonce}" src="${jsUri}"></script>
 </body>
@@ -221,17 +261,18 @@ export class PreviewPanel {
 }
 
 function renderMarkdown(markdown: string): string {
-  // Configure marked for GFM
   marked.setOptions({
     gfm: true,
     breaks: false,
   });
 
   const html = marked.parse(markdown);
-  if (typeof html === "string") {
-    return html;
+  if (typeof html !== "string") {
+    return "";
   }
-  return "";
+
+  // Raw HTML — postprocessing (highlight.js, KaTeX, Mermaid) runs in the webview via CDN scripts
+  return html;
 }
 
 function getNonce(): string {

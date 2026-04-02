@@ -46,6 +46,23 @@
 
           content.innerHTML = message.html;
 
+          // Post-process: syntax highlighting
+          content.querySelectorAll('pre code').forEach(function(block) {
+            if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+          });
+
+          // Post-process: KaTeX math
+          content.querySelectorAll('[data-math-style]').forEach(function(el) {
+            if (typeof katex !== 'undefined') {
+              try {
+                katex.render(el.textContent || '', el, {
+                  displayMode: el.getAttribute('data-math-style') === 'display',
+                  throwOnError: false
+                });
+              } catch(e) {}
+            }
+          });
+
           if (hadFocus && caretOffset > 0) {
             restoreCaretPosition(content, caretOffset);
           }
