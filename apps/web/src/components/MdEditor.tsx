@@ -3275,8 +3275,8 @@ ${html}
 
   return (
     <div
-      className="flex flex-col h-screen overflow-hidden"
-      style={{ background: "var(--background)", color: "var(--foreground)" }}
+      className="flex flex-col overflow-hidden"
+      style={{ height: "100dvh", background: "var(--background)", color: "var(--foreground)" }}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -3535,7 +3535,7 @@ ${html}
                 {shareState === "sharing" ? (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                 ) : (
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8v5a1 1 0 001 1h6a1 1 0 001-1V8"/><path d="M8 2v8"/><path d="M5 5l3-3 3 3"/></svg>
                 )}
                 <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
@@ -3800,10 +3800,14 @@ ${html}
       {/* Sidebar */}
       {showSidebar ? (
         <>
+        {/* Mobile sidebar backdrop */}
+        {isMobile && showSidebar && (
+          <div className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowSidebar(false)} />
+        )}
         <div
-          className="flex flex-col shrink-0"
+          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
           data-pane="sidebar"
-          style={{ width: sidebarWidth, minWidth: 160, background: "var(--background)" }}
+          style={{ width: isMobile ? 260 : sidebarWidth, minWidth: isMobile ? 260 : 160, background: "var(--background)" }}
         >
           {/* Header — toggle button + MD FILES + New */}
           <div
@@ -4449,14 +4453,16 @@ ${html}
             )}
           </div>
         </div>
-        {/* Sidebar resize handle */}
-        <div
-          className="shrink-0 cursor-col-resize w-[5px]"
-          style={{ background: "var(--border-dim)", position: "relative" }}
-          onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
-        >
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
-        </div>
+        {/* Sidebar resize handle — hidden on mobile (sidebar is overlay) */}
+        {!isMobile && (
+          <div
+            className="shrink-0 cursor-col-resize w-[5px]"
+            style={{ background: "var(--border-dim)", position: "relative" }}
+            onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
+          </div>
+        )}
         </>
       ) : (
         /* Collapsed: just the toggle button as a narrow strip */
@@ -4538,6 +4544,25 @@ ${html}
         }}
         onMouseUp={() => { isDraggingSplit.current = false; }}
         onMouseLeave={() => { isDraggingSplit.current = false; }}
+        onTouchMove={(e) => {
+          if (!isDraggingSplit.current || !splitContainerRef.current) return;
+          const touch = e.touches[0];
+          const rect = splitContainerRef.current.getBoundingClientRect();
+          let pct: number;
+          if (isMobile) {
+            pct = ((touch.clientY - rect.top) / rect.height) * 100;
+          } else {
+            pct = ((touch.clientX - rect.left) / rect.width) * 100;
+          }
+          pct = Math.max(25, Math.min(75, pct));
+          splitPercentRef.current = pct;
+          const renderPane = splitContainerRef.current.querySelector("[data-pane='render']") as HTMLElement;
+          if (renderPane) {
+            if (isMobile) { renderPane.style.height = `${pct}%`; }
+            else { renderPane.style.width = `${pct}%`; }
+          }
+        }}
+        onTouchEnd={() => { isDraggingSplit.current = false; }}
       >
         {/* Render pane (left/top) */}
         {viewMode !== "editor" && (
@@ -4965,6 +4990,7 @@ ${html}
             className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
             style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
+            onTouchStart={() => { isDraggingSplit.current = true; }}
           >
             <div
               className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8"}`}
