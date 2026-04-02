@@ -46,7 +46,8 @@
         .pipeThrough(new CompressionStream("gzip"));
       const compressed = await new Response(stream).arrayBuffer();
       return arrayBufferToBase64Url(compressed);
-    } catch {
+    } catch (err) {
+      console.warn("[mdfy] Compression failed, using plain base64:", err);
       // Fallback: plain base64
       return btoa(unescape(encodeURIComponent(text)));
     }
@@ -81,7 +82,23 @@
     // Clone to avoid mutating the page
     const clone = el.cloneNode(true);
 
-    // Process code blocks first (before general text extraction)
+    // ── Processing order: structural first, then innermost-to-outermost ──
+    // 1. Tables (structural, must be first)
+    clone.querySelectorAll("table").forEach((table) => {
+      let md = "\n";
+      const rows = table.querySelectorAll("tr");
+      rows.forEach((row, rowIndex) => {
+        const cells = row.querySelectorAll("th, td");
+        const cellTexts = Array.from(cells).map((c) => c.textContent.trim());
+        md += "| " + cellTexts.join(" | ") + " |\n";
+        if (rowIndex === 0) {
+          md += "| " + cellTexts.map(() => "---").join(" | ") + " |\n";
+        }
+      });
+      table.textContent = md;
+    });
+
+    // 2. Code blocks (preserve content, before inline processing)
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
       const text = code ? code.textContent : pre.textContent;
@@ -94,33 +111,65 @@
       pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
     });
 
-    // Process inline code
+    // 3. Inline code
     clone.querySelectorAll("code").forEach((code) => {
       // Skip if already inside a processed pre
       if (code.closest("pre")) return;
       code.textContent = "`" + code.textContent + "`";
     });
 
-    // Process bold
-    clone.querySelectorAll("strong, b").forEach((el) => {
-      el.textContent = "**" + el.textContent + "**";
-    });
-
-    // Process italic
-    clone.querySelectorAll("em, i").forEach((el) => {
-      el.textContent = "*" + el.textContent + "*";
-    });
-
-    // Process links
-    clone.querySelectorAll("a").forEach((a) => {
-      const href = a.getAttribute("href");
-      const text = a.textContent;
-      if (href && text) {
-        a.textContent = "[" + text + "](" + href + ")";
+    // 4. Images
+    clone.querySelectorAll("img").forEach((img) => {
+      const src = img.getAttribute("src") || "";
+      const alt = img.getAttribute("alt") || "image";
+      if (src) {
+        const placeholder = document.createTextNode("![" + alt + "](" + src + ")");
+        img.replaceWith(placeholder);
       }
     });
 
-    // Process lists
+    // 5. Links (BEFORE bold/italic to preserve nested formatting)
+    clone.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (href) {
+        // Wrap the link's existing innerHTML so nested bold/italic is preserved
+        const before = document.createTextNode("[");
+        const after = document.createTextNode("](" + href + ")");
+        a.insertBefore(before, a.firstChild);
+        a.appendChild(after);
+        // Unwrap the <a> element, keeping its children in place
+        while (a.firstChild) {
+          a.parentNode.insertBefore(a.firstChild, a);
+        }
+        a.remove();
+      }
+    });
+
+    // 6. Bold (using innerHTML-aware approach to preserve child markup)
+    clone.querySelectorAll("strong, b").forEach((el) => {
+      const before = document.createTextNode("**");
+      const after = document.createTextNode("**");
+      el.insertBefore(before, el.firstChild);
+      el.appendChild(after);
+      while (el.firstChild) {
+        el.parentNode.insertBefore(el.firstChild, el);
+      }
+      el.remove();
+    });
+
+    // 7. Italic
+    clone.querySelectorAll("em, i").forEach((el) => {
+      const before = document.createTextNode("*");
+      const after = document.createTextNode("*");
+      el.insertBefore(before, el.firstChild);
+      el.appendChild(after);
+      while (el.firstChild) {
+        el.parentNode.insertBefore(el.firstChild, el);
+      }
+      el.remove();
+    });
+
+    // 8. Lists
     clone.querySelectorAll("ol").forEach((ol) => {
       const items = ol.querySelectorAll(":scope > li");
       items.forEach((li, i) => {
@@ -134,40 +183,16 @@
       });
     });
 
-    // Process headings
+    // 9. Headings
     clone.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
       const level = parseInt(h.tagName[1]);
       h.textContent = "#".repeat(level) + " " + h.textContent.trim();
     });
 
-    // Process blockquotes
+    // 10. Blockquotes
     clone.querySelectorAll("blockquote").forEach((bq) => {
       const lines = bq.textContent.trim().split("\n");
       bq.textContent = lines.map((l) => "> " + l).join("\n");
-    });
-
-    // Process images
-    clone.querySelectorAll("img").forEach((img) => {
-      const src = img.getAttribute("src") || "";
-      const alt = img.getAttribute("alt") || "image";
-      if (src) {
-        img.textContent = "![" + alt + "](" + src + ")";
-      }
-    });
-
-    // Process tables
-    clone.querySelectorAll("table").forEach((table) => {
-      let md = "\n";
-      const rows = table.querySelectorAll("tr");
-      rows.forEach((row, rowIndex) => {
-        const cells = row.querySelectorAll("th, td");
-        const cellTexts = Array.from(cells).map((c) => c.textContent.trim());
-        md += "| " + cellTexts.join(" | ") + " |\n";
-        if (rowIndex === 0) {
-          md += "| " + cellTexts.map(() => "---").join(" | ") + " |\n";
-        }
-      });
-      table.textContent = md;
     });
 
     // Get text content, clean up whitespace
@@ -406,7 +431,8 @@
       if (!uploadRes.ok) return null;
       const { url } = await uploadRes.json();
       return url;
-    } catch {
+    } catch (err) {
+      console.warn("[mdfy] Image upload failed:", err);
       return null;
     }
   }
@@ -418,7 +444,8 @@
         chrome.runtime.sendMessage({ action: "get-user-id" }, (response) => {
           resolve(response?.userId || null);
         });
-      } catch {
+      } catch (err) {
+        console.warn("[mdfy] getUserId failed:", err);
         resolve(null);
       }
     });
@@ -435,19 +462,48 @@
     const userId = await getUserId();
     if (!userId) return markdown; // Keep original URLs as-is
 
-    let result = markdown;
-    for (const match of matches) {
-      const originalUrl = match[2];
-      if (originalUrl.includes("supabase") || originalUrl.includes("mdfy.cc")) continue;
-      if (originalUrl.startsWith("data:")) continue;
-      if (!originalUrl.startsWith("http")) continue;
+    // Filter to uploadable images
+    const uploadable = matches.filter((match) => {
+      const url = match[2];
+      if (url.includes("supabase") || url.includes("mdfy.cc")) return false;
+      if (url.startsWith("data:")) return false;
+      if (!url.startsWith("http")) return false;
+      return true;
+    });
 
-      const permanentUrl = await uploadImageToMdfy(originalUrl);
+    if (uploadable.length === 0) return markdown;
+
+    // Upload all images in parallel
+    let completed = 0;
+    const total = uploadable.length;
+    showToast("Uploading images (0/" + total + ")...", 30000);
+
+    const uploadPromises = uploadable.map(async (match) => {
+      const originalUrl = match[2];
+      try {
+        const permanentUrl = await uploadImageToMdfy(originalUrl);
+        completed++;
+        showToast("Uploading images (" + completed + "/" + total + ")...", 30000);
+        return { originalUrl, permanentUrl };
+      } catch (err) {
+        console.warn("[mdfy] Failed to upload image:", originalUrl, err);
+        completed++;
+        showToast("Uploading images (" + completed + "/" + total + ")...", 30000);
+        return { originalUrl, permanentUrl: null };
+      }
+    });
+
+    const results = await Promise.all(uploadPromises);
+
+    // Replace all URLs
+    let result = markdown;
+    for (const { originalUrl, permanentUrl } of results) {
       if (permanentUrl) {
         result = result.replace(originalUrl, permanentUrl);
       }
     }
 
+    showToast("Images uploaded", 2000);
     return result;
   }
 
@@ -483,8 +539,8 @@
           window.open(docUrl, "_blank");
           return;
         }
-      } catch {
-        // Fall through to hash-based fallback
+      } catch (err) {
+        console.warn("[mdfy] Authenticated share failed, falling back to hash URL:", err);
       }
     }
 
@@ -501,7 +557,8 @@
       try {
         await navigator.clipboard.writeText(markdown);
         showToast("Content copied to clipboard. Opening mdfy.cc — paste it there.");
-      } catch {
+      } catch (err) {
+        console.warn("[mdfy] Clipboard write failed, using fallback:", err);
         // Fallback copy
         const textarea = document.createElement("textarea");
         textarea.value = markdown;
@@ -549,7 +606,7 @@
       case "claude":
         return ".font-claude-response";
       case "gemini":
-        return "model-response, .model-response, [data-message-author='model']";
+        return "model-response:not(user-query), .model-response:not(.user-query):not(.user-message), [data-message-author='model']";
       default:
         return null;
     }

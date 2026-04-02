@@ -152,7 +152,7 @@ btnCapture.addEventListener("click", async () => {
           clone.querySelectorAll("code").forEach(c => { if (!c.closest("pre")) c.textContent = "`" + c.textContent + "`"; });
           clone.querySelectorAll("strong, b").forEach(el => { el.textContent = "**" + el.textContent + "**"; });
           clone.querySelectorAll("em, i").forEach(el => { el.textContent = "*" + el.textContent + "*"; });
-          clone.querySelectorAll("a").forEach(a => { const href = a.getAttribute("href"); const t = a.textContent; if (href && t && href.startsWith("http")) a.textContent = "[" + t + "](" + href + ")"; });
+          clone.querySelectorAll("a").forEach(a => { let href = a.getAttribute("href"); const t = a.textContent; if (href && t) { try { href = new URL(href, document.baseURI).href; } catch { /* keep original */ } a.textContent = "[" + t + "](" + href + ")"; } });
           clone.querySelectorAll("ul > li").forEach(li => { li.textContent = "- " + li.textContent.trim(); });
           clone.querySelectorAll("ol > li").forEach((li, i) => { li.textContent = (i + 1) + ". " + li.textContent.trim(); });
           clone.querySelectorAll("table").forEach(table => { let m = "\n"; table.querySelectorAll("tr").forEach((row, ri) => { const cells = Array.from(row.querySelectorAll("th, td")).map(c => c.textContent.trim()); m += "| " + cells.join(" | ") + " |\n"; if (ri === 0) m += "| " + cells.map(() => "---").join(" | ") + " |\n"; }); table.textContent = m; });

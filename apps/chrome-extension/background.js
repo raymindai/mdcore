@@ -26,7 +26,8 @@ async function compressToBase64Url(text) {
       .pipeThrough(new CompressionStream("gzip"));
     const compressed = await new Response(stream).arrayBuffer();
     return arrayBufferToBase64Url(compressed);
-  } catch {
+  } catch (err) {
+    console.warn("[mdfy] Compression failed, using plain base64:", err);
     return btoa(unescape(encodeURIComponent(text)));
   }
 }
@@ -71,8 +72,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         await sendToMdfy(response.markdown);
         return;
       }
-    } catch {
-      // Content script not available on this page
+    } catch (err) {
+      console.warn("[mdfy] Content script not available for selection capture:", err);
     }
 
     // Fallback: use plain selection text
@@ -91,8 +92,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         await sendToMdfy(response.markdown);
         return;
       }
-    } catch {
-      // Content script not available
+    } catch (err) {
+      console.warn("[mdfy] Content script not available for page capture:", err);
     }
 
     // Fallback: inject a script to extract page content
@@ -145,11 +146,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           clone.querySelectorAll("strong, b").forEach(el => { el.textContent = "**" + el.textContent + "**"; });
           clone.querySelectorAll("em, i").forEach(el => { el.textContent = "*" + el.textContent + "*"; });
 
-          // Process links
+          // Process links (convert relative URLs to absolute)
           clone.querySelectorAll("a").forEach(a => {
-            const href = a.getAttribute("href");
+            let href = a.getAttribute("href");
             const text = a.textContent;
-            if (href && text && href.startsWith("http")) {
+            if (href && text) {
+              try { href = new URL(href, document.baseURI).href; } catch { /* keep original */ }
               a.textContent = "[" + text + "](" + href + ")";
             }
           });
@@ -191,6 +193,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         await sendToMdfy(result.result);
       }
     } catch (err) {
+      console.warn("[mdfy] Page extraction failed:", err);
       // Last resort: just open mdfy.cc
       chrome.tabs.create({ url: MDFY_URL });
     }
@@ -210,19 +213,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "get-user-id") {
     // Try to get user auth from mdfy.cc cookies/storage
     // This requires the "cookies" permission for mdfy.cc domain
-    chrome.cookies.get({ url: MDFY_URL, name: "sb-auth-token" }, (cookie) => {
-      if (cookie && cookie.value) {
-        try {
-          // Supabase auth token is a JWT — extract user ID from payload
-          const parts = cookie.value.split(".");
-          if (parts.length >= 2) {
-            const payload = JSON.parse(atob(parts[1]));
-            sendResponse({ userId: payload.sub || null });
-            return;
+    // Wrap in a timeout to avoid hanging if cookie access stalls
+    const cookiePromise = new Promise((resolve) => {
+      try {
+        chrome.cookies.get({ url: MDFY_URL, name: "sb-auth-token" }, (cookie) => {
+          if (cookie && cookie.value) {
+            try {
+              // Supabase auth token is a JWT — extract user ID from payload
+              const parts = cookie.value.split(".");
+              if (parts.length >= 2) {
+                const payload = JSON.parse(atob(parts[1]));
+                resolve({ userId: payload.sub || null });
+                return;
+              }
+            } catch {
+              console.warn("[mdfy] Failed to parse auth cookie");
+            }
           }
-        } catch { /* ignore */ }
+          resolve({ userId: null });
+        });
+      } catch (err) {
+        console.warn("[mdfy] Cookie access error:", err);
+        resolve({ userId: null });
       }
-      sendResponse({ userId: null });
+    });
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        console.warn("[mdfy] Cookie access timed out after 5s");
+        resolve({ userId: null });
+      }, 5000);
+    });
+    Promise.race([cookiePromise, timeoutPromise]).then((result) => {
+      sendResponse(result);
     });
     return true; // async response
   }
