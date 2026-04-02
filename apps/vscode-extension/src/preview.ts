@@ -181,23 +181,38 @@ export class PreviewPanel {
 </head>
 <body>
   <div id="toolbar">
-    <button data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
-    <button data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
-    <button data-action="strikethrough" title="Strikethrough"><s>S</s></button>
+    <span class="toolbar-logo"><span style="color:var(--accent)">md</span><span style="color:var(--text-primary)">fy</span></span>
     <span class="toolbar-divider"></span>
-    <button data-action="h1" title="Heading 1">H1</button>
-    <button data-action="h2" title="Heading 2">H2</button>
-    <button data-action="h3" title="Heading 3">H3</button>
+    <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
+    <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
     <span class="toolbar-divider"></span>
-    <button data-action="ul" title="Bullet List">&#8226; List</button>
-    <button data-action="ol" title="Numbered List">1. List</button>
-    <button data-action="task" title="Task List">&#9744; Task</button>
+    <button data-action="h1" title="Heading 1"><span style="font-size:10px;font-weight:700">H1</span></button>
+    <button data-action="h2" title="Heading 2"><span style="font-size:10px;font-weight:700">H2</span></button>
+    <button data-action="h3" title="Heading 3"><span style="font-size:10px;font-weight:600">H3</span></button>
+    <button data-action="h4" title="Heading 4"><span style="font-size:10px">H4</span></button>
+    <button data-action="h5" title="Heading 5"><span style="font-size:10px">H5</span></button>
+    <button data-action="h6" title="Heading 6"><span style="font-size:10px">H6</span></button>
+    <button data-action="p" title="Paragraph"><span style="font-size:10px">P</span></button>
     <span class="toolbar-divider"></span>
-    <button data-action="link" title="Insert Link">&#128279;</button>
-    <button data-action="code" title="Inline Code">&lt;/&gt;</button>
-    <button data-action="codeblock" title="Code Block">&#9114;</button>
-    <button data-action="blockquote" title="Blockquote">&#8220;</button>
-    <button data-action="hr" title="Horizontal Rule">&#8213;</button>
+    <button data-action="bold" title="Bold (Cmd+B)"><span style="font-weight:700;font-size:12px">B</span></button>
+    <button data-action="italic" title="Italic (Cmd+I)"><span style="font-style:italic;font-size:12px">I</span></button>
+    <button data-action="strikethrough" title="Strikethrough"><span style="text-decoration:line-through;font-size:12px">S</span></button>
+    <button data-action="code" title="Inline code"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
+    <span class="toolbar-divider"></span>
+    <button data-action="ul" title="Bullet list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+    <button data-action="ol" title="Numbered list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+    <button data-action="task" title="Task list"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><path d="M3.5 4.5l1 1 2-2" stroke-linecap="round"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="3" width="5" height="2" rx="0.5" fill="currentColor"/><rect x="9" y="10" width="5" height="2" rx="0.5" fill="currentColor"/></svg></button>
+    <button data-action="indent" title="Indent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg></button>
+    <button data-action="outdent" title="Outdent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg></button>
+    <span class="toolbar-divider"></span>
+    <button data-action="blockquote" title="Blockquote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
+    <button data-action="hr" title="Horizontal rule"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
+    <span class="toolbar-divider"></span>
+    <button data-action="link" title="Link (Cmd+K)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg></button>
+    <button data-action="image" title="Image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
+    <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
+    <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
   </div>
 
   <article id="content" class="mdcore-rendered" contenteditable="true">
