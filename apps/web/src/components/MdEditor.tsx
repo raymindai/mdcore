@@ -3800,14 +3800,23 @@ ${html}
       {/* Sidebar */}
       {showSidebar ? (
         <>
-        {/* Mobile sidebar backdrop */}
+        {/* Mobile sidebar backdrop — blur + dim for depth effect */}
         {isMobile && showSidebar && (
-          <div className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowSidebar(false)} />
+          <div
+            className="fixed inset-0 z-[200]"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px) brightness(0.7)", WebkitBackdropFilter: "blur(8px) brightness(0.7)", transition: "backdrop-filter 0.3s ease" }}
+            onClick={() => setShowSidebar(false)}
+          />
         )}
         <div
           className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
           data-pane="sidebar"
-          style={{ width: isMobile ? 260 : sidebarWidth, minWidth: isMobile ? 260 : 160, background: "var(--background)" }}
+          style={{
+            width: isMobile ? 260 : sidebarWidth,
+            minWidth: isMobile ? 260 : 160,
+            background: "var(--background)",
+            ...(isMobile ? { animation: "sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1)" } : {}),
+          }}
         >
           {/* Header — toggle button + MD FILES + New */}
           <div
@@ -4520,7 +4529,7 @@ ${html}
       {/* Editor + Render area */}
       <div
         ref={splitContainerRef}
-        className={`flex flex-1 min-h-0 ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
+        className={`flex flex-1 min-h-0 overflow-hidden ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
         onMouseMove={(e) => {
           if (!isDraggingSplit.current || !splitContainerRef.current) return;
           const rect = splitContainerRef.current.getBoundingClientRect();
@@ -4568,13 +4577,14 @@ ${html}
         {viewMode !== "editor" && (
           <div
             data-pane="render"
-            className="flex flex-col"
+            className="flex flex-col min-h-0"
             style={{
               background: "var(--background)",
               width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
               height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
               flexShrink: 0,
               minWidth: viewMode === "split" && !isMobile ? 280 : undefined,
+              overflow: viewMode === "split" && isMobile ? "hidden" : undefined,
             }}
           >
             <div
@@ -5002,8 +5012,8 @@ ${html}
         {/* Markdown pane (right/bottom) — always in DOM, hidden via CSS to keep CM6 alive */}
         <div
           data-pane="editor"
-          className="flex-1 flex flex-col"
-          style={{ display: viewMode === "preview" ? "none" : undefined, minWidth: viewMode === "split" && !isMobile ? 280 : undefined }}
+          className="flex-1 flex flex-col min-h-0"
+          style={{ display: viewMode === "preview" ? "none" : undefined, minWidth: viewMode === "split" && !isMobile ? 280 : undefined, overflow: viewMode === "split" && isMobile ? "hidden" : undefined }}
         >
             <div
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
