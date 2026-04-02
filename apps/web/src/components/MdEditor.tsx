@@ -2847,6 +2847,12 @@ export default function MdEditor() {
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
             if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
             if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
+            // Mark as shared if it has sharing settings
+            const hasSharing = (doc.allowedEmails?.length > 0) ||
+              (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account");
+            if (hasSharing) {
+              setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isSharedByMe: true } : t));
+            }
           }
         } catch { /* ignore */ }
       }
@@ -3387,8 +3393,8 @@ ${html}
               <div className="relative">
                 <button
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
-                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}
+                  className="text-[10px] px-2 py-1 rounded-md font-mono shrink-0 flex items-center gap-1.5 transition-colors"
+                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
                 >
                   VIEW ONLY
                   <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
@@ -3648,17 +3654,28 @@ ${html}
               </button>
               <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                {docId ? (
-                  <>
-                    <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Copy Link</p>
-                    <p>Copy the shared URL to clipboard again. The link stays the same — use Update to push changes.</p>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share</p>
-                    <p>Create a short URL for this document. The link is copied to clipboard automatically. <span style={{ color: "var(--text-faint)" }}>Cmd+S</span></p>
-                  </>
-                )}
+                {(() => {
+                  const ct = tabs.find(t => t.id === activeTabId);
+                  const isMine = !ct?.permission || ct.permission === "mine";
+                  if (docId && isMine) return (
+                    <>
+                      <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share Settings</p>
+                      <p>Manage who can view or edit this document. Add people by email, set general access, and copy the share link.</p>
+                    </>
+                  );
+                  if (docId && !isMine) return (
+                    <>
+                      <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share</p>
+                      <p>View document info, copy the share link, or request edit access from the owner.</p>
+                    </>
+                  );
+                  return (
+                    <>
+                      <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share</p>
+                      <p>Publish and create a share link for this document. Changes auto-save automatically. <span style={{ color: "var(--text-faint)" }}>Cmd+S</span></p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
             <div className="relative" ref={menuRef}>
@@ -4917,7 +4934,7 @@ ${html}
                   onInput={canEdit ? handleWysiwygInput : undefined}
                   onPaste={canEdit ? handleWysiwygPaste : undefined}
                   className={`mdcore-rendered focus:outline-none ${
-                    viewMode === "preview" || narrowView
+                    narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6 max-w-none"
                   }`}
@@ -4930,7 +4947,7 @@ ${html}
                   onInput={canEdit ? handleWysiwygInput : undefined}
                   onPaste={canEdit ? handleWysiwygPaste : undefined}
                   className={`mdcore-rendered focus:outline-none ${
-                    viewMode === "preview" || narrowView
+                    narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
                       : "p-3 sm:p-6 max-w-none"
                   }`}
