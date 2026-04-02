@@ -3475,44 +3475,46 @@ ${html}
           })()}
         </div>
 
-        {/* Center: Layout tabs with icons */}
+        {/* Center: Layout mode switcher */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-lg p-0.5"
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-px rounded-lg p-[3px]"
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
         >
           {([
-            { mode: "preview" as ViewMode, label: "PREVIEW", icon: (
-              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M1 6s3-4.5 7-4.5S15 6 15 6s-3 4.5-7 4.5S1 6 1 6z"/>
-                <circle cx="8" cy="6" r="2"/>
+            { mode: "preview" as ViewMode, label: "Preview", icon: (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
+                <circle cx="8" cy="8" r="2.2"/>
               </svg>
             )},
-            { mode: "split" as ViewMode, label: "SPLIT", icon: (
-              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <rect x="1" y="1" width="14" height="10" rx="1.5"/>
-                <line x1="9" y1="1" x2="9" y2="11"/>
+            { mode: "split" as ViewMode, label: "Split", icon: (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1.5" y="2.5" width="13" height="11" rx="2"/>
+                <line x1="8" y1="2.5" x2="8" y2="13.5"/>
               </svg>
             )},
-            { mode: "editor" as ViewMode, label: "SOURCE", icon: (
-              <svg width="14" height="10" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5" strokeLinecap="round"/>
+            { mode: "editor" as ViewMode, label: "Source", icon: (
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 4L2 8l3 4M11 4l3 4-3 4"/>
               </svg>
             )},
-          ]).map(({ mode, label, icon }) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-mono font-medium transition-all"
-              style={{
-                background: viewMode === mode ? "var(--background)" : "transparent",
-                color: viewMode === mode ? "var(--text-primary)" : "var(--text-faint)",
-                boxShadow: viewMode === mode ? "0 1px 3px rgba(0,0,0,0.2)" : "none",
-              }}
-            >
-              {icon}
-              <span className="hidden lg:inline">{label}</span>
-            </button>
-          ))}
+          ]).map(({ mode, label, icon }) => {
+            const active = viewMode === mode;
+            return (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all duration-150"
+                style={{
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "#000" : "var(--text-faint)",
+                }}
+              >
+                {icon}
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
