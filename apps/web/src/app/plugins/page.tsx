@@ -422,7 +422,7 @@ export default function PluginsPage() {
                 </div>
               </div>
               <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                Preview Markdown with mdfy.cc rendering quality, and publish directly to mdfy.cc from your editor. Live preview, one-click publish, status bar integration.
+                WYSIWYG preview with mdfy.cc rendering quality, cloud sync, and real-time collaboration. Edit directly in the rendered view, auto-push on save, and resolve conflicts with the built-in diff editor.
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -441,16 +441,20 @@ export default function PluginsPage() {
           >
             {[
               {
-                title: "Live Preview",
-                items: ["Cmd+Shift+M to open preview panel", "Updates as you type", "GFM, KaTeX, Mermaid, 190+ languages", "Dark/Light theme (follows VS Code)"],
+                title: "WYSIWYG Preview",
+                items: ["Cmd+Shift+M opens editable preview", "Click and type directly in rendered view", "Toolbar: bold, italic, headings, lists", "Dark/Light theme auto-detection"],
               },
               {
-                title: "Publish to mdfy.cc",
-                items: ["One command to create shared URL", "Copy URL / Open in Browser", "Update existing document", "Edit tokens stored in workspace"],
+                title: "Cloud Sync",
+                items: ["Auto-push on file save (2s debounce)", "Auto-pull when server changes detected", "Configurable polling interval (10-300s)", "Offline queue for failed pushes"],
+              },
+              {
+                title: "Collaboration",
+                items: ["Share URL \u2192 anyone can view/edit", "Server changes pull to local file", "Conflict detection \u2192 VS Code diff editor", "Three merge options: pull/push/diff"],
               },
               {
                 title: "Editor Integration",
-                items: ["Status bar shows \"mdfy\" on .md files", "Click status bar to quick-publish", "Context menu in editor", "Configurable API endpoint"],
+                items: ["Status bar: \u2713 synced / \u2191 pushing / \u2193 pulling", "OAuth login via browser redirect", ".mdfy.json sidecar for sync metadata", "Publish from command palette"],
               },
             ].map((section) => (
               <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
@@ -476,7 +480,8 @@ export default function PluginsPage() {
                 { step: "1", text: "cd apps/vscode-extension && npm install" },
                 { step: "2", text: "npm run compile" },
                 { step: "3", text: "Press F5 in VS Code to launch Extension Development Host" },
-                { step: "4", text: "Open any .md file and press Cmd+Shift+M to preview" },
+                { step: "4", text: "Open any .md file \u2192 Cmd+Shift+M to preview" },
+                { step: "5", text: "Run \"mdfy: Login\" to connect your account" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
