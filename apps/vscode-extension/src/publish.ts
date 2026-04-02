@@ -1,224 +1,163 @@
 import * as vscode from "vscode";
-import * as path from "path";
+import { getApiBaseUrl } from "./extension";
+import { AuthManager } from "./auth";
 
-interface PublishRecord {
+interface PublishResult {
   id: string;
   editToken: string;
-  url: string;
-  publishedAt: string;
 }
 
-/** Key used to store publish records in workspace state. Maps file URI -> PublishRecord. */
-const STATE_KEY = "mdfy.publishedDocs";
-
-function getApiBaseUrl(): string {
-  const config = vscode.workspace.getConfiguration("mdfy");
-  return config.get<string>("apiBaseUrl", "https://mdfy.cc");
-}
-
-function getPublishRecord(
-  context: vscode.ExtensionContext,
-  fileUri: string
-): PublishRecord | undefined {
-  const records =
-    context.workspaceState.get<Record<string, PublishRecord>>(STATE_KEY) || {};
-  return records[fileUri];
-}
-
-function setPublishRecord(
-  context: vscode.ExtensionContext,
-  fileUri: string,
-  record: PublishRecord
-): void {
-  const records =
-    context.workspaceState.get<Record<string, PublishRecord>>(STATE_KEY) || {};
-  records[fileUri] = record;
-  context.workspaceState.update(STATE_KEY, records);
+interface PullResult {
+  markdown: string;
+  title: string | null;
+  updated_at: string;
 }
 
 /**
- * Publish a new document to mdfy.cc
+ * Publish a new document to mdfy.cc.
+ * POST /api/docs → { id, editToken }
  */
 export async function publishDocument(
-  context: vscode.ExtensionContext,
-  document: vscode.TextDocument
-): Promise<void> {
-  const markdown = document.getText();
-  if (!markdown.trim()) {
-    vscode.window.showWarningMessage("Document is empty.");
-    return;
-  }
-
+  markdown: string,
+  title: string,
+  authManager?: AuthManager
+): Promise<PublishResult> {
   const baseUrl = getApiBaseUrl();
-  const title = extractTitle(markdown, document.fileName);
+  const url = `${baseUrl}/api/docs`;
 
-  // Check if already published
-  const existing = getPublishRecord(context, document.uri.toString());
-  if (existing) {
-    const choice = await vscode.window.showInformationMessage(
-      `This file was already published to ${existing.url}. Publish as a new document?`,
-      "Publish New",
-      "Update Existing",
-      "Cancel"
-    );
-    if (choice === "Update Existing") {
-      return updateDocument(context, document);
-    }
-    if (choice === "Cancel" || !choice) {
-      return;
-    }
+  const body: Record<string, unknown> = { markdown, title };
+
+  // Attach userId if logged in
+  const userId = await authManager?.getUserId();
+  if (userId) {
+    body.userId = userId;
   }
 
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Publishing to mdfy.cc...",
-      cancellable: false,
-    },
-    async () => {
-      try {
-        const response = await fetch(`${baseUrl}/api/docs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown, title }),
-        });
+  const token = await authManager?.getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(
-            (error as { error?: string }).error ||
-              `HTTP ${response.status}`
-          );
-        }
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
 
-        const data = (await response.json()) as {
-          id: string;
-          editToken: string;
-        };
-        const docUrl = `${baseUrl}/${data.id}`;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      (errorData as { error?: string }).error ||
+        `HTTP ${response.status}: ${response.statusText}`
+    );
+  }
 
-        // Store record for future updates
-        setPublishRecord(context, document.uri.toString(), {
-          id: data.id,
-          editToken: data.editToken,
-          url: docUrl,
-          publishedAt: new Date().toISOString(),
-        });
-
-        const action = await vscode.window.showInformationMessage(
-          `Published to ${docUrl}`,
-          "Copy URL",
-          "Open in Browser"
-        );
-
-        if (action === "Copy URL") {
-          await vscode.env.clipboard.writeText(docUrl);
-          vscode.window.showInformationMessage("URL copied to clipboard.");
-        } else if (action === "Open in Browser") {
-          vscode.env.openExternal(vscode.Uri.parse(docUrl));
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Unknown error";
-        vscode.window.showErrorMessage(
-          `Failed to publish: ${message}`
-        );
-      }
-    }
-  );
+  const data = (await response.json()) as PublishResult;
+  return data;
 }
 
 /**
- * Update an existing document on mdfy.cc
+ * Update an existing document on mdfy.cc.
+ * PATCH /api/docs/{id} → { ok: true }
  */
 export async function updateDocument(
-  context: vscode.ExtensionContext,
-  document: vscode.TextDocument
+  id: string,
+  editToken: string,
+  markdown: string,
+  title: string,
+  authManager?: AuthManager
 ): Promise<void> {
-  const record = getPublishRecord(context, document.uri.toString());
-  if (!record) {
-    const choice = await vscode.window.showInformationMessage(
-      "This file hasn't been published yet. Publish it now?",
-      "Publish",
-      "Cancel"
-    );
-    if (choice === "Publish") {
-      return publishDocument(context, document);
-    }
-    return;
-  }
-
-  const markdown = document.getText();
-  if (!markdown.trim()) {
-    vscode.window.showWarningMessage("Document is empty.");
-    return;
-  }
-
   const baseUrl = getApiBaseUrl();
-  const title = extractTitle(markdown, document.fileName);
+  const url = `${baseUrl}/api/docs/${id}`;
 
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Updating on mdfy.cc...",
-      cancellable: false,
-    },
-    async () => {
-      try {
-        const response = await fetch(`${baseUrl}/api/docs/${record.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            editToken: record.editToken,
-            markdown,
-            title,
-          }),
-        });
+  const body: Record<string, unknown> = {
+    editToken,
+    markdown,
+    title,
+    action: "auto-save",
+  };
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(
-            (error as { error?: string }).error ||
-              `HTTP ${response.status}`
-          );
-        }
+  const userId = await authManager?.getUserId();
+  if (userId) {
+    body.userId = userId;
+  }
 
-        // Update timestamp
-        setPublishRecord(context, document.uri.toString(), {
-          ...record,
-          publishedAt: new Date().toISOString(),
-        });
+  const token = await authManager?.getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
-        const action = await vscode.window.showInformationMessage(
-          `Updated: ${record.url}`,
-          "Copy URL",
-          "Open in Browser"
-        );
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
 
-        if (action === "Copy URL") {
-          await vscode.env.clipboard.writeText(record.url);
-          vscode.window.showInformationMessage("URL copied to clipboard.");
-        } else if (action === "Open in Browser") {
-          vscode.env.openExternal(vscode.Uri.parse(record.url));
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Unknown error";
-        vscode.window.showErrorMessage(
-          `Failed to update: ${message}`
-        );
-      }
-    }
-  );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      (errorData as { error?: string }).error ||
+        `HTTP ${response.status}: ${response.statusText}`
+    );
+  }
 }
 
 /**
- * Extract a title from the markdown content (first H1) or fall back to filename.
+ * Pull the latest document content from mdfy.cc.
+ * GET /api/docs/{id} → { markdown, title, updated_at, ... }
  */
-function extractTitle(markdown: string, filePath: string): string {
-  const match = markdown.match(/^#\s+(.+)$/m);
-  if (match) {
-    return match[1].trim();
+export async function pullDocument(
+  id: string,
+  authManager?: AuthManager
+): Promise<PullResult> {
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/docs/${id}`;
+
+  const headers: Record<string, string> = {};
+  const token = await authManager?.getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
-  return path.basename(filePath, path.extname(filePath));
+  const userId = await authManager?.getUserId();
+  if (userId) {
+    headers["x-user-id"] = userId;
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      (errorData as { error?: string }).error ||
+        `HTTP ${response.status}: ${response.statusText}`
+    );
+  }
+
+  const data = (await response.json()) as PullResult;
+  return data;
+}
+
+/**
+ * Check if the server document has been updated since last sync.
+ * Returns the updated_at timestamp from the server.
+ */
+export async function checkServerUpdatedAt(
+  id: string,
+  authManager?: AuthManager
+): Promise<string | undefined> {
+  try {
+    const data = await pullDocument(id, authManager);
+    return data.updated_at;
+  } catch {
+    return undefined;
+  }
 }

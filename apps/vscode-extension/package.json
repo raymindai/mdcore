@@ -1,8 +1,8 @@
 {
   "name": "mdfy-vscode",
   "displayName": "mdfy.cc — Markdown Publisher",
-  "description": "Preview and publish Markdown documents to mdfy.cc with one click. Beautiful rendering with GFM, KaTeX math, Mermaid diagrams, and code highlighting.",
-  "version": "0.1.0",
+  "description": "WYSIWYG preview and publish Markdown documents to mdfy.cc with bidirectional cloud sync. Beautiful rendering with GFM, KaTeX math, Mermaid diagrams, and code highlighting.",
+  "version": "0.2.0",
   "publisher": "raymindai",
   "license": "MIT",
   "repository": {
@@ -24,7 +24,9 @@
     "mdfy",
     "mermaid",
     "katex",
-    "gfm"
+    "gfm",
+    "wysiwyg",
+    "sync"
   ],
   "activationEvents": [
     "onLanguage:markdown"
@@ -34,7 +36,7 @@
     "commands": [
       {
         "command": "mdfy.preview",
-        "title": "mdfy: Preview",
+        "title": "mdfy: Preview (WYSIWYG)",
         "icon": "$(open-preview)"
       },
       {
@@ -44,7 +46,22 @@
       },
       {
         "command": "mdfy.update",
-        "title": "mdfy: Update on mdfy.cc",
+        "title": "mdfy: Push to mdfy.cc",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "mdfy.pull",
+        "title": "mdfy: Pull from mdfy.cc",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "mdfy.login",
+        "title": "mdfy: Login to mdfy.cc",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "mdfy.sync",
+        "title": "mdfy: Sync Status",
         "icon": "$(sync)"
       }
     ],
@@ -66,6 +83,11 @@
           "command": "mdfy.update",
           "when": "editorLangId == markdown",
           "group": "mdfy@2"
+        },
+        {
+          "command": "mdfy.pull",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@3"
         }
       ]
     },
@@ -94,6 +116,18 @@
           ],
           "default": "auto",
           "description": "Preview theme. 'auto' follows VS Code's color theme."
+        },
+        "mdfy.autoSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically sync published documents on save"
+        },
+        "mdfy.syncInterval": {
+          "type": "number",
+          "default": 30,
+          "minimum": 10,
+          "maximum": 300,
+          "description": "Sync polling interval in seconds (when autoSync is enabled)"
         }
       }
     }

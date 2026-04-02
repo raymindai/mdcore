@@ -1,0 +1,187 @@
+import * as vscode from "vscode";
+import { getApiBaseUrl } from "./extension";
+
+const TOKEN_KEY = "mdfy.authToken";
+const USER_ID_KEY = "mdfy.userId";
+
+export class AuthManager {
+  private context: vscode.ExtensionContext;
+  private pendingAuthResolve:
+    | ((token: string) => void)
+    | undefined;
+
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
+  }
+
+  /**
+   * Initiate login flow.
+   * Opens the browser to mdfy.cc/auth/vscode which redirects back with a token.
+   */
+  async login(): Promise<void> {
+    const baseUrl = getApiBaseUrl();
+
+    // The callback URI for this extension
+    const callbackUri = await vscode.env.asExternalUri(
+      vscode.Uri.parse("vscode://raymindai.mdfy-vscode/auth")
+    );
+
+    const authUrl = `${baseUrl}/auth/vscode?redirect=${encodeURIComponent(
+      callbackUri.toString()
+    )}`;
+
+    vscode.env.openExternal(vscode.Uri.parse(authUrl));
+
+    vscode.window.showInformationMessage(
+      "Opening mdfy.cc login in your browser. Complete login there to continue."
+    );
+
+    // Wait for the callback
+    try {
+      const token = await new Promise<string>((resolve, reject) => {
+        this.pendingAuthResolve = resolve;
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          this.pendingAuthResolve = undefined;
+          reject(new Error("Login timed out. Please try again."));
+        }, 5 * 60 * 1000);
+      });
+
+      await this.storeToken(token);
+      vscode.window.showInformationMessage("Successfully logged in to mdfy.cc.");
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        `Login failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  /**
+   * Handle the OAuth callback URI.
+   * Called from the URI handler in extension.ts.
+   */
+  handleAuthCallback(uri: vscode.Uri): void {
+    const query = new URLSearchParams(uri.query);
+    const token = query.get("token");
+
+    if (token && this.pendingAuthResolve) {
+      this.pendingAuthResolve(token);
+      this.pendingAuthResolve = undefined;
+    } else if (token) {
+      // Callback received without pending login (e.g., direct URI open)
+      this.storeToken(token).then(() => {
+        vscode.window.showInformationMessage(
+          "Successfully logged in to mdfy.cc."
+        );
+      });
+    } else {
+      vscode.window.showErrorMessage(
+        "Login callback received but no token was provided."
+      );
+    }
+  }
+
+  /**
+   * Get the stored auth token, or undefined if not logged in.
+   */
+  async getToken(): Promise<string | undefined> {
+    return this.context.secrets.get(TOKEN_KEY);
+  }
+
+  /**
+   * Get the user ID from the stored token.
+   * Decodes the JWT payload (no verification, just extraction).
+   */
+  async getUserId(): Promise<string | undefined> {
+    // First check cached user ID
+    const cached = this.context.globalState.get<string>(USER_ID_KEY);
+    if (cached) {return cached;}
+
+    const token = await this.getToken();
+    if (!token) {return undefined;}
+
+    try {
+      const payload = decodeJwtPayload(token);
+      const userId = String(payload.sub || payload.userId || payload.user_id || "");
+      if (userId) {
+        await this.context.globalState.update(USER_ID_KEY, userId);
+        return userId;
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Check if the user is logged in.
+   */
+  async isLoggedIn(): Promise<boolean> {
+    const token = await this.getToken();
+    if (!token) {return false;}
+
+    // Check if token is expired
+    try {
+      const payload = decodeJwtPayload(token);
+      if (payload.exp) {
+        const expiresAt = Number(payload.exp) * 1000;
+        if (Date.now() > expiresAt) {
+          // Token expired, clear it
+          await this.logout();
+          return false;
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Log out: clear stored credentials.
+   */
+  async logout(): Promise<void> {
+    await this.context.secrets.delete(TOKEN_KEY);
+    await this.context.globalState.update(USER_ID_KEY, undefined);
+  }
+
+  /**
+   * Store the auth token securely.
+   */
+  private async storeToken(token: string): Promise<void> {
+    await this.context.secrets.store(TOKEN_KEY, token);
+
+    // Cache user ID
+    try {
+      const payload = decodeJwtPayload(token);
+      const userId = payload.sub || payload.userId || payload.user_id;
+      if (userId) {
+        await this.context.globalState.update(USER_ID_KEY, userId);
+      }
+    } catch {
+      // JWT decode failed, that's fine
+    }
+  }
+}
+
+/**
+ * Decode a JWT payload without verification.
+ * Only used for extracting user info, not for security.
+ */
+function decodeJwtPayload(
+  token: string
+): Record<string, unknown> {
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    throw new Error("Invalid JWT format");
+  }
+
+  const payload = parts[1];
+  // Base64url decode
+  const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const decoded = Buffer.from(padded, "base64").toString("utf-8");
+
+  return JSON.parse(decoded) as Record<string, unknown>;
+}
