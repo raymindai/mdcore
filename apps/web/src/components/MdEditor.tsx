@@ -602,6 +602,8 @@ interface Tab {
   shared?: boolean;        // opened from shared URL (not mine)
   isDraft?: boolean;       // auto-saved but not yet published
   permission?: "mine" | "editable" | "readonly";  // for sidebar badge
+  isSharedByMe?: boolean;  // I've shared this doc with others
+  ownerEmail?: string;     // owner's email (for shared docs)
 }
 
 let tabIdCounter = Date.now();
@@ -944,6 +946,8 @@ export default function MdEditor() {
   const [showSharedDocs, setShowSharedDocs] = useState(true);
   const [serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showViewerShareModal, setShowViewerShareModal] = useState(false);
+  const [showPermDropdown, setShowPermDropdown] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [allowedEditors, setAllowedEditorsState] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; type: string; documentId: string; documentTitle: string; fromUserName: string; message: string; read: boolean; createdAt: string }[]>([]);
@@ -1824,6 +1828,10 @@ export default function MdEditor() {
             }
 
             // Update tab with cloudId and permission
+            const docIsSharedByMe = perm === "mine" && (
+              (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account") ||
+              (doc.allowedEmails && doc.allowedEmails.length > 0)
+            );
             setTabs(prev => prev.map(t => t.id === activeTabId ? {
               ...t,
               cloudId: fromId,
@@ -1832,6 +1840,8 @@ export default function MdEditor() {
               markdown: doc.markdown,
               permission: perm,
               shared: perm !== "mine",
+              isSharedByMe: docIsSharedByMe || undefined,
+              ownerEmail: doc.ownerEmail || undefined,
             } : t));
 
             // Record visit (fire-and-forget)
@@ -2034,6 +2044,18 @@ export default function MdEditor() {
       .then(data => {
         if (data?.documents) {
           setServerDocs(data.documents);
+          // Mark tabs that have sharing enabled
+          const sharedDocIds = new Set(
+            data.documents
+              .filter((d: { edit_mode?: string; allowed_emails?: string[] }) =>
+                (d.edit_mode && d.edit_mode !== "owner" && d.edit_mode !== "token" && d.edit_mode !== "account") ||
+                (d.allowed_emails && d.allowed_emails.length > 0)
+              )
+              .map((d: { id: string }) => d.id)
+          );
+          if (sharedDocIds.size > 0) {
+            setTabs(prev => prev.map(t => t.cloudId && sharedDocIds.has(t.cloudId) ? { ...t, isSharedByMe: true } : t));
+          }
         }
       })
       .catch(() => {});
@@ -2832,12 +2854,21 @@ export default function MdEditor() {
       return;
     }
 
-    // Non-owner with existing doc — just copy the link
+    // Non-owner with existing doc — open viewer share modal
     if (cid && !isMine) {
-      const url = `${window.location.origin}/${cid}`;
-      await copyToClipboard(url);
-      setShareState("copied");
-      setTimeout(() => setShareState("idle"), 3000);
+      // Fetch owner info if we don't have it
+      if (!currentTab?.ownerEmail && user) {
+        try {
+          const res = await fetch(`/api/docs/${cid}`, { headers: { "x-user-id": user.id, "x-user-email": user.email || "" } });
+          if (res.ok) {
+            const doc = await res.json();
+            if (doc.ownerEmail) {
+              setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, ownerEmail: doc.ownerEmail } : t));
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      setShowViewerShareModal(true);
       return;
     }
 
@@ -3353,7 +3384,83 @@ ${html}
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
             if (perm === "readonly") return (
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>VIEW ONLY</span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowPermDropdown(!showPermDropdown)}
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}
+                >
+                  VIEW ONLY
+                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
+                </button>
+                {showPermDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
+                    <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-[9999]"
+                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                      {docId && user?.email && (
+                        <button
+                          onClick={async () => {
+                            setShowPermDropdown(false);
+                            try {
+                              await fetch("/api/notifications", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  recipientEmail: "__owner__",
+                                  type: "edit_request",
+                                  documentId: docId,
+                                  fromUserId: user.id,
+                                  fromUserName: user.email?.split("@")[0],
+                                  message: `requested edit access to "${title || "Untitled"}"`,
+                                }),
+                              });
+                              showToast("Edit request sent to document owner", "success");
+                            } catch { showToast("Failed to send request", "error"); }
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                            <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
+                          </svg>
+                          Request to edit
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setShowPermDropdown(false);
+                          const id = `tab-${Date.now()}`;
+                          const origMd = markdownRef.current;
+                          const t = title ? `${title} (copy)` : "Untitled (copy)";
+                          const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
+                          const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
+                          setTabs(prev => [...prev, newTab]);
+                          setIsSharedDoc(false);
+                          setIsOwner(true);
+                          setDocEditMode("owner");
+                          loadTab(newTab);
+                          autoSave.createDocument({
+                            markdown: md, title: t, userId: user?.id,
+                            anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                          }).then(result => {
+                            if (result) {
+                              setTabs(prev => prev.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab));
+                              setDocId(result.id);
+                              window.history.replaceState(null, "", `/?doc=${result.id}`);
+                            }
+                          });
+                        }}
+                        className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                        Duplicate to edit
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             );
             if (perm === "editable") return (
               <span className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>EDITABLE</span>
@@ -3491,7 +3598,7 @@ ${html}
                               const d = await res.json();
                               const perm = d.isOwner ? "mine" : (d.isEditor || d.editMode === "public") ? "editable" : "readonly";
                               const newId = `tab-${Date.now()}`;
-                              const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine" };
+                              const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine", ownerEmail: d.ownerEmail || n.fromUserName || undefined };
                               setTabs(prev => {
                                 const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
                                 return [...saved, newTab];
@@ -3535,7 +3642,7 @@ ${html}
                 {shareState === "sharing" ? (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                 ) : (
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8v5a1 1 0 001 1h6a1 1 0 001-1V8"/><path d="M8 2v8"/><path d="M5 5l3-3 3 3"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/></svg>
                 )}
                 <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
@@ -4212,12 +4319,24 @@ ${html}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.permission === "readonly" ? (
+                            /* Lock icon — view only */
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
                               <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
                             </svg>
-                          ) : (
+                          ) : tab.permission === "editable" ? (
+                            /* Pencil icon — editor access */
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
+                            </svg>
+                          ) : tab.isSharedByMe ? (
+                            /* Share icon — my doc, shared with others */
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
+                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/>
+                            </svg>
+                          ) : (
+                            /* Document icon — my doc, not shared */
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 2h5l4 4v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9 2v4h4"/>
                             </svg>
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
@@ -4297,7 +4416,7 @@ ${html}
                               const d = await res.json();
                               const perm = doc.editMode === "public" ? "editable" : "readonly";
                               const newId = `tab-${Date.now()}`;
-                              const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true };
+                              const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true, ownerEmail: d.ownerEmail || undefined };
                               setTabs(prev => {
                                 const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
                                 return [...saved, newTab];
@@ -4593,76 +4712,6 @@ ${html}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>PREVIEW</span>
-              {/* Request to edit — for readonly shared docs */}
-              {isSharedDoc && !canEdit && docId && user?.email && (
-                <button
-                  onClick={async (e) => {
-                    const btn = e.currentTarget;
-                    if (btn.dataset.sent === "true") return;
-                    try {
-                      await fetch("/api/notifications", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          recipientEmail: "__owner__",
-                          type: "edit_request",
-                          documentId: docId,
-                          fromUserId: user.id,
-                          fromUserName: user.email?.split("@")[0],
-                          message: `requested edit access to "${title || "Untitled"}"`,
-                        }),
-                      });
-                      btn.dataset.sent = "true";
-                      btn.textContent = "Request sent";
-                      btn.style.background = "rgba(74,222,128,0.15)";
-                      btn.style.color = "#4ade80";
-                    } catch { /* ignore */ }
-                  }}
-                  className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
-                  style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                    <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
-                  </svg>
-                  Request to edit
-                </button>
-              )}
-              {isSharedDoc && !canEdit && (
-                <button
-                  onClick={() => {
-                    // Duplicate: create a new doc on server with this content — it's MY document
-                    const id = `tab-${Date.now()}`;
-                    const origMd = markdownRef.current;
-                    const t = title ? `${title} (copy)` : "Untitled (copy)";
-                    // Update the h1 in markdown to include (copy)
-                    const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
-                    const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
-                    setTabs(prev => [...prev, newTab]);
-                    setIsSharedDoc(false);
-                    setIsOwner(true);
-                    setDocEditMode("owner");
-                    loadTab(newTab);
-                    // Auto-create on server
-                    autoSave.createDocument({
-                      markdown: md,
-                      title: t,
-                      userId: user?.id,
-                      anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                    }).then(result => {
-                      if (result) {
-                        setTabs(prev => prev.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab));
-                        setDocId(result.id);
-                        window.history.replaceState(null, "", `/?doc=${result.id}`);
-                      }
-                    });
-                  }}
-                  className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors text-[10px] font-medium"
-                  style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                  Duplicate to edit
-                </button>
-              )}
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
                 {/* Toolbar toggle — only when editing is allowed */}
                 {canEdit && <div className="relative group">
@@ -5664,9 +5713,141 @@ ${html}
           initialAllowedEmails={allowedEmails}
           initialAllowedEditors={allowedEditors}
           onClose={() => setShowShareModal(false)}
-          onEditModeChange={(mode) => { setDocEditMode(mode); setEditMode(mode); }}
-          onAllowedEmailsChange={setAllowedEmailsState}
+          onEditModeChange={(mode) => {
+            setDocEditMode(mode); setEditMode(mode);
+            if (mode !== "owner") setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
+          }}
+          onAllowedEmailsChange={(emails) => {
+            setAllowedEmailsState(emails);
+            if (emails.length > 0) setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
+          }}
         />
+      )}
+
+      {/* Viewer Share Modal — for non-owners */}
+      {showViewerShareModal && docId && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowViewerShareModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl shadow-2xl"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                Share{title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}
+              </h2>
+              <button
+                onClick={() => setShowViewerShareModal(false)}
+                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+              </button>
+            </div>
+
+            {/* Owner info */}
+            <div className="px-5 pb-4">
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                  {(tabs.find(t => t.id === activeTabId)?.ownerEmail || "O")[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                    {tabs.find(t => t.id === activeTabId)?.ownerEmail || "Document owner"}
+                  </p>
+                  <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Owner</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Your access */}
+            <div className="px-5 pb-4">
+              <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>Your access</label>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
+                {(() => {
+                  const ct = tabs.find(t => t.id === activeTabId);
+                  const isEd = ct?.permission === "editable";
+                  return (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={isEd ? "#4ade80" : "var(--text-faint)"} strokeWidth="1.3" strokeLinecap="round">
+                        {isEd ? <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/> : <><rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/></>}
+                      </svg>
+                      <span className="text-xs" style={{ color: isEd ? "#4ade80" : "var(--text-faint)" }}>
+                        {isEd ? "Can view and edit" : "View only"}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-5 pb-5 flex flex-col gap-2">
+              {/* Request to edit — only if readonly and logged in */}
+              {!canEdit && user?.email && (
+                <button
+                  onClick={async (e) => {
+                    const btn = e.currentTarget;
+                    if (btn.dataset.sent === "true") return;
+                    try {
+                      await fetch("/api/notifications", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          recipientEmail: "__owner__",
+                          type: "edit_request",
+                          documentId: docId,
+                          fromUserId: user.id,
+                          fromUserName: user.email?.split("@")[0],
+                          message: `requested edit access to "${title || "Untitled"}"`,
+                        }),
+                      });
+                      btn.dataset.sent = "true";
+                      showToast("Edit request sent to document owner", "success");
+                    } catch { showToast("Failed to send request", "error"); }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                  style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+                    <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
+                  </svg>
+                  Request to edit
+                </button>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+              <button
+                onClick={async () => {
+                  const url = `${window.location.origin}/${docId}`;
+                  await copyToClipboard(url);
+                  showToast("Link copied!", "success");
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 10l4-4"/><path d="M8.5 3.5L10 2a2 2 0 012.83 2.83L11.5 6.17"/><path d="M4.5 9.83L3.17 11.17A2 2 0 006 14l1.5-1.5"/>
+                </svg>
+                Copy link
+              </button>
+              <button
+                onClick={() => setShowViewerShareModal(false)}
+                className="px-5 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{ background: "var(--accent)", color: "#000" }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast notifications */}

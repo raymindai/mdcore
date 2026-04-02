@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("documents")
-    .select("id, title, created_at, updated_at, view_count, is_draft, edit_mode")
+    .select("id, title, created_at, updated_at, view_count, is_draft, edit_mode, allowed_emails")
     .order("updated_at", { ascending: false })
     .limit(100);
 

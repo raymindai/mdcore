@@ -87,6 +87,15 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const requesterEmail = _req.headers.get("x-user-email") || "";
   const isAllowedEditor = (data.allowed_editors || []).some((e: string) => e.toLowerCase() === requesterEmail.toLowerCase());
 
+  // Resolve owner email for non-owners (so they can see who owns the doc)
+  let ownerEmail: string | undefined;
+  if (!isOwnedByRequester && data.user_id) {
+    try {
+      const { data: ownerAuth } = await supabase.auth.admin.getUserById(data.user_id);
+      ownerEmail = ownerAuth?.user?.email || undefined;
+    } catch { /* ignore */ }
+  }
+
   return NextResponse.json({
     ...safeData,
     hasPassword,
@@ -94,6 +103,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     isOwner: isOwnedByRequester,
     isEditor: isAllowedEditor,
     ...(isOwnedByRequester ? { allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
+    ...(ownerEmail ? { ownerEmail } : {}),
   });
 }
 
