@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import {
   loadMdfyConfig,
   saveMdfyConfig,
-  getApiBaseUrl,
   MdfyConfig,
 } from "./extension";
 import {
@@ -15,6 +14,7 @@ import { StatusBarManager } from "./statusbar";
 import { PreviewPanel } from "./preview";
 
 export class SyncEngine {
+  private static readonly MAX_OFFLINE_RETRIES = 5;
   private authManager: AuthManager;
   private statusBar: StatusBarManager;
   private pollingTimer: NodeJS.Timeout | undefined;
@@ -23,6 +23,7 @@ export class SyncEngine {
     filePath: string;
     markdown: string;
     title: string;
+    retryCount: number;
   }> = [];
 
   constructor(authManager: AuthManager, statusBar: StatusBarManager) {
@@ -93,11 +94,43 @@ export class SyncEngine {
       return;
     }
 
+    // Check for conflicts before pushing
+    const serverUpdatedAt = await checkServerUpdatedAt(
+      config.docId,
+      this.authManager
+    );
+    if (
+      serverUpdatedAt &&
+      config.lastServerUpdatedAt &&
+      new Date(serverUpdatedAt).getTime() >
+        new Date(config.lastServerUpdatedAt).getTime()
+    ) {
+      // Server changed since last sync — conflict
+      const choice = await vscode.window.showWarningMessage(
+        "Server has newer changes. Overwrite?",
+        "Push (overwrite server)",
+        "Pull (overwrite local)",
+        "Show Diff"
+      );
+
+      if (choice === "Pull (overwrite local)") {
+        await this.pull(document);
+        return;
+      } else if (choice === "Show Diff") {
+        await this.showConflictDiff(document, config);
+        return;
+      } else if (!choice) {
+        // User cancelled
+        return;
+      }
+      // "Push (overwrite server)" — fall through to push
+    }
+
     const markdown = document.getText();
     const title = extractTitle(markdown) || vscode.workspace.asRelativePath(document.uri);
 
     this.statusBar.setSyncing("Pushing...");
-    PreviewPanel.currentPanel?.setSyncStatus("syncing");
+    PreviewPanel.updateSyncStatusForDocument(document.uri, "syncing");
 
     try {
       await updateDocument(
@@ -113,10 +146,10 @@ export class SyncEngine {
       await saveMdfyConfig(filePath, config);
 
       this.statusBar.setSynced();
-      PreviewPanel.currentPanel?.setSyncStatus("synced");
+      PreviewPanel.updateSyncStatusForDocument(document.uri, "synced");
     } catch (err) {
       this.statusBar.setError();
-      PreviewPanel.currentPanel?.setSyncStatus("error");
+      PreviewPanel.updateSyncStatusForDocument(document.uri, "error");
 
       // Queue for offline retry
       this.queueOffline(filePath, markdown, title);
@@ -140,7 +173,7 @@ export class SyncEngine {
     }
 
     this.statusBar.setSyncing("Pulling...");
-    PreviewPanel.currentPanel?.setSyncStatus("syncing");
+    PreviewPanel.updateSyncStatusForDocument(document.uri, "syncing");
 
     try {
       const remote = await pullDocument(config.docId, this.authManager);
@@ -160,11 +193,11 @@ export class SyncEngine {
       await saveMdfyConfig(filePath, config);
 
       this.statusBar.setSynced();
-      PreviewPanel.currentPanel?.setSyncStatus("synced");
+      PreviewPanel.updateSyncStatusForDocument(document.uri, "synced");
       vscode.window.showInformationMessage("Pulled latest from mdfy.cc.");
     } catch (err) {
       this.statusBar.setError();
-      PreviewPanel.currentPanel?.setSyncStatus("error");
+      PreviewPanel.updateSyncStatusForDocument(document.uri, "error");
       throw err;
     }
   }
@@ -176,11 +209,11 @@ export class SyncEngine {
     // First, flush offline queue
     await this.flushOfflineQueue();
 
-    // Check all open markdown editors for sync state
-    for (const editor of vscode.window.visibleTextEditors) {
-      if (editor.document.languageId !== "markdown") {continue;}
+    // Check all open markdown documents for sync state (not just visible editors)
+    for (const document of vscode.workspace.textDocuments) {
+      if (document.languageId !== "markdown") {continue;}
 
-      const filePath = editor.document.fileName;
+      const filePath = document.fileName;
       const config = await loadMdfyConfig(filePath);
       if (!config) {continue;}
 
@@ -197,29 +230,29 @@ export class SyncEngine {
         const localTime = new Date(localMtime).getTime();
 
         // Check if local file has unsaved changes
-        const localDirty = editor.document.isDirty;
+        const localDirty = document.isDirty;
 
         if (serverTime > localTime && !localDirty) {
           // Only server changed, and local is clean: pull
-          await this.pull(editor.document);
+          await this.pull(document);
         } else if (serverTime > localTime && localDirty) {
           // Both changed: conflict
           this.statusBar.setConflict();
-          PreviewPanel.currentPanel?.setSyncStatus("conflict");
+          PreviewPanel.updateSyncStatusForDocument(document.uri, "conflict");
 
           const action = await vscode.window.showWarningMessage(
-            `Conflict detected for ${vscode.workspace.asRelativePath(editor.document.uri)}. The server version has changed.`,
+            `Conflict detected for ${vscode.workspace.asRelativePath(document.uri)}. The server version has changed.`,
             "Pull (Overwrite Local)",
             "Push (Overwrite Server)",
             "Show Diff"
           );
 
           if (action === "Pull (Overwrite Local)") {
-            await this.pull(editor.document);
+            await this.pull(document);
           } else if (action === "Push (Overwrite Server)") {
-            await this.push(editor.document);
+            await this.push(document);
           } else if (action === "Show Diff") {
-            await this.showConflictDiff(editor.document, config);
+            await this.showConflictDiff(document, config);
           }
         }
       } catch {
@@ -261,11 +294,25 @@ export class SyncEngine {
    * Queue a failed push for offline retry.
    */
   private queueOffline(filePath: string, markdown: string, title: string): void {
+    // Find existing entry for this file to preserve retryCount
+    const existing = this.offlineQueue.find(
+      (item) => item.filePath === filePath
+    );
+    const retryCount = existing ? existing.retryCount + 1 : 0;
+
     // Remove existing entry for this file
     this.offlineQueue = this.offlineQueue.filter(
       (item) => item.filePath !== filePath
     );
-    this.offlineQueue.push({ filePath, markdown, title });
+
+    if (retryCount >= SyncEngine.MAX_OFFLINE_RETRIES) {
+      vscode.window.showWarningMessage(
+        `Sync for "${filePath}" failed after ${SyncEngine.MAX_OFFLINE_RETRIES} retries. Please try pushing manually.`
+      );
+      return;
+    }
+
+    this.offlineQueue.push({ filePath, markdown, title, retryCount });
   }
 
   /**
@@ -278,6 +325,11 @@ export class SyncEngine {
     this.offlineQueue = [];
 
     for (const item of queue) {
+      if (item.retryCount >= SyncEngine.MAX_OFFLINE_RETRIES) {
+        // Skip items that have exceeded max retries
+        continue;
+      }
+
       const config = await loadMdfyConfig(item.filePath);
       if (!config) {continue;}
 
@@ -294,8 +346,11 @@ export class SyncEngine {
         config.lastServerUpdatedAt = new Date().toISOString();
         await saveMdfyConfig(item.filePath, config);
       } catch {
-        // Still offline, re-queue
-        this.offlineQueue.push(item);
+        // Still offline, re-queue with incremented retryCount
+        this.offlineQueue.push({
+          ...item,
+          retryCount: item.retryCount + 1,
+        });
       }
     }
   }

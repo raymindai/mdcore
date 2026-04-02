@@ -1,4 +1,3 @@
-// @ts-nocheck
 /* =========================================================
    mdfy VS Code Preview — Webview Client Script
    WYSIWYG editing via contentEditable + message passing
@@ -7,14 +6,19 @@
 (function () {
   "use strict";
 
+  /** @type {ReturnType<typeof acquireVsCodeApi>} */
   const vscode = acquireVsCodeApi();
 
+  /** @type {HTMLElement} */
   const content = document.getElementById("content");
+  /** @type {HTMLElement} */
   const syncStatus = document.getElementById("sync-status");
+  /** @type {HTMLElement} */
   const toolbar = document.getElementById("toolbar");
 
   // Current markdown source (kept in sync with extension)
   let currentMarkdown = window.__initialMarkdown || "";
+  /** @type {number | null} */
   let editDebounceTimer = null;
   let isUpdatingFromExtension = false;
 
@@ -386,7 +390,8 @@
         if (node.parentElement && node.parentElement.tagName.toLowerCase() === "pre") {
           return innerText;
         }
-        return "`" + innerText + "`";
+        var escapedCode = innerText.replace(/`/g, "\\`");
+        return "`" + escapedCode + "`";
 
       case "pre": {
         var lang = node.getAttribute("lang") || "";

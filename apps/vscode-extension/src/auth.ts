@@ -84,9 +84,26 @@ export class AuthManager {
 
   /**
    * Get the stored auth token, or undefined if not logged in.
+   * Returns undefined if the token is expired.
    */
   async getToken(): Promise<string | undefined> {
-    return this.context.secrets.get(TOKEN_KEY);
+    const token = await this.context.secrets.get(TOKEN_KEY);
+    if (!token) {return undefined;}
+
+    // Check if token is expired
+    try {
+      const payload = decodeJwtPayload(token);
+      if (payload.exp && Date.now() > Number(payload.exp) * 1000) {
+        await this.logout();
+        return undefined;
+      }
+    } catch {
+      // Invalid token format — clear it
+      await this.logout();
+      return undefined;
+    }
+
+    return token;
   }
 
   /**

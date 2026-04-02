@@ -3,7 +3,7 @@ import { marked } from "marked";
 import * as path from "path";
 
 export class PreviewPanel {
-  public static currentPanel: PreviewPanel | undefined;
+  private static panels: Map<string, PreviewPanel> = new Map();
   private static readonly viewType = "mdfyPreview";
 
   private readonly panel: vscode.WebviewPanel;
@@ -20,16 +20,19 @@ export class PreviewPanel {
       ? vscode.ViewColumn.Beside
       : vscode.ViewColumn.One;
 
-    if (PreviewPanel.currentPanel) {
-      PreviewPanel.currentPanel.trackedDocument = document;
-      PreviewPanel.currentPanel.panel.reveal(column);
-      PreviewPanel.currentPanel.updateContent(document.getText());
+    const key = document.uri.toString();
+    const existing = PreviewPanel.panels.get(key);
+
+    if (existing) {
+      existing.trackedDocument = document;
+      existing.panel.reveal(column);
+      existing.updateContent(document.getText());
       return;
     }
 
     const panel = vscode.window.createWebviewPanel(
       PreviewPanel.viewType,
-      "mdfy Preview",
+      `mdfy Preview: ${path.basename(document.fileName)}`,
       column,
       {
         enableScripts: true,
@@ -38,17 +41,29 @@ export class PreviewPanel {
       }
     );
 
-    PreviewPanel.currentPanel = new PreviewPanel(panel, extensionUri, document);
+    const previewPanel = new PreviewPanel(panel, extensionUri, document);
+    PreviewPanel.panels.set(key, previewPanel);
   }
 
   public static updateIfActive(document: vscode.TextDocument): void {
-    if (
-      PreviewPanel.currentPanel &&
-      PreviewPanel.currentPanel.trackedDocument?.uri.toString() ===
-        document.uri.toString() &&
-      !PreviewPanel.currentPanel.isUpdatingFromWebview
-    ) {
-      PreviewPanel.currentPanel.updateContent(document.getText());
+    const key = document.uri.toString();
+    const panel = PreviewPanel.panels.get(key);
+    if (panel && !panel.isUpdatingFromWebview) {
+      panel.updateContent(document.getText());
+    }
+  }
+
+  /**
+   * Update sync status for the preview panel tracking the given document URI.
+   */
+  public static updateSyncStatusForDocument(
+    uri: vscode.Uri,
+    status: string
+  ): void {
+    const key = uri.toString();
+    const panel = PreviewPanel.panels.get(key);
+    if (panel) {
+      panel.setSyncStatus(status);
     }
   }
 
@@ -102,7 +117,10 @@ export class PreviewPanel {
 
     this.panel.onDidDispose(
       () => {
-        PreviewPanel.currentPanel = undefined;
+        // Remove from the panels map
+        if (this.trackedDocument) {
+          PreviewPanel.panels.delete(this.trackedDocument.uri.toString());
+        }
         this.dispose();
       },
       null,
