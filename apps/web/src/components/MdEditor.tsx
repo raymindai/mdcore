@@ -5258,7 +5258,7 @@ ${html}
       >
         {/* Left: Help + navigation */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="relative group hidden sm:block">
+          <div className="relative group">
             <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
             <div className="absolute bottom-full left-0 mb-1 w-72 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
@@ -5309,17 +5309,37 @@ ${html}
               </div>
             </div>
           </div>
-          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>About</a>
+          <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
           <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Plugins</a>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
-        {/* Right: stats + engine badges */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <span>{wordCount.toLocaleString()} <span className="hidden sm:inline">words</span><span className="sm:hidden">w</span></span>
-          <span style={{ color: "var(--border)" }}>·</span>
+        {/* Right: stats + engine badges — tap to expand on mobile */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Desktop: always visible */}
+          <span className="hidden sm:inline">{wordCount.toLocaleString()} words</span>
+          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
           <span className="hidden sm:inline">{charCount.toLocaleString()} chars</span>
           <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
-          <span>{lineCount.toLocaleString()} <span className="hidden sm:inline">lines</span><span className="sm:hidden">L</span></span>
+          <span className="hidden sm:inline">{lineCount.toLocaleString()} lines</span>
+          {/* Mobile: compact tap-to-expand */}
+          <button
+            className="sm:hidden flex items-center gap-1"
+            style={{ color: "var(--text-muted)" }}
+            onClick={(e) => {
+              const el = e.currentTarget.nextElementSibling as HTMLElement;
+              if (el) el.style.display = el.style.display === "none" ? "flex" : "none";
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+            {wordCount.toLocaleString()}w
+          </button>
+          <div className="sm:hidden items-center gap-2 absolute bottom-full right-3 mb-1 px-3 py-1.5 rounded-lg" style={{ display: "none", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+            <span>{wordCount.toLocaleString()} words</span>
+            <span style={{ color: "var(--border)" }}>·</span>
+            <span>{charCount.toLocaleString()} chars</span>
+            <span style={{ color: "var(--border)" }}>·</span>
+            <span>{lineCount.toLocaleString()} lines</span>
+          </div>
           {/* Flavor badges moved to SOURCE MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
