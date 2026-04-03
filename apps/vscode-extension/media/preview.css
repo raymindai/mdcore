@@ -72,8 +72,10 @@ html, body {
 
 /* === Toolbar === */
 #toolbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   display: flex;
   align-items: center;
@@ -559,7 +561,8 @@ html, body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  margin-top: 34px; /* space for fixed toolbar */
 }
 
 #source-view {
