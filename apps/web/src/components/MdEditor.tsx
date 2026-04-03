@@ -135,10 +135,12 @@ console.log(\`Detected: \${flavor.primary}\`);
 \`\`\`
 
 \`\`\`python
-response = requests.get("https://api.mdcore.ai/v1/render", json={
-    "markdown": "# Hello",
-    "theme": "minimal-light"
+import requests
+
+response = requests.post("https://mdfy.cc/api/docs", json={
+    "markdown": "# Hello World",
 })
+print(response.json()["id"])  # → "abc123"
 \`\`\`
 
 ## Math (KaTeX)
@@ -5255,8 +5257,8 @@ ${html}
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
         {/* Left: Help + navigation */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="relative group">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="relative group hidden sm:block">
             <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
             <div className="absolute bottom-full left-0 mb-1 w-72 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
@@ -5307,18 +5309,17 @@ ${html}
               </div>
             </div>
           </div>
-          <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
-          <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</a>
-          <a href="https://github.com/raymindai/mdcore" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://mdcore.ai" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">mdcore.ai</a>
+          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>About</a>
+          <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Plugins</a>
+          <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         {/* Right: stats + engine badges */}
-        <div className="flex items-center gap-3 shrink-0">
-          <span>{wordCount.toLocaleString()} words</span>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span>{wordCount.toLocaleString()} <span className="hidden sm:inline">words</span><span className="sm:hidden">w</span></span>
           <span style={{ color: "var(--border)" }}>·</span>
-          <span>{charCount.toLocaleString()} chars</span>
-          <span style={{ color: "var(--border)" }}>·</span>
-          <span>{lineCount.toLocaleString()} lines</span>
+          <span className="hidden sm:inline">{charCount.toLocaleString()} chars</span>
+          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
+          <span>{lineCount.toLocaleString()} <span className="hidden sm:inline">lines</span><span className="sm:hidden">L</span></span>
           {/* Flavor badges moved to SOURCE MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
