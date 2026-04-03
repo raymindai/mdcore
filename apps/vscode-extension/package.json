@@ -125,6 +125,11 @@
           "default": false,
           "description": "Automatically sync published documents on save"
         },
+        "mdfy.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open mdfy preview when opening a Markdown file"
+        },
         "mdfy.syncInterval": {
           "type": "number",
           "default": 30,

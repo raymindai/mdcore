@@ -183,6 +183,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor && editor.document.languageId === "markdown") {
         statusBar?.show();
+        // Auto-open preview if enabled
+        const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
+        if (autoPreview) {
+          PreviewPanel.createOrShow(context.extensionUri, editor.document);
+        }
       } else {
         statusBar?.hide();
       }
@@ -196,11 +201,15 @@ export function activate(context: vscode.ExtensionContext): void {
     syncEngine.startPolling(interval);
   }
 
-  // Show status bar if active editor is markdown
+  // Show status bar + auto-preview if active editor is markdown
   if (
     vscode.window.activeTextEditor?.document.languageId === "markdown"
   ) {
     statusBar.show();
+    const autoPreview = config.get<boolean>("autoPreview", true);
+    if (autoPreview) {
+      PreviewPanel.createOrShow(context.extensionUri, vscode.window.activeTextEditor.document);
+    }
   }
 
   context.subscriptions.push({
