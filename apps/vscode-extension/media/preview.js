@@ -18,9 +18,17 @@
 
   // Current markdown source (kept in sync with extension)
   let currentMarkdown = window.__initialMarkdown || "";
+  let currentFlavor = (window.__initialFlavor && window.__initialFlavor.primary) || "gfm";
   /** @type {number | null} */
   let editDebounceTimer = null;
   let isUpdatingFromExtension = false;
+
+  /** @type {HTMLElement} */
+  var flavorBadge = document.getElementById("flavor-badge");
+  /** @type {HTMLElement} */
+  var flavorDropdown = document.getElementById("flavor-dropdown");
+  /** @type {HTMLElement | null} */
+  var tableContextMenu = null;
 
   // ─── Message Handling (Extension <-> Webview) ───
 
@@ -33,6 +41,10 @@
         isUpdatingFromExtension = true;
         if (message.markdown !== undefined) {
           currentMarkdown = message.markdown;
+        }
+        if (message.flavor !== undefined) {
+          currentFlavor = message.flavor.primary || currentFlavor;
+          updateFlavorBadge(currentFlavor);
         }
         if (message.html !== undefined) {
           // Preserve cursor position approximately
@@ -63,11 +75,24 @@
             }
           });
 
+          // Post-process: Mermaid diagrams
+          postProcessMermaid();
+
           if (hadFocus && caretOffset > 0) {
             restoreCaretPosition(content, caretOffset);
           }
         }
         isUpdatingFromExtension = false;
+        break;
+
+      case "flavorConvertResult":
+        if (message.changed === false) {
+          // Nothing changed — flash the badge to indicate "already compatible"
+          if (flavorBadge) {
+            flavorBadge.classList.add("flavor-badge-flash");
+            setTimeout(function() { flavorBadge.classList.remove("flavor-badge-flash"); }, 1200);
+          }
+        }
         break;
 
       case "syncStatus":
@@ -991,6 +1016,311 @@
         syncStatus.className = "";
     }
   }
+
+  // ─── Mermaid Edit Buttons ───
+
+  function postProcessMermaid() {
+    if (typeof mermaid === 'undefined') return;
+
+    // Convert pre[lang="mermaid"] to .mermaid divs, preserving original code
+    content.querySelectorAll('pre[lang="mermaid"] code, code.language-mermaid').forEach(function(el) {
+      var container = document.createElement('div');
+      container.className = 'mermaid';
+      var originalCode = el.textContent || '';
+      container.setAttribute('data-original-code', originalCode);
+      container.textContent = originalCode;
+      var pre = el.closest('pre');
+      if (pre) pre.replaceWith(container);
+    });
+
+    mermaid.run().then(function() {
+      addMermaidEditButtons();
+    }).catch(function() {
+      // Even if mermaid fails, still try to add buttons
+      addMermaidEditButtons();
+    });
+  }
+
+  function addMermaidEditButtons() {
+    content.querySelectorAll('.mermaid').forEach(function(el, idx) {
+      // Skip if already has edit button
+      if (el.querySelector('.mermaid-edit-btn')) return;
+
+      var editBtn = document.createElement('button');
+      editBtn.className = 'mermaid-edit-btn';
+      editBtn.textContent = 'Edit';
+      editBtn.setAttribute('data-mermaid-idx', String(idx));
+      editBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        vscode.postMessage({
+          type: 'editMermaid',
+          code: el.getAttribute('data-original-code') || '',
+          index: idx
+        });
+      });
+      el.style.position = 'relative';
+      el.appendChild(editBtn);
+    });
+  }
+
+  // Add edit buttons on initial load (inline script already ran mermaid.run())
+  setTimeout(function() {
+    addMermaidEditButtons();
+  }, 500);
+
+  // ─── Table Inline Editing ───
+
+  content.addEventListener('dblclick', function(e) {
+    var td = e.target.closest('td, th');
+    if (!td) return;
+    if (td.getAttribute('contenteditable') === 'true') return;
+
+    e.stopPropagation();
+    td.setAttribute('contenteditable', 'true');
+    td.classList.add('table-cell-editing');
+    td.focus();
+
+    // Select all text in the cell
+    var range = document.createRange();
+    range.selectNodeContents(td);
+    var sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    td.addEventListener('blur', function onBlur() {
+      td.removeAttribute('contenteditable');
+      td.classList.remove('table-cell-editing');
+      td.removeEventListener('blur', onBlur);
+      triggerEditDebounce();
+    });
+
+    td.addEventListener('keydown', function onKey(ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        td.blur();
+      }
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        td.blur();
+      }
+      if (ev.key === 'Tab') {
+        ev.preventDefault();
+        td.blur();
+        var next = ev.shiftKey ? td.previousElementSibling : td.nextElementSibling;
+        if (next && (next.tagName === 'TD' || next.tagName === 'TH')) {
+          next.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        }
+      }
+    });
+  });
+
+  // ─── Table Context Menu ───
+
+  content.addEventListener('contextmenu', function(e) {
+    var td = e.target.closest('td, th');
+    if (!td) {
+      hideTableContextMenu();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    showTableContextMenu(e.clientX, e.clientY, td);
+  });
+
+  function showTableContextMenu(x, y, td) {
+    hideTableContextMenu();
+
+    var menu = document.createElement('div');
+    menu.id = 'table-context-menu';
+    menu.className = 'table-context-menu';
+
+    var items = [
+      { label: 'Add Row Above', action: 'addRowAbove' },
+      { label: 'Add Row Below', action: 'addRowBelow' },
+      { label: 'Add Column Left', action: 'addColLeft' },
+      { label: 'Add Column Right', action: 'addColRight' },
+      { label: '---' },
+      { label: 'Delete Row', action: 'deleteRow' },
+      { label: 'Delete Column', action: 'deleteCol' },
+    ];
+
+    items.forEach(function(item) {
+      if (item.label === '---') {
+        var sep = document.createElement('div');
+        sep.className = 'table-ctx-separator';
+        menu.appendChild(sep);
+        return;
+      }
+
+      var btn = document.createElement('button');
+      btn.className = 'table-ctx-item';
+      btn.textContent = item.label;
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        handleTableAction(item.action, td);
+        hideTableContextMenu();
+      });
+      menu.appendChild(btn);
+    });
+
+    // Position the menu
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    document.body.appendChild(menu);
+    tableContextMenu = menu;
+
+    // Adjust if off-screen
+    var rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = (x - rect.width) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = (y - rect.height) + 'px';
+    }
+
+    // Close on click outside
+    setTimeout(function() {
+      document.addEventListener('click', hideTableContextMenu, { once: true });
+    }, 0);
+  }
+
+  function hideTableContextMenu() {
+    if (tableContextMenu) {
+      tableContextMenu.remove();
+      tableContextMenu = null;
+    }
+  }
+
+  function handleTableAction(action, td) {
+    var tr = td.closest('tr');
+    var table = td.closest('table');
+    if (!tr || !table) return;
+
+    var cellIndex = Array.prototype.indexOf.call(tr.children, td);
+    var allRows = table.querySelectorAll('tr');
+    var colCount = allRows.length > 0 ? allRows[0].children.length : 0;
+
+    switch (action) {
+      case 'addRowAbove':
+      case 'addRowBelow': {
+        var newRow = document.createElement('tr');
+        for (var c = 0; c < colCount; c++) {
+          var newTd = document.createElement('td');
+          newTd.textContent = '';
+          newRow.appendChild(newTd);
+        }
+        if (action === 'addRowAbove') {
+          tr.parentNode.insertBefore(newRow, tr);
+        } else {
+          tr.parentNode.insertBefore(newRow, tr.nextSibling);
+        }
+        break;
+      }
+      case 'addColLeft':
+      case 'addColRight': {
+        allRows.forEach(function(row) {
+          var isHeader = row.children[0] && row.children[0].tagName === 'TH';
+          var newCell = document.createElement(isHeader ? 'th' : 'td');
+          newCell.textContent = isHeader ? 'Header' : '';
+          var refCell = row.children[cellIndex];
+          if (action === 'addColLeft' && refCell) {
+            row.insertBefore(newCell, refCell);
+          } else if (refCell) {
+            row.insertBefore(newCell, refCell.nextSibling);
+          } else {
+            row.appendChild(newCell);
+          }
+        });
+        break;
+      }
+      case 'deleteRow': {
+        // Don't delete the header row (first row)
+        var rowIndex = Array.prototype.indexOf.call(allRows, tr);
+        if (rowIndex === 0) {
+          // Can't delete header
+          return;
+        }
+        if (allRows.length <= 2) {
+          // Need at least header + 1 row
+          return;
+        }
+        tr.remove();
+        break;
+      }
+      case 'deleteCol': {
+        if (colCount <= 1) return; // Need at least 1 column
+        allRows.forEach(function(row) {
+          var cell = row.children[cellIndex];
+          if (cell) cell.remove();
+        });
+        break;
+      }
+    }
+
+    triggerEditDebounce();
+  }
+
+  // ─── Flavor Badge & Dropdown ───
+
+  function updateFlavorBadge(flavor) {
+    if (!flavorBadge) return;
+    var names = {
+      gfm: 'GFM',
+      commonmark: 'CommonMark',
+      obsidian: 'Obsidian',
+      mdx: 'MDX',
+      pandoc: 'Pandoc'
+    };
+    flavorBadge.textContent = (names[flavor] || flavor.toUpperCase()) + ' \u25BE';
+
+    // Hide the current flavor from dropdown options
+    if (flavorDropdown) {
+      flavorDropdown.querySelectorAll('.flavor-option').forEach(function(opt) {
+        if (opt.getAttribute('data-flavor') === flavor) {
+          opt.style.display = 'none';
+        } else {
+          opt.style.display = '';
+        }
+      });
+    }
+  }
+
+  if (flavorBadge) {
+    flavorBadge.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (flavorDropdown) {
+        flavorDropdown.classList.toggle('hidden');
+      }
+    });
+  }
+
+  if (flavorDropdown) {
+    flavorDropdown.querySelectorAll('.flavor-option').forEach(function(opt) {
+      opt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var target = opt.getAttribute('data-flavor');
+        if (target) {
+          vscode.postMessage({ type: 'convertFlavor', target: target });
+        }
+        flavorDropdown.classList.add('hidden');
+      });
+    });
+  }
+
+  // Close flavor dropdown on click outside
+  document.addEventListener('click', function() {
+    if (flavorDropdown) {
+      flavorDropdown.classList.add('hidden');
+    }
+    hideTableContextMenu();
+  });
+
+  // Initialize flavor badge with detected flavor
+  updateFlavorBadge(currentFlavor);
 
   // ─── Initialize ───
 

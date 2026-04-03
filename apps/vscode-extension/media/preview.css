@@ -375,6 +375,184 @@ html, body {
   font-style: italic;
 }
 
+/* === Mermaid Edit Button === */
+.mermaid {
+  position: relative;
+}
+
+.mermaid-edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 10;
+}
+
+.mermaid:hover .mermaid-edit-btn {
+  opacity: 1;
+}
+
+.mermaid-edit-btn:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+/* === Table Inline Editing === */
+.mdcore-rendered td.table-cell-editing,
+.mdcore-rendered th.table-cell-editing {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--surface) !important;
+}
+
+/* === Table Context Menu === */
+.table-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+}
+
+.table-ctx-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--fg);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.table-ctx-item:hover {
+  background: var(--surface-hover);
+}
+
+.table-ctx-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* === Flavor Badge & Dropdown === */
+#sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#flavor-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#flavor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+#flavor-badge:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+#flavor-badge.flavor-badge-flash {
+  animation: flavorFlash 1.2s ease;
+}
+
+@keyframes flavorFlash {
+  0%, 100% { background: transparent; }
+  30% { background: rgba(251, 146, 60, 0.15); }
+  60% { background: transparent; }
+}
+
+.flavor-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  z-index: 200;
+}
+
+.flavor-dropdown.hidden {
+  display: none;
+}
+
+.flavor-dropdown-header {
+  padding: 4px 10px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+
+.flavor-option {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--fg);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.flavor-option:hover {
+  background: var(--surface-hover);
+}
+
+.flavor-option-name {
+  display: block;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.flavor-option-desc {
+  display: block;
+  font-size: 10px;
+  color: var(--fg-muted);
+  margin-top: 1px;
+}
+
 /* === Scrollbar === */
 ::-webkit-scrollbar {
   width: 8px;

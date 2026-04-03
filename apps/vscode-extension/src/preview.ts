@@ -10,7 +10,13 @@ const wasmEngine = require("../wasm/mdcore_engine") as {
     html: string;
     title: string | undefined;
     toc_json: string;
-    flavor: { primary: string; math: boolean; mermaid: boolean };
+    flavor: {
+      primary: string;
+      math: boolean;
+      mermaid: boolean;
+      wikilinks: boolean;
+      jsx: boolean;
+    };
   };
 };
 
@@ -100,7 +106,15 @@ export class PreviewPanel {
 
     // Handle messages from webview
     this.panel.webview.onDidReceiveMessage(
-      async (message: { type: string; markdown?: string; data?: string; name?: string }) => {
+      async (message: {
+        type: string;
+        markdown?: string;
+        data?: string;
+        name?: string;
+        code?: string;
+        index?: number;
+        target?: string;
+      }) => {
         switch (message.type) {
           case "edit": {
             if (!message.markdown || !this.trackedDocument) {return;}
@@ -158,6 +172,14 @@ export class PreviewPanel {
             }
             break;
           }
+          case "editMermaid": {
+            await this.handleMermaidEdit(message.code, message.index);
+            break;
+          }
+          case "convertFlavor": {
+            await this.handleFlavorConversion(message.target);
+            break;
+          }
         }
       },
       null,
@@ -182,8 +204,167 @@ export class PreviewPanel {
   }
 
   private updateContent(markdown: string): void {
-    const html = renderMarkdown(markdown);
-    this.panel.webview.postMessage({ type: "update", html, markdown });
+    const result = renderMarkdownWithFlavor(markdown);
+    this.panel.webview.postMessage({
+      type: "update",
+      html: result.html,
+      markdown,
+      flavor: result.flavor,
+    });
+  }
+
+  private async handleMermaidEdit(
+    code: string | undefined,
+    index: number | undefined
+  ): Promise<void> {
+    if (!code || !this.trackedDocument) {return;}
+
+    // Open the mermaid code in a new untitled text editor
+    const doc = await vscode.workspace.openTextDocument({
+      content: code.trim(),
+      language: "markdown",
+    });
+
+    await vscode.window.showTextDocument(doc, {
+      viewColumn: vscode.ViewColumn.One,
+      preserveFocus: false,
+    });
+
+    // Watch for save on this temp document — replace the mermaid code block
+    const disposable = vscode.workspace.onDidSaveTextDocument(async (saved) => {
+      if (saved.uri.toString() !== doc.uri.toString()) {return;}
+      if (!this.trackedDocument) {return;}
+
+      const newCode = saved.getText().trim();
+      const mdText = this.trackedDocument.getText();
+
+      // Find all mermaid code blocks and replace the one at the given index
+      const mermaidBlockRegex = /```mermaid\s*\n([\s\S]*?)```/g;
+      let match: RegExpExecArray | null;
+      let blockIndex = 0;
+
+      let newMd = mdText;
+      mermaidBlockRegex.lastIndex = 0;
+      while ((match = mermaidBlockRegex.exec(mdText)) !== null) {
+        if (blockIndex === (index ?? 0)) {
+          const before = mdText.substring(0, match.index);
+          const after = mdText.substring(match.index + match[0].length);
+          newMd = before + "```mermaid\n" + newCode + "\n```" + after;
+          break;
+        }
+        blockIndex++;
+      }
+
+      if (newMd !== mdText) {
+        this.isUpdatingFromWebview = true;
+        try {
+          const edit = new vscode.WorkspaceEdit();
+          const fullRange = new vscode.Range(
+            this.trackedDocument.positionAt(0),
+            this.trackedDocument.positionAt(mdText.length)
+          );
+          edit.replace(this.trackedDocument.uri, fullRange, newMd);
+          await vscode.workspace.applyEdit(edit);
+          // Re-render
+          this.updateContent(newMd);
+        } finally {
+          setTimeout(() => {
+            this.isUpdatingFromWebview = false;
+          }, 100);
+        }
+      }
+    });
+
+    // Clean up when the temp editor is closed
+    const closeDisposable = vscode.workspace.onDidCloseTextDocument((closed) => {
+      if (closed.uri.toString() === doc.uri.toString()) {
+        disposable.dispose();
+        closeDisposable.dispose();
+      }
+    });
+
+    this.disposables.push(disposable, closeDisposable);
+  }
+
+  private async handleFlavorConversion(
+    target: string | undefined
+  ): Promise<void> {
+    if (!target || !this.trackedDocument) {return;}
+
+    const mdText = this.trackedDocument.getText();
+    const currentResult = renderMarkdownWithFlavor(mdText);
+    const currentFlavor = currentResult.flavor.primary;
+    let converted = mdText;
+
+    // Obsidian → other: convert wikilinks and callouts
+    if (currentFlavor === "obsidian" && target !== "obsidian") {
+      // [[page|display]] → [display](page)
+      converted = converted.replace(
+        /\[\[([^\]|]+)\|([^\]]+)\]\]/g,
+        "[$2]($1)"
+      );
+      // [[page]] → [page](page)
+      converted = converted.replace(/\[\[([^\]]+)\]\]/g, "[$1]($1)");
+      // > [!note] callouts → > **Note:**
+      converted = converted.replace(
+        /^>\s*\[!(\w+)\]\s*(.*)$/gm,
+        "> **$1:** $2"
+      );
+    }
+
+    // other → Obsidian: self-referencing links to wikilinks
+    if (target === "obsidian" && currentFlavor !== "obsidian") {
+      converted = converted.replace(/\[([^\]]+)\]\(\1\)/g, "[[$1]]");
+    }
+
+    // MDX → any: strip JSX and imports
+    if (currentFlavor === "mdx") {
+      converted = converted.replace(/<[A-Z]\w+[^>]*\/>/g, "");
+      converted = converted.replace(
+        /<[A-Z]\w+[^>]*>[\s\S]*?<\/[A-Z]\w+>/g,
+        ""
+      );
+      converted = converted.replace(/^import\s+.*$/gm, "");
+      converted = converted.replace(/^export\s+default\s+.*$/gm, "");
+    }
+
+    // any → CommonMark: strip GFM extensions
+    if (target === "commonmark") {
+      converted = converted.replace(/~~([^~]+)~~/g, "$1");
+      converted = converted.replace(/^(\s*)- \[[ x]\] /gm, "$1- ");
+    }
+
+    // Clean up excessive blank lines
+    converted = converted.replace(/\n{3,}/g, "\n\n").trim();
+
+    if (converted === mdText.trim()) {
+      this.panel.webview.postMessage({
+        type: "flavorConvertResult",
+        changed: false,
+      });
+      return;
+    }
+
+    // Apply the converted text
+    this.isUpdatingFromWebview = true;
+    try {
+      const edit = new vscode.WorkspaceEdit();
+      const fullRange = new vscode.Range(
+        this.trackedDocument.positionAt(0),
+        this.trackedDocument.positionAt(mdText.length)
+      );
+      edit.replace(this.trackedDocument.uri, fullRange, converted + "\n");
+      await vscode.workspace.applyEdit(edit);
+      this.updateContent(converted + "\n");
+      this.panel.webview.postMessage({
+        type: "flavorConvertResult",
+        changed: true,
+      });
+    } finally {
+      setTimeout(() => {
+        this.isUpdatingFromWebview = false;
+      }, 100);
+    }
   }
 
   private async handleImageUpload(
@@ -314,7 +495,8 @@ export class PreviewPanel {
     );
 
     const nonce = getNonce();
-    const renderedHtml = renderMarkdown(markdown);
+    const result = renderMarkdownWithFlavor(markdown);
+    const renderedHtml = result.html;
 
     const themeSetting = vscode.workspace
       .getConfiguration("mdfy")
@@ -386,6 +568,24 @@ export class PreviewPanel {
   </article>
 
   <div id="sync-bar">
+    <div id="flavor-area">
+      <button id="flavor-badge" title="Markdown flavor (click to convert)">${result.flavor.primary.toUpperCase()} &#9662;</button>
+      <div id="flavor-dropdown" class="flavor-dropdown hidden">
+        <div class="flavor-dropdown-header">Convert to</div>
+        <button class="flavor-option" data-flavor="gfm">
+          <span class="flavor-option-name">GFM (GitHub)</span>
+          <span class="flavor-option-desc">Tables, task lists, strikethrough</span>
+        </button>
+        <button class="flavor-option" data-flavor="commonmark">
+          <span class="flavor-option-name">CommonMark</span>
+          <span class="flavor-option-desc">Standard, maximum compatibility</span>
+        </button>
+        <button class="flavor-option" data-flavor="obsidian">
+          <span class="flavor-option-name">Obsidian</span>
+          <span class="flavor-option-desc">Wikilinks, callouts, embeds</span>
+        </button>
+      </div>
+    </div>
     <span id="sync-status">Ready</span>
   </div>
 
@@ -398,6 +598,7 @@ export class PreviewPanel {
 
   <script nonce="${nonce}">
     window.__initialMarkdown = ${JSON.stringify(markdown)};
+    window.__initialFlavor = ${JSON.stringify(result.flavor)};
 
     // Post-process: syntax highlighting
     document.querySelectorAll('pre code').forEach(function(block) {
@@ -416,16 +617,19 @@ export class PreviewPanel {
       }
     });
 
-    // Post-process: Mermaid diagrams
+    // Post-process: Mermaid diagrams — save original code before rendering
     if (typeof mermaid !== 'undefined') {
       mermaid.initialize({ startOnLoad: false, theme: '${themeClass === "dark" ? "dark" : "default"}' });
       document.querySelectorAll('pre[lang="mermaid"] code, code.language-mermaid').forEach(function(el) {
         var container = document.createElement('div');
         container.className = 'mermaid';
-        container.textContent = el.textContent;
+        var originalCode = el.textContent || '';
+        container.setAttribute('data-original-code', originalCode);
+        container.textContent = originalCode;
         el.closest('pre').replaceWith(container);
       });
       mermaid.run();
+      // Mermaid edit buttons are added by preview.js after it initializes
     }
   </script>
   <script nonce="${nonce}" src="${jsUri}"></script>
@@ -441,13 +645,31 @@ export class PreviewPanel {
   }
 }
 
-function renderMarkdown(markdown: string): string {
+interface FlavorInfo {
+  primary: string;
+  math: boolean;
+  mermaid: boolean;
+  wikilinks: boolean;
+  jsx: boolean;
+}
+
+interface RenderResult {
+  html: string;
+  flavor: FlavorInfo;
+}
+
+function renderMarkdownWithFlavor(markdown: string): RenderResult {
   try {
     const result = wasmEngine.render(markdown);
-    // Raw comrak HTML — postprocessing (highlight.js, KaTeX, Mermaid) runs in the webview via CDN scripts
-    return result.html;
+    return {
+      html: result.html,
+      flavor: result.flavor,
+    };
   } catch {
-    return `<p style="color:red">Render error</p>`;
+    return {
+      html: `<p style="color:red">Render error</p>`,
+      flavor: { primary: "gfm", math: false, mermaid: false, wikilinks: false, jsx: false },
+    };
   }
 }
 
