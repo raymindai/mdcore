@@ -14,6 +14,9 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBar = new StatusBarManager();
   syncEngine = new SyncEngine(authManager, statusBar);
 
+  // Share AuthManager with preview panels for image upload
+  PreviewPanel.setAuthManager(authManager);
+
   // Register URI handler for OAuth callback
   const uriHandler: vscode.UriHandler = {
     handleUri(uri: vscode.Uri): void {

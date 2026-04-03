@@ -1,16 +1,36 @@
 import * as vscode from "vscode";
-import { marked } from "marked";
 import * as path from "path";
+import * as https from "https";
+import * as http from "http";
+import { AuthManager } from "./auth";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const wasmEngine = require("../wasm/mdcore_engine") as {
+  render: (markdown: string) => {
+    html: string;
+    title: string | undefined;
+    toc_json: string;
+    flavor: { primary: string; math: boolean; mermaid: boolean };
+  };
+};
 
 export class PreviewPanel {
   private static panels: Map<string, PreviewPanel> = new Map();
   private static readonly viewType = "mdfyPreview";
+  private static authManagerRef: AuthManager | undefined;
 
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
   private trackedDocument: vscode.TextDocument | undefined;
   private isUpdatingFromWebview = false;
   private disposables: vscode.Disposable[] = [];
+
+  /**
+   * Set the shared AuthManager reference for image uploads.
+   */
+  public static setAuthManager(auth: AuthManager): void {
+    PreviewPanel.authManagerRef = auth;
+  }
 
   public static createOrShow(
     extensionUri: vscode.Uri,
@@ -80,7 +100,7 @@ export class PreviewPanel {
 
     // Handle messages from webview
     this.panel.webview.onDidReceiveMessage(
-      async (message: { type: string; markdown?: string }) => {
+      async (message: { type: string; markdown?: string; data?: string; name?: string }) => {
         switch (message.type) {
           case "edit": {
             if (!message.markdown || !this.trackedDocument) {return;}
@@ -106,6 +126,35 @@ export class PreviewPanel {
           case "requestUpdate": {
             if (this.trackedDocument) {
               this.updateContent(this.trackedDocument.getText());
+            }
+            break;
+          }
+          case "uploadImage": {
+            await this.handleImageUpload(message.data, message.name);
+            break;
+          }
+          case "requestImageUrl": {
+            const url = await vscode.window.showInputBox({
+              prompt: "Enter image URL",
+              placeHolder: "https://example.com/image.png",
+              validateInput: (value) => {
+                if (!value) {return "URL is required";}
+                if (!value.startsWith("http://") && !value.startsWith("https://")) {
+                  return "URL must start with http:// or https://";
+                }
+                return null;
+              },
+            });
+            if (url) {
+              const alt = await vscode.window.showInputBox({
+                prompt: "Alt text (optional)",
+                placeHolder: "image",
+              });
+              this.panel.webview.postMessage({
+                type: "insertImage",
+                url,
+                alt: alt || "image",
+              });
             }
             break;
           }
@@ -135,6 +184,123 @@ export class PreviewPanel {
   private updateContent(markdown: string): void {
     const html = renderMarkdown(markdown);
     this.panel.webview.postMessage({ type: "update", html, markdown });
+  }
+
+  private async handleImageUpload(
+    dataUrl: string | undefined,
+    name: string | undefined
+  ): Promise<void> {
+    if (!dataUrl) {
+      this.panel.webview.postMessage({ type: "imageUploadFailed" });
+      return;
+    }
+
+    const auth = PreviewPanel.authManagerRef;
+    const userId = await auth?.getUserId();
+    if (!auth || !userId) {
+      vscode.window.showWarningMessage(
+        "Sign in to mdfy.cc to upload images (mdfy: Login)."
+      );
+      this.panel.webview.postMessage({ type: "imageUploadFailed" });
+      return;
+    }
+
+    try {
+      // Parse base64 data URL
+      const commaIndex = dataUrl.indexOf(",");
+      if (commaIndex === -1) {
+        throw new Error("Invalid data URL");
+      }
+      const base64Data = dataUrl.substring(commaIndex + 1);
+      const mimeMatch = dataUrl.match(/^data:([^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+      const imageBuffer = Buffer.from(base64Data, "base64");
+
+      const ext = name?.split(".").pop() || "png";
+      const fileName = name || `image.${ext}`;
+
+      const apiBaseUrl = vscode.workspace
+        .getConfiguration("mdfy")
+        .get<string>("apiBaseUrl", "https://mdfy.cc");
+
+      // Build multipart/form-data manually
+      const boundary =
+        "----mdfyUpload" + Math.random().toString(36).substring(2);
+      const parts: Buffer[] = [];
+
+      // File part
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+            `Content-Type: ${mimeType}\r\n\r\n`
+        )
+      );
+      parts.push(imageBuffer);
+      parts.push(Buffer.from("\r\n"));
+
+      // End boundary
+      parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+      const body = Buffer.concat(parts);
+
+      // Make the HTTP request
+      const url = new URL(`${apiBaseUrl}/api/upload`);
+      const isHttps = url.protocol === "https:";
+      const requestModule = isHttps ? https : http;
+
+      const result = await new Promise<{ url: string }>((resolve, reject) => {
+        const req = requestModule.request(
+          {
+            hostname: url.hostname,
+            port: url.port || (isHttps ? 443 : 80),
+            path: url.pathname,
+            method: "POST",
+            headers: {
+              "Content-Type": `multipart/form-data; boundary=${boundary}`,
+              "Content-Length": body.length,
+              "x-user-id": userId,
+            },
+          },
+          (res) => {
+            let data = "";
+            res.on("data", (chunk: Buffer) => {
+              data += chunk.toString();
+            });
+            res.on("end", () => {
+              try {
+                const json = JSON.parse(data);
+                if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300 && json.url) {
+                  resolve(json);
+                } else {
+                  reject(
+                    new Error(json.error || `HTTP ${res.statusCode}`)
+                  );
+                }
+              } catch {
+                reject(new Error(`Invalid response: ${data.substring(0, 200)}`));
+              }
+            });
+          }
+        );
+
+        req.on("error", reject);
+        req.write(body);
+        req.end();
+      });
+
+      // Send the uploaded URL back to the webview
+      this.panel.webview.postMessage({
+        type: "imageUploaded",
+        url: result.url,
+        alt: fileName.replace(/\.[^.]+$/, ""),
+      });
+    } catch (err) {
+      const errMsg =
+        err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Image upload failed: ${errMsg}`);
+      this.panel.webview.postMessage({ type: "imageUploadFailed" });
+    }
   }
 
   private getHtml(markdown: string): string {
@@ -276,18 +442,13 @@ export class PreviewPanel {
 }
 
 function renderMarkdown(markdown: string): string {
-  marked.setOptions({
-    gfm: true,
-    breaks: false,
-  });
-
-  const html = marked.parse(markdown);
-  if (typeof html !== "string") {
-    return "";
+  try {
+    const result = wasmEngine.render(markdown);
+    // Raw comrak HTML — postprocessing (highlight.js, KaTeX, Mermaid) runs in the webview via CDN scripts
+    return result.html;
+  } catch {
+    return `<p style="color:red">Render error</p>`;
   }
-
-  // Raw HTML — postprocessing (highlight.js, KaTeX, Mermaid) runs in the webview via CDN scripts
-  return html;
 }
 
 function getNonce(): string {

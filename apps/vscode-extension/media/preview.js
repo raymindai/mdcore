@@ -73,6 +73,32 @@
       case "syncStatus":
         setSyncStatusDisplay(message.status);
         break;
+
+      case "imageUploaded": {
+        // Replace "![Uploading...]()" placeholder with actual URL
+        var html = content.innerHTML;
+        var placeholder = '![Uploading...]()';
+        // The placeholder was inserted as text via execCommand, so it appears as text nodes
+        // Walk through and replace first occurrence
+        replacePlaceholderText(content, placeholder, '![' + (message.alt || 'image') + '](' + message.url + ')');
+        triggerEditDebounce();
+        break;
+      }
+
+      case "imageUploadFailed": {
+        // Replace placeholder with error message
+        replacePlaceholderText(content, '![Uploading...]()', '![Upload failed]()');
+        triggerEditDebounce();
+        break;
+      }
+
+      case "insertImage": {
+        // Extension is sending an image URL to insert (from toolbar image button)
+        if (message.url) {
+          insertImageElement(message.url, message.alt || 'image');
+        }
+        break;
+      }
     }
   });
 
@@ -128,6 +154,14 @@
     content.focus();
 
     switch (action) {
+      case "undo":
+        document.execCommand("undo", false, null);
+        triggerEditDebounce();
+        break;
+      case "redo":
+        document.execCommand("redo", false, null);
+        triggerEditDebounce();
+        break;
       case "bold":
         applyInlineFormat("bold");
         break;
@@ -146,6 +180,18 @@
       case "h3":
         applyBlockFormat("h3");
         break;
+      case "h4":
+        applyBlockFormat("h4");
+        break;
+      case "h5":
+        applyBlockFormat("h5");
+        break;
+      case "h6":
+        applyBlockFormat("h6");
+        break;
+      case "p":
+        applyBlockFormat("p");
+        break;
       case "ul":
         applyBlockFormat("ul");
         break;
@@ -155,8 +201,21 @@
       case "task":
         applyBlockFormat("task");
         break;
+      case "indent":
+        applyIndent();
+        break;
+      case "outdent":
+        applyOutdent();
+        break;
       case "link":
         insertLink();
+        break;
+      case "image":
+        // Post message to extension to show VS Code input box for image URL
+        vscode.postMessage({ type: "requestImageUrl" });
+        break;
+      case "table":
+        insertTable();
         break;
       case "code":
         applyInlineFormat("code");
@@ -169,6 +228,9 @@
         break;
       case "hr":
         insertHorizontalRule();
+        break;
+      case "removeFormat":
+        removeFormatting();
         break;
     }
   });
@@ -241,6 +303,22 @@
         break;
       case "h3":
         newNode = document.createElement("h3");
+        newNode.textContent = blockNode.textContent;
+        break;
+      case "h4":
+        newNode = document.createElement("h4");
+        newNode.textContent = blockNode.textContent;
+        break;
+      case "h5":
+        newNode = document.createElement("h5");
+        newNode.textContent = blockNode.textContent;
+        break;
+      case "h6":
+        newNode = document.createElement("h6");
+        newNode.textContent = blockNode.textContent;
+        break;
+      case "p":
+        newNode = document.createElement("p");
         newNode.textContent = blockNode.textContent;
         break;
       case "blockquote":
@@ -341,6 +419,215 @@
 
     triggerEditDebounce();
   }
+
+  function insertTable() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    var range = sel.getRangeAt(0);
+    var blockNode = findBlockParent(range.startContainer);
+
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    var headerRow = document.createElement("tr");
+    var th1 = document.createElement("th");
+    th1.textContent = "Header 1";
+    var th2 = document.createElement("th");
+    th2.textContent = "Header 2";
+    var th3 = document.createElement("th");
+    th3.textContent = "Header 3";
+    headerRow.appendChild(th1);
+    headerRow.appendChild(th2);
+    headerRow.appendChild(th3);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    for (var r = 0; r < 2; r++) {
+      var row = document.createElement("tr");
+      for (var c = 0; c < 3; c++) {
+        var td = document.createElement("td");
+        td.textContent = "Cell";
+        row.appendChild(td);
+      }
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+
+    if (blockNode && blockNode !== content) {
+      blockNode.parentNode.insertBefore(table, blockNode.nextSibling);
+    } else {
+      content.appendChild(table);
+    }
+
+    triggerEditDebounce();
+  }
+
+  function applyIndent() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    var range = sel.getRangeAt(0);
+    var li = findParentByTag(range.startContainer, "LI");
+    if (!li) return;
+
+    // Find the previous sibling LI
+    var prevLi = li.previousElementSibling;
+    if (!prevLi || prevLi.tagName !== "LI") return;
+
+    // Create or find a nested list inside the previous LI
+    var parentList = li.parentNode;
+    var listTag = parentList.tagName.toLowerCase(); // ul or ol
+    var nestedList = prevLi.querySelector(listTag);
+    if (!nestedList) {
+      nestedList = document.createElement(listTag);
+      prevLi.appendChild(nestedList);
+    }
+
+    // Move the current LI into the nested list
+    nestedList.appendChild(li);
+
+    triggerEditDebounce();
+  }
+
+  function applyOutdent() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    var range = sel.getRangeAt(0);
+    var li = findParentByTag(range.startContainer, "LI");
+    if (!li) return;
+
+    var parentList = li.parentNode;
+    if (!parentList) return;
+
+    var grandparentLi = parentList.parentNode;
+    if (!grandparentLi || grandparentLi.tagName !== "LI") return;
+
+    var outerList = grandparentLi.parentNode;
+    if (!outerList) return;
+
+    // Insert the LI after the grandparent LI in the outer list
+    outerList.insertBefore(li, grandparentLi.nextSibling);
+
+    // If the nested list is now empty, remove it
+    if (parentList.children.length === 0) {
+      parentList.parentNode.removeChild(parentList);
+    }
+
+    triggerEditDebounce();
+  }
+
+  function removeFormatting() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    var range = sel.getRangeAt(0);
+    var text = range.toString();
+    if (!text) return;
+
+    // Replace the selection with plain text
+    range.deleteContents();
+    var textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+
+    // Place cursor after the text
+    sel.collapseToEnd();
+
+    triggerEditDebounce();
+  }
+
+  function insertImageElement(url, alt) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      // No selection — append to end
+      var img = document.createElement("img");
+      img.src = url;
+      img.alt = alt || "image";
+      var p = document.createElement("p");
+      p.appendChild(img);
+      content.appendChild(p);
+    } else {
+      var range = sel.getRangeAt(0);
+      var img2 = document.createElement("img");
+      img2.src = url;
+      img2.alt = alt || "image";
+      range.deleteContents();
+      range.insertNode(img2);
+      sel.collapseToEnd();
+    }
+    triggerEditDebounce();
+  }
+
+  function findParentByTag(node, tagName) {
+    var current = node;
+    while (current && current !== content) {
+      if (current.nodeType === Node.ELEMENT_NODE && current.tagName === tagName) {
+        return current;
+      }
+      current = current.parentNode;
+    }
+    return null;
+  }
+
+  // ─── Image Paste Support ───
+
+  content.addEventListener("paste", function (e) {
+    var items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        e.preventDefault();
+        var file = items[i].getAsFile();
+        if (!file) break;
+        var reader = new FileReader();
+        var fileName = file.name || "image.png";
+        reader.onload = function (ev) {
+          vscode.postMessage({
+            type: "uploadImage",
+            data: ev.target.result,
+            name: fileName,
+          });
+        };
+        reader.readAsDataURL(file);
+        // Insert placeholder
+        document.execCommand("insertText", false, "![Uploading...]()");
+        break;
+      }
+    }
+  });
+
+  // ─── Image Drop Support ───
+
+  content.addEventListener("dragover", function (e) {
+    e.preventDefault();
+  });
+
+  content.addEventListener("drop", function (e) {
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files) return;
+
+    for (var i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith("image/")) {
+        e.preventDefault();
+        var file = files[i];
+        var reader = new FileReader();
+        var fileName = file.name;
+        reader.onload = function (ev) {
+          vscode.postMessage({
+            type: "uploadImage",
+            data: ev.target.result,
+            name: fileName,
+          });
+        };
+        reader.readAsDataURL(file);
+        // Insert placeholder
+        document.execCommand("insertText", false, "![Uploading...]()");
+        break;
+      }
+    }
+  });
 
   // ─── HTML to Markdown Conversion ───
 
@@ -668,6 +955,20 @@
       }
       currentOffset += nodeLen;
     }
+  }
+
+  function replacePlaceholderText(root, placeholder, replacement) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var idx = (node.textContent || "").indexOf(placeholder);
+      if (idx !== -1) {
+        var text = node.textContent || "";
+        node.textContent = text.substring(0, idx) + replacement + text.substring(idx + placeholder.length);
+        return true;
+      }
+    }
+    return false;
   }
 
   function setSyncStatusDisplay(status) {
