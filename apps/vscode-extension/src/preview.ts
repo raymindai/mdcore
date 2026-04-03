@@ -561,11 +561,18 @@ export class PreviewPanel {
     <button data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
     <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
     <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
+    <span class="toolbar-divider"></span>
+    <button data-action="toggleSource" title="Toggle source view" id="source-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg></button>
   </div>
 
-  <article id="content" class="mdcore-rendered" contenteditable="true">
-    ${renderedHtml}
-  </article>
+  <div id="editor-wrapper">
+    <article id="content" class="mdcore-rendered" contenteditable="true">
+      ${renderedHtml}
+    </article>
+    <div id="source-view" class="hidden">
+      <textarea id="source-editor" spellcheck="false">${markdown.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</textarea>
+    </div>
+  </div>
 
   <div id="sync-bar">
     <div id="flavor-area">

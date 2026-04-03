@@ -257,6 +257,54 @@
       case "removeFormat":
         removeFormatting();
         break;
+      case "toggleSource":
+        toggleSourceView();
+        break;
+    }
+  });
+
+  // ─── Source View Toggle ───
+
+  var sourceVisible = false;
+  var sourceEditor = document.getElementById("source-editor");
+  var editorWrapper = document.getElementById("editor-wrapper");
+  var sourceView = document.getElementById("source-view");
+  var sourceToggle = document.getElementById("source-toggle");
+  var sourceDebounce = null;
+
+  function toggleSourceView() {
+    sourceVisible = !sourceVisible;
+    if (sourceVisible) {
+      // Show source, hide WYSIWYG
+      content.classList.add("hidden");
+      sourceView.classList.remove("hidden");
+      sourceEditor.value = currentMarkdown;
+      sourceEditor.focus();
+      sourceToggle.style.background = "var(--accent)";
+      sourceToggle.style.color = "#000";
+    } else {
+      // Show WYSIWYG, hide source
+      sourceView.classList.add("hidden");
+      content.classList.remove("hidden");
+      sourceToggle.style.background = "";
+      sourceToggle.style.color = "";
+    }
+  }
+
+  if (sourceEditor) {
+    sourceEditor.addEventListener("input", function () {
+      currentMarkdown = sourceEditor.value;
+      if (sourceDebounce) clearTimeout(sourceDebounce);
+      sourceDebounce = setTimeout(function () {
+        vscode.postMessage({ type: "edit", markdown: currentMarkdown });
+      }, 500);
+    });
+  }
+
+  // Update source editor when content updates from extension
+  var origUpdateHandler = window.addEventListener("message", function (event) {
+    if (event.data.type === "update" && sourceVisible && sourceEditor) {
+      sourceEditor.value = event.data.markdown || currentMarkdown;
     }
   });
 
