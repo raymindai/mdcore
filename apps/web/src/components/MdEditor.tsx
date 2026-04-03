@@ -46,12 +46,12 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 1. **Type or paste** anything — Markdown, plain text, Claude Code output
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
-3. **Edit** inline in the Preview view, or use Source (SOURCE) for raw Markdown
+3. **Edit** inline in the Live view, or use Source for raw Markdown
 4. **Share** with one click — generates a short URL like \`mdfy.cc/abc123\`
 
 ## What You Can Do
 
-- **WYSIWYG editing** — click any text in Preview view and start typing
+- **WYSIWYG editing** — click any text in the Live view and start typing
 - **AI mdfy** — import a PDF or paste raw text, then let AI structure it as Markdown
 - **Multi-format import** — drag & drop PDF, DOCX, PPTX, XLSX, or 10+ other formats
 - **Export anywhere** — download as MD/HTML/TXT, print PDF, copy for Docs/Email/Slack
@@ -463,7 +463,7 @@ After importing, you'll see **"mdfy this document?"** — click **mdfy it** to l
 
 ## Export — Every Destination
 
-Click the **Export** icon in the Preview header.
+Click the **Export** icon in the Live view header.
 
 ### Download
 - **Markdown (.md)** — raw source
@@ -484,7 +484,7 @@ const SAMPLE_FEATURES = `# Key Features
 
 ## WYSIWYG Editing
 
-Click anywhere in the **Preview** view to start editing. Format with the toolbar or keyboard shortcuts.
+Click anywhere in the **Live** view to start editing. Format with the toolbar or keyboard shortcuts.
 
 > No need to learn Markdown syntax — just type naturally.
 
@@ -498,7 +498,7 @@ mdfy.cc auto-detects your Markdown flavor:
 - **MDX** — Markdown + JSX components
 - **Pandoc** — Citations, footnotes, definition lists
 
-Click the **flavor badge** (e.g. \`GFM ▾\`) in the SOURCE header to convert between flavors.
+Click the **flavor badge** (e.g. \`GFM ▾\`) in the Source header to convert between flavors.
 
 ## CLI Output Support
 
@@ -3352,7 +3352,7 @@ ${html}
           </h1>
           {title && (
             <button
-              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors"
+              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors hidden sm:block"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
               title="Click to rename"
               onClick={() => {
@@ -3483,7 +3483,7 @@ ${html}
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
         >
           {([
-            { mode: "preview" as ViewMode, label: "Preview", icon: (
+            { mode: "preview" as ViewMode, label: "Live", icon: (
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
                 <circle cx="8" cy="8" r="2.2"/>
@@ -3506,7 +3506,7 @@ ${html}
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-medium transition-all duration-150"
+                className="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] font-medium transition-all duration-150"
                 style={{
                   background: active ? "var(--accent)" : "transparent",
                   color: active ? "#000" : "var(--text-faint)",
@@ -3521,7 +3521,7 @@ ${html}
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
 
-          {/* AI Render moved to PREVIEW MD panel header */}
+          {/* AI Render moved to LIVE panel header */}
 
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
@@ -3966,7 +3966,7 @@ ${html}
                   Close sidebar
                 </div>
               </div>
-              <span style={{ color: "var(--accent)" }}>DOCUMENTS</span>
+              <span style={{ color: "var(--accent)" }}>FILES</span>
             </div>
             <div className="flex items-stretch gap-1">
               <div className="relative group flex">
@@ -4732,7 +4732,7 @@ ${html}
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
-              <span className="shrink-0" style={{ color: "var(--accent)" }}>PREVIEW</span>
+              <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
                 {/* Toolbar toggle — only when editing is allowed */}
                 {canEdit && <div className="relative group">
@@ -4879,7 +4879,7 @@ ${html}
               </div>
             </div>
             {/* WYSIWYG Formatting Toolbar */}
-            {/* Formatting toolbar — PREVIEW MD only */}
+            {/* Formatting toolbar — LIVE view only */}
             {showToolbar && canEdit && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
@@ -5310,7 +5310,7 @@ ${html}
             </div>
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
-          <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Plugins</a>
+          <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</a>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         {/* Right: stats + engine badges — tap to expand on mobile */}
