@@ -37,7 +37,10 @@
       {
         "command": "mdfy.preview",
         "title": "mdfy: Preview (WYSIWYG)",
-        "icon": "$(open-preview)"
+        "icon": {
+          "dark": "media/icon-dark.svg",
+          "light": "media/icon-light.svg"
+        }
       },
       {
         "command": "mdfy.publish",
