@@ -93,13 +93,25 @@ function injectNativeBridge() {
     // Mark as desktop app
     window.__MDFY_DESKTOP__ = true;
 
-    // Add native file menu indicator
-    if (!document.getElementById('mdfy-desktop-badge')) {
-      const badge = document.createElement('div');
-      badge.id = 'mdfy-desktop-badge';
-      badge.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:9999;font-size:9px;font-family:monospace;color:var(--text-faint);opacity:0.5;pointer-events:none;';
-      badge.textContent = 'mdfy Desktop';
-      document.body.appendChild(badge);
+    // Fix header overlap with macOS traffic lights
+    if (!document.getElementById('mdfy-desktop-style')) {
+      const style = document.createElement('style');
+      style.id = 'mdfy-desktop-style';
+      style.textContent = \`
+        /* Draggable title bar area */
+        body > div > header,
+        body > div > div > header,
+        [class*="backdrop-blur"] {
+          -webkit-app-region: drag;
+          padding-left: 80px !important;
+        }
+        /* Make all interactive elements not draggable */
+        button, a, input, select, textarea, [contenteditable],
+        [role="button"], svg, span[class*="cursor"] {
+          -webkit-app-region: no-drag;
+        }
+      \`;
+      document.head.appendChild(style);
     }
   `);
 }
@@ -115,15 +127,70 @@ function openFileInApp(filePath) {
     const fileName = path.basename(absolutePath);
     mainWindow.setTitle(`${fileName} — mdfy`);
 
-    // Load mdfy.cc with the file content via hash
-    const compressed = Buffer.from(content).toString("base64");
-    mainWindow.loadURL(`${MDFY_URL}/#md=${compressed}`);
-    mainWindow.webContents.on("did-finish-load", () => {
-      injectNativeBridge();
+    // Inject file content into the web app after it loads
+    const escapedContent = JSON.stringify(content);
+
+    // If page is already loaded, inject directly
+    mainWindow.webContents.executeJavaScript(`
+      (function() {
+        // Find the editor and set content
+        // Try CM6 editor first (source/MDFIED pane)
+        const cmView = document.querySelector('.cm-content');
+        if (cmView) {
+          // Trigger a paste-like event with the content
+          const event = new InputEvent('beforeinput', { inputType: 'insertText', data: ${escapedContent} });
+          cmView.dispatchEvent(event);
+        }
+        // Set markdown via the textarea/state if available
+        // The most reliable way: simulate paste into the page
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+          textarea.value = ${escapedContent};
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        // Or use the URL hash approach for reliability
+        window.location.hash = 'md=' + btoa(unescape(encodeURIComponent(${escapedContent})));
+        window.location.reload();
+      })();
+    `).catch(() => {
+      // Page not ready — load with hash
+      const encoded = Buffer.from(content).toString("base64");
+      mainWindow.loadURL(MDFY_URL + "/#md=" + encoded);
+      mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
     });
   } catch (err) {
     dialog.showErrorBox("Error", `Could not open file: ${err.message}`);
   }
+}
+
+// Save current editor content to local file
+function saveCurrentToFile() {
+  mainWindow.webContents.executeJavaScript(`
+    (function() {
+      // Get markdown from CM6 or contentEditable
+      const cmContent = document.querySelector('.cm-content');
+      if (cmContent) return cmContent.textContent;
+      const article = document.querySelector('article.mdcore-rendered');
+      if (article) return article.innerText;
+      return '';
+    })();
+  `).then(async (markdown) => {
+    if (!markdown) return;
+    if (currentFilePath) {
+      fs.writeFileSync(currentFilePath, markdown, "utf8");
+      mainWindow.setTitle(path.basename(currentFilePath) + " — mdfy");
+    } else {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: "untitled.md",
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+      });
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, markdown, "utf8");
+        currentFilePath = result.filePath;
+        mainWindow.setTitle(path.basename(result.filePath) + " — mdfy");
+      }
+    }
+  });
 }
 
 // ─── IPC Handlers ───
@@ -218,16 +285,7 @@ function buildMenu() {
         {
           label: "Save to Local File...",
           accelerator: "CmdOrCtrl+Shift+S",
-          click: () => {
-            mainWindow.webContents.executeJavaScript(`
-              (function() {
-                // Get markdown from the editor
-                const md = document.querySelector('.cm-content')?.textContent ||
-                           document.querySelector('article.mdcore-rendered')?.innerText || '';
-                window.__mdfyBridge?.saveToFile?.(md);
-              })();
-            `);
-          },
+          click: () => saveCurrentToFile(),
         },
         { type: "separator" },
         isMac ? { role: "close" } : { role: "quit" },
