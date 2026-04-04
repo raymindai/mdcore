@@ -163,9 +163,9 @@ export default function AboutPage() {
             margin: 0,
           }}
         >
-          The fastest way from
+          Figma for Markdown.
           <br />
-          <span style={{ color: "var(--accent)" }}>thought to shared document.</span>
+          <span style={{ color: "var(--accent)" }}>View. Edit. Share. Instantly.</span>
         </h1>
 
         <p
@@ -177,10 +177,38 @@ export default function AboutPage() {
             marginTop: 28,
           }}
         >
-          Every document gets a permanent URL. Edit it anytime. Version history tracks every change.
-          Share with anyone — humans or AIs — across every platform.
-          One address for your document. Forever accessible, always editable.
+          Figma changed design by making it shareable via URL. mdfy does the same for documents.
+          Drop any file — PDF, Word, PowerPoint — or just paste. Get a beautiful, editable document
+          with a permanent URL. No install needed to view. Edit from anywhere — browser, VS Code, Mac, or mobile.
         </p>
+      </section>
+
+      {/* ───────── FIGMA COMPARISON ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-faint)", marginTop: 0, marginBottom: 16, textDecoration: "line-through" }}>Before mdfy</h3>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 14, color: "var(--text-faint)" }}>
+              <li>- .md files are raw text nobody wants to read</li>
+              <li>- Copy to Google Docs → formatting breaks</li>
+              <li>- Share via Slack → looks like code</li>
+              <li>- Different AIs, different formats</li>
+              <li>- Edit requires VS Code or terminal</li>
+              <li>- Version control? Manual backups</li>
+            </ul>
+          </div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--accent)", borderRadius: 14, padding: "28px 24px" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)", marginTop: 0, marginBottom: 16 }}>With mdfy</h3>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 14, color: "var(--text-secondary)" }}>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Every .md gets a beautiful, shareable URL</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Edit in browser — no install, no login to view</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Works with every AI — ChatGPT, Claude, Gemini</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Edit from Mac, VS Code, Chrome, or mobile</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Version history, collaboration, permissions</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Import anything — PDF, DOCX, PPTX, paste</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       {/* ───────── PIPELINE ───────── */}
@@ -714,7 +742,7 @@ export default function AboutPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              The fastest way from thought to shared document.
+              Figma for Markdown.
             </h3>
             <p
               style={{
@@ -724,10 +752,10 @@ export default function AboutPage() {
                 maxWidth: 680,
               }}
             >
-              AI generates Markdown. But sharing AI output still means copying into Google Docs,
-              fighting with formatting, or sending raw text that nobody wants to read.
-              mdfy.cc closes that gap — paste anything, get a beautiful document, share with one click.
-              Cross-AI. Cross-platform. Zero friction.
+              Before Figma, sharing design meant exporting PNGs and losing editability.
+              Before mdfy, sharing a document meant copying into Google Docs and fighting with formatting.
+              mdfy gives every document a permanent URL — viewable, editable, and shareable by anyone.
+              No install. No login to view. Just a URL that works everywhere — browsers, AI chats, Slack, email.
             </p>
           </div>
 
