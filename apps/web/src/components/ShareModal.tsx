@@ -59,11 +59,15 @@ export default function ShareModal({
   }, [docId, userId, onAllowedEmailsChange]);
 
   const addEmail = useCallback(async (input: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const newEmails = input
       .split(/[,;\s]+/)
       .map(e => e.trim().toLowerCase())
-      .filter(e => e.includes("@") && !emails.includes(e) && e !== ownerEmail.toLowerCase());
-    if (newEmails.length === 0) return;
+      .filter(e => emailRegex.test(e) && !emails.includes(e) && e !== ownerEmail.toLowerCase());
+    if (newEmails.length === 0) {
+      if (input.trim()) showToast("Invalid or duplicate email", "error");
+      return;
+    }
     const updated = [...emails, ...newEmails];
     setEmails(updated);
     setEmailInput("");

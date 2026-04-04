@@ -738,7 +738,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
     return () => document.removeEventListener("selectionchange", update);
   }, []);
 
-  // Detect if focus is in SOURCE MD (CM6) or PREVIEW MD (contentEditable)
+  // Detect if focus is in SOURCE (CM6) or LIVE (contentEditable)
   const isInCM6 = () => !!document.activeElement?.closest(".cm-editor");
 
   // Smart exec: routes to execCommand (Preview) or CM6 wrap (Source)
@@ -1183,8 +1183,10 @@ export default function MdEditor() {
     // Skip compression for SVG, GIF (animated), or small files (<200KB)
     if (file.type === "image/svg+xml" || file.type === "image/gif" || file.size < 200 * 1024) return file;
     return new Promise((resolve) => {
+      const blobUrl = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
         const MAX = 2000;
         let { width, height } = img;
         if (width <= MAX && height <= MAX && file.size < 1024 * 1024) { resolve(file); return; }
@@ -1195,16 +1197,19 @@ export default function MdEditor() {
         }
         const canvas = document.createElement("canvas");
         canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d")!;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(file); return; }
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob && blob.size < file.size) {
-            resolve(new File([blob], file.name.replace(/\.\w+$/, ".webp"), { type: "image/webp" }));
-          } else { resolve(file); }
-        }, "image/webp", 0.85);
+        try {
+          canvas.toBlob((blob) => {
+            if (blob && blob.size < file.size) {
+              resolve(new File([blob], file.name.replace(/\.\w+$/, ".webp"), { type: "image/webp" }));
+            } else { resolve(file); }
+          }, "image/webp", 0.85);
+        } catch { resolve(file); }
       };
-      img.onerror = () => resolve(file);
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file); };
+      img.src = blobUrl;
     });
   }, []);
 
@@ -1388,6 +1393,8 @@ export default function MdEditor() {
     // Reset share modal state for the new tab (will be loaded when modal opens)
     setAllowedEmailsState([]);
     setAllowedEditorsState([]);
+    setShowPermDropdown(false);
+    setShowViewerShareModal(false);
     // Update browser URL to reflect current document
     if (tab.cloudId) {
       window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
@@ -2322,9 +2329,10 @@ export default function MdEditor() {
       document.querySelector(".mdcore-img-menu")?.remove();
       const menu = document.createElement("div");
       menu.className = "mdcore-img-menu";
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
       menu.style.position = "fixed";
+      const menuW = 170, menuH = 300;
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - menuW)}px`;
+      menu.style.top = `${Math.min(e.clientY, window.innerHeight - menuH)}px`;
 
       const findImgInMd = () => {
         const md = markdownRef.current;
@@ -2962,7 +2970,8 @@ export default function MdEditor() {
 
   // Share — open modal for owners, quick copy for non-owners
   const handleShare = useCallback(async () => {
-    if (!markdown.trim()) return;
+    setShowPermDropdown(false);
+    if (!markdown.trim()) { showToast("Write something first", "info"); return; }
 
     // If doc already has a cloudId and user is owner, open share modal
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
@@ -3553,7 +3562,7 @@ ${html}
                 {showPermDropdown && (
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
-                    <div className="absolute top-full right-0 mt-1 w-48 rounded-lg shadow-xl py-1 z-[9999]"
+                    <div className="absolute top-full right-0 mt-1 w-44 sm:w-48 rounded-lg shadow-xl py-1 z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {docId && user?.email && (
                         <button
@@ -5407,9 +5416,22 @@ ${html}
       >
         {/* Left: Help + navigation */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="relative group">
+          <div className="relative group"
+            onClick={(e) => {
+              // Mobile: toggle help tooltip on tap (hover doesn't work on touch)
+              const tooltip = (e.currentTarget.querySelector("[data-help-tooltip]") as HTMLElement);
+              if (!tooltip) return;
+              const showing = tooltip.style.opacity === "1";
+              tooltip.style.opacity = showing ? "0" : "1";
+              tooltip.style.pointerEvents = showing ? "none" : "auto";
+              if (!showing) {
+                const dismiss = (ev: MouseEvent) => { if (!tooltip.contains(ev.target as Node)) { tooltip.style.opacity = "0"; tooltip.style.pointerEvents = "none"; document.removeEventListener("click", dismiss); } };
+                setTimeout(() => document.addEventListener("click", dismiss), 0);
+              }
+            }}
+          >
             <button className="transition-colors" style={{ color: "var(--text-muted)" }}>Help</button>
-            <div className="absolute bottom-full left-0 mb-1 w-72 p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+            <div data-help-tooltip className="absolute bottom-full left-0 mb-1 w-72 max-w-[90vw] p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
               <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
               <div className="space-y-1 text-[10px]">
@@ -5476,13 +5498,19 @@ ${html}
             style={{ color: "var(--text-muted)" }}
             onClick={(e) => {
               const el = e.currentTarget.nextElementSibling as HTMLElement;
-              if (el) el.style.display = el.style.display === "none" ? "flex" : "none";
+              if (!el) return;
+              const showing = el.style.display === "flex";
+              el.style.display = showing ? "none" : "flex";
+              if (!showing) {
+                const dismiss = () => { el.style.display = "none"; document.removeEventListener("click", dismiss); };
+                setTimeout(() => document.addEventListener("click", dismiss), 0);
+              }
             }}
           >
             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
             {wordCount.toLocaleString()}w
           </button>
-          <div className="sm:hidden items-center gap-2 absolute bottom-full right-3 mb-1 px-3 py-1.5 rounded-lg" style={{ display: "none", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+          <div className="sm:hidden flex items-center gap-2 absolute bottom-full right-3 mb-1 px-3 py-1.5 rounded-lg" style={{ display: "none", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
             <span>{wordCount.toLocaleString()} words</span>
             <span style={{ color: "var(--border)" }}>·</span>
             <span>{charCount.toLocaleString()} chars</span>

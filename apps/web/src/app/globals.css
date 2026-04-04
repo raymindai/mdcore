@@ -482,6 +482,7 @@ body {
   transition: opacity 0.15s;
 }
 .mdcore-rendered img:hover { opacity: 0.92; }
+[contenteditable="true"] img { cursor: default; }
 
 /* Image alignment via alt text markers: ![alt|center](url) */
 .mdcore-rendered img[data-align="center"] { display: block; margin-left: auto; margin-right: auto; }
