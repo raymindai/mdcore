@@ -1,0 +1,19 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/release/mdfy-quicklook'
+relocations:
+  - { offset: 0xF3A8F, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook12loadTemplateSSSgyF', symObjAddr: 0x0, symBinAddr: 0x100000D28, symSize: 0x70C }
+  - { offset: 0xF3C28, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook12loadTemplateSSSgyF', symObjAddr: 0x0, symBinAddr: 0x100000D28, symSize: 0x70C }
+  - { offset: 0xF3D5A, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook7loadCSSSSSgyF', symObjAddr: 0x70C, symBinAddr: 0x100001434, symSize: 0x5BC }
+  - { offset: 0xF3EB2, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook19generatePreviewHTML12markdownPathSSSgSS_tF', symObjAddr: 0xCC8, symBinAddr: 0x1000019F0, symSize: 0x4E4 }
+  - { offset: 0xF40D1, size: 0x8, addend: 0x0, symName: '_$sSTsE8contains5whereS2b7ElementQzKXE_tKFSaySSG_Tg5', symObjAddr: 0x11C4, symBinAddr: 0x100001EEC, symSize: 0xA4 }
+  - { offset: 0xF4253, size: 0x8, addend: 0x0, symName: '_$sSTsSQ7ElementRpzrlE8containsySbABFSbABXEfU_SaySSG_TG5TA', symObjAddr: 0x1D50, symBinAddr: 0x100002A78, symSize: 0x54 }
+  - { offset: 0xF42D0, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledNameV2, symObjAddr: 0x1DA4, symBinAddr: 0x100002ACC, symSize: 0x44 }
+  - { offset: 0xF42E4, size: 0x8, addend: 0x0, symName: '_$sS2SSysWl', symObjAddr: 0x1DE8, symBinAddr: 0x100002B10, symSize: 0x40 }
+  - { offset: 0xF434B, size: 0x8, addend: 0x0, symName: _mdfy_quicklook_main, symObjAddr: 0x11AC, symBinAddr: 0x100001ED4, symSize: 0x18 }
+  - { offset: 0xF440B, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook13MdfyQuickLookV4mainyyFZTf4d_n', symObjAddr: 0x1268, symBinAddr: 0x100001F90, symSize: 0xAE8 }
+  - { offset: 0xF4BFE, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6module_WZ', symObjAddr: 0x0, symBinAddr: 0x100002B50, symSize: 0x1C }
+  - { offset: 0xF4C22, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvpZ', symObjAddr: 0x2398, symBinAddr: 0x1000080B8, symSize: 0x0 }
+  - { offset: 0xF4C30, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6module_WZ', symObjAddr: 0x0, symBinAddr: 0x100002B50, symSize: 0x1C }
+  - { offset: 0xF4C76, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvpZfiAByXEfU_', symObjAddr: 0x1C, symBinAddr: 0x100002B6C, symSize: 0x26C }
+...

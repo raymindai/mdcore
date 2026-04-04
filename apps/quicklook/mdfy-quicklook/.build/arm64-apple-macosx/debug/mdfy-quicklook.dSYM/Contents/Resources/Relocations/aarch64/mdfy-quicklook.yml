@@ -1,0 +1,43 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook'
+relocations:
+  - { offset: 0xF3A8F, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook11escapeForJSyS2SF', symObjAddr: 0x0, symBinAddr: 0x100000EB8, symSize: 0x41C }
+  - { offset: 0xF3AA7, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook11escapeForJSyS2SF', symObjAddr: 0x0, symBinAddr: 0x100000EB8, symSize: 0x41C }
+  - { offset: 0xF3AD5, size: 0x8, addend: 0x0, symName: '_$sS2SSysWl', symObjAddr: 0x454, symBinAddr: 0x10000130C, symSize: 0x64 }
+  - { offset: 0xF3AE9, size: 0x8, addend: 0x0, symName: '_$sSSWOh', symObjAddr: 0x4B8, symBinAddr: 0x100001370, symSize: 0x28 }
+  - { offset: 0xF3AFD, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook12loadTemplateSSSgyF', symObjAddr: 0x4E0, symBinAddr: 0x100001398, symSize: 0x9A0 }
+  - { offset: 0xF3BCE, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook7loadCSSSSSgyF', symObjAddr: 0xE80, symBinAddr: 0x100001D38, symSize: 0x9A0 }
+  - { offset: 0xF3C9F, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook19generatePreviewHTML12markdownPathSSSgSS_tF', symObjAddr: 0x1820, symBinAddr: 0x1000026D8, symSize: 0x814 }
+  - { offset: 0xF3D40, size: 0x8, addend: 0x0, symName: '_$ss26DefaultStringInterpolationVWOh', symObjAddr: 0x2034, symBinAddr: 0x100002EEC, symSize: 0x28 }
+  - { offset: 0xF3D54, size: 0x8, addend: 0x0, symName: '_$sSSSgWOh', symObjAddr: 0x205C, symBinAddr: 0x100002F14, symSize: 0x28 }
+  - { offset: 0xF3D68, size: 0x8, addend: 0x0, symName: '_$sSa22_allocateUninitializedySayxG_SpyxGtSiFZSo22NSStringCompareOptionsV_Tt0gq5', symObjAddr: 0x2084, symBinAddr: 0x100002F3C, symSize: 0xD4 }
+  - { offset: 0xF3D95, size: 0x8, addend: 0x0, symName: '_$sSo22NSStringCompareOptionsVMa', symObjAddr: 0x2158, symBinAddr: 0x100003010, symSize: 0x94 }
+  - { offset: 0xF3DB4, size: 0x8, addend: 0x0, symName: '_$sSy10FoundationE20replacingOccurrences2of4with7options5rangeSSqd___qd_0_So22NSStringCompareOptionsVSnySS5IndexVGSgtSyRd__SyRd_0_r0_lFfA1_', symObjAddr: 0x41C, symBinAddr: 0x1000012D4, symSize: 0x38 }
+  - { offset: 0xF3EEE, size: 0x8, addend: 0x0, symName: _mdfy_quicklook_main, symObjAddr: 0x0, symBinAddr: 0x1000030A4, symSize: 0x13C4 }
+  - { offset: 0xF3F12, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook4argsSaySSGvp', symObjAddr: 0x3B30, symBinAddr: 0x10000C0C8, symSize: 0x0 }
+  - { offset: 0xF3F2C, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook12markdownPathSSvp', symObjAddr: 0x3B38, symBinAddr: 0x10000C0D0, symSize: 0x0 }
+  - { offset: 0xF3F46, size: 0x8, addend: 0x0, symName: '_$s14mdfy_quicklook12absolutePathSSvp', symObjAddr: 0x3B48, symBinAddr: 0x10000C0E0, symSize: 0x0 }
+  - { offset: 0xF3F54, size: 0x8, addend: 0x0, symName: _mdfy_quicklook_main, symObjAddr: 0x0, symBinAddr: 0x1000030A4, symSize: 0x13C4 }
+  - { offset: 0xF4067, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledNameV2, symObjAddr: 0x13C4, symBinAddr: 0x100004468, symSize: 0x68 }
+  - { offset: 0xF407B, size: 0x8, addend: 0x0, symName: '_$sSaySSGSayxGSTsWl', symObjAddr: 0x142C, symBinAddr: 0x1000044D0, symSize: 0x74 }
+  - { offset: 0xF408F, size: 0x8, addend: 0x0, symName: ___swift_instantiateConcreteTypeFromMangledNameAbstractV2, symObjAddr: 0x14A0, symBinAddr: 0x100004544, symSize: 0x70 }
+  - { offset: 0xF40A3, size: 0x8, addend: 0x0, symName: '_$sSaySSGSayxGSlsWl', symObjAddr: 0x1538, symBinAddr: 0x1000045B4, symSize: 0x74 }
+  - { offset: 0xF40B7, size: 0x8, addend: 0x0, symName: '_$sSo6NSTaskCMa', symObjAddr: 0x16D0, symBinAddr: 0x1000046C0, symSize: 0x60 }
+  - { offset: 0xF40CB, size: 0x8, addend: 0x0, symName: '_$sSa12_endMutationyyF', symObjAddr: 0x177C, symBinAddr: 0x10000476C, symSize: 0xC }
+  - { offset: 0xF4122, size: 0x8, addend: 0x0, symName: '_$ss27_finalizeUninitializedArrayySayxGABnlF', symObjAddr: 0x15AC, symBinAddr: 0x100004628, symSize: 0x40 }
+  - { offset: 0xF414C, size: 0x8, addend: 0x0, symName: '_$ss5print_9separator10terminatoryypd_S2StFfA0_', symObjAddr: 0x15EC, symBinAddr: 0x100004668, symSize: 0x2C }
+  - { offset: 0xF4168, size: 0x8, addend: 0x0, symName: '_$ss5print_9separator10terminatoryypd_S2StFfA1_', symObjAddr: 0x1618, symBinAddr: 0x100004694, symSize: 0x2C }
+  - { offset: 0xF41FB, size: 0x8, addend: 0x0, symName: '_$sSo6NSTaskCABycfC', symObjAddr: 0x1730, symBinAddr: 0x100004720, symSize: 0x2C }
+  - { offset: 0xF420F, size: 0x8, addend: 0x0, symName: '_$sSo6NSTaskCABycfcTO', symObjAddr: 0x175C, symBinAddr: 0x10000474C, symSize: 0x20 }
+  - { offset: 0xF42BF, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6module_WZ', symObjAddr: 0x0, symBinAddr: 0x100004778, symSize: 0x1C }
+  - { offset: 0xF42E3, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvpZ', symObjAddr: 0x23A8, symBinAddr: 0x10000C0F0, symSize: 0x0 }
+  - { offset: 0xF42F1, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6module_WZ', symObjAddr: 0x0, symBinAddr: 0x100004778, symSize: 0x1C }
+  - { offset: 0xF430B, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvpZfiAByXEfU_', symObjAddr: 0x1C, symBinAddr: 0x100004794, symSize: 0x508 }
+  - { offset: 0xF439F, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvau', symObjAddr: 0x568, symBinAddr: 0x100004CE0, symSize: 0x50 }
+  - { offset: 0xF43BD, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC14mdfy_quicklookE6moduleABvgZ', symObjAddr: 0x5B8, symBinAddr: 0x100004D30, symSize: 0x3C }
+  - { offset: 0xF43EB, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleCMa', symObjAddr: 0x5F4, symBinAddr: 0x100004D6C, symSize: 0x60 }
+  - { offset: 0xF43FF, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleCSgWOh', symObjAddr: 0x654, symBinAddr: 0x100004DCC, symSize: 0x30 }
+  - { offset: 0xF449E, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC4pathABSgSS_tcfC', symObjAddr: 0x524, symBinAddr: 0x100004C9C, symSize: 0x44 }
+  - { offset: 0xF44B2, size: 0x8, addend: 0x0, symName: '_$sSo8NSBundleC4pathABSgSS_tcfcTO', symObjAddr: 0x6AC, symBinAddr: 0x100004DFC, symSize: 0x60 }
+...

@@ -1,0 +1,92 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe>","<mdfy-quicklook-arm64-apple-macosx26.0-debug.module>"]
+  "mdfy-quicklook-arm64-apple-macosx26.0-debug.exe": ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe>"]
+  "mdfy-quicklook-arm64-apple-macosx26.0-debug.module": ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.module>"]
+  "test": ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe>","<mdfy-quicklook-arm64-apple-macosx26.0-debug.module>"]
+default: "main"
+nodes:
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook":
+    is-mutated: true
+commands:
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook-entitlement.plist"]
+    description: "Write auxiliary file /Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook-entitlement.plist"
+
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/PreviewProvider.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/main.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/resource_bundle_accessor.swift.o"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook.product/Objects.LinkFileList"
+
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook_mdfy-quicklook.bundle/template.html":
+    tool: copy-tool
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/template.html"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook_mdfy-quicklook.bundle/template.html"]
+    description: "Copying /Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/template.html"
+
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/PreviewProvider.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/main.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/DerivedSources/resource_bundle_accessor.swift"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/sources"]
+    description: "Write auxiliary file /Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/sources"
+
+  "/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+
+  "<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe>":
+    tool: phony
+    inputs: ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    outputs: ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe>"]
+
+  "<mdfy-quicklook-arm64-apple-macosx26.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/PreviewProvider.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/main.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/resource_bundle_accessor.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/Modules/mdfy_quicklook.swiftmodule"]
+    outputs: ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.module>"]
+
+  "C.mdfy-quicklook-arm64-apple-macosx26.0-debug.exe":
+    tool: shell
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/PreviewProvider.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/main.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/resource_bundle_accessor.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook.product/Objects.LinkFileList"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/mdfy-quicklook"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug","-o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook","-module-name","mdfy_quicklook","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_mdfy_quicklook_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx13.0","-Xlinker","-add_ast_path","-Xlinker","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/Modules/mdfy_quicklook.swiftmodule","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.mdfy-quicklook-arm64-apple-macosx26.0-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook-entitlement.plist"]
+    outputs: ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/mdfy-quicklook"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook-entitlement.plist","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook"]
+
+  "C.mdfy-quicklook-arm64-apple-macosx26.0-debug.module":
+    tool: shell
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/PreviewProvider.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/main.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/DerivedSources/resource_bundle_accessor.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","<mdfy-quicklook-arm64-apple-macosx26.0-debug.module-resources>","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/sources"]
+    outputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/PreviewProvider.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/main.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/resource_bundle_accessor.swift.o","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/Modules/mdfy_quicklook.swiftmodule"]
+    description: "Compiling Swift Module 'mdfy_quicklook' (3 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","mdfy_quicklook","-emit-dependencies","-emit-module","-emit-module-path","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/Modules/mdfy_quicklook.swiftmodule","-output-file-map","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/output-file-map.json","-incremental","-c","@/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy_quicklook.build/sources","-I","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx13.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_AVAILABLE","-module-cache-path","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","mdfy_quicklook_main","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","mdfy_quicklook"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Sources/PreviewExtension/","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Package.swift","/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
+  "mdfy-quicklook-arm64-apple-macosx26.0-debug.module-resources":
+    tool: phony
+    inputs: ["/Users/hyunsangcho/Desktop/Projects/mdcore/apps/quicklook/mdfy-quicklook/.build/arm64-apple-macosx/debug/mdfy-quicklook_mdfy-quicklook.bundle/template.html"]
+    outputs: ["<mdfy-quicklook-arm64-apple-macosx26.0-debug.module-resources>"]
+

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{FILE_NAME}} - mdfy Preview</title>
+
+<!-- marked.js — Markdown parser (GFM + tables + task lists) -->
+<script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"></script>
+
+<!-- highlight.js — Code syntax highlighting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css"
+      media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css"
+      media="(prefers-color-scheme: light)">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+
+<!-- KaTeX — Math rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"></script>
+
+<!-- Mermaid — Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+<style>
+/* ================================================================
+   mdfy QuickLook Preview — Base Styles
+   ================================================================ */
+
+/* System font stack */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+/* ================================================================
+   Theme: Dark (default on macOS dark mode)
+   ================================================================ */
+:root {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --accent: #fb923c;
+  --accent-dim: rgba(251, 146, 60, 0.15);
+  --surface: #18181b;
+  --surface-hover: rgba(251, 146, 60, 0.03);
+  --border: #27272a;
+  --border-dim: rgba(39, 39, 42, 0.6);
+  --text-primary: #fafafa;
+  --text-secondary: #d4d4d8;
+  --text-tertiary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #52525b;
+  --math-color: #c4b5fd;
+  --math-display-color: #ddd6fe;
+  --h2-color: #e4e4e7;
+  --scrollbar-thumb: #27272a;
+  --scrollbar-hover: #3f3f46;
+}
+
+/* ================================================================
+   Theme: Light (macOS light mode)
+   ================================================================ */
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #faf9f7;
+    --foreground: #18181b;
+    --accent: #ea580c;
+    --accent-dim: rgba(234, 88, 12, 0.1);
+    --surface: #f4f4f5;
+    --surface-hover: rgba(234, 88, 12, 0.04);
+    --border: #e4e4e7;
+    --border-dim: rgba(228, 228, 231, 0.6);
+    --text-primary: #09090b;
+    --text-secondary: #3f3f46;
+    --text-tertiary: #71717a;
+    --text-muted: #71717a;
+    --text-faint: #a1a1aa;
+    --math-color: #7c3aed;
+    --math-display-color: #6d28d9;
+    --h2-color: #27272a;
+    --scrollbar-thumb: #a1a1aa;
+    --scrollbar-hover: #a1a1aa;
+  }
+}
+
+/* ================================================================
+   Page Layout
+   ================================================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ================================================================
+   Top Bar
+   ================================================================ */
+.mdfy-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.mdfy-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mdfy-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mdfy-logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mdfy-logo span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.mdfy-filename {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mdfy-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mdfy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.mdfy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.mdfy-btn-primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.mdfy-btn-primary:hover {
+  opacity: 0.9;
+  color: #000;
+}
+
+/* ================================================================
+   Content Area
+   ================================================================ */
+.mdfy-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px 60px;
+}
+
+@media (max-width: 720px) {
+  .mdfy-content {
+    padding: 20px 16px 40px;
+  }
+}
+
+.mdfy-content-inner {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+/* Injected from preview.css */
+{{MDFY_CSS}}
+
+/* ================================================================
+   Scrollbar
+   ================================================================ */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* ================================================================
+   Code Copy Button
+   ================================================================ */
+.code-block-wrapper {
+  position: relative;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 10;
+}
+
+.code-block-wrapper:hover .code-copy-btn {
+  opacity: 1;
+}
+
+.code-copy-btn:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ================================================================
+   Mermaid Container
+   ================================================================ */
+.mermaid-container {
+  margin: 1.25rem 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--surface), var(--background));
+  overflow-x: auto;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  padding: 1.5rem;
+}
+
+@media (prefers-color-scheme: light) {
+  .mermaid-container {
+    background: linear-gradient(145deg, #f8f9fa, #ffffff);
+    border-color: #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ================================================================
+   Light mode: highlight.js overrides
+   ================================================================ */
+@media (prefers-color-scheme: light) {
+  .hljs {
+    background: var(--surface) !important;
+    color: var(--text-secondary) !important;
+  }
+  .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link { color: #a626a4; }
+  .hljs-string, .hljs-title, .hljs-name, .hljs-type, .hljs-attribute,
+  .hljs-symbol, .hljs-bullet, .hljs-addition, .hljs-variable,
+  .hljs-template-tag, .hljs-template-variable { color: #50a14f; }
+  .hljs-comment, .hljs-quote, .hljs-deletion, .hljs-meta { color: #a0a1a7; }
+  .hljs-number, .hljs-built_in, .hljs-builtin-name, .hljs-class .hljs-title { color: #c18401; }
+  .hljs-function { color: #4078f2; }
+}
+
+/* ================================================================
+   Loading State
+   ================================================================ */
+.mdfy-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.mdfy-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="mdfy-topbar">
+  <div class="mdfy-topbar-left">
+    <div class="mdfy-logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="var(--accent)" fill-opacity="0.15"/>
+        <path d="M7 7h3l2 4 2-4h3v10h-2.5V11l-2.5 4-2.5-4v6H7V7z" fill="var(--accent)"/>
+      </svg>
+      <span>mdfy</span>
+    </div>
+    <span class="mdfy-filename">{{FILE_NAME}}</span>
+  </div>
+  <div class="mdfy-topbar-right">
+    <a class="mdfy-btn" href="https://mdfy.cc" target="_blank" rel="noopener">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+        <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3M9 1h6m0 0v6m0-6L8 8"
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Open in mdfy
+    </a>
+    <a class="mdfy-btn mdfy-btn-primary" href="https://mdfy.cc" target="_blank" rel="noopener">
+      Publish
+    </a>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="mdfy-content">
+  <div class="mdfy-content-inner">
+    <div id="preview" class="mdcore-rendered">
+      <div class="mdfy-loading">
+        <div class="mdfy-loading-spinner"></div>
+        <span style="font-size: 13px;">Rendering...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // The raw markdown content injected by the Swift preview generator.
+  const markdownContent = `{{MARKDOWN_CONTENT}}`;
+
+  // ================================================================
+  // Configure marked.js
+  // ================================================================
+  const renderer = new marked.Renderer();
+
+  // Custom code block renderer — wraps in a container with copy button
+  renderer.code = function({ text, lang }) {
+    const language = lang || '';
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    // Mermaid diagrams get special treatment
+    if (language === 'mermaid') {
+      return '<div class="mermaid-container"><pre class="mermaid">' + text + '</pre></div>';
+    }
+
+    return '<div class="code-block-wrapper">'
+      + '<button class="code-copy-btn" onclick="copyCode(this)">Copy</button>'
+      + '<pre lang="' + language + '"><code class="hljs language-' + language + '">'
+      + escaped
+      + '</code></pre></div>';
+  };
+
+  // Task list checkboxes
+  renderer.listitem = function({ text, task, checked }) {
+    if (task) {
+      const checkbox = '<input type="checkbox" disabled'
+        + (checked ? ' checked' : '')
+        + '> ';
+      return '<li>' + checkbox + text + '</li>\n';
+    }
+    return '<li>' + text + '</li>\n';
+  };
+
+  marked.setOptions({
+    renderer: renderer,
+    gfm: true,
+    breaks: false,
+    pedantic: false,
+    smartypants: false
+  });
+
+  // ================================================================
+  // Render
+  // ================================================================
+  const previewEl = document.getElementById('preview');
+
+  try {
+    const html = marked.parse(markdownContent);
+    previewEl.innerHTML = html;
+  } catch (err) {
+    previewEl.innerHTML = '<p style="color: var(--text-muted);">Failed to render: '
+      + err.message + '</p><pre>' + markdownContent.substring(0, 2000) + '</pre>';
+    return;
+  }
+
+  // ================================================================
+  // Post-processing: Syntax highlighting
+  // ================================================================
+  document.querySelectorAll('pre code').forEach(function(block) {
+    try {
+      hljs.highlightElement(block);
+    } catch (e) {
+      // Silently skip blocks that fail to highlight
+    }
+  });
+
+  // ================================================================
+  // Post-processing: KaTeX math
+  // ================================================================
+  // Handle display math: $$...$$
+  // Handle inline math: $...$
+  try {
+    renderMathInElement(previewEl, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      throwOnError: false,
+      trust: true
+    });
+  } catch (e) {
+    // KaTeX rendering failed silently
+  }
+
+  // ================================================================
+  // Post-processing: Mermaid diagrams
+  // ================================================================
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'default',
+    securityLevel: 'loose',
+    fontFamily: 'var(--font-sans)',
+    themeVariables: isDark ? {
+      primaryColor: '#27272a',
+      primaryTextColor: '#d4d4d8',
+      primaryBorderColor: '#3f3f46',
+      lineColor: '#52525b',
+      secondaryColor: '#18181b',
+      tertiaryColor: '#09090b',
+      background: '#18181b',
+      mainBkg: '#27272a',
+      nodeBorder: '#3f3f46',
+      clusterBkg: '#18181b',
+      clusterBorder: '#3f3f46',
+      titleColor: '#fafafa',
+      edgeLabelBackground: '#18181b'
+    } : {
+      primaryColor: '#fff7ed',
+      primaryTextColor: '#3f3f46',
+      primaryBorderColor: '#e4e4e7',
+      lineColor: '#a1a1aa',
+      secondaryColor: '#f4f4f5',
+      tertiaryColor: '#faf9f7',
+      background: '#ffffff',
+      mainBkg: '#fff7ed',
+      nodeBorder: '#e4e4e7',
+      clusterBkg: '#f4f4f5',
+      clusterBorder: '#e4e4e7',
+      titleColor: '#09090b',
+      edgeLabelBackground: '#ffffff'
+    }
+  });
+
+  document.querySelectorAll('.mermaid').forEach(async function(el, index) {
+    try {
+      const { svg } = await mermaid.render('mermaid-' + index, el.textContent.trim());
+      el.innerHTML = svg;
+      el.classList.remove('mermaid');
+      el.classList.add('mermaid-rendered');
+    } catch (e) {
+      // If mermaid fails, show the raw code
+      el.innerHTML = '<pre style="text-align:left;padding:1rem;font-size:12px;color:var(--text-muted);">'
+        + el.textContent + '</pre>';
+    }
+  });
+
+})();
+
+// ================================================================
+// Copy code to clipboard
+// ================================================================
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre');
+  const code = pre ? pre.textContent : '';
+  navigator.clipboard.writeText(code).then(function() {
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  }).catch(function() {
+    // Fallback for QuickLook context (no clipboard API)
+    btn.textContent = 'Failed';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>
