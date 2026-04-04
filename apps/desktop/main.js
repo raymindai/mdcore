@@ -127,37 +127,12 @@ function openFileInApp(filePath) {
     const fileName = path.basename(absolutePath);
     mainWindow.setTitle(`${fileName} — mdfy`);
 
-    // Inject file content into the web app after it loads
-    const escapedContent = JSON.stringify(content);
-
-    // If page is already loaded, inject directly
-    mainWindow.webContents.executeJavaScript(`
-      (function() {
-        // Find the editor and set content
-        // Try CM6 editor first (source/MDFIED pane)
-        const cmView = document.querySelector('.cm-content');
-        if (cmView) {
-          // Trigger a paste-like event with the content
-          const event = new InputEvent('beforeinput', { inputType: 'insertText', data: ${escapedContent} });
-          cmView.dispatchEvent(event);
-        }
-        // Set markdown via the textarea/state if available
-        // The most reliable way: simulate paste into the page
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-          textarea.value = ${escapedContent};
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        // Or use the URL hash approach for reliability
-        window.location.hash = 'md=' + btoa(unescape(encodeURIComponent(${escapedContent})));
-        window.location.reload();
-      })();
-    `).catch(() => {
-      // Page not ready — load with hash
-      const encoded = Buffer.from(content).toString("base64");
-      mainWindow.loadURL(MDFY_URL + "/#md=" + encoded);
-      mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
-    });
+    // Load mdfy.cc with file content + filename in hash
+    // Web app detects ?file= param and creates a new sidebar tab
+    const encoded = Buffer.from(content).toString("base64");
+    const encodedName = encodeURIComponent(fileName);
+    mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
+    mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
   } catch (err) {
     dialog.showErrorBox("Error", `Could not open file: ${err.message}`);
   }

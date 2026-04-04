@@ -1821,6 +1821,25 @@ export default function MdEditor() {
       // Check hash-based sharing first
       const shared = await extractFromUrl();
       if (shared) {
+        // Check if this is a desktop file open (has filename in hash)
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const desktopFile = hashParams.get("file");
+
+        if (desktopFile) {
+          // Desktop app: create new tab with local filename
+          const tabId = `tab-${Date.now()}`;
+          const title = desktopFile.replace(/\.[^.]+$/, "");
+          setTabs(prev => [...prev, { id: tabId, title, markdown: shared }]);
+          setActiveTabId(tabId);
+          setMarkdown(shared);
+          setIsSharedDoc(false);
+          if (!isMobile) setViewMode("split");
+          await doRender(shared);
+          // Clear hash to prevent reload issues
+          window.history.replaceState(null, "", "/");
+          return;
+        }
+
         setMarkdown(shared);
         setIsSharedDoc(true);
         setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, shared: true, title: extractTitleFromMd(shared) || "Shared Document", markdown: shared } : t));
