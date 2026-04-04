@@ -248,7 +248,7 @@
     </div>
 
     <div class="dropzone" id="dropzone">
-      Drop .md files here
+      Drop files here — md, pdf, docx, pptx, xlsx, html, csv, json, xml, txt, rtf, rst, tex
     </div>
 
     <div class="shortcuts">
@@ -279,14 +279,26 @@
       mdfyDesktop.openInBrowser("https://mdfy.cc");
     });
 
-    // Drop zone
+    // Drop zone — accepts all supported file formats
+    const SUPPORTED_EXTS = new Set([
+      ".md", ".markdown", ".mdown", ".mkd",
+      ".pdf", ".docx", ".pptx", ".xlsx",
+      ".html", ".htm", ".csv", ".json", ".xml",
+      ".txt", ".rtf", ".rst", ".tex", ".latex",
+    ]);
+
+    function getFileExtension(name) {
+      const dot = name.lastIndexOf(".");
+      return dot >= 0 ? name.substring(dot).toLowerCase() : "";
+    }
+
     const dropzone = document.getElementById("dropzone");
     document.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("active"); });
     document.addEventListener("dragleave", () => { dropzone.classList.remove("active"); });
     document.addEventListener("drop", (e) => {
       e.preventDefault();
       dropzone.classList.remove("active");
-      const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith(".md") || f.name.endsWith(".markdown"));
+      const files = Array.from(e.dataTransfer.files).filter(f => SUPPORTED_EXTS.has(getFileExtension(f.name)));
       if (files.length > 0) {
         mdfyDesktop.openFilePath(files[0].path);
       }

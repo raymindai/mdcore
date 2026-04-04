@@ -15,6 +15,7 @@ const {
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { mime } = require("./mime-types");
 
 // ─── State ───
 
@@ -22,6 +23,29 @@ let mainWindow = null;
 let currentFilePath = null;
 
 const MDFY_URL = "https://mdfy.cc";
+
+// ─── Supported File Types ───
+
+const TEXT_EXTENSIONS = new Set([".md", ".markdown", ".mdown", ".mkd", ".txt"]);
+
+const ALL_SUPPORTED_EXTENSIONS = new Set([
+  ".md", ".markdown", ".mdown", ".mkd",
+  ".pdf", ".docx", ".pptx", ".xlsx",
+  ".html", ".htm", ".csv", ".json", ".xml",
+  ".txt", ".rtf", ".rst", ".tex", ".latex",
+]);
+
+const FILE_FILTERS = [
+  { name: "All Supported", extensions: [
+    "md", "markdown", "txt", "pdf", "docx", "pptx", "xlsx",
+    "html", "htm", "csv", "json", "xml", "rtf", "rst", "tex", "latex",
+  ]},
+  { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
+  { name: "Documents", extensions: ["pdf", "docx", "pptx", "xlsx", "rtf"] },
+  { name: "Web & Data", extensions: ["html", "htm", "csv", "json", "xml"] },
+  { name: "Text & Markup", extensions: ["txt", "rst", "tex", "latex"] },
+  { name: "All Files", extensions: ["*"] },
+];
 
 // ─── Single Instance ───
 
@@ -33,8 +57,11 @@ if (!gotTheLock) {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
-      // Open file from argv
-      const filePath = argv.find((a) => a.endsWith(".md") || a.endsWith(".markdown"));
+      // Open file from argv if it has a supported extension
+      const filePath = argv.find((a) => {
+        const ext = path.extname(a).toLowerCase();
+        return ALL_SUPPORTED_EXTENSIONS.has(ext);
+      });
       if (filePath) openFileInApp(filePath);
     }
   });
@@ -121,24 +148,113 @@ function injectNativeBridge() {
 
 // ─── Open File in App ───
 
+function isTextFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return TEXT_EXTENSIONS.has(ext);
+}
+
 function openFileInApp(filePath) {
   if (!mainWindow) return;
   const absolutePath = path.resolve(filePath);
+  const ext = path.extname(absolutePath).toLowerCase();
+
+  if (!ALL_SUPPORTED_EXTENSIONS.has(ext)) {
+    dialog.showErrorBox("Unsupported Format", `mdfy does not support .${ext.slice(1)} files.`);
+    return;
+  }
+
   try {
-    const content = fs.readFileSync(absolutePath, "utf8");
     currentFilePath = absolutePath;
     const fileName = path.basename(absolutePath);
     mainWindow.setTitle(`${fileName} — mdfy`);
 
-    // Load mdfy.cc with file content + filename in hash
-    // Web app detects ?file= param and creates a new sidebar tab
-    const encoded = Buffer.from(content).toString("base64");
-    const encodedName = encodeURIComponent(fileName);
-    mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
-    mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
+    if (isTextFile(absolutePath)) {
+      // Text files: load content directly via hash (original behavior)
+      const content = fs.readFileSync(absolutePath, "utf8");
+      const encoded = Buffer.from(content).toString("base64");
+      const encodedName = encodeURIComponent(fileName);
+      mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
+      mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
+    } else {
+      // Binary/non-text files: load mdfy.cc first, then inject file via drag-drop
+      openFileViaImport(absolutePath, fileName);
+    }
   } catch (err) {
     dialog.showErrorBox("Error", `Could not open file: ${err.message}`);
   }
+}
+
+function openFileViaImport(absolutePath, fileName) {
+  const buffer = fs.readFileSync(absolutePath);
+  const base64 = buffer.toString("base64");
+  const mimeType = mime(absolutePath);
+
+  mainWindow.loadURL(MDFY_URL);
+  mainWindow.webContents.once("did-finish-load", () => {
+    injectNativeBridge();
+
+    // Wait a moment for the web app to initialize, then inject the file
+    // and trigger the same import pipeline as drag & drop
+    const js = `
+      (async function() {
+        // Wait for the app to be ready (editor area must exist)
+        let retries = 0;
+        while (!document.querySelector('[class*="flex-1"]') && !document.querySelector('.cm-editor') && !document.querySelector('article') && retries < 50) {
+          await new Promise(r => setTimeout(r, 100));
+          retries++;
+        }
+
+        const base64 = ${JSON.stringify(base64)};
+        const fileName = ${JSON.stringify(fileName)};
+        const mimeType = ${JSON.stringify(mimeType)};
+
+        // Decode base64 to binary
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+
+        // Create a File object
+        const file = new File([bytes], fileName, { type: mimeType });
+
+        // Create a synthetic drop event
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const dropEvent = new DragEvent('drop', {
+          dataTransfer: dt,
+          bubbles: true,
+          cancelable: true,
+        });
+
+        // Try to find the best drop target
+        const target =
+          document.querySelector('.cm-editor') ||
+          document.querySelector('[class*="flex-1"]') ||
+          document.querySelector('main') ||
+          document.body;
+
+        // Also dispatch dragover first so the app recognizes the drop
+        const dragOverEvent = new DragEvent('dragover', {
+          dataTransfer: dt,
+          bubbles: true,
+          cancelable: true,
+        });
+        target.dispatchEvent(dragOverEvent);
+
+        // Small delay then drop
+        await new Promise(r => setTimeout(r, 50));
+        target.dispatchEvent(dropEvent);
+      })();
+    `;
+
+    // Give the web app a moment to fully initialize its event listeners
+    setTimeout(() => {
+      mainWindow.webContents.executeJavaScript(js).catch((err) => {
+        console.error("Failed to inject file:", err);
+      });
+    }, 1500);
+  });
 }
 
 // Save current editor content to local file
@@ -176,10 +292,7 @@ function saveCurrentToFile() {
 ipcMain.handle("open-file-dialog", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
-    filters: [
-      { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
-      { name: "All Files", extensions: ["*"] },
-    ],
+    filters: FILE_FILTERS,
   });
   if (!result.canceled && result.filePaths.length > 0) {
     openFileInApp(result.filePaths[0]);
@@ -297,10 +410,11 @@ function buildMenu() {
           click: async () => {
             const result = await dialog.showOpenDialog(mainWindow, {
               properties: ["openFile"],
-              filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+              filters: FILE_FILTERS,
             });
             if (!result.canceled && result.filePaths[0]) {
               openFileInApp(result.filePaths[0]);
+              addToRecentFiles(result.filePaths[0]);
             }
           },
         },
@@ -370,9 +484,10 @@ app.whenReady().then(() => {
   });
 
   // Handle argv (file passed as argument)
-  const filePath = process.argv.find(
-    (a) => a.endsWith(".md") || a.endsWith(".markdown")
-  );
+  const filePath = process.argv.find((a) => {
+    const ext = path.extname(a).toLowerCase();
+    return ALL_SUPPORTED_EXTENSIONS.has(ext);
+  });
   if (filePath) {
     openFileInApp(filePath);
   }
