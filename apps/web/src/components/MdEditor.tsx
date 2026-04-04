@@ -3656,25 +3656,22 @@ ${html}
         </div>
 
         {/* Center: Layout mode switcher */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-px rounded-lg p-[3px]"
-          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
-        >
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
           {([
             { mode: "preview" as ViewMode, label: "Live", icon: (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
                 <circle cx="8" cy="8" r="2.2"/>
               </svg>
             )},
             { mode: "split" as ViewMode, label: "Split", icon: (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="1.5" y="2.5" width="13" height="11" rx="2"/>
                 <line x1="8" y1="2.5" x2="8" y2="13.5"/>
               </svg>
             )},
             { mode: "editor" as ViewMode, label: "Source", icon: (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 4L2 8l3 4M11 4l3 4-3 4"/>
               </svg>
             )},
@@ -3684,11 +3681,8 @@ ${html}
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-[10px] font-medium transition-all duration-150"
-                style={{
-                  background: active ? "var(--accent)" : "transparent",
-                  color: active ? "#000" : "var(--text-faint)",
-                }}
+                className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 text-[10px] font-medium transition-colors"
+                style={{ color: active ? "var(--accent)" : "var(--text-faint)" }}
               >
                 {icon}
                 <span className="hidden sm:inline">{label}</span>
