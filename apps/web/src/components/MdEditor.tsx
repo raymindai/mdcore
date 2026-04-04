@@ -1178,26 +1178,58 @@ export default function MdEditor() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
   // ─── Image upload helper ───
+  /** Compress image client-side before upload (max 2000px, 0.85 quality) */
+  const compressImage = useCallback(async (file: File): Promise<File> => {
+    // Skip compression for SVG, GIF (animated), or small files (<200KB)
+    if (file.type === "image/svg+xml" || file.type === "image/gif" || file.size < 200 * 1024) return file;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 2000;
+        let { width, height } = img;
+        if (width <= MAX && height <= MAX && file.size < 1024 * 1024) { resolve(file); return; }
+        if (width > MAX || height > MAX) {
+          const ratio = Math.min(MAX / width, MAX / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob && blob.size < file.size) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, ".webp"), { type: "image/webp" }));
+          } else { resolve(file); }
+        }, "image/webp", 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
-    if (!user) {
-      setShowAuthMenu(true);
-      return null;
-    }
+    // Allow anonymous upload (lower quota) — no auth gate
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", compressed);
+    const headers: Record<string, string> = {};
+    if (user?.id) headers["x-user-id"] = user.id;
+    else { const anonId = ensureAnonymousId(); if (anonId) headers["x-anonymous-id"] = anonId; }
     const res = await fetch("/api/upload", {
       method: "POST",
-      headers: { "x-user-id": user.id },
+      headers,
       body: formData,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Upload failed" }));
       if (err.requiresAuth) setShowAuthMenu(true);
+      else showToast(err.error || "Upload failed", "error");
       return null;
     }
     const { url } = await res.json();
     return url;
-  }, [user]);
+  }, [user, compressImage]);
 
   // CodeMirror 6 editor — replaces plain textarea
   const handleChangeRef = useRef<(value: string) => void>(() => {});
@@ -2262,10 +2294,127 @@ export default function MdEditor() {
       // Text editing is now handled by single-click (handleClick → handleEditClick)
     };
 
+    // Image click → lightbox
+    const handleImgClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName !== "IMG" || target.closest("figure")?.querySelector("figcaption")?.contains(target as Node)) return;
+      const img = target as HTMLImageElement;
+      if (!img.src) return;
+      e.preventDefault(); e.stopPropagation();
+      const overlay = document.createElement("div");
+      overlay.className = "mdcore-lightbox";
+      const fullImg = document.createElement("img");
+      fullImg.src = img.src;
+      fullImg.alt = img.alt || "";
+      overlay.appendChild(fullImg);
+      overlay.addEventListener("click", () => document.body.removeChild(overlay));
+      document.addEventListener("keydown", function esc(ev) { if (ev.key === "Escape") { document.body.removeChild(overlay); document.removeEventListener("keydown", esc); } });
+      document.body.appendChild(overlay);
+    };
+
+    // Image right-click → context menu (alignment, size, alt text)
+    const handleImgContext = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName !== "IMG") return;
+      e.preventDefault(); e.stopPropagation();
+      const img = target as HTMLImageElement;
+      // Remove any existing menu
+      document.querySelector(".mdcore-img-menu")?.remove();
+      const menu = document.createElement("div");
+      menu.className = "mdcore-img-menu";
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.style.position = "fixed";
+
+      const findImgInMd = () => {
+        const md = markdownRef.current;
+        const src = img.src;
+        // Match ![...](url) where url matches
+        const escaped = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`!\\[([^\\]]*)\\]\\(${escaped}\\)`);
+        const match = md.match(regex);
+        if (match) return { full: match[0], alt: match[1], index: match.index! };
+        // Try matching by filename
+        const filename = src.split("/").pop()?.split("?")[0] || "";
+        if (filename) {
+          const fnRegex = new RegExp(`!\\[([^\\]]*)\\]\\([^)]*${filename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^)]*\\)`);
+          const fnMatch = md.match(fnRegex);
+          if (fnMatch) return { full: fnMatch[0], alt: fnMatch[1], index: fnMatch.index! };
+        }
+        return null;
+      };
+
+      const replaceAlt = (newAlt: string) => {
+        const found = findImgInMd();
+        if (!found) return;
+        const newMd = markdownRef.current.slice(0, found.index) + found.full.replace(`![${found.alt}]`, `![${newAlt}]`) + markdownRef.current.slice(found.index + found.full.length);
+        setMarkdown(newMd);
+        cmSetDoc(newMd);
+        doRender(newMd);
+      };
+
+      const items: { label: string; icon: string; action: () => void; separator?: boolean }[] = [
+        { label: "Align left", icon: "≡", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["center","left","right"].includes(p.trim().toLowerCase())); parts.push("left"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "Align center", icon: "≡", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["center","left","right"].includes(p.trim().toLowerCase())); parts.push("center"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "Align right", icon: "≡", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["center","left","right"].includes(p.trim().toLowerCase())); parts.push("right"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "", icon: "", action: () => {}, separator: true },
+        { label: "Small (25%)", icon: "◻", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["small","medium","large"].includes(p.trim().toLowerCase()) && !/^\d+%$/.test(p.trim())); parts.push("small"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "Medium (50%)", icon: "◻", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["small","medium","large"].includes(p.trim().toLowerCase()) && !/^\d+%$/.test(p.trim())); parts.push("medium"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "Large (75%)", icon: "◻", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["small","medium","large"].includes(p.trim().toLowerCase()) && !/^\d+%$/.test(p.trim())); parts.push("large"); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "Full width", icon: "◻", action: () => { const f = findImgInMd(); if (f) { const parts = f.alt.split("|").filter(p => !["small","medium","large"].includes(p.trim().toLowerCase()) && !/^\d+%$/.test(p.trim())); replaceAlt(parts.join("|")); } menu.remove(); } },
+        { label: "", icon: "", action: () => {}, separator: true },
+        { label: "Edit caption", icon: "✎", action: () => {
+          menu.remove();
+          const found = findImgInMd();
+          if (!found) return;
+          const cleanAlt = found.alt.split("|")[0].trim();
+          setInlineInput({
+            label: "Image caption / alt text",
+            defaultValue: cleanAlt,
+            onSubmit: (newCaption) => {
+              const markers = found.alt.split("|").slice(1).join("|");
+              replaceAlt(markers ? `${newCaption}|${markers}` : newCaption);
+              setInlineInput(null);
+            },
+          });
+        }},
+        { label: "Delete image", icon: "✕", action: () => {
+          menu.remove();
+          const found = findImgInMd();
+          if (!found) return;
+          const newMd = markdownRef.current.slice(0, found.index) + markdownRef.current.slice(found.index + found.full.length).replace(/^\n{1,2}/, "\n");
+          setMarkdown(newMd);
+          cmSetDoc(newMd);
+          doRender(newMd);
+        }},
+      ];
+
+      items.forEach(item => {
+        if (item.separator) {
+          const sep = document.createElement("div");
+          sep.style.cssText = "height:1px;margin:3px 6px;background:var(--border-dim)";
+          menu.appendChild(sep);
+        } else {
+          const btn = document.createElement("button");
+          btn.textContent = `${item.icon}  ${item.label}`;
+          btn.addEventListener("click", item.action);
+          menu.appendChild(btn);
+        }
+      });
+
+      document.body.appendChild(menu);
+      const dismiss = (ev: MouseEvent) => { if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener("click", dismiss); } };
+      setTimeout(() => document.addEventListener("click", dismiss), 0);
+    };
+
     preview.addEventListener("click", handleClick);
+    preview.addEventListener("click", handleImgClick);
+    preview.addEventListener("contextmenu", handleImgContext);
     preview.addEventListener("dblclick", handleDblClick);
     return () => {
       preview.removeEventListener("click", handleClick);
+      preview.removeEventListener("click", handleImgClick);
+      preview.removeEventListener("contextmenu", handleImgContext);
       preview.removeEventListener("dblclick", handleDblClick);
     };
   }, [viewMode, markdown, doRender]);

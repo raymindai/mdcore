@@ -23,9 +23,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
-  // Auth check
+  // Auth check — allow anonymous with lower limits
   const userId = req.headers.get("x-user-id");
-  if (!userId) {
+  const anonymousId = req.headers.get("x-anonymous-id");
+  if (!userId && !anonymousId) {
     return NextResponse.json(
       { error: "Sign in to upload images", requiresAuth: true },
       { status: 401 }
@@ -57,25 +58,32 @@ export async function POST(req: NextRequest) {
   }
 
   // Check user quota
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan, storage_used_bytes")
-    .eq("id", userId)
-    .single();
+  let currentUsage = 0;
+  let quota = QUOTA_FREE;
+  const ownerId = userId || `anon-${anonymousId}`;
 
-  if (!profile) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (userId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan, storage_used_bytes")
+      .eq("id", userId)
+      .single();
+
+    if (profile) {
+      quota = profile.plan === "pro" ? QUOTA_PRO : QUOTA_FREE;
+      currentUsage = profile.storage_used_bytes || 0;
+    }
+  } else {
+    // Anonymous: 20MB quota, no profile needed
+    quota = 20 * 1024 * 1024;
   }
-
-  const quota = profile.plan === "pro" ? QUOTA_PRO : QUOTA_FREE;
-  const currentUsage = profile.storage_used_bytes || 0;
 
   if (currentUsage + file.size > quota) {
     const usedMB = Math.round(currentUsage / 1024 / 1024);
     const quotaMB = Math.round(quota / 1024 / 1024);
     return NextResponse.json(
       {
-        error: `Storage limit reached (${usedMB}MB / ${quotaMB}MB). ${profile.plan !== "pro" ? "Upgrade to Pro for 10GB." : ""}`,
+        error: `Storage limit reached (${usedMB}MB / ${quotaMB}MB). ${!userId ? "Sign in for 100MB free storage." : quota < QUOTA_PRO ? "Upgrade to Pro for 10GB." : ""}`,
         quotaExceeded: true,
       },
       { status: 413 }
@@ -95,7 +103,7 @@ export async function POST(req: NextRequest) {
     "image/svg+xml": "svg",
   };
   const ext = extMap[file.type] || "png";
-  const storagePath = `${userId}/${hash}.${ext}`;
+  const storagePath = `${ownerId}/${hash}.${ext}`;
 
   // Upload to Supabase Storage (upsert — dedup by hash)
   const { error: uploadError } = await supabase.storage
@@ -115,11 +123,13 @@ export async function POST(req: NextRequest) {
     .from("document-images")
     .getPublicUrl(storagePath);
 
-  // Update storage usage
-  await supabase
-    .from("profiles")
-    .update({ storage_used_bytes: currentUsage + file.size })
-    .eq("id", userId);
+  // Update storage usage (only for authenticated users with profile)
+  if (userId) {
+    await supabase
+      .from("profiles")
+      .update({ storage_used_bytes: currentUsage + file.size })
+      .eq("id", userId);
+  }
 
   return NextResponse.json({
     url: urlData.publicUrl,
