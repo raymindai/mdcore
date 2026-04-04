@@ -59,12 +59,15 @@ function createWindow() {
     icon: path.join(__dirname, "assets", "icon.png"),
   });
 
-  // Load mdfy.cc directly
-  mainWindow.loadURL(MDFY_URL);
+  // Show dashboard by default (no file)
+  mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
 
-  // Inject native bridge after page loads
+  // Inject native bridge after any page loads
   mainWindow.webContents.on("did-finish-load", () => {
-    injectNativeBridge();
+    const url = mainWindow.webContents.getURL();
+    if (url.includes("mdfy.cc")) {
+      injectNativeBridge();
+    }
   });
 
   // Handle new window requests (open in browser)
@@ -206,6 +209,51 @@ ipcMain.handle("save-file", async (event, filePath, content) => {
 });
 
 ipcMain.handle("get-file-path", () => currentFilePath);
+
+ipcMain.handle("open-file-path", (event, filePath) => {
+  openFileInApp(filePath);
+  addToRecentFiles(filePath);
+});
+
+ipcMain.handle("open-editor", () => {
+  currentFilePath = null;
+  mainWindow.loadURL(MDFY_URL);
+  mainWindow.setTitle("mdfy");
+});
+
+ipcMain.handle("get-recent-files", () => {
+  return loadRecentFiles();
+});
+
+ipcMain.handle("open-in-browser", (event, url) => {
+  shell.openExternal(url);
+});
+
+// ─── Recent Files ───
+
+const RECENT_FILES_PATH = path.join(
+  app.getPath("userData"),
+  "recent-files.json"
+);
+
+function loadRecentFiles() {
+  try {
+    const data = fs.readFileSync(RECENT_FILES_PATH, "utf8");
+    return JSON.parse(data).filter((f) => fs.existsSync(f.path));
+  } catch {
+    return [];
+  }
+}
+
+function addToRecentFiles(filePath) {
+  const recent = loadRecentFiles();
+  const filtered = recent.filter((f) => f.path !== filePath);
+  filtered.unshift({ path: filePath, openedAt: new Date().toISOString() });
+  const trimmed = filtered.slice(0, 10);
+  try {
+    fs.writeFileSync(RECENT_FILES_PATH, JSON.stringify(trimmed, null, 2));
+  } catch {}
+}
 
 // ─── Menu ───
 

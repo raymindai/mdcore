@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mdfy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #09090b;
+      color: #fafafa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    /* Title bar space for traffic lights */
+    .titlebar { height: 52px; flex-shrink: 0; }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      gap: 32px;
+      -webkit-app-region: no-drag;
+    }
+
+    /* Logo */
+    .logo {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      user-select: none;
+    }
+    .logo-md { color: #fb923c; }
+    .logo-fy { color: #fafafa; }
+    .logo-cc { color: #3f3f46; }
+
+    .tagline {
+      font-size: 14px;
+      color: #52525b;
+      margin-top: -20px;
+    }
+
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: rgba(251, 146, 60, 0.12);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.2);
+    }
+    .btn-primary:hover { background: rgba(251, 146, 60, 0.2); }
+
+    .btn-secondary {
+      background: #18181b;
+      color: #a1a1aa;
+      border: 1px solid #27272a;
+    }
+    .btn-secondary:hover { background: #27272a; color: #fafafa; }
+
+    /* Recent files */
+    .recent {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .recent-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3f3f46;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.12s;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      width: 100%;
+    }
+
+    .recent-item:hover { background: #18181b; }
+
+    .recent-icon {
+      color: #52525b;
+      flex-shrink: 0;
+    }
+
+    .recent-name {
+      flex: 1;
+      color: #a1a1aa;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .recent-item:hover .recent-name { color: #fafafa; }
+
+    .recent-time {
+      font-size: 11px;
+      color: #3f3f46;
+      flex-shrink: 0;
+    }
+
+    .recent-empty {
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+      color: #27272a;
+    }
+
+    /* Drop zone */
+    .dropzone {
+      width: 100%;
+      max-width: 480px;
+      padding: 20px;
+      border: 1px dashed #27272a;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: #3f3f46;
+      transition: all 0.15s;
+    }
+
+    .dropzone.active {
+      border-color: #fb923c;
+      background: rgba(251, 146, 60, 0.05);
+      color: #fb923c;
+    }
+
+    /* Shortcuts */
+    .shortcuts {
+      font-size: 11px;
+      color: #27272a;
+      display: flex;
+      gap: 16px;
+    }
+
+    .shortcuts kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #18181b;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 10px;
+      color: #52525b;
+      margin-right: 4px;
+    }
+
+    /* Open in browser link */
+    .browser-link {
+      font-size: 12px;
+      color: #3f3f46;
+      text-decoration: none;
+      transition: color 0.12s;
+    }
+    .browser-link:hover { color: #fb923c; }
+
+    @media (prefers-color-scheme: light) {
+      body { background: #faf9f7; color: #09090b; }
+      .logo-fy { color: #09090b; }
+      .logo-md { color: #ea580c; }
+      .logo-cc { color: #a1a1aa; }
+      .tagline { color: #a1a1aa; }
+      .btn-secondary { background: #f4f4f5; border-color: #e4e4e7; color: #71717a; }
+      .btn-secondary:hover { background: #e4e4e7; color: #09090b; }
+      .recent-item:hover { background: #f4f4f5; }
+      .recent-name { color: #71717a; }
+      .recent-item:hover .recent-name { color: #09090b; }
+      .recent-icon { color: #a1a1aa; }
+      .recent-time { color: #a1a1aa; }
+      .recent-header { color: #a1a1aa; }
+      .dropzone { border-color: #e4e4e7; color: #a1a1aa; }
+      .shortcuts { color: #a1a1aa; }
+      .shortcuts kbd { background: #f4f4f5; color: #71717a; }
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar"></div>
+  <div class="container">
+    <div class="logo">
+      <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
+    </div>
+    <div class="tagline">Figma for Markdown</div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-new">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+        New Document
+      </button>
+      <button class="btn btn-secondary" id="btn-open">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg>
+        Open File
+      </button>
+    </div>
+
+    <div class="recent" id="recent-section">
+      <div class="recent-header">Recent</div>
+      <div class="recent-list" id="recent-list">
+        <div class="recent-empty">No recent files</div>
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      Drop .md files here
+    </div>
+
+    <div class="shortcuts">
+      <span><kbd>⌘N</kbd> New</span>
+      <span><kbd>⌘O</kbd> Open</span>
+      <span><kbd>⌘⇧S</kbd> Save</span>
+    </div>
+
+    <a class="browser-link" href="#" id="open-browser">Open mdfy.cc in browser ↗</a>
+  </div>
+
+  <script>
+    const { mdfyDesktop } = window;
+
+    // New document
+    document.getElementById("btn-new").addEventListener("click", () => {
+      mdfyDesktop.openEditor();
+    });
+
+    // Open file
+    document.getElementById("btn-open").addEventListener("click", () => {
+      mdfyDesktop.openFile();
+    });
+
+    // Open in browser
+    document.getElementById("open-browser").addEventListener("click", (e) => {
+      e.preventDefault();
+      mdfyDesktop.openInBrowser("https://mdfy.cc");
+    });
+
+    // Drop zone
+    const dropzone = document.getElementById("dropzone");
+    document.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("active"); });
+    document.addEventListener("dragleave", () => { dropzone.classList.remove("active"); });
+    document.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("active");
+      const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith(".md") || f.name.endsWith(".markdown"));
+      if (files.length > 0) {
+        mdfyDesktop.openFilePath(files[0].path);
+      }
+    });
+
+    // Load recent files
+    mdfyDesktop.getRecentFiles().then((files) => {
+      const list = document.getElementById("recent-list");
+      if (!files || files.length === 0) return;
+
+      list.innerHTML = "";
+      files.forEach((file) => {
+        const item = document.createElement("button");
+        item.className = "recent-item";
+        const name = file.path.split("/").pop();
+        const dir = file.path.replace(/\/[^/]+$/, "").split("/").slice(-2).join("/");
+        const ago = timeAgo(file.openedAt);
+
+        item.innerHTML = `
+          <svg class="recent-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+            <path d="M6 5h4M6 8h4M6 11h2" stroke-linecap="round"/>
+          </svg>
+          <span class="recent-name" title="${file.path}">${name}<span style="color:#3f3f46;margin-left:6px">${dir}</span></span>
+          <span class="recent-time">${ago}</span>
+        `;
+        item.addEventListener("click", () => mdfyDesktop.openFilePath(file.path));
+        list.appendChild(item);
+      });
+    });
+
+    function timeAgo(timestamp) {
+      const diff = Date.now() - new Date(timestamp).getTime();
+      const min = Math.floor(diff / 60000);
+      if (min < 1) return "Just now";
+      if (min < 60) return min + "m ago";
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return hr + "h ago";
+      const day = Math.floor(hr / 24);
+      return day + "d ago";
+    }
+  </script>
+</body>
+</html>
