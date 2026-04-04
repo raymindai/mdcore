@@ -1214,26 +1214,35 @@ export default function MdEditor() {
   }, []);
 
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
-    // Allow anonymous upload (lower quota) — no auth gate
     const compressed = await compressImage(file);
     const formData = new FormData();
     formData.append("file", compressed);
     const headers: Record<string, string> = {};
     if (user?.id) headers["x-user-id"] = user.id;
     else { const anonId = ensureAnonymousId(); if (anonId) headers["x-anonymous-id"] = anonId; }
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Upload failed" }));
-      if (err.requiresAuth) setShowAuthMenu(true);
-      else showToast(err.error || "Upload failed", "error");
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers,
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        if (err.requiresAuth) setShowAuthMenu(true);
+        else showToast(err.error || "Upload failed", "error");
+        return null;
+      }
+      const data = await res.json();
+      if (!data.url) { showToast("Upload failed — no URL returned", "error"); return null; }
+      return data.url;
+    } catch (e) {
+      showToast(e instanceof DOMException && e.name === "AbortError" ? "Upload timed out" : "Upload failed", "error");
       return null;
     }
-    const { url } = await res.json();
-    return url;
   }, [user, compressImage]);
 
   // CodeMirror 6 editor — replaces plain textarea
@@ -2304,18 +2313,24 @@ export default function MdEditor() {
     // Image click → lightbox
     const handleImgClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName !== "IMG" || target.closest("figure")?.querySelector("figcaption")?.contains(target as Node)) return;
+      if (target.tagName !== "IMG") return;
+      // Skip images in code blocks
+      if (target.closest("pre, code")) return;
       const img = target as HTMLImageElement;
       if (!img.src) return;
       e.preventDefault(); e.stopPropagation();
+      // Close existing lightbox if any
+      document.querySelector(".mdcore-lightbox")?.remove();
       const overlay = document.createElement("div");
       overlay.className = "mdcore-lightbox";
       const fullImg = document.createElement("img");
       fullImg.src = img.src;
       fullImg.alt = img.alt || "";
       overlay.appendChild(fullImg);
-      overlay.addEventListener("click", () => document.body.removeChild(overlay));
-      document.addEventListener("keydown", function esc(ev) { if (ev.key === "Escape") { document.body.removeChild(overlay); document.removeEventListener("keydown", esc); } });
+      const closeLightbox = () => { overlay.remove(); document.removeEventListener("keydown", esc); };
+      const esc = (ev: KeyboardEvent) => { if (ev.key === "Escape") closeLightbox(); };
+      overlay.addEventListener("click", closeLightbox);
+      document.addEventListener("keydown", esc);
       document.body.appendChild(overlay);
     };
 
@@ -2411,8 +2426,9 @@ export default function MdEditor() {
       });
 
       document.body.appendChild(menu);
-      const dismiss = (ev: MouseEvent) => { if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener("click", dismiss); } };
-      setTimeout(() => document.addEventListener("click", dismiss), 0);
+      const dismiss = (ev: MouseEvent) => { if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener("click", dismiss); document.removeEventListener("keydown", escDismiss); } };
+      const escDismiss = (ev: KeyboardEvent) => { if (ev.key === "Escape") { menu.remove(); document.removeEventListener("click", dismiss); document.removeEventListener("keydown", escDismiss); } };
+      setTimeout(() => { document.addEventListener("click", dismiss); document.addEventListener("keydown", escDismiss); }, 0);
     };
 
     preview.addEventListener("click", handleClick);
@@ -2758,28 +2774,29 @@ export default function MdEditor() {
 
   // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
   const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
-    // Check for pasted image
+    // Check for pasted images (handle multiple)
     const items = Array.from(e.clipboardData.items);
-    const imageItem = items.find(item => item.type.startsWith("image/"));
-    if (imageItem) {
+    const imageItems = items.filter(item => item.type.startsWith("image/"));
+    if (imageItems.length > 0) {
       e.preventDefault();
-      const file = imageItem.getAsFile();
-      if (!file) return;
-      const placeholder = `![Uploading ${file.name || "image"}...]()\n`;
-      document.execCommand("insertText", false, placeholder);
       (async () => {
-        const url = await uploadImage(file);
-        const current = markdownForImageRef.current;
-        if (url) {
-          const updated = current.replace(placeholder, `![${file.name || "image"}](${url})\n`);
-          setMarkdown(updated);
-          doRender(updated);
-          cmSetDoc(updated);
-        } else {
-          const updated = current.replace(placeholder, "");
-          setMarkdown(updated);
-          doRender(updated);
-          cmSetDoc(updated);
+        for (const imageItem of imageItems) {
+          const file = imageItem.getAsFile();
+          if (!file) continue;
+          const ts = Date.now();
+          const placeholder = `![Uploading ${file.name || "image"}-${ts}...]()\n`;
+          // Insert placeholder at current position via markdown append
+          const withPh = markdownForImageRef.current + placeholder;
+          setMarkdown(withPh); doRender(withPh); cmSetDoc(withPh);
+          const url = await uploadImage(file);
+          const current = markdownForImageRef.current;
+          if (url) {
+            const updated = current.replace(placeholder, `![${file.name || "image"}](${url})\n`);
+            setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+          } else {
+            const updated = current.replace(placeholder, "");
+            setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+          }
         }
       })();
       return;
@@ -2836,17 +2853,20 @@ export default function MdEditor() {
       // Handle image file drops — upload and insert markdown
       const imageFiles = files.filter(f => f.type.startsWith("image/"));
       if (imageFiles.length > 0) {
-        let current = markdownForImageRef.current;
+        if (imageFiles.length > 1) showToast(`Uploading ${imageFiles.length} images...`, "info");
+        let failed = 0;
         for (const img of imageFiles) {
           const url = await uploadImage(img);
           if (url) {
+            const current = markdownForImageRef.current;
             const imgMd = `![${img.name}](${url})\n\n`;
-            current = current + imgMd;
-            setMarkdown(current);
-            doRender(current);
-            cmSetDoc(current);
-          }
+            const updated = current + imgMd;
+            setMarkdown(updated);
+            doRender(updated);
+            cmSetDoc(updated);
+          } else { failed++; }
         }
+        if (failed > 0) showToast(`${failed} image${failed > 1 ? "s" : ""} failed to upload`, "error");
         return;
       }
 
@@ -4204,27 +4224,28 @@ ${html}
             ref={imageFileRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const placeholder = `![Uploading ${file.name}...]()\n`;
-              const withPlaceholder = markdownForImageRef.current + placeholder;
-              setMarkdown(withPlaceholder);
-              doRender(withPlaceholder);
-              cmSetDoc(withPlaceholder);
-              const url = await uploadImage(file);
-              const current = markdownForImageRef.current;
-              if (url) {
-                const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
-                setMarkdown(updated);
-                doRender(updated);
-                cmSetDoc(updated);
-              } else {
-                const updated = current.replace(placeholder, "");
-                setMarkdown(updated);
-                doRender(updated);
-                cmSetDoc(updated);
+              const files = Array.from(e.target.files || []);
+              if (files.length === 0) return;
+              if (files.length > 1) showToast(`Uploading ${files.length} images...`, "info");
+              for (const file of files) {
+                const ts = Date.now();
+                const placeholder = `![Uploading ${file.name}-${ts}...]()\n`;
+                const withPlaceholder = markdownForImageRef.current + placeholder;
+                setMarkdown(withPlaceholder);
+                doRender(withPlaceholder);
+                cmSetDoc(withPlaceholder);
+                const url = await uploadImage(file);
+                const current = markdownForImageRef.current;
+                if (url) {
+                  const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+                } else {
+                  const updated = current.replace(placeholder, "");
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+                }
               }
               e.target.value = "";
             }}

@@ -57,7 +57,8 @@ export function postProcessHtml(
  * Markers: center, left, right, small (25%), medium (50%), large (75%), or N% for custom width
  */
 function processImages(html: string): string {
-  return html.replace(
+  // Step 1: Process alignment/sizing markers in alt text
+  let result = html.replace(
     /<img\s+([^>]*?)alt="([^"]*)"([^>]*?)>/g,
     (_match, before: string, alt: string, after: string) => {
       const parts = alt.split("|").map(s => s.trim());
@@ -82,15 +83,24 @@ function processImages(html: string): string {
       const cleanAfter = after.replace(/style="[^"]*"/, "");
       const styleAttr = fullStyle ? ` style="${fullStyle}"` : "";
 
-      const imgTag = `<img ${cleanBefore}alt="${cleanAlt}"${cleanAfter}${dataAttrs}${styleAttr}>`;
+      return `<img ${cleanBefore}alt="${cleanAlt}"${cleanAfter}${dataAttrs}${styleAttr}>`;
+    }
+  );
 
-      // Wrap in <figure> with <figcaption> if alt text is meaningful (not empty, not just a filename)
+  // Step 2: Wrap standalone images in <figure> — only when image is the sole content of a <p>
+  // This avoids invalid HTML like <p><figure>...</figure></p> or <a><figure>...</a>
+  result = result.replace(
+    /<p>(<img\s+[^>]*alt="([^"]*)"[^>]*>)<\/p>/g,
+    (_match, imgTag: string, alt: string) => {
+      const cleanAlt = alt.split("|")[0].trim();
       if (cleanAlt && cleanAlt.length > 0 && !/^\S+\.\w{2,4}$/.test(cleanAlt)) {
         return `<figure>${imgTag}<figcaption>${cleanAlt}</figcaption></figure>`;
       }
-      return imgTag;
+      return _match; // Keep as <p><img></p>
     }
   );
+
+  return result;
 }
 
 /**
