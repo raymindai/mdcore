@@ -322,6 +322,8 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       --h2-color: #e4e4e7;
       --scrollbar-thumb: #27272a;
       --scrollbar-hover: #3f3f46;
+      --fg: #fafafa;
+      --muted: #52525b;
     }
 
     /* Light theme */
@@ -345,6 +347,8 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         --h2-color: #27272a;
         --scrollbar-thumb: #a1a1aa;
         --scrollbar-hover: #a1a1aa;
+        --fg: #18181b;
+        --muted: #a1a1aa;
       }
     }
 
@@ -370,9 +374,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       gap: 12px;
     }
     .mdfy-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .mdfy-logo { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-    .mdfy-logo svg { width: 18px; height: 18px; }
-    .mdfy-logo span { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+    .mdfy-logo { display: flex; align-items: center; flex-shrink: 0; }
     .mdfy-filename {
       font-size: 12px;
       color: var(--text-muted);
@@ -519,11 +521,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     <div class="mdfy-topbar">
       <div class="mdfy-topbar-left">
         <div class="mdfy-logo">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="2" width="20" height="20" rx="4" fill="var(--accent)" fill-opacity="0.15"/>
-            <path d="M7 7h3l2 4 2-4h3v10h-2.5V11l-2.5 4-2.5-4v6H7V7z" fill="var(--accent)"/>
-          </svg>
-          <span>mdfy</span>
+          <span style="font-size:16px;font-weight:800;letter-spacing:-0.5px"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span><span style="color:var(--muted)">.cc</span></span>
         </div>
         <span class="mdfy-filename">{{FILE_NAME}}</span>
       </div>
@@ -538,6 +536,14 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         <a class="mdfy-btn mdfy-btn-primary" href="https://mdfy.cc" target="_blank" rel="noopener">
           Publish
         </a>
+        <button class="mdfy-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
+          <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">
+            <circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 3.4l1-1"/>
+          </svg>
+          <svg id="theme-icon-moon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -557,6 +563,55 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     <script>
     // Track which libraries loaded successfully
     window.__mdfyLibs = { marked: false, hljs: false, katex: false, mermaid: false };
+
+    // Theme toggle
+    var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    function updateThemeIcons() {
+      document.getElementById('theme-icon-sun').style.display = isDark ? 'none' : 'block';
+      document.getElementById('theme-icon-moon').style.display = isDark ? 'block' : 'none';
+    }
+    function toggleTheme() {
+      isDark = !isDark;
+      if (isDark) {
+        document.documentElement.style.colorScheme = 'dark';
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.style.colorScheme = 'light';
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+      // Override CSS variables manually since prefers-color-scheme won't change
+      var root = document.documentElement.style;
+      if (isDark) {
+        root.setProperty('--background', '#09090b');
+        root.setProperty('--foreground', '#fafafa');
+        root.setProperty('--accent', '#fb923c');
+        root.setProperty('--surface', '#18181b');
+        root.setProperty('--border', '#27272a');
+        root.setProperty('--border-dim', 'rgba(39,39,42,0.6)');
+        root.setProperty('--text-primary', '#fafafa');
+        root.setProperty('--text-secondary', '#d4d4d8');
+        root.setProperty('--text-muted', '#71717a');
+        root.setProperty('--text-faint', '#52525b');
+        root.setProperty('--fg', '#fafafa');
+        root.setProperty('--muted', '#52525b');
+      } else {
+        root.setProperty('--background', '#faf9f7');
+        root.setProperty('--foreground', '#18181b');
+        root.setProperty('--accent', '#ea580c');
+        root.setProperty('--surface', '#f4f4f5');
+        root.setProperty('--border', '#e4e4e7');
+        root.setProperty('--border-dim', 'rgba(228,228,231,0.6)');
+        root.setProperty('--text-primary', '#09090b');
+        root.setProperty('--text-secondary', '#3f3f46');
+        root.setProperty('--text-muted', '#71717a');
+        root.setProperty('--text-faint', '#a1a1aa');
+        root.setProperty('--fg', '#18181b');
+        root.setProperty('--muted', '#a1a1aa');
+      }
+      document.body.style.background = isDark ? '#09090b' : '#faf9f7';
+      updateThemeIcons();
+    }
+    updateThemeIcons();
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/marked@14/marked.min.js"
