@@ -367,23 +367,31 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-bottom: 1px solid var(--border);
       background: var(--background);
       flex-shrink: 0;
-      gap: 12px;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow: hidden;
     }
-    .mdfy-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .mdfy-topbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex-shrink: 1; overflow: hidden; }
     .mdfy-logo { display: flex; align-items: center; flex-shrink: 0; }
     .mdfy-filename {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-muted);
       font-family: var(--font-mono);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .mdfy-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .mdfy-topbar-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    @media (max-width: 480px) {
+      .mdfy-topbar { padding: 6px 10px; }
+      .mdfy-filename { display: none; }
+      .mdfy-btn span { display: none; }
+      .mdfy-btn { padding: 4px 8px; font-size: 11px; }
+    }
     .mdfy-btn {
       display: inline-flex;
       align-items: center;
@@ -532,9 +540,6 @@ class PreviewViewController: NSViewController, QLPreviewingController {
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Open in mdfy
-        </a>
-        <a class="mdfy-btn mdfy-btn-primary" href="https://mdfy.cc" target="_blank" rel="noopener">
-          Publish
         </a>
         <button class="mdfy-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
           <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">
