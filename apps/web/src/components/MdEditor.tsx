@@ -3675,7 +3675,10 @@ ${html}
         </div>
 
         {/* Center: Layout mode switcher */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 sm:gap-1">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-lg overflow-hidden"
+          style={{ border: "1px solid var(--border-dim)" }}
+        >
           {([
             { mode: "preview" as ViewMode, label: "Live", icon: (
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -3700,7 +3703,7 @@ ${html}
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className="flex items-center gap-1 px-2 h-6 rounded-md text-[10px] font-medium transition-colors"
+                className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
                 style={{
                   background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
                   color: active ? "var(--accent)" : "var(--text-muted)",
