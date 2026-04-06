@@ -496,6 +496,134 @@ export default function PluginsPage() {
         </div>
       </section>
 
+      {/* ───────── DESKTOP APP ───────── */}
+      <section
+        style={{
+          maxWidth: 1080,
+          margin: "0 auto",
+          padding: "0 24px 60px",
+        }}
+      >
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "36px 32px 28px",
+              borderBottom: "1px solid var(--border-dim)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "#18181b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid #27272a",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <path d="M8 21h8M12 17v4"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    mdfy for Mac
+                  </h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+                    Desktop app — Electron
+                  </p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Native macOS desktop app with full mdfy.cc editing, local file support, and drag-and-drop import for PDF, Word, PowerPoint, Excel, and 10+ formats. Double-click any .md file to open it in mdfy.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent-dim)", color: "var(--accent)" }}>Free</span>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--toggle-bg)", color: "var(--text-faint)" }}>Electron</span>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 1,
+              background: "var(--border-dim)",
+            }}
+          >
+            {[
+              {
+                title: "Native File Integration",
+                items: ["Double-click .md to open in mdfy", "Drag & drop any supported format", "Save back to local file (Cmd+Shift+S)", "Recent files dashboard"],
+              },
+              {
+                title: "Multi-Format Import",
+                items: ["Markdown, PDF, Word (.docx)", "PowerPoint (.pptx), Excel (.xlsx)", "HTML, CSV, JSON, XML, LaTeX", "RTF, reStructuredText, plain text"],
+              },
+              {
+                title: "Full mdfy.cc Editor",
+                items: ["WYSIWYG + Source editing modes", "Cloud sync and sharing", "All rendering: code, math, diagrams", "Dark/Light theme"],
+              },
+              {
+                title: "Desktop Experience",
+                items: ["Native macOS title bar", "Single-instance with file handoff", "Keyboard shortcuts (Cmd+N/O/S)", "Offline fallback when disconnected"],
+              },
+            ].map((section) => (
+              <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, marginTop: 0 }}>{section.title}</h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {section.items.map((item) => (
+                    <li key={item} style={{ fontSize: 13, color: "var(--text-muted)", padding: "4px 0", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ color: "var(--accent)", flexShrink: 0 }}>+</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
+              Install (Development)
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { step: "1", text: "cd apps/desktop && npm install" },
+                { step: "2", text: "npm start" },
+                { step: "3", text: "Or build: npm run build (creates .dmg)" },
+              ].map((s) => (
+                <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
+                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
+              Distributable .dmg coming soon.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── MACOS QUICKLOOK ───────── */}
       <section
         style={{
@@ -514,7 +642,8 @@ export default function PluginsPage() {
         >
           <div
             style={{
-              padding: "36px 32px",
+              padding: "36px 32px 28px",
+              borderBottom: "1px solid var(--border-dim)",
               display: "flex",
               alignItems: "flex-start",
               justifyContent: "space-between",
@@ -551,57 +680,75 @@ export default function PluginsPage() {
                 </div>
               </div>
               <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                Press Space on any .md file in Finder to see it beautifully rendered — GFM tables, syntax highlighting, math, and Mermaid diagrams. Powered by the mdcore engine.
+                Press Space on any .md file in Finder to see it beautifully rendered — GFM tables, syntax highlighting, math, and Mermaid diagrams. Click &ldquo;Open in mdfy&rdquo; to edit in the desktop app or web editor.
               </p>
             </div>
-            <span
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                background: "var(--toggle-bg)",
-                color: "var(--text-faint)",
-                flexShrink: 0,
-              }}
-            >
-              COMING SOON
-            </span>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent-dim)", color: "var(--accent)" }}>Free</span>
+              <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--toggle-bg)", color: "var(--text-faint)" }}>Swift</span>
+            </div>
           </div>
 
-          {/* Planned features */}
-          <div style={{ padding: "0 32px 32px" }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: 12,
-              }}
-            >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 1,
+              background: "var(--border-dim)",
+            }}
+          >
+            {[
+              {
+                title: "Full Rendering",
+                items: ["GFM tables, task lists, footnotes", "190+ language syntax highlighting", "KaTeX math (inline + display)", "Mermaid diagrams"],
+              },
+              {
+                title: "Offline Ready",
+                items: ["Built-in Markdown renderer (no CDN needed)", "CDN enhancement when online", "Graceful fallback for all features", "Works in airplane mode"],
+              },
+              {
+                title: "Native Integration",
+                items: ["Matches macOS dark/light appearance", "\"Open in mdfy\" button (desktop app or web)", "Code copy buttons", "Theme toggle in preview"],
+              },
+              {
+                title: "Zero Config",
+                items: ["Install once, works system-wide", "All .md / .markdown files supported", "No background processes", "Lightweight QuickLook extension"],
+              },
+            ].map((section) => (
+              <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, marginTop: 0 }}>{section.title}</h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {section.items.map((item) => (
+                    <li key={item} style={{ fontSize: 13, color: "var(--text-muted)", padding: "4px 0", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ color: "var(--accent)", flexShrink: 0 }}>+</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
+              Install
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { title: "Full Rendering", desc: "GFM, KaTeX math, Mermaid diagrams, 190+ language highlighting" },
-                { title: "Dark + Light", desc: "Matches your macOS appearance automatically" },
-                { title: "Fast", desc: "Native WASM engine — renders in milliseconds" },
-                { title: "Zero Config", desc: "Install once, works for all .md files system-wide" },
-              ].map((f) => (
-                <div
-                  key={f.title}
-                  style={{
-                    padding: "16px",
-                    borderRadius: 10,
-                    border: "1px solid var(--border-dim)",
-                    background: "var(--background)",
-                  }}
-                >
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 6 }}>
-                    {f.title}
-                  </h4>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5, margin: 0 }}>
-                    {f.desc}
-                  </p>
+                { step: "1", text: "Open apps/quicklook/MdfyQuickLook in Xcode" },
+                { step: "2", text: "Build and run the QuickLookExtension target" },
+                { step: "3", text: "Enable \"mdfy QuickLook\" in System Settings > Extensions > Quick Look" },
+                { step: "4", text: "Select any .md file in Finder and press Space" },
+              ].map((s) => (
+                <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
+                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
                 </div>
               ))}
             </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
+              Distributable .appex package coming soon.
+            </p>
           </div>
         </div>
       </section>
@@ -748,6 +895,8 @@ export default function PluginsPage() {
                 { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
                 { label: "Chrome Extension", href: "/plugins" },
                 { label: "VS Code Extension", href: "/plugins" },
+                { label: "Desktop App", href: "/plugins" },
+                { label: "QuickLook", href: "/plugins" },
               ].map((l) => (
                 <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
               ))}

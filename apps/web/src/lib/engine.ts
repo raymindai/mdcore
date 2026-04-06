@@ -1,33 +1,30 @@
-import { render, detectFlavor, type RenderResult } from "./wasm/mdcore_engine";
+import { render, detectFlavor } from "./wasm/mdcore_engine";
+import type { RenderResult as WasmRenderResult } from "./wasm/mdcore_engine";
+import type { FlavorInfo, TocEntry } from "@mdcore/engine";
 
+/**
+ * Render markdown via WASM engine.
+ * Returns raw HTML (no postprocessing) — call postProcessHtml() separately.
+ */
 export async function renderMarkdown(markdown: string): Promise<{
   html: string;
   title: string | undefined;
-  toc: Array<{ level: number; text: string; id: string }>;
-  flavor: {
-    primary: string;
-    math: boolean;
-    mermaid: boolean;
-    wikilinks: boolean;
-    jsx: boolean;
-    frontmatter: string | undefined;
-    confidence: number;
-  };
+  toc: TocEntry[];
+  flavor: FlavorInfo;
 }> {
-  const result: RenderResult = render(markdown);
+  const result: WasmRenderResult = render(markdown);
 
-  const flavor = result.flavor;
-  const flavorInfo = {
-    primary: flavor.primary,
-    math: flavor.math,
-    mermaid: flavor.mermaid,
-    wikilinks: flavor.wikilinks,
-    jsx: flavor.jsx,
-    frontmatter: flavor.frontmatter,
-    confidence: flavor.confidence,
+  const flavor: FlavorInfo = {
+    primary: result.flavor.primary as FlavorInfo["primary"],
+    math: result.flavor.math,
+    mermaid: result.flavor.mermaid,
+    wikilinks: result.flavor.wikilinks,
+    jsx: result.flavor.jsx,
+    frontmatter: (result.flavor.frontmatter as FlavorInfo["frontmatter"]) ?? null,
+    confidence: result.flavor.confidence,
   };
 
-  let toc: Array<{ level: number; text: string; id: string }> = [];
+  let toc: TocEntry[] = [];
   try {
     toc = JSON.parse(result.toc_json);
   } catch {
@@ -36,9 +33,9 @@ export async function renderMarkdown(markdown: string): Promise<{
 
   return {
     html: result.html,
-    title: result.title,
+    title: result.title ?? undefined,
     toc,
-    flavor: flavorInfo,
+    flavor,
   };
 }
 

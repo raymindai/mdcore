@@ -12,6 +12,7 @@ const {
   shell,
   nativeTheme,
   protocol,
+  net,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -65,6 +66,27 @@ if (!gotTheLock) {
       if (filePath) openFileInApp(filePath);
     }
   });
+}
+
+// ─── Connectivity Check ───
+
+function isOnline() {
+  return net.isOnline();
+}
+
+function loadMdfyOrOffline(url) {
+  if (!mainWindow) return;
+  if (isOnline()) {
+    mainWindow.loadURL(url || MDFY_URL);
+    mainWindow.webContents.once("did-fail-load", (event, errorCode, errorDescription) => {
+      // Network error during load — show offline page
+      if (errorCode === -106 || errorCode === -105 || errorCode === -102 || errorCode === -2) {
+        mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+      }
+    });
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+  }
 }
 
 // ─── Create Window ───
@@ -173,8 +195,15 @@ function openFileInApp(filePath) {
       const content = fs.readFileSync(absolutePath, "utf8");
       const encoded = Buffer.from(content).toString("base64");
       const encodedName = encodeURIComponent(fileName);
-      mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
-      mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
+      if (isOnline()) {
+        mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
+        mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
+        mainWindow.webContents.once("did-fail-load", () => {
+          mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+        });
+      } else {
+        mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+      }
     } else {
       // Binary/non-text files: load mdfy.cc first, then inject file via drag-drop
       openFileViaImport(absolutePath, fileName);
@@ -189,6 +218,10 @@ function openFileViaImport(absolutePath, fileName) {
   const base64 = buffer.toString("base64");
   const mimeType = mime(absolutePath);
 
+  if (!isOnline()) {
+    dialog.showErrorBox("Offline", "Importing non-text files requires an internet connection. Connect to the internet and try again.");
+    return;
+  }
   mainWindow.loadURL(MDFY_URL);
   mainWindow.webContents.once("did-finish-load", () => {
     injectNativeBridge();
@@ -330,7 +363,7 @@ ipcMain.handle("open-file-path", (event, filePath) => {
 
 ipcMain.handle("open-editor", () => {
   currentFilePath = null;
-  mainWindow.loadURL(MDFY_URL);
+  loadMdfyOrOffline(MDFY_URL);
   mainWindow.setTitle("mdfy");
 });
 
@@ -400,7 +433,7 @@ function buildMenu() {
           accelerator: "CmdOrCtrl+N",
           click: () => {
             currentFilePath = null;
-            mainWindow.loadURL(MDFY_URL);
+            loadMdfyOrOffline(MDFY_URL);
             mainWindow.webContents.on("did-finish-load", () => injectNativeBridge());
           },
         },

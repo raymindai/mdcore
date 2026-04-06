@@ -534,7 +534,8 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         <span class="mdfy-filename">{{FILE_NAME}}</span>
       </div>
       <div class="mdfy-topbar-right">
-        <a class="mdfy-btn" href="https://mdfy.cc" target="_blank" rel="noopener">
+        <a class="mdfy-btn" id="open-in-mdfy" href="https://mdfy.cc" target="_blank" rel="noopener"
+           onclick="return openInMdfy(event)">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3M9 1h6m0 0v6m0-6L8 8"
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -642,23 +643,76 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       const previewEl = document.getElementById('preview');
 
       // ================================================================
-      // Fallback: basic markdown-to-HTML without external libraries
-      // Handles headings, bold, italic, code, links, lists, hr, blockquotes
+      // Fallback: full markdown-to-HTML without external libraries
+      // Handles headings, bold, italic, code blocks, tables, task lists,
+      // ordered/unordered lists, links, images, hr, blockquotes
       // ================================================================
       function basicMarkdownToHTML(md) {
-        let html = md
-          // Escape HTML
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-
-        // Code blocks (fenced)
-        html = html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g, function(_, lang, code) {
-          return '<pre lang="' + lang + '"><code>' + code + '</code></pre>';
+        // First extract fenced code blocks to protect them
+        var codeBlocks = [];
+        md = md.replace(/```(\\w*)\\n([\\s\\S]*?)```/g, function(_, lang, code) {
+          var idx = codeBlocks.length;
+          codeBlocks.push('<div class="code-block-wrapper"><pre lang="' + lang + '"><code>'
+            + code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</code></pre></div>');
+          return '\\n%%CODEBLOCK' + idx + '%%\\n';
         });
 
+        // Escape HTML in remaining content
+        md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
         // Inline code
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        // Tables: detect lines with pipes
+        md = md.replace(/(^\\|.+\\|\\n)(^\\|[-: |]+\\|\\n)((?:^\\|.+\\|\\n?)*)/gm, function(match, headerRow, sepRow, bodyRows) {
+          var headers = headerRow.trim().split('|').filter(function(c) { return c.trim() !== ''; });
+          var rows = bodyRows.trim().split('\\n').filter(function(r) { return r.trim() !== ''; });
+          var html = '<table><thead><tr>';
+          headers.forEach(function(h) { html += '<th>' + h.trim() + '</th>'; });
+          html += '</tr></thead><tbody>';
+          rows.forEach(function(row) {
+            var cells = row.split('|').filter(function(c) { return c.trim() !== ''; });
+            html += '<tr>';
+            cells.forEach(function(c) { html += '<td>' + c.trim() + '</td>'; });
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+          return html;
+        });
+
+        // Process blocks line by line for lists
+        var lines = md.split('\\n');
+        var result = [];
+        var inUl = false, inOl = false;
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          var taskMatch = line.match(/^\\s*[-*]\\s+\\[([ xX])\\]\\s+(.*)/);
+          var ulMatch = !taskMatch && line.match(/^\\s*[-*+]\\s+(.*)/);
+          var olMatch = line.match(/^\\s*\\d+\\.\\s+(.*)/);
+
+          if (taskMatch) {
+            if (!inUl) { result.push('<ul>'); inUl = true; }
+            if (inOl) { result.push('</ol>'); inOl = false; }
+            var checked = taskMatch[1] !== ' ' ? ' checked disabled' : ' disabled';
+            result.push('<li><input type="checkbox"' + checked + '> ' + taskMatch[2] + '</li>');
+          } else if (ulMatch) {
+            if (!inUl) { result.push('<ul>'); inUl = true; }
+            if (inOl) { result.push('</ol>'); inOl = false; }
+            result.push('<li>' + ulMatch[1] + '</li>');
+          } else if (olMatch) {
+            if (!inOl) { result.push('<ol>'); inOl = true; }
+            if (inUl) { result.push('</ul>'); inUl = false; }
+            result.push('<li>' + olMatch[1] + '</li>');
+          } else {
+            if (inUl) { result.push('</ul>'); inUl = false; }
+            if (inOl) { result.push('</ol>'); inOl = false; }
+            result.push(line);
+          }
+        }
+        if (inUl) result.push('</ul>');
+        if (inOl) result.push('</ol>');
+        var html = result.join('\\n');
 
         // Headings
         html = html.replace(/^######\\s+(.+)$/gm, '<h6>$1</h6>');
@@ -673,11 +727,11 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
         html = html.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
 
+        // Images (before links so ![...](...) matches first)
+        html = html.replace(/!\\[([^\\]]*?)\\]\\(([^)]+)\\)/g, '<img src="$2" alt="$1">');
+
         // Links
         html = html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2">$1</a>');
-
-        // Images
-        html = html.replace(/!\\[([^\\]]*?)\\]\\(([^)]+)\\)/g, '<img src="$2" alt="$1">');
 
         // Horizontal rules
         html = html.replace(/^---+$/gm, '<hr>');
@@ -686,11 +740,11 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         // Blockquotes
         html = html.replace(/^&gt;\\s?(.+)$/gm, '<blockquote><p>$1</p></blockquote>');
 
-        // Line breaks to paragraphs (simple)
+        // Line breaks to paragraphs
         html = html.replace(/\\n\\n/g, '</p><p>');
         html = '<p>' + html + '</p>';
 
-        // Clean up empty paragraphs
+        // Clean up empty paragraphs and nesting issues
         html = html.replace(/<p><\\/p>/g, '');
         html = html.replace(/<p>(<h[1-6]>)/g, '$1');
         html = html.replace(/(<\\/h[1-6]>)<\\/p>/g, '$1');
@@ -699,6 +753,19 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         html = html.replace(/(<\\/pre>)<\\/p>/g, '$1');
         html = html.replace(/<p>(<blockquote>)/g, '$1');
         html = html.replace(/(<\\/blockquote>)<\\/p>/g, '$1');
+        html = html.replace(/<p>(<table>)/g, '$1');
+        html = html.replace(/(<\\/table>)<\\/p>/g, '$1');
+        html = html.replace(/<p>(<ul>)/g, '$1');
+        html = html.replace(/(<\\/ul>)<\\/p>/g, '$1');
+        html = html.replace(/<p>(<ol>)/g, '$1');
+        html = html.replace(/(<\\/ol>)<\\/p>/g, '$1');
+        html = html.replace(/<p>(%%CODEBLOCK)/g, '$1');
+        html = html.replace(/(%%)<\\/p>/g, '$1');
+
+        // Restore code blocks
+        for (var j = 0; j < codeBlocks.length; j++) {
+          html = html.replace('%%CODEBLOCK' + j + '%%', codeBlocks[j]);
+        }
 
         return html;
       }
@@ -833,13 +900,51 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         }
       }
 
-      // Give scripts a moment to load, then render
+      // Render strategy: try CDN scripts first with a 2-second timeout.
+      // If CDN doesn't load in time, fall back to the built-in renderer.
+      var rendered = false;
+      function tryRender() {
+        if (rendered) return;
+        rendered = true;
+        render();
+      }
+
+      // Timeout: if CDN hasn't loaded marked.js in 2s, render with fallback
+      var cdnTimeout = setTimeout(function() {
+        if (!rendered) {
+          console.warn('CDN timeout — using offline fallback renderer');
+          tryRender();
+        }
+      }, 2000);
+
       if (document.readyState === 'complete') {
-        setTimeout(render, 100);
+        setTimeout(function() { clearTimeout(cdnTimeout); tryRender(); }, 100);
       } else {
-        window.addEventListener('load', function() { setTimeout(render, 100); });
+        window.addEventListener('load', function() {
+          clearTimeout(cdnTimeout);
+          setTimeout(tryRender, 100);
+        });
       }
     })();
+
+    // Try opening in the mdfy desktop app via custom URL scheme.
+    // Falls back to https://mdfy.cc if the desktop app is not installed.
+    function openInMdfy(event) {
+      event.preventDefault();
+      var fileName = encodeURIComponent('{{FILE_NAME}}');
+      var desktopUrl = 'mdfy://open?file=' + fileName;
+      // Try custom scheme — if it fails (no handler), fall back to web
+      var iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = desktopUrl;
+      document.body.appendChild(iframe);
+      // After a short delay, if we're still here, open in browser
+      setTimeout(function() {
+        document.body.removeChild(iframe);
+        window.open('https://mdfy.cc', '_blank');
+      }, 500);
+      return false;
+    }
 
     function copyCode(btn) {
       const pre = btn.parentElement.querySelector('pre');

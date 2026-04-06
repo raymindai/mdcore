@@ -37,6 +37,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/og": "^0.11.1",
     "@vercel/speed-insights": "^2.0.0",
+    "@mdcore/engine": "*",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.40",
     "mammoth": "^1.12.0",

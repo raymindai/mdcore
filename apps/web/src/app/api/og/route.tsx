@@ -173,8 +173,8 @@ export async function GET(req: NextRequest) {
             gap: "8px",
           }}
         >
-          <span style={{ color: "#3f3f46", fontSize: "17px" }}>powered by</span>
-          <span style={{ color: "#52525b", fontSize: "17px", fontWeight: 700 }}>mdcore.ai</span>
+          <span style={{ color: "#3f3f46", fontSize: "17px" }}>published with</span>
+          <span style={{ color: "#52525b", fontSize: "17px", fontWeight: 700 }}>mdfy.cc</span>
         </div>
       </div>
     ),

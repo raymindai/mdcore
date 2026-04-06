@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mdfy — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #09090b;
+      color: #fafafa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+
+    .titlebar { height: 52px; flex-shrink: 0; }
+
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      gap: 24px;
+      -webkit-app-region: no-drag;
+    }
+
+    .logo {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      user-select: none;
+    }
+    .logo-md { color: #fb923c; }
+    .logo-fy { color: #fafafa; }
+    .logo-cc { color: #3f3f46; }
+
+    .offline-icon {
+      width: 48px;
+      height: 48px;
+      color: #3f3f46;
+    }
+
+    .message {
+      font-size: 15px;
+      color: #71717a;
+      text-align: center;
+      max-width: 360px;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: rgba(251, 146, 60, 0.12);
+      color: #fb923c;
+      border: 1px solid rgba(251, 146, 60, 0.2);
+    }
+    .btn-primary:hover { background: rgba(251, 146, 60, 0.2); }
+
+    .btn-secondary {
+      background: #18181b;
+      color: #a1a1aa;
+      border: 1px solid #27272a;
+    }
+    .btn-secondary:hover { background: #27272a; color: #fafafa; }
+
+    .status {
+      font-size: 11px;
+      color: #3f3f46;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    .status-dot.online {
+      background: #22c55e;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #27272a;
+      margin-top: 8px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      body { background: #faf9f7; color: #09090b; }
+      .logo-fy { color: #09090b; }
+      .logo-md { color: #ea580c; }
+      .logo-cc { color: #a1a1aa; }
+      .offline-icon { color: #a1a1aa; }
+      .message { color: #71717a; }
+      .btn-secondary { background: #f4f4f5; border-color: #e4e4e7; color: #71717a; }
+      .btn-secondary:hover { background: #e4e4e7; color: #09090b; }
+      .status { color: #a1a1aa; }
+      .hint { color: #a1a1aa; }
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar"></div>
+  <div class="container">
+    <div class="logo">
+      <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
+    </div>
+
+    <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 015.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0122.56 9"/>
+      <path d="M1.42 9a15.91 15.91 0 014.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 016.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+
+    <p class="message">
+      You are currently offline. mdfy requires an internet connection for the full editor experience.
+    </p>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-retry">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M1 2v5h5"/><path d="M2.5 10.5a6.5 6.5 0 1011-4.5L1 2"/>
+        </svg>
+        Retry Connection
+      </button>
+      <button class="btn btn-secondary" id="btn-open">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg>
+        Open Local File
+      </button>
+    </div>
+
+    <div class="status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">No connection</span>
+    </div>
+
+    <p class="hint">Local files will open with basic rendering when offline.</p>
+  </div>
+
+  <script>
+    const { mdfyDesktop } = window;
+
+    // Retry connection
+    document.getElementById("btn-retry").addEventListener("click", () => {
+      mdfyDesktop.openEditor();
+    });
+
+    // Open local file
+    document.getElementById("btn-open").addEventListener("click", () => {
+      mdfyDesktop.openFile();
+    });
+
+    // Poll connectivity status
+    function checkStatus() {
+      const dot = document.getElementById("status-dot");
+      const text = document.getElementById("status-text");
+      if (navigator.onLine) {
+        dot.classList.add("online");
+        text.textContent = "Connection restored — click Retry";
+      } else {
+        dot.classList.remove("online");
+        text.textContent = "No connection";
+      }
+    }
+    checkStatus();
+    setInterval(checkStatus, 3000);
+    window.addEventListener("online", checkStatus);
+    window.addEventListener("offline", checkStatus);
+  </script>
+</body>
+</html>

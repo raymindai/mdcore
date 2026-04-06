@@ -531,6 +531,221 @@ function extractTitleFromMd(md: string): string {
   return match ? match[1].trim() : "Untitled";
 }
 
+// ─── Document Templates ───
+
+const DOCUMENT_TEMPLATES: { name: string; icon: string; markdown: string }[] = [
+  {
+    name: "Blank",
+    icon: "M4 2h8l4 4v12a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z",
+    markdown: "# Untitled\n\n",
+  },
+  {
+    name: "Meeting Notes",
+    icon: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z",
+    markdown: `# Meeting Notes
+
+**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+**Attendees:**
+
+---
+
+## Agenda
+
+1.
+2.
+3.
+
+## Discussion
+
+### Topic 1
+
+
+
+### Topic 2
+
+
+
+## Action Items
+
+- [ ]
+- [ ]
+- [ ]
+
+## Next Meeting
+
+**Date:** TBD
+`,
+  },
+  {
+    name: "Report",
+    icon: "M9 17v-2m3 2v-4m3 4v-6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z",
+    markdown: `# Report Title
+
+**Author:**
+**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+
+---
+
+## Executive Summary
+
+
+
+## Background
+
+
+
+## Findings
+
+### Finding 1
+
+
+
+### Finding 2
+
+
+
+## Recommendations
+
+1.
+2.
+3.
+
+## Conclusion
+
+`,
+  },
+  {
+    name: "README",
+    icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
+    markdown: `# Project Name
+
+> Short description of the project.
+
+## Installation
+
+\`\`\`bash
+npm install project-name
+\`\`\`
+
+## Usage
+
+\`\`\`javascript
+import { feature } from 'project-name';
+
+feature();
+\`\`\`
+
+## API
+
+### \`feature(options)\`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| \`option1\` | \`string\` | \`""\` | Description |
+| \`option2\` | \`boolean\` | \`false\` | Description |
+
+## Contributing
+
+1. Fork the repo
+2. Create your feature branch (\`git checkout -b feature/amazing\`)
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+## License
+
+MIT
+`,
+  },
+  {
+    name: "Blog Post",
+    icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+    markdown: `# Blog Post Title
+
+*Published on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}*
+
+---
+
+Introduction paragraph that hooks the reader.
+
+## The Problem
+
+
+
+## The Solution
+
+
+
+## How It Works
+
+### Step 1
+
+
+
+### Step 2
+
+
+
+### Step 3
+
+
+
+## Results
+
+
+
+## Conclusion
+
+
+
+---
+
+*Thanks for reading! Share this post if you found it useful.*
+`,
+  },
+  {
+    name: "AI Conversation",
+    icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
+    markdown: `# AI Conversation Summary
+
+**AI:** ChatGPT / Claude / Gemini
+**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+**Topic:**
+
+---
+
+## Key Takeaways
+
+1.
+2.
+3.
+
+## Conversation
+
+### Prompt 1
+
+>
+
+### Response 1
+
+
+
+### Prompt 2
+
+>
+
+### Response 2
+
+
+
+## Follow-up Questions
+
+- [ ]
+- [ ]
+`,
+  },
+];
+
 const EXAMPLES_FOLDER_ID = "folder-examples";
 
 const INITIAL_FOLDERS: Folder[] = [
@@ -1134,6 +1349,7 @@ export default function MdEditor() {
   const [narrowView, setNarrowView] = useState(false);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -1434,13 +1650,13 @@ export default function MdEditor() {
     });
   }, [loadTab]);
 
-  const addTab = useCallback(async () => {
+  const addTabWithContent = useCallback(async (initialMd: string) => {
     const currentMd = markdownRef.current;
     const currentTabId = activeTabIdRef.current;
 
     const id = `tab-${tabIdCounter++}`;
-    const initialMd = "# Untitled\n\n";
-    const newTab: Tab = { id, title: "Untitled", markdown: initialMd, isDraft: true, permission: "mine" };
+    const tabTitle = extractTitleFromMd(initialMd) || "Untitled";
+    const newTab: Tab = { id, title: tabTitle, markdown: initialMd, isDraft: true, permission: "mine" };
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -1452,13 +1668,13 @@ export default function MdEditor() {
     });
 
     loadTab(newTab);
-    setTitle("Untitled");
+    setTitle(tabTitle);
 
     // Auto-create on server (ensure anonymous ID for non-logged-in users)
     const anonId = user?.id ? undefined : ensureAnonymousId();
     const result = await autoSave.createDocument({
       markdown: initialMd,
-      title: "Untitled",
+      title: tabTitle,
       userId: user?.id,
       anonymousId: anonId,
     });
@@ -1469,6 +1685,10 @@ export default function MdEditor() {
       window.history.replaceState(null, "", `/?doc=${result.id}`);
     }
   }, [loadTab, autoSave, user?.id, anonymousId]);
+
+  const addTab = useCallback(() => {
+    setShowTemplatePicker(true);
+  }, []);
 
   const closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
@@ -6211,6 +6431,77 @@ ${html}
                 setShowMermaidModal(false);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Template Picker Modal */}
+      {showTemplatePicker && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTemplatePicker(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowTemplatePicker(false); }}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              overflow: "hidden",
+              width: "min(480px, 92vw)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div style={{ padding: "20px 24px 12px", borderBottom: "1px solid var(--border-dim)" }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>New Document</h3>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 0" }}>Choose a template to get started</p>
+            </div>
+            <div style={{ padding: "12px 16px 16px", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+              {DOCUMENT_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.name}
+                  onClick={() => {
+                    setShowTemplatePicker(false);
+                    addTabWithContent(tmpl.markdown);
+                  }}
+                  className="text-left transition-colors"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border-dim)",
+                    background: "var(--surface)",
+                    cursor: "pointer",
+                    color: "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "var(--accent)";
+                    e.currentTarget.style.color = "var(--accent)";
+                    e.currentTarget.style.background = "var(--accent-dim)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "var(--border-dim)";
+                    e.currentTarget.style.color = "var(--text-secondary)";
+                    e.currentTarget.style.background = "var(--surface)";
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d={tmpl.icon}/>
+                  </svg>
+                  {tmpl.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

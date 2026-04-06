@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "AI",
     "mdcore",
   ],
-  authors: [{ name: "mdcore", url: "https://mdcore.ai" }],
+  authors: [{ name: "mdfy", url: "https://mdfy.cc" }],
   metadataBase: new URL("https://mdfy.cc"),
   openGraph: {
     title: "mdfy.cc — The Markdown Engine for the AI Era",
