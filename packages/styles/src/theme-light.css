@@ -1,0 +1,37 @@
+/* ========================================
+   @mdcore/styles — Light Theme
+   ======================================== */
+[data-theme="light"] {
+  --background: #faf9f7;
+  --foreground: #18181b;
+  --accent: #ea580c;
+  --accent-dim: rgba(234, 88, 12, 0.1);
+  --surface: #f4f4f5;
+  --surface-hover: rgba(234, 88, 12, 0.04);
+  --border: #e4e4e7;
+  --border-dim: rgba(228, 228, 231, 0.6);
+  --text-primary: #09090b;
+  --text-secondary: #3f3f46;
+  --text-tertiary: #71717a;
+  --text-muted: #71717a;
+  --text-faint: #a1a1aa;
+  --header-bg: rgba(255, 255, 255, 0.95);
+  --editor-text: #3f3f46;
+  --editor-placeholder: #a1a1aa;
+  --scrollbar-thumb: #a1a1aa;
+  --scrollbar-hover: #a1a1aa;
+  --math-color: #7c3aed;
+  --math-display-color: #6d28d9;
+  --code-copy-bg: #f4f4f5;
+  --code-copy-color: #71717a;
+  --code-copy-border: #e4e4e7;
+  --h2-color: #27272a;
+  --badge-bg: rgba(234, 88, 12, 0.1);
+  --badge-muted-bg: rgba(244, 244, 245, 0.8);
+  --badge-muted-color: #71717a;
+  --menu-bg: #ffffff;
+  --menu-hover: rgba(244, 244, 245, 0.8);
+  --toggle-bg: #e4e4e7;
+  --toggle-active: #d4d4d8;
+  --drag-bg: rgba(255, 255, 255, 0.9);
+}

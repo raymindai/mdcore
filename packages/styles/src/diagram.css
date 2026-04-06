@@ -1,0 +1,40 @@
+/* ========================================
+   @mdcore/styles — Diagram Styles
+   Container styling for Mermaid + ASCII diagrams.
+   Mermaid SVG colors/fonts are handled by mermaid-style.ts (DOM post-processing).
+   ======================================== */
+
+/* Shared container (Mermaid + ASCII) */
+.mdcore-rendered .mermaid-container,
+.mdcore-rendered .ascii-diagram {
+  margin: 1.25rem 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--surface), var(--background));
+  overflow-x: auto;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .mdcore-rendered .mermaid-container,
+[data-theme="light"] .mdcore-rendered .ascii-diagram {
+  background: linear-gradient(145deg, #f8f9fa, #ffffff);
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Mermaid layout */
+.mdcore-rendered .mermaid-container {
+  padding: 0;
+  text-align: center;
+}
+
+.mdcore-rendered .mermaid-rendered {
+  text-align: center;
+  padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.mdcore-rendered .mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+}

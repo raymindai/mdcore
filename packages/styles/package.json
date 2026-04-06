@@ -1,0 +1,36 @@
+{
+  "name": "@mdcore/styles",
+  "version": "0.1.0",
+  "description": "mdfy.cc rendering styles — dark/light themes, rendered document CSS",
+  "main": "src/index.css",
+  "style": "src/index.css",
+  "exports": {
+    ".": "./src/index.css",
+    "./rendered": "./src/rendered.css",
+    "./theme": "./src/theme.css",
+    "./theme-dark": "./src/theme-dark.css",
+    "./theme-light": "./src/theme-light.css",
+    "./code": "./src/code.css",
+    "./toolbar": "./src/toolbar.css",
+    "./print": "./src/print.css",
+    "./diagram": "./src/diagram.css"
+  },
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "markdown",
+    "css",
+    "theme",
+    "dark-mode",
+    "light-mode",
+    "mdfy",
+    "mdcore"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raymindai/mdcore",
+    "directory": "packages/styles"
+  }
+}

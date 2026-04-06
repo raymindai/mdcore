@@ -1,0 +1,7 @@
+/* ========================================
+   @mdcore/styles — Combined Theme
+   Imports dark (default) + light themes.
+   Uses data-theme attribute for switching.
+   ======================================== */
+@import "./theme-dark.css";
+@import "./theme-light.css";

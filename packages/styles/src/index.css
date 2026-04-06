@@ -1,0 +1,10 @@
+/* ========================================
+   @mdcore/styles — Main Entry Point
+   Import this file to get all mdcore styles.
+   ======================================== */
+@import "./theme.css";
+@import "./rendered.css";
+@import "./diagram.css";
+@import "./code.css";
+@import "./toolbar.css";
+@import "./print.css";

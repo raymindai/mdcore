@@ -1,0 +1,65 @@
+/* ========================================
+   @mdcore/styles — Toolbar Styles
+   Shared toolbar / menu styling.
+   ======================================== */
+
+/* Scrollbar styling */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+/* Textarea placeholder */
+textarea::placeholder {
+  color: var(--editor-placeholder) !important;
+}
+
+/* Textarea selection highlight */
+textarea::selection {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+/* Suppress browser native table/object controls in contentEditable */
+[contenteditable] table,
+[contenteditable] table *,
+[contenteditable] img {
+  -webkit-user-modify: read-only !important;
+  -moz-user-modify: read-only !important;
+}
+
+/* Hide ALL browser-injected table controls */
+[contenteditable] table td::after,
+[contenteditable] table th::after,
+[contenteditable] table td::before,
+[contenteditable] table th::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* Chrome injects absolute-positioned divs for table column/row handles */
+[contenteditable] > div[style*="position: absolute"],
+[contenteditable] div[data-column],
+[contenteditable] div[data-row] {
+  display: none !important;
+}
+
+/* Prevent selection highlight on non-editable islands */
+[contenteditable="false"] {
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: auto;
+}

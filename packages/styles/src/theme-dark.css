@@ -1,0 +1,38 @@
+/* ========================================
+   @mdcore/styles — Dark Theme (default)
+   ======================================== */
+:root,
+[data-theme="dark"] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --accent: #fb923c;
+  --accent-dim: rgba(251, 146, 60, 0.15);
+  --surface: #18181b;
+  --surface-hover: rgba(251, 146, 60, 0.03);
+  --border: #27272a;
+  --border-dim: rgba(39, 39, 42, 0.6);
+  --text-primary: #fafafa;
+  --text-secondary: #d4d4d8;
+  --text-tertiary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #52525b;
+  --header-bg: rgba(9, 9, 11, 0.95);
+  --editor-text: #d4d4d8;
+  --editor-placeholder: #3f3f46;
+  --scrollbar-thumb: #27272a;
+  --scrollbar-hover: #3f3f46;
+  --math-color: #c4b5fd;
+  --math-display-color: #ddd6fe;
+  --code-copy-bg: #27272a;
+  --code-copy-color: #a1a1aa;
+  --code-copy-border: #3f3f46;
+  --h2-color: #e4e4e7;
+  --badge-bg: rgba(251, 146, 60, 0.15);
+  --badge-muted-bg: rgba(39, 39, 42, 0.8);
+  --badge-muted-color: #71717a;
+  --menu-bg: #18181b;
+  --menu-hover: rgba(39, 39, 42, 0.5);
+  --toggle-bg: rgba(39, 39, 42, 0.5);
+  --toggle-active: #3f3f46;
+  --drag-bg: rgba(9, 9, 11, 0.9);
+}

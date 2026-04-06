@@ -1,0 +1,48 @@
+{
+  "name": "@mdcore/ai",
+  "version": "0.1.0",
+  "description": "AI provider abstraction for mdfy.cc — Gemini, OpenAI, Anthropic with text-to-markdown and diagram conversion",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist/",
+    "src/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "mdfy",
+    "mdcore",
+    "ai",
+    "gemini",
+    "openai",
+    "anthropic",
+    "markdown",
+    "text-to-markdown",
+    "diagram"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raymindai/mdcore",
+    "directory": "packages/ai"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
