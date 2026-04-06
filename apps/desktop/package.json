@@ -29,6 +29,86 @@
         "ext": "markdown",
         "name": "Markdown Document",
         "role": "Editor"
+      },
+      {
+        "ext": "mdown",
+        "name": "Markdown Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "mkd",
+        "name": "Markdown Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "txt",
+        "name": "Text Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "rst",
+        "name": "reStructuredText Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "tex",
+        "name": "LaTeX Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "latex",
+        "name": "LaTeX Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "html",
+        "name": "HTML Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "htm",
+        "name": "HTML Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "csv",
+        "name": "CSV File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "json",
+        "name": "JSON File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "xml",
+        "name": "XML File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "rtf",
+        "name": "Rich Text Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "pdf",
+        "name": "PDF Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "docx",
+        "name": "Word Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "pptx",
+        "name": "PowerPoint Presentation",
+        "role": "Viewer"
+      },
+      {
+        "ext": "xlsx",
+        "name": "Excel Spreadsheet",
+        "role": "Viewer"
       }
     ]
   }

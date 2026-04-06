@@ -22,6 +22,9 @@ const { mime } = require("./mime-types");
 
 let mainWindow = null;
 let currentFilePath = null;
+let queuedFilePath = null;
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const MDFY_URL = "https://mdfy.cc";
 
@@ -76,17 +79,31 @@ function isOnline() {
 
 function loadMdfyOrOffline(url) {
   if (!mainWindow) return;
-  if (isOnline()) {
-    mainWindow.loadURL(url || MDFY_URL);
-    mainWindow.webContents.once("did-fail-load", (event, errorCode, errorDescription) => {
-      // Network error during load — show offline page
-      if (errorCode === -106 || errorCode === -105 || errorCode === -102 || errorCode === -2) {
-        mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
-      }
-    });
-  } else {
+  loadMdfyWithTimeout(url || MDFY_URL);
+}
+
+function loadMdfyWithTimeout(url) {
+  if (!mainWindow) return;
+  if (!isOnline()) {
     mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+    return;
   }
+
+  const timeout = setTimeout(() => {
+    if (mainWindow) {
+      mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+    }
+  }, 10000);
+
+  mainWindow.webContents.once("did-finish-load", () => clearTimeout(timeout));
+  mainWindow.webContents.once("did-fail-load", () => {
+    clearTimeout(timeout);
+    if (mainWindow) {
+      mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
+    }
+  });
+
+  mainWindow.loadURL(url);
 }
 
 // ─── Create Window ───
@@ -125,6 +142,21 @@ function createWindow() {
       shell.openExternal(url);
     }
     return { action: "deny" };
+  });
+
+  mainWindow.on("close", (e) => {
+    if (!mainWindow) return;
+    const url = mainWindow.webContents.getURL();
+    if (url.includes("mdfy.cc")) {
+      const choice = dialog.showMessageBoxSync(mainWindow, {
+        type: "question",
+        buttons: ["Close", "Cancel"],
+        defaultId: 1,
+        title: "Unsaved Changes",
+        message: "You may have unsaved changes. Close anyway?",
+      });
+      if (choice === 1) e.preventDefault();
+    }
   });
 
   mainWindow.on("closed", () => {
@@ -181,11 +213,18 @@ function openFileInApp(filePath) {
   const ext = path.extname(absolutePath).toLowerCase();
 
   if (!ALL_SUPPORTED_EXTENSIONS.has(ext)) {
-    dialog.showErrorBox("Unsupported Format", `mdfy does not support .${ext.slice(1)} files.`);
+    const supported = Array.from(ALL_SUPPORTED_EXTENSIONS).map(e => e.slice(1)).join(", ");
+    dialog.showErrorBox("Unsupported Format", `mdfy does not support .${ext.slice(1)} files.\n\nSupported formats: ${supported}`);
     return;
   }
 
   try {
+    const stats = fs.statSync(absolutePath);
+    if (stats.size > MAX_FILE_SIZE) {
+      dialog.showErrorBox("File too large", "Files larger than 50MB are not supported.");
+      return;
+    }
+
     currentFilePath = absolutePath;
     const fileName = path.basename(absolutePath);
     mainWindow.setTitle(`${fileName} — mdfy`);
@@ -196,11 +235,9 @@ function openFileInApp(filePath) {
       const encoded = Buffer.from(content).toString("base64");
       const encodedName = encodeURIComponent(fileName);
       if (isOnline()) {
-        mainWindow.loadURL(`${MDFY_URL}/#md=${encoded}&file=${encodedName}`);
+        const url = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
+        loadMdfyWithTimeout(url);
         mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
-        mainWindow.webContents.once("did-fail-load", () => {
-          mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
-        });
       } else {
         mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
       }
@@ -214,6 +251,12 @@ function openFileInApp(filePath) {
 }
 
 function openFileViaImport(absolutePath, fileName) {
+  const stats = fs.statSync(absolutePath);
+  if (stats.size > MAX_FILE_SIZE) {
+    dialog.showErrorBox("File too large", "Files larger than 50MB are not supported.");
+    return;
+  }
+
   const buffer = fs.readFileSync(absolutePath);
   const base64 = buffer.toString("base64");
   const mimeType = mime(absolutePath);
@@ -222,7 +265,7 @@ function openFileViaImport(absolutePath, fileName) {
     dialog.showErrorBox("Offline", "Importing non-text files requires an internet connection. Connect to the internet and try again.");
     return;
   }
-  mainWindow.loadURL(MDFY_URL);
+  loadMdfyWithTimeout(MDFY_URL);
   mainWindow.webContents.once("did-finish-load", () => {
     injectNativeBridge();
 
@@ -285,6 +328,7 @@ function openFileViaImport(absolutePath, fileName) {
     setTimeout(() => {
       mainWindow.webContents.executeJavaScript(js).catch((err) => {
         console.error("Failed to inject file:", err);
+        dialog.showErrorBox("Import Error", `Could not import file: ${err.message}`);
       });
     }, 1500);
   });
@@ -398,7 +442,9 @@ function addToRecentFiles(filePath) {
   const trimmed = filtered.slice(0, 10);
   try {
     fs.writeFileSync(RECENT_FILES_PATH, JSON.stringify(trimmed, null, 2));
-  } catch {}
+  } catch (err) {
+    console.error("Failed to write recent files:", err);
+  }
 }
 
 // ─── Menu ───
@@ -434,7 +480,6 @@ function buildMenu() {
           click: () => {
             currentFilePath = null;
             loadMdfyOrOffline(MDFY_URL);
-            mainWindow.webContents.on("did-finish-load", () => injectNativeBridge());
           },
         },
         {
@@ -499,22 +544,27 @@ function buildMenu() {
 
 // ─── App Events ───
 
+// Handle file open from OS (double-click .md file) — must be registered
+// before app.whenReady() so macOS open-file events arriving during startup
+// are captured via queuedFilePath.
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (mainWindow) {
+    openFileInApp(filePath);
+  } else {
+    queuedFilePath = filePath;
+  }
+});
+
 app.whenReady().then(() => {
   buildMenu();
   createWindow();
 
-  // Handle file open from OS (double-click .md file)
-  app.on("open-file", (event, filePath) => {
-    event.preventDefault();
-    if (mainWindow) {
-      openFileInApp(filePath);
-    } else {
-      app.whenReady().then(() => {
-        createWindow();
-        openFileInApp(filePath);
-      });
-    }
-  });
+  // Open queued file from pre-ready open-file event
+  if (queuedFilePath) {
+    openFileInApp(queuedFilePath);
+    queuedFilePath = null;
+  }
 
   // Handle argv (file passed as argument)
   const filePath = process.argv.find((a) => {

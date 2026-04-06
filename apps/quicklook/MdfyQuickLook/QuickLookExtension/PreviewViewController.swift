@@ -16,7 +16,17 @@ class PreviewViewController: NSViewController, QLPreviewingController {
 
     func preparePreviewOfFile(at url: URL, completionHandler handler: @escaping (Error?) -> Void) {
         do {
-            let markdown = try String(contentsOf: url, encoding: .utf8)
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = attributes[.size] as? Int64 ?? 0
+            let maxSize: Int64 = 10_000_000 // 10MB
+
+            var markdown: String
+            if fileSize > maxSize {
+                let truncatedData = try Data(contentsOf: url).prefix(Int(maxSize))
+                markdown = (String(data: truncatedData, encoding: .utf8) ?? "") + "\n\n---\n\n> **Note:** This file was truncated for preview (original size: \(fileSize / 1_000_000)MB). Open in mdfy for the full document."
+            } else {
+                markdown = try String(contentsOf: url, encoding: .utf8)
+            }
             let fileName = url.lastPathComponent
             let html = generateHTML(markdown: markdown, fileName: fileName)
 
@@ -600,6 +610,14 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         root.setProperty('--text-faint', '#52525b');
         root.setProperty('--fg', '#fafafa');
         root.setProperty('--muted', '#52525b');
+        root.setProperty('--accent-dim', 'rgba(251, 146, 60, 0.15)');
+        root.setProperty('--surface-hover', 'rgba(251, 146, 60, 0.03)');
+        root.setProperty('--text-tertiary', '#a1a1aa');
+        root.setProperty('--math-color', '#c4b5fd');
+        root.setProperty('--math-display-color', '#ddd6fe');
+        root.setProperty('--h2-color', '#e4e4e7');
+        root.setProperty('--scrollbar-thumb', '#27272a');
+        root.setProperty('--scrollbar-hover', '#3f3f46');
       } else {
         root.setProperty('--background', '#faf9f7');
         root.setProperty('--foreground', '#18181b');
@@ -613,6 +631,14 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         root.setProperty('--text-faint', '#a1a1aa');
         root.setProperty('--fg', '#18181b');
         root.setProperty('--muted', '#a1a1aa');
+        root.setProperty('--accent-dim', 'rgba(234, 88, 12, 0.1)');
+        root.setProperty('--surface-hover', 'rgba(234, 88, 12, 0.04)');
+        root.setProperty('--text-tertiary', '#71717a');
+        root.setProperty('--math-color', '#7c3aed');
+        root.setProperty('--math-display-color', '#6d28d9');
+        root.setProperty('--h2-color', '#27272a');
+        root.setProperty('--scrollbar-thumb', '#a1a1aa');
+        root.setProperty('--scrollbar-hover', '#a1a1aa');
       }
       document.body.style.background = isDark ? '#09090b' : '#faf9f7';
       updateThemeIcons();
