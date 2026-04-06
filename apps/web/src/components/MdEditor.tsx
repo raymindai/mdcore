@@ -5972,14 +5972,19 @@ ${html}
           currentEditMode={docEditMode}
           initialAllowedEmails={allowedEmails}
           initialAllowedEditors={allowedEditors}
-          onClose={() => setShowShareModal(false)}
+          onClose={() => {
+            setShowShareModal(false);
+            // Mark as shared if doc has been published (has cloudId and is not draft)
+            const ct = tabs.find(t => t.id === activeTabId);
+            if (ct?.cloudId && !ct.isDraft && !ct.isSharedByMe) {
+              setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
+            }
+          }}
           onEditModeChange={(mode) => {
             setDocEditMode(mode); setEditMode(mode);
-            if (mode !== "owner") setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
           }}
           onAllowedEmailsChange={(emails) => {
             setAllowedEmailsState(emails);
-            if (emails.length > 0) setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
           }}
         />
       )}
