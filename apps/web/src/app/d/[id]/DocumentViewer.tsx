@@ -258,10 +258,10 @@ export default function DocumentViewer({
             )}
             {copied ? "Copied" : "Link"}
           </button>
-          {/* Narrow toggle */}
+          {/* Narrow toggle — hidden on mobile (always narrow there) */}
           <button
             onClick={() => setNarrowView(!narrowView)}
-            className="h-6 px-2 rounded-md transition-colors flex items-center gap-1.5"
+            className="h-6 px-2 rounded-md transition-colors hidden sm:flex items-center gap-1.5"
             style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
             title={narrowView ? "Wide view" : "Narrow view"}
           >
@@ -284,10 +284,10 @@ export default function DocumentViewer({
               }
             </svg>
           </button>
-          {/* PDF */}
+          {/* PDF — desktop only (mobile print UX is poor) */}
           <button
             onClick={() => window.print()}
-            className={btnClass}
+            className={`${btnClass} hidden sm:flex`}
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             title="Print / Save as PDF"
           >
@@ -304,7 +304,12 @@ export default function DocumentViewer({
               }
             }}
           >
-            {editMode === "public" ? "Edit" : "Make Your Own"}
+            {editMode === "public" ? "Edit" : (
+              <>
+                <span className="hidden sm:inline">Make Your Own</span>
+                <span className="sm:hidden">New</span>
+              </>
+            )}
             <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
           </Link>
         </div>
