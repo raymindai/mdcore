@@ -70,13 +70,15 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 | ⌘⇧C | Copy HTML |
 | ⌘\\\\ | Toggle view mode |
 
-## Sign In for More
+## Try It Now
 
-Sign in (sidebar bottom) to unlock cloud sync, short URLs, and AI mdfy structuring. Free forever — no credit card needed.
+- **Drop a PDF here** — see AI mdfy turn it into clean Markdown
+- **Click +** in the sidebar to start a new doc from a template
+- **Sign in** (sidebar bottom) for cloud sync and short URL sharing — free forever, no credit card
 
 ---
 
-*Powered by **mdcore engine v0.1.0** — Rust + WASM*
+*Powered by **mdcore engine** — Rust + WASM*
 `;
 
 const SAMPLE_FORMATTING = `# Markdown Syntax Guide
@@ -421,15 +423,17 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 └────────┘     └────────┘     └────────┘
 \`\`\`
 
-## Pricing Tiers
+## Free Forever
 
 \`\`\`
-┌─ Free ────────┐  ┌─ Pro $8/mo ──────┐
-│ 10 docs/month │  │ Unlimited docs   │
-│ 7-day expiry  │  │ No expiry        │
-│ Watermark     │  │ Custom domain    │
-│ Basic sharing │  │ Analytics        │
-└───────────────┘  └──────────────────┘
+┌─ Free ────────────────┐
+│ Unlimited documents   │
+│ No expiry             │
+│ Cloud sync            │
+│ Short URL sharing     │
+│ AI mdfy structuring   │
+│ All formats supported │
+└───────────────────────┘
 \`\`\`
 `;
 
@@ -6000,7 +6004,7 @@ ${html}
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>7-day expiry</span></li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No expiry</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.cc badge</span></li>
                   </ul>
                 </div>
