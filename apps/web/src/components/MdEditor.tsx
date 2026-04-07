@@ -428,13 +428,14 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 Everything is unlocked while we're testing — no credit card required.
 
 \`\`\`
-┌─ Beta (everyone) ─────┐
-│ Unlimited documents   │
-│ Cloud sync            │
-│ Short URL sharing     │
-│ AI mdfy structuring   │
-│ All formats supported │
-└───────────────────────┘
+┌─ Beta (everyone) ──────┐
+│ Unlimited documents    │
+│ Documents never expire │
+│ Cloud sync             │
+│ Short URL sharing      │
+│ AI mdfy structuring    │
+│ All formats supported  │
+└────────────────────────┘
 \`\`\`
 `;
 
@@ -6029,6 +6030,7 @@ ${html}
                   </div>
                   <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Unlimited documents</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Documents never expire</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>

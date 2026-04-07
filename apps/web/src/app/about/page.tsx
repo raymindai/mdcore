@@ -636,6 +636,7 @@ export default function AboutPage() {
             <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Everything unlocked while we&apos;re testing</p>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
               <li><span style={{ color: "var(--accent)" }}>+</span> Unlimited documents</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Documents never expire</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Cloud sync across devices</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Short URL sharing</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> AI mdfy structuring</li>
