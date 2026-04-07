@@ -37,26 +37,41 @@ async function getDocument(id: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const doc = await getDocument(id);
-  if (!doc) return {};
+  if (!doc) return { robots: { index: false, follow: false } };
 
   // Don't reveal content in OG if password-protected
   const isProtected = !!doc.password_hash;
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
+  const isRestricted = (doc.allowed_emails || []).length > 0;
 
   if (isExpired) {
-    return { title: "Expired — mdfy.cc" };
+    return { title: "Expired — mdfy.cc", robots: { index: false, follow: false } };
   }
+
+  // Don't index private content
+  const noIndex = isProtected || isRestricted;
 
   const title = isProtected ? "Protected Document" : (doc.title || "Shared Document");
   const description = isProtected
     ? "This document is password protected."
     : doc.markdown.slice(0, 200).replace(/[#*_`\n]/g, " ").trim();
 
-  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}`;
+  // Detect which features the doc actually uses, for dynamic OG pills.
+  const md = isProtected ? "" : doc.markdown;
+  const features: string[] = [];
+  if (/```mermaid/.test(md)) features.push("Mermaid");
+  if (/\$\$[\s\S]+?\$\$|(?:^|\s)\$[^$\n]+\$/.test(md)) features.push("KaTeX");
+  if (/```[a-zA-Z]/.test(md)) features.push("Code");
+  if (/^\|.*\|/m.test(md)) features.push("Tables");
+  if (/!\[.*?\]\(/.test(md)) features.push("Images");
+  if (features.length === 0) features.push("GFM");
+
+  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}`;
 
   return {
     title: `${title} — mdfy.cc`,
     description,
+    robots: noIndex ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title: `${title} — mdfy.cc`,
       description,

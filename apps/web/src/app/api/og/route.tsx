@@ -3,10 +3,20 @@ import { NextRequest } from "next/server";
 
 export const runtime = "edge";
 
+// Feature pill colors — keyed by feature name
+const FEATURE_COLORS: Record<string, string> = {
+  GFM: "#fb923c",
+  KaTeX: "#c4b5fd",
+  Mermaid: "#f472b6",
+  Code: "#4ade80",
+  Tables: "#60a5fa",
+  Images: "#f59e0b",
+};
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawTitle = searchParams.get("title") || "";
-  // preview param accepted but not displayed
+  const featuresParam = searchParams.get("features") || "GFM,KaTeX,Mermaid,Code,Tables";
 
   const hasTitle = rawTitle && rawTitle !== "Shared Document";
   const displayTitle = hasTitle
@@ -14,6 +24,14 @@ export async function GET(req: NextRequest) {
       ? rawTitle.slice(0, 37) + "..."
       : rawTitle
     : "";
+
+  // Parse and validate features (max 5, only known names)
+  const featurePills = featuresParam
+    .split(",")
+    .map((f) => f.trim())
+    .filter((f) => FEATURE_COLORS[f])
+    .slice(0, 5)
+    .map((f) => ({ t: f, c: FEATURE_COLORS[f] }));
 
   return new ImageResponse(
     (
@@ -137,15 +155,9 @@ export async function GET(req: NextRequest) {
               </div>
             )}
 
-            {/* Feature pills */}
+            {/* Feature pills — dynamic based on doc content */}
             <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-              {[
-                { t: "GFM", c: "#fb923c" },
-                { t: "KaTeX", c: "#c4b5fd" },
-                { t: "Mermaid", c: "#f472b6" },
-                { t: "Code", c: "#4ade80" },
-                { t: "Tables", c: "#60a5fa" },
-              ].map((p) => (
+              {featurePills.map((p) => (
                 <div
                   key={p.t}
                   style={{
