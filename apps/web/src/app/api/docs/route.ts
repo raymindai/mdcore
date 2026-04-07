@@ -60,33 +60,10 @@ export async function POST(req: NextRequest) {
     passwordHash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
   }
 
-  // Determine plan: Pro users get permanent docs, Free/anonymous get 7-day expiry
-  let isPro = false;
-  if (userId) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", userId)
-      .single();
-    isPro = profile?.plan === "pro";
-  }
-
-  // Expiration:
-  // - user-specified expiresIn (hours) takes precedence
-  // - Pro users: no expiry (permanent)
-  // - Free / anonymous: auto 7-day expiry (drives the viral loop + upgrades)
-  // - Drafts: no expiry until they're published (handled when is_draft → false)
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  let expiresAt: string | null;
-  if (expiresIn) {
-    expiresAt = new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString();
-  } else if (isDraft) {
-    expiresAt = null;
-  } else if (isPro) {
-    expiresAt = null;
-  } else {
-    expiresAt = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
-  }
+  // Expiration: expiresIn is in hours (user-specified only)
+  const expiresAt = expiresIn
+    ? new Date(Date.now() + expiresIn * 60 * 60 * 1000).toISOString()
+    : null;
 
   // Determine edit mode:
   // - logged in user → "account" (only owner edits)
