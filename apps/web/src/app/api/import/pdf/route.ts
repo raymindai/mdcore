@@ -12,8 +12,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large (max 4MB)" }, { status: 413 });
+    // Vercel serverless function body limit is 4.5 MB. Bigger PDFs need a
+    // direct-upload-to-storage flow which we don't have yet.
+    if (file.size > 4.5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: `PDF too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 4.5 MB. Try compressing or splitting it.` },
+        { status: 413 }
+      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

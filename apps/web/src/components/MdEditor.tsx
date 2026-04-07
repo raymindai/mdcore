@@ -3117,7 +3117,10 @@ export default function MdEditor() {
         try {
           const file = files[idx];
           const { markdown: md, title: name } = await importFile(file);
-          if (!md) continue;
+          if (!md) {
+            showToast(`${file.name} appears to be empty`, "info");
+            continue;
+          }
           const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
           // Always create a new tab for imports
           const tabId = `tab-${tabIdCounter++}`;
@@ -3129,6 +3132,8 @@ export default function MdEditor() {
           }
         } catch (err) {
           console.error(`Failed to import ${files[idx].name}:`, err);
+          const message = err instanceof Error ? err.message : "Failed to import file";
+          showToast(`${files[idx].name}: ${message}`, "error");
         }
       }
     },
@@ -4445,7 +4450,10 @@ ${html}
                 try {
                   const file = files[idx];
                   const { markdown: md, title: name } = await importFile(file);
-                  if (!md) continue;
+                  if (!md) {
+                    showToast(`${file.name} appears to be empty`, "info");
+                    continue;
+                  }
                   const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
                   // Always create a new tab for imports
                   const tabId = `tab-${tabIdCounter++}`;
@@ -4457,6 +4465,8 @@ ${html}
                   }
                 } catch (err) {
                   console.error(`Failed to import ${files[idx].name}:`, err);
+                  const message = err instanceof Error ? err.message : "Failed to import file";
+                  showToast(`${files[idx].name}: ${message}`, "error");
                 }
               }
               e.target.value = "";
