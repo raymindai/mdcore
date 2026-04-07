@@ -16,6 +16,7 @@ export default function DocumentViewer({
   isRestricted = false,
   showBadge = true,
   editMode = "token",
+  expiresAt = null,
 }: {
   id: string;
   markdown: string;
@@ -25,6 +26,7 @@ export default function DocumentViewer({
   isRestricted?: boolean;
   showBadge?: boolean;
   editMode?: string;
+  expiresAt?: string | null;
 }) {
   const [html, setHtml] = useState("");
   const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -436,12 +438,25 @@ export default function DocumentViewer({
 
       {/* Published with mdfy.cc badge (Free tier only, hidden for Pro) */}
       {showBadge && (
-        <div className="flex justify-center py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <div className="flex flex-col items-center gap-1.5 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
           <a href="https://mdfy.cc" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono transition-opacity hover:opacity-80"
             style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", color: "var(--text-muted)" }}>
             Published with <span style={{ color: "var(--accent)" }}>mdfy</span>.cc
           </a>
+          {expiresAt && (
+            <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)", opacity: 0.7 }}>
+              {(() => {
+                const ms = new Date(expiresAt).getTime() - Date.now();
+                if (ms <= 0) return "Expired";
+                const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+                const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                if (days >= 1) return `Expires in ${days} day${days === 1 ? "" : "s"}`;
+                if (hours >= 1) return `Expires in ${hours} hour${hours === 1 ? "" : "s"}`;
+                return "Expires soon";
+              })()}
+            </span>
+          )}
         </div>
       )}
 

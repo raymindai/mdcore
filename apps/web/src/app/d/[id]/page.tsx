@@ -93,6 +93,7 @@ export default async function DocPage({ params }: Props) {
       isRestricted={isRestricted}
       showBadge={doc.ownerPlan !== "pro"}
       editMode={doc.edit_mode || "token"}
+      expiresAt={doc.expires_at || null}
     />
   );
 }

@@ -292,7 +292,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { data: doc } = await supabase
       .from("documents")
-      .select("edit_token, user_id, anonymous_id")
+      .select("edit_token, user_id, anonymous_id, expires_at")
       .eq("id", id)
       .single();
 
@@ -307,7 +307,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { error } = await supabase.from("documents").update({ is_draft: false }).eq("id", id);
+    // Determine expiry on publish:
+    // - If already set (user-specified) → keep it
+    // - Pro users → no expiry
+    // - Free / anonymous → 7-day expiry (viral loop trigger)
+    const updates: Record<string, unknown> = { is_draft: false };
+    if (!doc.expires_at) {
+      let isPro = false;
+      if (doc.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan")
+          .eq("id", doc.user_id)
+          .single();
+        isPro = profile?.plan === "pro";
+      }
+      if (!isPro) {
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        updates.expires_at = new Date(Date.now() + SEVEN_DAYS_MS).toISOString();
+      }
+    }
+
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to publish" }, { status: 500 });
 
     return NextResponse.json({ ok: true });
