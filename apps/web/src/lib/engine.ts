@@ -1,6 +1,21 @@
 import { render, detectFlavor } from "./wasm/mdcore_engine";
 import type { RenderResult as WasmRenderResult } from "./wasm/mdcore_engine";
-import type { FlavorInfo, TocEntry } from "@mdcore/engine";
+
+export interface FlavorInfo {
+  primary: "gfm" | "obsidian" | "mdx" | "pandoc" | "commonmark";
+  frontmatter: "yaml" | "toml" | "json" | null;
+  math: boolean;
+  mermaid: boolean;
+  wikilinks: boolean;
+  jsx: boolean;
+  confidence: number;
+}
+
+export interface TocEntry {
+  level: number;
+  text: string;
+  id: string;
+}
 
 /**
  * Render markdown via WASM engine.
