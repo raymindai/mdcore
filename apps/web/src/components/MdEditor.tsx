@@ -74,7 +74,7 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 - **Drop a PDF here** — see AI mdfy turn it into clean Markdown
 - **Click +** in the sidebar to start a new doc from a template
-- **Sign in** (sidebar bottom) for cloud sync and short URL sharing — free forever, no credit card
+- **Sign in** (sidebar bottom) for cloud sync and short URL sharing — free during the beta, no credit card
 
 ---
 
@@ -423,12 +423,13 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 └────────┘     └────────┘     └────────┘
 \`\`\`
 
-## Free Forever
+## Free During Beta
+
+Everything is unlocked while we're testing — no credit card required.
 
 \`\`\`
-┌─ Free ────────────────┐
+┌─ Beta (everyone) ─────┐
 │ Unlimited documents   │
-│ No expiry             │
 │ Cloud sync            │
 │ Short URL sharing     │
 │ AI mdfy structuring   │
@@ -6020,28 +6021,29 @@ ${html}
                     <li className="flex items-start gap-1"><span>-</span>No short URLs</li>
                   </ul>
                 </div>
-                {/* Free tier */}
-                <div className="rounded-lg p-3" style={{ border: "1px solid var(--border-dim)" }}>
-                  <div className="text-[10px] font-bold mb-2" style={{ color: "var(--text-primary)" }}>Free</div>
+                {/* Beta tier — everyone with an account, while we're testing */}
+                <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent-dim)" }}>
+                  <div className="flex items-center gap-1 mb-2">
+                    <span className="text-[10px] font-bold" style={{ color: "var(--text-primary)" }}>Beta</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>FREE NOW</span>
+                  </div>
                   <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Unlimited documents</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No expiry</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>All formats supported</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.cc badge</span></li>
                   </ul>
                 </div>
-                {/* Pro tier */}
+                {/* Pro tier — kicks in after beta */}
                 <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent)" }}>
                   <div className="flex items-center gap-1 mb-2">
                     <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>Pro</span>
-                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>$8/mo</span>
-                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>COMING SOON</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>AFTER BETA</span>
                   </div>
                   <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Everything in Free</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No expiry</li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Everything in Beta</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No badge</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Custom domain</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>View analytics</li>
@@ -6055,7 +6057,7 @@ ${html}
             {/* Footer */}
             <div className="px-6 pb-5 text-center">
               <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>
-                Sign up is free. No credit card required.
+                Free during beta. No credit card required.
               </p>
             </div>
           </div>

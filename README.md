@@ -75,8 +75,8 @@ mdfy.cc is not just a renderer — it’s a full document platform:
 ### Auth & Sharing
 
 - **Google / GitHub OAuth** + Email magic link
-- **Free tier** — unlimited documents, cloud sync, 7-day expiry, mdfy.cc badge
-- **Pro tier** — no expiry, no badge, custom domain, analytics, password protection (coming soon)
+- **Beta** — everything unlocked while we're testing, no credit card
+- **Pro tier** — kicks in after beta: no badge, custom domain, analytics, password protection (pricing TBD)
 
 ## Packages
 

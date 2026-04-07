@@ -627,28 +627,31 @@ export default function AboutPage() {
               <li style={{ opacity: 0.5 }}>- No short URLs</li>
             </ul>
           </div>
-          {/* Free */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 4 }}>Free</h3>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Sign up for free</p>
+          {/* Beta — what everyone gets right now */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--accent-dim)", borderRadius: 14, padding: "28px 24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Beta</h3>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", padding: "2px 8px", borderRadius: 12 }}>FREE NOW</span>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Everything unlocked while we&apos;re testing</p>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
               <li><span style={{ color: "var(--accent)" }}>+</span> Unlimited documents</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Cloud sync across devices</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Short URL sharing</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> AI mdfy structuring</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> All formats supported</li>
               <li style={{ color: "var(--text-faint)" }}>- mdfy.cc badge on shared docs</li>
             </ul>
           </div>
-          {/* Pro */}
+          {/* Pro — kicks in after beta */}
           <div style={{ background: "var(--surface)", border: "1px solid var(--accent)", borderRadius: 14, padding: "28px 24px", position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)", margin: 0 }}>Pro</h3>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "var(--accent-dim)", padding: "2px 8px", borderRadius: 12 }}>$8/mo</span>
-              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", background: "var(--toggle-bg)", padding: "2px 8px", borderRadius: 12 }}>COMING SOON</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", background: "var(--toggle-bg)", padding: "2px 8px", borderRadius: 12 }}>AFTER BETA</span>
             </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>For power users</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Pricing announced when beta ends</p>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "var(--text-muted)" }}>
-              <li><span style={{ color: "var(--accent)" }}>+</span> Everything in Free</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Everything in Beta</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> No badge on shared docs</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Custom domain</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> View analytics</li>
