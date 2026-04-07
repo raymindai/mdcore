@@ -7,9 +7,10 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
-    "build": "npm run build:wasm && npm run build --workspace=apps/web",
-    "build:wasm": "npm run build --workspace=packages/wasm",
-    "test": "npm test --workspace=packages/wasm"
+    "build": "npm run build:wasm && npm run build:mdcore && npm run build --workspace=apps/web",
+    "build:wasm": "cd packages/engine && wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release",
+    "build:mdcore": "npm run build --workspace=packages/mdcore",
+    "test": "cd packages/engine && cargo test"
   },
   "engines": {
     "node": ">=18"

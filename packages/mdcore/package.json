@@ -1,0 +1,53 @@
+{
+  "name": "@mdcore/engine",
+  "version": "0.2.0",
+  "description": "The universal Markdown engine. One render() call — syntax highlighting, math, diagrams, all included.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build:wasm": "cd ../engine && wasm-pack build --target web --out-dir ../mdcore/wasm --release",
+    "build:ts": "tsup",
+    "build": "npm run build:ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.40",
+    "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "markdown",
+    "renderer",
+    "wasm",
+    "syntax-highlighting",
+    "katex",
+    "mermaid",
+    "gfm",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raymindai/mdcore"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

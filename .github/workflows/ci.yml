@@ -82,10 +82,13 @@ jobs:
           path: apps/web/src/lib/wasm/
 
       - name: Install dependencies
-        working-directory: apps/web
         run: npm install
 
-      - name: Build
+      - name: Build @mdcore/engine
+        working-directory: packages/mdcore
+        run: npm run build
+
+      - name: Build web app
         working-directory: apps/web
         run: npm run build
 

@@ -5,6 +5,13 @@ node_modules/
 .next/
 out/
 target/
+dist/
+
+# Local scratch
+temp/
+
+# pnpm (we use npm)
+pnpm-lock.yaml
 
 # Environment
 .env
@@ -14,6 +21,7 @@ target/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
