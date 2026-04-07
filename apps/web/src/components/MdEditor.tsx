@@ -1176,7 +1176,21 @@ export default function MdEditor() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [mdfyPrompt, setMdfyPrompt] = useState<{ text: string; filename: string; tabId: string } | null>(null);
   const [mdfyLoading, setMdfyLoading] = useState(false);
+  const [mdfyElapsed, setMdfyElapsed] = useState(0);
   const [showFlavorMenu, setShowFlavorMenu] = useState(false);
+
+  // Tick elapsed time while AI mdfy is processing
+  useEffect(() => {
+    if (!mdfyLoading) {
+      setMdfyElapsed(0);
+      return;
+    }
+    const start = Date.now();
+    const interval = setInterval(() => {
+      setMdfyElapsed(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [mdfyLoading]);
 
   // Diagram rendering mode: "default" (mermaid.js/ASCII) or "ai" (Gemini HTML)
   type DiagramMode = "default" | "ai";
@@ -6051,14 +6065,20 @@ ${html}
       {mdfyPrompt && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => !mdfyLoading && setMdfyPrompt(null)}>
           <div className="rounded-xl p-5 w-80" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
-            <div className="mb-3">
+            <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--accent)" }}>mdfy</span> this document?</span>
+              <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                {(mdfyPrompt.text.length / 1024).toFixed(0)} KB
+              </span>
             </div>
             <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
               This file was imported as raw text — all formatting (headings, lists, tables, emphasis) was lost during extraction.
             </p>
             <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
               <strong style={{ color: "var(--accent)" }}>mdfy</strong> uses AI to detect the original structure and rebuild it as clean Markdown — headings, bullet points, tables, code blocks, and more.
+              {mdfyPrompt.text.length > 200_000 && (
+                <span style={{ color: "var(--text-faint)" }}> Large documents may take 30–60 seconds.</span>
+              )}
             </p>
             <div className="flex gap-2">
               <button
@@ -6102,7 +6122,7 @@ ${html}
                 {mdfyLoading ? (
                   <>
                     <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    Processing...
+                    Processing{mdfyElapsed > 0 ? ` ${mdfyElapsed}s` : "..."}
                   </>
                 ) : (
                   <>mdfy it</>
