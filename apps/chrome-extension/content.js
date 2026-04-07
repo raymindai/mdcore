@@ -207,27 +207,42 @@
   function extractChatGPT() {
     const messages = [];
 
-    // ChatGPT uses [data-message-author-role] on message containers
+    // Strategy 1: data-message-author-role (current ChatGPT)
     const msgElements = document.querySelectorAll("[data-message-author-role]");
-    if (msgElements.length === 0) {
-      // Fallback: try article elements with role markers
-      const articles = document.querySelectorAll("article");
-      articles.forEach((article) => {
-        const isUser = article.querySelector("[data-message-author-role='user']") ||
-                       article.closest("[data-message-author-role='user']");
-        const role = isUser ? "user" : "assistant";
-        const contentEl = article.querySelector(".markdown, .whitespace-pre-wrap") || article;
-        messages.push({ role, content: htmlToMarkdown(contentEl) });
+    if (msgElements.length > 0) {
+      msgElements.forEach((el) => {
+        const role = el.getAttribute("data-message-author-role");
+        if (role === "user" || role === "assistant") {
+          const contentEl = el.querySelector(".markdown, .whitespace-pre-wrap, [data-message-id]") || el;
+          const text = htmlToMarkdown(contentEl);
+          if (text.length > 2) messages.push({ role, content: text });
+        }
       });
-      return messages;
+      if (messages.length > 0) return messages;
     }
 
-    msgElements.forEach((el) => {
-      const role = el.getAttribute("data-message-author-role");
-      if (role === "user" || role === "assistant") {
-        // The markdown content is usually inside .markdown or the element itself
-        const contentEl = el.querySelector(".markdown, .whitespace-pre-wrap") || el;
-        messages.push({ role, content: htmlToMarkdown(contentEl) });
+    // Strategy 2: article elements with author markers
+    const articles = document.querySelectorAll("article[data-testid^='conversation-turn']");
+    if (articles.length > 0) {
+      articles.forEach((article) => {
+        const userMarker = article.querySelector("[data-message-author-role='user']");
+        const assistantMarker = article.querySelector("[data-message-author-role='assistant']");
+        const role = userMarker ? "user" : assistantMarker ? "assistant" : null;
+        if (!role) return;
+        const contentEl = article.querySelector(".markdown, .whitespace-pre-wrap") || article;
+        const text = htmlToMarkdown(contentEl);
+        if (text.length > 2) messages.push({ role, content: text });
+      });
+      if (messages.length > 0) return messages;
+    }
+
+    // Strategy 3: legacy div.group with conversation-turn class
+    const turns = document.querySelectorAll("div[class*='conversation-turn'], div.group\\/conversation-turn");
+    turns.forEach((turn, i) => {
+      const text = htmlToMarkdown(turn);
+      if (text.length > 2) {
+        // Heuristic: alternating user/assistant
+        messages.push({ role: i % 2 === 0 ? "user" : "assistant", content: text });
       }
     });
 
@@ -237,20 +252,56 @@
   function extractClaude() {
     const messages = [];
 
-    // Claude 2025 DOM structure:
-    // User messages:     [data-testid="user-message"] with .font-user-message
-    // Assistant messages: .font-claude-response containing .standard-markdown
-    // Each turn is a sibling div under the scrollable conversation area
+    // Claude DOM structure changes frequently. Try multiple selector strategies.
+    // Each strategy returns {userEls, assistantEls} or null.
+    const strategies = [
+      // Strategy 1: 2025 DOM (data-testid + font-claude-response)
+      () => {
+        const userEls = document.querySelectorAll("[data-testid='user-message']");
+        const assistantEls = document.querySelectorAll(".font-claude-response");
+        return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
+      },
+      // Strategy 2: font-user-message + font-claude-message
+      () => {
+        const userEls = document.querySelectorAll(".font-user-message");
+        const assistantEls = document.querySelectorAll(".font-claude-message, .font-claude-response");
+        return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
+      },
+      // Strategy 3: data-test-render-count turns
+      () => {
+        const userEls = document.querySelectorAll("[data-test-render-count] [data-testid*='user'], .user-turn");
+        const assistantEls = document.querySelectorAll("[data-test-render-count] .standard-markdown, .assistant-turn");
+        return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
+      },
+      // Strategy 4: structural fallback — alternating divs in main scroll container
+      () => {
+        const main = document.querySelector("main") || document.querySelector("[role='main']");
+        if (!main) return null;
+        const turns = main.querySelectorAll("div.group, div[class*='turn'], article");
+        if (turns.length === 0) return null;
+        // Heuristic: user turns tend to be shorter and contain no code blocks
+        const userEls = [];
+        const assistantEls = [];
+        turns.forEach((t, i) => {
+          const hasCode = t.querySelector("pre, code");
+          // Alternate: even = user, odd = assistant (rough heuristic)
+          if (i % 2 === 0 && !hasCode) userEls.push(t);
+          else assistantEls.push(t);
+        });
+        return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
+      },
+    ];
 
-    // Find user messages
-    const userEls = document.querySelectorAll("[data-testid='user-message']");
-    // Find assistant messages
-    const assistantEls = document.querySelectorAll(".font-claude-response");
-
-    if (userEls.length === 0 && assistantEls.length === 0) {
-      // Fallback: nothing found
-      return messages;
+    let result = null;
+    for (const strategy of strategies) {
+      try {
+        result = strategy();
+        if (result) break;
+      } catch { /* try next */ }
     }
+
+    if (!result) return messages;
+    const { userEls, assistantEls } = result;
 
     // Collect all messages with their DOM position for ordering
     const allMsgs = [];
@@ -277,7 +328,12 @@
       return 0;
     });
 
+    // Deduplicate (some strategies may double-count nested elements)
+    const seen = new Set();
     allMsgs.forEach((m) => {
+      const key = m.role + ":" + m.content.slice(0, 100);
+      if (seen.has(key)) return;
+      seen.add(key);
       messages.push({ role: m.role, content: m.content });
     });
 

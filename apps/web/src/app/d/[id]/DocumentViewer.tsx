@@ -293,18 +293,19 @@ export default function DocumentViewer({
           >
             PDF
           </button>
-          {/* Edit — label depends on edit mode */}
+          {/* Primary CTA — Edit (public mode) or Make Your Own (fork/remix) */}
           <Link
             href={`/?from=${id}`}
             className={btnClass}
-            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+            style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}
             onClick={() => {
               if (passwordInput) {
                 sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
               }
             }}
           >
-            {editMode === "public" ? "Edit" : "Open in Editor"}
+            {editMode === "public" ? "Edit" : "Make Your Own"}
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
           </Link>
         </div>
       </header>
@@ -362,19 +363,26 @@ export default function DocumentViewer({
                 Request access
               </button>
             </div>
+            <Link href="/" className="mt-2 text-xs underline" style={{ color: "var(--text-muted)" }}>
+              Or create your own document →
+            </Link>
           </div>
         ) : isExpired ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
               <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
             </svg>
             <p className="text-lg" style={{ color: "var(--text-muted)" }}>This document has expired</p>
+            <p className="text-xs text-center max-w-xs" style={{ color: "var(--text-muted)", opacity: 0.7 }}>
+              But you can publish your own beautiful document in seconds.
+            </p>
             <Link
               href="/"
-              className="mt-2 px-4 py-2 rounded-md text-sm font-mono"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+              className="mt-2 px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
+              style={{ background: "var(--accent)", color: "#000" }}
             >
-              Create a new document
+              Create your own
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
             </Link>
           </div>
         ) : !unlocked ? (
@@ -434,13 +442,18 @@ export default function DocumentViewer({
         )}
       </div>
 
-      {/* Published with mdfy.cc badge (Free tier only, hidden for Pro) */}
+      {/* Viral badge (Free tier only, hidden for Pro) — actionable CTA, not just attribution */}
       {showBadge && (
-        <div className="flex justify-center py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <div className="flex justify-center gap-2 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono"
+            style={{ color: "var(--text-muted)" }}>
+            Published with <span style={{ color: "var(--accent)", fontWeight: 600 }}>mdfy</span>.cc
+          </span>
           <a href="https://mdfy.cc" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono transition-opacity hover:opacity-80"
-            style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", color: "var(--text-muted)" }}>
-            Published with <span style={{ color: "var(--accent)" }}>mdfy</span>.cc
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-mono transition-all hover:scale-105"
+            style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}>
+            Make your own
+            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
           </a>
         </div>
       )}
