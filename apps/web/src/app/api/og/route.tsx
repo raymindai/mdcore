@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawTitle = searchParams.get("title") || "";
   const featuresParam = searchParams.get("features") || "GFM,KaTeX,Mermaid,Code,Tables";
+  const rawAuthor = searchParams.get("author") || "";
 
   const hasTitle = rawTitle && rawTitle !== "Shared Document";
   const displayTitle = hasTitle
@@ -24,6 +25,8 @@ export async function GET(req: NextRequest) {
       ? rawTitle.slice(0, 37) + "..."
       : rawTitle
     : "";
+
+  const displayAuthor = rawAuthor.length > 28 ? rawAuthor.slice(0, 25) + "..." : rawAuthor;
 
   // Parse and validate features (max 5, only known names)
   const featurePills = featuresParam
@@ -138,16 +141,24 @@ export async function GET(req: NextRequest) {
             </div>
 
             {hasTitle ? (
-              <div
-                style={{
-                  fontSize: displayTitle.length > 25 ? "44px" : "52px",
-                  fontWeight: 700,
-                  color: "#e4e4e7",
-                  lineHeight: 1.15,
-                  letterSpacing: "-1.5px",
-                }}
-              >
-                {displayTitle}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div
+                  style={{
+                    fontSize: displayTitle.length > 25 ? "44px" : "52px",
+                    fontWeight: 700,
+                    color: "#e4e4e7",
+                    lineHeight: 1.15,
+                    letterSpacing: "-1.5px",
+                  }}
+                >
+                  {displayTitle}
+                </div>
+                {displayAuthor && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "#52525b", fontSize: "20px", fontWeight: 500 }}>by</span>
+                    <span style={{ color: "#a1a1aa", fontSize: "20px", fontWeight: 600 }}>{displayAuthor}</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div style={{ fontSize: "32px", color: "#3f3f46", lineHeight: 1.4, letterSpacing: "-0.3px" }}>

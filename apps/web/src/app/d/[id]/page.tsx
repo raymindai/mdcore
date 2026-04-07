@@ -20,18 +20,20 @@ async function getDocument(id: string) {
   // Draft documents are not publicly viewable
   if (data.is_draft) return null;
 
-  // Check if document owner is a Pro user (hide badge)
+  // Check if document owner is a Pro user (hide badge) and get display name
   let ownerPlan = "free";
+  let ownerName: string | null = null;
   if (data.user_id) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, display_name")
       .eq("id", data.user_id)
       .single();
     if (profile?.plan) ownerPlan = profile.plan;
+    if (profile?.display_name) ownerName = profile.display_name;
   }
 
-  return { ...data, ownerPlan };
+  return { ...data, ownerPlan, ownerName };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -66,7 +68,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (/!\[.*?\]\(/.test(md)) features.push("Images");
   if (features.length === 0) features.push("GFM");
 
-  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}`;
+  // Author attribution (only when not protected and we have a display name)
+  const authorParam = !isProtected && doc.ownerName ? `&author=${encodeURIComponent(doc.ownerName)}` : "";
+  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}${authorParam}`;
 
   return {
     title: `${title} — mdfy.cc`,
