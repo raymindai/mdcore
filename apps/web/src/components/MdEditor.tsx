@@ -6064,15 +6064,24 @@ ${html}
                 onClick={async () => {
                   setMdfyLoading(true);
                   try {
-                    const structured = await mdfyText(mdfyPrompt.text, mdfyPrompt.filename);
+                    const result = await mdfyText(mdfyPrompt.text, mdfyPrompt.filename);
                     // Update the tab with structured markdown
-                    setTabs(prev => prev.map(t => t.id === mdfyPrompt.tabId ? { ...t, markdown: structured } : t));
+                    setTabs(prev => prev.map(t => t.id === mdfyPrompt.tabId ? { ...t, markdown: result.markdown } : t));
                     if (mdfyPrompt.tabId === activeTabId) {
-                      setMarkdown(structured);
-                      doRender(structured);
+                      setMarkdown(result.markdown);
+                      doRender(result.markdown);
+                    }
+                    if (result.truncated) {
+                      showToast("Document was very large — only the first 3 MB was processed", "info");
+                    } else if (result.finishReason === "MAX_TOKENS") {
+                      showToast("AI hit its output limit — the result may be incomplete", "info");
+                    } else {
+                      showToast("Document structured successfully", "success");
                     }
                   } catch (err) {
                     console.error("mdfy failed:", err);
+                    const message = err instanceof Error ? err.message : "AI processing failed";
+                    showToast(message, "error");
                   }
                   setMdfyLoading(false);
                   setMdfyPrompt(null);

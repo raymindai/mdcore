@@ -280,11 +280,17 @@ export function getSupportedAcceptString(): string {
     .join(",");
 }
 
+export interface MdfyResult {
+  markdown: string;
+  truncated?: boolean;
+  finishReason?: string;
+}
+
 /**
  * Send raw text to AI for markdown structuring.
- * Returns structured markdown or throws on failure.
+ * Returns structured markdown (+ metadata) or throws on failure.
  */
-export async function mdfyText(text: string, filename?: string): Promise<string> {
+export async function mdfyText(text: string, filename?: string): Promise<MdfyResult> {
   const res = await fetch("/api/import/mdfy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -292,10 +298,14 @@ export async function mdfyText(text: string, filename?: string): Promise<string>
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "AI processing failed" }));
-    throw new Error(err.error);
+    throw new Error(err.error || "AI processing failed");
   }
-  const { markdown } = await res.json();
-  return markdown;
+  const data = await res.json();
+  return {
+    markdown: data.markdown || "",
+    truncated: !!data.truncated,
+    finishReason: data.finishReason,
+  };
 }
 
 export async function importFile(
