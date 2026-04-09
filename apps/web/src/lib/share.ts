@@ -84,7 +84,8 @@ export async function extractFromUrl(): Promise<string | null> {
   const hash = window.location.hash;
   if (!hash.startsWith("#md=")) return null;
 
-  const encoded = hash.slice(4); // Remove "#md="
+  const raw = hash.slice(4); // Remove "#md="
+  const encoded = raw.split("&")[0]; // Stop at first & (e.g. &file=)
   if (!encoded) return null;
 
   const markdown = await decompress(encoded);

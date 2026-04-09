@@ -35,19 +35,18 @@ const TEXT_EXTENSIONS = new Set([".md", ".markdown", ".mdown", ".mkd", ".txt"]);
 const ALL_SUPPORTED_EXTENSIONS = new Set([
   ".md", ".markdown", ".mdown", ".mkd",
   ".pdf", ".docx", ".pptx", ".xlsx",
-  ".html", ".htm", ".csv", ".json", ".xml",
-  ".txt", ".rtf", ".rst", ".tex", ".latex",
+  ".html", ".csv", ".json",
+  ".txt",
 ]);
 
 const FILE_FILTERS = [
   { name: "All Supported", extensions: [
     "md", "markdown", "txt", "pdf", "docx", "pptx", "xlsx",
-    "html", "htm", "csv", "json", "xml", "rtf", "rst", "tex", "latex",
+    "html", "csv", "json",
   ]},
   { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
-  { name: "Documents", extensions: ["pdf", "docx", "pptx", "xlsx", "rtf"] },
-  { name: "Web & Data", extensions: ["html", "htm", "csv", "json", "xml"] },
-  { name: "Text & Markup", extensions: ["txt", "rst", "tex", "latex"] },
+  { name: "Documents", extensions: ["pdf", "docx", "pptx", "xlsx"] },
+  { name: "Web & Data", extensions: ["html", "csv", "json"] },
   { name: "All Files", extensions: ["*"] },
 ];
 
@@ -121,6 +120,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
     },
     icon: path.join(__dirname, "assets", "icon.png"),
   });
@@ -128,11 +128,17 @@ function createWindow() {
   // Show dashboard by default (no file)
   mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
 
+  // Open DevTools in development
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
+
   // Inject native bridge after any page loads
   mainWindow.webContents.on("did-finish-load", () => {
     const url = mainWindow.webContents.getURL();
     if (url.includes("mdfy.cc")) {
       injectNativeBridge();
+      injectHomeButton();
     }
   });
 
@@ -147,7 +153,8 @@ function createWindow() {
   mainWindow.on("close", (e) => {
     if (!mainWindow) return;
     const url = mainWindow.webContents.getURL();
-    if (url.includes("mdfy.cc")) {
+    // Only prompt when on mdfy.cc editor (not dashboard or offline page)
+    if (url.startsWith("https://mdfy.cc") && currentFilePath) {
       const choice = dialog.showMessageBoxSync(mainWindow, {
         type: "question",
         buttons: ["Close", "Cancel"],
@@ -163,8 +170,15 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Set window title
+  // Set window title — also handle home navigation signal
   mainWindow.webContents.on("page-title-updated", (event, title) => {
+    if (title === "__MDFY_HOME__") {
+      event.preventDefault();
+      currentFilePath = null;
+      mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
+      mainWindow.setTitle("mdfy");
+      return;
+    }
     mainWindow.setTitle(title);
   });
 }
@@ -200,6 +214,70 @@ function injectNativeBridge() {
   `);
 }
 
+// ─── Inject Home Button ───
+// Adds a clickable home button (logo area) when on mdfy.cc
+
+function injectHomeButton() {
+  mainWindow.webContents.executeJavaScript(`
+    (function() {
+      if (document.getElementById('mdfy-home-footer')) return;
+      var goHome = function() { document.title = '__MDFY_HOME__'; };
+
+      // 1. Footer bar with Home link
+      var footer = document.createElement('div');
+      footer.id = 'mdfy-home-footer';
+      var fs = footer.style;
+      fs.position = 'fixed';
+      fs.bottom = '0';
+      fs.left = '0';
+      fs.right = '0';
+      fs.height = '32px';
+      fs.display = 'flex';
+      fs.alignItems = 'center';
+      fs.padding = '0 16px';
+      fs.background = 'var(--background, #09090b)';
+      fs.borderTop = '1px solid var(--border, #27272a)';
+      fs.zIndex = '99999';
+      fs.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif';
+      fs.fontSize = '11px';
+      fs.webkitAppRegion = 'no-drag';
+
+      var homeLink = document.createElement('button');
+      homeLink.textContent = 'Home';
+      var hs = homeLink.style;
+      hs.background = 'none';
+      hs.border = 'none';
+      hs.color = 'var(--text-faint, #52525b)';
+      hs.cursor = 'pointer';
+      hs.fontFamily = 'inherit';
+      hs.fontSize = 'inherit';
+      hs.fontWeight = '500';
+      hs.padding = '0';
+      hs.transition = 'color 0.15s';
+      homeLink.onmouseenter = function() { hs.color = 'var(--accent, #fb923c)'; };
+      homeLink.onmouseleave = function() { hs.color = 'var(--text-faint, #52525b)'; };
+      homeLink.onclick = goHome;
+      footer.appendChild(homeLink);
+
+      document.body.appendChild(footer);
+      document.body.style.paddingBottom = '32px';
+
+      // 2. Make header logo clickable → Home
+      setTimeout(function() {
+        var logos = document.querySelectorAll('header a[href="/"], header img, header svg');
+        logos.forEach(function(el) {
+          el.style.cursor = 'pointer';
+          el.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            goHome();
+          });
+        });
+      }, 2000);
+    })();
+  `);
+}
+
 // ─── Open File in App ───
 
 function isTextFile(filePath) {
@@ -232,7 +310,7 @@ function openFileInApp(filePath) {
     if (isTextFile(absolutePath)) {
       // Text files: load content directly via hash (original behavior)
       const content = fs.readFileSync(absolutePath, "utf8");
-      const encoded = Buffer.from(content).toString("base64");
+      const encoded = Buffer.from(content).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
       const encodedName = encodeURIComponent(fileName);
       if (isOnline()) {
         const url = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
@@ -407,8 +485,23 @@ ipcMain.handle("open-file-path", (event, filePath) => {
 
 ipcMain.handle("open-editor", () => {
   currentFilePath = null;
-  loadMdfyOrOffline(MDFY_URL);
-  mainWindow.setTitle("mdfy");
+  // Load with a space to get a blank editor (not the default guide)
+  const blank = Buffer.from(" ").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  loadMdfyOrOffline(`${MDFY_URL}/#md=${blank}&file=Untitled.md`);
+  mainWindow.setTitle("mdfy — New Document");
+});
+
+ipcMain.handle("open-editor-with-content", (event, markdown, fileName) => {
+  currentFilePath = null;
+  const encoded = Buffer.from(markdown).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  const encodedName = encodeURIComponent(fileName || "untitled.md");
+  const url = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
+  loadMdfyOrOffline(url);
+  mainWindow.setTitle(fileName || "mdfy");
+});
+
+ipcMain.handle("get-version", () => {
+  return app.getVersion();
 });
 
 ipcMain.handle("get-recent-files", () => {
@@ -475,11 +568,23 @@ function buildMenu() {
       label: "File",
       submenu: [
         {
+          label: "Home",
+          accelerator: "CmdOrCtrl+Shift+H",
+          click: () => {
+            currentFilePath = null;
+            mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
+            mainWindow.setTitle("mdfy");
+          },
+        },
+        { type: "separator" },
+        {
           label: "New",
           accelerator: "CmdOrCtrl+N",
           click: () => {
             currentFilePath = null;
-            loadMdfyOrOffline(MDFY_URL);
+            const blank = Buffer.from(" ").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+            loadMdfyOrOffline(`${MDFY_URL}/#md=${blank}&file=Untitled.md`);
+            mainWindow.setTitle("mdfy — New Document");
           },
         },
         {
@@ -557,6 +662,15 @@ app.on("open-file", (event, filePath) => {
 });
 
 app.whenReady().then(() => {
+  app.setAboutPanelOptions({
+    applicationName: "mdfy",
+    applicationVersion: app.getVersion(),
+    version: `Electron ${process.versions.electron}`,
+    copyright: "Copyright 2024-2026 mdfy.cc",
+    website: "https://mdfy.cc",
+    iconPath: path.join(__dirname, "assets", "icon.png"),
+  });
+
   buildMenu();
   createWindow();
 

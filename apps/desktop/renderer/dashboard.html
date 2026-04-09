@@ -9,109 +9,231 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
       background: #09090b;
       color: #fafafa;
       height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      -webkit-app-region: drag;
     }
 
-    /* Title bar space for traffic lights */
-    .titlebar { height: 52px; flex-shrink: 0; }
+    /* Draggable titlebar */
+    .titlebar {
+      height: 52px;
+      flex-shrink: 0;
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 20px;
+    }
 
-    .container {
+    .titlebar-account {
+      -webkit-app-region: no-drag;
+      font-size: 12px;
+      color: #52525b;
+      cursor: pointer;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      background: none;
+      font-family: inherit;
+    }
+    .titlebar-account:hover {
+      color: #a1a1aa;
+      border-color: #27272a;
+    }
+
+    /* Main layout */
+    .main {
       flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* Left panel */
+    .left {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-      gap: 32px;
-      -webkit-app-region: no-drag;
+      padding: 0 48px 40px;
+      overflow-y: auto;
     }
 
-    /* Logo */
-    .logo {
+    .left::-webkit-scrollbar { width: 6px; }
+    .left::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+
+    /* Hero */
+    .hero {
+      margin-bottom: 36px;
+    }
+
+    .hero-logo {
+      height: 28px;
+      margin-bottom: 16px;
       user-select: none;
-      height: 32px;
     }
-    .logo img {
-      height: 100%;
-      width: auto;
-    }
+    .hero-logo img { height: 100%; width: auto; }
 
-    .tagline {
-      font-size: 14px;
+    .hero-tagline {
+      font-size: 13px;
       color: #52525b;
-      margin-top: -20px;
+      line-height: 1.5;
     }
 
     /* Actions */
     .actions {
       display: flex;
-      gap: 12px;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 36px;
     }
 
-    .btn {
+    .action-btn {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border: none;
+      gap: 12px;
+      padding: 14px 18px;
+      border: 1px solid #27272a;
       border-radius: 10px;
-      font-size: 14px;
-      font-weight: 600;
+      background: transparent;
+      color: #fafafa;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
       cursor: pointer;
       transition: all 0.15s;
-      font-family: inherit;
-    }
-
-    .btn:hover { transform: translateY(-1px); }
-    .btn:active { transform: scale(0.98); }
-
-    .btn-primary {
-      background: rgba(251, 146, 60, 0.12);
-      color: #fb923c;
-      border: 1px solid rgba(251, 146, 60, 0.2);
-    }
-    .btn-primary:hover { background: rgba(251, 146, 60, 0.2); }
-
-    .btn-secondary {
-      background: #18181b;
-      color: #a1a1aa;
-      border: 1px solid #27272a;
-    }
-    .btn-secondary:hover { background: #27272a; color: #fafafa; }
-
-    /* Recent files */
-    .recent {
+      text-align: left;
       width: 100%;
-      max-width: 480px;
     }
 
-    .recent-header {
+    .action-btn:hover {
+      background: #18181b;
+      border-color: #3f3f46;
+    }
+
+    .action-btn:active { transform: scale(0.99); }
+
+    .action-btn .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .icon-new { background: rgba(251, 146, 60, 0.12); color: #fb923c; }
+    .icon-open { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+    .icon-paste { background: rgba(167, 139, 250, 0.12); color: #a78bfa; }
+    .icon-web { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
+
+    .action-btn .label { flex: 1; }
+    .action-btn .label small {
+      display: block;
+      font-size: 11px;
+      font-weight: 400;
+      color: #52525b;
+      margin-top: 2px;
+    }
+
+    .action-btn .kbd {
+      font-family: "SF Mono", ui-monospace, monospace;
+      font-size: 10px;
+      color: #3f3f46;
+      padding: 3px 6px;
+      border: 1px solid #27272a;
+      border-radius: 4px;
+      background: #18181b;
+    }
+
+    /* Section headers */
+    .section-header {
       font-size: 11px;
       font-weight: 600;
       color: #3f3f46;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
     }
+
+    /* Templates */
+    .templates {
+      margin-bottom: 36px;
+    }
+
+    .template-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .template-card {
+      padding: 14px 16px;
+      border: 1px solid #1a1a1e;
+      border-radius: 10px;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: left;
+      width: 100%;
+    }
+
+    .template-card:hover {
+      background: #18181b;
+      border-color: #27272a;
+    }
+
+    .template-card .template-emoji {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .template-card .template-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #d4d4d8;
+      margin-bottom: 2px;
+    }
+
+    .template-card .template-desc {
+      font-size: 11px;
+      color: #52525b;
+      line-height: 1.4;
+    }
+
+    /* Right panel */
+    .right {
+      border-left: 1px solid #18181b;
+      display: flex;
+      flex-direction: column;
+      padding: 0 36px 40px;
+      overflow-y: auto;
+    }
+
+    .right::-webkit-scrollbar { width: 6px; }
+    .right::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+
+    /* Recent files */
+    .recent { flex: 1; }
 
     .recent-list {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
     }
 
     .recent-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 14px;
+      padding: 10px 12px;
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.12s;
@@ -126,20 +248,29 @@
 
     .recent-item:hover { background: #18181b; }
 
-    .recent-icon {
-      color: #52525b;
-      flex-shrink: 0;
-    }
+    .recent-icon { color: #3f3f46; flex-shrink: 0; }
+    .recent-item:hover .recent-icon { color: #52525b; }
+
+    .recent-info { flex: 1; min-width: 0; }
 
     .recent-name {
-      flex: 1;
       color: #a1a1aa;
+      font-size: 13px;
+      font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-
     .recent-item:hover .recent-name { color: #fafafa; }
+
+    .recent-dir {
+      font-size: 11px;
+      color: #3f3f46;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
 
     .recent-time {
       font-size: 11px;
@@ -148,167 +279,451 @@
     }
 
     .recent-empty {
+      padding: 40px 20px;
       text-align: center;
-      padding: 20px;
-      font-size: 13px;
       color: #27272a;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .recent-empty-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      opacity: 0.3;
     }
 
     /* Drop zone */
     .dropzone {
-      width: 100%;
-      max-width: 480px;
-      padding: 20px;
-      border: 1px dashed #27272a;
+      margin-top: auto;
+      padding: 24px;
+      border: 1px dashed #1a1a1e;
       border-radius: 12px;
       text-align: center;
+      transition: all 0.15s;
+    }
+
+    .dropzone-text {
       font-size: 12px;
       color: #3f3f46;
-      transition: all 0.15s;
+      line-height: 1.5;
+    }
+
+    .dropzone-formats {
+      font-size: 10px;
+      color: #27272a;
+      margin-top: 4px;
+      font-family: "SF Mono", ui-monospace, monospace;
     }
 
     .dropzone.active {
       border-color: #fb923c;
-      background: rgba(251, 146, 60, 0.05);
-      color: #fb923c;
+      background: rgba(251, 146, 60, 0.03);
+    }
+    .dropzone.active .dropzone-text { color: #fb923c; }
+
+    /* Footer */
+    .footer {
+      padding: 12px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #18181b;
+      flex-shrink: 0;
     }
 
-    /* Shortcuts */
-    .shortcuts {
+    .footer-shortcuts {
+      display: flex;
+      gap: 14px;
       font-size: 11px;
       color: #27272a;
-      display: flex;
-      gap: 16px;
     }
 
-    .shortcuts kbd {
+    .footer-shortcuts kbd {
       display: inline-block;
-      padding: 2px 6px;
+      padding: 1px 5px;
       background: #18181b;
-      border-radius: 4px;
-      font-family: monospace;
+      border-radius: 3px;
+      font-family: "SF Mono", ui-monospace, monospace;
       font-size: 10px;
-      color: #52525b;
-      margin-right: 4px;
-    }
-
-    /* Open in browser link */
-    .browser-link {
-      font-size: 12px;
       color: #3f3f46;
-      text-decoration: none;
-      transition: color 0.12s;
+      margin-right: 3px;
     }
-    .browser-link:hover { color: #fb923c; }
 
+    .footer-version {
+      font-size: 10px;
+      color: #27272a;
+      font-family: "SF Mono", ui-monospace, monospace;
+    }
+
+    /* Logo theme toggle */
     .logo-light { display: none; }
     .logo-dark { display: block; }
 
+    /* Light mode */
     @media (prefers-color-scheme: light) {
+      body { background: #faf9f7; color: #09090b; }
       .logo-dark { display: none; }
       .logo-light { display: block; }
-      body { background: #faf9f7; color: #09090b; }
-      .tagline { color: #a1a1aa; }
-      .btn-secondary { background: #f4f4f5; border-color: #e4e4e7; color: #71717a; }
-      .btn-secondary:hover { background: #e4e4e7; color: #09090b; }
+      .titlebar-account { color: #a1a1aa; }
+      .titlebar-account:hover { color: #71717a; border-color: #e4e4e7; }
+      .action-btn { border-color: #e4e4e7; color: #09090b; }
+      .action-btn:hover { background: #f4f4f5; border-color: #d4d4d8; }
+      .action-btn .label small { color: #a1a1aa; }
+      .action-btn .kbd { background: #f4f4f5; border-color: #e4e4e7; color: #a1a1aa; }
+      .icon-new { background: rgba(234, 88, 12, 0.08); color: #ea580c; }
+      .section-header { color: #a1a1aa; }
+      .template-card { border-color: #e4e4e7; }
+      .template-card:hover { background: #f4f4f5; border-color: #d4d4d8; }
+      .template-card .template-name { color: #3f3f46; }
+      .template-card .template-desc { color: #a1a1aa; }
+      .hero-tagline { color: #a1a1aa; }
+      .right { border-left-color: #e4e4e7; }
       .recent-item:hover { background: #f4f4f5; }
       .recent-name { color: #71717a; }
       .recent-item:hover .recent-name { color: #09090b; }
       .recent-icon { color: #a1a1aa; }
+      .recent-dir { color: #a1a1aa; }
       .recent-time { color: #a1a1aa; }
-      .recent-header { color: #a1a1aa; }
-      .dropzone { border-color: #e4e4e7; color: #a1a1aa; }
-      .shortcuts { color: #a1a1aa; }
-      .shortcuts kbd { background: #f4f4f5; color: #71717a; }
+      .recent-empty { color: #a1a1aa; }
+      .dropzone { border-color: #e4e4e7; }
+      .dropzone-text { color: #a1a1aa; }
+      .dropzone-formats { color: #d4d4d8; }
+      .footer { border-top-color: #e4e4e7; }
+      .footer-shortcuts { color: #a1a1aa; }
+      .footer-shortcuts kbd { background: #f4f4f5; color: #a1a1aa; }
+      .footer-version { color: #a1a1aa; }
     }
   </style>
 </head>
 <body>
-  <div class="titlebar"></div>
-  <div class="container">
-    <div class="logo">
-      <img src="logo-dark.svg" alt="mdfy.cc" class="logo-dark">
-      <img src="logo-light.svg" alt="mdfy.cc" class="logo-light">
-    </div>
-    <div class="tagline">Figma for Markdown</div>
 
-    <div class="actions">
-      <button class="btn btn-primary" id="btn-new">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
-        New Document
-      </button>
-      <button class="btn btn-secondary" id="btn-open">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg>
-        Open File
-      </button>
-    </div>
+  <div class="titlebar">
+    <button class="titlebar-account" id="btn-signin">Sign in to mdfy.cc</button>
+  </div>
 
-    <div class="recent" id="recent-section">
-      <div class="recent-header">Recent</div>
-      <div class="recent-list" id="recent-list">
-        <div class="recent-empty">No recent files</div>
+  <div class="main">
+    <!-- Left: Actions + Templates -->
+    <div class="left">
+      <div class="hero">
+        <div class="hero-logo">
+          <img src="logo-dark.svg" alt="mdfy.cc" class="logo-dark">
+          <img src="logo-light.svg" alt="mdfy.cc" class="logo-light">
+        </div>
+        <p class="hero-tagline">Paste any Markdown. See it beautiful.</p>
+      </div>
+
+      <div class="actions">
+        <button class="action-btn" id="btn-new">
+          <div class="icon icon-new">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+          </div>
+          <span class="label">New Document<small>Start with a blank editor</small></span>
+          <span class="kbd">&#8984;N</span>
+        </button>
+        <button class="action-btn" id="btn-open">
+          <div class="icon icon-open">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg>
+          </div>
+          <span class="label">Open File<small>Markdown, PDF, DOCX, PPTX, and more</small></span>
+          <span class="kbd">&#8984;O</span>
+        </button>
+        <button class="action-btn" id="btn-paste">
+          <div class="icon icon-paste">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="10" height="10" rx="1.5"/><path d="M6 4V2.5A.5.5 0 016.5 2h3a.5.5 0 01.5.5V4"/></svg>
+          </div>
+          <span class="label">Paste from Clipboard<small>Paste AI output, code, or any text</small></span>
+          <span class="kbd">&#8984;V</span>
+        </button>
+        <button class="action-btn" id="btn-web">
+          <div class="icon icon-web">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2.5 2 9.5 0 12M8 2c-2 2.5-2 9.5 0 12"/></svg>
+          </div>
+          <span class="label">Open mdfy.cc<small>Full web editor in a browser</small></span>
+        </button>
+      </div>
+
+      <div class="templates">
+        <div class="section-header">Start with a template</div>
+        <div class="template-grid">
+          <button class="template-card" data-template="readme">
+            <div class="template-emoji">&#128220;</div>
+            <div class="template-name">README</div>
+            <div class="template-desc">Project documentation template</div>
+          </button>
+          <button class="template-card" data-template="meeting">
+            <div class="template-emoji">&#128221;</div>
+            <div class="template-name">Meeting Notes</div>
+            <div class="template-desc">Agenda, notes, and action items</div>
+          </button>
+          <button class="template-card" data-template="blog">
+            <div class="template-emoji">&#9997;&#65039;</div>
+            <div class="template-name">Blog Post</div>
+            <div class="template-desc">Article with sections and images</div>
+          </button>
+          <button class="template-card" data-template="api">
+            <div class="template-emoji">&#128295;</div>
+            <div class="template-name">API Docs</div>
+            <div class="template-desc">Endpoints, code blocks, tables</div>
+          </button>
+        </div>
       </div>
     </div>
 
-    <div class="dropzone" id="dropzone">
-      Drop files here — md, pdf, docx, pptx, xlsx, html, csv, json, xml, txt, rtf, rst, tex
-    </div>
+    <!-- Right: Recent + Drop zone -->
+    <div class="right">
+      <div class="recent">
+        <div class="section-header">Recent</div>
+        <div class="recent-list" id="recent-list">
+          <div class="recent-empty">
+            <div class="recent-empty-icon">&#128196;</div>
+            No recent files yet.<br>
+            Open a file or create a new document to get started.
+          </div>
+        </div>
+      </div>
 
-    <div class="shortcuts">
-      <span><kbd>⌘N</kbd> New</span>
-      <span><kbd>⌘O</kbd> Open</span>
-      <span><kbd>⌘⇧S</kbd> Save</span>
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-text">Drop files here to open</div>
+        <div class="dropzone-formats">md, txt, pdf, docx, pptx, xlsx, html, csv, json</div>
+      </div>
     </div>
+  </div>
 
-    <a class="browser-link" href="#" id="open-browser">Open mdfy.cc in browser ↗</a>
+  <div class="footer">
+    <div class="footer-shortcuts">
+      <span><kbd>&#8984;N</kbd> New</span>
+      <span><kbd>&#8984;O</kbd> Open</span>
+      <span><kbd>&#8984;&#8679;S</kbd> Save</span>
+      <span><kbd>&#8984;&#8679;P</kbd> Share</span>
+    </div>
+    <span class="footer-version" id="version-text">v1.0.0</span>
   </div>
 
   <script>
-    const { mdfyDesktop } = window;
+    // ─── Actions ───
 
-    // New document
     document.getElementById("btn-new").addEventListener("click", () => {
-      mdfyDesktop.openEditor();
+      window.mdfyDesktop.openEditor();
     });
 
-    // Open file
     document.getElementById("btn-open").addEventListener("click", () => {
-      mdfyDesktop.openFile();
+      window.mdfyDesktop.openFile();
     });
 
-    // Open in browser
-    document.getElementById("open-browser").addEventListener("click", (e) => {
-      e.preventDefault();
-      mdfyDesktop.openInBrowser("https://mdfy.cc");
+    document.getElementById("btn-paste").addEventListener("click", () => {
+      window.mdfyDesktop.openEditor();
     });
 
-    // Drop zone — accepts all supported file formats
+    document.getElementById("btn-web").addEventListener("click", () => {
+      window.mdfyDesktop.openInBrowser("https://mdfy.cc");
+    });
+
+    document.getElementById("btn-signin").addEventListener("click", () => {
+      window.mdfyDesktop.openInBrowser("https://mdfy.cc/auth/callback");
+    });
+
+    // ─── Templates ───
+
+    const TEMPLATES = {
+      readme: `# Project Name
+
+> A brief description of what this project does.
+
+## Installation
+
+\`\`\`bash
+npm install my-project
+\`\`\`
+
+## Usage
+
+\`\`\`javascript
+import { something } from 'my-project';
+\`\`\`
+
+## Features
+
+- Feature one
+- Feature two
+- Feature three
+
+## License
+
+MIT`,
+
+      meeting: `# Meeting Notes
+
+**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+**Attendees:** @name1, @name2
+
+---
+
+## Agenda
+
+1. Topic one
+2. Topic two
+3. Topic three
+
+## Notes
+
+-
+
+## Action Items
+
+- [ ] Action item one — @owner
+- [ ] Action item two — @owner
+- [ ] Follow up on previous items
+
+## Next Meeting
+
+-`,
+
+      blog: `# Title of Your Blog Post
+
+*Published on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}*
+
+## Introduction
+
+Your opening paragraph goes here. Hook the reader with something interesting.
+
+## Main Section
+
+Develop your argument or share your insights here.
+
+> "A compelling quote that supports your point."
+
+### Subsection
+
+- Key point one
+- Key point two
+- Key point three
+
+![Image description](https://via.placeholder.com/800x400)
+
+## Code Example
+
+\`\`\`python
+def hello():
+    print("Hello, world!")
+\`\`\`
+
+## Conclusion
+
+Wrap up your thoughts and include a call to action.
+
+---
+
+*Thanks for reading!*`,
+
+      api: `# API Reference
+
+Base URL: \`https://api.example.com/v1\`
+
+## Authentication
+
+All requests require a Bearer token:
+
+\`\`\`bash
+curl -H "Authorization: Bearer YOUR_TOKEN" https://api.example.com/v1/resource
+\`\`\`
+
+## Endpoints
+
+### GET /users
+
+Returns a list of users.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| page | integer | No | Page number (default: 1) |
+| limit | integer | No | Items per page (default: 20) |
+
+**Response:**
+
+\`\`\`json
+{
+  "data": [
+    { "id": 1, "name": "John", "email": "john@example.com" }
+  ],
+  "total": 100,
+  "page": 1
+}
+\`\`\`
+
+### POST /users
+
+Create a new user.
+
+\`\`\`json
+{
+  "name": "Jane",
+  "email": "jane@example.com"
+}
+\`\`\`
+
+**Status Codes:**
+
+| Code | Description |
+|------|-------------|
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 404 | Not Found |`
+    };
+
+    document.querySelectorAll(".template-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const key = card.dataset.template;
+        const content = TEMPLATES[key];
+        if (content) {
+          window.mdfyDesktop.openEditorWithContent(content, key + ".md");
+        }
+      });
+    });
+
+    // Show version
+    window.mdfyDesktop.getVersion().then((v) => {
+      document.getElementById("version-text").textContent = "v" + v;
+    }).catch(() => {});
+
+    // ─── Drop zone ───
+
     const SUPPORTED_EXTS = new Set([
       ".md", ".markdown", ".mdown", ".mkd",
       ".pdf", ".docx", ".pptx", ".xlsx",
-      ".html", ".htm", ".csv", ".json", ".xml",
-      ".txt", ".rtf", ".rst", ".tex", ".latex",
+      ".html", ".csv", ".json", ".txt",
     ]);
 
-    function getFileExtension(name) {
+    function getExt(name) {
       const dot = name.lastIndexOf(".");
       return dot >= 0 ? name.substring(dot).toLowerCase() : "";
     }
 
     const dropzone = document.getElementById("dropzone");
-    document.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("active"); });
-    document.addEventListener("dragleave", () => { dropzone.classList.remove("active"); });
+
+    document.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzone.classList.add("active");
+    });
+    document.addEventListener("dragleave", (e) => {
+      if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
+        dropzone.classList.remove("active");
+      }
+    });
     document.addEventListener("drop", (e) => {
       e.preventDefault();
       dropzone.classList.remove("active");
-      const files = Array.from(e.dataTransfer.files).filter(f => SUPPORTED_EXTS.has(getFileExtension(f.name)));
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        SUPPORTED_EXTS.has(getExt(f.name))
+      );
       if (files.length > 0) {
-        mdfyDesktop.openFilePath(files[0].path);
+        window.mdfyDesktop.openFilePath(files[0].path);
       }
     });
 
-    // Load recent files
-    mdfyDesktop.getRecentFiles().then((files) => {
+    // ─── Recent files ───
+
+    window.mdfyDesktop.getRecentFiles().then((files) => {
       const list = document.getElementById("recent-list");
       if (!files || files.length === 0) return;
 
@@ -317,7 +732,7 @@
         const item = document.createElement("button");
         item.className = "recent-item";
         const name = file.path.split("/").pop();
-        const dir = file.path.replace(/\/[^/]+$/, "").split("/").slice(-2).join("/");
+        const dir = file.path.replace(/\/[^/]+$/, "").replace(/^\/Users\/[^/]+/, "~");
         const ago = timeAgo(file.openedAt);
 
         item.innerHTML = `
@@ -325,10 +740,13 @@
             <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
             <path d="M6 5h4M6 8h4M6 11h2" stroke-linecap="round"/>
           </svg>
-          <span class="recent-name" title="${file.path}">${name}<span style="color:#3f3f46;margin-left:6px">${dir}</span></span>
+          <div class="recent-info">
+            <div class="recent-name">${name}</div>
+            <div class="recent-dir">${dir}</div>
+          </div>
           <span class="recent-time">${ago}</span>
         `;
-        item.addEventListener("click", () => mdfyDesktop.openFilePath(file.path));
+        item.addEventListener("click", () => window.mdfyDesktop.openFilePath(file.path));
         list.appendChild(item);
       });
     });
@@ -341,7 +759,8 @@
       const hr = Math.floor(min / 60);
       if (hr < 24) return hr + "h ago";
       const day = Math.floor(hr / 24);
-      return day + "d ago";
+      if (day < 7) return day + "d ago";
+      return new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
   </script>
 </body>

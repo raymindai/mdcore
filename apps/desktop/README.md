@@ -1,45 +1,61 @@
-# mdfy Desktop
+# mdfy for Mac
 
-Native macOS Markdown editor with mdfy.cc quality rendering.
+Native macOS app wrapping mdfy.cc with file integration and offline support.
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Run the app
 npm start
 ```
 
 ## Build
 
 ```bash
-# Build distributable
+# Build .dmg (universal: Intel + Apple Silicon)
 npm run build
+
+# Build .dmg for current architecture only
+npm run build:dmg
 ```
 
-## Features
+Output: `dist/mdfy-{version}-universal.dmg`
 
-- WYSIWYG editing via contentEditable with HTML-to-Markdown roundtrip
-- Source view toggle (Cmd+/)
-- Full GFM support: tables, task lists, strikethrough
-- Code syntax highlighting (highlight.js)
-- KaTeX math rendering
-- Mermaid diagram support
-- Share to mdfy.cc with one click (Cmd+Shift+P)
-- Auto-save on edit (5s debounce)
-- File watching for external changes
-- Drag & drop .md files
+## What It Does
+
+mdfy for Mac loads the mdfy.cc web app inside a native Electron shell, adding:
+
+- Native macOS title bar with traffic lights
+- File associations (md, txt, pdf, docx, pptx, xlsx, html, csv, json)
+- Open files via Finder double-click, drag & drop, or Cmd+O
+- Save editor content to local .md files (Cmd+Shift+S)
+- Dashboard with recent files on launch
+- Offline detection with retry
 - Dark/Light mode follows system preference
-- macOS native title bar with traffic lights
-- .md and .markdown file association
-- Recent files tracking
-- Keyboard shortcuts (Cmd+B bold, Cmd+I italic, Cmd+K link)
-- Table inline editing (double-click cells)
-- Table context menu (right-click for add/delete rows/columns)
-- Word and character count
-- Markdown flavor detection
+- Single instance (prevents duplicate windows)
+
+## Architecture
+
+```
+main.js           Electron main process (window, menu, IPC, file I/O)
+preload.js        Context bridge (mdfyDesktop API)
+mime-types.js     MIME type detection for file imports
+renderer/
+  dashboard.html  Landing screen (New/Open/Recent/Drop)
+  offline.html    Offline fallback with retry
+  logo-dark.svg   Brand logo (dark theme)
+  logo-light.svg  Brand logo (light theme)
+assets/
+  icon.png        App icon (1024x1024)
+build/
+  entitlements.mac.plist         macOS entitlements
+  entitlements.mac.inherit.plist Child process entitlements
+```
+
+## How File Opening Works
+
+- **Text files** (.md, .txt): Read content, encode as base64, load `mdfy.cc/#md={base64}`
+- **Binary files** (.pdf, .docx, etc.): Load mdfy.cc, then inject a synthetic drag-drop event with the file data
 
 ## Keyboard Shortcuts
 
@@ -47,31 +63,8 @@ npm run build
 |--------|----------|
 | New | Cmd+N |
 | Open | Cmd+O |
-| Save | Cmd+S |
-| Save As | Cmd+Shift+S |
-| Share | Cmd+Shift+P |
-| Toggle Source | Cmd+/ |
-| Bold | Cmd+B |
-| Italic | Cmd+I |
-| Link | Cmd+K |
-
-## Architecture
-
-```
-main.js       — Electron main process (window, menu, IPC, file I/O)
-preload.js    — Context bridge (safe IPC API exposure)
-renderer/
-  index.html  — Main window layout
-  styles.css  — Dark/Light theme, mdcore-rendered styles
-  app.js      — WYSIWYG editor, markdown rendering, file operations
-```
-
-The app uses `marked` for Markdown-to-HTML rendering (client-side), with post-processing for highlight.js, KaTeX, and Mermaid. WYSIWYG editing uses contentEditable with a custom HTML-to-Markdown converter ported from the VS Code extension.
-
-## Tech Stack
-
-- Electron 33
-- marked (Markdown parser)
-- highlight.js (syntax highlighting)
-- KaTeX (math rendering)
-- Mermaid (diagrams)
+| Save to Local | Cmd+Shift+S |
+| Close | Cmd+W |
+| Reload | Cmd+R |
+| Zoom In/Out | Cmd+/Cmd- |
+| Full Screen | Ctrl+Cmd+F |

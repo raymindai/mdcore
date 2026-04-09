@@ -1,11 +1,13 @@
 {
   "name": "mdfy-desktop",
-  "version": "0.1.0",
-  "description": "mdfy for Mac — Figma for Markdown",
+  "version": "1.0.0",
+  "description": "mdfy for Mac — Markdown publishing with native file integration",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:dmg": "electron-builder --mac dmg",
+    "build:universal": "electron-builder --mac --universal"
   },
   "dependencies": {},
   "devDependencies": {
@@ -15,9 +17,37 @@
   "build": {
     "appId": "cc.mdfy.desktop",
     "productName": "mdfy",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "mime-types.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "darkModeSupport": true,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        }
+      ],
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist"
+    },
+    "dmg": {
+      "title": "mdfy",
+      "icon": "assets/icon.png",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
     },
     "fileAssociations": [
       {
@@ -46,51 +76,6 @@
         "role": "Editor"
       },
       {
-        "ext": "rst",
-        "name": "reStructuredText Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "tex",
-        "name": "LaTeX Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "latex",
-        "name": "LaTeX Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "html",
-        "name": "HTML Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "htm",
-        "name": "HTML Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "csv",
-        "name": "CSV File",
-        "role": "Viewer"
-      },
-      {
-        "ext": "json",
-        "name": "JSON File",
-        "role": "Viewer"
-      },
-      {
-        "ext": "xml",
-        "name": "XML File",
-        "role": "Viewer"
-      },
-      {
-        "ext": "rtf",
-        "name": "Rich Text Document",
-        "role": "Viewer"
-      },
-      {
         "ext": "pdf",
         "name": "PDF Document",
         "role": "Viewer"
@@ -108,6 +93,21 @@
       {
         "ext": "xlsx",
         "name": "Excel Spreadsheet",
+        "role": "Viewer"
+      },
+      {
+        "ext": "html",
+        "name": "HTML Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "csv",
+        "name": "CSV File",
+        "role": "Viewer"
+      },
+      {
+        "ext": "json",
+        "name": "JSON File",
         "role": "Viewer"
       }
     ]
