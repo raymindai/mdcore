@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 
@@ -219,9 +220,7 @@ export default function DocumentViewer({
             href="/"
             className="text-base sm:text-lg font-bold tracking-tight shrink-0"
           >
-            <span style={{ color: "var(--accent)" }}>md</span>
-            <span style={{ color: "var(--text-primary)" }}>fy</span>
-            <span style={{ color: "var(--text-muted)" }}>.cc</span>
+            <MdfyLogo />
           </Link>
           {title && (
             <span

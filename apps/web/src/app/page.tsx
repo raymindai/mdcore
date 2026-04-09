@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import MdfyLogo from "@/components/MdfyLogo";
 
 const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   ssr: false,
@@ -10,26 +11,7 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
       style={{ background: "#09090b" }}
     >
       {/* Logo */}
-      <div className="flex items-baseline">
-        <span
-          className="text-3xl font-extrabold tracking-tight"
-          style={{ color: "var(--accent)" }}
-        >
-          md
-        </span>
-        <span
-          className="text-3xl font-extrabold tracking-tight"
-          style={{ color: "var(--text-primary)" }}
-        >
-          fy
-        </span>
-        <span
-          className="text-3xl font-extrabold tracking-tight"
-          style={{ color: "var(--text-faint)" }}
-        >
-          .cc
-        </span>
-      </div>
+      <MdfyLogo size={30} />
 
       {/* Tagline */}
       <p className="text-xs tracking-wide" style={{ color: "var(--text-faint)" }}>

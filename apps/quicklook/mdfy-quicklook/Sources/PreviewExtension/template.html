@@ -129,23 +129,15 @@ body {
 }
 
 .mdfy-logo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   flex-shrink: 0;
-}
-
-.mdfy-logo svg {
-  width: 18px;
-  height: 18px;
-}
-
-.mdfy-logo span {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--accent);
+  font-weight: 800;
   letter-spacing: -0.02em;
+  white-space: nowrap;
 }
+.mdfy-logo .logo-md { color: var(--accent); }
+.mdfy-logo .logo-fy { color: var(--text-primary); }
+.mdfy-logo .logo-cc { color: var(--text-faint); }
 
 .mdfy-filename {
   font-size: 12px;
@@ -349,11 +341,7 @@ body {
 <div class="mdfy-topbar">
   <div class="mdfy-topbar-left">
     <div class="mdfy-logo">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="2" width="20" height="20" rx="4" fill="var(--accent)" fill-opacity="0.15"/>
-        <path d="M7 7h3l2 4 2-4h3v10h-2.5V11l-2.5 4-2.5-4v6H7V7z" fill="var(--accent)"/>
-      </svg>
-      <span>mdfy</span>
+      <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
     </div>
     <span class="mdfy-filename">{{FILE_NAME}}</span>
   </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
 
 export const metadata: Metadata = {
   title: "Docs — mdcore.ai",
@@ -72,9 +73,7 @@ export default function DocsPage() {
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <Link href="/mdcore-ai" style={{ textDecoration: "none", display: "flex", alignItems: "baseline" }}>
-              <span style={{ color: "var(--accent)", fontSize: 18, fontWeight: 800 }}>md</span>
-              <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 800 }}>core</span>
-              <span style={{ color: "var(--text-faint)", fontSize: 18, fontWeight: 800 }}>.ai</span>
+              <MdfyLogo size={18} variant="mdcore.ai" />
             </Link>
             <span style={{ color: "var(--border)", fontSize: 16 }}>/</span>
             <span style={{ color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>Docs</span>

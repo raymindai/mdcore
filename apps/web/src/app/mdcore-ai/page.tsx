@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
 import MermaidWrapper from "./MermaidWrapper";
 
 /* ─── data ─── */
@@ -134,9 +135,7 @@ export default function MdcoreAiPage() {
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
             <Link href="/mdcore-ai" style={{ textDecoration: "none", display: "flex", alignItems: "baseline" }}>
-              <span style={{ color: "var(--accent)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>md</span>
-              <span style={{ color: "var(--text-primary)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>core</span>
-              <span style={{ color: "var(--text-faint)", fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>.ai</span>
+              <MdfyLogo size={20} variant="mdcore.ai" />
             </Link>
             <div style={{ display: "flex", gap: 24 }}>
               {[
@@ -757,9 +756,7 @@ markdown = client.convert(url)` },
             {/* Brand */}
             <div>
               <div style={{ marginBottom: 16 }}>
-                <span style={{ color: "var(--accent)", fontSize: 18, fontWeight: 800 }}>md</span>
-                <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 800 }}>core</span>
-                <span style={{ color: "var(--text-faint)", fontSize: 18, fontWeight: 800 }}>.ai</span>
+                <MdfyLogo size={18} variant="mdcore.ai" />
               </div>
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 280 }}>
                 The Markdown infrastructure for the AI era. One engine that renders, converts, and normalizes every flavor.

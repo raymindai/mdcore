@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
             <div style={{ display: "flex", alignItems: "baseline" }}>
               <span style={{ color: "#fb923c", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>md</span>
               <span style={{ color: "#fafafa", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>fy</span>
-              <span style={{ color: "#3f3f46", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.cc</span>
+              <span style={{ color: "#52525b", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.cc</span>
             </div>
 
             {hasTitle ? (

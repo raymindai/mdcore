@@ -10,6 +10,7 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
+import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
@@ -3788,9 +3789,7 @@ ${html}
             onClick={handleClear}
             title="mdfy.cc — New document"
           >
-            <span style={{ color: "var(--accent)" }}>md</span>
-            <span style={{ color: "var(--text-primary)" }}>fy</span>
-            <span style={{ color: "var(--text-muted)" }}>.cc</span>
+            <MdfyLogo />
           </h1>
           {title && (
             <button
@@ -5359,11 +5358,7 @@ ${html}
               <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
-                  <div className="flex items-baseline">
-                    <span className="text-lg font-extrabold" style={{ color: "var(--accent)" }}>md</span>
-                    <span className="text-lg font-extrabold" style={{ color: "var(--text-primary)" }}>fy</span>
-                    <span className="text-lg font-extrabold" style={{ color: "var(--text-faint)" }}>.cc</span>
-                  </div>
+                  <MdfyLogo size={18} />
                   <div className="w-20 h-0.5 rounded-full overflow-hidden" style={{ background: "var(--border-dim)" }}>
                     <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
                   </div>

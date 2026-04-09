@@ -33,14 +33,13 @@
     }
 
     .logo {
-      font-size: 42px;
-      font-weight: 800;
-      letter-spacing: -1px;
       user-select: none;
+      height: 32px;
     }
-    .logo-md { color: #fb923c; }
-    .logo-fy { color: #fafafa; }
-    .logo-cc { color: #3f3f46; }
+    .logo img {
+      height: 100%;
+      width: auto;
+    }
 
     .offline-icon {
       width: 48px;
@@ -115,11 +114,13 @@
       margin-top: 8px;
     }
 
+    .logo-light { display: none; }
+    .logo-dark { display: block; }
+
     @media (prefers-color-scheme: light) {
+      .logo-dark { display: none; }
+      .logo-light { display: block; }
       body { background: #faf9f7; color: #09090b; }
-      .logo-fy { color: #09090b; }
-      .logo-md { color: #ea580c; }
-      .logo-cc { color: #a1a1aa; }
       .offline-icon { color: #a1a1aa; }
       .message { color: #71717a; }
       .btn-secondary { background: #f4f4f5; border-color: #e4e4e7; color: #71717a; }
@@ -133,7 +134,8 @@
   <div class="titlebar"></div>
   <div class="container">
     <div class="logo">
-      <span class="logo-md">md</span><span class="logo-fy">fy</span><span class="logo-cc">.cc</span>
+      <img src="logo-dark.svg" alt="mdfy.cc" class="logo-dark">
+      <img src="logo-light.svg" alt="mdfy.cc" class="logo-light">
     </div>
 
     <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

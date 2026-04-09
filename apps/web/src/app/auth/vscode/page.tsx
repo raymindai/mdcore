@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function VSCodeAuthPage() {
@@ -63,11 +64,7 @@ export default function VSCodeAuthPage() {
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <div style={{ display: "flex", alignItems: "baseline" }}>
-        <span style={{ fontSize: 32, fontWeight: 800, color: "var(--accent)" }}>md</span>
-        <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)" }}>fy</span>
-        <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text-faint)" }}>.cc</span>
-      </div>
+      <MdfyLogo size={32} />
 
       {status === "loading" && (
         <>

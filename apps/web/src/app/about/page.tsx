@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
 
 export const metadata: Metadata = {
   title: "About — mdfy.cc",
@@ -99,9 +100,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 1080, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <Link href="/" style={{ textDecoration: "none" }}>
-              <span style={{ color: "var(--accent)", fontSize: 22, fontWeight: 800 }}>md</span>
-              <span style={{ color: "var(--text-primary)", fontSize: 22, fontWeight: 800 }}>fy</span>
-              <span style={{ color: "var(--text-muted)", fontSize: 22, fontWeight: 800 }}>.cc</span>
+              <MdfyLogo size={22} />
             </Link>
             <div style={{ display: "flex", gap: 16 }}>
               <Link href="/about" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>About</Link>
@@ -918,9 +917,7 @@ export default function AboutPage() {
             {/* Brand */}
             <div>
               <div style={{ marginBottom: 12 }}>
-                <span style={{ color: "var(--accent)", fontSize: 18, fontWeight: 800 }}>md</span>
-                <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 800 }}>fy</span>
-                <span style={{ color: "var(--text-faint)", fontSize: 18, fontWeight: 800 }}>.cc</span>
+                <MdfyLogo size={18} />
               </div>
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
                 The fastest way from thought to shared document.
