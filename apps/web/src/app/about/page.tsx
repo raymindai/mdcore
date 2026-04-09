@@ -162,7 +162,7 @@ export default function AboutPage() {
             margin: 0,
           }}
         >
-          Figma for Markdown.
+          Your Markdown, Beautifully Published.
           <br />
           <span style={{ color: "var(--accent)" }}>View. Edit. Share. Instantly.</span>
         </h1>
@@ -745,7 +745,7 @@ export default function AboutPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              Figma for Markdown.
+              Your Markdown, Beautifully Published.
             </h3>
             <p
               style={{

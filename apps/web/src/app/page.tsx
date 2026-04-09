@@ -15,7 +15,7 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
 
       {/* Tagline */}
       <p className="text-xs tracking-wide" style={{ color: "var(--text-faint)" }}>
-        Figma for Markdown.
+        Your Markdown, Beautifully Published.
       </p>
 
       {/* Animated bar */}
