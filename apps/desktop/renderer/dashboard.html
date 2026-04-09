@@ -18,7 +18,6 @@
       overflow: hidden;
     }
 
-    /* Draggable titlebar */
     .titlebar {
       height: 52px;
       flex-shrink: 0;
@@ -29,75 +28,54 @@
       padding: 0 20px;
     }
 
-    .titlebar-account {
+    .titlebar-link {
       -webkit-app-region: no-drag;
-      font-size: 12px;
-      color: #52525b;
+      font-size: 11px;
+      color: #3f3f46;
       cursor: pointer;
-      padding: 5px 12px;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
       background: none;
       font-family: inherit;
+      transition: color 0.15s;
     }
-    .titlebar-account:hover {
-      color: #a1a1aa;
-      border-color: #27272a;
-    }
+    .titlebar-link:hover { color: #a1a1aa; }
 
-    /* Main layout */
     .main {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
       overflow: hidden;
     }
 
-    /* Left panel */
-    .left {
+    /* Both panels: center content vertically */
+    .panel {
       display: flex;
       flex-direction: column;
-      padding: 0 48px 40px;
+      justify-content: center;
+      padding: 40px 48px;
       overflow-y: auto;
     }
+    .panel::-webkit-scrollbar { width: 5px; }
+    .panel::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
 
-    .left::-webkit-scrollbar { width: 6px; }
-    .left::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+    .panel-right { border-left: 1px solid #18181b; }
 
     /* Hero */
-    .hero {
-      margin-bottom: 36px;
-    }
-
-    .hero-logo {
-      height: 28px;
-      margin-bottom: 16px;
-      user-select: none;
-    }
+    .hero-logo { height: 24px; user-select: none; margin-bottom: 10px; }
     .hero-logo img { height: 100%; width: auto; }
-
-    .hero-tagline {
-      font-size: 13px;
-      color: #52525b;
-      line-height: 1.5;
-    }
+    .hero-tagline { font-size: 13px; color: #52525b; margin-bottom: 32px; }
 
     /* Actions */
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 36px;
-    }
+    .actions { display: flex; flex-direction: column; gap: 6px; margin-bottom: 36px; }
 
     .action-btn {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 14px 18px;
-      border: 1px solid #27272a;
+      padding: 12px 16px;
+      border: 1px solid #1e1e22;
       border-radius: 10px;
       background: transparent;
       color: #fafafa;
@@ -109,72 +87,36 @@
       text-align: left;
       width: 100%;
     }
+    .action-btn:hover { background: #18181b; border-color: #27272a; }
+    .action-btn:active { transform: scale(0.995); }
 
-    .action-btn:hover {
-      background: #18181b;
-      border-color: #3f3f46;
-    }
-
-    .action-btn:active { transform: scale(0.99); }
-
-    .action-btn .icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .action-icon {
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
+    .ic-new { background: rgba(251, 146, 60, 0.1); color: #fb923c; }
+    .ic-open { background: rgba(96, 165, 250, 0.1); color: #60a5fa; }
+    .ic-paste { background: rgba(167, 139, 250, 0.1); color: #a78bfa; }
 
-    .icon-new { background: rgba(251, 146, 60, 0.12); color: #fb923c; }
-    .icon-open { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
-    .icon-paste { background: rgba(167, 139, 250, 0.12); color: #a78bfa; }
-    .icon-web { background: rgba(74, 222, 128, 0.12); color: #4ade80; }
+    .action-text { flex: 1; }
+    .action-text small { display: block; font-size: 11px; font-weight: 400; color: #3f3f46; margin-top: 1px; }
+    .action-kbd { font-family: "SF Mono", ui-monospace, monospace; font-size: 10px; color: #27272a; }
 
-    .action-btn .label { flex: 1; }
-    .action-btn .label small {
-      display: block;
-      font-size: 11px;
-      font-weight: 400;
-      color: #52525b;
-      margin-top: 2px;
-    }
+    /* Section label */
+    .section-label { font-size: 10px; font-weight: 600; color: #3f3f46; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
 
-    .action-btn .kbd {
-      font-family: "SF Mono", ui-monospace, monospace;
-      font-size: 10px;
-      color: #3f3f46;
-      padding: 3px 6px;
-      border: 1px solid #27272a;
-      border-radius: 4px;
-      background: #18181b;
-    }
-
-    /* Section headers */
-    .section-header {
-      font-size: 11px;
-      font-weight: 600;
-      color: #3f3f46;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 12px;
-    }
-
-    /* Templates */
-    .templates {
-      margin-bottom: 36px;
-    }
-
-    .template-grid {
+    /* Example cards - 2 col grid */
+    .example-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
-    .template-card {
+    .example-card {
       padding: 14px 16px;
-      border: 1px solid #1a1a1e;
+      border: 1px solid #1e1e22;
       border-radius: 10px;
       background: transparent;
       color: inherit;
@@ -183,308 +125,250 @@
       transition: all 0.15s;
       text-align: left;
       width: 100%;
+      position: relative;
+      overflow: hidden;
     }
+    .example-card:hover { background: #18181b; border-color: #27272a; }
 
-    .template-card:hover {
-      background: #18181b;
-      border-color: #27272a;
+    .example-card .card-accent {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
     }
+    .example-card:hover .card-accent { opacity: 1; }
 
-    .template-card .template-emoji {
-      font-size: 18px;
-      margin-bottom: 6px;
-    }
-
-    .template-card .template-name {
-      font-size: 12px;
+    .example-card .card-label {
+      font-size: 10px;
       font-weight: 600;
-      color: #d4d4d8;
-      margin-bottom: 2px;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
     }
-
-    .template-card .template-desc {
-      font-size: 11px;
-      color: #52525b;
+    .example-card .card-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #a1a1aa;
       line-height: 1.4;
     }
+    .example-card:hover .card-name { color: #d4d4d8; }
 
-    /* Right panel */
-    .right {
-      border-left: 1px solid #18181b;
+    .c-ai .card-label { color: #fb923c; }
+    .c-ai .card-accent { background: #fb923c; }
+    .c-code .card-label { color: #4ade80; }
+    .c-code .card-accent { background: #4ade80; }
+    .c-math .card-label { color: #c4b5fd; }
+    .c-math .card-accent { background: #c4b5fd; }
+    .c-diag .card-label { color: #f472b6; }
+    .c-diag .card-accent { background: #f472b6; }
+    .c-tbl .card-label { color: #60a5fa; }
+    .c-tbl .card-accent { background: #60a5fa; }
+
+    /* Full-width last card when odd count */
+    .example-card.full-width { grid-column: 1 / -1; }
+
+    /* Right panel content */
+    .right-content {
       display: flex;
       flex-direction: column;
-      padding: 0 36px 40px;
-      overflow-y: auto;
+      gap: 32px;
     }
 
-    .right::-webkit-scrollbar { width: 6px; }
-    .right::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
-
-    /* Recent files */
-    .recent { flex: 1; }
-
-    .recent-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
+    /* Recent */
+    .recent-list { display: flex; flex-direction: column; gap: 1px; }
 
     .recent-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.12s;
-      border: none;
-      background: transparent;
-      color: inherit;
-      font-family: inherit;
-      font-size: 13px;
-      text-align: left;
-      width: 100%;
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 7px; border: none;
+      background: transparent; color: inherit; font-family: inherit;
+      font-size: 12px; cursor: pointer; transition: background 0.12s;
+      text-align: left; width: 100%;
     }
-
     .recent-item:hover { background: #18181b; }
 
-    .recent-icon { color: #3f3f46; flex-shrink: 0; }
-    .recent-item:hover .recent-icon { color: #52525b; }
-
+    .recent-icon { color: #27272a; flex-shrink: 0; }
+    .recent-item:hover .recent-icon { color: #3f3f46; }
     .recent-info { flex: 1; min-width: 0; }
-
-    .recent-name {
-      color: #a1a1aa;
-      font-size: 13px;
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+    .recent-name { color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .recent-item:hover .recent-name { color: #fafafa; }
+    .recent-dir { font-size: 10px; color: #27272a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+    .recent-time { font-size: 10px; color: #27272a; flex-shrink: 0; }
 
-    .recent-dir {
-      font-size: 11px;
-      color: #3f3f46;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-top: 1px;
-    }
-
-    .recent-time {
-      font-size: 11px;
-      color: #3f3f46;
-      flex-shrink: 0;
-    }
-
-    .recent-empty {
-      padding: 40px 20px;
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      color: #27272a;
-      font-size: 13px;
-      line-height: 1.6;
+      padding: 32px;
+      border: 1px dashed #1e1e22;
+      border-radius: 14px;
+      gap: 12px;
     }
 
-    .recent-empty-icon {
-      font-size: 32px;
-      margin-bottom: 12px;
-      opacity: 0.3;
+    .empty-visual {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: #18181b;
+      display: flex; align-items: center; justify-content: center;
+      color: #27272a;
     }
+
+    .empty-text { font-size: 12px; color: #3f3f46; line-height: 1.6; }
+    .empty-text strong { color: #52525b; font-weight: 500; }
 
     /* Drop zone */
     .dropzone {
-      margin-top: auto;
-      padding: 24px;
-      border: 1px dashed #1a1a1e;
-      border-radius: 12px;
-      text-align: center;
-      transition: all 0.15s;
+      padding: 20px; border: 1px dashed #27272a; border-radius: 10px;
+      text-align: center; font-size: 11px; color: #52525b; transition: all 0.15s;
     }
-
-    .dropzone-text {
-      font-size: 12px;
-      color: #3f3f46;
-      line-height: 1.5;
-    }
-
-    .dropzone-formats {
-      font-size: 10px;
-      color: #27272a;
-      margin-top: 4px;
-      font-family: "SF Mono", ui-monospace, monospace;
-    }
-
-    .dropzone.active {
-      border-color: #fb923c;
-      background: rgba(251, 146, 60, 0.03);
-    }
-    .dropzone.active .dropzone-text { color: #fb923c; }
+    .dropzone.active { border-color: #fb923c; background: rgba(251, 146, 60, 0.03); color: #fb923c; }
+    .dropzone-sub { font-family: "SF Mono", ui-monospace, monospace; font-size: 9px; margin-top: 3px; color: #3f3f46; }
 
     /* Footer */
     .footer {
-      padding: 12px 48px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-top: 1px solid #18181b;
-      flex-shrink: 0;
+      flex-shrink: 0; padding: 10px 48px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid #18181b; font-size: 10px; color: #27272a;
+    }
+    .footer-shortcuts { display: flex; gap: 12px; }
+    .footer kbd {
+      padding: 1px 4px; background: #18181b; border-radius: 3px;
+      font-family: "SF Mono", ui-monospace, monospace; font-size: 9px;
+      color: #3f3f46; margin-right: 2px;
     }
 
-    .footer-shortcuts {
-      display: flex;
-      gap: 14px;
-      font-size: 11px;
-      color: #27272a;
-    }
-
-    .footer-shortcuts kbd {
-      display: inline-block;
-      padding: 1px 5px;
-      background: #18181b;
-      border-radius: 3px;
-      font-family: "SF Mono", ui-monospace, monospace;
-      font-size: 10px;
-      color: #3f3f46;
-      margin-right: 3px;
-    }
-
-    .footer-version {
-      font-size: 10px;
-      color: #27272a;
-      font-family: "SF Mono", ui-monospace, monospace;
-    }
-
-    /* Logo theme toggle */
+    /* Theme toggles */
     .logo-light { display: none; }
     .logo-dark { display: block; }
 
-    /* Light mode */
     @media (prefers-color-scheme: light) {
-      body { background: #faf9f7; color: #09090b; }
+      body { background: #faf9f7; }
       .logo-dark { display: none; }
       .logo-light { display: block; }
-      .titlebar-account { color: #a1a1aa; }
-      .titlebar-account:hover { color: #71717a; border-color: #e4e4e7; }
+      .titlebar-link { color: #a1a1aa; }
+      .titlebar-link:hover { color: #71717a; }
+      .hero-tagline { color: #a1a1aa; }
       .action-btn { border-color: #e4e4e7; color: #09090b; }
       .action-btn:hover { background: #f4f4f5; border-color: #d4d4d8; }
-      .action-btn .label small { color: #a1a1aa; }
-      .action-btn .kbd { background: #f4f4f5; border-color: #e4e4e7; color: #a1a1aa; }
-      .icon-new { background: rgba(234, 88, 12, 0.08); color: #ea580c; }
-      .section-header { color: #a1a1aa; }
-      .template-card { border-color: #e4e4e7; }
-      .template-card:hover { background: #f4f4f5; border-color: #d4d4d8; }
-      .template-card .template-name { color: #3f3f46; }
-      .template-card .template-desc { color: #a1a1aa; }
-      .hero-tagline { color: #a1a1aa; }
-      .right { border-left-color: #e4e4e7; }
+      .action-text small { color: #a1a1aa; }
+      .action-kbd { color: #d4d4d8; }
+      .ic-new { background: rgba(234, 88, 12, 0.08); color: #ea580c; }
+      .section-label { color: #a1a1aa; }
+      .example-card { border-color: #e4e4e7; }
+      .example-card:hover { background: #f4f4f5; border-color: #d4d4d8; }
+      .example-card .card-name { color: #71717a; }
+      .example-card:hover .card-name { color: #3f3f46; }
+      .panel-right { border-left-color: #e4e4e7; }
       .recent-item:hover { background: #f4f4f5; }
-      .recent-name { color: #71717a; }
+      .recent-name { color: #a1a1aa; }
       .recent-item:hover .recent-name { color: #09090b; }
-      .recent-icon { color: #a1a1aa; }
-      .recent-dir { color: #a1a1aa; }
-      .recent-time { color: #a1a1aa; }
-      .recent-empty { color: #a1a1aa; }
-      .dropzone { border-color: #e4e4e7; }
-      .dropzone-text { color: #a1a1aa; }
-      .dropzone-formats { color: #d4d4d8; }
-      .footer { border-top-color: #e4e4e7; }
-      .footer-shortcuts { color: #a1a1aa; }
-      .footer-shortcuts kbd { background: #f4f4f5; color: #a1a1aa; }
-      .footer-version { color: #a1a1aa; }
+      .recent-icon { color: #d4d4d8; }
+      .recent-dir, .recent-time { color: #d4d4d8; }
+      .empty-state { border-color: #e4e4e7; }
+      .empty-visual { background: #f4f4f5; color: #d4d4d8; }
+      .empty-text { color: #a1a1aa; }
+      .empty-text strong { color: #71717a; }
+      .dropzone { border-color: #d4d4d8; color: #a1a1aa; }
+      .dropzone-sub { color: #a1a1aa; }
+      .footer { border-top-color: #e4e4e7; color: #d4d4d8; }
+      .footer kbd { background: #f4f4f5; color: #a1a1aa; }
     }
   </style>
 </head>
 <body>
-
   <div class="titlebar">
-    <button class="titlebar-account" id="btn-signin">Sign in to mdfy.cc</button>
+    <button class="titlebar-link" id="btn-signin">Sign in</button>
   </div>
 
   <div class="main">
-    <!-- Left: Actions + Templates -->
-    <div class="left">
-      <div class="hero">
+    <!-- Left -->
+    <div class="panel">
+      <div>
         <div class="hero-logo">
           <img src="logo-dark.svg" alt="mdfy.cc" class="logo-dark">
           <img src="logo-light.svg" alt="mdfy.cc" class="logo-light">
         </div>
-        <p class="hero-tagline">Paste any Markdown. See it beautiful.</p>
-      </div>
+        <p class="hero-tagline">Your Markdown, Beautifully Published.</p>
 
-      <div class="actions">
-        <button class="action-btn" id="btn-new">
-          <div class="icon icon-new">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
-          </div>
-          <span class="label">New Document<small>Start with a blank editor</small></span>
-          <span class="kbd">&#8984;N</span>
-        </button>
-        <button class="action-btn" id="btn-open">
-          <div class="icon icon-open">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg>
-          </div>
-          <span class="label">Open File<small>Markdown, PDF, DOCX, PPTX, and more</small></span>
-          <span class="kbd">&#8984;O</span>
-        </button>
-        <button class="action-btn" id="btn-paste">
-          <div class="icon icon-paste">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="10" height="10" rx="1.5"/><path d="M6 4V2.5A.5.5 0 016.5 2h3a.5.5 0 01.5.5V4"/></svg>
-          </div>
-          <span class="label">Paste from Clipboard<small>Paste AI output, code, or any text</small></span>
-          <span class="kbd">&#8984;V</span>
-        </button>
-        <button class="action-btn" id="btn-web">
-          <div class="icon icon-web">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2.5 2 9.5 0 12M8 2c-2 2.5-2 9.5 0 12"/></svg>
-          </div>
-          <span class="label">Open mdfy.cc<small>Full web editor in a browser</small></span>
-        </button>
-      </div>
+        <div class="actions">
+          <button class="action-btn" id="btn-new">
+            <div class="action-icon ic-new"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg></div>
+            <span class="action-text">New Document<small>Blank editor</small></span>
+            <span class="action-kbd">&#8984;N</span>
+          </button>
+          <button class="action-btn" id="btn-open">
+            <div class="action-icon ic-open"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg></div>
+            <span class="action-text">Open File<small>md, pdf, docx, pptx, xlsx, html, csv, json</small></span>
+            <span class="action-kbd">&#8984;O</span>
+          </button>
+          <button class="action-btn" id="btn-paste">
+            <div class="action-icon ic-paste"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="10" height="10" rx="1.5"/><path d="M6 4V2.5A.5.5 0 016.5 2h3a.5.5 0 01.5.5V4"/></svg></div>
+            <span class="action-text">Paste from Clipboard<small>AI output, code, or any text</small></span>
+            <span class="action-kbd">&#8984;V</span>
+          </button>
+        </div>
 
-      <div class="templates">
-        <div class="section-header">Start with a template</div>
-        <div class="template-grid">
-          <button class="template-card" data-template="readme">
-            <div class="template-emoji">&#128220;</div>
-            <div class="template-name">README</div>
-            <div class="template-desc">Project documentation template</div>
+        <div class="section-label">Try an example</div>
+        <div class="example-grid">
+          <button class="example-card c-ai" data-example="ai-cleanup">
+            <div class="card-accent"></div>
+            <div class="card-label">AI Conversation</div>
+            <div class="card-name">Clean up and format AI chat output</div>
           </button>
-          <button class="template-card" data-template="meeting">
-            <div class="template-emoji">&#128221;</div>
-            <div class="template-name">Meeting Notes</div>
-            <div class="template-desc">Agenda, notes, and action items</div>
+          <button class="example-card c-code" data-example="code-docs">
+            <div class="card-accent"></div>
+            <div class="card-label">Code + Syntax</div>
+            <div class="card-name">API docs with highlighted code blocks</div>
           </button>
-          <button class="template-card" data-template="blog">
-            <div class="template-emoji">&#9997;&#65039;</div>
-            <div class="template-name">Blog Post</div>
-            <div class="template-desc">Article with sections and images</div>
+          <button class="example-card c-math" data-example="math">
+            <div class="card-accent"></div>
+            <div class="card-label">LaTeX Math</div>
+            <div class="card-name">Equations rendered with KaTeX</div>
           </button>
-          <button class="template-card" data-template="api">
-            <div class="template-emoji">&#128295;</div>
-            <div class="template-name">API Docs</div>
-            <div class="template-desc">Endpoints, code blocks, tables</div>
+          <button class="example-card c-diag" data-example="diagram">
+            <div class="card-accent"></div>
+            <div class="card-label">Mermaid Diagram</div>
+            <div class="card-name">System architecture flowcharts</div>
+          </button>
+          <button class="example-card c-tbl" data-example="table">
+            <div class="card-accent"></div>
+            <div class="card-label">Tables + Checklists</div>
+            <div class="card-name">Formatted data with GFM task lists</div>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Right: Recent + Drop zone -->
-    <div class="right">
-      <div class="recent">
-        <div class="section-header">Recent</div>
-        <div class="recent-list" id="recent-list">
-          <div class="recent-empty">
-            <div class="recent-empty-icon">&#128196;</div>
-            No recent files yet.<br>
-            Open a file or create a new document to get started.
+    <!-- Right -->
+    <div class="panel panel-right">
+      <div class="right-content">
+        <div>
+          <div class="section-label">Recent</div>
+          <div id="recent-list">
+            <div class="empty-state">
+              <div class="empty-visual">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14,2 14,8 20,8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10,9 9,9 8,9"/>
+                </svg>
+              </div>
+              <div class="empty-text">
+                <strong>No recent files</strong><br>
+                Documents you open will appear here.
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="dropzone" id="dropzone">
-        <div class="dropzone-text">Drop files here to open</div>
-        <div class="dropzone-formats">md, txt, pdf, docx, pptx, xlsx, html, csv, json</div>
+        <div class="dropzone" id="dropzone">
+          Drop files to open
+          <div class="dropzone-sub">md, txt, pdf, docx, pptx, xlsx, html, csv, json</div>
+        </div>
       </div>
     </div>
   </div>
@@ -493,275 +377,83 @@
     <div class="footer-shortcuts">
       <span><kbd>&#8984;N</kbd> New</span>
       <span><kbd>&#8984;O</kbd> Open</span>
-      <span><kbd>&#8984;&#8679;S</kbd> Save</span>
-      <span><kbd>&#8984;&#8679;P</kbd> Share</span>
+      <span><kbd>&#8984;&#8679;H</kbd> Home</span>
     </div>
-    <span class="footer-version" id="version-text">v1.0.0</span>
+    <span id="version-text">v1.0.0</span>
   </div>
 
   <script>
-    // ─── Actions ───
-
-    document.getElementById("btn-new").addEventListener("click", () => {
-      window.mdfyDesktop.openEditor();
-    });
-
-    document.getElementById("btn-open").addEventListener("click", () => {
-      window.mdfyDesktop.openFile();
-    });
-
-    document.getElementById("btn-paste").addEventListener("click", () => {
-      window.mdfyDesktop.openEditor();
-    });
-
-    document.getElementById("btn-web").addEventListener("click", () => {
-      window.mdfyDesktop.openInBrowser("https://mdfy.cc");
-    });
-
-    document.getElementById("btn-signin").addEventListener("click", () => {
-      window.mdfyDesktop.openInBrowser("https://mdfy.cc/auth/callback");
-    });
-
-    // ─── Templates ───
-
-    const TEMPLATES = {
-      readme: `# Project Name
-
-> A brief description of what this project does.
-
-## Installation
-
-\`\`\`bash
-npm install my-project
-\`\`\`
-
-## Usage
-
-\`\`\`javascript
-import { something } from 'my-project';
-\`\`\`
-
-## Features
-
-- Feature one
-- Feature two
-- Feature three
-
-## License
-
-MIT`,
-
-      meeting: `# Meeting Notes
-
-**Date:** ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
-**Attendees:** @name1, @name2
-
----
-
-## Agenda
-
-1. Topic one
-2. Topic two
-3. Topic three
-
-## Notes
-
--
-
-## Action Items
-
-- [ ] Action item one — @owner
-- [ ] Action item two — @owner
-- [ ] Follow up on previous items
-
-## Next Meeting
-
--`,
-
-      blog: `# Title of Your Blog Post
-
-*Published on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}*
-
-## Introduction
-
-Your opening paragraph goes here. Hook the reader with something interesting.
-
-## Main Section
-
-Develop your argument or share your insights here.
-
-> "A compelling quote that supports your point."
-
-### Subsection
-
-- Key point one
-- Key point two
-- Key point three
-
-![Image description](https://via.placeholder.com/800x400)
-
-## Code Example
-
-\`\`\`python
-def hello():
-    print("Hello, world!")
-\`\`\`
-
-## Conclusion
-
-Wrap up your thoughts and include a call to action.
-
----
-
-*Thanks for reading!*`,
-
-      api: `# API Reference
-
-Base URL: \`https://api.example.com/v1\`
-
-## Authentication
-
-All requests require a Bearer token:
-
-\`\`\`bash
-curl -H "Authorization: Bearer YOUR_TOKEN" https://api.example.com/v1/resource
-\`\`\`
-
-## Endpoints
-
-### GET /users
-
-Returns a list of users.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| page | integer | No | Page number (default: 1) |
-| limit | integer | No | Items per page (default: 20) |
-
-**Response:**
-
-\`\`\`json
-{
-  "data": [
-    { "id": 1, "name": "John", "email": "john@example.com" }
-  ],
-  "total": 100,
-  "page": 1
-}
-\`\`\`
-
-### POST /users
-
-Create a new user.
-
-\`\`\`json
-{
-  "name": "Jane",
-  "email": "jane@example.com"
-}
-\`\`\`
-
-**Status Codes:**
-
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 404 | Not Found |`
-    };
-
-    document.querySelectorAll(".template-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const key = card.dataset.template;
-        const content = TEMPLATES[key];
-        if (content) {
-          window.mdfyDesktop.openEditorWithContent(content, key + ".md");
+    document.getElementById("btn-new").addEventListener("click", function() { window.mdfyDesktop.openEditor(); });
+    document.getElementById("btn-open").addEventListener("click", function() { window.mdfyDesktop.openFile(); });
+    document.getElementById("btn-paste").addEventListener("click", function() {
+      window.mdfyDesktop.readClipboard().then(function(text) {
+        if (text && text.trim()) {
+          window.mdfyDesktop.openEditorWithContent(text, "Pasted.md");
+        } else {
+          window.mdfyDesktop.openEditor();
         }
       });
     });
+    document.getElementById("btn-signin").addEventListener("click", function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc"); });
 
-    // Show version
-    window.mdfyDesktop.getVersion().then((v) => {
-      document.getElementById("version-text").textContent = "v" + v;
-    }).catch(() => {});
+    var EXAMPLES = {
+"ai-cleanup": "# How to Build a REST API\n\n> **User:** How do I build a REST API in Node.js?\n\n## Overview\n\nBuilding a REST API in Node.js typically involves:\n\n1. **Express.js** as the web framework\n2. A database (PostgreSQL, MongoDB, etc.)\n3. Proper error handling and validation\n\n## Quick Setup\n\n```bash\nmkdir my-api && cd my-api\nnpm init -y\nnpm install express cors dotenv\n```\n\n## Basic Server\n\n```javascript\nconst express = require('express');\nconst app = express();\n\napp.use(express.json());\n\napp.get('/api/users', (req, res) => {\n  res.json({ users: [] });\n});\n\napp.listen(3000, () => {\n  console.log('Server running on port 3000');\n});\n```\n\n> **Key takeaway:** Start simple, add complexity as needed.",
 
-    // ─── Drop zone ───
+"code-docs": "# @mdcore/engine API Reference\n\nThe rendering engine that powers mdfy.cc.\n\n## Installation\n\n```bash\nnpm install @mdcore/engine\n```\n\n## Quick Start\n\n```typescript\nimport { mdcore } from '@mdcore/engine';\n\nawait mdcore.init();\nconst result = mdcore.render('# Hello World');\nconsole.log(result.html);\n```\n\n## Supported Flavors\n\n| Flavor | Auto-detect | Extensions |\n|--------|------------|-------------|\n| GFM | Yes | Tables, task lists, strikethrough |\n| Obsidian | Yes | Wikilinks, callouts |\n| MDX | Yes | JSX components |\n| Pandoc | Yes | Citations, footnotes |\n\n## Post-Processing\n\n```typescript\nconst processed = await postProcessHtml(result.html, {\n  highlightCode: true,\n  renderMath: true,\n  renderDiagrams: true,\n});\n```",
 
-    const SUPPORTED_EXTS = new Set([
-      ".md", ".markdown", ".mdown", ".mkd",
-      ".pdf", ".docx", ".pptx", ".xlsx",
-      ".html", ".csv", ".json", ".txt",
-    ]);
+"math": "# Calculus Notes\n\n## The Fundamental Theorem\n\nIf $f$ is continuous on $[a, b]$ and $F$ is an antiderivative of $f$:\n\n$$\\int_a^b f(x)\\,dx = F(b) - F(a)$$\n\n## Integration by Parts\n\n$$\\int u\\,dv = uv - \\int v\\,du$$\n\n**Example:** $\\int x e^x\\,dx = e^x(x - 1) + C$\n\n## Taylor Series\n\n$$f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n$$\n\n- $e^x = \\sum \\frac{x^n}{n!}$\n- $\\sin x = \\sum \\frac{(-1)^n x^{2n+1}}{(2n+1)!}$",
 
-    function getExt(name) {
-      const dot = name.lastIndexOf(".");
-      return dot >= 0 ? name.substring(dot).toLowerCase() : "";
-    }
+"diagram": "# System Architecture\n\n```mermaid\ngraph LR\n  Client[Browser] --> CDN[Vercel CDN]\n  CDN --> Next[Next.js]\n  Next --> WASM[Rust/WASM]\n  Next --> API[REST API]\n  API --> DB[(PostgreSQL)]\n```\n\n```mermaid\nflowchart TD\n  A[Markdown] --> B[WASM Engine]\n  B --> C[Raw HTML]\n  C --> D{Post-Process}\n  D --> E[highlight.js]\n  D --> F[KaTeX]\n  D --> G[Mermaid]\n  E & F & G --> H[Output]\n```\n\n| Layer | Tech | Purpose |\n|-------|------|----------|\n| Engine | Rust + comrak | Parsing |\n| Bridge | wasm-bindgen | Rust to JS |\n| App | Next.js 15 | Web |\n| DB | Supabase | Storage |",
 
-    const dropzone = document.getElementById("dropzone");
+"table": "# Q1 2026 Metrics\n\n| Month | Users | Growth | Revenue |\n|-------|------:|-------:|--------:|\n| Jan | 12,450 | - | $2,490 |\n| Feb | 18,200 | +46% | $4,550 |\n| Mar | 31,800 | +75% | $9,540 |\n\n## Feature Usage\n\n| Feature | Daily | % Total |\n|---------|------:|--------:|\n| Render | 28,400 | 89% |\n| Code | 19,200 | 60% |\n| Math | 8,100 | 26% |\n| Diagrams | 6,300 | 20% |\n| PDF Export | 11,500 | 36% |\n| Share URL | 15,600 | 49% |\n\n- [x] Growth exceeding projections\n- [x] Share driving viral adoption\n- [ ] Pro conversion needs work\n- [ ] Mobile optimization needed"
+    };
 
-    document.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropzone.classList.add("active");
-    });
-    document.addEventListener("dragleave", (e) => {
-      if (!e.relatedTarget || e.relatedTarget === document.documentElement) {
-        dropzone.classList.remove("active");
-      }
-    });
-    document.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropzone.classList.remove("active");
-      const files = Array.from(e.dataTransfer.files).filter((f) =>
-        SUPPORTED_EXTS.has(getExt(f.name))
-      );
-      if (files.length > 0) {
-        window.mdfyDesktop.openFilePath(files[0].path);
-      }
+    document.querySelectorAll(".example-card").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var key = btn.dataset.example;
+        if (EXAMPLES[key]) window.mdfyDesktop.openEditorWithContent(EXAMPLES[key], key + ".md");
+      });
     });
 
-    // ─── Recent files ───
+    var SUPPORTED_EXTS = [".md",".markdown",".mdown",".mkd",".pdf",".docx",".pptx",".xlsx",".html",".csv",".json",".txt"];
+    var dropzone = document.getElementById("dropzone");
+    document.addEventListener("dragover", function(e) { e.preventDefault(); dropzone.classList.add("active"); });
+    document.addEventListener("dragleave", function(e) { if (!e.relatedTarget || e.relatedTarget === document.documentElement) dropzone.classList.remove("active"); });
+    document.addEventListener("drop", function(e) {
+      e.preventDefault(); dropzone.classList.remove("active");
+      var files = Array.from(e.dataTransfer.files).filter(function(f) {
+        var d = f.name.lastIndexOf("."); return d >= 0 && SUPPORTED_EXTS.indexOf(f.name.substring(d).toLowerCase()) !== -1;
+      });
+      if (files.length > 0) window.mdfyDesktop.openFilePath(files[0].path);
+    });
 
-    window.mdfyDesktop.getRecentFiles().then((files) => {
-      const list = document.getElementById("recent-list");
+    window.mdfyDesktop.getRecentFiles().then(function(files) {
       if (!files || files.length === 0) return;
-
+      var list = document.getElementById("recent-list");
       list.innerHTML = "";
-      files.forEach((file) => {
-        const item = document.createElement("button");
+      files.forEach(function(file) {
+        var item = document.createElement("button");
         item.className = "recent-item";
-        const name = file.path.split("/").pop();
-        const dir = file.path.replace(/\/[^/]+$/, "").replace(/^\/Users\/[^/]+/, "~");
-        const ago = timeAgo(file.openedAt);
-
-        item.innerHTML = `
-          <svg class="recent-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
-            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-            <path d="M6 5h4M6 8h4M6 11h2" stroke-linecap="round"/>
-          </svg>
-          <div class="recent-info">
-            <div class="recent-name">${name}</div>
-            <div class="recent-dir">${dir}</div>
-          </div>
-          <span class="recent-time">${ago}</span>
-        `;
-        item.addEventListener("click", () => window.mdfyDesktop.openFilePath(file.path));
+        var name = file.path.split("/").pop();
+        var dir = file.path.replace(/\/[^/]+$/, "").replace(/^\/Users\/[^/]+/, "~");
+        item.innerHTML =
+          '<svg class="recent-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M6 5h4M6 8h4M6 11h2" stroke-linecap="round"/></svg>' +
+          '<div class="recent-info"><div class="recent-name">' + name + '</div><div class="recent-dir">' + dir + '</div></div>' +
+          '<span class="recent-time">' + timeAgo(file.openedAt) + '</span>';
+        item.addEventListener("click", function() { window.mdfyDesktop.openFilePath(file.path); });
         list.appendChild(item);
       });
     });
 
-    function timeAgo(timestamp) {
-      const diff = Date.now() - new Date(timestamp).getTime();
-      const min = Math.floor(diff / 60000);
-      if (min < 1) return "Just now";
-      if (min < 60) return min + "m ago";
-      const hr = Math.floor(min / 60);
-      if (hr < 24) return hr + "h ago";
-      const day = Math.floor(hr / 24);
-      if (day < 7) return day + "d ago";
-      return new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    function timeAgo(ts) {
+      var d = Date.now() - new Date(ts).getTime(), m = Math.floor(d/60000);
+      if (m < 1) return "Now"; if (m < 60) return m + "m";
+      var h = Math.floor(m/60); if (h < 24) return h + "h";
+      var dy = Math.floor(h/24); if (dy < 7) return dy + "d";
+      return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
+
+    window.mdfyDesktop.getVersion().then(function(v) { document.getElementById("version-text").textContent = "v" + v; }).catch(function(){});
   </script>
 </body>
 </html>

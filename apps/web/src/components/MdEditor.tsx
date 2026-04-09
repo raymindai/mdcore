@@ -3785,15 +3785,15 @@ ${html}
       >
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <h1
-            className="text-base sm:text-lg font-bold tracking-tight cursor-pointer shrink-0"
+            className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={handleClear}
             title="mdfy.cc — New document"
           >
-            <MdfyLogo />
+            <MdfyLogo size={18} />
           </h1>
           {title && (
             <button
-              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors hidden sm:block"
+              className="text-xs pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors hidden sm:block"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
               title="Click to rename"
               onClick={() => {

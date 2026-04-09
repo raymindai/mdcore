@@ -201,7 +201,7 @@ function injectNativeBridge() {
         body > div > div > header,
         [class*="backdrop-blur"] {
           -webkit-app-region: drag;
-          padding-left: 80px !important;
+          padding-left: 72px !important;
         }
         /* Make all interactive elements not draggable */
         button, a, input, select, textarea, [contenteditable],
@@ -220,51 +220,13 @@ function injectNativeBridge() {
 function injectHomeButton() {
   mainWindow.webContents.executeJavaScript(`
     (function() {
-      if (document.getElementById('mdfy-home-footer')) return;
+      if (window.__MDFY_HOME_BOUND__) return;
+      window.__MDFY_HOME_BOUND__ = true;
       var goHome = function() { document.title = '__MDFY_HOME__'; };
 
-      // 1. Footer bar with Home link
-      var footer = document.createElement('div');
-      footer.id = 'mdfy-home-footer';
-      var fs = footer.style;
-      fs.position = 'fixed';
-      fs.bottom = '0';
-      fs.left = '0';
-      fs.right = '0';
-      fs.height = '32px';
-      fs.display = 'flex';
-      fs.alignItems = 'center';
-      fs.padding = '0 16px';
-      fs.background = 'var(--background, #09090b)';
-      fs.borderTop = '1px solid var(--border, #27272a)';
-      fs.zIndex = '99999';
-      fs.fontFamily = '-apple-system, BlinkMacSystemFont, sans-serif';
-      fs.fontSize = '11px';
-      fs.webkitAppRegion = 'no-drag';
-
-      var homeLink = document.createElement('button');
-      homeLink.textContent = 'Home';
-      var hs = homeLink.style;
-      hs.background = 'none';
-      hs.border = 'none';
-      hs.color = 'var(--text-faint, #52525b)';
-      hs.cursor = 'pointer';
-      hs.fontFamily = 'inherit';
-      hs.fontSize = 'inherit';
-      hs.fontWeight = '500';
-      hs.padding = '0';
-      hs.transition = 'color 0.15s';
-      homeLink.onmouseenter = function() { hs.color = 'var(--accent, #fb923c)'; };
-      homeLink.onmouseleave = function() { hs.color = 'var(--text-faint, #52525b)'; };
-      homeLink.onclick = goHome;
-      footer.appendChild(homeLink);
-
-      document.body.appendChild(footer);
-      document.body.style.paddingBottom = '32px';
-
-      // 2. Make header logo clickable → Home
+      // Make header logo clickable → Home
       setTimeout(function() {
-        var logos = document.querySelectorAll('header a[href="/"], header img, header svg');
+        var logos = document.querySelectorAll('header a[href="/"], header [aria-label="mdfy.cc"]');
         logos.forEach(function(el) {
           el.style.cursor = 'pointer';
           el.addEventListener('click', function(e) {
@@ -485,10 +447,20 @@ ipcMain.handle("open-file-path", (event, filePath) => {
 
 ipcMain.handle("open-editor", () => {
   currentFilePath = null;
-  // Load with a space to get a blank editor (not the default guide)
-  const blank = Buffer.from(" ").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-  loadMdfyOrOffline(`${MDFY_URL}/#md=${blank}&file=Untitled.md`);
+  loadMdfyOrOffline(MDFY_URL);
   mainWindow.setTitle("mdfy — New Document");
+  // After mdfy.cc loads, clear to blank editor
+  mainWindow.webContents.once("did-finish-load", () => {
+    injectNativeBridge();
+    injectHomeButton();
+    setTimeout(() => {
+      mainWindow.webContents.executeJavaScript(`
+        // Click the logo to trigger handleClear (new document)
+        var logo = document.querySelector('h1[title*="New document"]');
+        if (logo) logo.click();
+      `);
+    }, 2000);
+  });
 });
 
 ipcMain.handle("open-editor-with-content", (event, markdown, fileName) => {
@@ -502,6 +474,11 @@ ipcMain.handle("open-editor-with-content", (event, markdown, fileName) => {
 
 ipcMain.handle("get-version", () => {
   return app.getVersion();
+});
+
+ipcMain.handle("read-clipboard", () => {
+  const { clipboard } = require("electron");
+  return clipboard.readText() || "";
 });
 
 ipcMain.handle("get-recent-files", () => {
@@ -582,9 +559,17 @@ function buildMenu() {
           accelerator: "CmdOrCtrl+N",
           click: () => {
             currentFilePath = null;
-            const blank = Buffer.from(" ").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-            loadMdfyOrOffline(`${MDFY_URL}/#md=${blank}&file=Untitled.md`);
-            mainWindow.setTitle("mdfy — New Document");
+            const url = mainWindow.webContents.getURL();
+            if (url.startsWith("https://mdfy.cc")) {
+              // Already on mdfy.cc, just clear
+              mainWindow.webContents.executeJavaScript(`
+                var logo = document.querySelector('h1[title*="New document"]');
+                if (logo) logo.click();
+              `);
+            } else {
+              loadMdfyOrOffline(MDFY_URL);
+              mainWindow.setTitle("mdfy — New Document");
+            }
           },
         },
         {

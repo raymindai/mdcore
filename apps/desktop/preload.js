@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, shell } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("mdfyDesktop", {
   isDesktop: true,
@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   getRecentFiles: () => ipcRenderer.invoke("get-recent-files"),
   openInBrowser: (url) => ipcRenderer.invoke("open-in-browser", url),
   getVersion: () => ipcRenderer.invoke("get-version"),
+  readClipboard: () => ipcRenderer.invoke("read-clipboard"),
 });
