@@ -53,6 +53,24 @@
     }
   }
 
+  // ─── Proxy Fetch (via background to bypass CORS) ───
+
+  function proxyFetch(url, options = {}) {
+    return new Promise((resolve) => {
+      // Convert body to string if needed
+      const serializableOptions = { ...options };
+      if (options.body instanceof FormData) {
+        // FormData can't be sent via message — skip proxy for FormData
+        resolve({ ok: false, error: "FormData not supported via proxy" });
+        return;
+      }
+      chrome.runtime.sendMessage(
+        { action: "proxy-fetch", url, options: serializableOptions },
+        (r) => resolve(r || { ok: false, error: "no response" })
+      );
+    });
+  }
+
   // ─── Toast Notification ───
 
   function showToast(message, duration = 3000) {
@@ -74,6 +92,23 @@
     }, duration);
   }
 
+  // ─── SVG to Data URL ───
+
+  function svgToDataUrl(svgEl) {
+    try {
+      // Serialize SVG to string
+      const serializer = new XMLSerializer();
+      const svgStr = serializer.serializeToString(svgEl);
+      // Encode as data URL
+      const encoded = encodeURIComponent(svgStr)
+        .replace(/'/g, "%27")
+        .replace(/"/g, "%22");
+      return "data:image/svg+xml," + encoded;
+    } catch {
+      return null;
+    }
+  }
+
   // ─── HTML to Markdown Conversion (lightweight) ───
 
   function htmlToMarkdown(el) {
@@ -82,8 +117,103 @@
     // Clone to avoid mutating the page
     const clone = el.cloneNode(true);
 
-    // ── Processing order: structural first, then innermost-to-outermost ──
-    // 1. Tables (structural, must be first)
+    // ── Step 0: Remove injected UI and non-content elements ──
+    clone.querySelectorAll(
+      ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
+      "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
+      "[class*='view-transition'], style, script, noscript, " +
+      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
+      "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
+      "button[aria-expanded], " +
+      "[aria-hidden='true'], .sr-only"
+    ).forEach((el) => el.remove());
+
+    // ── Step 1a: Claude Artifact iframes (cross-origin, cannot extract) ──
+    clone.querySelectorAll("iframe").forEach((iframe) => {
+      const src = iframe.getAttribute("src") || "";
+      if (src.includes("claudemcpcontent.com") || src.includes("artifact")) {
+        // Get title from nearby heading or the iframe's title attribute
+        const container = iframe.closest("div");
+        const heading = container?.querySelector("h1, h2, h3, [class*='title']");
+        const title = heading?.textContent?.trim() || iframe.getAttribute("title") || "";
+        const label = title ? "📊 *" + title + "*" : "📊 *Interactive diagram*";
+        iframe.textContent = "\n\n" + label + "\n*(Download the diagram from the original conversation and paste it here)*\n\n";
+      }
+    });
+
+    // ── Step 1b: SVG diagrams → inline image ──
+    // Convert SVG diagrams to data URL images.
+    clone.querySelectorAll("svg").forEach((svg) => {
+      // Skip tiny icons (< 50px) — only convert actual diagrams
+      const w = parseInt(svg.getAttribute("width") || svg.style.width || "0");
+      const h = parseInt(svg.getAttribute("height") || svg.style.height || "0");
+      const viewBox = svg.getAttribute("viewBox");
+      const isLarge = w > 50 || h > 50 || (viewBox && !svg.closest("button"));
+
+      if (!isLarge) {
+        svg.remove();
+        return;
+      }
+
+      // Check for mermaid source code first
+      const source = svg.getAttribute("data-mermaid-source") ||
+                     svg.closest("[data-mermaid-source]")?.getAttribute("data-mermaid-source");
+      if (source) {
+        svg.textContent = "\n```mermaid\n" + source.trim() + "\n```\n";
+        return;
+      }
+
+      // Convert SVG to data URL image
+      const dataUrl = svgToDataUrl(svg);
+      if (dataUrl) {
+        const alt = svg.getAttribute("aria-label") || svg.getAttribute("title") || "diagram";
+        svg.textContent = "\n![" + alt + "](" + dataUrl + ")\n";
+      } else {
+        svg.remove();
+      }
+    });
+
+    // ── Step 2: KaTeX rendered math → LaTeX source ──
+    // Claude uses KaTeX: look for .katex elements with annotation[encoding="application/x-tex"]
+    clone.querySelectorAll(".katex, .katex-display, [class*='katex']").forEach((katexEl) => {
+      const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
+      if (annotation) {
+        const tex = annotation.textContent.trim();
+        // Check if display or inline
+        const isDisplay = katexEl.classList.contains("katex-display") ||
+                          !!katexEl.closest(".katex-display") ||
+                          katexEl.closest("[class*='display']");
+        if (isDisplay) {
+          katexEl.textContent = "\n$$\n" + tex + "\n$$\n";
+        } else {
+          katexEl.textContent = "$" + tex + "$";
+        }
+      } else {
+        // Fallback: try to get from aria-label or data attribute
+        const ariaLabel = katexEl.getAttribute("aria-label");
+        if (ariaLabel) {
+          const isDisplay = katexEl.classList.contains("katex-display") ||
+                            !!katexEl.closest(".katex-display");
+          if (isDisplay) {
+            katexEl.textContent = "\n$$\n" + ariaLabel + "\n$$\n";
+          } else {
+            katexEl.textContent = "$" + ariaLabel + "$";
+          }
+        }
+      }
+    });
+
+    // Also handle math rendered with MathJax or other renderers
+    clone.querySelectorAll("[data-math-style], .MathJax, .MathJax_Display").forEach((mathEl) => {
+      const src = mathEl.getAttribute("data-math-src") || mathEl.getAttribute("aria-label") || "";
+      if (src) {
+        const isDisplay = mathEl.getAttribute("data-math-style") === "display" ||
+                          mathEl.classList.contains("MathJax_Display");
+        mathEl.textContent = isDisplay ? "\n$$\n" + src + "\n$$\n" : "$" + src + "$";
+      }
+    });
+
+    // ── Step 3: Tables ──
     clone.querySelectorAll("table").forEach((table) => {
       let md = "\n";
       const rows = table.querySelectorAll("tr");
@@ -98,27 +228,37 @@
       table.textContent = md;
     });
 
-    // 2. Code blocks (preserve content, before inline processing)
+    // ── Step 4: Code blocks ──
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
       const text = code ? code.textContent : pre.textContent;
-      // Try to detect language from class names
       let lang = "";
+      // Try class-based detection
       const langClass = (code || pre).className.match(/language-(\w+)|lang-(\w+)/);
       if (langClass) lang = langClass[1] || langClass[2];
-      // Also check the pre's lang attribute (comrak style)
+      // Check pre's lang attribute
       if (!lang && pre.getAttribute("lang")) lang = pre.getAttribute("lang");
+      // Claude uses data-language or a header div with the language name
+      if (!lang) {
+        const header = pre.previousElementSibling;
+        if (header && header.textContent.trim().length < 20) {
+          const headerText = header.textContent.trim().toLowerCase();
+          if (/^(rust|python|javascript|typescript|js|ts|go|java|c\+\+|c|ruby|swift|kotlin|bash|sh|sql|html|css|json|yaml|xml|toml|dockerfile|makefile)$/i.test(headerText)) {
+            lang = headerText;
+            header.remove();
+          }
+        }
+      }
       pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
     });
 
-    // 3. Inline code
+    // ── Step 5: Inline code ──
     clone.querySelectorAll("code").forEach((code) => {
-      // Skip if already inside a processed pre
       if (code.closest("pre")) return;
       code.textContent = "`" + code.textContent + "`";
     });
 
-    // 4. Images
+    // ── Step 6: Images ──
     clone.querySelectorAll("img").forEach((img) => {
       const src = img.getAttribute("src") || "";
       const alt = img.getAttribute("alt") || "image";
@@ -128,16 +268,14 @@
       }
     });
 
-    // 5. Links (BEFORE bold/italic to preserve nested formatting)
+    // ── Step 7: Links ──
     clone.querySelectorAll("a").forEach((a) => {
       const href = a.getAttribute("href");
       if (href) {
-        // Wrap the link's existing innerHTML so nested bold/italic is preserved
         const before = document.createTextNode("[");
         const after = document.createTextNode("](" + href + ")");
         a.insertBefore(before, a.firstChild);
         a.appendChild(after);
-        // Unwrap the <a> element, keeping its children in place
         while (a.firstChild) {
           a.parentNode.insertBefore(a.firstChild, a);
         }
@@ -145,7 +283,7 @@
       }
     });
 
-    // 6. Bold (using innerHTML-aware approach to preserve child markup)
+    // ── Step 8: Bold ──
     clone.querySelectorAll("strong, b").forEach((el) => {
       const before = document.createTextNode("**");
       const after = document.createTextNode("**");
@@ -157,7 +295,7 @@
       el.remove();
     });
 
-    // 7. Italic
+    // ── Step 9: Italic ──
     clone.querySelectorAll("em, i").forEach((el) => {
       const before = document.createTextNode("*");
       const after = document.createTextNode("*");
@@ -169,7 +307,7 @@
       el.remove();
     });
 
-    // 8. Lists
+    // ── Step 10: Lists ──
     clone.querySelectorAll("ol").forEach((ol) => {
       const items = ol.querySelectorAll(":scope > li");
       items.forEach((li, i) => {
@@ -183,21 +321,29 @@
       });
     });
 
-    // 9. Headings
+    // ── Step 11: Headings (ensure newlines around headings) ──
     clone.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
       const level = parseInt(h.tagName[1]);
-      h.textContent = "#".repeat(level) + " " + h.textContent.trim();
+      h.textContent = "\n\n" + "#".repeat(level) + " " + h.textContent.trim() + "\n\n";
     });
 
-    // 10. Blockquotes
+    // ── Step 12: Blockquotes ──
     clone.querySelectorAll("blockquote").forEach((bq) => {
       const lines = bq.textContent.trim().split("\n");
       bq.textContent = lines.map((l) => "> " + l).join("\n");
     });
 
-    // Get text content, clean up whitespace
+    // ── Step 13: Horizontal rules ──
+    clone.querySelectorAll("hr").forEach((hr) => {
+      hr.textContent = "\n---\n";
+    });
+
+    // Get text content, clean up
     let text = clone.innerText || clone.textContent || "";
-    // Normalize line breaks
+    // Remove Claude UI artifacts that slip through
+    text = text.replace(/V?visualize\s*V?visualize\s*/gi, "");
+    text = text.replace(/show_widget\s*/gi, "");
+    text = text.replace(/Reading\s+\w+\s+design\s+skill\s*/gi, "");
     text = text.replace(/\n{3,}/g, "\n\n");
     return text.trim();
   }
@@ -314,6 +460,8 @@
     });
 
     assistantEls.forEach((el) => {
+      // Use el directly — Step 0 in htmlToMarkdown removes UI chrome.
+      // This preserves captured diagram images that are outside .markdown.
       const text = htmlToMarkdown(el);
       if (text.length > 2) {
         allMsgs.push({ role: "assistant", content: text, el });
@@ -397,6 +545,94 @@
     return messages;
   }
 
+  /**
+   * Pre-process Claude artifact iframes: fetch SVG content via background
+   * and replace iframes with inline SVG data URL images in the DOM.
+   * Must be called BEFORE extractConversation/htmlToMarkdown.
+   */
+  /**
+   * Pre-process artifact iframes: screenshot visible iframes and replace
+   * with inline images. Uses chrome.tabs.captureVisibleTab + canvas crop.
+   */
+  async function preProcessArtifactIframes() {
+    const iframes = document.querySelectorAll(".font-claude-response iframe");
+    if (iframes.length === 0) return;
+
+    const userId = await getUserId();
+    if (!userId) {
+      showToast("Sign in to mdfy.cc to capture diagrams", 3000);
+      return;
+    }
+
+    // Collect all artifact iframes
+    const targets = [];
+    for (const iframe of iframes) {
+      const src = iframe.getAttribute("src") || "";
+      if (!src.includes("claudemcpcontent.com") && !src.includes("artifact")) continue;
+      if (iframe.getBoundingClientRect().width > 50) {
+        targets.push(iframe);
+      }
+    }
+
+    if (targets.length === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    for (let ti = 0; ti < targets.length; ti++) {
+      const iframe = targets[ti];
+      try {
+        // Scroll iframe into view
+        iframe.scrollIntoView({ behavior: "instant", block: "center" });
+        // Wait for scroll + render
+        await new Promise((r) => setTimeout(r, 300));
+
+        const rect = iframe.getBoundingClientRect();
+        if (rect.width < 50 || rect.height < 50) continue;
+
+        // Take screenshot
+        const screenshotDataUrl = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ action: "capture-tab" }, (r) => resolve(r?.dataUrl || null));
+        });
+        if (!screenshotDataUrl) continue;
+
+        const screenshotImg = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = screenshotDataUrl;
+        });
+        if (!screenshotImg) continue;
+
+        // Crop iframe area
+        const canvas = document.createElement("canvas");
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(
+          screenshotImg,
+          rect.left * dpr, rect.top * dpr,
+          rect.width * dpr, rect.height * dpr,
+          0, 0,
+          rect.width * dpr, rect.height * dpr
+        );
+        const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+
+        // Upload
+        const uploadUrl = await uploadImageToMdfy(croppedDataUrl);
+        if (uploadUrl) {
+          console.log("[mdfy] diagram uploaded:", uploadUrl);
+          const img = document.createElement("img");
+          img.src = uploadUrl;
+          img.alt = "diagram";
+          img.style.maxWidth = "100%";
+          iframe.replaceWith(img);
+        }
+      } catch (err) {
+        console.error("[mdfy] diagram capture failed:", err);
+      }
+    }
+  }
+
   function extractConversation() {
     switch (platform) {
       case "chatgpt": return extractChatGPT();
@@ -464,29 +700,20 @@
 
   async function uploadImageToMdfy(imageUrl) {
     try {
-      // Fetch the image as blob
-      const res = await fetch(imageUrl);
-      if (!res.ok) return null;
-      const blob = await res.blob();
-      if (!blob.type.startsWith("image/")) return null;
-
-      // Upload to mdfy.cc
-      const formData = new FormData();
-      formData.append("file", blob, "image." + (blob.type.split("/")[1] || "png"));
-
-      // Try to get userId from cookie/storage
       const userId = await getUserId();
-      if (!userId) return null; // Not logged in, can't upload
+      if (!userId) return null;
 
-      const uploadRes = await fetch(MDFY_URL + "/api/upload", {
-        method: "POST",
-        headers: { "x-user-id": userId },
-        body: formData,
+      // Upload via background service worker (bypasses CORS)
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { action: "upload-image", dataUrl: imageUrl, userId },
+          (r) => resolve(r || { error: "no response" })
+        );
       });
 
-      if (!uploadRes.ok) return null;
-      const { url } = await uploadRes.json();
-      return url;
+      if (response.url) return response.url;
+      console.warn("[mdfy] Image upload failed:", response.error);
+      return null;
     } catch (err) {
       console.warn("[mdfy] Image upload failed:", err);
       return null;
@@ -518,11 +745,11 @@
     const userId = await getUserId();
     if (!userId) return markdown; // Keep original URLs as-is
 
-    // Filter to uploadable images
+    // Filter to uploadable images (include data: URLs from captured diagrams)
     const uploadable = matches.filter((match) => {
       const url = match[2];
       if (url.includes("supabase") || url.includes("mdfy.cc")) return false;
-      if (url.startsWith("data:")) return false;
+      if (url.startsWith("data:")) return true; // captured diagram screenshots
       if (!url.startsWith("http")) return false;
       return true;
     });
@@ -530,28 +757,19 @@
     if (uploadable.length === 0) return markdown;
 
     // Upload all images in parallel
-    let completed = 0;
-    const total = uploadable.length;
-    showToast("Uploading images (0/" + total + ")...", 30000);
-
     const uploadPromises = uploadable.map(async (match) => {
       const originalUrl = match[2];
       try {
         const permanentUrl = await uploadImageToMdfy(originalUrl);
-        completed++;
-        showToast("Uploading images (" + completed + "/" + total + ")...", 30000);
         return { originalUrl, permanentUrl };
       } catch (err) {
         console.warn("[mdfy] Failed to upload image:", originalUrl, err);
-        completed++;
-        showToast("Uploading images (" + completed + "/" + total + ")...", 30000);
         return { originalUrl, permanentUrl: null };
       }
     });
 
     const results = await Promise.all(uploadPromises);
 
-    // Replace all URLs
     let result = markdown;
     for (const { originalUrl, permanentUrl } of results) {
       if (permanentUrl) {
@@ -559,7 +777,6 @@
       }
     }
 
-    showToast("Images uploaded", 2000);
     return result;
   }
 
@@ -567,8 +784,7 @@
 
   async function sendToMdfy(markdown) {
     if (!markdown || markdown.trim().length === 0) {
-      showToast("No content found to capture");
-      return;
+      throw new Error("No content found");
     }
 
     // Upload images to permanent storage before sending
@@ -578,21 +794,18 @@
     const userId = await getUserId();
     if (userId) {
       try {
-        // Extract title from first heading or first line
         const titleMatch = markdown.match(/^#\s+(.+)/m);
         const title = titleMatch ? titleMatch[1].trim().slice(0, 100) : "Captured from " + platformName();
 
-        const res = await fetch(MDFY_URL + "/api/docs", {
+        const res = await proxyFetch(MDFY_URL + "/api/docs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ markdown, userId, title, editMode: "account" }),
         });
 
         if (res.ok) {
-          const { id } = await res.json();
-          const docUrl = MDFY_URL + "/" + id;
-          showToast("Published to mdfy.cc/" + id);
-          window.open(docUrl, "_blank");
+          const { id } = JSON.parse(res.body);
+          window.open(MDFY_URL + "/" + id, "_blank");
           return;
         }
       } catch (err) {
@@ -604,18 +817,12 @@
     const compressed = await compressToBase64Url(markdown);
     const url = MDFY_URL + "/#md=" + compressed;
 
-    // Check if URL is within safe length
     if (url.length <= MAX_URL_BYTES) {
-      showToast(userId ? "Opened in mdfy.cc" : "Opened in mdfy.cc (sign in for permanent URL)");
-      window.open(url, "_blank");
+      window.open(url, "mdfy_" + Date.now());
     } else {
-      // Content too large for URL — copy to clipboard
       try {
         await navigator.clipboard.writeText(markdown);
-        showToast("Content copied to clipboard. Opening mdfy.cc — paste it there.");
-      } catch (err) {
-        console.warn("[mdfy] Clipboard write failed, using fallback:", err);
-        // Fallback copy
+      } catch {
         const textarea = document.createElement("textarea");
         textarea.value = markdown;
         textarea.style.position = "fixed";
@@ -624,9 +831,8 @@
         textarea.select();
         document.execCommand("copy");
         document.body.removeChild(textarea);
-        showToast("Content copied to clipboard. Opening mdfy.cc — paste it there.");
       }
-      window.open(MDFY_URL, "_blank");
+      window.open(MDFY_URL, "mdfy_" + Date.now());
     }
   }
 
@@ -635,20 +841,39 @@
   function createFloatingButton() {
     const btn = document.createElement("button");
     btn.id = "mdfy-float-btn";
-    btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">Capture</span>';
-    btn.title = "Capture this AI conversation and publish on mdfy.cc";
+    btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">All</span>';
+    btn.title = "Capture entire conversation and publish on mdfy.cc";
     document.body.appendChild(btn);
 
+    const setFloatStatus = (status, state) => {
+      const logo = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span>';
+      const stateClass = state === "done" ? " mdfy-btn-status-done" : state === "error" ? " mdfy-btn-status-error" : "";
+      btn.innerHTML = logo + '<span class="mdfy-btn-label' + stateClass + '">' + status + '</span>';
+    };
+    const resetFloat = () => {
+      btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">All</span>';
+    };
+
     btn.addEventListener("click", async () => {
+      btn.classList.remove("mdfy-done", "mdfy-error");
       btn.classList.add("mdfy-loading");
+      setFloatStatus("Capturing...");
       try {
+        await preProcessArtifactIframes();
+        setFloatStatus("Converting...");
         const messages = extractConversation();
         const markdown = formatConversation(messages);
+        setFloatStatus("Publishing...");
         await sendToMdfy(markdown);
-      } catch (err) {
-        showToast("Failed to capture: " + err.message);
-      } finally {
         btn.classList.remove("mdfy-loading");
+        btn.classList.add("mdfy-done");
+        setFloatStatus("Published ✓", "done");
+        setTimeout(() => { btn.classList.remove("mdfy-done"); resetFloat(); }, 3000);
+      } catch (err) {
+        btn.classList.remove("mdfy-loading");
+        btn.classList.add("mdfy-error");
+        setFloatStatus("Failed", "error");
+        setTimeout(() => { btn.classList.remove("mdfy-error"); resetFloat(); }, 3000);
       }
     });
   }
@@ -685,25 +910,47 @@
 
       const miniBtn = document.createElement("button");
       miniBtn.className = "mdfy-mini-btn";
-      miniBtn.innerHTML = '<span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span><span class="mdfy-mini-label">this</span>';
+      miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
       miniBtn.title = "Send this message to mdfy.cc";
+
+      const setMiniStatus = (status, state) => {
+        const logo = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span>';
+        const stateClass = state === "done" ? " mdfy-mini-status-done" : state === "error" ? " mdfy-mini-status-error" : "";
+        miniBtn.innerHTML = logo + '<span class="mdfy-mini-status' + stateClass + '">' + status + '</span>';
+      };
 
       miniBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        miniBtn.classList.remove("mdfy-done", "mdfy-error");
         miniBtn.classList.add("mdfy-loading");
+        setMiniStatus("Capturing...");
         try {
-          const text = extractSingleMessage(msg);
+          await preProcessArtifactIframes();
+          setMiniStatus("Converting...");
+          const text = htmlToMarkdown(msg);
           const markdown = "> Single response from " + platformName() + "\n\n" + text;
+          setMiniStatus("Publishing...");
           await sendToMdfy(markdown);
-        } catch (err) {
-          showToast("Failed to capture: " + err.message);
-        } finally {
           miniBtn.classList.remove("mdfy-loading");
+          miniBtn.classList.add("mdfy-done");
+          setMiniStatus("Published ✓", "done");
+          setTimeout(() => {
+            miniBtn.classList.remove("mdfy-done");
+            miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
+          }, 3000);
+        } catch (err) {
+          miniBtn.classList.remove("mdfy-loading");
+          miniBtn.classList.add("mdfy-error");
+          setMiniStatus("Failed", "error");
+          setTimeout(() => {
+            miniBtn.classList.remove("mdfy-error");
+            miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
+          }, 3000);
         }
       });
 
-      msg.appendChild(miniBtn);
+      msg.insertBefore(miniBtn, msg.firstChild);
     });
   }
 
@@ -711,9 +958,11 @@
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "capture-conversation") {
-      const messages = extractConversation();
-      const markdown = formatConversation(messages);
-      sendResponse({ markdown, platform });
+      preProcessArtifactIframes().then(() => {
+        const messages = extractConversation();
+        const markdown = formatConversation(messages);
+        sendResponse({ markdown, platform });
+      });
       return true;
     }
 

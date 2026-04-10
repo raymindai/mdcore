@@ -9,11 +9,11 @@
   z-index: 999999;
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 14px;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
   border: 1px solid rgba(251, 146, 60, 0.25);
-  border-radius: 18px;
+  border-radius: 15px;
   background: #09090b;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -35,13 +35,33 @@
 
 #mdfy-float-btn.mdfy-loading {
   pointer-events: none;
-  opacity: 0.4;
+  opacity: 1;
+  border-color: rgba(251, 146, 60, 0.3);
 }
 
+#mdfy-float-btn.mdfy-loading .mdfy-btn-label {
+  animation: mdfy-pulse 1.2s ease-in-out infinite;
+}
+
+#mdfy-float-btn.mdfy-done {
+  pointer-events: none;
+  opacity: 1;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+#mdfy-float-btn.mdfy-error {
+  pointer-events: none;
+  opacity: 1;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.mdfy-btn-status-done { color: #4ade80 !important; border-color: rgba(74, 222, 128, 0.2) !important; }
+.mdfy-btn-status-error { color: #f87171 !important; border-color: rgba(248, 113, 113, 0.2) !important; }
+
 .mdfy-btn-logo {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
   display: inline-flex;
 }
 
@@ -49,19 +69,20 @@
 .mdfy-logo-fy { color: #fafafa; }
 
 .mdfy-btn-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: #71717a;
   border-left: 1px solid #27272a;
-  padding-left: 6px;
+  padding-left: 5px;
 }
 
 /* ─── Per-Message Mini Button ─── */
 
 .mdfy-mini-btn {
-  position: absolute;
+  position: sticky;
   top: 8px;
-  right: 8px;
+  float: right;
+  margin-right: 8px;
   z-index: 999998;
   display: flex;
   align-items: center;
@@ -100,12 +121,42 @@
 
 .mdfy-mini-btn.mdfy-loading {
   pointer-events: none;
-  opacity: 0.3;
+  opacity: 1;
+  min-width: 120px;
+  border-color: rgba(251, 146, 60, 0.3);
 }
 
-.mdfy-mini-md { color: #fb923c; display: inline; }
-.mdfy-mini-fy { color: #fafafa; display: inline; margin-left: -1px; }
-.mdfy-mini-label { color: #52525b; margin-left: 2px; font-weight: 500; }
+.mdfy-mini-btn.mdfy-done {
+  pointer-events: none;
+  opacity: 1;
+  min-width: 120px;
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.mdfy-mini-btn.mdfy-error {
+  pointer-events: none;
+  opacity: 1;
+  min-width: 120px;
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.mdfy-mini-logo { display: inline-flex; letter-spacing: -0.5px; }
+.mdfy-mini-md { color: #fb923c; }
+.mdfy-mini-fy { color: #fafafa; }
+.mdfy-mini-label { color: #52525b; margin-left: 4px; font-weight: 500; }
+.mdfy-mini-status { color: #a1a1aa; margin-left: 2px; font-weight: 400; font-size: 9px; }
+.mdfy-mini-status-done { color: #4ade80; }
+.mdfy-mini-status-error { color: #f87171; }
+
+@keyframes mdfy-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.mdfy-mini-btn.mdfy-loading .mdfy-mini-status {
+  animation: mdfy-pulse 1.2s ease-in-out infinite;
+}
 
 /* ─── Toast Notification ─── */
 

@@ -200,7 +200,7 @@ export default function DocumentViewer({
     })();
   }, [html, isLoading, theme]);
 
-  const btnClass = "px-2 sm:px-2.5 h-6 rounded-md font-mono transition-colors text-[11px] sm:text-xs flex items-center gap-1";
+  const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1";
 
   return (
     <div
@@ -218,13 +218,13 @@ export default function DocumentViewer({
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
             href="/"
-            className="text-base sm:text-lg font-bold tracking-tight shrink-0"
+            className="font-bold tracking-tight shrink-0"
           >
-            <MdfyLogo />
+            <MdfyLogo size={18} />
           </Link>
           {title && (
             <span
-              className="text-xs sm:text-sm pl-2 sm:pl-3 truncate max-w-[120px] sm:max-w-[300px]"
+              className="text-xs pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-[300px]"
               style={{
                 color: "var(--text-muted)",
                 borderLeft: "1px solid var(--border)",
@@ -251,16 +251,16 @@ export default function DocumentViewer({
             style={{ background: "var(--toggle-bg)", color: copied ? "#4ade80" : "var(--text-muted)" }}
           >
             {copied ? (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 8 7 11 12 5"/></svg>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 8 7 11 12 5"/></svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 10l4-4"/><path d="M8.5 3.5L10 2a2 2 0 012.83 2.83L11.5 6.17"/><path d="M4.5 9.83L3.17 11.17A2 2 0 006 14l1.5-1.5"/></svg>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 10l4-4"/><path d="M8.5 3.5L10 2a2 2 0 012.83 2.83L11.5 6.17"/><path d="M4.5 9.83L3.17 11.17A2 2 0 006 14l1.5-1.5"/></svg>
             )}
-            {copied ? "Copied" : "Link"}
+            <span className="hidden sm:inline">{copied ? "Copied" : "Link"}</span>
           </button>
           {/* Narrow toggle — hidden on mobile (always narrow there) */}
           <button
             onClick={() => setNarrowView(!narrowView)}
-            className="h-6 px-2 rounded-md transition-colors hidden sm:flex items-center gap-1.5"
+            className="h-6 px-2 rounded-md transition-colors hidden sm:flex items-center gap-1"
             style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
             title={narrowView ? "Wide view" : "Narrow view"}
           >
@@ -276,7 +276,7 @@ export default function DocumentViewer({
             className="h-6 px-2 rounded-md transition-colors flex items-center"
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               {theme === "dark"
                 ? <><circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 3.4l1-1"/></>
                 : <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/>
@@ -295,21 +295,20 @@ export default function DocumentViewer({
           {/* Primary CTA — Edit (public mode) or Make Your Own (fork/remix) */}
           <Link
             href={`/?from=${id}`}
-            className={btnClass}
-            style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}
+            className="px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1.5"
+            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
             onClick={() => {
               if (passwordInput) {
                 sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
               }
             }}
           >
-            {editMode === "public" ? "Edit" : (
-              <>
-                <span className="hidden sm:inline">Make Your Own</span>
-                <span className="sm:hidden">New</span>
-              </>
+            {editMode === "public" ? (
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
+            ) : (
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M8 3v10M3 8h10"/></svg>
             )}
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
+            <span className="hidden sm:inline">{editMode === "public" ? "Edit" : "Make Your Own"}</span>
           </Link>
         </div>
       </header>
@@ -470,18 +469,24 @@ export default function DocumentViewer({
           color: "var(--text-muted)",
         }}
       >
-        <span>{markdown.length.toLocaleString()} chars</span>
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</Link>
-          <a
-            href="https://github.com/raymindai/mdcore"
-            className="transition-colors"
-            style={{ color: "var(--text-muted)" }}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub
-          </a>
+          <Link href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</Link>
+          <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="hidden sm:inline">{markdown.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
+          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
+          <span>{markdown.length.toLocaleString()} chars</span>
+          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
+          <span className="hidden sm:inline">{markdown.split("\n").length.toLocaleString()} lines</span>
+          <div className="relative group hidden sm:block">
+            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
+            </div>
+          </div>
         </div>
       </footer>
     </div>

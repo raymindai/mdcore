@@ -56,15 +56,20 @@ async function openInMdfy(markdown) {
     chrome.tabs.create({ url });
     setStatus("Opened in mdfy.cc", "success");
   } else {
-    // Copy to clipboard and open
+    // Content too large for URL — copy to clipboard and open
+    let copied = false;
     try {
       await navigator.clipboard.writeText(markdown);
+      copied = true;
     } catch {
-      // Popup may not have clipboard access — try via background
-      // Fallback: just open mdfy.cc
+      // Popup may not have clipboard access — try fallback
     }
     chrome.tabs.create({ url: MDFY_URL });
-    setStatus("Content copied — paste into mdfy.cc", "success");
+    if (copied) {
+      setStatus("Content copied — paste into mdfy.cc", "success");
+    } else {
+      setStatus("Content too large for URL. Please copy manually.", "error");
+    }
   }
 }
 

@@ -6,6 +6,7 @@
  */
 
 const MDFY_URL = "https://mdfy.cc";
+const MDFY_COOKIE_URL = "https://www.mdfy.cc";
 const MAX_URL_BYTES = 8000;
 
 // ─── Compression (same as content.js / share.ts) ───
@@ -203,6 +204,59 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // ─── Message Handling ───
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Capture visible tab as screenshot
+  if (request.action === "capture-tab") {
+    chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ dataUrl });
+      }
+    });
+    return true; // async
+  }
+
+  // Upload image data URL to mdfy.cc (bypasses CORS)
+  if (request.action === "upload-image") {
+    const { dataUrl, userId } = request;
+    (async () => {
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const formData = new FormData();
+        formData.append("file", blob, "diagram." + (blob.type.split("/")[1] || "png"));
+        const uploadRes = await fetch(MDFY_URL + "/api/upload", {
+          method: "POST",
+          headers: { "x-user-id": userId },
+          body: formData,
+        });
+        if (uploadRes.ok) {
+          const { url } = await uploadRes.json();
+          sendResponse({ url });
+        } else {
+          sendResponse({ error: "Upload failed: " + uploadRes.status });
+        }
+      } catch (err) {
+        sendResponse({ error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  // Proxy fetch requests from content script (bypasses CORS)
+  if (request.action === "proxy-fetch") {
+    const { url, options } = request;
+    fetch(url, options)
+      .then(async (res) => {
+        const text = await res.text();
+        sendResponse({ ok: res.ok, status: res.status, body: text });
+      })
+      .catch((err) => {
+        sendResponse({ ok: false, error: err.message });
+      });
+    return true;
+  }
+
   if (request.action === "open-mdfy") {
     const url = request.url || MDFY_URL;
     chrome.tabs.create({ url });
@@ -211,26 +265,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "get-user-id") {
-    // Try to get user auth from mdfy.cc cookies/storage
-    // This requires the "cookies" permission for mdfy.cc domain
-    // Wrap in a timeout to avoid hanging if cookie access stalls
+    // Get user ID from Supabase auth cookies on mdfy.cc
+    // Supabase stores auth as base64-encoded JSON split across multiple cookies:
+    //   sb-{ref}-auth-token.0, sb-{ref}-auth-token.1, etc.
+    // Value format: "base64-" prefix + base64(JSON with {access_token, user: {id}})
     const cookiePromise = new Promise((resolve) => {
       try {
-        chrome.cookies.get({ url: MDFY_URL, name: "sb-auth-token" }, (cookie) => {
-          if (cookie && cookie.value) {
-            try {
-              // Supabase auth token is a JWT — extract user ID from payload
-              const parts = cookie.value.split(".");
-              if (parts.length >= 2) {
-                const payload = JSON.parse(atob(parts[1]));
-                resolve({ userId: payload.sub || null });
-                return;
-              }
-            } catch {
-              console.warn("[mdfy] Failed to parse auth cookie");
-            }
+        chrome.cookies.getAll({ url: MDFY_COOKIE_URL }, (cookies) => {
+          if (!cookies) { resolve({ userId: null }); return; }
+
+          // Find all auth token cookie parts
+          const authParts = cookies
+            .filter((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"))
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          if (authParts.length === 0) { resolve({ userId: null }); return; }
+
+          try {
+            // Combine cookie values and strip "base64-" prefix
+            const combined = authParts.map((c) => c.value).join("").replace(/^base64-/, "");
+            const json = JSON.parse(atob(combined));
+            resolve({ userId: json.user?.id || null });
+          } catch {
+            console.warn("[mdfy] Failed to parse auth cookies");
+            resolve({ userId: null });
           }
-          resolve({ userId: null });
         });
       } catch (err) {
         console.warn("[mdfy] Cookie access error:", err);
@@ -238,14 +297,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     });
     const timeoutPromise = new Promise((resolve) => {
-      setTimeout(() => {
-        console.warn("[mdfy] Cookie access timed out after 5s");
-        resolve({ userId: null });
-      }, 5000);
+      setTimeout(() => resolve({ userId: null }), 5000);
     });
     Promise.race([cookiePromise, timeoutPromise]).then((result) => {
       sendResponse(result);
     });
-    return true; // async response
+    return true;
   }
 });
