@@ -1627,6 +1627,7 @@ export default function MdEditor() {
   const loadTab = useCallback((tab: Tab) => {
     setActiveTabId(tab.id);
     setMarkdownRaw(tab.markdown);
+    setTitle(tab.title || undefined);
     setHtml("");
     undoStack.current = [tab.markdown];
     redoStack.current = [];
@@ -2080,7 +2081,7 @@ export default function MdEditor() {
 
         setMarkdown(shared);
         setIsSharedDoc(true);
-        setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, shared: true, title: extractTitleFromMd(shared) || "Shared Document", markdown: shared } : t));
+        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, shared: true, title: extractTitleFromMd(shared) || "Shared Document", markdown: shared } : t));
         setViewMode("preview");
         await doRender(shared);
         return;
