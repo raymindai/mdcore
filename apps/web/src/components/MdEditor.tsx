@@ -1625,6 +1625,8 @@ export default function MdEditor() {
 
   // ─── Tab management ───
   const loadTab = useCallback((tab: Tab) => {
+    // Update ref IMMEDIATELY so doRender uses correct tab ID
+    activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
     setMarkdownRaw(tab.markdown);
     setTitle(tab.title || undefined);

@@ -802,7 +802,7 @@
 
         if (res.ok) {
           const { id } = JSON.parse(res.body);
-          window.open(MDFY_URL + "/" + id, "_blank");
+          window.open(MDFY_URL + "/?doc=" + id, "mdfy_" + Date.now());
           return;
         }
       } catch (err) {
