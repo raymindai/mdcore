@@ -3821,7 +3821,7 @@ ${html}
                   defaultValue: title,
                   onSubmit: (trimmed) => {
                     setTitle(trimmed);
-                    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, title: trimmed } : t));
+                    setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, title: trimmed } : t));
                     const md = markdownRef.current;
                     const lines = md.split("\n");
                     const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
@@ -5865,7 +5865,7 @@ ${html}
                 defaultValue: tab.title,
                 onSubmit: (trimmed) => {
                   setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
-                  if (tab.id === activeTabId) {
+                  if (tab.id === activeTabIdRef.current) {
                     const md = markdownRef.current;
                     const lines = md.split("\n");
                     const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
@@ -6246,7 +6246,7 @@ ${html}
       {/* Share Modal */}
       {showShareModal && (docId || tabs.find(t => t.id === activeTabId)?.cloudId) && user && (
         <ShareModal
-          docId={(docId || tabs.find(t => t.id === activeTabId)?.cloudId)!}
+          docId={(docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId)!}
           title={title}
           userId={user.id}
           ownerEmail={user.email || ""}
@@ -6255,10 +6255,10 @@ ${html}
           initialAllowedEditors={allowedEditors}
           onClose={() => {
             setShowShareModal(false);
-            // Mark as shared if doc has been published (has cloudId and is not draft)
-            const ct = tabs.find(t => t.id === activeTabId);
+            const curTabId = activeTabIdRef.current;
+            const ct = tabs.find(t => t.id === curTabId);
             if (ct?.cloudId && !ct.isDraft && !ct.isSharedByMe) {
-              setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isSharedByMe: true } : t));
+              setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isSharedByMe: true } : t));
             }
           }}
           onEditModeChange={(mode) => {
