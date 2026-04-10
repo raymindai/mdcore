@@ -558,11 +558,8 @@
     const iframes = document.querySelectorAll(".font-claude-response iframe");
     if (iframes.length === 0) return;
 
-    const userId = await getUserId();
-    if (!userId) {
-      showToast("Sign in to mdfy.cc to capture diagrams", 3000);
-      return;
-    }
+    // Diagrams are captured and uploaded regardless of login status
+    // (anonymous uploads are rate-limited server-side)
 
     // Collect all artifact iframes
     const targets = [];
@@ -701,12 +698,12 @@
   async function uploadImageToMdfy(imageUrl) {
     try {
       const userId = await getUserId();
-      if (!userId) return null;
 
       // Upload via background service worker (bypasses CORS)
+      // Works with or without userId (anonymous uploads are rate-limited server-side)
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage(
-          { action: "upload-image", dataUrl: imageUrl, userId },
+          { action: "upload-image", dataUrl: imageUrl, userId: userId || undefined },
           (r) => resolve(r || { error: "no response" })
         );
       });

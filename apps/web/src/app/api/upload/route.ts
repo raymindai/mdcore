@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -23,14 +24,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
-  // Auth check — allow anonymous with lower limits
+  // Auth: allow userId, anonymousId, or fully anonymous (IP-limited)
   const userId = req.headers.get("x-user-id");
   const anonymousId = req.headers.get("x-anonymous-id");
+
+  // For fully anonymous uploads: rate limit by IP
   if (!userId && !anonymousId) {
-    return NextResponse.json(
-      { error: "Sign in to upload images", requiresAuth: true },
-      { status: 401 }
-    );
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed } = rateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 });
+    }
   }
 
   // Parse multipart form
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
   // Check user quota
   let currentUsage = 0;
   let quota = QUOTA_FREE;
-  const ownerId = userId || `anon-${anonymousId}`;
+  const ownerId = userId || (anonymousId ? `anon-${anonymousId}` : "public");
 
   if (userId) {
     const { data: profile } = await supabase
@@ -74,7 +78,7 @@ export async function POST(req: NextRequest) {
       currentUsage = profile.storage_used_bytes || 0;
     }
   } else {
-    // Anonymous: 20MB quota, no profile needed
+    // Anonymous: 20MB quota, no profile tracking
     quota = 20 * 1024 * 1024;
   }
 

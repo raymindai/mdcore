@@ -225,9 +225,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const blob = await res.blob();
         const formData = new FormData();
         formData.append("file", blob, "diagram." + (blob.type.split("/")[1] || "png"));
+        const headers = {};
+        if (userId) headers["x-user-id"] = userId;
         const uploadRes = await fetch(MDFY_URL + "/api/upload", {
           method: "POST",
-          headers: { "x-user-id": userId },
+          headers,
           body: formData,
         });
         if (uploadRes.ok) {
