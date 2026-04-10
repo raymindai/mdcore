@@ -2079,11 +2079,20 @@ export default function MdEditor() {
           return;
         }
 
-        setMarkdown(shared);
+        // Create new tab for shared content (don't overwrite current tab)
+        const sharedTabId = `tab-${Date.now()}`;
+        const sharedTitle = extractTitleFromMd(shared) || "Shared Document";
+        const sharedTab: Tab = { id: sharedTabId, title: sharedTitle, markdown: shared, shared: true };
+        setTabs(prev => {
+          const curTabId = activeTabIdRef.current;
+          const saved = prev.map(t => t.id === curTabId ? { ...t, markdown: markdownRef.current } : t);
+          return [...saved, sharedTab];
+        });
+        loadTab(sharedTab);
         setIsSharedDoc(true);
-        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, shared: true, title: extractTitleFromMd(shared) || "Shared Document", markdown: shared } : t));
         setViewMode("preview");
         await doRender(shared);
+        window.history.replaceState(null, "", "/");
         return;
       }
 
