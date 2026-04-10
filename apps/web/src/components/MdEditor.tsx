@@ -2137,22 +2137,42 @@ export default function MdEditor() {
               setViewMode("preview");
             }
 
-            // Update tab with cloudId and permission
+            // Create a new tab for the opened document (don't overwrite current tab)
             const docIsSharedByMe = perm === "mine" && (
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account") ||
               (doc.allowedEmails && doc.allowedEmails.length > 0)
             );
-            setTabs(prev => prev.map(t => t.id === activeTabId ? {
-              ...t,
-              cloudId: fromId,
-              editToken: token || undefined,
-              title: doc.title || "Shared Document",
-              markdown: doc.markdown,
-              permission: perm,
-              shared: perm !== "mine",
-              isSharedByMe: docIsSharedByMe || undefined,
-              ownerEmail: doc.ownerEmail || undefined,
-            } : t));
+            const existingTab = tabs.find(t => t.cloudId === fromId);
+            if (existingTab) {
+              // Already have a tab for this document — switch to it
+              loadTab({ ...existingTab, markdown: doc.markdown, title: doc.title || existingTab.title });
+              setTabs(prev => prev.map(t => t.cloudId === fromId ? {
+                ...t,
+                markdown: doc.markdown,
+                title: doc.title || t.title,
+                permission: perm,
+              } : t));
+            } else {
+              // Create new tab
+              const newTabId = `tab-${Date.now()}`;
+              const newTab: Tab = {
+                id: newTabId,
+                cloudId: fromId,
+                editToken: token || undefined,
+                title: doc.title || "Shared Document",
+                markdown: doc.markdown,
+                permission: perm,
+                shared: perm !== "mine",
+                isSharedByMe: docIsSharedByMe || undefined,
+                ownerEmail: doc.ownerEmail || undefined,
+              };
+              setTabs(prev => {
+                // Save current tab's content first
+                const saved = prev.map(t => t.id === activeTabId ? { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title } : t);
+                return [...saved, newTab];
+              });
+              loadTab(newTab);
+            }
 
             // Record visit (fire-and-forget)
             if (user?.id) {
