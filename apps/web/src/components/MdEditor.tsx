@@ -1655,16 +1655,14 @@ export default function MdEditor() {
     const currentTabId = activeTabIdRef.current;
 
     setTabs((prev) => {
-      // Save current tab
+      // Save current tab's markdown only (don't overwrite title — user may have set it explicitly)
       const saved = prev.map((t) => {
         if (t.id !== currentTabId || t.readonly) return t;
-        const derivedTitle = extractTitleFromMd(currentMd) || t.title || "Untitled";
-        return { ...t, markdown: currentMd, title: derivedTitle };
+        return { ...t, markdown: currentMd };
       });
       // Load target tab
       const target = saved.find((t) => t.id === tabId);
       if (target) {
-        // Use queueMicrotask to ensure setTabs finishes first
         queueMicrotask(() => loadTab(target));
       }
       return saved;
@@ -1682,8 +1680,7 @@ export default function MdEditor() {
     setTabs((prev) => {
       const saved = prev.map((t) => {
         if (t.id !== currentTabId || t.readonly) return t;
-        const derivedTitle = extractTitleFromMd(currentMd) || t.title || "Untitled";
-        return { ...t, markdown: currentMd, title: derivedTitle };
+        return { ...t, markdown: currentMd };
       });
       return [...saved, newTab];
     });
@@ -2167,8 +2164,9 @@ export default function MdEditor() {
                 ownerEmail: doc.ownerEmail || undefined,
               };
               setTabs(prev => {
-                // Save current tab's content first
-                const saved = prev.map(t => t.id === activeTabId ? { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title } : t);
+                // Save current tab's markdown (use ref to avoid stale closure)
+                const curTabId = activeTabIdRef.current;
+                const saved = prev.map(t => t.id === curTabId ? { ...t, markdown: markdownRef.current } : t);
                 return [...saved, newTab];
               });
               loadTab(newTab);
@@ -4071,7 +4069,7 @@ ${html}
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine", ownerEmail: d.ownerEmail || n.fromUserName || undefined };
                               setTabs(prev => {
-                                const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
+                                const saved = prev.map(t => t.id !== activeTabIdRef.current || t.readonly ? t : { ...t, markdown: markdownRef.current });
                                 return [...saved, newTab];
                               });
                               loadTab(newTab);
@@ -4906,7 +4904,7 @@ ${html}
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true, ownerEmail: d.ownerEmail || undefined };
                               setTabs(prev => {
-                                const saved = prev.map(t => t.id !== activeTabId || t.readonly ? t : { ...t, markdown: markdownRef.current, title: extractTitleFromMd(markdownRef.current) || t.title });
+                                const saved = prev.map(t => t.id !== activeTabIdRef.current || t.readonly ? t : { ...t, markdown: markdownRef.current });
                                 return [...saved, newTab];
                               });
                               loadTab(newTab);
