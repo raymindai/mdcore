@@ -3127,6 +3127,14 @@ export default function MdEditor() {
       const newMd = htmlToMarkdown(clone.innerHTML);
       setMarkdown(newMd);
       cmSetDoc(newMd);
+      // Sync title from edited markdown to sidebar
+      const h1Match = newMd.match(/^#\s+(.+)/m);
+      if (h1Match) {
+        const newTitle = h1Match[1].trim();
+        setTitle(newTitle);
+        const curTabId = activeTabIdRef.current;
+        setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+      }
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       // (setMarkdown → doRender → html state → ref callback must all see wysiwygEditingRef=true)
       setTimeout(() => { wysiwygEditingRef.current = false; }, 500);
