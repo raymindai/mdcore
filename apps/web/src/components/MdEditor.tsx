@@ -1367,7 +1367,7 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
-  const [narrowView, setNarrowView] = useState(false);
+  const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
