@@ -5197,7 +5197,24 @@ ${html}
                       </div>
                       {/* My Published Docs button removed — all docs visible in sidebar */}
                       <button
-                        onClick={() => { signOut(); setShowAuthMenu(false); }}
+                        onClick={() => {
+                          signOut();
+                          setShowAuthMenu(false);
+                          // Clean slate: reset tabs, folders, state
+                          setTabs(INITIAL_TABS);
+                          setFolders(INITIAL_FOLDERS);
+                          setActiveTabId(INITIAL_TABS[0].id);
+                          setMarkdown(INITIAL_TABS[0].markdown);
+                          setDocId(null);
+                          setIsOwner(false);
+                          setIsSharedDoc(false);
+                          setServerDocs([]);
+                          setRecentDocs([]);
+                          doRender(INITIAL_TABS[0].markdown);
+                          window.history.replaceState(null, "", "/");
+                          // Clear persisted tabs
+                          try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
+                        }}
                         className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                         style={{ color: "var(--text-secondary)" }}
                       >
