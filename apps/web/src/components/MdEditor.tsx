@@ -1405,7 +1405,7 @@ export default function MdEditor() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
-  const [docFilter, setDocFilter] = useState<"all" | "local" | "synced" | "cloud">("all");
+  const [docFilter, setDocFilter] = useState<"all" | "drafts" | "published" | "cloud">("all");
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -2358,18 +2358,21 @@ export default function MdEditor() {
     }).catch(() => {});
   }, [tabs, user?.id]);
 
-  // Fetch recently visited (shared with me) + server docs for logged-in users
+  // Fetch recently visited (shared with me) + server docs for logged-in OR anonymous users
   useEffect(() => {
     if (authLoading) return;
-    if (!user?.id) {
+    const headers: Record<string, string> = {};
+    if (user?.id) {
+      headers["x-user-id"] = user.id;
+    } else if (anonymousId) {
+      headers["x-anonymous-id"] = anonymousId;
+    } else {
       setRecentDocs([]);
       setServerDocs([]);
       return;
     }
-    // Fetch recent visits — filter to non-owned docs only (Shared With Me)
-    fetch("/api/user/recent", {
-      headers: { "x-user-id": user.id },
-    })
+    // Fetch recent visits — only for logged-in users (Shared With Me)
+    if (user?.id) fetch("/api/user/recent", { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.recent) {
@@ -2378,9 +2381,7 @@ export default function MdEditor() {
       })
       .catch(() => {});
     // Fetch user's own documents from server
-    fetch("/api/user/documents", {
-      headers: { "x-user-id": user.id },
-    })
+    fetch("/api/user/documents", { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.documents) {
@@ -4617,13 +4618,13 @@ ${html}
             {(() => {
               const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
               const myTabs = docFilter === "all" ? allMyTabs
-                : docFilter === "local" ? allMyTabs.filter(t => !t.cloudId)
-                : docFilter === "synced" ? allMyTabs.filter(t => !!t.cloudId)
+                : docFilter === "drafts" ? allMyTabs.filter(t => t.isDraft !== false)
+                : docFilter === "published" ? allMyTabs.filter(t => t.isDraft === false)
                 : docFilter === "cloud" ? [] // cloud-only docs shown separately
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
-              const localCount = allMyTabs.filter(t => !t.cloudId).length;
-              const syncedCount = allMyTabs.filter(t => !!t.cloudId).length;
+              const draftCount = allMyTabs.filter(t => t.isDraft !== false).length;
+              const publishedCount = allMyTabs.filter(t => t.isDraft === false).length;
               return (
                 <div className="pt-3">
                   <div
@@ -4662,7 +4663,7 @@ ${html}
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Filter buttons */}
                       <div className="flex gap-1 px-1 pb-1.5">
-                        {(["all", "local", "synced", "cloud"] as const).map((f) => (
+                        {(["all", "drafts", "published", "cloud"] as const).map((f) => (
                           <button
                             key={f}
                             onClick={() => setDocFilter(f)}
@@ -4672,7 +4673,7 @@ ${html}
                               background: docFilter === f ? "var(--accent-dim)" : "transparent",
                             }}
                           >
-                            {f === "all" ? `All ${myTabCount}` : f === "local" ? `Local ${localCount}` : f === "synced" ? `Synced ${syncedCount}` : "Cloud"}
+                            {f === "all" ? `All ${myTabCount}` : f === "drafts" ? `Drafts ${draftCount}` : f === "published" ? `Published ${publishedCount}` : "Cloud"}
                           </button>
                         ))}
                       </div>
@@ -4697,7 +4698,7 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.cloudId ? (
+                          {tab.isDraft === false ? (
                             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "#4ade80"} strokeWidth="1.2" className="shrink-0">
                               <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
                               <path d="M6 8.5l1.5 1.5 3-3" strokeLinecap="round" strokeLinejoin="round"/>
