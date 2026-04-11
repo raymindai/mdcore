@@ -2,7 +2,7 @@
   "name": "mdfy-vscode",
   "displayName": "mdfy.cc — Markdown Publisher",
   "description": "WYSIWYG preview and publish Markdown documents to mdfy.cc with bidirectional cloud sync. Beautiful rendering with GFM, KaTeX math, Mermaid diagrams, and code highlighting.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "raymindai",
   "license": "MIT",
   "repository": {
@@ -15,7 +15,8 @@
   },
   "categories": [
     "Other",
-    "Visualization"
+    "Visualization",
+    "Formatters"
   ],
   "keywords": [
     "markdown",
@@ -66,6 +67,11 @@
         "command": "mdfy.sync",
         "title": "mdfy: Sync Status",
         "icon": "$(sync)"
+      },
+      {
+        "command": "mdfy.export",
+        "title": "mdfy: Export",
+        "icon": "$(export)"
       }
     ],
     "menus": {
@@ -91,6 +97,11 @@
           "command": "mdfy.pull",
           "when": "editorLangId == markdown",
           "group": "mdfy@3"
+        },
+        {
+          "command": "mdfy.export",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@4"
         }
       ]
     },
@@ -99,6 +110,18 @@
         "command": "mdfy.preview",
         "key": "ctrl+shift+m",
         "mac": "cmd+shift+m",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "mdfy.publish",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "mdfy.export",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
         "when": "editorLangId == markdown"
       }
     ],

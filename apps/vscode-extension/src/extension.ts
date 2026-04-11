@@ -27,17 +27,29 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Command: Preview (WYSIWYG)
   context.subscriptions.push(
-    vscode.commands.registerCommand("mdfy.preview", () => {
+    vscode.commands.registerCommand("mdfy.preview", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.document.languageId !== "markdown") {
         vscode.window.showWarningMessage("Open a Markdown file first.");
         return;
       }
       PreviewPanel.createOrShow(context.extensionUri, editor.document);
+      // Check if published and show badge
+      const config = await loadMdfyConfig(editor.document.fileName);
+      if (config) {
+        const baseUrl = getApiBaseUrl();
+        setTimeout(() => {
+          PreviewPanel.setPublishedStateForDocument(
+            editor.document.uri,
+            config.docId,
+            `${baseUrl}/d/${config.docId}`
+          );
+        }, 300);
+      }
     })
   );
 
-  // Command: Publish
+  // Command: Publish (one-click: publish or push + auto-copy URL)
   context.subscriptions.push(
     vscode.commands.registerCommand("mdfy.publish", async () => {
       const editor = vscode.window.activeTextEditor;
@@ -51,14 +63,39 @@ export function activate(context: vscode.ExtensionContext): void {
       const title =
         extractTitle(markdown) ||
         vscode.workspace.asRelativePath(editor.document.uri);
+      const baseUrl = getApiBaseUrl();
 
+      // If already published → push update instead
+      const existing = await loadMdfyConfig(fileName);
+      if (existing) {
+        statusBar?.setSyncing("Pushing...");
+        try {
+          await updateDocument(
+            existing.docId, existing.editToken, markdown, title, authManager
+          );
+          existing.lastSyncedAt = new Date().toISOString();
+          existing.lastServerUpdatedAt = new Date().toISOString();
+          await saveMdfyConfig(fileName, existing);
+
+          const url = `${baseUrl}/d/${existing.docId}`;
+          await vscode.env.clipboard.writeText(url);
+          statusBar?.setPublished(url);
+          vscode.window.showInformationMessage(`Updated & URL copied: ${url}`);
+        } catch (err) {
+          statusBar?.setError();
+          vscode.window.showErrorMessage(
+            `Push failed: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
+        return;
+      }
+
+      // First publish
       statusBar?.setSyncing("Publishing...");
       try {
         const result = await publishDocument(markdown, title, authManager);
-        const baseUrl = getApiBaseUrl();
         const url = `${baseUrl}/d/${result.id}`;
 
-        // Save .mdfy.json
         await saveMdfyConfig(fileName, {
           docId: result.id,
           editToken: result.editToken,
@@ -66,17 +103,10 @@ export function activate(context: vscode.ExtensionContext): void {
           lastServerUpdatedAt: new Date().toISOString(),
         });
 
-        statusBar?.setSynced();
-        const action = await vscode.window.showInformationMessage(
-          `Published to ${url}`,
-          "Open in Browser",
-          "Copy URL"
-        );
-        if (action === "Open in Browser") {
-          vscode.env.openExternal(vscode.Uri.parse(url));
-        } else if (action === "Copy URL") {
-          await vscode.env.clipboard.writeText(url);
-        }
+        await vscode.env.clipboard.writeText(url);
+        statusBar?.setPublished(url);
+        PreviewPanel.setPublishedStateForDocument(editor.document.uri, result.id, url);
+        vscode.window.showInformationMessage(`Published & URL copied: ${url}`);
       } catch (err) {
         statusBar?.setError();
         vscode.window.showErrorMessage(
@@ -124,10 +154,75 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  // Command: Copy URL (from status bar click)
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.copyUrl", async () => {
+      const url = statusBar?.getPublishedUrl();
+      if (url) {
+        await vscode.env.clipboard.writeText(url);
+        vscode.window.showInformationMessage(`URL copied: ${url}`);
+      } else {
+        // Fall back to sync menu
+        vscode.commands.executeCommand("mdfy.sync");
+      }
+    })
+  );
+
   // Command: Login
   context.subscriptions.push(
     vscode.commands.registerCommand("mdfy.login", async () => {
       await authManager?.login();
+    })
+  );
+
+  // Command: Export
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.export", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== "markdown") {
+        vscode.window.showWarningMessage("Open a Markdown file first.");
+        return;
+      }
+
+      const items: vscode.QuickPickItem[] = [
+        { label: "$(file-code) Copy as HTML", description: "Copy rendered HTML to clipboard" },
+        { label: "$(file-text) Copy as Rich Text", description: "For Google Docs, Email, Word" },
+        { label: "$(comment-discussion) Copy as Slack", description: "Slack mrkdwn format" },
+        { label: "$(desktop-download) Save as HTML", description: "Save rendered HTML file" },
+      ];
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: "Export document as...",
+      });
+
+      if (!selected) { return; }
+      const markdown = editor.document.getText();
+
+      if (selected.label.includes("Copy as HTML")) {
+        const html = PreviewPanel.renderToHtml(markdown);
+        await vscode.env.clipboard.writeText(html);
+        vscode.window.showInformationMessage("HTML copied to clipboard.");
+      } else if (selected.label.includes("Rich Text")) {
+        const html = PreviewPanel.renderToHtml(markdown);
+        await vscode.env.clipboard.writeText(html);
+        vscode.window.showInformationMessage("Rich Text HTML copied to clipboard.");
+      } else if (selected.label.includes("Slack")) {
+        const slack = markdownToSlack(markdown);
+        await vscode.env.clipboard.writeText(slack);
+        vscode.window.showInformationMessage("Slack mrkdwn copied to clipboard.");
+      } else if (selected.label.includes("Save as HTML")) {
+        const html = PreviewPanel.renderToFullHtml(markdown);
+        const uri = await vscode.window.showSaveDialog({
+          defaultUri: vscode.Uri.file(
+            editor.document.fileName.replace(/\.md$/, ".html")
+          ),
+          filters: { "HTML": ["html"] },
+        });
+        if (uri) {
+          await vscode.workspace.fs.writeFile(uri, Buffer.from(html, "utf-8"));
+          vscode.window.showInformationMessage(`Saved to ${uri.fsPath}`);
+        }
+      }
     })
   );
 
@@ -180,13 +275,23 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Update status bar on editor change
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
       if (editor && editor.document.languageId === "markdown") {
         statusBar?.show();
-        // Auto-open preview if enabled
+
+        // Check if published → show URL in status bar
+        const cfg = await loadMdfyConfig(editor.document.fileName);
+        if (cfg) {
+          const base = getApiBaseUrl();
+          statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+        } else {
+          statusBar?.setIdle();
+        }
+
+        // Auto-open preview if enabled (only if not already open)
         const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
         if (autoPreview) {
-          PreviewPanel.createOrShow(context.extensionUri, editor.document);
+          PreviewPanel.createIfNotExists(context.extensionUri, editor.document);
         }
       } else {
         statusBar?.hide();
@@ -206,9 +311,16 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.activeTextEditor?.document.languageId === "markdown"
   ) {
     statusBar.show();
+    // Check published state for status bar
+    loadMdfyConfig(vscode.window.activeTextEditor.document.fileName).then((cfg) => {
+      if (cfg) {
+        const base = getApiBaseUrl();
+        statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+      }
+    });
     const autoPreview = config.get<boolean>("autoPreview", true);
     if (autoPreview) {
-      PreviewPanel.createOrShow(context.extensionUri, vscode.window.activeTextEditor.document);
+      PreviewPanel.createIfNotExists(context.extensionUri, vscode.window.activeTextEditor.document);
     }
   }
 
@@ -263,6 +375,32 @@ export async function saveMdfyConfig(
   const configPath = getMdfyConfigPath(mdFilePath);
   const data = Buffer.from(JSON.stringify(config, null, 2), "utf-8");
   await vscode.workspace.fs.writeFile(vscode.Uri.file(configPath), data);
+}
+
+function markdownToSlack(md: string): string {
+  return md
+    // Bold: **text** or __text__ → *text*
+    .replace(/\*\*(.+?)\*\*/g, "*$1*")
+    .replace(/__(.+?)__/g, "*$1*")
+    // Italic: *text* or _text_ → _text_
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_")
+    // Strikethrough: ~~text~~ → ~text~
+    .replace(/~~(.+?)~~/g, "~$1~")
+    // Links: [text](url) → <url|text>
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "<$2|$1>")
+    // Headers: # text → *text*
+    .replace(/^#{1,6}\s+(.+)$/gm, "*$1*")
+    // Inline code stays as `code`
+    // Code blocks: ```lang\n...\n``` → ```\n...\n```
+    .replace(/```\w*\n/g, "```\n")
+    // Task lists: - [x] → :white_check_mark:, - [ ] → :white_large_square:
+    .replace(/^(\s*)- \[x\]\s/gm, "$1:white_check_mark: ")
+    .replace(/^(\s*)- \[ \]\s/gm, "$1:white_large_square: ")
+    // Blockquote: > text → > text (same in Slack)
+    // Images: ![alt](url) → <url|alt>
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<$2|$1>")
+    // Horizontal rule
+    .replace(/^---+$/gm, "———");
 }
 
 function getMdfyConfigPath(mdFilePath: string): string {

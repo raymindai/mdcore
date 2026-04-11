@@ -22,6 +22,7 @@
   /** @type {number | null} */
   let editDebounceTimer = null;
   let isUpdatingFromExtension = false;
+  let isUpdatingFromWebview = false;
 
   /** @type {HTMLElement} */
   var flavorBadge = document.getElementById("flavor-badge");
@@ -37,6 +38,8 @@
 
     switch (message.type) {
       case "update":
+        // Skip if we're the ones who triggered the change
+        if (isUpdatingFromWebview) break;
         // Extension sent new rendered HTML (from .md file change)
         isUpdatingFromExtension = true;
         if (message.markdown !== undefined) {
@@ -58,7 +61,13 @@
 
           content.innerHTML = message.html;
 
-          // Post-process: syntax highlighting
+          // Post-process: syntax highlighting — copy lang from <pre lang="X"> to <code class="language-X">
+          content.querySelectorAll('pre[lang] code').forEach(function(block) {
+            var lang = block.parentElement.getAttribute('lang');
+            if (lang && lang !== 'mermaid') {
+              block.className = 'language-' + lang;
+            }
+          });
           content.querySelectorAll('pre code').forEach(function(block) {
             if (typeof hljs !== 'undefined') hljs.highlightElement(block);
           });
@@ -75,8 +84,14 @@
             }
           });
 
+          // Post-process: code block headers (lang tag + copy button)
+          postProcessCodeBlocks(content);
+
           // Post-process: Mermaid diagrams
           postProcessMermaid();
+
+          // Post-process: non-editable islands + spacers
+          setupNonEditableIslands(content);
 
           if (hadFocus && caretOffset > 0) {
             restoreCaretPosition(content, caretOffset);
@@ -98,6 +113,23 @@
       case "syncStatus":
         setSyncStatusDisplay(message.status);
         break;
+
+      case "publishedState": {
+        var badge = document.getElementById('mdfy-badge');
+        var viewLink = document.getElementById('badge-view-link');
+        if (badge) {
+          if (message.docId && message.url) {
+            badge.classList.remove('hidden');
+            if (viewLink) {
+              viewLink.href = message.url;
+              viewLink.textContent = 'View document →';
+            }
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+        break;
+      }
 
       case "imageUploaded": {
         // Replace "![Uploading...]()" placeholder with actual URL
@@ -138,12 +170,15 @@
     }
 
     editDebounceTimer = setTimeout(function () {
-      const markdown = htmlToMarkdown(content);
+      var markdown = htmlToMarkdown(content);
       if (markdown !== currentMarkdown) {
         currentMarkdown = markdown;
+        isUpdatingFromWebview = true;
         vscode.postMessage({ type: "edit", markdown: markdown });
+        // Reset flag after a short delay to allow extension to process
+        setTimeout(function() { isUpdatingFromWebview = false; }, 600);
       }
-    }, 500);
+    }, 150);
   });
 
   // Keyboard shortcuts inside contentEditable
@@ -240,7 +275,7 @@
         vscode.postMessage({ type: "requestImageUrl" });
         break;
       case "table":
-        insertTable();
+        showTableGridSelector(button);
         break;
       case "code":
         applyInlineFormat("code");
@@ -263,33 +298,80 @@
     }
   });
 
-  // ─── Source View Toggle ───
+  // ─── Toggle Pill Buttons (Bottom Bar) ───
+
+  var isNarrow = true; // default ON
+  var isToolbarVisible = true; // default ON
+  var narrowToggle = document.getElementById('narrow-toggle');
+  var toolbarToggle = document.getElementById('toolbar-toggle');
+
+  function setupTogglePill(btn, onToggle) {
+    if (!btn) return;
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var active = btn.getAttribute('data-active') === 'true';
+      var newState = !active;
+      btn.setAttribute('data-active', String(newState));
+      var sw = btn.querySelector('.toggle-switch');
+      if (sw) sw.classList.toggle('on', newState);
+      onToggle(newState);
+    });
+  }
+
+  setupTogglePill(narrowToggle, function(on) {
+    isNarrow = on;
+    content.classList.toggle('narrow', on);
+  });
+
+  setupTogglePill(toolbarToggle, function(on) {
+    isToolbarVisible = on;
+    toolbar.style.display = on ? '' : 'none';
+    var wrapper = document.getElementById('editor-wrapper');
+    if (wrapper) wrapper.style.top = on ? '34px' : '0';
+  });
+
+  // ─── View Mode Switcher (Live / Source) ───
 
   var sourceVisible = false;
   var sourceEditor = document.getElementById("source-editor");
   var editorWrapper = document.getElementById("editor-wrapper");
   var sourceView = document.getElementById("source-view");
-  var sourceToggle = document.getElementById("source-toggle");
   var sourceDebounce = null;
+  var viewBtns = document.querySelectorAll('.view-btn');
 
-  function toggleSourceView() {
-    sourceVisible = !sourceVisible;
+  function setViewMode(mode) {
+    sourceVisible = (mode === 'source');
+    // Update button active state
+    document.querySelectorAll('.view-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
+    });
     if (sourceVisible) {
-      // Show source, hide WYSIWYG
       content.classList.add("hidden");
       sourceView.classList.remove("hidden");
-      sourceEditor.value = currentMarkdown;
-      sourceEditor.focus();
-      sourceToggle.style.background = "var(--accent)";
-      sourceToggle.style.color = "#000";
+      if (sourceEditor) {
+        sourceEditor.value = currentMarkdown;
+        sourceEditor.focus();
+      }
     } else {
-      // Show WYSIWYG, hide source
       sourceView.classList.add("hidden");
       content.classList.remove("hidden");
-      sourceToggle.style.background = "";
-      sourceToggle.style.color = "";
+      content.focus();
     }
   }
+
+  function toggleSourceView() {
+    setViewMode(sourceVisible ? 'live' : 'source');
+  }
+
+  // Use event delegation on toolbar for view buttons
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.view-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setViewMode(btn.getAttribute('data-view'));
+  });
 
   if (sourceEditor) {
     sourceEditor.addEventListener("input", function () {
@@ -493,7 +575,10 @@
     triggerEditDebounce();
   }
 
-  function insertTable() {
+  function insertTable(cols, rows) {
+    cols = cols || 3;
+    rows = rows || 2;
+
     var sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
 
@@ -503,24 +588,20 @@
     var table = document.createElement("table");
     var thead = document.createElement("thead");
     var headerRow = document.createElement("tr");
-    var th1 = document.createElement("th");
-    th1.textContent = "Header 1";
-    var th2 = document.createElement("th");
-    th2.textContent = "Header 2";
-    var th3 = document.createElement("th");
-    th3.textContent = "Header 3";
-    headerRow.appendChild(th1);
-    headerRow.appendChild(th2);
-    headerRow.appendChild(th3);
+    for (var h = 0; h < cols; h++) {
+      var th = document.createElement("th");
+      th.textContent = "Header " + (h + 1);
+      headerRow.appendChild(th);
+    }
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
     var tbody = document.createElement("tbody");
-    for (var r = 0; r < 2; r++) {
+    for (var r = 0; r < rows; r++) {
       var row = document.createElement("tr");
-      for (var c = 0; c < 3; c++) {
+      for (var c = 0; c < cols; c++) {
         var td = document.createElement("td");
-        td.textContent = "Cell";
+        td.textContent = "";
         row.appendChild(td);
       }
       tbody.appendChild(row);
@@ -534,6 +615,77 @@
     }
 
     triggerEditDebounce();
+  }
+
+  // ─── Table Grid Selector ───
+
+  var activeGridSelector = null;
+
+  function showTableGridSelector(button) {
+    hideTableGridSelector();
+
+    var rect = button.getBoundingClientRect();
+    var grid = document.createElement('div');
+    grid.className = 'table-grid-selector';
+    grid.style.left = rect.left + 'px';
+    grid.style.top = (rect.bottom + 4) + 'px';
+
+    var label = document.createElement('div');
+    label.className = 'grid-label';
+    label.textContent = 'Select size';
+    grid.appendChild(label);
+
+    var gridContainer = document.createElement('div');
+    gridContainer.className = 'grid-cells';
+
+    var maxCols = 6, maxRows = 5;
+    for (var r = 0; r < maxRows; r++) {
+      for (var c = 0; c < maxCols; c++) {
+        var cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.setAttribute('data-row', String(r));
+        cell.setAttribute('data-col', String(c));
+        gridContainer.appendChild(cell);
+      }
+    }
+    grid.appendChild(gridContainer);
+
+    gridContainer.addEventListener('mouseover', function(e) {
+      var cell = e.target.closest('.grid-cell');
+      if (!cell) return;
+      var hoverRow = parseInt(cell.getAttribute('data-row'));
+      var hoverCol = parseInt(cell.getAttribute('data-col'));
+      label.textContent = (hoverCol + 1) + ' × ' + (hoverRow + 1);
+      gridContainer.querySelectorAll('.grid-cell').forEach(function(c) {
+        var cr = parseInt(c.getAttribute('data-row'));
+        var cc = parseInt(c.getAttribute('data-col'));
+        c.classList.toggle('active', cr <= hoverRow && cc <= hoverCol);
+      });
+    });
+
+    gridContainer.addEventListener('click', function(e) {
+      var cell = e.target.closest('.grid-cell');
+      if (!cell) return;
+      var selRow = parseInt(cell.getAttribute('data-row')) + 1;
+      var selCol = parseInt(cell.getAttribute('data-col')) + 1;
+      hideTableGridSelector();
+      content.focus();
+      insertTable(selCol, selRow);
+    });
+
+    document.body.appendChild(grid);
+    activeGridSelector = grid;
+
+    setTimeout(function() {
+      document.addEventListener('click', hideTableGridSelector, { once: true });
+    }, 0);
+  }
+
+  function hideTableGridSelector() {
+    if (activeGridSelector) {
+      activeGridSelector.remove();
+      activeGridSelector = null;
+    }
   }
 
   function applyIndent() {
@@ -646,9 +798,11 @@
   // ─── Image Paste Support ───
 
   content.addEventListener("paste", function (e) {
-    var items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
+    var clipboardData = e.clipboardData;
+    if (!clipboardData) return;
 
+    // Check for images first
+    var items = clipboardData.items;
     for (var i = 0; i < items.length; i++) {
       if (items[i].type.startsWith("image/")) {
         e.preventDefault();
@@ -664,9 +818,28 @@
           });
         };
         reader.readAsDataURL(file);
-        // Insert placeholder
         document.execCommand("insertText", false, "![Uploading...]()");
-        break;
+        return;
+      }
+    }
+
+    // Check for HTML paste — convert to clean Markdown insertion
+    var htmlData = clipboardData.getData('text/html');
+    var plainText = clipboardData.getData('text/plain');
+    if (htmlData && htmlData.trim()) {
+      // Only convert if it looks like rich content (has actual HTML tags)
+      var hasRichContent = /<(h[1-6]|p|ul|ol|li|table|tr|td|th|blockquote|pre|code|a|strong|em|b|i|img)\b/i.test(htmlData);
+      if (hasRichContent) {
+        e.preventDefault();
+        // Create temp container to convert HTML to markdown
+        var temp = document.createElement('div');
+        temp.innerHTML = htmlData;
+        // Remove style, script, meta tags
+        temp.querySelectorAll('style, script, meta, link').forEach(function(el) { el.remove(); });
+        var md = htmlToMarkdown(temp);
+        document.execCommand("insertText", false, md.trim());
+        triggerEditDebounce();
+        return;
       }
     }
   });
@@ -709,7 +882,15 @@
     var children = root.childNodes;
 
     for (var i = 0; i < children.length; i++) {
-      result += nodeToMarkdown(children[i], 0);
+      var child = children[i];
+      // Skip spacer elements
+      if (child.nodeType === 1 && child.classList && child.classList.contains('ce-spacer')) continue;
+      // Skip UI elements (code headers, mermaid buttons)
+      if (child.nodeType === 1 && child.classList && (
+        child.classList.contains('code-header') ||
+        child.classList.contains('mermaid-edit-btn')
+      )) continue;
+      result += nodeToMarkdown(child, 0);
     }
 
     // Clean up excessive blank lines
@@ -990,9 +1171,11 @@
       var markdown = htmlToMarkdown(content);
       if (markdown !== currentMarkdown) {
         currentMarkdown = markdown;
+        isUpdatingFromWebview = true;
         vscode.postMessage({ type: "edit", markdown: markdown });
+        setTimeout(function() { isUpdatingFromWebview = false; }, 600);
       }
-    }, 500);
+    }, 150);
   }
 
   function getCaretCharacterOffset(element) {
@@ -1065,6 +1248,269 @@
     }
   }
 
+  // ─── Non-Editable Islands + Spacers ───
+
+  function setupNonEditableIslands(root) {
+    // Mark special blocks as non-editable
+    var nonEditableSelectors = 'pre, .mermaid, table, img, .katex-display, .ascii-diagram';
+    root.querySelectorAll(nonEditableSelectors).forEach(function(el) {
+      // Don't mark if it's inside another non-editable or is a spacer
+      if (el.closest('[contenteditable="false"]') && el.closest('[contenteditable="false"]') !== el) return;
+      el.setAttribute('contenteditable', 'false');
+    });
+
+    // Insert spacers before/after non-editable blocks for cursor placement
+    root.querySelectorAll(nonEditableSelectors).forEach(function(el) {
+      // Only add spacers for top-level non-editable blocks (direct children of content)
+      var parent = el.parentNode;
+      // For img inside p, skip (the p is editable)
+      if (el.tagName === 'IMG' && parent && parent.tagName === 'P') return;
+
+      // Spacer before
+      var prev = el.previousElementSibling;
+      if (!prev || !prev.classList.contains('ce-spacer')) {
+        var spacerBefore = document.createElement('p');
+        spacerBefore.className = 'ce-spacer';
+        spacerBefore.innerHTML = '<br>';
+        spacerBefore.setAttribute('contenteditable', 'true');
+        parent.insertBefore(spacerBefore, el);
+      }
+
+      // Spacer after
+      var next = el.nextElementSibling;
+      if (!next || !next.classList.contains('ce-spacer')) {
+        var spacerAfter = document.createElement('p');
+        spacerAfter.className = 'ce-spacer';
+        spacerAfter.innerHTML = '<br>';
+        spacerAfter.setAttribute('contenteditable', 'true');
+        if (el.nextSibling) {
+          parent.insertBefore(spacerAfter, el.nextSibling);
+        } else {
+          parent.appendChild(spacerAfter);
+        }
+      }
+    });
+
+    // Suppress browser controls
+    try {
+      document.execCommand('enableObjectResizing', false, 'false');
+      document.execCommand('enableInlineTableEditing', false, 'false');
+    } catch(e) {}
+
+    // MutationObserver to remove Chrome's injected table/image controls
+    if (!root._ceObserver) {
+      root._ceObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          m.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1 && node.id && (
+              node.id.startsWith('_moz_') ||
+              node.dataset && node.dataset.mceObject
+            )) {
+              node.remove();
+            }
+          });
+        });
+      });
+      root._ceObserver.observe(root, { childList: true, subtree: true });
+    }
+  }
+
+  // Run on initial content
+  setupNonEditableIslands(content);
+
+  // ─── Floating Selection Toolbar ───
+
+  var selToolbar = document.getElementById('selection-toolbar');
+
+  function showSelectionToolbar() {
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      hideSelectionToolbar();
+      return;
+    }
+
+    var text = sel.toString().trim();
+    if (!text || text.length < 1) {
+      hideSelectionToolbar();
+      return;
+    }
+
+    // Don't show if selection is inside source editor or non-editable block
+    var range = sel.getRangeAt(0);
+    if (!content.contains(range.commonAncestorContainer)) {
+      hideSelectionToolbar();
+      return;
+    }
+    // Don't show inside code blocks, mermaid, math
+    var ancestor = range.commonAncestorContainer;
+    var node = ancestor.nodeType === 3 ? ancestor.parentElement : ancestor;
+    if (node && (node.closest('pre') || node.closest('.mermaid') || node.closest('.katex-display'))) {
+      hideSelectionToolbar();
+      return;
+    }
+
+    var rect = range.getBoundingClientRect();
+    if (!selToolbar) return;
+
+    // Update active formatting state
+    updateSelToolbarState();
+
+    selToolbar.classList.add('visible');
+    var tbRect = selToolbar.getBoundingClientRect();
+    var left = rect.left + (rect.width / 2) - (tbRect.width / 2);
+    var top = rect.top - tbRect.height - 8;
+
+    // Keep within viewport
+    if (left < 8) left = 8;
+    if (left + tbRect.width > window.innerWidth - 8) left = window.innerWidth - tbRect.width - 8;
+    if (top < 8) top = rect.bottom + 8;
+
+    selToolbar.style.left = left + 'px';
+    selToolbar.style.top = top + 'px';
+  }
+
+  function updateSelToolbarState() {
+    if (!selToolbar) return;
+
+    // Detect current block type and inline state
+    var sel = window.getSelection();
+    var blockType = '';
+    var inCode = false;
+    var inUl = false;
+    var inOl = false;
+
+    if (sel && sel.rangeCount) {
+      var node = sel.getRangeAt(0).commonAncestorContainer;
+      var el = node.nodeType === 3 ? node.parentElement : node;
+      if (el) {
+        inCode = !!el.closest('code');
+        inUl = !!el.closest('ul:not(.contains-task-list)');
+        inOl = !!el.closest('ol');
+        // Find nearest block parent
+        var block = el.closest('h1,h2,h3,h4,h5,h6,p,blockquote,li');
+        if (block) blockType = block.tagName.toLowerCase();
+        if (block && block.tagName === 'LI') {
+          // Check parent list type
+          var parentList = block.closest('ul,ol');
+          if (parentList) blockType = parentList.tagName.toLowerCase() === 'ul' ? 'ul' : 'ol';
+        }
+      }
+    }
+
+    selToolbar.querySelectorAll('button[data-action]').forEach(function(btn) {
+      var isActive = false;
+      var fmtAttr = btn.getAttribute('data-fmt');
+      var blockAttr = btn.getAttribute('data-block');
+
+      if (blockAttr) {
+        isActive = blockType === blockAttr;
+      } else if (fmtAttr) {
+        try {
+          switch (fmtAttr) {
+            case 'bold': isActive = document.queryCommandState('bold'); break;
+            case 'italic': isActive = document.queryCommandState('italic'); break;
+            case 'strikethrough': isActive = document.queryCommandState('strikeThrough'); break;
+            case 'code': isActive = inCode; break;
+            case 'ul': isActive = inUl; break;
+            case 'ol': isActive = inOl; break;
+          }
+        } catch(e) {}
+      }
+
+      btn.classList.toggle('sel-active', isActive);
+    });
+  }
+
+  function hideSelectionToolbar() {
+    if (selToolbar) selToolbar.classList.remove('visible');
+  }
+
+  document.addEventListener('selectionchange', function() {
+    showSelectionToolbar();
+  });
+
+  if (selToolbar) {
+    selToolbar.addEventListener('mousedown', function(e) {
+      e.preventDefault(); // prevent losing selection
+    });
+
+    selToolbar.addEventListener('click', function(e) {
+      var button = e.target.closest('button');
+      if (!button) return;
+      var action = button.getAttribute('data-action');
+      if (!action) return;
+      e.preventDefault();
+
+      // Route to same handlers as the main toolbar
+      switch (action) {
+        case 'undo': document.execCommand('undo', false, null); triggerEditDebounce(); break;
+        case 'redo': document.execCommand('redo', false, null); triggerEditDebounce(); break;
+        case 'bold': applyInlineFormat('bold'); break;
+        case 'italic': applyInlineFormat('italic'); break;
+        case 'strikethrough': applyInlineFormat('strikethrough'); break;
+        case 'code': applyInlineFormat('code'); break;
+        case 'h1': applyBlockFormat('h1'); break;
+        case 'h2': applyBlockFormat('h2'); break;
+        case 'h3': applyBlockFormat('h3'); break;
+        case 'h4': applyBlockFormat('h4'); break;
+        case 'p': applyBlockFormat('p'); break;
+        case 'ul': applyBlockFormat('ul'); break;
+        case 'ol': applyBlockFormat('ol'); break;
+        case 'indent': applyIndent(); break;
+        case 'outdent': applyOutdent(); break;
+        case 'blockquote': applyBlockFormat('blockquote'); break;
+        case 'hr': insertHorizontalRule(); break;
+        case 'link': insertLink(); break;
+        case 'image': vscode.postMessage({ type: 'requestImageUrl' }); break;
+        case 'table': showTableGridSelector(e.target.closest('button')); break;
+        case 'removeFormat': removeFormatting(); break;
+      }
+      hideSelectionToolbar();
+    });
+  }
+
+  // ─── Code Block Language Tag + Copy Button ───
+
+  function postProcessCodeBlocks(root) {
+    root.querySelectorAll('pre[lang]').forEach(function(pre) {
+      if (pre.querySelector('.code-header')) return; // already processed
+      var lang = pre.getAttribute('lang');
+      if (lang === 'mermaid') return; // handled separately
+
+      var header = document.createElement('div');
+      header.className = 'code-header';
+
+      var langLabel = document.createElement('span');
+      langLabel.className = 'code-lang';
+      langLabel.textContent = lang;
+      header.appendChild(langLabel);
+
+      var copyBtn = document.createElement('button');
+      copyBtn.className = 'code-copy-btn';
+      copyBtn.textContent = 'Copy';
+      copyBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        var code = pre.querySelector('code');
+        var text = code ? code.textContent : pre.textContent;
+        navigator.clipboard.writeText(text || '').then(function() {
+          copyBtn.textContent = 'Copied!';
+          copyBtn.classList.add('copied');
+          setTimeout(function() {
+            copyBtn.textContent = 'Copy';
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        });
+      });
+      header.appendChild(copyBtn);
+
+      pre.insertBefore(header, pre.firstChild);
+    });
+  }
+
+  // Run on initial content
+  postProcessCodeBlocks(content);
+
   // ─── Mermaid Edit Buttons ───
 
   function postProcessMermaid() {
@@ -1116,6 +1562,35 @@
   setTimeout(function() {
     addMermaidEditButtons();
   }, 500);
+
+  // ─── Code Block Inline Editing (double-click) ───
+
+  content.addEventListener('dblclick', function(e) {
+    var pre = e.target.closest('pre[lang]');
+    if (!pre) return;
+    var lang = pre.getAttribute('lang');
+    if (lang === 'mermaid') return; // mermaid has its own handler
+
+    var codeEl = pre.querySelector('code');
+    if (!codeEl) return;
+
+    // Find the index of this code block among all code blocks
+    var allPres = content.querySelectorAll('pre[lang]');
+    var blockIndex = -1;
+    for (var i = 0; i < allPres.length; i++) {
+      if (allPres[i] === pre) { blockIndex = i; break; }
+    }
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    vscode.postMessage({
+      type: 'editCodeBlock',
+      code: codeEl.textContent || '',
+      lang: lang,
+      index: blockIndex
+    });
+  });
 
   // ─── Table Inline Editing ───
 
@@ -1369,6 +1844,70 @@
 
   // Initialize flavor badge with detected flavor
   updateFlavorBadge(currentFlavor);
+
+  // ─── Custom Tooltips (instant, like mdfy.cc) ───
+
+  var tooltipEl = null;
+  var tooltipTimer = null;
+
+  function createTooltip() {
+    if (tooltipEl) return;
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'mdfy-tooltip';
+    document.body.appendChild(tooltipEl);
+  }
+
+  function showTooltip(target) {
+    var text = target.getAttribute('title') || target.getAttribute('data-tooltip');
+    if (!text) return;
+    // Store and remove native title to prevent double tooltip
+    if (target.getAttribute('title')) {
+      target.setAttribute('data-tooltip', text);
+      target.removeAttribute('title');
+    }
+    createTooltip();
+    tooltipEl.textContent = text;
+    tooltipEl.classList.add('visible');
+
+    var rect = target.getBoundingClientRect();
+    var tipRect = tooltipEl.getBoundingClientRect();
+    var left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+    var top = rect.top - tipRect.height - 6;
+
+    // If tooltip would go above viewport, show below
+    if (top < 4) top = rect.bottom + 6;
+    // Keep within viewport horizontally
+    if (left < 4) left = 4;
+    if (left + tipRect.width > window.innerWidth - 4) left = window.innerWidth - tipRect.width - 4;
+
+    tooltipEl.style.left = left + 'px';
+    tooltipEl.style.top = top + 'px';
+  }
+
+  function hideTooltip() {
+    if (tooltipEl) tooltipEl.classList.remove('visible');
+  }
+
+  // Attach to all buttons with title attributes
+  document.addEventListener('mouseover', function(e) {
+    var btn = e.target.closest('button[title], button[data-tooltip]');
+    if (btn) {
+      if (tooltipTimer) clearTimeout(tooltipTimer);
+      tooltipTimer = setTimeout(function() { showTooltip(btn); }, 50);
+    }
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    var btn = e.target.closest('button[title], button[data-tooltip]');
+    if (btn) {
+      if (tooltipTimer) clearTimeout(tooltipTimer);
+      hideTooltip();
+    }
+  });
+
+  document.addEventListener('mousedown', function() {
+    hideTooltip();
+  });
 
   // ─── Initialize ───
 

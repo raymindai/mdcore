@@ -5,4 +5,6 @@ node_modules/**
 .gitignore
 tsconfig.json
 **/*.ts
-**/*.map
+!**/*.d.ts
+out/**/*.map
+package-lock.json

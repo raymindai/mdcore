@@ -71,12 +71,96 @@ export class PreviewPanel {
     PreviewPanel.panels.set(key, previewPanel);
   }
 
+  /**
+   * Create preview panel only if one doesn't already exist for this document.
+   * Does NOT steal focus from the editor. Used for auto-preview.
+   */
+  public static createIfNotExists(
+    extensionUri: vscode.Uri,
+    document: vscode.TextDocument
+  ): void {
+    const key = document.uri.toString();
+    if (PreviewPanel.panels.has(key)) {
+      // Already open — just update content, don't reveal/focus
+      const existing = PreviewPanel.panels.get(key)!;
+      existing.trackedDocument = document;
+      existing.updateContent(document.getText());
+      return;
+    }
+
+    const panel = vscode.window.createWebviewPanel(
+      PreviewPanel.viewType,
+      `mdfy Preview: ${path.basename(document.fileName)}`,
+      { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
+      }
+    );
+
+    const previewPanel = new PreviewPanel(panel, extensionUri, document);
+    PreviewPanel.panels.set(key, previewPanel);
+  }
+
   public static updateIfActive(document: vscode.TextDocument): void {
     const key = document.uri.toString();
     const panel = PreviewPanel.panels.get(key);
     if (panel && !panel.isUpdatingFromWebview) {
       panel.updateContent(document.getText());
     }
+  }
+
+  /**
+   * Render markdown to HTML string (for clipboard/export).
+   */
+  public static renderToHtml(markdown: string): string {
+    return renderMarkdownWithFlavor(markdown).html;
+  }
+
+  /**
+   * Render markdown to standalone HTML document (for file export).
+   */
+  public static renderToFullHtml(markdown: string): string {
+    const result = renderMarkdownWithFlavor(markdown);
+    const titleMatch = markdown.match(/^#\s+(.+)$/m);
+    const title = titleMatch?.[1]?.trim() || "Document";
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.40/katex.min.css">
+<style>
+body { max-width: 820px; margin: 0 auto; padding: 40px 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.7; color: #fafafa; background: #09090b; }
+h1,h2,h3,h4,h5,h6 { font-weight: 700; line-height: 1.3; margin-top: 1.5em; margin-bottom: 0.5em; }
+h1 { font-size: 2em; border-bottom: 1px solid #27272a; padding-bottom: 0.3em; }
+h2 { font-size: 1.5em; border-bottom: 1px solid #27272a; padding-bottom: 0.25em; }
+a { color: #fb923c; text-decoration: none; }
+code { font-family: "SF Mono","Fira Code",Consolas,monospace; font-size: 0.9em; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; }
+pre { padding: 16px; background: #1e1e2e; border-radius: 8px; overflow-x: auto; border: 1px solid #27272a; }
+pre code { background: transparent; padding: 0; }
+blockquote { border-left: 4px solid #fb923c; padding: 0.5em 1em; color: #a1a1aa; background: rgba(251,146,60,0.05); }
+table { width: 100%; border-collapse: collapse; }
+th,td { padding: 8px 12px; border: 1px solid #27272a; }
+th { background: #18181b; font-weight: 600; }
+img { max-width: 100%; border-radius: 8px; }
+hr { border: none; border-top: 1px solid #27272a; margin: 2em 0; }
+</style>
+</head>
+<body>
+${result.html}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.40/katex.min.js"><\/script>
+<script>
+document.querySelectorAll('pre[lang] code').forEach(b=>{var l=b.parentElement.getAttribute('lang');if(l)b.className='language-'+l;});
+document.querySelectorAll('pre code').forEach(b=>hljs.highlightElement(b));
+document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.textContent||'',el,{displayMode:el.getAttribute('data-math-style')==='display',throwOnError:false})}catch(e){}});
+<\/script>
+</body>
+</html>`;
   }
 
   /**
@@ -112,6 +196,7 @@ export class PreviewPanel {
         data?: string;
         name?: string;
         code?: string;
+        lang?: string;
         index?: number;
         target?: string;
       }) => {
@@ -130,10 +215,11 @@ export class PreviewPanel {
               edit.replace(this.trackedDocument.uri, fullRange, message.markdown);
               await vscode.workspace.applyEdit(edit);
             } finally {
-              // Small delay to avoid echo
+              // Longer delay to fully suppress the echo cycle
+              // edit → applyEdit → onDidChangeTextDocument → updateIfActive → must be blocked
               setTimeout(() => {
                 this.isUpdatingFromWebview = false;
-              }, 100);
+              }, 500);
             }
             break;
           }
@@ -176,6 +262,10 @@ export class PreviewPanel {
             await this.handleMermaidEdit(message.code, message.index);
             break;
           }
+          case "editCodeBlock": {
+            await this.handleCodeBlockEdit(message.code, message.lang, message.index);
+            break;
+          }
           case "convertFlavor": {
             await this.handleFlavorConversion(message.target);
             break;
@@ -201,6 +291,22 @@ export class PreviewPanel {
 
   public setSyncStatus(status: string): void {
     this.panel.webview.postMessage({ type: "syncStatus", status });
+  }
+
+  public setPublishedState(docId: string | undefined, url: string | undefined): void {
+    this.panel.webview.postMessage({ type: "publishedState", docId, url });
+  }
+
+  public static setPublishedStateForDocument(
+    uri: vscode.Uri,
+    docId: string | undefined,
+    url: string | undefined
+  ): void {
+    const key = uri.toString();
+    const panel = PreviewPanel.panels.get(key);
+    if (panel) {
+      panel.setPublishedState(docId, url);
+    }
   }
 
   private updateContent(markdown: string): void {
@@ -276,6 +382,94 @@ export class PreviewPanel {
     });
 
     // Clean up when the temp editor is closed
+    const closeDisposable = vscode.workspace.onDidCloseTextDocument((closed) => {
+      if (closed.uri.toString() === doc.uri.toString()) {
+        disposable.dispose();
+        closeDisposable.dispose();
+      }
+    });
+
+    this.disposables.push(disposable, closeDisposable);
+  }
+
+  private async handleCodeBlockEdit(
+    code: string | undefined,
+    lang: string | undefined,
+    index: number | undefined
+  ): Promise<void> {
+    if (!code || !this.trackedDocument) { return; }
+
+    // Let user change the language
+    const newLang = await vscode.window.showInputBox({
+      prompt: "Code block language",
+      value: lang || "",
+      placeHolder: "e.g. javascript, python, rust",
+    });
+    if (newLang === undefined) { return; } // cancelled
+
+    // Open code in a temp editor for editing
+    const langId = newLang || "plaintext";
+    const doc = await vscode.workspace.openTextDocument({
+      content: code.trim(),
+      language: langId,
+    });
+
+    await vscode.window.showTextDocument(doc, {
+      viewColumn: vscode.ViewColumn.One,
+      preserveFocus: false,
+    });
+
+    // Watch for save — replace the code block in source
+    const disposable = vscode.workspace.onDidSaveTextDocument(async (saved) => {
+      if (saved.uri.toString() !== doc.uri.toString()) { return; }
+      if (!this.trackedDocument) { return; }
+
+      const newCode = saved.getText().trim();
+      const mdText = this.trackedDocument.getText();
+
+      // Find all fenced code blocks (excluding mermaid) at the given index
+      const codeBlockRegex = /```(\w*)\s*\n([\s\S]*?)```/g;
+      let match: RegExpExecArray | null;
+      let blockIndex = 0;
+      let nonMermaidIndex = 0;
+
+      let newMd = mdText;
+      codeBlockRegex.lastIndex = 0;
+      while ((match = codeBlockRegex.exec(mdText)) !== null) {
+        const blockLang = match[1];
+        if (blockLang === "mermaid") {
+          blockIndex++;
+          continue;
+        }
+        if (nonMermaidIndex === (index ?? 0)) {
+          const before = mdText.substring(0, match.index);
+          const after = mdText.substring(match.index + match[0].length);
+          newMd = before + "```" + (newLang || "") + "\n" + newCode + "\n```" + after;
+          break;
+        }
+        nonMermaidIndex++;
+        blockIndex++;
+      }
+
+      if (newMd !== mdText) {
+        this.isUpdatingFromWebview = true;
+        try {
+          const edit = new vscode.WorkspaceEdit();
+          const fullRange = new vscode.Range(
+            this.trackedDocument.positionAt(0),
+            this.trackedDocument.positionAt(mdText.length)
+          );
+          edit.replace(this.trackedDocument.uri, fullRange, newMd);
+          await vscode.workspace.applyEdit(edit);
+          this.updateContent(newMd);
+        } finally {
+          setTimeout(() => {
+            this.isUpdatingFromWebview = false;
+          }, 100);
+        }
+      }
+    });
+
     const closeDisposable = vscode.workspace.onDidCloseTextDocument((closed) => {
       if (closed.uri.toString() === doc.uri.toString()) {
         disposable.dispose();
@@ -529,7 +723,12 @@ export class PreviewPanel {
 </head>
 <body>
   <div id="toolbar">
-    <span class="toolbar-logo"><span style="color:var(--accent)">md</span><span style="color:var(--text-primary)">fy</span></span>
+    <span class="toolbar-logo"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span></span>
+    <span class="toolbar-divider"></span>
+    <div class="view-switcher">
+      <button class="view-btn active" data-view="live" title="Live preview"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 6l2.5 2-2.5 2"/><line x1="9" y1="10" x2="11.5" y2="10"/></svg> LIVE</button>
+      <button class="view-btn" data-view="source" title="Source view"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg> SOURCE</button>
+    </div>
     <span class="toolbar-divider"></span>
     <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
     <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
@@ -556,17 +755,15 @@ export class PreviewPanel {
     <button data-action="blockquote" title="Blockquote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
     <button data-action="hr" title="Horizontal rule"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
     <span class="toolbar-divider"></span>
-    <button data-action="link" title="Link (Cmd+K)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg></button>
+    <button data-action="link" title="Link (Cmd+K)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5l-1 1"/><path d="M9.5 7.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5l1-1"/></svg></button>
     <button data-action="image" title="Image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
     <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
     <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
-    <span class="toolbar-divider"></span>
-    <button data-action="toggleSource" title="Toggle source view" id="source-toggle"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg></button>
   </div>
 
   <div id="editor-wrapper">
-    <article id="content" class="mdcore-rendered" contenteditable="true">
+    <article id="content" class="mdcore-rendered narrow" contenteditable="true">
       ${renderedHtml}
     </article>
     <div id="source-view" class="hidden">
@@ -574,26 +771,80 @@ export class PreviewPanel {
     </div>
   </div>
 
-  <div id="sync-bar">
-    <div id="flavor-area">
-      <button id="flavor-badge" title="Markdown flavor (click to convert)">${result.flavor.primary.toUpperCase()} &#9662;</button>
-      <div id="flavor-dropdown" class="flavor-dropdown hidden">
-        <div class="flavor-dropdown-header">Convert to</div>
-        <button class="flavor-option" data-flavor="gfm">
-          <span class="flavor-option-name">GFM (GitHub)</span>
-          <span class="flavor-option-desc">Tables, task lists, strikethrough</span>
-        </button>
-        <button class="flavor-option" data-flavor="commonmark">
-          <span class="flavor-option-name">CommonMark</span>
-          <span class="flavor-option-desc">Standard, maximum compatibility</span>
-        </button>
-        <button class="flavor-option" data-flavor="obsidian">
-          <span class="flavor-option-name">Obsidian</span>
-          <span class="flavor-option-desc">Wikilinks, callouts, embeds</span>
-        </button>
+  <div id="selection-toolbar">
+    <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
+    <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
+    <span class="sel-divider"></span>
+    <button data-action="h1" data-block="h1" title="Heading 1"><span class="sel-label">H1</span></button>
+    <button data-action="h2" data-block="h2" title="Heading 2"><span class="sel-label">H2</span></button>
+    <button data-action="h3" data-block="h3" title="Heading 3"><span class="sel-label">H3</span></button>
+    <button data-action="h4" data-block="h4" title="Heading 4"><span class="sel-label sel-light">H4</span></button>
+    <button data-action="h5" data-block="h5" title="Heading 5"><span class="sel-label sel-light">H5</span></button>
+    <button data-action="h6" data-block="h6" title="Heading 6"><span class="sel-label sel-light">H6</span></button>
+    <button data-action="p" data-block="p" title="Paragraph"><span class="sel-label">P</span></button>
+    <span class="sel-divider"></span>
+    <button data-action="bold" data-fmt="bold" title="Bold"><span style="font-weight:700;font-size:13px">B</span></button>
+    <button data-action="italic" data-fmt="italic" title="Italic"><span style="font-style:italic;font-size:13px">I</span></button>
+    <button data-action="strikethrough" data-fmt="strikethrough" title="Strikethrough"><span style="text-decoration:line-through;font-size:13px">S</span></button>
+    <button data-action="code" data-fmt="code" title="Inline code"><span style="font-family:monospace;font-size:11px">&lt;/&gt;</span></button>
+    <span class="sel-divider"></span>
+    <button data-action="ul" data-fmt="ul" title="Bullet list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+    <button data-action="ol" data-fmt="ol" title="Numbered list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+    <button data-action="indent" title="Indent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg></button>
+    <button data-action="outdent" title="Outdent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg></button>
+    <span class="sel-divider"></span>
+    <button data-action="blockquote" data-block="blockquote" title="Blockquote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
+    <button data-action="hr" title="Horizontal rule"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
+    <span class="sel-divider"></span>
+    <button data-action="link" title="Link"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5l-1 1"/><path d="M9.5 7.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5l1-1"/></svg></button>
+    <button data-action="image" title="Image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
+    <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
+  </div>
+
+  <div id="mdfy-badge" class="hidden">
+    <a href="https://mdfy.cc" target="_blank" id="badge-link">Published with <span style="color:var(--accent);font-weight:700">mdfy</span>.cc</a>
+    <a href="#" id="badge-view-link" target="_blank" class="badge-view">View document →</a>
+  </div>
+
+  <div id="bottom-bar">
+    <div class="bar-left">
+      <button class="toggle-pill" id="toolbar-toggle" data-active="true" title="Show/hide formatting toolbar">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
+        <span>TOOLBAR</span>
+        <span class="toggle-switch on"><span class="toggle-track"></span><span class="toggle-ball"></span></span>
+      </button>
+      <button class="toggle-pill" id="narrow-toggle" data-active="true" title="Narrow content width for comfortable reading">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 2v12M12 2v12M1 8h3M12 8h3"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5"/></svg>
+        <span>NARROW</span>
+        <span class="toggle-switch on"><span class="toggle-track"></span><span class="toggle-ball"></span></span>
+      </button>
+      <div id="flavor-area">
+        <button id="flavor-badge" title="Markdown flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
+        <div id="flavor-dropdown" class="flavor-dropdown hidden">
+          <div class="flavor-dropdown-header">Convert to</div>
+          <button class="flavor-option" data-flavor="gfm">
+            <span class="flavor-option-name">GFM (GitHub)</span>
+            <span class="flavor-option-desc">Tables, task lists, strikethrough</span>
+          </button>
+          <button class="flavor-option" data-flavor="commonmark">
+            <span class="flavor-option-name">CommonMark</span>
+            <span class="flavor-option-desc">Standard, maximum compatibility</span>
+          </button>
+          <button class="flavor-option" data-flavor="obsidian">
+            <span class="flavor-option-name">Obsidian</span>
+            <span class="flavor-option-desc">Wikilinks, callouts, embeds</span>
+          </button>
+        </div>
       </div>
     </div>
-    <span id="sync-status">Ready</span>
+    <div class="bar-right">
+      <span id="sync-status">Ready</span>
+      <button class="toggle-pill" id="publish-btn" data-active="false" style="display:none">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/></svg>
+        <span>SHARE</span>
+      </button>
+    </div>
   </div>
 
   <!-- Syntax highlighting -->
@@ -607,7 +858,13 @@ export class PreviewPanel {
     window.__initialMarkdown = ${JSON.stringify(markdown)};
     window.__initialFlavor = ${JSON.stringify(result.flavor)};
 
-    // Post-process: syntax highlighting
+    // Post-process: syntax highlighting — copy lang from <pre lang="X"> to <code class="language-X">
+    document.querySelectorAll('pre[lang] code').forEach(function(block) {
+      var lang = block.parentElement.getAttribute('lang');
+      if (lang && lang !== 'mermaid') {
+        block.className = 'language-' + lang;
+      }
+    });
     document.querySelectorAll('pre code').forEach(function(block) {
       if (typeof hljs !== 'undefined') hljs.highlightElement(block);
     });
@@ -668,9 +925,17 @@ interface RenderResult {
 function renderMarkdownWithFlavor(markdown: string): RenderResult {
   try {
     const result = wasmEngine.render(markdown);
+    // WASM flavor object has getters on prototype — must serialize to plain object
+    const f = result.flavor;
     return {
       html: result.html,
-      flavor: result.flavor,
+      flavor: {
+        primary: f.primary,
+        math: f.math,
+        mermaid: f.mermaid,
+        wikilinks: f.wikilinks,
+        jsx: f.jsx,
+      },
     };
   } catch {
     return {

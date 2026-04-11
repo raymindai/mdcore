@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 export class StatusBarManager {
   private item: vscode.StatusBarItem;
   private resetTimer: NodeJS.Timeout | undefined;
+  private publishedUrl: string | undefined;
 
   constructor() {
     this.item = vscode.window.createStatusBarItem(
@@ -54,6 +55,19 @@ export class StatusBarManager {
     this.item.backgroundColor = new vscode.ThemeColor(
       "statusBarItem.warningBackground"
     );
+  }
+
+  setPublished(url: string): void {
+    this.clearResetTimer();
+    this.publishedUrl = url;
+    this.item.text = "$(link) mdfy";
+    this.item.tooltip = `${url}\nClick to copy URL`;
+    this.item.backgroundColor = undefined;
+    this.item.command = "mdfy.copyUrl";
+  }
+
+  getPublishedUrl(): string | undefined {
+    return this.publishedUrl;
   }
 
   setError(): void {
