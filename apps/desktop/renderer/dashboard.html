@@ -63,7 +63,7 @@
     .panel-right { border-left: 1px solid #18181b; }
 
     /* Hero */
-    .hero-logo { height: 24px; user-select: none; margin-bottom: 10px; }
+    .hero-logo { height: 32px; user-select: none; margin-bottom: 10px; }
     .hero-logo img { height: 100%; width: auto; }
     .hero-tagline { font-size: 13px; color: #52525b; margin-bottom: 32px; }
 
@@ -98,6 +98,7 @@
     }
     .ic-new { background: rgba(251, 146, 60, 0.1); color: #fb923c; }
     .ic-open { background: rgba(96, 165, 250, 0.1); color: #60a5fa; }
+    .ic-import { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
     .ic-paste { background: rgba(167, 139, 250, 0.1); color: #a78bfa; }
 
     .action-text { flex: 1; }
@@ -127,6 +128,10 @@
       width: 100%;
       position: relative;
       overflow: hidden;
+      min-height: 68px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .example-card:hover { background: #18181b; border-color: #27272a; }
 
@@ -163,6 +168,8 @@
     .c-diag .card-accent { background: #f472b6; }
     .c-tbl .card-label { color: #60a5fa; }
     .c-tbl .card-accent { background: #60a5fa; }
+    .c-import .card-label { color: #fbbf24; }
+    .c-import .card-accent { background: #fbbf24; }
 
     /* Full-width last card when odd count */
     .example-card.full-width { grid-column: 1 / -1; }
@@ -300,7 +307,7 @@
           </button>
           <button class="action-btn" id="btn-open">
             <div class="action-icon ic-open"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 5h5l1.5-2H14v9H2z"/></svg></div>
-            <span class="action-text">Open File<small>md, pdf, docx, pptx, xlsx, html, csv, json</small></span>
+            <span class="action-text">Open / Import<small>md, pdf, docx, pptx, xlsx, html, csv, json</small></span>
             <span class="action-kbd">&#8984;O</span>
           </button>
           <button class="action-btn" id="btn-paste">
@@ -327,11 +334,6 @@
             <div class="card-label">LaTeX Math</div>
             <div class="card-name">Equations rendered with KaTeX</div>
           </button>
-          <button class="example-card c-diag" data-example="diagram">
-            <div class="card-accent"></div>
-            <div class="card-label">Mermaid Diagram</div>
-            <div class="card-name">System architecture flowcharts</div>
-          </button>
           <button class="example-card c-tbl" data-example="table">
             <div class="card-accent"></div>
             <div class="card-label">Tables + Checklists</div>
@@ -344,8 +346,16 @@
     <!-- Right -->
     <div class="panel panel-right">
       <div class="right-content">
+
+        <!-- Cloud documents (shown when logged in) -->
+        <div id="cloud-section" style="display:none">
+          <div class="section-label">My Documents</div>
+          <div id="cloud-list" class="recent-list"></div>
+        </div>
+
+        <!-- Local recent files -->
         <div>
-          <div class="section-label">Recent</div>
+          <div class="section-label" id="recent-label">Recent</div>
           <div id="recent-list">
             <div class="empty-state">
               <div class="empty-visual">
@@ -394,7 +404,9 @@
         }
       });
     });
-    document.getElementById("btn-signin").addEventListener("click", function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc"); });
+    document.getElementById("btn-signin").addEventListener("click", function() {
+      window.mdfyDesktop.signIn();
+    });
 
     var EXAMPLES = {
 "ai-cleanup": "# How to Build a REST API\n\n> **User:** How do I build a REST API in Node.js?\n\n## Overview\n\nBuilding a REST API in Node.js typically involves:\n\n1. **Express.js** as the web framework\n2. A database (PostgreSQL, MongoDB, etc.)\n3. Proper error handling and validation\n\n## Quick Setup\n\n```bash\nmkdir my-api && cd my-api\nnpm init -y\nnpm install express cors dotenv\n```\n\n## Basic Server\n\n```javascript\nconst express = require('express');\nconst app = express();\n\napp.use(express.json());\n\napp.get('/api/users', (req, res) => {\n  res.json({ users: [] });\n});\n\napp.listen(3000, () => {\n  console.log('Server running on port 3000');\n});\n```\n\n> **Key takeaway:** Start simple, add complexity as needed.",
@@ -404,6 +416,8 @@
 "math": "# Calculus Notes\n\n## The Fundamental Theorem\n\nIf $f$ is continuous on $[a, b]$ and $F$ is an antiderivative of $f$:\n\n$$\\int_a^b f(x)\\,dx = F(b) - F(a)$$\n\n## Integration by Parts\n\n$$\\int u\\,dv = uv - \\int v\\,du$$\n\n**Example:** $\\int x e^x\\,dx = e^x(x - 1) + C$\n\n## Taylor Series\n\n$$f(x) = \\sum_{n=0}^{\\infty} \\frac{f^{(n)}(a)}{n!}(x-a)^n$$\n\n- $e^x = \\sum \\frac{x^n}{n!}$\n- $\\sin x = \\sum \\frac{(-1)^n x^{2n+1}}{(2n+1)!}$",
 
 "diagram": "# System Architecture\n\n```mermaid\ngraph LR\n  Client[Browser] --> CDN[Vercel CDN]\n  CDN --> Next[Next.js]\n  Next --> WASM[Rust/WASM]\n  Next --> API[REST API]\n  API --> DB[(PostgreSQL)]\n```\n\n```mermaid\nflowchart TD\n  A[Markdown] --> B[WASM Engine]\n  B --> C[Raw HTML]\n  C --> D{Post-Process}\n  D --> E[highlight.js]\n  D --> F[KaTeX]\n  D --> G[Mermaid]\n  E & F & G --> H[Output]\n```\n\n| Layer | Tech | Purpose |\n|-------|------|----------|\n| Engine | Rust + comrak | Parsing |\n| Bridge | wasm-bindgen | Rust to JS |\n| App | Next.js 15 | Web |\n| DB | Supabase | Storage |",
+
+"import-guide": "# Import & Export Guide\n\n## Import\n\nDrop any file onto mdfy or click **Import File** on the dashboard.\n\n### Supported Formats\n\n| Format | Extension | How |\n|--------|----------|------|\n| Markdown | .md, .markdown, .txt | Direct open |\n| PDF | .pdf | Extracted text |\n| Word | .docx | Converted to MD |\n| PowerPoint | .pptx | Slide text extraction |\n| Excel | .xlsx | Converted to MD tables |\n| HTML | .html | Turndown conversion |\n| CSV | .csv | Auto table formatting |\n| JSON | .json | Pretty-printed code block |\n\n## Export\n\n- **Share URL** — One-click publish to mdfy.cc\n- **PDF** — Print-optimized export\n- **Copy** — Rich text for Docs/Email, mrkdwn for Slack\n- **Download** — Save as .md file",
 
 "table": "# Q1 2026 Metrics\n\n| Month | Users | Growth | Revenue |\n|-------|------:|-------:|--------:|\n| Jan | 12,450 | - | $2,490 |\n| Feb | 18,200 | +46% | $4,550 |\n| Mar | 31,800 | +75% | $9,540 |\n\n## Feature Usage\n\n| Feature | Daily | % Total |\n|---------|------:|--------:|\n| Render | 28,400 | 89% |\n| Code | 19,200 | 60% |\n| Math | 8,100 | 26% |\n| Diagrams | 6,300 | 20% |\n| PDF Export | 11,500 | 36% |\n| Share URL | 15,600 | 49% |\n\n- [x] Growth exceeding projections\n- [x] Share driving viral adoption\n- [ ] Pro conversion needs work\n- [ ] Mobile optimization needed"
     };
@@ -440,7 +454,14 @@
           '<svg class="recent-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M6 5h4M6 8h4M6 11h2" stroke-linecap="round"/></svg>' +
           '<div class="recent-info"><div class="recent-name">' + name + '</div><div class="recent-dir">' + dir + '</div></div>' +
           '<span class="recent-time">' + timeAgo(file.openedAt) + '</span>';
-        item.addEventListener("click", function() { window.mdfyDesktop.openFilePath(file.path); });
+        item.addEventListener("click", function() {
+          console.log("[dashboard] opening recent:", file.path);
+          window.mdfyDesktop.openFilePath(file.path).then(function() {
+            console.log("[dashboard] openFilePath resolved");
+          }).catch(function(err) {
+            console.error("[dashboard] openFilePath error:", err);
+          });
+        });
         list.appendChild(item);
       });
     });
@@ -454,6 +475,55 @@
     }
 
     window.mdfyDesktop.getVersion().then(function(v) { document.getElementById("version-text").textContent = "v" + v; }).catch(function(){});
+
+    // ─── Cloud documents ───
+
+    function renderCloudDoc(doc) {
+      var item = document.createElement("button");
+      item.className = "recent-item";
+      var title = doc.title || "Untitled";
+      var date = doc.updated_at ? timeAgo(doc.updated_at) : "";
+      item.innerHTML =
+        '<svg class="recent-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2.5 1.5" stroke-linecap="round"/></svg>' +
+        '<div class="recent-info"><div class="recent-name">' + title + '</div><div class="recent-dir">mdfy.cc/' + doc.id + '</div></div>' +
+        '<span class="recent-time">' + date + '</span>';
+      item.addEventListener("click", function() {
+        window.mdfyDesktop.openCloudDocument(doc.id);
+      });
+      return item;
+    }
+
+    window.mdfyDesktop.getUser().then(function(user) {
+      if (!user) return;
+
+      // Update sign-in button to show user
+      var signBtn = document.getElementById("btn-signin");
+      signBtn.textContent = user.email || "Signed in";
+      signBtn.onclick = function() {
+        window.mdfyDesktop.signOut();
+        signBtn.textContent = "Sign in";
+        document.getElementById("cloud-section").style.display = "none";
+        document.getElementById("recent-label").textContent = "Recent";
+      };
+
+      // Rename local recent label
+      document.getElementById("recent-label").textContent = "Local Files";
+
+      // Fetch cloud documents
+      window.mdfyDesktop.getCloudDocuments().then(function(data) {
+        var docs = data.documents || [];
+        var cloudSection = document.getElementById("cloud-section");
+        var cloudList = document.getElementById("cloud-list");
+
+        if (docs.length > 0) {
+          cloudSection.style.display = "block";
+          cloudList.innerHTML = "";
+          docs.slice(0, 10).forEach(function(doc) {
+            cloudList.appendChild(renderCloudDoc(doc));
+          });
+        }
+      }).catch(function(){});
+    }).catch(function(){});
   </script>
 </body>
 </html>

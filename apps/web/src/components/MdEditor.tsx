@@ -3606,6 +3606,55 @@ ${html}
     setShowMenu(false);
   }, [doRender]);
 
+  // ─── Desktop Bridge (Electron) ───
+  // Expose markdown state and functions to the desktop app
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>;
+    if (!w.__MDFY_DESKTOP__) return;
+
+    w.__MDFY_GET_MARKDOWN__ = () => markdown;
+    w.__MDFY_GET_TITLE__ = () => title;
+    w.__MDFY_GET_DOC_ID__ = () => docId;
+    w.__MDFY_SET_MARKDOWN__ = (md: string) => {
+      setMarkdown(md);
+      doRender(md);
+    };
+
+    // Listen for Cmd+S from desktop (save to local file)
+    const handleDesktopSave = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s" && !e.shiftKey) {
+        e.preventDefault();
+        window.postMessage({ type: "mdfy-desktop-save", markdown, title }, "*");
+      }
+    };
+    window.addEventListener("keydown", handleDesktopSave);
+
+    // Notify desktop when document is published/shared
+    const origPushState = history.pushState.bind(history);
+    const origReplaceState = history.replaceState.bind(history);
+    const checkUrl = () => {
+      const urlPath = window.location.pathname;
+      const match = urlPath.match(/^\/([a-zA-Z0-9_-]{6,12})$/);
+      if (match && docId) {
+        window.postMessage({ type: "mdfy-desktop-published", docId, editToken: w.__MDFY_EDIT_TOKEN__ as string }, "*");
+      }
+    };
+    const wrappedPush = (...args: Parameters<typeof history.pushState>) => { origPushState(...args); checkUrl(); };
+    const wrappedReplace = (...args: Parameters<typeof history.replaceState>) => { origReplaceState(...args); checkUrl(); };
+    history.pushState = wrappedPush;
+    history.replaceState = wrappedReplace;
+
+    return () => {
+      window.removeEventListener("keydown", handleDesktopSave);
+      history.pushState = origPushState;
+      history.replaceState = origReplaceState;
+      delete w.__MDFY_GET_MARKDOWN__;
+      delete w.__MDFY_GET_TITLE__;
+      delete w.__MDFY_GET_DOC_ID__;
+      delete w.__MDFY_SET_MARKDOWN__;
+    };
+  }, [markdown, title, docId, doRender, setMarkdown]);
+
   // Format AI conversation
   const handleFormatAiConversation = useCallback(() => {
     const messages = parseConversation(markdown);

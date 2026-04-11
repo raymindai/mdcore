@@ -13,4 +13,10 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   openInBrowser: (url) => ipcRenderer.invoke("open-in-browser", url),
   getVersion: () => ipcRenderer.invoke("get-version"),
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
+  getUser: () => ipcRenderer.invoke("get-user"),
+  getCloudDocuments: () => ipcRenderer.invoke("get-cloud-documents"),
+  signIn: () => ipcRenderer.invoke("sign-in"),
+  signOut: () => ipcRenderer.invoke("sign-out"),
+  openCloudDocument: (docId) => ipcRenderer.invoke("open-cloud-document", docId),
+  refreshUser: () => ipcRenderer.invoke("refresh-user"),
 });

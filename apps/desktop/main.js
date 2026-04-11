@@ -170,15 +170,47 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // Set window title — also handle home navigation signal
+  // Set window title — handle signals from web app
   mainWindow.webContents.on("page-title-updated", (event, title) => {
+    // Home navigation
     if (title === "__MDFY_HOME__") {
       event.preventDefault();
       currentFilePath = null;
+      // Try to extract user session before leaving mdfy.cc
+      extractUserFromWeb().catch(() => {});
       mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
       mainWindow.setTitle("mdfy");
       return;
     }
+
+    // Save signal from Cmd+S
+    if (title.startsWith("__MDFY_SAVE__:")) {
+      event.preventDefault();
+      try {
+        const data = JSON.parse(title.slice("__MDFY_SAVE__:".length));
+        handleDesktopSave(data.markdown, data.title);
+      } catch (err) {
+        console.error("[save] Failed to parse save data:", err);
+      }
+      // Restore the actual title
+      if (currentFilePath) {
+        mainWindow.setTitle(`${path.basename(currentFilePath)} — mdfy`);
+      }
+      return;
+    }
+
+    // Publish signal
+    if (title.startsWith("__MDFY_PUBLISHED__:")) {
+      event.preventDefault();
+      try {
+        const data = JSON.parse(title.slice("__MDFY_PUBLISHED__:".length));
+        handleDesktopPublished(data.docId, data.editToken);
+      } catch (err) {
+        console.error("[publish] Failed to parse publish data:", err);
+      }
+      return;
+    }
+
     mainWindow.setTitle(title);
   });
 }
@@ -201,7 +233,7 @@ function injectNativeBridge() {
         body > div > div > header,
         [class*="backdrop-blur"] {
           -webkit-app-region: drag;
-          padding-left: 72px !important;
+          padding-left: 80px !important;
         }
         /* Make all interactive elements not draggable */
         button, a, input, select, textarea, [contenteditable],
@@ -210,6 +242,27 @@ function injectNativeBridge() {
         }
       \`;
       document.head.appendChild(style);
+    }
+
+    // Listen for save/publish messages from the web app
+    if (!window.__MDFY_MSG_BOUND__) {
+      window.__MDFY_MSG_BOUND__ = true;
+      window.addEventListener('message', function(e) {
+        if (!e.data || !e.data.type) return;
+        if (e.data.type === 'mdfy-desktop-save') {
+          // Notify Electron to save the file
+          document.title = '__MDFY_SAVE__:' + JSON.stringify({
+            markdown: e.data.markdown,
+            title: e.data.title
+          });
+        }
+        if (e.data.type === 'mdfy-desktop-published') {
+          document.title = '__MDFY_PUBLISHED__:' + JSON.stringify({
+            docId: e.data.docId,
+            editToken: e.data.editToken
+          });
+        }
+      });
     }
   `);
 }
@@ -224,20 +277,153 @@ function injectHomeButton() {
       window.__MDFY_HOME_BOUND__ = true;
       var goHome = function() { document.title = '__MDFY_HOME__'; };
 
-      // Make header logo clickable → Home
       setTimeout(function() {
-        var logos = document.querySelectorAll('header a[href="/"], header [aria-label="mdfy.cc"]');
-        logos.forEach(function(el) {
-          el.style.cursor = 'pointer';
-          el.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            goHome();
-          });
-        });
-      }, 2000);
+        // 1. Logo click → Home
+        var logo = document.querySelector('h1[title*="New document"]');
+        if (logo) {
+          logo.title = 'Home';
+          logo.replaceWith(logo.cloneNode(true));
+          var newLogo = document.querySelector('h1[title="Home"]');
+          if (newLogo) {
+            newLogo.style.cursor = 'pointer';
+            newLogo.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              goHome();
+            });
+          }
+        }
+
+        // 2. Add Home button to existing footer (left side)
+        var footer = document.querySelector('footer') || document.querySelector('[class*="footer"]');
+        if (!footer) {
+          // Find the bottom bar area
+          var allDivs = document.querySelectorAll('div');
+          for (var i = allDivs.length - 1; i >= 0; i--) {
+            var d = allDivs[i];
+            var rect = d.getBoundingClientRect();
+            if (rect.bottom >= window.innerHeight - 5 && rect.height < 60 && rect.height > 20) {
+              footer = d;
+              break;
+            }
+          }
+        }
+        if (footer) {
+          var homeBtn = document.createElement('button');
+          homeBtn.textContent = 'Home';
+          homeBtn.style.cssText = 'background:none;border:none;color:var(--text-faint,#52525b);cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;padding:0 8px 0 0;margin-right:8px;transition:color 0.15s;-webkit-app-region:no-drag;';
+          homeBtn.onmouseenter = function() { homeBtn.style.color = 'var(--accent,#fb923c)'; };
+          homeBtn.onmouseleave = function() { homeBtn.style.color = 'var(--text-faint,#52525b)'; };
+          homeBtn.onclick = goHome;
+          footer.insertBefore(homeBtn, footer.firstChild);
+        }
+      }, 2500);
     })();
   `);
+}
+
+// ─── Desktop Save & Publish ───
+
+function handleDesktopSave(markdown, docTitle) {
+  if (!markdown && markdown !== "") return;
+
+  if (currentFilePath) {
+    // Save to existing local file
+    try {
+      fs.writeFileSync(currentFilePath, markdown, "utf8");
+      mainWindow.setTitle(`${path.basename(currentFilePath)} — mdfy`);
+      console.log("[save] Saved to:", currentFilePath);
+
+      // If published, also push to cloud
+      const config = loadMdfyConfig(currentFilePath);
+      if (config && config.docId) {
+        pushToCloud(config, markdown, docTitle).catch((err) => {
+          console.error("[push] Cloud push failed:", err.message);
+        });
+      }
+    } catch (err) {
+      dialog.showErrorBox("Save Error", err.message);
+    }
+  } else {
+    // No file path — show save dialog
+    dialog.showSaveDialog(mainWindow, {
+      defaultPath: (docTitle || "untitled") + ".md",
+      filters: [{ name: "Markdown", extensions: ["md"] }],
+    }).then((result) => {
+      if (!result.canceled && result.filePath) {
+        currentFilePath = result.filePath;
+        fs.writeFileSync(result.filePath, markdown, "utf8");
+        mainWindow.setTitle(`${path.basename(result.filePath)} — mdfy`);
+        addToRecentFiles(result.filePath);
+      }
+    });
+  }
+}
+
+function handleDesktopPublished(docId, editToken) {
+  if (!currentFilePath || !docId) return;
+  // Create or update .mdfy.json sidecar
+  const config = {
+    docId,
+    editToken: editToken || "",
+    lastSyncedAt: new Date().toISOString(),
+    lastServerUpdatedAt: new Date().toISOString(),
+  };
+  saveMdfyConfig(currentFilePath, config);
+  console.log("[publish] Created .mdfy.json for:", currentFilePath, "→", docId);
+}
+
+async function pushToCloud(config, markdown, title) {
+  const user = cachedUser || loadCachedUser();
+  const headers = { "Content-Type": "application/json" };
+  if (user) headers["x-user-id"] = user.id;
+
+  const response = await net.fetch(`${MDFY_URL}/api/docs/${config.docId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      editToken: config.editToken,
+      markdown,
+      title: title || extractTitleFromMd(markdown),
+      action: "auto-save",
+      userId: user?.id,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Push failed: ${response.status}`);
+  }
+  return true;
+}
+
+function extractTitleFromMd(md) {
+  const match = md.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
+// .mdfy.json sidecar management
+function getMdfyConfigPath(filePath) {
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath, path.extname(filePath));
+  return path.join(dir, base + ".mdfy.json");
+}
+
+function loadMdfyConfig(filePath) {
+  try {
+    const configPath = getMdfyConfigPath(filePath);
+    const data = fs.readFileSync(configPath, "utf8");
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+function saveMdfyConfig(filePath, config) {
+  try {
+    const configPath = getMdfyConfigPath(filePath);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  } catch (err) {
+    console.error("[config] Failed to save .mdfy.json:", err.message);
+  }
 }
 
 // ─── Open File in App ───
@@ -251,6 +437,8 @@ function openFileInApp(filePath) {
   if (!mainWindow) return;
   const absolutePath = path.resolve(filePath);
   const ext = path.extname(absolutePath).toLowerCase();
+  console.log("[openFileInApp]", absolutePath, "ext:", ext, "isText:", isTextFile(absolutePath), "online:", isOnline());
+  addToRecentFiles(absolutePath);
 
   if (!ALL_SUPPORTED_EXTENSIONS.has(ext)) {
     const supported = Array.from(ALL_SUPPORTED_EXTENSIONS).map(e => e.slice(1)).join(", ");
@@ -270,14 +458,23 @@ function openFileInApp(filePath) {
     mainWindow.setTitle(`${fileName} — mdfy`);
 
     if (isTextFile(absolutePath)) {
-      // Text files: load content directly via hash (original behavior)
+      // Text files: load content directly via hash
       const content = fs.readFileSync(absolutePath, "utf8");
-      const encoded = Buffer.from(content).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+      const encoded = Buffer.from(content).toString("base64");
       const encodedName = encodeURIComponent(fileName);
       if (isOnline()) {
-        const url = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
-        loadMdfyWithTimeout(url);
-        mainWindow.webContents.once("did-finish-load", () => injectNativeBridge());
+        const currentUrl = mainWindow.webContents.getURL();
+        const targetUrl = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
+        if (currentUrl.startsWith("https://mdfy.cc")) {
+          // Already on mdfy.cc — navigate via JS to trigger hash change
+          mainWindow.webContents.executeJavaScript(`window.location.href = ${JSON.stringify(targetUrl)}; window.location.reload();`);
+        } else {
+          loadMdfyWithTimeout(targetUrl);
+          mainWindow.webContents.once("did-finish-load", () => {
+            injectNativeBridge();
+            injectHomeButton();
+          });
+        }
       } else {
         mainWindow.loadFile(path.join(__dirname, "renderer", "offline.html"));
       }
@@ -441,8 +638,8 @@ ipcMain.handle("save-file", async (event, filePath, content) => {
 ipcMain.handle("get-file-path", () => currentFilePath);
 
 ipcMain.handle("open-file-path", (event, filePath) => {
+  console.log("[IPC] open-file-path:", filePath);
   openFileInApp(filePath);
-  addToRecentFiles(filePath);
 });
 
 ipcMain.handle("open-editor", () => {
@@ -465,7 +662,7 @@ ipcMain.handle("open-editor", () => {
 
 ipcMain.handle("open-editor-with-content", (event, markdown, fileName) => {
   currentFilePath = null;
-  const encoded = Buffer.from(markdown).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+  const encoded = Buffer.from(markdown).toString("base64");
   const encodedName = encodeURIComponent(fileName || "untitled.md");
   const url = `${MDFY_URL}/#md=${encoded}&file=${encodedName}`;
   loadMdfyOrOffline(url);
@@ -489,6 +686,165 @@ ipcMain.handle("open-in-browser", (event, url) => {
   shell.openExternal(url);
 });
 
+// ─── User Auth & Cloud Documents ───
+
+// Cached user info (extracted from mdfy.cc session)
+let cachedUser = null;
+
+const USER_CACHE_PATH = path.join(
+  app.getPath("userData"),
+  "user-cache.json"
+);
+
+function loadCachedUser() {
+  try {
+    const data = fs.readFileSync(USER_CACHE_PATH, "utf8");
+    return JSON.parse(data);
+  } catch { return null; }
+}
+
+function saveCachedUser(user) {
+  cachedUser = user;
+  try {
+    fs.writeFileSync(USER_CACHE_PATH, JSON.stringify(user, null, 2));
+  } catch {}
+}
+
+function clearCachedUser() {
+  cachedUser = null;
+  try { fs.unlinkSync(USER_CACHE_PATH); } catch {}
+}
+
+// Extract user from mdfy.cc via JS injection
+async function extractUserFromWeb() {
+  if (!mainWindow) return null;
+  const url = mainWindow.webContents.getURL();
+  if (!url.includes("mdfy.cc")) return cachedUser;
+  try {
+    const result = await mainWindow.webContents.executeJavaScript(`
+      (function() {
+        try {
+          // Try to get Supabase session from localStorage
+          var keys = Object.keys(localStorage);
+          for (var i = 0; i < keys.length; i++) {
+            if (keys[i].indexOf('auth-token') !== -1 || keys[i].indexOf('supabase') !== -1) {
+              var val = JSON.parse(localStorage.getItem(keys[i]));
+              if (val && val.user) return { id: val.user.id, email: val.user.email };
+              if (val && val.access_token) {
+                // Decode JWT payload
+                var parts = val.access_token.split('.');
+                if (parts.length === 3) {
+                  var payload = JSON.parse(atob(parts[1]));
+                  return { id: payload.sub, email: payload.email };
+                }
+              }
+            }
+          }
+          return null;
+        } catch(e) { return null; }
+      })();
+    `);
+    if (result && result.id) {
+      saveCachedUser(result);
+      return result;
+    }
+  } catch {}
+  return cachedUser;
+}
+
+// Fetch user's cloud documents via API
+async function fetchCloudDocuments(userId) {
+  if (!userId) return [];
+  try {
+    const { session } = require("electron");
+    const cookies = await session.defaultSession.cookies.get({ url: MDFY_URL });
+    const cookieStr = cookies.map(c => c.name + "=" + c.value).join("; ");
+
+    const response = await net.fetch(`${MDFY_URL}/api/user/documents`, {
+      headers: {
+        "x-user-id": userId,
+        "Cookie": cookieStr,
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.documents || [];
+  } catch {
+    return [];
+  }
+}
+
+// Fetch recently visited documents
+async function fetchRecentDocuments(userId) {
+  if (!userId) return [];
+  try {
+    const { session } = require("electron");
+    const cookies = await session.defaultSession.cookies.get({ url: MDFY_URL });
+    const cookieStr = cookies.map(c => c.name + "=" + c.value).join("; ");
+
+    const response = await net.fetch(`${MDFY_URL}/api/user/recent`, {
+      headers: {
+        "x-user-id": userId,
+        "Cookie": cookieStr,
+      },
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.recent || [];
+  } catch {
+    return [];
+  }
+}
+
+ipcMain.handle("get-user", async () => {
+  if (cachedUser) return cachedUser;
+  cachedUser = loadCachedUser();
+  return cachedUser;
+});
+
+ipcMain.handle("get-cloud-documents", async () => {
+  const user = cachedUser || loadCachedUser();
+  if (!user) return { documents: [], recent: [] };
+  const [documents, recent] = await Promise.all([
+    fetchCloudDocuments(user.id),
+    fetchRecentDocuments(user.id),
+  ]);
+  return { documents, recent };
+});
+
+ipcMain.handle("sign-in", () => {
+  // Load mdfy.cc in the window so user can sign in
+  loadMdfyOrOffline(MDFY_URL);
+  mainWindow.setTitle("mdfy — Sign in");
+  // After page loads, try to extract user
+  mainWindow.webContents.once("did-finish-load", () => {
+    injectNativeBridge();
+    injectHomeButton();
+    setTimeout(async () => {
+      await extractUserFromWeb();
+    }, 3000);
+  });
+});
+
+ipcMain.handle("sign-out", () => {
+  clearCachedUser();
+});
+
+ipcMain.handle("open-cloud-document", (event, docId) => {
+  const url = `${MDFY_URL}/d/${docId}`;
+  loadMdfyOrOffline(url);
+  mainWindow.setTitle("mdfy");
+  mainWindow.webContents.once("did-finish-load", () => {
+    injectNativeBridge();
+    injectHomeButton();
+  });
+});
+
+// Try to extract user when returning from mdfy.cc to dashboard
+ipcMain.handle("refresh-user", async () => {
+  return await extractUserFromWeb();
+});
+
 // ─── Recent Files ───
 
 const RECENT_FILES_PATH = path.join(
@@ -499,7 +855,11 @@ const RECENT_FILES_PATH = path.join(
 function loadRecentFiles() {
   try {
     const data = fs.readFileSync(RECENT_FILES_PATH, "utf8");
-    return JSON.parse(data).filter((f) => fs.existsSync(f.path));
+    const parsed = JSON.parse(data);
+    // Handle old format (plain string array) and new format (object array)
+    return parsed
+      .map((f) => typeof f === "string" ? { path: f, openedAt: new Date().toISOString() } : f)
+      .filter((f) => f.path && fs.existsSync(f.path));
   } catch {
     return [];
   }
