@@ -4791,10 +4791,17 @@ ${html}
                                     onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                                      <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                                      <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                                    </svg>
+                                    {tab.cloudId ? (
+                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "#4ade80"} strokeWidth="1.2" className="shrink-0">
+                                        <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                                        <path d="M6 8.5l1.5 1.5 3-3" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    ) : (
+                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                                        <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                                        <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                                      </svg>
+                                    )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
