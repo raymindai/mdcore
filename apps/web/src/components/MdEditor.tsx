@@ -1405,6 +1405,7 @@ export default function MdEditor() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
+  const [docFilter, setDocFilter] = useState<"all" | "local" | "synced" | "cloud">("all");
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -4614,8 +4615,15 @@ ${html}
           }}>
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
-              const myTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
-              const myTabCount = myTabs.length;
+              const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
+              const myTabs = docFilter === "all" ? allMyTabs
+                : docFilter === "local" ? allMyTabs.filter(t => !t.cloudId)
+                : docFilter === "synced" ? allMyTabs.filter(t => !!t.cloudId)
+                : docFilter === "cloud" ? [] // cloud-only docs shown separately
+                : allMyTabs;
+              const myTabCount = allMyTabs.length;
+              const localCount = allMyTabs.filter(t => !t.cloudId).length;
+              const syncedCount = allMyTabs.filter(t => !!t.cloudId).length;
               return (
                 <div className="pt-3">
                   <div
@@ -4652,6 +4660,22 @@ ${html}
                   </div>
                   {showMyDocs && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                      {/* Filter buttons */}
+                      <div className="flex gap-1 px-1 pb-1.5">
+                        {(["all", "local", "synced", "cloud"] as const).map((f) => (
+                          <button
+                            key={f}
+                            onClick={() => setDocFilter(f)}
+                            className="text-[9px] font-medium px-1.5 py-0.5 rounded transition-colors"
+                            style={{
+                              color: docFilter === f ? "var(--accent)" : "var(--text-faint)",
+                              background: docFilter === f ? "var(--accent-dim)" : "transparent",
+                            }}
+                          >
+                            {f === "all" ? `All ${myTabCount}` : f === "local" ? `Local ${localCount}` : f === "synced" ? `Synced ${syncedCount}` : "Cloud"}
+                          </button>
+                        ))}
+                      </div>
                       {/* Root-level documents (no folder, mine only) */}
                       {myTabs.filter(t => !t.folderId).sort((a, b) => {
                         if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
@@ -4673,10 +4697,17 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                          </svg>
+                          {tab.cloudId ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "#4ade80"} strokeWidth="1.2" className="shrink-0">
+                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                              <path d="M6 8.5l1.5 1.5 3-3" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
+                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
+                              <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
+                            </svg>
+                          )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
@@ -4795,9 +4826,54 @@ ${html}
                         </div>
                       )}
 
-                      {myTabs.length === 0 && folders.length === 0 && (
+                      {myTabs.length === 0 && folders.length === 0 && docFilter !== "cloud" && (
                         <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>No documents yet</div>
                       )}
+
+                      {/* Cloud-only documents (not linked locally) */}
+                      {docFilter === "cloud" && (() => {
+                        const localCloudIds = new Set(allMyTabs.filter(t => t.cloudId).map(t => t.cloudId));
+                        const cloudOnly = serverDocs.filter(d => !localCloudIds.has(d.id));
+                        if (!user) return (
+                          <div className="px-2.5 py-3 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
+                            Sign in to see cloud documents
+                          </div>
+                        );
+                        if (cloudOnly.length === 0) return (
+                          <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>All cloud documents are linked locally</div>
+                        );
+                        return cloudOnly.map(doc => (
+                          <div
+                            key={doc.id}
+                            className="group flex items-center gap-1.5 px-1.5 py-1.5 rounded cursor-pointer transition-colors"
+                            style={{ color: "var(--text-secondary)" }}
+                            onClick={() => {
+                              // Pull cloud doc into local tab
+                              fetch(`/api/docs/${doc.id}`, {
+                                headers: user?.id ? { "x-user-id": user.id } : {},
+                              })
+                                .then(r => r.ok ? r.json() : null)
+                                .then(data => {
+                                  if (!data?.markdown) return;
+                                  const tabId = `tab-${Date.now()}`;
+                                  setTabs(prev => [...prev, { id: tabId, title: data.title || doc.title || "Untitled", markdown: data.markdown, cloudId: doc.id }]);
+                                  setActiveTabId(tabId);
+                                  setMarkdown(data.markdown);
+                                  doRender(data.markdown);
+                                })
+                                .catch(() => {});
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--menu-hover)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" strokeLinecap="round">
+                              <path d="M4 13.5A3.5 3.5 0 017.5 10h1a3.5 3.5 0 010 7h-5A3.5 3.5 0 014 13.5zM5.3 10a4.5 4.5 0 118.4 1.5H13a3 3 0 010 6h-.5"/>
+                            </svg>
+                            <span className="flex-1 text-xs truncate">{doc.title || "Untitled"}</span>
+                            <span className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-faint)" }}>Pull</span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
