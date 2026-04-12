@@ -5068,7 +5068,7 @@ ${html}
                           onClick={async (e) => {
                             e.stopPropagation();
                             const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
-                            if (existing) { switchTab(existing.id); setShowSharedDocs(!showSharedDocs); return; }
+                            if (existing) { switchTab(existing.id); return; }
                             try {
                               const headers: Record<string, string> = {};
                               if (user?.id) headers["x-user-id"] = user.id;
@@ -5093,7 +5093,6 @@ ${html}
                               setIsOwner(false);
                               setIsSharedDoc(true);
                               setTitle(d.title || "Untitled");
-                              setShowSharedDocs(!showSharedDocs);
                             } catch { window.location.href = `/?from=${doc.id}`; }
                           }}
                         >
