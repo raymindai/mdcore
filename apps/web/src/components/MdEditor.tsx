@@ -1167,14 +1167,15 @@ export default function MdEditor() {
     try { const s = localStorage.getItem("mdfy-folders"); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length > 0) return p; } } catch { /* */ }
     return INITIAL_FOLDERS;
   });
-  const [showTrash, setShowTrash] = useState(false);
+  const [activeSection, setActiveSection] = useState<"my" | "shared" | "trash">("my");
+  const showMyDocs = activeSection === "my";
+  const showSharedDocs = activeSection === "shared";
+  const showTrash = activeSection === "trash";
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
-  const [showMyDocs, setShowMyDocs] = useState(true);
-  const [showSharedDocs, setShowSharedDocs] = useState(true);
   const [serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
@@ -4623,9 +4624,9 @@ ${html}
                 <div className="pt-3">
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
-                    onClick={() => setShowMyDocs(!showMyDocs)}
+                    onClick={() => setActiveSection("my")}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--text-faint)" : "var(--text-muted)" }}>My Documents</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
                     {showMyDocs && (
                       <>
                         <button
@@ -4906,9 +4907,9 @@ ${html}
                 <div>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
-                    onClick={() => setShowSharedDocs(!showSharedDocs)}
+                    onClick={() => setActiveSection("shared")}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--text-faint)" : "var(--text-muted)" }}>Shared with me</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--accent)" : "var(--text-muted)" }}>Shared with me</span>
                     {showSharedDocs && (
                       <>
                         <button
@@ -5088,9 +5089,9 @@ ${html}
                 <div>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
-                    onClick={() => setShowTrash(!showTrash)}
+                    onClick={() => setActiveSection("trash")}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--text-faint)" : "var(--text-muted)" }}>Trash</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--accent)" : "var(--text-muted)" }}>Trash</span>
                     {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
                   </div>
                   {showTrash && (
