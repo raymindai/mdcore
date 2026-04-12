@@ -105,35 +105,36 @@
       width: 100%;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 11px 12px;
-      background: none;
+      gap: 10px;
+      padding: 12px 14px;
+      background: #fb923c;
       border: none;
-      color: #fb923c;
-      font-size: 12px;
-      font-weight: 600;
+      border-radius: 0 0 9px 9px;
+      color: #0a0a0c;
+      font-size: 13px;
+      font-weight: 700;
       font-family: inherit;
       cursor: pointer;
-      transition: background 0.1s;
+      transition: all 0.12s;
       text-align: left;
     }
-    .capture-btn:hover:not(:disabled) { background: rgba(251, 146, 60, 0.06); }
-    .capture-btn:active:not(:disabled) { background: rgba(251, 146, 60, 0.1); }
+    .capture-btn:hover:not(:disabled) { background: #f59e0b; }
+    .capture-btn:active:not(:disabled) { transform: scale(0.98); background: #ea580c; }
     .capture-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .capture-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
-      opacity: 0.6;
+      opacity: 0.7;
     }
 
     .capture-btn .label { flex: 1; }
     .capture-btn .desc {
       display: block;
       font-size: 9px;
-      font-weight: 400;
-      color: rgba(251, 146, 60, 0.35);
+      font-weight: 500;
+      color: rgba(10, 10, 12, 0.5);
       margin-top: 1px;
     }
 
@@ -142,27 +143,28 @@
       width: 100%;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      margin-top: 4px;
-      background: none;
-      border: none;
-      border-radius: 6px;
-      color: #52525b;
-      font-size: 11px;
-      font-weight: 500;
+      gap: 10px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      background: #111113;
+      border: 1px solid #1c1c20;
+      border-radius: 10px;
+      color: #a1a1aa;
+      font-size: 12px;
+      font-weight: 600;
       font-family: inherit;
       cursor: pointer;
-      transition: all 0.1s;
+      transition: all 0.12s;
       text-align: left;
     }
-    .selection-btn:hover { color: #71717a; background: rgba(255,255,255,0.02); }
+    .selection-btn:hover { background: #18181b; border-color: #27272a; color: #d4d4d8; }
+    .selection-btn:active { transform: scale(0.98); }
 
     .selection-btn svg {
-      width: 12px;
-      height: 12px;
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
-      opacity: 0.4;
+      opacity: 0.5;
     }
 
     /* ─── Status ─── */
