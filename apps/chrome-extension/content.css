@@ -4,7 +4,7 @@
 
 #mdfy-float-container {
   position: fixed;
-  bottom: 130px;
+  bottom: 100px;
   right: 24px;
   z-index: 999999;
   display: flex;
@@ -251,7 +251,7 @@
 
 #mdfy-toast {
   position: fixed;
-  bottom: 178px;
+  bottom: 148px;
   right: 24px;
   z-index: 999999;
   display: flex;

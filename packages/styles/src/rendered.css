@@ -137,12 +137,18 @@
   color: var(--accent) !important;
 }
 
+.mdcore-rendered pre {
+  overflow: hidden;
+}
+
 .mdcore-rendered pre code {
   display: block;
   padding: 1rem 1.25rem;
   background: var(--surface);
   color: var(--text-secondary);
   font-size: 0.8125rem;
+  border-radius: 0;
+  overflow-x: auto;
   line-height: 1.65;
   border-radius: 8px;
   overflow-x: auto;
