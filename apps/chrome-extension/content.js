@@ -345,8 +345,21 @@
       hr.textContent = "\n---\n";
     });
 
-    // Get text content, clean up
-    let text = clone.innerText || clone.textContent || "";
+    // Extract text with CSS-independent newlines for block elements
+    const blockTags = new Set(["P", "DIV", "UL", "OL", "LI", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "H5", "H6", "HR", "PRE", "TABLE", "TR", "SECTION", "ARTICLE"]);
+    function extractText(node) {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+      if (node.nodeType !== Node.ELEMENT_NODE) return "";
+      if (node.tagName === "BR") return "\n";
+      const isBlock = blockTags.has(node.tagName);
+      let result = isBlock ? "\n" : "";
+      for (const child of node.childNodes) result += extractText(child);
+      if (isBlock) result += "\n";
+      return result;
+    }
+
+    let text = extractText(clone);
+
     // Remove Claude UI artifacts that slip through
     text = text.replace(/V?visualize\s*V?visualize\s*/gi, "");
     text = text.replace(/show_widget\s*/gi, "");
@@ -358,11 +371,6 @@
         return "$" + inner.replace(/\s*\n\s*/g, " ").trim() + "$";
       }
       return match;
-    });
-
-    // Fix list items: ensure each item is a single line
-    text = text.replace(/^([-*] |\d+\. )(.+)/gm, (match, prefix, content) => {
-      return prefix + content.replace(/\n\s*/g, " ").trim();
     });
 
     text = text.replace(/\n{3,}/g, "\n\n");
