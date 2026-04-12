@@ -4735,21 +4735,30 @@ ${html}
                         </div>
                       )}
                       {/* Search — toggle with icon */}
-                      {sidebarSearch || showSidebarSearch ? (
-                        <div className="relative px-1 pb-1.5">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
+                      {(sidebarSearch || showSidebarSearch) && (
+                        <div className="flex items-center gap-1.5 mx-1 mb-1.5 px-2 rounded" style={{ background: "var(--toggle-bg)" }}>
+                          <Search width={12} height={12} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           <input
                             type="text"
                             placeholder="Search..."
                             value={sidebarSearch}
                             onChange={(e) => setSidebarSearch(e.target.value)}
-                            onBlur={() => { if (!sidebarSearch) setShowSidebarSearch(false); }}
+                            onBlur={() => { setTimeout(() => { if (!sidebarSearch) setShowSidebarSearch(false); }, 150); }}
                             autoFocus
-                            className="w-full text-[11px] py-1 pl-7 pr-2 rounded"
-                            style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "none", outline: "none" }}
+                            className="w-full text-[11px] py-1.5 bg-transparent"
+                            style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
                           />
+                          {sidebarSearch && (
+                            <button
+                              onClick={() => { setSidebarSearch(""); setShowSidebarSearch(false); }}
+                              className="shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-[var(--border-dim)]"
+                              style={{ color: "var(--text-faint)" }}
+                            >
+                              <X width={10} height={10} />
+                            </button>
+                          )}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                     {/* Document list — scrollable */}
                     <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
