@@ -4,7 +4,7 @@
 
 #mdfy-float-container {
   position: fixed;
-  bottom: 100px;
+  bottom: var(--mdfy-input-h, 100px);
   right: 24px;
   z-index: 999999;
   display: flex;
@@ -169,7 +169,7 @@
 
 .mdfy-mini-btn {
   position: sticky;
-  top: 56px;
+  top: var(--mdfy-header-h, 8px);
   float: right;
   margin-right: 8px;
   z-index: 99;
@@ -251,7 +251,7 @@
 
 #mdfy-toast {
   position: fixed;
-  bottom: 148px;
+  bottom: calc(var(--mdfy-input-h, 100px) + 48px);
   right: 24px;
   z-index: 999999;
   display: flex;
