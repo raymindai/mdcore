@@ -336,27 +336,7 @@
           text = lines.slice(1).join("\n");
         }
       }
-      // ChatGPT: if text is empty after lang stripping (e.g., rendered mermaid),
-      // try to find source in sibling/nearby elements
-      if (!text.trim() && lang) {
-        const container = pre.closest("div.relative") || pre.closest("div") || pre.parentElement;
-        // Look for a sibling div that might contain the actual code
-        if (container) {
-          for (const sibling of container.querySelectorAll("div, span")) {
-            const sibText = sibling.textContent?.trim() || "";
-            if (sibling !== pre && sibText.length > 10 && !knownLangs.test(sibText.split("\n")[0].trim())) {
-              // Check if it looks like code (not just UI text)
-              if (sibText.includes("-->") || sibText.includes("graph") || sibText.includes("flowchart") ||
-                  sibText.includes("sequenceDiagram") || sibText.includes("classDiagram") ||
-                  sibText.includes("{") || sibText.includes("function") || sibText.includes("const ")) {
-                text = sibText;
-                break;
-              }
-            }
-          }
-        }
-      }
-      // Skip empty code blocks entirely
+      // Skip empty code blocks (e.g., ChatGPT rendered mermaid with no source in DOM)
       if (!text.trim()) {
         pre.textContent = "";
         return;
@@ -686,42 +666,6 @@
    * Must be called BEFORE extractConversation/htmlToMarkdown.
    */
   /**
-   * Pre-process: switch ChatGPT rendered diagrams to code view.
-   * ChatGPT has "Toggle view" buttons that switch between rendered/code.
-   * When in rendered mode, mermaid source is removed from DOM.
-   * Click the code-view button to reveal source before capture.
-   */
-  async function preProcessCodeToggles() {
-    if (platform !== "chatgpt") return;
-    const toggles = document.querySelectorAll('[aria-label="Toggle view"]');
-    if (toggles.length === 0) return;
-
-    const clicked = [];
-    for (const toggle of toggles) {
-      // Find the associated pre — if it only has a lang name, it's in rendered mode
-      const wrapper = toggle.closest("div.relative") || toggle.closest("div");
-      const pre = wrapper?.querySelector("pre") || wrapper?.parentElement?.querySelector("pre");
-      if (!pre) continue;
-
-      const text = pre.textContent.trim();
-      const lines = text.split("\n").filter((l) => l.trim());
-      // Only header text, no actual code → rendered mode
-      if (lines.length <= 1) {
-        // Click first span/button inside toggle (code view option)
-        const btns = toggle.querySelectorAll("span, button");
-        if (btns.length >= 1) {
-          btns[0].click();
-          clicked.push(toggle);
-        }
-      }
-    }
-
-    if (clicked.length > 0) {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-  }
-
-  /**
    * Pre-process artifact iframes: screenshot visible iframes and replace
    * with inline images. Uses chrome.tabs.captureVisibleTab + canvas crop.
    */
@@ -1049,7 +993,6 @@
       container.classList.add("mdfy-loading");
       setFloatStatus("Capturing...");
       try {
-        await preProcessCodeToggles();
         await preProcessArtifactIframes();
         setFloatStatus("Converting...");
         let messages = extractConversation();
@@ -1227,7 +1170,7 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "capture-conversation") {
       const lastN = request.lastN || 0;
-      preProcessCodeToggles().then(() => preProcessArtifactIframes()).then(() => {
+      preProcessArtifactIframes().then(() => {
         let messages = extractConversation();
         if (lastN > 0) messages = messages.slice(-(lastN * 2));
         const markdown = formatConversation(messages);
