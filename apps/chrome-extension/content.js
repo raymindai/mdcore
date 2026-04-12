@@ -1152,7 +1152,6 @@
         miniBtn.classList.add("mdfy-loading");
         setMiniStatus("Capturing...");
         try {
-          await preProcessCodeToggles();
           await preProcessArtifactIframes();
           setMiniStatus("Converting...");
           const { userEl, assistantEl } = findQAPair(msg, role);

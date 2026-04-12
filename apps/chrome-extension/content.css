@@ -169,10 +169,10 @@
 
 .mdfy-mini-btn {
   position: sticky;
-  top: 8px;
+  top: 56px;
   float: right;
   margin-right: 8px;
-  z-index: 999998;
+  z-index: 99;
   display: flex;
   align-items: center;
   gap: 3px;
