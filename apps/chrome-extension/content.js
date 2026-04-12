@@ -278,7 +278,10 @@
     // ── Step 4: Code blocks ──
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
-      const text = code ? code.textContent : pre.textContent;
+      const target = code || pre;
+      // Replace <br> with \n — some sites use <br> for line breaks in code
+      target.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+      const text = target.textContent;
       let lang = "";
       // Try class-based detection
       const langClass = (code || pre).className.match(/language-(\w+)|lang-(\w+)/);
