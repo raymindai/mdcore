@@ -336,6 +336,31 @@
           text = lines.slice(1).join("\n");
         }
       }
+      // ChatGPT: if text is empty after lang stripping (e.g., rendered mermaid),
+      // try to find source in sibling/nearby elements
+      if (!text.trim() && lang) {
+        const container = pre.closest("div.relative") || pre.closest("div") || pre.parentElement;
+        // Look for a sibling div that might contain the actual code
+        if (container) {
+          for (const sibling of container.querySelectorAll("div, span")) {
+            const sibText = sibling.textContent?.trim() || "";
+            if (sibling !== pre && sibText.length > 10 && !knownLangs.test(sibText.split("\n")[0].trim())) {
+              // Check if it looks like code (not just UI text)
+              if (sibText.includes("-->") || sibText.includes("graph") || sibText.includes("flowchart") ||
+                  sibText.includes("sequenceDiagram") || sibText.includes("classDiagram") ||
+                  sibText.includes("{") || sibText.includes("function") || sibText.includes("const ")) {
+                text = sibText;
+                break;
+              }
+            }
+          }
+        }
+      }
+      // Skip empty code blocks entirely
+      if (!text.trim()) {
+        pre.textContent = "";
+        return;
+      }
       pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
     });
 
