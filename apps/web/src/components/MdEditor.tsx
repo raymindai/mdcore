@@ -5313,41 +5313,85 @@ ${html}
                 {showAuthMenu && (
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
-                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl py-1 z-[9999]"
+                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                      <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)", borderBottom: "1px solid var(--border-dim)" }}>
-                        <div className="font-medium" style={{ color: "var(--text-primary)" }}>{profile?.display_name}</div>
-                        <div className="truncate">{user?.email}</div>
-                        <div className="mt-1 px-1 py-0.5 rounded inline-block font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>
-                          {(profile?.plan || "free").toUpperCase()}
+                      {/* Profile header */}
+                      <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        <div className="flex items-center gap-2.5">
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-sm font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                              {(profile?.display_name || user?.email || "U")[0]?.toUpperCase()}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || "User"}</div>
+                            <div className="text-[10px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
+                          </div>
                         </div>
                       </div>
-                      {/* My Published Docs button removed — all docs visible in sidebar */}
-                      <button
-                        onClick={() => {
-                          signOut();
-                          setShowAuthMenu(false);
-                          // Clean slate: reset tabs, folders, state
-                          setTabs(INITIAL_TABS);
-                          setFolders(INITIAL_FOLDERS);
-                          setActiveTabId(INITIAL_TABS[0].id);
-                          setMarkdown(INITIAL_TABS[0].markdown);
-                          setDocId(null);
-                          setIsOwner(false);
-                          setIsSharedDoc(false);
-                          setServerDocs([]);
-                          setRecentDocs([]);
-                          doRender(INITIAL_TABS[0].markdown);
-                          window.history.replaceState(null, "", "/");
-                          // Clear persisted tabs
-                          try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 12l3.5-4-3.5-4M14 8H6"/></svg>
-                        Sign Out
-                      </button>
+                      {/* Plan info */}
+                      <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-medium" style={{ color: "var(--text-faint)" }}>Plan</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                            {(profile?.plan || "free").toUpperCase()}
+                          </span>
+                        </div>
+                        {(!profile?.plan || profile.plan === "free") && (
+                          <>
+                            <div className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>
+                              Unlimited documents, free forever.
+                            </div>
+                            <button
+                              onClick={() => { setShowAuthMenu(false); /* TODO: open pricing */ }}
+                              className="w-full py-1.5 rounded-md text-[10px] font-semibold transition-colors"
+                              style={{ background: "var(--accent)", color: "#000" }}
+                            >
+                              Upgrade to Pro
+                            </button>
+                            <div className="mt-1.5 text-[9px] space-y-0.5" style={{ color: "var(--text-faint)" }}>
+                              <div>Pro includes:</div>
+                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Custom domains</div>
+                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Analytics</div>
+                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> No watermark</div>
+                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Priority support</div>
+                            </div>
+                          </>
+                        )}
+                        {profile?.plan === "pro" && (
+                          <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                            Full access to all features.
+                          </div>
+                        )}
+                      </div>
+                      {/* Actions */}
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            signOut();
+                            setShowAuthMenu(false);
+                            setTabs(INITIAL_TABS);
+                            setFolders(INITIAL_FOLDERS);
+                            setActiveTabId(INITIAL_TABS[0].id);
+                            setMarkdown(INITIAL_TABS[0].markdown);
+                            setDocId(null);
+                            setIsOwner(false);
+                            setIsSharedDoc(false);
+                            setServerDocs([]);
+                            setRecentDocs([]);
+                            doRender(INITIAL_TABS[0].markdown);
+                            window.history.replaceState(null, "", "/");
+                            try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 12l3.5-4-3.5-4M14 8H6"/></svg>
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
