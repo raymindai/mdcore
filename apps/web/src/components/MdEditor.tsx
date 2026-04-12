@@ -5072,11 +5072,11 @@ ${html}
                             try {
                               const headers: Record<string, string> = {};
                               if (user?.id) headers["x-user-id"] = user.id;
+                              if (user?.email) headers["x-user-email"] = user.email;
                               const res = await fetch(`/api/docs/${doc.id}`, { headers });
                               if (!res.ok) {
-                                // Remove dead doc from all lists
-                                setRecentDocs(prev => prev.filter(d => d.id !== doc.id));
-                                setNotifications(prev => prev.filter(n => n.documentId !== doc.id));
+                                console.error("[shared] Failed to load doc", doc.id, res.status, await res.text().catch(() => ""));
+                                // Don't remove — might be a temporary error
                                 return;
                               }
                               const d = await res.json();
