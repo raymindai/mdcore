@@ -4935,7 +4935,7 @@ ${html}
               const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id) && !myCloudIds.has(d.id));
               const notifDocs = notifications
                 .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
-                .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view" }));
+                .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view", ownerName: n.fromUserName }));
               const allExtra = [...extraShared, ...notifDocs];
               const totalShared = sharedTabs.length + allExtra.length;
               return (<>
@@ -5003,7 +5003,12 @@ ${html}
                             /* Document icon — my doc, not shared */
                             <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
-                          <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate block">{tab.title || "Untitled"}</span>
+                            {tab.ownerEmail && (
+                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
+                            )}
+                          </div>
                           {tab.cloudId && unreadDocIds.has(tab.cloudId) && (
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
@@ -5101,7 +5106,12 @@ ${html}
                           ) : (
                             <Eye width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           )}
-                          <span className="truncate flex-1">{doc.title || "Untitled"}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate block">{doc.title || "Untitled"}</span>
+                            {(doc as { ownerName?: string }).ownerName && (
+                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{(doc as { ownerName?: string }).ownerName}</span>
+                            )}
+                          </div>
                           {unreadDocIds.has(doc.id) && (
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
