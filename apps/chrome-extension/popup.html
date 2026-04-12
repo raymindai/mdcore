@@ -7,110 +7,83 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 360px;
-      background: #09090b;
-      color: #fafafa;
+      width: 320px;
+      background: #0a0a0c;
+      color: #e4e4e7;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ─── Header ─── */
     .header {
-      padding: 16px 20px 14px;
-      border-bottom: 1px solid #18181b;
-    }
-
-    .header-top {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      margin-bottom: 6px;
+      padding: 16px 16px 12px;
     }
 
-    .logo { height: 20px; }
+    .logo { height: 16px; }
     .logo img { height: 100%; width: auto; }
 
-    .header-right {
+    .header-meta {
       text-align: right;
     }
 
     .tagline {
-      font-size: 10px;
-      color: #52525b;
+      font-size: 9px;
+      color: #3f3f46;
       font-weight: 500;
     }
 
-    .platform-status {
+    .detection {
       display: flex;
       align-items: center;
-      gap: 5px;
-      margin-top: 4px;
+      gap: 4px;
       justify-content: flex-end;
+      margin-top: 3px;
     }
 
-    .platform-dot {
-      width: 6px;
-      height: 6px;
+    .detection-dot {
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
-      flex-shrink: 0;
     }
-    .platform-dot.active { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.4); }
-    .platform-dot.inactive { background: #3f3f46; }
+    .detection-dot.active { background: #4ade80; }
+    .detection-dot.inactive { background: #27272a; }
 
-    .platform-name {
-      font-size: 10px;
-      font-weight: 500;
-      color: #3f3f46;
-    }
-    .platform-name.active { color: #71717a; }
-
-    .platform-hint {
-      display: none;
-    }
-
-    /* ─── Content ─── */
-    .content {
-      padding: 14px 20px 16px;
-    }
-
-    /* ─── Capture Section ─── */
-    .capture-section {
-      background: #111113;
-      border: 1px solid #1e1e22;
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-
-    .capture-section .section-label {
+    .detection-text {
       font-size: 9px;
-      font-weight: 600;
       color: #3f3f46;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 8px;
+    }
+    .detection-text.active { color: #52525b; }
+
+    .platform-hint { display: none; }
+
+    /* ─── Main ─── */
+    .main {
+      padding: 0 16px 14px;
     }
 
-    /* ─── Range Selector ─── */
-    .range-selector {
+    /* ─── Capture Card ─── */
+    .capture-card {
+      border: 1px solid #1c1c20;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .capture-card .range-row {
       display: none;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #1c1c20;
+      background: #0f0f12;
     }
 
-    .range-label {
-      font-size: 10px;
-      color: #52525b;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .range-select {
-      flex: 1;
-      padding: 7px 10px;
-      border-radius: 8px;
+    .range-row select {
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: 5px;
       border: 1px solid #27272a;
-      background: #09090b;
+      background: #0a0a0c;
       color: #a1a1aa;
       font-size: 11px;
       font-family: inherit;
@@ -118,235 +91,239 @@
       cursor: pointer;
       -webkit-appearance: none;
       appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2352525b' d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2352525b' d='M2.5 4l2.5 2.5 2.5-2.5'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 8px center;
-      padding-right: 24px;
+      background-position: right 6px center;
+      padding-right: 20px;
     }
 
-    .range-select:focus {
+    .range-row select:focus {
       border-color: rgba(251, 146, 60, 0.3);
     }
 
-    /* ─── Buttons ─── */
-    button {
+    .capture-btn {
       width: 100%;
-      padding: 10px 12px;
-      border: none;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.12s;
-      font-family: inherit;
-      text-align: left;
       display: flex;
       align-items: center;
-      gap: 10px;
-    }
-
-    button:hover:not(:disabled) { opacity: 0.88; }
-    button:active:not(:disabled) { transform: scale(0.98); }
-    button:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    .btn-primary {
-      background: rgba(251, 146, 60, 0.12);
+      gap: 8px;
+      padding: 11px 12px;
+      background: none;
+      border: none;
       color: #fb923c;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.1s;
+      text-align: left;
     }
-    .btn-primary:hover:not(:disabled) {
-      background: rgba(251, 146, 60, 0.18);
-    }
+    .capture-btn:hover:not(:disabled) { background: rgba(251, 146, 60, 0.06); }
+    .capture-btn:active:not(:disabled) { background: rgba(251, 146, 60, 0.1); }
+    .capture-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    .btn-icon {
-      width: 18px;
-      height: 18px;
+    .capture-btn svg {
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
-      opacity: 0.7;
+      opacity: 0.6;
     }
 
-    .btn-text { flex: 1; }
-    .btn-label { display: block; }
-    .btn-desc {
+    .capture-btn .label { flex: 1; }
+    .capture-btn .desc {
       display: block;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 400;
-      color: rgba(251, 146, 60, 0.4);
+      color: rgba(251, 146, 60, 0.35);
       margin-top: 1px;
     }
 
-    /* ─── Selection Button ─── */
-    .btn-selection {
-      background: none;
-      color: #71717a;
+    /* ─── Selection ─── */
+    .selection-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
+      margin-top: 4px;
+      background: none;
+      border: none;
+      border-radius: 6px;
+      color: #52525b;
       font-size: 11px;
       font-weight: 500;
-      border-radius: 6px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.1s;
+      text-align: left;
     }
-    .btn-selection:hover:not(:disabled) {
-      background: #18181b;
-      color: #a1a1aa;
-      opacity: 1;
-    }
-    .btn-selection .btn-icon {
-      width: 14px;
-      height: 14px;
-      opacity: 0.5;
+    .selection-btn:hover { color: #71717a; background: rgba(255,255,255,0.02); }
+
+    .selection-btn svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      opacity: 0.4;
     }
 
     /* ─── Status ─── */
     .status {
-      font-size: 11px;
-      color: #3f3f46;
+      font-size: 10px;
+      color: #27272a;
       text-align: center;
-      min-height: 14px;
+      min-height: 12px;
+      margin-top: 8px;
       transition: color 0.15s;
     }
     .status.success { color: #4ade80; }
     .status.error { color: #ef4444; }
 
     /* ─── How it works ─── */
-    .how-section {
-      padding: 14px 20px 16px;
-      border-top: 1px solid #18181b;
+    .how {
+      padding: 12px 16px 14px;
+      border-top: 1px solid #141416;
     }
 
-    .how-title {
-      font-size: 9px;
-      font-weight: 600;
+    .how-label {
+      font-size: 8px;
+      font-weight: 700;
       color: #27272a;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.5px;
       margin-bottom: 10px;
     }
 
-    .how-steps {
+    .how-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
-    .how-step {
+    .how-item {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 11px;
-      color: #52525b;
-      line-height: 1.4;
     }
 
-    .how-btn-replica {
+    .how-pill {
       display: inline-flex;
       align-items: center;
-      height: 22px;
-      padding: 0 8px;
-      border: 1px solid rgba(251, 146, 60, 0.2);
-      border-radius: 11px;
-      background: #111113;
-      font-size: 10px;
-      letter-spacing: -0.3px;
+      height: 20px;
+      padding: 0 7px;
+      border: 1px solid #1c1c20;
+      border-radius: 10px;
+      background: #0f0f12;
+      font-size: 9px;
       flex-shrink: 0;
-      gap: 1px;
     }
+    .how-pill .md { color: #fb923c; font-weight: 800; }
+    .how-pill .fy { color: #d4d4d8; font-weight: 800; }
+    .how-pill .lbl {
+      color: #52525b;
+      font-weight: 500;
+      margin-left: 3px;
+      padding-left: 4px;
+      border-left: 1px solid #1c1c20;
+    }
+    .how-pill .arrow { color: #3f3f46; margin-left: 1px; font-size: 7px; }
 
-    .how-arrow {
-      width: 22px;
-      height: 22px;
-      border-radius: 11px;
-      background: #111113;
-      color: #fb923c;
-      font-size: 12px;
+    .how-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      background: #0f0f12;
+      border: 1px solid #1c1c20;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      color: #3f3f46;
+      font-size: 10px;
+    }
+
+    .how-text {
+      font-size: 10px;
+      color: #3f3f46;
+      line-height: 1.3;
     }
 
     /* ─── Footer ─── */
     .footer {
-      padding: 8px 20px;
-      border-top: 1px solid #18181b;
+      padding: 6px 16px 8px;
+      border-top: 1px solid #141416;
       display: flex;
       justify-content: space-between;
-      align-items: center;
     }
 
     .footer a {
-      color: #27272a;
-      font-size: 10px;
+      color: #1c1c20;
+      font-size: 9px;
       text-decoration: none;
-      transition: color 0.12s;
+      transition: color 0.1s;
     }
     .footer a:hover { color: #fb923c; }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="header-top">
-      <div class="logo">
-        <img src="icons/logo-full-dark.svg" alt="mdfy.cc">
-      </div>
-      <div class="header-right">
-        <div class="tagline">Your Markdown, Beautifully published</div>
-        <div class="platform-status" id="platform-badge">
-          <span class="platform-dot inactive" id="platform-dot"></span>
-          <span class="platform-name" id="platform-name">Detecting...</span>
-        </div>
+    <div class="logo">
+      <img src="icons/logo-full-dark.svg" alt="mdfy.cc">
+    </div>
+    <div class="header-meta">
+      <div class="tagline">Your Markdown, Beautifully published</div>
+      <div class="detection" id="platform-badge">
+        <span class="detection-dot inactive" id="platform-dot"></span>
+        <span class="detection-text" id="platform-name">Detecting...</span>
       </div>
     </div>
-    <span class="platform-hint" id="platform-hint"></span>
   </div>
+  <span class="platform-hint" id="platform-hint"></span>
 
-  <div class="content">
-    <div class="capture-section">
-      <div class="section-label">Capture</div>
-
-      <div class="range-selector" id="range-selector">
-        <span class="range-label">Range</span>
-        <select class="range-select" id="range-select">
+  <div class="main">
+    <div class="capture-card">
+      <div class="range-row" id="range-selector">
+        <select id="range-select">
           <option value="0">All messages</option>
           <option value="3">Last 3 exchanges</option>
           <option value="5">Last 5 exchanges</option>
           <option value="10">Last 10 exchanges</option>
         </select>
       </div>
-
-      <button class="btn-primary" id="btn-capture" disabled>
-        <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <button class="capture-btn" id="btn-capture" disabled>
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
           <rect x="3" y="3" width="14" height="14" rx="2"/>
           <path d="M7 7h6M7 10h4M7 13h5"/>
         </svg>
-        <span class="btn-text">
-          <span class="btn-label">Capture Full Conversation</span>
-          <span class="btn-desc">All messages → beautiful Markdown document</span>
+        <span class="label">
+          Capture Full Conversation
+          <span class="desc">All messages → Markdown document</span>
         </span>
       </button>
     </div>
 
-    <button class="btn-selection" id="btn-selection">
-      <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <button class="selection-btn" id="btn-selection">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <path d="M5 3v14M15 3v14M3 5h2M3 15h2M15 5h2M15 15h2"/>
       </svg>
-      <span>Capture Selection</span>
+      Capture Selection
     </button>
 
     <div class="status" id="status"></div>
   </div>
 
-  <div class="how-section">
-    <div class="how-title">How it works</div>
-    <div class="how-steps">
-      <div class="how-step">
-        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:4px;border-left:1px solid #27272a;padding-left:4px;font-weight:500;">this</span></span>
-        <span>Hover any AI response to capture the Q&A pair</span>
+  <div class="how">
+    <div class="how-label">How it works</div>
+    <div class="how-list">
+      <div class="how-item">
+        <span class="how-pill"><span class="md">md</span><span class="fy">fy</span><span class="lbl">this</span></span>
+        <span class="how-text">Hover any AI response to capture Q&A</span>
       </div>
-      <div class="how-step">
-        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:4px;border-left:1px solid #27272a;padding-left:4px;font-weight:500;">All</span><span style="color:#52525b;margin-left:2px;font-size:8px;">&#9662;</span></span>
-        <span>Capture full conversation or choose a range</span>
+      <div class="how-item">
+        <span class="how-pill"><span class="md">md</span><span class="fy">fy</span><span class="lbl">All</span><span class="arrow">&#9662;</span></span>
+        <span class="how-text">Capture full conversation or a range</span>
       </div>
-      <div class="how-step">
-        <span class="how-arrow">→</span>
-        <span>Published on mdfy.cc with a permanent URL</span>
+      <div class="how-item">
+        <span class="how-icon">→</span>
+        <span class="how-text">Published on mdfy.cc with a permanent URL</span>
       </div>
     </div>
   </div>

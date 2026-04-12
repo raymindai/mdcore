@@ -169,8 +169,8 @@ function showNotOnAiPage() {
   platformNameEl.textContent = "Any webpage";
   document.getElementById("platform-hint").textContent = "Capture this page as Markdown";
   btnCapture.disabled = false;
-  btnCapture.querySelector(".btn-label").textContent = "Capture This Page";
-  btnCapture.querySelector(".btn-desc").textContent = "Page content → clean Markdown document";
+  btnCapture.querySelector(".label").textContent = "Capture This Page";
+  btnCapture.querySelector(".desc").textContent = "Page content → clean Markdown document";
   btnCapture.dataset.mode = "page";
   rangeSelector.style.display = "none";
 }
@@ -294,8 +294,8 @@ btnSelection.addEventListener("click", async () => {
 
 rangeSelect.addEventListener("change", () => {
   const val = parseInt(rangeSelect.value);
-  const label = btnCapture.querySelector(".btn-label");
-  const desc = btnCapture.querySelector(".btn-desc");
+  const label = btnCapture.querySelector(".label");
+  const desc = btnCapture.querySelector(".desc");
   if (val === 0) {
     label.textContent = "Capture Full Conversation";
     desc.textContent = "All messages → beautiful Markdown document";
