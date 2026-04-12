@@ -2194,7 +2194,7 @@ export default function MdEditor() {
               }).catch(() => {});
             }
 
-            await doRender(doc.markdown);
+            // loadTab already triggers doRender — no duplicate call needed
             return;
           }
         } catch {
