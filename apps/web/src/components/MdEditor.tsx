@@ -4884,7 +4884,7 @@ ${html}
                                 <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                               )}
                               <span className="truncate flex-1">{folder.name}</span>
-                              <span className="text-[9px] opacity-50 group-hover:hidden transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
+                              <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0 w-4 text-right">{folderTabs.length}</span>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -4892,8 +4892,8 @@ ${html}
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                   setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
                                 }}
-                                className="shrink-0 rounded hidden group-hover:flex items-center justify-center ml-auto"
-                                style={{ color: "var(--text-muted)", padding: "2px" }}
+                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-4"
+                                style={{ color: "var(--text-muted)", padding: "2px", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
                               >
                                 <MoreHorizontal width={14} height={14} />
                               </button>
