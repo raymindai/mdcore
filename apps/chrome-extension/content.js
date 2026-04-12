@@ -686,6 +686,42 @@
    * Must be called BEFORE extractConversation/htmlToMarkdown.
    */
   /**
+   * Pre-process: switch ChatGPT rendered diagrams to code view.
+   * ChatGPT has "Toggle view" buttons that switch between rendered/code.
+   * When in rendered mode, mermaid source is removed from DOM.
+   * Click the code-view button to reveal source before capture.
+   */
+  async function preProcessCodeToggles() {
+    if (platform !== "chatgpt") return;
+    const toggles = document.querySelectorAll('[aria-label="Toggle view"]');
+    if (toggles.length === 0) return;
+
+    const clicked = [];
+    for (const toggle of toggles) {
+      // Find the associated pre — if it only has a lang name, it's in rendered mode
+      const wrapper = toggle.closest("div.relative") || toggle.closest("div");
+      const pre = wrapper?.querySelector("pre") || wrapper?.parentElement?.querySelector("pre");
+      if (!pre) continue;
+
+      const text = pre.textContent.trim();
+      const lines = text.split("\n").filter((l) => l.trim());
+      // Only header text, no actual code → rendered mode
+      if (lines.length <= 1) {
+        // Click first span/button inside toggle (code view option)
+        const btns = toggle.querySelectorAll("span, button");
+        if (btns.length >= 1) {
+          btns[0].click();
+          clicked.push(toggle);
+        }
+      }
+    }
+
+    if (clicked.length > 0) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+
+  /**
    * Pre-process artifact iframes: screenshot visible iframes and replace
    * with inline images. Uses chrome.tabs.captureVisibleTab + canvas crop.
    */
@@ -1013,6 +1049,7 @@
       container.classList.add("mdfy-loading");
       setFloatStatus("Capturing...");
       try {
+        await preProcessCodeToggles();
         await preProcessArtifactIframes();
         setFloatStatus("Converting...");
         let messages = extractConversation();
@@ -1158,6 +1195,7 @@
         miniBtn.classList.add("mdfy-loading");
         setMiniStatus("Capturing...");
         try {
+          await preProcessCodeToggles();
           await preProcessArtifactIframes();
           setMiniStatus("Converting...");
           const { userEl, assistantEl } = findQAPair(msg, role);
@@ -1189,7 +1227,7 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "capture-conversation") {
       const lastN = request.lastN || 0;
-      preProcessArtifactIframes().then(() => {
+      preProcessCodeToggles().then(() => preProcessArtifactIframes()).then(() => {
         let messages = extractConversation();
         if (lastN > 0) messages = messages.slice(-(lastN * 2));
         const markdown = formatConversation(messages);
