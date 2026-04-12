@@ -3995,8 +3995,8 @@ ${html}
               <div className="relative">
                 <button
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
-                  className="text-[10px] px-2 py-1 rounded-md font-mono shrink-0 flex items-center gap-1.5 transition-colors"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors"
+                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
                 >
                   VIEW ONLY
                   <ChevronDown width={8} height={8} />
