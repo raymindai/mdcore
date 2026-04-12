@@ -155,13 +155,13 @@
       case "asciiRenderStart": {
         // Show loading state on the button that triggered it
         content.querySelectorAll('.ascii-render-btn').forEach(function(btn) {
-          if (btn.textContent === '✦ AI Render') return;
-          btn.textContent = '⏳ Rendering...';
+          if (btn.textContent === 'AI Render') return;
+          btn.textContent = 'Rendering...';
           btn.disabled = true;
         });
         // Mark all as rendering for simplicity
         var activeBtn = content.querySelector('.ascii-render-btn:not([disabled])');
-        if (activeBtn) { activeBtn.textContent = '⏳ Rendering...'; activeBtn.disabled = true; }
+        if (activeBtn) { activeBtn.textContent = 'Rendering...'; activeBtn.disabled = true; }
         break;
       }
 
@@ -192,6 +192,9 @@
 
               var pre = codeEl.closest('pre');
               if (pre) {
+                // Reset the render button in the original pre
+                var renderBtn = pre.querySelector('.ascii-render-btn');
+                if (renderBtn) { renderBtn.textContent = 'AI Render'; renderBtn.disabled = false; }
                 pre.classList.add('ascii-original', 'hidden');
                 pre.parentNode.insertBefore(container, pre);
               }
@@ -203,7 +206,7 @@
 
       case "asciiRenderFailed": {
         content.querySelectorAll('.ascii-render-btn').forEach(function(btn) {
-          btn.textContent = '✦ AI Render';
+          btn.textContent = 'AI Render';
           btn.disabled = false;
         });
         break;
@@ -1580,7 +1583,7 @@
         var code = pre.querySelector('code');
         var text = code ? code.textContent : pre.textContent;
         navigator.clipboard.writeText(text || '').then(function() {
-          copyBtn.innerHTML = '✓ Copied!';
+          copyBtn.innerHTML = 'Copied!';
           copyBtn.classList.add('copied');
           setTimeout(function() {
             copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg> Copy';
@@ -1676,7 +1679,7 @@
 
       var btn = document.createElement('button');
       btn.className = 'ascii-render-btn';
-      btn.textContent = '✦ AI Render';
+      btn.textContent = 'AI Render';
       btn.title = 'Render this diagram with AI';
       btn.addEventListener('click', function(e) {
         e.stopPropagation();

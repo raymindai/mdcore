@@ -774,7 +774,7 @@ body {
     function renderSyncedDoc(doc) {
       var ic = '<div class="doc-icon published">' + icon('check', 14) + '</div>';
       var synced = doc.lastSynced ? relTime(doc.lastSynced) : '';
-      var meta = synced ? '✓ ' + synced : doc.docId;
+      var meta = synced ? 'synced' + synced : doc.docId;
       var actions = ''
         + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
