@@ -303,27 +303,37 @@
     });
 
     // ── Step 4: Code blocks ──
+    const knownLangs = /^(mermaid|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx)$/i;
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
       const target = code || pre;
       // Replace <br> with \n — some sites use <br> for line breaks in code
       target.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
-      const text = target.textContent;
+      let text = target.textContent;
       let lang = "";
       // Try class-based detection
       const langClass = (code || pre).className.match(/language-(\w+)|lang-(\w+)/);
       if (langClass) lang = langClass[1] || langClass[2];
       // Check pre's lang attribute
       if (!lang && pre.getAttribute("lang")) lang = pre.getAttribute("lang");
-      // Claude uses data-language or a header div with the language name
+      // ChatGPT/Claude: check previous sibling header for language name
       if (!lang) {
         const header = pre.previousElementSibling;
-        if (header && header.textContent.trim().length < 20) {
+        if (header && header.textContent.trim().length < 30) {
           const headerText = header.textContent.trim().toLowerCase();
-          if (/^(rust|python|javascript|typescript|js|ts|go|java|c\+\+|c|ruby|swift|kotlin|bash|sh|sql|html|css|json|yaml|xml|toml|dockerfile|makefile)$/i.test(headerText)) {
+          if (knownLangs.test(headerText)) {
             lang = headerText;
             header.remove();
           }
+        }
+      }
+      // ChatGPT: language name as first line of code text (e.g., "Mermaid\ngraph TD...")
+      if (!lang) {
+        const lines = text.split("\n");
+        const firstLine = lines[0].trim();
+        if (knownLangs.test(firstLine)) {
+          lang = firstLine.toLowerCase();
+          text = lines.slice(1).join("\n");
         }
       }
       pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
