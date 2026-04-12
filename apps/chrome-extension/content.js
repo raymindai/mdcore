@@ -1226,45 +1226,16 @@
     }
   });
 
-  // ─── Layout Measurement ───
+  // ─── Platform Layout ───
 
-  function measureLayout() {
-    // Detect sticky/fixed header height
-    let headerH = 8;
-    const headerSelectors = {
-      chatgpt: "header, nav, [class*='sticky'][class*='top']",
-      claude: "header, [class*='sticky'], [class*='top-0']",
-      gemini: "header, [class*='header']",
-    };
-    const headerEls = document.querySelectorAll(headerSelectors[platform] || "header");
-    for (const el of headerEls) {
-      const style = window.getComputedStyle(el);
-      if (style.position === "sticky" || style.position === "fixed") {
-        const h = el.getBoundingClientRect().height;
-        if (h > headerH && h < 200) headerH = h;
-      }
-    }
-
-    // Detect input area height from bottom
-    let inputH = 80;
-    const inputSelectors = {
-      chatgpt: "form[class*='stretch'], [class*='composer'], [class*='input-area']",
-      claude: "[class*='input'], [class*='composer'], form",
-      gemini: "[class*='input'], [class*='query']",
-    };
-    const inputEls = document.querySelectorAll(inputSelectors[platform] || "form");
-    for (const el of inputEls) {
-      const rect = el.getBoundingClientRect();
-      const fromBottom = window.innerHeight - rect.top;
-      if (fromBottom > inputH && fromBottom < 300) inputH = fromBottom;
-    }
-
-    document.documentElement.style.setProperty("--mdfy-header-h", (headerH + 8) + "px");
-    document.documentElement.style.setProperty("--mdfy-input-h", (inputH + 16) + "px");
-  }
-
-  measureLayout();
-  window.addEventListener("resize", measureLayout);
+  const layoutConfig = {
+    chatgpt: { headerH: 56, inputH: 100 },
+    claude: { headerH: 48, inputH: 150 },
+    gemini: { headerH: 64, inputH: 160 },
+  };
+  const layout = layoutConfig[platform] || { headerH: 48, inputH: 100 };
+  document.documentElement.style.setProperty("--mdfy-header-h", layout.headerH + "px");
+  document.documentElement.style.setProperty("--mdfy-input-h", layout.inputH + "px");
 
   // ─── Initialize ───
 
