@@ -4602,8 +4602,8 @@ ${html}
               e.target.value = "";
             }}
           />
-          {/* Document list — 3 permanent sections */}
-          <div className="flex-1 overflow-y-auto" onContextMenu={(e) => {
+          {/* Document list — 3 permanent sections, accordion layout */}
+          <div className="flex-1 flex flex-col min-h-0" onContextMenu={(e) => {
             e.preventDefault();
             setDocContextMenu(null);
             setFolderContextMenu(null);
@@ -4621,9 +4621,9 @@ ${html}
               const draftCount = allMyTabs.filter(t => t.isDraft !== false).length;
               const publishedCount = allMyTabs.filter(t => t.isDraft === false).length;
               return (
-                <div className="pt-3">
+                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-3`}>
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => setActiveSection("my")}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
@@ -4655,7 +4655,7 @@ ${html}
                     {!showMyDocs && myTabCount > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>}
                   </div>
                   {showMyDocs && (
-                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Grouped tab filter */}
                       <div className="flex items-center gap-1.5 px-1 pb-1.5">
                         <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -4903,10 +4903,9 @@ ${html}
               const allExtra = [...extraShared, ...notifDocs];
               const totalShared = sharedTabs.length + allExtra.length;
               return (<>
-                <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                <div>
+                <div className={`shrink-0 ${showSharedDocs ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => setActiveSection("shared")}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--accent)" : "var(--text-muted)" }}>Shared with me</span>
@@ -4938,7 +4937,7 @@ ${html}
                     {!showSharedDocs && totalShared > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>}
                   </div>
                   {showSharedDocs && (
-                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Shared tabs already open — draggable to folders */}
                       {sharedTabs.map((tab) => (
                         <div
@@ -5085,17 +5084,16 @@ ${html}
             {(() => {
               const trashTabs = tabs.filter(t => t.deleted);
               return (<>
-                <div className="mt-3 mb-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                <div>
+                <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => setActiveSection("trash")}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--accent)" : "var(--text-muted)" }}>Trash</span>
                     {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
                   </div>
                   {showTrash && (
-                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
