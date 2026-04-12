@@ -128,12 +128,22 @@
     clone.querySelectorAll("pre, code").forEach((el) => {
       const text = el.textContent || "";
       const cls = el.className || "";
+      const trimmed = text.trim();
       const isMermaid = /language-mermaid|lang-mermaid/i.test(cls) ||
-        /^(graph |flowchart |sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie |gitGraph|journey|mindmap|timeline)/m.test(text.trim());
-      if (isMermaid && text.trim().length > 5) {
-        // Store source keyed by nearest container
-        const container = el.closest("div") || el.parentElement;
-        if (container) mermaidSources.set(container, text.trim());
+        /^mermaid\s*$/im.test(trimmed.split("\n")[0]) ||
+        /^(graph |flowchart |sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie |gitGraph|journey|mindmap|timeline)/m.test(trimmed);
+      if (isMermaid && trimmed.length > 5) {
+        // Strip "Mermaid" header line if present (ChatGPT adds language label as first line)
+        let source = trimmed;
+        if (/^mermaid\s*$/im.test(source.split("\n")[0])) {
+          source = source.split("\n").slice(1).join("\n").trim();
+        }
+        // Store source keyed by ancestor containers (walk up for iframe matching)
+        let container = el.closest("div") || el.parentElement;
+        for (let i = 0; i < 5 && container; i++) {
+          mermaidSources.set(container, source);
+          container = container.parentElement;
+        }
       }
     });
 
@@ -148,12 +158,29 @@
       "[aria-hidden='true']:not(pre):not(code):not([class*='mermaid']), .sr-only"
     ).forEach((el) => el.remove());
 
-    // ── Step 1a: Claude Artifact iframes (cross-origin, cannot extract) ──
+    // ── Step 1a: Iframes → mermaid code blocks or artifact placeholders ──
     clone.querySelectorAll("iframe").forEach((iframe) => {
+      // Check if this iframe is near a stored mermaid source
+      let mermaidSource = null;
+      let container = iframe.closest("div") || iframe.parentElement;
+      for (let i = 0; i < 5 && container; i++) {
+        if (mermaidSources.has(container)) {
+          mermaidSource = mermaidSources.get(container);
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      if (mermaidSource) {
+        iframe.textContent = "\n```mermaid\n" + mermaidSource + "\n```\n";
+        return;
+      }
+
+      // Claude artifact iframes
       const src = iframe.getAttribute("src") || "";
       if (src.includes("claudemcpcontent.com") || src.includes("artifact")) {
-        const container = iframe.closest("div");
-        const heading = container?.querySelector("h1, h2, h3, [class*='title']");
+        const cont = iframe.closest("div");
+        const heading = cont?.querySelector("h1, h2, h3, [class*='title']");
         const title = heading?.textContent?.trim() || iframe.getAttribute("title") || "";
         const label = title ? "📊 *" + title + "*" : "📊 *Interactive diagram*";
         iframe.textContent = "\n\n" + label + "\n*(Download the diagram from the original conversation and paste it here)*\n\n";
