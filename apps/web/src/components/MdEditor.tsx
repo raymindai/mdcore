@@ -6464,12 +6464,12 @@ ${html}
               const fId = `folder-examples-${Date.now()}`;
               const t = Date.now();
               const newTabs = [
-                { id: `tab-${t}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId },
-                { id: `tab-${t}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId },
-                { id: `tab-${t}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId },
-                { id: `tab-${t}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId },
-                { id: `tab-${t}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId },
-                { id: `tab-${t}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId },
+                { id: `tab-${t}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId, readonly: true },
+                { id: `tab-${t}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId, readonly: true },
+                { id: `tab-${t}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId, readonly: true },
+                { id: `tab-${t}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId, readonly: true },
+                { id: `tab-${t}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId, readonly: true },
+                { id: `tab-${t}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId, readonly: true },
               ];
               setFolders(prev => [...prev, { id: fId, name: "Examples", collapsed: false }]);
               setTabs(prev => [...prev, ...newTabs]);
