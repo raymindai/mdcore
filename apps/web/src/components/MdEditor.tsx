@@ -1715,11 +1715,16 @@ export default function MdEditor() {
       return sortMode === "oldest" ? ai - bi : bi - ai;
     };
     const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
-    const folderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
+    const myFolderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
       tabs.filter(t => !t.deleted && t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id)
     );
-    return [...rootIds, ...folderIds];
-  }, [tabs, docFilter, sortMode, sidebarSearch, folders]);
+    // Shared tabs (for shift-select across sections)
+    const sharedRootIds = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id)).map(t => t.id);
+    const sharedFolderIds = folders.filter(f => f.section === "shared").filter(f => !f.collapsed).flatMap(f =>
+      tabs.filter(t => !t.deleted && t.folderId === f.id && !hiddenExampleIds.has(t.id)).map(t => t.id)
+    );
+    return [...rootIds, ...myFolderIds, ...sharedRootIds, ...sharedFolderIds];
+  }, [tabs, docFilter, sortMode, sidebarSearch, folders, hiddenExampleIds]);
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey) {
@@ -5056,12 +5061,13 @@ ${html}
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                             opacity: dragTabId === tab.id ? 0.4 : 1,
+                            outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
+                            outlineOffset: "-1px",
                           }}
-                          onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                          onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.permission === "readonly" ? (
-                            /* Eye icon — view only */
                             <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           ) : tab.permission === "editable" ? (
                             /* Pencil icon — editor access */
@@ -5116,8 +5122,13 @@ ${html}
                                 {folderTabs.map(tab => (
                                   <div key={tab.id} draggable onDragStart={() => setDragTabId(tab.id)} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
-                                    style={{ background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent", color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)" }}
-                                    onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                                    style={{
+                                      background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                                      color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                                      outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
+                                      outlineOffset: "-1px",
+                                    }}
+                                    onClick={(e) => handleDocClick(tab.id, e)}
                                   >
                                     {tab.permission === "editable" ? (
                                       <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
