@@ -123,7 +123,21 @@
     // Clone to avoid mutating the page
     const clone = el.cloneNode(true);
 
-    // ── Step 0: Remove injected UI and non-content elements ──
+    // ── Step 0a: Preserve mermaid source from hidden elements before removal ──
+    const mermaidSources = new Map();
+    clone.querySelectorAll("pre, code").forEach((el) => {
+      const text = el.textContent || "";
+      const cls = el.className || "";
+      const isMermaid = /language-mermaid|lang-mermaid/i.test(cls) ||
+        /^(graph |flowchart |sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie |gitGraph|journey|mindmap|timeline)/m.test(text.trim());
+      if (isMermaid && text.trim().length > 5) {
+        // Store source keyed by nearest container
+        const container = el.closest("div") || el.parentElement;
+        if (container) mermaidSources.set(container, text.trim());
+      }
+    });
+
+    // ── Step 0b: Remove injected UI and non-content elements ──
     clone.querySelectorAll(
       ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
       "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
@@ -138,7 +152,6 @@
     clone.querySelectorAll("iframe").forEach((iframe) => {
       const src = iframe.getAttribute("src") || "";
       if (src.includes("claudemcpcontent.com") || src.includes("artifact")) {
-        // Get title from nearby heading or the iframe's title attribute
         const container = iframe.closest("div");
         const heading = container?.querySelector("h1, h2, h3, [class*='title']");
         const title = heading?.textContent?.trim() || iframe.getAttribute("title") || "";
@@ -147,10 +160,9 @@
       }
     });
 
-    // ── Step 1b: SVG diagrams → inline image ──
-    // Convert SVG diagrams to data URL images.
+    // ── Step 1b: SVG diagrams → inline image or mermaid code ──
     clone.querySelectorAll("svg").forEach((svg) => {
-      // Skip tiny icons (< 50px) — only convert actual diagrams
+      // Skip tiny icons (< 50px)
       const w = parseInt(svg.getAttribute("width") || svg.style.width || "0");
       const h = parseInt(svg.getAttribute("height") || svg.style.height || "0");
       const viewBox = svg.getAttribute("viewBox");
@@ -161,15 +173,44 @@
         return;
       }
 
-      // Check for mermaid source code first
-      const source = svg.getAttribute("data-mermaid-source") ||
-                     svg.closest("[data-mermaid-source]")?.getAttribute("data-mermaid-source");
-      if (source) {
-        svg.textContent = "\n```mermaid\n" + source.trim() + "\n```\n";
+      // Detect mermaid SVG by multiple signals
+      const svgId = svg.getAttribute("id") || "";
+      const ariaRole = svg.getAttribute("aria-roledescription") || "";
+      const svgClass = svg.className?.baseVal || svg.getAttribute("class") || "";
+      const isMermaidSvg = /mermaid/i.test(svgId) || /mermaid/i.test(svgClass) ||
+        /flowchart|sequence|class|state|er|gantt|pie|git|journey|mindmap|timeline/i.test(ariaRole);
+
+      // Check for mermaid source: data attribute, nearby stored source, or nearby code block
+      let mermaidSource = svg.getAttribute("data-mermaid-source") ||
+        svg.closest("[data-mermaid-source]")?.getAttribute("data-mermaid-source") || "";
+
+      if (!mermaidSource && isMermaidSvg) {
+        // Look for preserved mermaid source from Step 0a
+        const container = svg.closest("div");
+        for (let el = container; el && !mermaidSource; el = el.parentElement) {
+          if (mermaidSources.has(el)) {
+            mermaidSource = mermaidSources.get(el);
+          }
+        }
+        // Also check sibling/nearby pre elements
+        if (!mermaidSource) {
+          const parent = svg.parentElement;
+          const nearbyPre = parent?.querySelector("pre") || parent?.parentElement?.querySelector("pre");
+          if (nearbyPre) {
+            const preText = nearbyPre.textContent?.trim() || "";
+            if (/^(graph |flowchart |sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie |gitGraph|journey|mindmap|timeline)/m.test(preText)) {
+              mermaidSource = preText;
+            }
+          }
+        }
+      }
+
+      if (mermaidSource) {
+        svg.textContent = "\n```mermaid\n" + mermaidSource + "\n```\n";
         return;
       }
 
-      // Convert SVG to data URL image
+      // Fallback: convert SVG to data URL image
       const dataUrl = svgToDataUrl(svg);
       if (dataUrl) {
         const alt = svg.getAttribute("aria-label") || svg.getAttribute("title") || "diagram";
