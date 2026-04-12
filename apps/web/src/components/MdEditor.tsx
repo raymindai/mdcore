@@ -760,19 +760,21 @@ Introduction paragraph that hooks the reader.
   },
 ];
 
-const EXAMPLES_FOLDER_ID = "folder-examples";
+const EXAMPLE_OWNER = "master@mdfy.cc";
 
-const INITIAL_FOLDERS: Folder[] = [
-  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: false },
+const INITIAL_FOLDERS: Folder[] = [];
+
+const EXAMPLE_TABS: Tab[] = [
+  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
 ];
 
 const INITIAL_TABS: Tab[] = [
-  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true },
-  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: EXAMPLES_FOLDER_ID, readonly: true },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: EXAMPLES_FOLDER_ID, readonly: true },
+  ...EXAMPLE_TABS,
 ];
 
 type ViewMode = "split" | "preview" | "editor";
@@ -1286,6 +1288,7 @@ export default function MdEditor() {
         localStorage.setItem("mdfy-tabs", JSON.stringify(cleanTabs));
         localStorage.setItem("mdfy-active-tab", activeTabId);
         localStorage.setItem("mdfy-folders", JSON.stringify(folders));
+        localStorage.setItem("mdfy-hidden-examples", JSON.stringify([...hiddenExampleIds]));
       } catch {
         // Quota exceeded — try saving without markdown bodies for cloud-synced tabs
         try {
@@ -1418,6 +1421,13 @@ export default function MdEditor() {
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
+  const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const saved = localStorage.getItem("mdfy-hidden-examples");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
   const lastClickedTabIdRef = useRef<string | null>(null);
   const [confirmTrash, setConfirmTrash] = useState(false);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
@@ -4973,7 +4983,7 @@ ${html}
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
               // Shared tabs not in any folder (organized ones show under My Documents folders)
-              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id) && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
               // All my document cloudIds — to exclude from shared section
               const myCloudIds = new Set(tabs.filter(t => !t.deleted && (!t.permission || t.permission === "mine") && t.cloudId).map(t => t.cloudId!));
@@ -6267,6 +6277,15 @@ ${html}
                 if (remaining.length) switchTab(remaining[0].id);
               }
             }, danger: true }] : []),
+            ...(tabs.find(t => t.id === docContextMenu.tabId)?.ownerEmail === EXAMPLE_OWNER ? [{
+              label: "Hide example", action: () => {
+                setHiddenExampleIds(prev => new Set([...prev, docContextMenu.tabId]));
+                if (docContextMenu.tabId === activeTabId) {
+                  const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId && !hiddenExampleIds.has(t.id));
+                  if (remaining.length) switchTab(remaining[0].id);
+                }
+              },
+            }] : []),
           ].map((item) => (
             <button
               key={item.label}
@@ -6505,18 +6524,17 @@ ${html}
             }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
             <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
             <button onClick={() => {
-              const fId = `folder-examples-${Date.now()}`;
               const t = Date.now();
-              const newTabs = [
-                { id: `tab-${t}-1`, title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, folderId: fId, readonly: true },
-                { id: `tab-${t}-2`, title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, folderId: fId, readonly: true },
-                { id: `tab-${t}-3`, title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, folderId: fId, readonly: true },
-                { id: `tab-${t}-4`, title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, folderId: fId, readonly: true },
-                { id: `tab-${t}-5`, title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, folderId: fId, readonly: true },
-                { id: `tab-${t}-6`, title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, folderId: fId, readonly: true },
-              ];
-              setFolders(prev => [...prev, { id: fId, name: "Examples", collapsed: false }]);
-              setTabs(prev => [...prev, ...newTabs]);
+              const existingExampleIds = new Set(tabs.filter(tab => tab.ownerEmail === EXAMPLE_OWNER).map(tab => tab.id));
+              const newExamples = EXAMPLE_TABS.map((ex, i) => ({
+                ...ex,
+                id: existingExampleIds.has(ex.id) ? `tab-${t}-${i}` : ex.id,
+              })).filter(ex => !existingExampleIds.has(ex.id));
+              if (newExamples.length > 0) {
+                setTabs(prev => [...prev, ...newExamples]);
+              }
+              // Unhide all hidden examples
+              setHiddenExampleIds(new Set());
               setSidebarContextMenu(null);
             }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Restore Examples</button>
           </div>
