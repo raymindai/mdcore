@@ -155,7 +155,7 @@
       "[class*='skill'], [class*='toolbar'], " +
       "[class*='show_widget'], " +
       "button[aria-expanded], " +
-      "[aria-hidden='true']:not(pre):not(code):not([class*='mermaid']), .sr-only"
+      "[aria-hidden='true'], .sr-only"
     ).forEach((el) => el.remove());
 
     // ── Step 1a: Iframes → mermaid code blocks or artifact placeholders ──
