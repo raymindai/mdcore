@@ -18,6 +18,13 @@ import ShareModal from "@/components/ShareModal";
 import ToastContainer, { showToast } from "@/components/Toast";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
+import {
+  Undo2, Redo2, List, ListOrdered, Indent, Outdent, Quote, Minus, Link,
+  Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
+  Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
+  FolderPlus, Folder, FolderOpen, FileCheck, File as FileIcon, MoreHorizontal,
+  Lock, User, Search, Cloud, X,
+} from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useAutoSave } from "@/lib/useAutoSave";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
@@ -1027,10 +1034,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {/* Undo/Redo */}
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip="Undo (Cmd+Z)" onClick={() => exec("undo")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+          <Undo2 size={I} />
         </TBtn>
         <TBtn tip="Redo (Cmd+Shift+Z)" onClick={() => exec("redo")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+          <Redo2 size={I} />
         </TBtn>
       </div>
       {sep}
@@ -1056,39 +1063,39 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {/* Lists */}
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+          <List size={I} />
         </TBtn>
         <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+          <ListOrdered size={I} />
         </TBtn>
         <TBtn tip="Indent" onClick={() => exec("indent")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+          <Indent size={I} />
         </TBtn>
         <TBtn tip="Outdent" onClick={() => exec("outdent")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+          <Outdent size={I} />
         </TBtn>
       </div>
       {sep}
       {/* Block elements */}
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+          <Quote size={I} />
         </TBtn>
         <TBtn tip="Horizontal rule → ---" onClick={() => exec("insertHorizontalRule")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+          <Minus size={I} />
         </TBtn>
       </div>
       {sep}
       {/* Insert */}
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
+          <Link size={I} />
         </TBtn>
         <TBtn tip="Upload image" onClick={() => onImageUpload()}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <ImageIcon size={I} />
         </TBtn>
         <TBtn tip="Clear formatting" onClick={() => exec("removeFormat")}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
+          <RemoveFormatting size={I} />
         </TBtn>
       </div>
       {sep}
@@ -1096,7 +1103,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       <div className="flex items-center gap-0.5 shrink-0">
       <div className="relative" ref={tableGridRef}>
         <TBtn tip="Insert table" onClick={() => setShowTableGrid(v => !v)}>
-          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg>
+          <Table size={I} />
         </TBtn>
         {showTableGrid && (
           <div className="absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl z-[9998]"
@@ -1132,7 +1139,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
         )}
       </div>
       <TBtn tip="Insert code block" onClick={() => onInsert("code")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4"/></svg>
+        <Code size={I} />
       </TBtn>
       <TBtn tip="Insert math equation" onClick={() => onInsert("math")}>
         <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" fontSize="11" fontFamily="serif" fontStyle="italic">fx</text></svg>
@@ -3930,7 +3937,7 @@ ${html}
                   style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
                 >
                   VIEW ONLY
-                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
+                  <ChevronDown width={8} height={8} />
                 </button>
                 {showPermDropdown && (
                   <>
@@ -3960,9 +3967,7 @@ ${html}
                           className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                            <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
-                          </svg>
+                          <Pencil width={12} height={12} />
                           Request to edit
                         </button>
                       )}
@@ -3993,7 +3998,7 @@ ${html}
                         className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                         style={{ color: "var(--text-secondary)" }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                        <Copy width={12} height={12} />
                         Duplicate to edit
                       </button>
                     </div>
@@ -4015,21 +4020,13 @@ ${html}
         >
           {([
             { mode: "preview" as ViewMode, label: "Live", icon: (
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
-                <circle cx="8" cy="8" r="2"/>
-              </svg>
+              <Eye width={13} height={13} />
             )},
             { mode: "split" as ViewMode, label: "Split", icon: (
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1.5" y="2.5" width="13" height="11" rx="2"/>
-                <line x1="8" y1="2.5" x2="8" y2="13.5"/>
-              </svg>
+              <Columns2 width={13} height={13} />
             )},
             { mode: "editor" as ViewMode, label: "Source", icon: (
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 4L2 8l3 4M11 4l3 4-3 4"/>
-              </svg>
+              <Code width={13} height={13} />
             )},
           ]).map(({ mode, label, icon }) => {
             const active = viewMode === mode;
@@ -4082,9 +4079,7 @@ ${html}
                   style={{ background: showNotifications ? "var(--accent-dim)" : "var(--toggle-bg)", color: showNotifications ? "var(--accent)" : "var(--text-muted)" }}
                   aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
                 >
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M4 6a4 4 0 018 0c0 2 1 3.5 2 4.5H2c1-1 2-2.5 2-4.5z"/><path d="M6 11v.5a2 2 0 004 0V11"/>
-                  </svg>
+                  <Bell width={13} height={13} />
                   {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--accent)", color: "#000" }}>
                       {unreadCount > 9 ? "9+" : unreadCount}
@@ -4183,7 +4178,7 @@ ${html}
                 {shareState === "sharing" ? (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                 ) : (
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/></svg>
+                  <Share2 width={12} height={12} />
                 )}
                 <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
@@ -4219,9 +4214,7 @@ ${html}
                 className="px-1.5 h-6 rounded-md transition-colors flex items-center"
                 style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/>
-                </svg>
+                <Menu width={16} height={16} />
               </button>
               {showMenu && (
                 <div
@@ -4490,7 +4483,7 @@ ${html}
                   className="p-1 rounded transition-colors"
                   style={{ color: "var(--accent)" }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
+                  <PanelLeft width={14} height={14} />
                 </button>
                 <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -4506,7 +4499,7 @@ ${html}
                   className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
                   style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 3v7M5 7.5L8 10l3-2.5"/><path d="M3 10v3h10v-3"/></svg>
+                  <Download width={10} height={10} />
                   {sidebarWidth >= 200 && "IMPORT"}
                 </button>
                 <div className="absolute top-full left-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
@@ -4533,7 +4526,7 @@ ${html}
                   className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
                   style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                 >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+                  <Plus width={10} height={10} />
                 </button>
                 <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -4641,7 +4634,7 @@ ${html}
                           style={{ color: "var(--text-faint)" }}
                           title={`Sort: ${sortMode}`}
                         >
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+                          <ArrowUpDown width={10} height={10} />
                         </button>
                         <button
                           onClick={(e) => {
@@ -4654,7 +4647,7 @@ ${html}
                           style={{ color: "var(--text-faint)" }}
                           title="New folder"
                         >
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
+                          <FolderPlus width={10} height={10} />
                         </button>
                       </>
                     )}
@@ -4683,7 +4676,7 @@ ${html}
                       </div>
                       {/* Search */}
                       <div className="relative px-1 pb-1.5">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
                         <input
                           type="text"
                           placeholder="Search..."
@@ -4715,20 +4708,14 @@ ${html}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.isDraft === false ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "#4ade80"} strokeWidth="1.2" className="shrink-0">
-                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                              <path d="M6 8.5l1.5 1.5 3-3" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                            <FileCheck width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                           ) : (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                              <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                              <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                            </svg>
+                            <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                            <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
                       ))}
@@ -4767,11 +4754,13 @@ ${html}
                                 setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
                               }}
                             >
-                              <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
-                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                                <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                              </svg>
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--text-faint)" : "none"} stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0"><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                              <ChevronDown width={8} height={8} className="shrink-0 -mr-1"
+                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                              {folder.collapsed ? (
+                                <Folder width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
+                              ) : (
+                                <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
+                              )}
                               <span className="truncate flex-1">{folder.name}</span>
                               <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
                               <button
@@ -4783,7 +4772,7 @@ ${html}
                                 className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-5"
                                 style={{ color: "var(--text-muted)", padding: "2px" }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                                <MoreHorizontal width={14} height={14} />
                               </button>
                             </div>
                             {!folder.collapsed && (
@@ -4809,20 +4798,14 @@ ${html}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
                                     {tab.cloudId ? (
-                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "#4ade80"} strokeWidth="1.2" className="shrink-0">
-                                        <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                                        <path d="M6 8.5l1.5 1.5 3-3" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
+                                      <FileCheck width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                                     ) : (
-                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0">
-                                        <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                                        <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                                      </svg>
+                                      <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
-                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                                      <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
                                 ))}
@@ -4890,9 +4873,7 @@ ${html}
                             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--menu-hover)")}
                             onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" strokeLinecap="round">
-                              <path d="M4 13.5A3.5 3.5 0 017.5 10h1a3.5 3.5 0 010 7h-5A3.5 3.5 0 014 13.5zM5.3 10a4.5 4.5 0 118.4 1.5H13a3 3 0 010 6h-.5"/>
-                            </svg>
+                            <Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} />
                             <span className="flex-1 text-xs truncate">{doc.title || "Untitled"}</span>
                             <span className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-faint)" }}>Pull</span>
                           </div>
@@ -4936,7 +4917,7 @@ ${html}
                           style={{ color: "var(--text-faint)" }}
                           title={`Sort: ${sharedSortMode}`}
                         >
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+                          <ArrowUpDown width={10} height={10} />
                         </button>
                         <button
                           onClick={(e) => {
@@ -4949,7 +4930,7 @@ ${html}
                           style={{ color: "var(--text-faint)" }}
                           title="New folder"
                         >
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M1 4h5l2-2h7v11H1z"/><line x1="8" y1="7" x2="8" y2="11"/><line x1="6" y1="9" x2="10" y2="9"/></svg>
+                          <FolderPlus width={10} height={10} />
                         </button>
                       </>
                     )}
@@ -4975,24 +4956,16 @@ ${html}
                         >
                           {tab.permission === "readonly" ? (
                             /* Lock icon — view only */
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
-                            </svg>
+                            <Lock width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           ) : tab.permission === "editable" ? (
                             /* Pencil icon — editor access */
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
-                            </svg>
+                            <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           ) : tab.isSharedByMe ? (
                             /* Share icon — my doc, shared with others */
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/>
-                            </svg>
+                            <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           ) : (
                             /* Document icon — my doc, not shared */
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 2h5l4 4v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M9 2v4h4"/>
-                            </svg>
+                            <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                           {tab.cloudId && unreadDocIds.has(tab.cloudId) && (
@@ -5000,7 +4973,7 @@ ${html}
                           )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="12" cy="8" r="1.5"/></svg>
+                            <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
                       ))}
@@ -5017,11 +4990,13 @@ ${html}
                               onDragLeave={() => setDragOverTarget(null)}
                               onDrop={(e) => { e.preventDefault(); if (dragTabId) { setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t)); } setDragTabId(null); setDragOverTarget(null); }}
                             >
-                              <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 -mr-1"
-                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                                <path d="M4 6l4 4 4-4" strokeLinecap="round"/>
-                              </svg>
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill={folder.collapsed ? "var(--text-faint)" : "none"} stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0"><path d="M1 4h5l2-2h7v11H1z"/></svg>
+                              <ChevronDown width={8} height={8} className="shrink-0 -mr-1"
+                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                              {folder.collapsed ? (
+                                <Folder width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
+                              ) : (
+                                <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
+                              )}
                               <span className="truncate flex-1">{folder.name}</span>
                               <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
                             </div>
@@ -5034,9 +5009,9 @@ ${html}
                                     onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                                   >
                                     {tab.permission === "editable" ? (
-                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
+                                      <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     ) : (
-                                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)"} strokeWidth="1.2" className="shrink-0" strokeLinecap="round"><rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/></svg>
+                                      <Lock width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                   </div>
@@ -5086,13 +5061,9 @@ ${html}
                           }}
                         >
                           {doc.editMode === "public" ? (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
-                            </svg>
+                            <Pencil width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           ) : (
-                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.2" className="shrink-0" strokeLinecap="round">
-                              <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
-                            </svg>
+                            <Lock width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{doc.title || "Untitled"}</span>
                           {unreadDocIds.has(doc.id) && (
@@ -5126,10 +5097,7 @@ ${html}
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" className="shrink-0 opacity-40">
-                            <path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/>
-                            <path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/>
-                          </svg>
+                          <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
                           <button onClick={() => setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t))}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
@@ -5197,7 +5165,7 @@ ${html}
                     <div className="text-[11px] truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
                     <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
                   </div>
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="2" strokeLinecap="round"><path d="M4 6l4 4 4-4"/></svg>
+                  <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)" }} />
                 </button>
                 {showAuthMenu && (
                   <>
@@ -5247,7 +5215,7 @@ ${html}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
                 style={{ color: "var(--text-muted)" }}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" className="shrink-0"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+                <User width={14} height={14} className="shrink-0" />
                 {sidebarWidth >= 180 ? "Sign In / Sign Up" : "Sign In"}
               </button>
             )}
@@ -5276,7 +5244,7 @@ ${html}
               className="p-1 rounded transition-colors"
               style={{ color: "var(--text-muted)" }}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="5.5" y1="2" x2="5.5" y2="14"/></svg>
+              <PanelLeft width={14} height={14} />
             </button>
             <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -5289,7 +5257,7 @@ ${html}
               className="p-1 rounded transition-colors"
               style={{ color: "var(--text-muted)" }}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+              <Plus width={14} height={14} />
             </button>
             <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
@@ -5306,7 +5274,7 @@ ${html}
               {isAuthenticated && profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-4 h-4 rounded-full" />
               ) : (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><circle cx="8" cy="6" r="3"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+                <User width={14} height={14} />
               )}
             </button>
             <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
