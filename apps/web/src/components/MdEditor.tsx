@@ -761,16 +761,19 @@ Introduction paragraph that hooks the reader.
 ];
 
 const EXAMPLE_OWNER = "master@mdfy.cc";
+const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
-const INITIAL_FOLDERS: Folder[] = [];
+const INITIAL_FOLDERS: Folder[] = [
+  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: false, section: "shared" },
+];
 
 const EXAMPLE_TABS: Tab[] = [
-  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
 ];
 
 const INITIAL_TABS: Tab[] = [
@@ -1420,6 +1423,7 @@ export default function MdEditor() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
+  const [showSharedOwner, setShowSharedOwner] = useState(true);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -5006,6 +5010,14 @@ ${html}
                     {showSharedDocs && (
                       <>
                         <button
+                          onClick={(e) => { e.stopPropagation(); setShowSharedOwner(!showSharedOwner); }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: showSharedOwner ? "var(--accent)" : "var(--text-faint)" }}
+                          title={showSharedOwner ? "Hide owner emails" : "Show owner emails"}
+                        >
+                          <User width={10} height={10} />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); setSharedSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-faint)" }}
@@ -5063,7 +5075,7 @@ ${html}
                           )}
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{tab.title || "Untitled"}</span>
-                            {tab.ownerEmail && (
+                            {showSharedOwner && tab.ownerEmail && (
                               <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
                             )}
                           </div>
@@ -5078,7 +5090,7 @@ ${html}
                       ))}
                       {/* Shared folders */}
                       {folders.filter(f => f.section === "shared").map(folder => {
-                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
+                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && !hiddenExampleIds.has(t.id));
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -5166,7 +5178,7 @@ ${html}
                           )}
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{doc.title || "Untitled"}</span>
-                            {(doc as { ownerName?: string }).ownerName && (
+                            {showSharedOwner && (doc as { ownerName?: string }).ownerName && (
                               <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{(doc as { ownerName?: string }).ownerName}</span>
                             )}
                           </div>
