@@ -2405,9 +2405,19 @@ export default function MdEditor() {
               )
               .map((d: { id: string }) => d.id)
           );
-          if (sharedDocIds.size > 0) {
-            setTabs(prev => prev.map(t => t.cloudId && sharedDocIds.has(t.cloudId) ? { ...t, isSharedByMe: true } : t));
-          }
+          // Sync isDraft from server (shared = isDraft false)
+          const publishedIds = new Set(
+            data.documents
+              .filter((d: { is_draft?: boolean }) => d.is_draft === false)
+              .map((d: { id: string }) => d.id)
+          );
+          setTabs(prev => prev.map(t => {
+            if (!t.cloudId) return t;
+            const updates: Partial<Tab> = {};
+            if (sharedDocIds.has(t.cloudId)) updates.isSharedByMe = true;
+            if (publishedIds.has(t.cloudId)) updates.isDraft = false;
+            return Object.keys(updates).length ? { ...t, ...updates } : t;
+          }));
         }
       })
       .catch(() => {});
