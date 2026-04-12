@@ -1417,6 +1417,7 @@ export default function MdEditor() {
   const [docFilter, setDocFilter] = useState<"all" | "private" | "shared">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
+  const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -4647,6 +4648,14 @@ ${html}
                     {showMyDocs && (
                       <>
                         <button
+                          onClick={(e) => { e.stopPropagation(); setShowSidebarSearch(!showSidebarSearch); if (showSidebarSearch) setSidebarSearch(""); }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: showSidebarSearch || sidebarSearch ? "var(--accent)" : "var(--text-faint)" }}
+                          title="Search documents"
+                        >
+                          <Search width={10} height={10} />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); setSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-faint)" }}
@@ -4711,24 +4720,36 @@ ${html}
                         </button>
                       </div>
                       {showSidebarHelp && (
-                        <div className="mx-1 mb-1.5 p-2.5 rounded-md text-[10px] space-y-1.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
-                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
-                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you. Not yet shared.</span></div>
-                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared via URL. Anyone with the link can view.</span></div>
+                        <div className="mx-1 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+                          <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
+                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
+                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you</span></div>
+                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Has a public URL</span></div>
+                          <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                          <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Icons</div>
+                          <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private document</span></div>
+                          <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared publicly</span></div>
+                          <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
+                          <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
+                          <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Editable (shared with me)</span></div>
                         </div>
                       )}
-                      {/* Search — fixed */}
-                      <div className="relative px-1 pb-1.5">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
-                        <input
-                          type="text"
-                          placeholder="Search..."
-                          value={sidebarSearch}
-                          onChange={(e) => setSidebarSearch(e.target.value)}
-                          className="w-full text-[11px] py-1 pl-7 pr-2 rounded"
-                          style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "none", outline: "none" }}
-                        />
-                      </div>
+                      {/* Search — toggle with icon */}
+                      {sidebarSearch || showSidebarSearch ? (
+                        <div className="relative px-1 pb-1.5">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
+                          <input
+                            type="text"
+                            placeholder="Search..."
+                            value={sidebarSearch}
+                            onChange={(e) => setSidebarSearch(e.target.value)}
+                            onBlur={() => { if (!sidebarSearch) setShowSidebarSearch(false); }}
+                            autoFocus
+                            className="w-full text-[11px] py-1 pl-7 pr-2 rounded"
+                            style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "none", outline: "none" }}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                     {/* Document list — scrollable */}
                     <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
