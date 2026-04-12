@@ -303,14 +303,11 @@ document.querySelectorAll('input[name="range"]').forEach((radio) => {
   radio.addEventListener("change", () => {
     const val = parseInt(radio.value);
     const labelEl = btnCapture.querySelector(".label");
-    const descEl = btnCapture.querySelector(".desc");
-    if (val === 0) {
-      labelEl.childNodes[0].textContent = "Capture Full Conversation\n";
-      descEl.textContent = "All messages → Markdown document";
-    } else {
-      labelEl.childNodes[0].textContent = "Capture Last " + val + " Exchanges\n";
-      descEl.textContent = "Recent " + val + " Q&A pairs → Markdown document";
-    }
+    const descEl = labelEl.querySelector(".desc");
+    // Remove old text, keep .desc span
+    const newText = val === 0 ? "Capture Full Conversation" : "Capture Last " + val + " Exchanges";
+    const newDesc = val === 0 ? "All messages → Markdown document" : "Recent " + val + " Q&A pairs → Markdown document";
+    labelEl.innerHTML = newText + '<span class="desc">' + newDesc + '</span>';
   });
 });
 
