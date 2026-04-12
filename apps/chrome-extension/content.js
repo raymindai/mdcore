@@ -327,13 +327,26 @@
           }
         }
       }
-      // ChatGPT: language name as first line of code text (e.g., "Mermaid\ngraph TD...")
+      // ChatGPT: language name prepended to code without separator
+      // e.g., "Mermaidflowchart LR", "Bashemcc add.c", "JavaScriptconst wasm"
       if (!lang) {
-        const lines = text.split("\n");
-        const firstLine = lines[0].trim();
-        if (knownLangs.test(firstLine)) {
-          lang = firstLine.toLowerCase();
-          text = lines.slice(1).join("\n");
+        const textLower = text.toLowerCase();
+        // Try longest names first to avoid partial matches (e.g., "js" matching before "json")
+        const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","md","go","js","ts","sh"];
+        for (const lp of langPrefixes) {
+          if (textLower.startsWith(lp) && text.length > lp.length) {
+            lang = lp;
+            text = text.slice(lp.length);
+            break;
+          }
+        }
+        // Single-char languages (c, r) — only match if first line is just the letter
+        if (!lang) {
+          const firstLine = text.split("\n")[0].trim().toLowerCase();
+          if ((firstLine === "c" || firstLine === "r") && text.split("\n").length > 1) {
+            lang = firstLine;
+            text = text.split("\n").slice(1).join("\n");
+          }
         }
       }
       // Skip empty code blocks (e.g., ChatGPT rendered mermaid with no source in DOM)
