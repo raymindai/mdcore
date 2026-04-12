@@ -142,10 +142,10 @@
       ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
       "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
       "[class*='view-transition'], style, script, noscript, " +
-      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
-      "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
+      "[class*='skill'], [class*='toolbar'], " +
+      "[class*='show_widget'], " +
       "button[aria-expanded], " +
-      "[aria-hidden='true'], .sr-only"
+      "[aria-hidden='true']:not(pre):not(code):not([class*='mermaid']), .sr-only"
     ).forEach((el) => el.remove());
 
     // ── Step 1a: Claude Artifact iframes (cross-origin, cannot extract) ──
