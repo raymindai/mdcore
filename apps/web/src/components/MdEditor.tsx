@@ -4009,7 +4009,7 @@ ${html}
 
         {/* Center: Layout mode switcher */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0"
+          className="flex items-center rounded-lg overflow-hidden shrink-0 mx-3"
           style={{ border: "1px solid var(--border-dim)" }}
         >
           {([
