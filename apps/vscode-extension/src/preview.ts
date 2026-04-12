@@ -408,7 +408,8 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     if (!code) { return; }
 
     const auth = PreviewPanel.authManagerRef;
-    if (!auth || !(await auth.isLoggedIn())) {
+    const userId = await auth?.getUserId();
+    if (!auth || !userId) {
       const action = await vscode.window.showInformationMessage(
         "Sign in to mdfy.cc to use AI ASCII Render.",
         "Sign in"
