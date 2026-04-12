@@ -1168,10 +1168,9 @@ export default function MdEditor() {
     try { const s = localStorage.getItem("mdfy-folders"); if (s) { const p = JSON.parse(s); if (Array.isArray(p) && p.length > 0) return p; } } catch { /* */ }
     return INITIAL_FOLDERS;
   });
-  const [activeSection, setActiveSection] = useState<"my" | "shared" | "trash">("my");
-  const showMyDocs = activeSection === "my";
-  const showSharedDocs = activeSection === "shared";
-  const showTrash = activeSection === "trash";
+  const [showMyDocs, setShowMyDocs] = useState(true);
+  const [showSharedDocs, setShowSharedDocs] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -4642,7 +4641,7 @@ ${html}
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-3`}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setActiveSection("my")}
+                    onClick={() => { setShowMyDocs(!showMyDocs); }}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
                     {showMyDocs && (
@@ -4943,7 +4942,7 @@ ${html}
                 <div className={`shrink-0 ${showSharedDocs ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setActiveSection("shared")}
+                    onClick={() => setShowSharedDocs(!showSharedDocs)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--accent)" : "var(--text-muted)" }}>Shared with me</span>
                     {showSharedDocs && (
@@ -5069,7 +5068,7 @@ ${html}
                           onClick={async (e) => {
                             e.stopPropagation();
                             const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
-                            if (existing) { switchTab(existing.id); setActiveSection("shared"); return; }
+                            if (existing) { switchTab(existing.id); setShowSharedDocs(!showSharedDocs); return; }
                             try {
                               const headers: Record<string, string> = {};
                               if (user?.id) headers["x-user-id"] = user.id;
@@ -5094,7 +5093,7 @@ ${html}
                               setIsOwner(false);
                               setIsSharedDoc(true);
                               setTitle(d.title || "Untitled");
-                              setActiveSection("shared");
+                              setShowSharedDocs(!showSharedDocs);
                             } catch { window.location.href = `/?from=${doc.id}`; }
                           }}
                         >
@@ -5125,7 +5124,7 @@ ${html}
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setActiveSection("trash")}
+                    onClick={() => setShowTrash(!showTrash)}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--accent)" : "var(--text-muted)" }}>Trash</span>
                     {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
