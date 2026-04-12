@@ -351,6 +351,20 @@
     text = text.replace(/V?visualize\s*V?visualize\s*/gi, "");
     text = text.replace(/show_widget\s*/gi, "");
     text = text.replace(/Reading\s+\w+\s+design\s+skill\s*/gi, "");
+
+    // Fix inline math spanning multiple lines: $...$ must be single-line
+    text = text.replace(/\$([^$]+?)\$/g, (match, inner) => {
+      if (inner.includes("\n")) {
+        return "$" + inner.replace(/\s*\n\s*/g, " ").trim() + "$";
+      }
+      return match;
+    });
+
+    // Fix list items: ensure each item is a single line
+    text = text.replace(/^([-*] |\d+\. )(.+)/gm, (match, prefix, content) => {
+      return prefix + content.replace(/\n\s*/g, " ").trim();
+    });
+
     text = text.replace(/\n{3,}/g, "\n\n");
     return text.trim();
   }

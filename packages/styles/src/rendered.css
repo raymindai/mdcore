@@ -345,6 +345,15 @@
   color: var(--math-color);
 }
 
+/* Inline math must stay inline in lists and paragraphs */
+.mdcore-rendered .math-rendered[data-math-mode="inline"] {
+  display: inline;
+}
+
+.mdcore-rendered li .math-rendered[data-math-mode="inline"] .katex .katex-html {
+  white-space: normal;
+}
+
 .mdcore-rendered .katex-display {
   margin: 1.5rem 0;
   padding: 1rem;
