@@ -4,10 +4,18 @@ import { publishDocument, updateDocument, pullDocument } from "./publish";
 import { SyncEngine } from "./sync";
 import { AuthManager } from "./auth";
 import { StatusBarManager } from "./statusbar";
+import { MdfySidebarProvider } from "./sidebar";
 
 let syncEngine: SyncEngine | undefined;
 let statusBar: StatusBarManager | undefined;
 let authManager: AuthManager | undefined;
+let sidebarProvider: MdfySidebarProvider | undefined;
+let suppressAutoPreview = false;
+
+export function suppressAutoPreviewFor(ms: number): void {
+  suppressAutoPreview = true;
+  setTimeout(() => { suppressAutoPreview = false; }, ms);
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   authManager = new AuthManager(context);
@@ -16,6 +24,43 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Share AuthManager with preview panels for image upload
   PreviewPanel.setAuthManager(authManager);
+
+  // Refresh sidebar on login/logout
+  context.subscriptions.push(
+    authManager.onDidLogin(() => {
+      sidebarProvider?.refresh();
+    })
+  );
+
+  // Sidebar WebviewView
+  sidebarProvider = new MdfySidebarProvider(context.extensionUri, authManager);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      MdfySidebarProvider.viewType,
+      sidebarProvider
+    )
+  );
+
+  // Refresh sidebar when files are saved or created
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument((doc) => {
+      if (doc.languageId === "markdown") {
+        sidebarProvider?.refresh();
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidCreateFiles(() => {
+      sidebarProvider?.refresh();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidDeleteFiles(() => {
+      sidebarProvider?.refresh();
+    })
+  );
 
   // Register URI handler for OAuth callback
   const uriHandler: vscode.UriHandler = {
@@ -80,6 +125,7 @@ export function activate(context: vscode.ExtensionContext): void {
           const url = `${baseUrl}/d/${existing.docId}`;
           await vscode.env.clipboard.writeText(url);
           statusBar?.setPublished(url);
+          sidebarProvider?.refresh();
           vscode.window.showInformationMessage(`Updated & URL copied: ${url}`);
         } catch (err) {
           statusBar?.setError();
@@ -106,6 +152,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.env.clipboard.writeText(url);
         statusBar?.setPublished(url);
         PreviewPanel.setPublishedStateForDocument(editor.document.uri, result.id, url);
+        sidebarProvider?.refresh();
         vscode.window.showInformationMessage(`Published & URL copied: ${url}`);
       } catch (err) {
         statusBar?.setError();
@@ -288,10 +335,12 @@ export function activate(context: vscode.ExtensionContext): void {
           statusBar?.setIdle();
         }
 
-        // Auto-open preview if enabled (only if not already open)
-        const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
-        if (autoPreview) {
-          PreviewPanel.createIfNotExists(context.extensionUri, editor.document);
+        // Auto-open preview if enabled (skip if sidebar just opened it)
+        if (!suppressAutoPreview) {
+          const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
+          if (autoPreview) {
+            PreviewPanel.createIfNotExists(context.extensionUri, editor.document);
+          }
         }
       } else {
         statusBar?.hide();

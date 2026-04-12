@@ -66,6 +66,10 @@ export class PreviewPanel {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
       }
     );
+    panel.iconPath = {
+      dark: vscode.Uri.joinPath(extensionUri, "media", "icon-dark.svg"),
+      light: vscode.Uri.joinPath(extensionUri, "media", "icon-light.svg"),
+    };
 
     const previewPanel = new PreviewPanel(panel, extensionUri, document);
     PreviewPanel.panels.set(key, previewPanel);
@@ -98,6 +102,10 @@ export class PreviewPanel {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
       }
     );
+    panel.iconPath = {
+      dark: vscode.Uri.joinPath(extensionUri, "media", "icon-dark.svg"),
+      light: vscode.Uri.joinPath(extensionUri, "media", "icon-light.svg"),
+    };
 
     const previewPanel = new PreviewPanel(panel, extensionUri, document);
     PreviewPanel.panels.set(key, previewPanel);
@@ -262,6 +270,10 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
             await this.handleMermaidEdit(message.code, message.index);
             break;
           }
+          case "asciiRender": {
+            await this.handleAsciiRender(message.code);
+            break;
+          }
           case "editCodeBlock": {
             await this.handleCodeBlockEdit(message.code, message.lang, message.index);
             break;
@@ -390,6 +402,58 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     });
 
     this.disposables.push(disposable, closeDisposable);
+  }
+
+  private async handleAsciiRender(code: string | undefined): Promise<void> {
+    if (!code) { return; }
+
+    const auth = PreviewPanel.authManagerRef;
+    if (!auth || !(await auth.isLoggedIn())) {
+      const action = await vscode.window.showInformationMessage(
+        "Sign in to mdfy.cc to use AI ASCII Render.",
+        "Sign in"
+      );
+      if (action === "Sign in") {
+        vscode.commands.executeCommand("mdfy.login");
+      }
+      return;
+    }
+
+    const apiBaseUrl = vscode.workspace
+      .getConfiguration("mdfy")
+      .get<string>("apiBaseUrl", "https://mdfy.cc");
+
+    const token = await auth.getToken();
+
+    this.panel.webview.postMessage({ type: "asciiRenderStart" });
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/ascii-to-mermaid`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ascii: code }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error || `HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as { html: string };
+      this.panel.webview.postMessage({
+        type: "asciiRenderResult",
+        html: data.html,
+        originalCode: code,
+      });
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        `AI Render failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+      this.panel.webview.postMessage({ type: "asciiRenderFailed" });
+    }
   }
 
   private async handleCodeBlockEdit(
@@ -719,17 +783,17 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <link rel="stylesheet" href="${cssUri}">
   <link rel="stylesheet" href="${cdnBase}/highlight.js/11.11.1/styles/github-dark.min.css">
   <link rel="stylesheet" href="${cdnBase}/KaTeX/0.16.40/katex.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.css">
   <title>mdfy Preview</title>
 </head>
 <body>
   <div id="toolbar">
     <span class="toolbar-logo"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span></span>
-    <span class="toolbar-divider"></span>
-    <div class="view-switcher">
+    <div class="view-switcher" style="margin-left:6px;margin-right:6px">
       <button class="view-btn active" data-view="live" title="Live preview"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 6l2.5 2-2.5 2"/><line x1="9" y1="10" x2="11.5" y2="10"/></svg> LIVE</button>
       <button class="view-btn" data-view="source" title="Source view"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg> SOURCE</button>
     </div>
-    <span class="toolbar-divider"></span>
     <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
     <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
     <span class="toolbar-divider"></span>
@@ -767,7 +831,8 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
       ${renderedHtml}
     </article>
     <div id="source-view" class="hidden">
-      <textarea id="source-editor" spellcheck="false">${markdown.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</textarea>
+      <div id="source-editor-container"></div>
+      <textarea id="source-editor" style="display:none">${markdown.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</textarea>
     </div>
   </div>
 
@@ -853,6 +918,16 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <script nonce="${nonce}" src="${cdnBase}/KaTeX/0.16.40/katex.min.js"></script>
   <!-- Mermaid diagrams -->
   <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@11.13.0/dist/mermaid.min.js"></script>
+  <!-- CodeMirror for source view (load order matters: xml before markdown, overlay before gfm) -->
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/overlay.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/css/css.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/yaml/yaml.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/meta.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
+  <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/gfm/gfm.min.js"></script>
 
   <script nonce="${nonce}">
     window.__initialMarkdown = ${JSON.stringify(markdown)};

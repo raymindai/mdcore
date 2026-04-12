@@ -9,6 +9,10 @@ export class AuthManager {
   private pendingAuthResolve:
     | ((token: string) => void)
     | undefined;
+  private _onDidLogin = new vscode.EventEmitter<void>();
+  readonly onDidLogin = this._onDidLogin.event;
+  private _onDidLogout = new vscode.EventEmitter<void>();
+  readonly onDidLogout = this._onDidLogout.event;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -49,6 +53,7 @@ export class AuthManager {
       });
 
       await this.storeToken(token);
+      this._onDidLogin.fire();
       vscode.window.showInformationMessage("Successfully logged in to mdfy.cc.");
     } catch (err) {
       vscode.window.showErrorMessage(
@@ -71,6 +76,7 @@ export class AuthManager {
     } else if (token) {
       // Callback received without pending login (e.g., direct URI open)
       this.storeToken(token).then(() => {
+        this._onDidLogin.fire();
         vscode.window.showInformationMessage(
           "Successfully logged in to mdfy.cc."
         );
@@ -126,6 +132,21 @@ export class AuthManager {
         return userId;
       }
       return undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Get the user's email from the stored token.
+   */
+  async getEmail(): Promise<string | undefined> {
+    const token = await this.getToken();
+    if (!token) { return undefined; }
+    try {
+      const payload = decodeJwtPayload(token);
+      const meta = payload.user_metadata as Record<string, unknown> | undefined;
+      return String(payload.email || meta?.email || "");
     } catch {
       return undefined;
     }

@@ -1,0 +1,938 @@
+import * as vscode from "vscode";
+import * as path from "path";
+import { loadMdfyConfig, saveMdfyConfig, getApiBaseUrl, MdfyConfig, suppressAutoPreviewFor } from "./extension";
+import { PreviewPanel } from "./preview";
+import { AuthManager } from "./auth";
+import { pullDocument } from "./publish";
+
+interface DocItem {
+  filePath: string;
+  fileName: string;
+  relativePath: string;
+  config: MdfyConfig | undefined;
+  isOpen: boolean;
+}
+
+interface CloudDoc {
+  id: string;
+  title: string | null;
+  updated_at: string;
+  is_draft: boolean;
+}
+
+export class MdfySidebarProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "mdfyDocuments";
+  private _view?: vscode.WebviewView;
+  private _extensionUri: vscode.Uri;
+  private _authManager: AuthManager;
+
+  constructor(extensionUri: vscode.Uri, authManager: AuthManager) {
+    this._extensionUri = extensionUri;
+    this._authManager = authManager;
+  }
+
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ): void {
+    this._view = webviewView;
+
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this._extensionUri],
+    };
+
+    webviewView.webview.html = this.getHtml(webviewView.webview);
+
+    webviewView.webview.onDidReceiveMessage(async (msg) => {
+      switch (msg.type) {
+        case "ready":
+        case "refresh":
+          await this.sendDocuments();
+          break;
+        case "openFile":
+          this.openFile(msg.filePath);
+          break;
+        case "publish":
+          this.publishFile(msg.filePath);
+          break;
+        case "copyUrl":
+          if (msg.url) {
+            await vscode.env.clipboard.writeText(msg.url);
+            vscode.window.showInformationMessage(`URL copied: ${msg.url}`);
+          }
+          break;
+        case "openBrowser":
+          if (msg.url) {
+            vscode.env.openExternal(vscode.Uri.parse(msg.url));
+          }
+          break;
+        case "pullCloud":
+          if (msg.docId && msg.title) {
+            await this.pullCloudDocument(msg.docId, msg.title);
+          }
+          break;
+        case "unlink":
+          if (msg.filePath) {
+            await this.unlinkDocument(msg.filePath);
+          }
+          break;
+        case "login":
+          vscode.commands.executeCommand("mdfy.login");
+          break;
+        case "logout":
+          await this._authManager.logout();
+          this.refresh();
+          vscode.window.showInformationMessage("Signed out from mdfy.cc.");
+          break;
+      }
+    });
+
+    webviewView.onDidChangeVisibility(() => {
+      if (webviewView.visible) {
+        this.sendDocuments();
+      }
+    });
+  }
+
+  refresh(): void {
+    this.sendDocuments();
+  }
+
+  private async openFile(filePath: string): Promise<void> {
+    suppressAutoPreviewFor(500);
+    const uri = vscode.Uri.file(filePath);
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: true });
+    PreviewPanel.createOrShow(this._extensionUri, doc);
+  }
+
+  private async publishFile(filePath: string): Promise<void> {
+    const uri = vscode.Uri.file(filePath);
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc);
+    vscode.commands.executeCommand("mdfy.publish");
+  }
+
+  private async unlinkDocument(filePath: string): Promise<void> {
+    const fileName = path.basename(filePath);
+    const confirm = await vscode.window.showWarningMessage(
+      `Unlink "${fileName}" from mdfy.cc? The local file stays, only the sync connection is removed.`,
+      "Unlink",
+      "Cancel"
+    );
+    if (confirm !== "Unlink") { return; }
+
+    // Delete .mdfy.json sidecar
+    const ext = path.extname(filePath);
+    const base = path.basename(filePath, ext);
+    const configPath = path.join(path.dirname(filePath), `${base}.mdfy.json`);
+    try {
+      await vscode.workspace.fs.delete(vscode.Uri.file(configPath));
+      this.refresh();
+      vscode.window.showInformationMessage(`"${fileName}" unlinked from mdfy.cc.`);
+    } catch {
+      vscode.window.showErrorMessage("Failed to remove sync file.");
+    }
+  }
+
+  private async pullCloudDocument(docId: string, title: string): Promise<void> {
+    try {
+      const remote = await pullDocument(docId, this._authManager);
+
+      // Determine save location
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        vscode.window.showWarningMessage("Open a workspace folder first.");
+        return;
+      }
+
+      const safeName = (title || docId).replace(/[^a-zA-Z0-9가-힣_\-. ]/g, "").trim() || docId;
+      const defaultUri = vscode.Uri.joinPath(workspaceFolders[0].uri, `${safeName}.md`);
+
+      const saveUri = await vscode.window.showSaveDialog({
+        defaultUri,
+        filters: { "Markdown": ["md"] },
+      });
+      if (!saveUri) { return; }
+
+      // Write .md file
+      await vscode.workspace.fs.writeFile(saveUri, Buffer.from(remote.markdown, "utf-8"));
+
+      // Write .mdfy.json sidecar
+      await saveMdfyConfig(saveUri.fsPath, {
+        docId,
+        editToken: "",
+        lastSyncedAt: new Date().toISOString(),
+        lastServerUpdatedAt: remote.updated_at,
+      });
+
+      // Open the file
+      const doc = await vscode.workspace.openTextDocument(saveUri);
+      await vscode.window.showTextDocument(doc);
+      vscode.window.showInformationMessage(`Pulled: ${safeName}.md`);
+
+      this.refresh();
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        `Pull failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
+  private async sendDocuments(): Promise<void> {
+    if (!this._view) { return; }
+
+    const localDocs = await this.scanWorkspace();
+    const baseUrl = getApiBaseUrl();
+
+    const items = localDocs.map((d) => ({
+      filePath: d.filePath,
+      fileName: d.fileName,
+      relativePath: d.relativePath,
+      isOpen: d.isOpen,
+      published: !!d.config,
+      docId: d.config?.docId,
+      url: d.config ? `${baseUrl}/d/${d.config.docId}` : undefined,
+      lastSynced: d.config?.lastSyncedAt,
+    }));
+
+    // Fetch cloud documents if logged in
+    const isLoggedIn = await this._authManager.isLoggedIn();
+    let cloudDocs: CloudDoc[] = [];
+    if (isLoggedIn) {
+      cloudDocs = await this.fetchCloudDocuments();
+      // Exclude documents already linked locally
+      const linkedIds = new Set(items.filter((i) => i.docId).map((i) => i.docId));
+      cloudDocs = cloudDocs.filter((c) => !linkedIds.has(c.id));
+    }
+
+    const userEmail = await this._authManager.getEmail();
+
+    this._view.webview.postMessage({
+      type: "documents",
+      items,
+      cloudDocs: cloudDocs.map((c) => ({
+        docId: c.id,
+        title: c.title || c.id,
+        updatedAt: c.updated_at,
+        isDraft: c.is_draft,
+        url: `${baseUrl}/d/${c.id}`,
+      })),
+      isLoggedIn,
+      userEmail: userEmail || null,
+    });
+  }
+
+  private async fetchCloudDocuments(): Promise<CloudDoc[]> {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const userId = await this._authManager.getUserId();
+      const token = await this._authManager.getToken();
+      if (!userId) { return []; }
+
+      const headers: Record<string, string> = { "x-user-id": userId };
+      if (token) { headers["Authorization"] = `Bearer ${token}`; }
+
+      const res = await fetch(`${baseUrl}/api/user/documents`, { headers });
+      if (!res.ok) { return []; }
+
+      const data = (await res.json()) as { documents: CloudDoc[] };
+      return data.documents || [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async scanWorkspace(): Promise<DocItem[]> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) { return []; }
+
+    const openPaths = new Set(
+      vscode.workspace.textDocuments
+        .filter((d) => d.languageId === "markdown")
+        .map((d) => d.uri.fsPath)
+    );
+
+    const mdFiles = await vscode.workspace.findFiles(
+      "**/*.md",
+      "{**/node_modules/**,**/dist/**,**/.git/**,**/out/**,**/.vscode/**}"
+    );
+
+    const docs: DocItem[] = [];
+    for (const uri of mdFiles) {
+      const filePath = uri.fsPath;
+      docs.push({
+        filePath,
+        fileName: path.basename(filePath),
+        relativePath: vscode.workspace.asRelativePath(uri),
+        config: await loadMdfyConfig(filePath),
+        isOpen: openPaths.has(filePath),
+      });
+    }
+
+    docs.sort((a, b) => {
+      if (a.config && !b.config) { return -1; }
+      if (!a.config && b.config) { return 1; }
+      return a.fileName.localeCompare(b.fileName);
+    });
+
+    return docs;
+  }
+
+  private getHtml(webview: vscode.Webview): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  background: var(--vscode-sideBar-background);
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  padding: 12px 14px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.logo-md { color: #fb923c; }
+.logo-fy { color: var(--vscode-foreground); }
+.header-actions { display: flex; gap: 4px; }
+.icon-btn {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+/* Filters */
+.filters {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 14px 8px;
+}
+.filter-group {
+  display: flex;
+  flex: 1;
+  border: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.12));
+  border-radius: 6px;
+  overflow: hidden;
+}
+.filter-btn {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 10px; font-weight: 600;
+  font-family: "SF Mono", "Fira Code", monospace;
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.filter-btn:hover { background: var(--vscode-toolbar-hoverBackground); color: var(--vscode-foreground); }
+.filter-btn.active { background: rgba(251,146,60,0.15); color: #fb923c; }
+
+/* Search */
+.search-box { margin: 0 14px 8px; position: relative; }
+.search-box input {
+  width: 100%; padding: 5px 8px 5px 26px;
+  font-size: 11px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 4px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  outline: none;
+}
+.search-box input:focus { border-color: var(--vscode-focusBorder); }
+.search-box svg {
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Section */
+.section-header {
+  padding: 8px 14px 4px;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--vscode-descriptionForeground);
+  display: flex; align-items: center; gap: 6px;
+}
+.section-count { font-weight: 400; opacity: 0.7; }
+
+/* Document list */
+.doc-list { list-style: none; }
+.doc-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 14px;
+  cursor: pointer; transition: background 0.1s;
+  position: relative;
+}
+.doc-item:hover { background: var(--vscode-list-hoverBackground); }
+.doc-icon {
+  flex-shrink: 0; width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.doc-icon.published { color: #22c55e; }
+.doc-icon.local { color: var(--vscode-descriptionForeground); }
+.doc-icon.cloud { color: #60a5fa; }
+.doc-info { flex: 1; min-width: 0; overflow: hidden; }
+.doc-name {
+  font-size: 12px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-meta {
+  font-size: 10px; color: var(--vscode-descriptionForeground);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-actions { display: none; gap: 2px; flex-shrink: 0; }
+.doc-item:hover .doc-actions { display: flex; }
+.doc-action {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+}
+.doc-action:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+/* Tooltip */
+.sb-tooltip {
+  position: fixed;
+  z-index: 9999;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, #1e1e1e);
+  border: 1px solid var(--vscode-editorWidget-border, rgba(255,255,255,0.1));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.sb-tooltip.show { opacity: 1; }
+
+/* Login prompt */
+.login-prompt {
+  margin: 8px 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(251,146,60,0.08);
+  border: 1px solid rgba(251,146,60,0.2);
+  text-align: center;
+}
+.login-prompt p {
+  font-size: 11px; color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+}
+.login-btn {
+  padding: 4px 16px;
+  font-size: 11px; font-weight: 600;
+  border: none; border-radius: 4px;
+  background: #fb923c; color: #000;
+  cursor: pointer;
+}
+.login-btn:hover { background: #f97316; }
+
+/* Empty */
+.empty {
+  text-align: center; padding: 24px 14px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+}
+
+/* Help panel */
+.help-panel {
+  margin: 0 14px 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--vscode-textBlockQuote-background, rgba(255,255,255,0.04));
+  border: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.08));
+  font-size: 11px;
+}
+.hidden { display: none !important; }
+.help-panel.hidden { display: none; }
+.help-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 4px 0;
+}
+.help-icon {
+  flex-shrink: 0; width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+  color: var(--vscode-descriptionForeground);
+}
+.help-row strong {
+  font-size: 11px; font-weight: 600;
+  color: var(--vscode-foreground);
+  display: block;
+}
+.help-desc {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  display: block; margin-top: 1px;
+}
+.help-divider {
+  height: 1px; margin: 6px 0;
+  background: var(--vscode-panel-border, rgba(255,255,255,0.08));
+}
+.help-btn { opacity: 0.4; transition: opacity 0.15s, color 0.15s; }
+.help-btn:hover { opacity: 1; }
+.help-btn.open { opacity: 1; color: #fb923c; }
+
+/* User bar */
+.user-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.1));
+  background: var(--vscode-sideBar-background);
+  font-size: 11px;
+}
+
+/* Logged out state */
+.user-bar-loggedout {
+  display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+}
+.user-bar-loggedout .signin-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 7px 0;
+  font-size: 12px; font-weight: 600;
+  background: #fb923c; color: #000;
+  border: none; border-radius: 6px;
+  cursor: pointer; transition: background 0.12s;
+}
+.user-bar-loggedout .signin-btn:hover { background: #f97316; }
+.user-bar-loggedout .signin-hint {
+  text-align: center; font-size: 10px;
+  color: var(--vscode-descriptionForeground); opacity: 0.7;
+}
+
+/* Logged in state */
+.user-bar-loggedin {
+  display: flex; align-items: center; gap: 8px;
+}
+.user-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(251,146,60,0.15);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: #fb923c; font-size: 11px; font-weight: 700;
+}
+.user-details {
+  flex: 1; min-width: 0; overflow: hidden;
+}
+.user-name {
+  font-size: 11px; font-weight: 600;
+  color: var(--vscode-foreground);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-status {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; color: var(--vscode-descriptionForeground);
+}
+.user-status-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: #22c55e;
+}
+.user-logout-btn {
+  padding: 3px 8px;
+  font-size: 10px; font-weight: 600;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  border: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.1));
+  border-radius: 4px;
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.user-logout-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+</style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo"><span class="logo-md">md</span><span class="logo-fy">fy</span>.cc</span>
+    <div class="header-actions">
+      <button class="icon-btn" id="btn-refresh" title="Refresh">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all" title="Show all documents">ALL</button>
+      <button class="filter-btn" data-filter="synced" title="Local files linked to mdfy.cc">SYNCED</button>
+      <button class="filter-btn" data-filter="local" title="Local files not yet published">LOCAL</button>
+      <button class="filter-btn" data-filter="cloud" title="Cloud documents not pulled locally">CLOUD</button>
+    </div>
+    <button class="icon-btn help-btn" id="btn-help" title="What do these mean?">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+
+  <div class="help-panel hidden" id="help-panel">
+    <div class="help-row"><span class="help-icon" style="color:#22c55e"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg></span><div><strong>Synced</strong><span class="help-desc">Local file linked to mdfy.cc. Edits can be pushed/pulled.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/></svg></span><div><strong>Local</strong><span class="help-desc">Only on your machine. Publish to get a shareable URL.</span></div></div>
+    <div class="help-row"><span class="help-icon" style="color:#60a5fa"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg></span><div><strong>Cloud</strong><span class="help-desc">Only on mdfy.cc. Pull to create a local copy.</span></div></div>
+    <div class="help-divider"></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg></span><div><strong>Copy URL</strong><span class="help-desc">Copy the mdfy.cc link to clipboard.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg></span><div><strong>Publish</strong><span class="help-desc">Upload to mdfy.cc and get a shareable URL.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg></span><div><strong>Pull</strong><span class="help-desc">Download cloud document to your local workspace.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
+  </div>
+
+  <div class="search-box">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+    <input type="text" id="search" placeholder="Search documents..." />
+  </div>
+
+  <div id="doc-container" style="padding-bottom: 40px;"></div>
+
+  <div class="user-bar" id="user-bar">
+    <div class="user-bar-loggedout" id="user-loggedout">
+      <button class="signin-btn" id="signin-btn" title="Sign in to sync and access cloud documents">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg>
+        Sign in to mdfy.cc
+      </button>
+      <div class="signin-hint">Sync, publish, and access cloud documents</div>
+    </div>
+    <div class="user-bar-loggedin hidden" id="user-loggedin">
+      <div class="user-avatar" id="user-avatar"></div>
+      <div class="user-details">
+        <div class="user-name" id="user-name"></div>
+        <div class="user-status"><span class="user-status-dot"></span> Connected</div>
+      </div>
+      <button class="user-logout-btn" id="logout-btn" title="Sign out">Sign out</button>
+    </div>
+  </div>
+
+  <script>
+    var vscode = acquireVsCodeApi();
+    var allDocs = [];
+    var cloudDocs = [];
+    var isLoggedIn = false;
+    var currentFilter = 'all';
+    var searchQuery = '';
+
+    // Icons — 16x16 viewBox, optimized for small sizes, Lucide-compatible style
+    var I = {
+      check:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg>',
+      circle:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/></svg>',
+      cloud:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>',
+      copy:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg>',
+      externalLink: '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4.5a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 011 13.5v-8A1.5 1.5 0 012.5 4H7"/><path d="M10 1h5v5"/><path d="M15 1L7 9"/></svg>',
+      upload:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg>',
+      download:     '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg>',
+      unlink:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg>',
+      refresh:      '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>',
+      file:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
+      sync:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>',
+    };
+    function icon(name, size) {
+      size = size || 14;
+      return (I[name] || '').replace(/S/g, size);
+    }
+
+    window.addEventListener('message', function(e) {
+      if (e.data.type === 'documents') {
+        allDocs = e.data.items || [];
+        cloudDocs = e.data.cloudDocs || [];
+        isLoggedIn = e.data.isLoggedIn || false;
+        currentUserId = e.data.userEmail || null;
+        render();
+        updateUserBar();
+      }
+    });
+
+    document.querySelector('.filters').addEventListener('click', function(e) {
+      var btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      currentFilter = btn.dataset.filter;
+      document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.filter === currentFilter);
+      });
+      render();
+    });
+
+    document.getElementById('search').addEventListener('input', function(e) {
+      searchQuery = e.target.value.toLowerCase();
+      render();
+    });
+
+    document.getElementById('btn-refresh').addEventListener('click', function() {
+      vscode.postMessage({ type: 'refresh' });
+    });
+
+    document.getElementById('btn-help').addEventListener('click', function() {
+      var panel = document.getElementById('help-panel');
+      var btn = document.getElementById('btn-help');
+      if (panel) {
+        panel.classList.toggle('hidden');
+        btn.classList.toggle('open', !panel.classList.contains('hidden'));
+      }
+    });
+
+    function render() {
+      var container = document.getElementById('doc-container');
+      var html = '';
+
+      var synced = isLoggedIn ? allDocs.filter(function(d) { return d.published; }) : [];
+      var local = isLoggedIn ? allDocs.filter(function(d) { return !d.published; }) : allDocs;
+
+      // Apply filter
+      var showSynced = (currentFilter === 'all' || currentFilter === 'synced');
+      var showLocal = (currentFilter === 'all' || currentFilter === 'local');
+      var showCloud = (currentFilter === 'all' || currentFilter === 'cloud');
+
+      // Apply search
+      if (searchQuery) {
+        synced = synced.filter(function(d) { return d.fileName.toLowerCase().includes(searchQuery) || d.relativePath.toLowerCase().includes(searchQuery); });
+        local = local.filter(function(d) { return d.fileName.toLowerCase().includes(searchQuery) || d.relativePath.toLowerCase().includes(searchQuery); });
+      }
+
+      var cloudFiltered = cloudDocs;
+      if (searchQuery) {
+        cloudFiltered = cloudFiltered.filter(function(d) { return d.title.toLowerCase().includes(searchQuery) || d.docId.toLowerCase().includes(searchQuery); });
+      }
+
+      // Synced
+      if (showSynced) {
+        if (!isLoggedIn) {
+          html += secHeader('sync', 'Synced', '');
+          html += '<div class="login-prompt"><p>Sign in to sync your documents between VS Code and mdfy.cc.</p><button class="login-btn" id="login-btn">Sign in to mdfy.cc</button></div>';
+        } else if (synced.length > 0) {
+          html += secHeader('sync', 'Synced', synced.length);
+          html += '<ul class="doc-list">';
+          synced.forEach(function(doc) { html += renderSyncedDoc(doc); });
+          html += '</ul>';
+        }
+      }
+
+      // Local
+      if (showLocal && local.length > 0) {
+        html += secHeader('file', 'Local', local.length);
+        html += '<ul class="doc-list">';
+        local.forEach(function(doc) { html += renderLocalDoc(doc); });
+        html += '</ul>';
+      }
+
+      // Cloud
+      if (showCloud) {
+        if (!isLoggedIn) {
+          html += secHeader('globe', 'Cloud', '');
+          html += '<div class="login-prompt"><p>Sign in to access your cloud documents and pull them to your workspace.</p><button class="login-btn" id="login-btn">Sign in to mdfy.cc</button></div>';
+        } else if (cloudFiltered.length > 0) {
+          html += secHeader('globe', 'Cloud', cloudFiltered.length);
+          html += '<ul class="doc-list">';
+          cloudFiltered.forEach(function(doc) { html += renderCloudDoc(doc); });
+          html += '</ul>';
+        }
+      }
+
+      if (!html) {
+        html = '<div class="empty">No documents found</div>';
+      }
+
+      container.innerHTML = html;
+      bindEvents(container);
+    }
+
+    function secHeader(type, label, count) {
+      var colors = { sync: '#22c55e', file: 'currentColor', globe: '#60a5fa' };
+      var names = { sync: 'sync', file: 'file', globe: 'cloud' };
+      var ic = icon(names[type] || type, 12).replace('stroke="currentColor"', 'stroke="' + (colors[type]||'currentColor') + '"');
+      return '<div class="section-header">' + ic + ' ' + label + ' <span class="section-count">' + (count === '' ? '' : count) + '</span></div>';
+    }
+
+    function renderSyncedDoc(doc) {
+      var ic = '<div class="doc-icon published">' + icon('check', 14) + '</div>';
+      var synced = doc.lastSynced ? relTime(doc.lastSynced) : '';
+      var meta = synced ? '✓ ' + synced : doc.docId;
+      var actions = ''
+        + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
+        + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
+        + '<button class="doc-action" data-action="unlink" data-path="' + esc(doc.filePath) + '" title="Unlink">' + icon('unlink', 14) + '</button>';
+      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
+        + ic
+        + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
+        + '<div class="doc-actions">' + actions + '</div></li>';
+    }
+
+    function renderLocalDoc(doc) {
+      var ic = '<div class="doc-icon local">' + icon('circle', 14) + '</div>';
+      var meta = doc.relativePath;
+      var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Publish to mdfy.cc">' + icon('upload', 14) + '</button>';
+      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
+        + ic
+        + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
+        + '<div class="doc-actions">' + actions + '</div></li>';
+    }
+
+    function renderCloudDoc(doc) {
+      var ic = '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>';
+      var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '');
+      var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Pull to local">' + icon('download', 14) + '</button>'
+        + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>';
+      return '<li class="doc-item" data-action="openCloud" data-url="' + esc(doc.url) + '" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '">'
+        + ic
+        + '<div class="doc-info"><div class="doc-name">' + esc(doc.title) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
+        + '<div class="doc-actions">' + actions + '</div></li>';
+    }
+
+    function bindEvents(container) {
+      container.querySelectorAll('[data-action="open"]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          if (e.target.closest('.doc-action')) return;
+          vscode.postMessage({ type: 'openFile', filePath: el.dataset.path });
+        });
+      });
+      container.querySelectorAll('[data-action="copy"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { vscode.postMessage({ type: 'copyUrl', url: btn.dataset.url }); });
+      });
+      container.querySelectorAll('[data-action="browser"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { vscode.postMessage({ type: 'openBrowser', url: btn.dataset.url }); });
+      });
+      container.querySelectorAll('[data-action="publish"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { vscode.postMessage({ type: 'publish', filePath: btn.dataset.path }); });
+      });
+      container.querySelectorAll('[data-action="pull"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { vscode.postMessage({ type: 'pullCloud', docId: btn.dataset.docid, title: btn.dataset.title }); });
+      });
+      container.querySelectorAll('[data-action="openCloud"]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          if (e.target.closest('.doc-action')) return;
+          vscode.postMessage({ type: 'openBrowser', url: el.dataset.url });
+        });
+      });
+      container.querySelectorAll('[data-action="unlink"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          vscode.postMessage({ type: 'unlink', filePath: btn.dataset.path });
+        });
+      });
+      var loginBtn = document.getElementById('login-btn');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', function() { vscode.postMessage({ type: 'login' }); });
+      }
+    }
+
+    function relTime(iso) {
+      if (!iso) return '';
+      var diff = Date.now() - new Date(iso).getTime();
+      var s = Math.floor(diff/1000);
+      if (s < 60) return 'just now';
+      var m = Math.floor(s/60);
+      if (m < 60) return m + 'm ago';
+      var h = Math.floor(m/60);
+      if (h < 24) return h + 'h ago';
+      var d = Math.floor(h/24);
+      if (d < 30) return d + 'd ago';
+      return new Date(iso).toLocaleDateString();
+    }
+
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    var currentUserId = null;
+
+    function updateUserBar() {
+      var loggedOut = document.getElementById('user-loggedout');
+      var loggedIn = document.getElementById('user-loggedin');
+      if (!loggedOut || !loggedIn) return;
+
+      if (isLoggedIn) {
+        loggedOut.classList.add('hidden');
+        loggedIn.classList.remove('hidden');
+        // Show user initial in avatar
+        var avatar = document.getElementById('user-avatar');
+        var nameEl = document.getElementById('user-name');
+        var email = currentUserId || '';
+        var initial = email.charAt(0).toUpperCase() || 'U';
+        if (avatar) avatar.textContent = initial;
+        if (nameEl) nameEl.textContent = email || 'mdfy.cc user';
+      } else {
+        loggedOut.classList.remove('hidden');
+        loggedIn.classList.add('hidden');
+      }
+    }
+
+    // Bind sign in / sign out buttons
+    document.getElementById('signin-btn').addEventListener('click', function() {
+      vscode.postMessage({ type: 'login' });
+    });
+    document.getElementById('logout-btn').addEventListener('click', function() {
+      vscode.postMessage({ type: 'logout' });
+    });
+
+    // Tooltip system — always stays inside sidebar bounds
+    var tipEl = null;
+    document.addEventListener('mouseover', function(e) {
+      var target = e.target.closest('[title]');
+      if (!target) return;
+      var text = target.getAttribute('title');
+      if (!text) return;
+      target.setAttribute('data-tip', text);
+      target.removeAttribute('title');
+      if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'sb-tooltip'; document.body.appendChild(tipEl); }
+      tipEl.textContent = text;
+      tipEl.classList.add('show');
+
+      var r = target.getBoundingClientRect();
+      var bw = document.body.clientWidth;
+      var bh = document.body.clientHeight;
+
+      // Measure tooltip
+      var tw = tipEl.offsetWidth;
+      var th = tipEl.offsetHeight;
+
+      // Prefer above, fallback below
+      var top = r.top - th - 4;
+      if (top < 4) top = r.bottom + 4;
+      if (top + th > bh - 4) top = bh - th - 4;
+
+      // Horizontal: center on target, clamp to sidebar
+      var left = r.left + (r.width / 2) - (tw / 2);
+      if (left < 4) left = 4;
+      if (left + tw > bw - 4) left = bw - tw - 4;
+
+      tipEl.style.left = left + 'px';
+      tipEl.style.top = top + 'px';
+    });
+    document.addEventListener('mouseout', function(e) {
+      var target = e.target.closest('[data-tip]');
+      if (target) { target.setAttribute('title', target.getAttribute('data-tip')); target.removeAttribute('data-tip'); }
+      if (tipEl) tipEl.classList.remove('show');
+    });
+
+    vscode.postMessage({ type: 'ready' });
+  </script>
+</body>
+</html>`;
+  }
+}

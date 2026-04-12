@@ -15,7 +15,7 @@
   --surface-hover: #27272a;
   --toggle-bg: rgba(39, 39, 42, 0.5);
   --text-faint: #52525b;
-  --code-bg: #1e1e2e;
+  --code-bg: #18181b;
   --inline-code-bg: #27272a;
   --blockquote-border: #fb923c;
   --blockquote-bg: rgba(251, 146, 60, 0.05);
@@ -135,38 +135,38 @@ html, body {
   flex-shrink: 0;
 }
 
-/* View mode switcher */
+/* View mode switcher — grouped tab style */
 .view-switcher {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.view-btn {
+#toolbar .view-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 4px 8px;
+  min-width: auto;
+  height: auto;
   border: none;
-  border-radius: 4px;
+  border-radius: 0;
   background: transparent;
   color: var(--fg-muted);
   font-size: 10px;
   font-weight: 600;
   font-family: "SF Mono", "Fira Code", monospace;
   cursor: pointer;
-  opacity: 0.5;
-  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  transition: background 0.12s, color 0.12s;
 }
 
-.view-btn:hover {
-  opacity: 1;
+#toolbar .view-btn:hover {
   background: var(--surface-hover);
   color: var(--fg);
 }
 
-.view-btn.active {
-  opacity: 1;
+#toolbar .view-btn.active {
   background: var(--accent-dim);
   color: var(--accent);
 }
@@ -411,7 +411,6 @@ html, body {
   border-radius: 8px;
   overflow-x: auto;
   line-height: 1.5;
-  border: 1px solid var(--border);
 }
 
 .mdcore-rendered pre code {
@@ -419,6 +418,11 @@ html, body {
   padding: 0;
   border-radius: 0;
   font-size: 0.85em;
+}
+
+/* Override highlight.js background to match mdfy.cc */
+.mdcore-rendered .hljs {
+  background: transparent !important;
 }
 
 /* Tables */
@@ -505,6 +509,69 @@ html, body {
   font-style: italic;
 }
 
+/* === ASCII Render === */
+.ascii-render-btn {
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.ascii-render-btn:hover {
+  background: var(--accent);
+  color: #000;
+}
+
+.ascii-render-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.ascii-rendered {
+  position: relative;
+  margin-bottom: 1em;
+  padding: 16px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.ascii-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ascii-rendered:hover .ascii-toggle-btn {
+  opacity: 1;
+}
+
+.ascii-toggle-btn:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+pre.ascii-original.hidden {
+  display: none;
+}
+
 /* === CE Spacers (cursor placement around non-editable blocks) === */
 .ce-spacer {
   min-height: 1em;
@@ -545,18 +612,14 @@ html, body {
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
   padding: 4px 12px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
+
   border-radius: 8px 8px 0 0;
 }
 
-[data-theme="light"] .code-header {
-  background: rgba(0, 0, 0, 0.03);
-}
-
 .code-lang {
+  flex: 1;
   font-size: 11px;
   font-weight: 600;
   font-family: "SF Mono", "Fira Code", monospace;
@@ -565,6 +628,9 @@ html, body {
 }
 
 .code-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -573,22 +639,16 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s, color 0.15s;
-}
-
-.mdcore-rendered pre[lang]:hover .code-copy-btn {
-  opacity: 1;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .code-copy-btn:hover {
-  background: var(--accent);
-  color: #000;
-  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--fg);
+  border-color: var(--fg-muted);
 }
 
 .code-copy-btn.copied {
-  opacity: 1;
   color: #22c55e;
   border-color: #22c55e;
 }
@@ -938,21 +998,39 @@ html, body {
   display: none;
 }
 
-#source-editor {
+#source-editor-container {
   width: 100%;
   height: 100%;
-  padding: 24px 32px;
-  background: var(--bg);
-  color: var(--fg);
-  border: none;
-  outline: none;
-  resize: none;
+}
+
+#source-editor-container .CodeMirror {
+  height: 100%;
   font-family: "SF Mono", "Fira Code", "JetBrains Mono", Consolas, monospace;
   font-size: 13px;
   line-height: 1.7;
-  tab-size: 2;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  background: var(--bg);
+}
+
+#source-editor-container .CodeMirror-gutters {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+#source-editor-container .CodeMirror-linenumber {
+  color: var(--fg-muted);
+  opacity: 0.4;
+}
+
+#source-editor-container .CodeMirror-cursor {
+  border-left-color: var(--accent);
+}
+
+#source-editor-container .CodeMirror-selected {
+  background: var(--selection-bg) !important;
+}
+
+#source-editor {
+  display: none;
 }
 
 #source-toggle.active {

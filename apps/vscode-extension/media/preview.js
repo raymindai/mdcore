@@ -90,6 +90,9 @@
           // Post-process: Mermaid diagrams
           postProcessMermaid();
 
+          // Post-process: ASCII art render buttons
+          postProcessAsciiBlocks(content);
+
           // Post-process: non-editable islands + spacers
           setupNonEditableIslands(content);
 
@@ -146,6 +149,63 @@
         // Replace placeholder with error message
         replacePlaceholderText(content, '![Uploading...]()', '![Upload failed]()');
         triggerEditDebounce();
+        break;
+      }
+
+      case "asciiRenderStart": {
+        // Show loading state on the button that triggered it
+        content.querySelectorAll('.ascii-render-btn').forEach(function(btn) {
+          if (btn.textContent === '✦ AI Render') return;
+          btn.textContent = '⏳ Rendering...';
+          btn.disabled = true;
+        });
+        // Mark all as rendering for simplicity
+        var activeBtn = content.querySelector('.ascii-render-btn:not([disabled])');
+        if (activeBtn) { activeBtn.textContent = '⏳ Rendering...'; activeBtn.disabled = true; }
+        break;
+      }
+
+      case "asciiRenderResult": {
+        if (message.html && message.originalCode) {
+          // Find the pre block containing this code and replace with rendered HTML
+          content.querySelectorAll('pre[lang] code').forEach(function(codeEl) {
+            if ((codeEl.textContent || '').trim() === message.originalCode.trim()) {
+              var container = document.createElement('div');
+              container.className = 'ascii-rendered';
+              container.innerHTML = message.html;
+              container.setAttribute('contenteditable', 'false');
+              container.setAttribute('data-original-code', message.originalCode);
+
+              // Add "Show code" toggle
+              var toggle = document.createElement('button');
+              toggle.className = 'ascii-toggle-btn';
+              toggle.textContent = 'Show code';
+              toggle.title = 'Toggle between rendered and source';
+              toggle.addEventListener('click', function() {
+                var pre = container.nextElementSibling;
+                if (pre && pre.classList.contains('ascii-original')) {
+                  pre.classList.toggle('hidden');
+                  toggle.textContent = pre.classList.contains('hidden') ? 'Show code' : 'Hide code';
+                }
+              });
+              container.appendChild(toggle);
+
+              var pre = codeEl.closest('pre');
+              if (pre) {
+                pre.classList.add('ascii-original', 'hidden');
+                pre.parentNode.insertBefore(container, pre);
+              }
+            }
+          });
+        }
+        break;
+      }
+
+      case "asciiRenderFailed": {
+        content.querySelectorAll('.ascii-render-btn').forEach(function(btn) {
+          btn.textContent = '✦ AI Render';
+          btn.disabled = false;
+        });
         break;
       }
 
@@ -337,22 +397,53 @@
   var sourceEditor = document.getElementById("source-editor");
   var editorWrapper = document.getElementById("editor-wrapper");
   var sourceView = document.getElementById("source-view");
+  var sourceEditorContainer = document.getElementById("source-editor-container");
   var sourceDebounce = null;
-  var viewBtns = document.querySelectorAll('.view-btn');
+  var cmEditor = null;
+
+  function initCodeMirror() {
+    if (cmEditor || typeof CodeMirror === 'undefined') return;
+    cmEditor = CodeMirror(sourceEditorContainer, {
+      value: currentMarkdown,
+      mode: 'gfm',
+      theme: 'material-darker',
+      lineNumbers: true,
+      lineWrapping: true,
+      indentUnit: 2,
+      tabSize: 2,
+      indentWithTabs: false,
+      autofocus: true,
+      viewportMargin: Infinity,
+      extraKeys: {
+        'Tab': function(cm) { cm.replaceSelection('  ', 'end'); }
+      }
+    });
+
+    cmEditor.on('change', function() {
+      currentMarkdown = cmEditor.getValue();
+      if (sourceDebounce) clearTimeout(sourceDebounce);
+      sourceDebounce = setTimeout(function() {
+        isUpdatingFromWebview = true;
+        vscode.postMessage({ type: 'edit', markdown: currentMarkdown });
+        setTimeout(function() { isUpdatingFromWebview = false; }, 600);
+      }, 300);
+    });
+  }
 
   function setViewMode(mode) {
     sourceVisible = (mode === 'source');
-    // Update button active state
     document.querySelectorAll('.view-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
     if (sourceVisible) {
       content.classList.add("hidden");
       sourceView.classList.remove("hidden");
-      if (sourceEditor) {
-        sourceEditor.value = currentMarkdown;
-        sourceEditor.focus();
+      if (!cmEditor) {
+        initCodeMirror();
+      } else {
+        cmEditor.setValue(currentMarkdown);
       }
+      if (cmEditor) cmEditor.focus();
     } else {
       sourceView.classList.add("hidden");
       content.classList.remove("hidden");
@@ -373,20 +464,15 @@
     setViewMode(btn.getAttribute('data-view'));
   });
 
-  if (sourceEditor) {
-    sourceEditor.addEventListener("input", function () {
-      currentMarkdown = sourceEditor.value;
-      if (sourceDebounce) clearTimeout(sourceDebounce);
-      sourceDebounce = setTimeout(function () {
-        vscode.postMessage({ type: "edit", markdown: currentMarkdown });
-      }, 500);
-    });
-  }
-
   // Update source editor when content updates from extension
-  var origUpdateHandler = window.addEventListener("message", function (event) {
-    if (event.data.type === "update" && sourceVisible && sourceEditor) {
-      sourceEditor.value = event.data.markdown || currentMarkdown;
+  window.addEventListener("message", function (event) {
+    if (event.data.type === "update" && sourceVisible && cmEditor) {
+      var newMd = event.data.markdown || currentMarkdown;
+      if (cmEditor.getValue() !== newMd) {
+        var cursor = cmEditor.getCursor();
+        cmEditor.setValue(newMd);
+        cmEditor.setCursor(cursor);
+      }
     }
   });
 
@@ -1487,17 +1573,17 @@
 
       var copyBtn = document.createElement('button');
       copyBtn.className = 'code-copy-btn';
-      copyBtn.textContent = 'Copy';
+      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg> Copy';
       copyBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         e.preventDefault();
         var code = pre.querySelector('code');
         var text = code ? code.textContent : pre.textContent;
         navigator.clipboard.writeText(text || '').then(function() {
-          copyBtn.textContent = 'Copied!';
+          copyBtn.innerHTML = '✓ Copied!';
           copyBtn.classList.add('copied');
           setTimeout(function() {
-            copyBtn.textContent = 'Copy';
+            copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg> Copy';
             copyBtn.classList.remove('copied');
           }, 2000);
         });
@@ -1562,6 +1648,62 @@
   setTimeout(function() {
     addMermaidEditButtons();
   }, 500);
+
+  // ─── ASCII Art Detection + AI Render Button ───
+
+  function isAsciiArt(text) {
+    // Box-drawing characters or mermaid-like syntax
+    var boxChars = /[┌┐└┘├┤┬┴┼─│╔╗╚╝║═╟╢╤╧╪▼▶◀▲►◄●○■□]/;
+    var mermaidKw = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|mindmap|timeline|gitGraph)\b/m;
+    if (mermaidKw.test(text)) return false; // mermaid handled separately
+    if (boxChars.test(text)) return true;
+    // Arrow patterns like --> or -> with multiple lines
+    var lines = text.split('\n').filter(function(l) { return l.trim(); });
+    if (lines.length < 3) return false;
+    var arrowLines = lines.filter(function(l) { return /[─\-=]{2,}|[│|]{1}|[+*].*[+*]/.test(l); });
+    return arrowLines.length >= 2;
+  }
+
+  function postProcessAsciiBlocks(root) {
+    root.querySelectorAll('pre[lang]').forEach(function(pre) {
+      if (pre.querySelector('.ascii-render-btn')) return;
+      var lang = pre.getAttribute('lang');
+      if (lang === 'mermaid') return;
+      var code = pre.querySelector('code');
+      if (!code) return;
+      var text = code.textContent || '';
+      if (!isAsciiArt(text)) return;
+
+      var btn = document.createElement('button');
+      btn.className = 'ascii-render-btn';
+      btn.textContent = '✦ AI Render';
+      btn.title = 'Render this diagram with AI';
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        vscode.postMessage({ type: 'asciiRender', code: text });
+      });
+      var header = pre.querySelector('.code-header');
+      if (header) {
+        // Insert before copy button (rightmost), so render is left of copy
+        var copyBtn = header.querySelector('.code-copy-btn');
+        if (copyBtn) {
+          header.insertBefore(btn, copyBtn);
+        } else {
+          header.appendChild(btn);
+        }
+      } else {
+        pre.style.position = 'relative';
+        btn.style.position = 'absolute';
+        btn.style.top = '6px';
+        btn.style.right = '6px';
+        pre.appendChild(btn);
+      }
+    });
+  }
+
+  // Run on initial + updates
+  postProcessAsciiBlocks(content);
 
   // ─── Code Block Inline Editing (double-click) ───
 

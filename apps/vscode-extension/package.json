@@ -30,10 +30,29 @@
     "sync"
   ],
   "activationEvents": [
-    "onLanguage:markdown"
+    "onLanguage:markdown",
+    "onView:mdfyDocuments"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mdfy",
+          "title": "mdfy.cc",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mdfy": [
+        {
+          "id": "mdfyDocuments",
+          "name": "Documents",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "mdfy.preview",
@@ -72,6 +91,11 @@
         "command": "mdfy.export",
         "title": "mdfy: Export",
         "icon": "$(export)"
+      },
+      {
+        "command": "mdfy.sidebar.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -175,7 +199,5 @@
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.22.0",
     "typescript": "^5.3.0"
-  },
-  "dependencies": {}
-
+  }
 }
