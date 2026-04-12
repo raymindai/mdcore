@@ -23,7 +23,7 @@ import {
   Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, FileCheck, File as FileIcon, MoreHorizontal,
-  Lock, User, Search, Cloud, X,
+  User, Search, Cloud, X,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useAutoSave } from "@/lib/useAutoSave";
@@ -4737,7 +4737,7 @@ ${html}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.isDraft === false ? (
-                            <FileCheck width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
+                            <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                           ) : (
                             <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
@@ -4827,7 +4827,7 @@ ${html}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
                                     {tab.cloudId ? (
-                                      <FileCheck width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
+                                      <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                                     ) : (
                                       <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
@@ -4943,8 +4943,8 @@ ${html}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.permission === "readonly" ? (
-                            /* Lock icon — view only */
-                            <Lock width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                            /* Eye icon — view only */
+                            <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           ) : tab.permission === "editable" ? (
                             /* Pencil icon — editor access */
                             <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
@@ -4999,7 +4999,7 @@ ${html}
                                     {tab.permission === "editable" ? (
                                       <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     ) : (
-                                      <Lock width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                                      <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                   </div>
@@ -5051,7 +5051,7 @@ ${html}
                           {doc.editMode === "public" ? (
                             <Pencil width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           ) : (
-                            <Lock width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
+                            <Eye width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{doc.title || "Untitled"}</span>
                           {unreadDocIds.has(doc.id) && (
