@@ -10,8 +10,15 @@ const platformDot = document.getElementById("platform-dot");
 const platformNameEl = document.getElementById("platform-name");
 const btnCapture = document.getElementById("btn-capture");
 const btnSelection = document.getElementById("btn-selection");
-const rangeSelect = document.getElementById("range-select");
 const rangeSelector = document.getElementById("range-selector");
+
+// Range: radio buttons instead of select
+function getRangeValue() {
+  const checked = document.querySelector('input[name="range"]:checked');
+  return checked ? parseInt(checked.value) : 0;
+}
+// Compatibility shim so existing code using rangeSelect.value still works
+const rangeSelect = { get value() { return String(getRangeValue()); } };
 
 // ─── Compression (same as content.js / share.ts) ───
 
@@ -290,19 +297,21 @@ btnSelection.addEventListener("click", async () => {
   }
 });
 
-// ─── Range label sync ───
+// ─── Range label sync (radio buttons) ───
 
-rangeSelect.addEventListener("change", () => {
-  const val = parseInt(rangeSelect.value);
-  const label = btnCapture.querySelector(".label");
-  const desc = btnCapture.querySelector(".desc");
-  if (val === 0) {
-    label.textContent = "Capture Full Conversation";
-    desc.textContent = "All messages → beautiful Markdown document";
-  } else {
-    label.textContent = "Capture Last " + val + " Exchanges";
-    desc.textContent = "Recent " + val + " Q&A pairs → Markdown document";
-  }
+document.querySelectorAll('input[name="range"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const val = parseInt(radio.value);
+    const labelEl = btnCapture.querySelector(".label");
+    const descEl = btnCapture.querySelector(".desc");
+    if (val === 0) {
+      labelEl.childNodes[0].textContent = "Capture Full Conversation\n";
+      descEl.textContent = "All messages → Markdown document";
+    } else {
+      labelEl.childNodes[0].textContent = "Capture Last " + val + " Exchanges\n";
+      descEl.textContent = "Recent " + val + " Q&A pairs → Markdown document";
+    }
+  });
 });
 
 // ─── Init ───
