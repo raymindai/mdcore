@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
@@ -23,7 +23,7 @@ import {
   Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
-  User, Users, Search, Cloud, X,
+  User, Users, Search, Cloud, X, Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useAutoSave } from "@/lib/useAutoSave";
@@ -1417,6 +1417,8 @@ export default function MdEditor() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
+  const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
+  const lastClickedTabIdRef = useRef<string | null>(null);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -1683,6 +1685,46 @@ export default function MdEditor() {
       return saved;
     });
   }, [loadTab]);
+
+  // Multi-select: compute visible doc order for shift-range
+  const visibleMyDocIds = useMemo(() => {
+    const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
+    const myTabs = docFilter === "all" ? allMyTabs
+      : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
+      : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
+      : allMyTabs;
+    const sortFn = (a: Tab, b: Tab) => {
+      if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+      if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+      const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
+      return sortMode === "oldest" ? ai - bi : bi - ai;
+    };
+    const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
+    const folderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
+      tabs.filter(t => !t.deleted && t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id)
+    );
+    return [...rootIds, ...folderIds];
+  }, [tabs, docFilter, sortMode, sidebarSearch, folders]);
+
+  const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      setSelectedTabIds(prev => { const next = new Set(prev); if (next.has(tabId)) next.delete(tabId); else next.add(tabId); return next; });
+      lastClickedTabIdRef.current = tabId;
+    } else if (e.shiftKey && lastClickedTabIdRef.current) {
+      const lastIdx = visibleMyDocIds.indexOf(lastClickedTabIdRef.current);
+      const curIdx = visibleMyDocIds.indexOf(tabId);
+      if (lastIdx >= 0 && curIdx >= 0) {
+        setSelectedTabIds(new Set(visibleMyDocIds.slice(Math.min(lastIdx, curIdx), Math.max(lastIdx, curIdx) + 1)));
+      }
+    } else {
+      setSelectedTabIds(new Set());
+      lastClickedTabIdRef.current = tabId;
+      if (tabId !== activeTabId) switchTab(tabId);
+    }
+  }, [visibleMyDocIds, activeTabId, switchTab]);
+
+  // Clear selection on filter/search change
+  useEffect(() => { setSelectedTabIds(new Set()); }, [docFilter, sidebarSearch, sortMode]);
 
   const addTabWithContent = useCallback(async (initialMd: string) => {
     const currentMd = markdownRef.current;
@@ -4775,11 +4817,13 @@ ${html}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                           className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
-                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                            background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                            color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                             opacity: dragTabId === tab.id ? 0.4 : 1,
+                            outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
+                            outlineOffset: "-1px",
                           }}
-                          onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                          onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
                           {tab.isDraft === false && tab.isRestricted ? (
@@ -4867,11 +4911,13 @@ ${html}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
-                                      background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                                      color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                                      background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                                      color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                                       opacity: dragTabId === tab.id ? 0.4 : 1,
+                                      outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
+                                      outlineOffset: "-1px",
                                     }}
-                                    onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
+                                    onClick={(e) => handleDocClick(tab.id, e)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
                                     {tab.cloudId ? (
@@ -5186,6 +5232,39 @@ ${html}
             })()}
           </div>
 
+          {/* Multi-select action bar */}
+          {selectedTabIds.size > 0 && (
+            <div className="shrink-0 px-2 py-2 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+              <span className="text-[10px] font-medium px-1" style={{ color: "var(--accent)" }}>{selectedTabIds.size} selected</span>
+              <div className="flex-1" />
+              {folders.filter(f => !f.section || f.section === "my").length > 0 && (
+                <div className="relative group/move">
+                  <button className="flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)" }} title="Move to folder">
+                    <Folder width={12} height={12} /><span>Move</span><ChevronDown width={8} height={8} />
+                  </button>
+                  <div className="absolute bottom-full left-0 mb-1 rounded-lg py-1 hidden group-hover/move:block" style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 140, zIndex: 9999 }}>
+                    {folders.filter(f => !f.section || f.section === "my").map(f => (
+                      <button key={f.id} onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: f.id } : t)); setSelectedTabIds(new Set()); }}
+                        className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)" }}>{f.name}</button>
+                    ))}
+                    <button onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: undefined } : t)); setSelectedTabIds(new Set()); }}
+                      className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-dim)" }}>Move to root</button>
+                  </div>
+                </div>
+              )}
+              <button onClick={() => {
+                const ids = selectedTabIds;
+                setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
+                setSelectedTabIds(new Set());
+              }} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors hover:bg-[rgba(239,68,68,0.15)]" style={{ color: "#ef4444" }} title="Move to Trash">
+                <Trash2 width={12} height={12} /><span>Trash</span>
+              </button>
+              <button onClick={() => setSelectedTabIds(new Set())} className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }} title="Clear selection">
+                <X width={10} height={10} />
+              </button>
+            </div>
+          )}
           {/* Folder + Sort actions moved to section headers */}
           {/* Account section at bottom */}
           <div className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
