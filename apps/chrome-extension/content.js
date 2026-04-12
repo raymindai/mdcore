@@ -1018,6 +1018,7 @@
         setFloatStatus("Published ✓", "done");
         setTimeout(() => { container.classList.remove("mdfy-done"); resetFloat(); }, 3000);
       } catch (err) {
+        console.error("[mdfy] capture failed:", err);
         container.classList.remove("mdfy-loading");
         container.classList.add("mdfy-error");
         setFloatStatus("Failed", "error");
@@ -1163,6 +1164,7 @@
           setMiniStatus("Published ✓", "done");
           setTimeout(() => { miniBtn.classList.remove("mdfy-done"); resetMini(); }, 3000);
         } catch (err) {
+          console.error("[mdfy] capture failed:", err);
           miniBtn.classList.remove("mdfy-loading");
           miniBtn.classList.add("mdfy-error");
           setMiniStatus("Failed", "error");
