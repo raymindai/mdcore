@@ -1406,6 +1406,7 @@ export default function MdEditor() {
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "drafts" | "published" | "cloud">("all");
+  const [sidebarSearch, setSidebarSearch] = useState("");
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -4661,24 +4662,39 @@ ${html}
                   </div>
                   {showMyDocs && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
-                      {/* Filter buttons */}
-                      <div className="flex gap-1 px-1 pb-1.5">
-                        {(["all", "drafts", "published", "cloud"] as const).map((f) => (
-                          <button
-                            key={f}
-                            onClick={() => setDocFilter(f)}
-                            className="text-[9px] font-medium px-1.5 py-0.5 rounded transition-colors"
-                            style={{
-                              color: docFilter === f ? "var(--accent)" : "var(--text-faint)",
-                              background: docFilter === f ? "var(--accent-dim)" : "transparent",
-                            }}
-                          >
-                            {f === "all" ? `All ${myTabCount}` : f === "drafts" ? `Drafts ${draftCount}` : f === "published" ? `Published ${publishedCount}` : "Cloud"}
-                          </button>
-                        ))}
+                      {/* Grouped tab filter */}
+                      <div className="flex items-center gap-1.5 px-1 pb-1.5">
+                        <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                          {(["all", "drafts", "published", "cloud"] as const).map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => setDocFilter(f)}
+                              className="flex-1 text-[9px] font-semibold py-1 transition-colors"
+                              style={{
+                                fontFamily: "'SF Mono', 'Fira Code', monospace",
+                                color: docFilter === f ? "var(--accent)" : "var(--text-faint)",
+                                background: docFilter === f ? "var(--accent-dim)" : "transparent",
+                              }}
+                            >
+                              {f === "all" ? `ALL` : f === "drafts" ? `DRAFTS` : f === "published" ? `PUB` : "CLOUD"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Search */}
+                      <div className="relative px-1 pb-1.5">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.5" strokeLinecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={sidebarSearch}
+                          onChange={(e) => setSidebarSearch(e.target.value)}
+                          className="w-full text-[11px] py-1 pl-7 pr-2 rounded"
+                          style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "none", outline: "none" }}
+                        />
                       </div>
                       {/* Root-level documents (no folder, mine only) */}
-                      {myTabs.filter(t => !t.folderId).sort((a, b) => {
+                      {myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
                         if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                         if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
                         const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
@@ -4718,13 +4734,13 @@ ${html}
                       ))}
 
                       {/* Folders */}
-                      {[...folders].filter(f => !f.section || f.section === "my").sort((a, b) => {
+                      {[...folders].filter(f => !f.section || f.section === "my").filter(f => !sidebarSearch || tabs.some(t => !t.deleted && t.folderId === f.id && (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
                         if (sortMode === "az") return a.name.localeCompare(b.name);
                         if (sortMode === "za") return b.name.localeCompare(a.name);
                         const ai = folders.indexOf(a), bi = folders.indexOf(b);
                         return sortMode === "oldest" ? ai - bi : bi - ai;
                       }).map(folder => {
-                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
+                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -4891,7 +4907,7 @@ ${html}
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
               // Shared tabs not in any folder (organized ones show under My Documents folders)
-              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable"));
+              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
               const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
               // All my document cloudIds — to exclude from shared section
               const myCloudIds = new Set(tabs.filter(t => !t.deleted && (!t.permission || t.permission === "mine") && t.cloudId).map(t => t.cloudId!));
