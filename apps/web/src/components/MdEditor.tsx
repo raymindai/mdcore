@@ -3872,7 +3872,7 @@ ${html}
         className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={handleClear}
@@ -3882,7 +3882,7 @@ ${html}
           </h1>
           {title && (
             <button
-              className="text-xs pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-none hover:text-[var(--accent)] transition-colors hidden sm:block"
+              className="text-xs pl-2 sm:pl-3 truncate hover:text-[var(--accent)] transition-colors hidden sm:block"
               style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
               title="Click to rename"
               onClick={() => {
@@ -4009,7 +4009,7 @@ ${html}
 
         {/* Center: Layout mode switcher */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center rounded-lg overflow-hidden"
+          className="flex items-center rounded-lg overflow-hidden shrink-0"
           style={{ border: "1px solid var(--border-dim)" }}
         >
           {([
@@ -4049,7 +4049,7 @@ ${html}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs flex-1 justify-end">
 
           {/* AI Render moved to LIVE panel header */}
 
