@@ -192,9 +192,9 @@
 
               var pre = codeEl.closest('pre');
               if (pre) {
-                // Reset the render button in the original pre
+                // Remove the render button from original pre — already rendered
                 var renderBtn = pre.querySelector('.ascii-render-btn');
-                if (renderBtn) { renderBtn.textContent = 'AI Render'; renderBtn.disabled = false; }
+                if (renderBtn) renderBtn.remove();
                 pre.classList.add('ascii-original', 'hidden');
                 pre.parentNode.insertBefore(container, pre);
               }
