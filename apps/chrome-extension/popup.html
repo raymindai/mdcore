@@ -7,7 +7,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      width: 340px;
+      width: 360px;
       background: #09090b;
       color: #fafafa;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -15,28 +15,36 @@
 
     /* ─── Header ─── */
     .header {
+      padding: 16px 20px 14px;
+      border-bottom: 1px solid #18181b;
+    }
+
+    .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 20px 10px;
+      margin-bottom: 6px;
     }
 
-    .logo { height: 18px; }
+    .logo { height: 20px; }
     .logo img { height: 100%; width: auto; }
 
-    .tagline {
-      font-size: 9px;
-      color: #3f3f46;
-      font-weight: 500;
-      letter-spacing: 0.2px;
+    .header-right {
+      text-align: right;
     }
 
-    /* ─── Platform Status (compact inline) ─── */
+    .tagline {
+      font-size: 10px;
+      color: #52525b;
+      font-weight: 500;
+    }
+
     .platform-status {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 0 20px 14px;
+      gap: 5px;
+      margin-top: 4px;
+      justify-content: flex-end;
     }
 
     .platform-dot {
@@ -49,21 +57,37 @@
     .platform-dot.inactive { background: #3f3f46; }
 
     .platform-name {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 500;
-      color: #52525b;
+      color: #3f3f46;
     }
-    .platform-name.active { color: #a1a1aa; }
+    .platform-name.active { color: #71717a; }
 
     .platform-hint {
-      font-size: 10px;
-      color: #3f3f46;
-      margin-left: auto;
+      display: none;
     }
 
     /* ─── Content ─── */
     .content {
-      padding: 0 20px 16px;
+      padding: 14px 20px 16px;
+    }
+
+    /* ─── Capture Section ─── */
+    .capture-section {
+      background: #111113;
+      border: 1px solid #1e1e22;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .capture-section .section-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: #3f3f46;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
     }
 
     /* ─── Range Selector ─── */
@@ -71,7 +95,7 @@
       display: none;
       align-items: center;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .range-label {
@@ -83,10 +107,10 @@
 
     .range-select {
       flex: 1;
-      padding: 6px 8px;
-      border-radius: 6px;
+      padding: 7px 10px;
+      border-radius: 8px;
       border: 1px solid #27272a;
-      background: #18181b;
+      background: #09090b;
       color: #a1a1aa;
       font-size: 11px;
       font-family: inherit;
@@ -104,20 +128,13 @@
       border-color: rgba(251, 146, 60, 0.3);
     }
 
-    /* ─── Actions ─── */
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
+    /* ─── Buttons ─── */
     button {
       width: 100%;
       padding: 10px 12px;
       border: none;
-      border-radius: 10px;
-      font-size: 13px;
+      border-radius: 8px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.12s;
@@ -133,21 +150,11 @@
     button:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .btn-primary {
-      background: rgba(251, 146, 60, 0.1);
+      background: rgba(251, 146, 60, 0.12);
       color: #fb923c;
-      border: 1px solid rgba(251, 146, 60, 0.15);
     }
     .btn-primary:hover:not(:disabled) {
-      background: rgba(251, 146, 60, 0.16);
-    }
-
-    .btn-secondary {
-      background: #111113;
-      color: #a1a1aa;
-      border: 1px solid #1e1e22;
-    }
-    .btn-secondary:hover:not(:disabled) {
-      background: #18181b;
+      background: rgba(251, 146, 60, 0.18);
     }
 
     .btn-icon {
@@ -158,15 +165,34 @@
     }
 
     .btn-text { flex: 1; }
-    .btn-label { display: block; font-size: 12px; }
+    .btn-label { display: block; }
     .btn-desc {
       display: block;
       font-size: 10px;
       font-weight: 400;
-      color: #3f3f46;
+      color: rgba(251, 146, 60, 0.4);
       margin-top: 1px;
     }
-    .btn-primary .btn-desc { color: rgba(251, 146, 60, 0.4); }
+
+    /* ─── Selection Button ─── */
+    .btn-selection {
+      background: none;
+      color: #71717a;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 6px;
+    }
+    .btn-selection:hover:not(:disabled) {
+      background: #18181b;
+      color: #a1a1aa;
+      opacity: 1;
+    }
+    .btn-selection .btn-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.5;
+    }
 
     /* ─── Status ─── */
     .status {
@@ -179,15 +205,10 @@
     .status.success { color: #4ade80; }
     .status.error { color: #ef4444; }
 
-    /* ─── Divider ─── */
-    .divider {
-      height: 1px;
-      background: #1a1a1e;
-    }
-
     /* ─── How it works ─── */
     .how-section {
-      padding: 12px 20px 14px;
+      padding: 14px 20px 16px;
+      border-top: 1px solid #18181b;
     }
 
     .how-title {
@@ -196,57 +217,55 @@
       color: #27272a;
       text-transform: uppercase;
       letter-spacing: 1.2px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .how-steps {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 10px;
     }
 
     .how-step {
       display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      font-size: 10px;
-      color: #3f3f46;
-      line-height: 1.5;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: #52525b;
+      line-height: 1.4;
     }
 
     .how-btn-replica {
       display: inline-flex;
       align-items: center;
-      height: 16px;
-      padding: 0 5px;
-      border: 1px solid rgba(251, 146, 60, 0.15);
-      border-radius: 8px;
-      background: #09090b;
-      font-size: 8px;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid rgba(251, 146, 60, 0.2);
+      border-radius: 11px;
+      background: #111113;
+      font-size: 10px;
       letter-spacing: -0.3px;
       flex-shrink: 0;
-      margin-top: 1px;
+      gap: 1px;
     }
 
-    .how-num {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
+    .how-arrow {
+      width: 22px;
+      height: 22px;
+      border-radius: 11px;
       background: #111113;
-      color: #3f3f46;
-      font-size: 9px;
-      font-weight: 700;
+      color: #fb923c;
+      font-size: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      margin-top: 1px;
     }
 
     /* ─── Footer ─── */
     .footer {
       padding: 8px 20px;
-      border-top: 1px solid #1a1a1e;
+      border-top: 1px solid #18181b;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -263,32 +282,35 @@
 </head>
 <body>
   <div class="header">
-    <div class="logo">
-      <img src="icons/logo-full-dark.svg" alt="mdfy.cc">
+    <div class="header-top">
+      <div class="logo">
+        <img src="icons/logo-full-dark.svg" alt="mdfy.cc">
+      </div>
+      <div class="header-right">
+        <div class="tagline">Your Markdown, Beautifully published</div>
+        <div class="platform-status" id="platform-badge">
+          <span class="platform-dot inactive" id="platform-dot"></span>
+          <span class="platform-name" id="platform-name">Detecting...</span>
+        </div>
+      </div>
     </div>
-    <span class="tagline">Your Markdown, Beautifully published</span>
-  </div>
-
-  <div class="platform-status" id="platform-badge">
-    <span class="platform-dot inactive" id="platform-dot"></span>
-    <span class="platform-name" id="platform-name">Detecting...</span>
     <span class="platform-hint" id="platform-hint"></span>
   </div>
 
-  <div class="divider"></div>
+  <div class="content">
+    <div class="capture-section">
+      <div class="section-label">Capture</div>
 
-  <div class="content" style="padding-top: 14px;">
-    <div class="range-selector" id="range-selector">
-      <span class="range-label">Range</span>
-      <select class="range-select" id="range-select">
-        <option value="0">All messages</option>
-        <option value="3">Last 3 exchanges</option>
-        <option value="5">Last 5 exchanges</option>
-        <option value="10">Last 10 exchanges</option>
-      </select>
-    </div>
+      <div class="range-selector" id="range-selector">
+        <span class="range-label">Range</span>
+        <select class="range-select" id="range-select">
+          <option value="0">All messages</option>
+          <option value="3">Last 3 exchanges</option>
+          <option value="5">Last 5 exchanges</option>
+          <option value="10">Last 10 exchanges</option>
+        </select>
+      </div>
 
-    <div class="actions">
       <button class="btn-primary" id="btn-capture" disabled>
         <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
           <rect x="3" y="3" width="14" height="14" rx="2"/>
@@ -299,36 +321,32 @@
           <span class="btn-desc">All messages → beautiful Markdown document</span>
         </span>
       </button>
-      <button class="btn-secondary" id="btn-selection">
-        <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-          <path d="M5 3v14M15 3v14M3 5h2M3 15h2M15 5h2M15 15h2"/>
-        </svg>
-        <span class="btn-text">
-          <span class="btn-label">Capture Selection</span>
-          <span class="btn-desc">Highlighted text from any page</span>
-        </span>
-      </button>
     </div>
+
+    <button class="btn-selection" id="btn-selection">
+      <svg class="btn-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M5 3v14M15 3v14M3 5h2M3 15h2M15 5h2M15 15h2"/>
+      </svg>
+      <span>Capture Selection</span>
+    </button>
 
     <div class="status" id="status"></div>
   </div>
-
-  <div class="divider"></div>
 
   <div class="how-section">
     <div class="how-title">How it works</div>
     <div class="how-steps">
       <div class="how-step">
-        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:3px;border-left:1px solid #27272a;padding-left:3px;">this</span></span>
+        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:4px;border-left:1px solid #27272a;padding-left:4px;font-weight:500;">this</span></span>
         <span>Hover any AI response to capture the Q&A pair</span>
       </div>
       <div class="how-step">
-        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:3px;border-left:1px solid #27272a;padding-left:3px;">All</span><span style="color:#52525b;margin-left:2px;font-size:7px;">&#9662;</span></span>
-        <span>Floating button captures full conversation, or click &#9662; to choose a range</span>
+        <span class="how-btn-replica"><span style="color:#fb923c;font-weight:800;">md</span><span style="color:#fafafa;font-weight:800;">fy</span><span style="color:#52525b;margin-left:4px;border-left:1px solid #27272a;padding-left:4px;font-weight:500;">All</span><span style="color:#52525b;margin-left:2px;font-size:8px;">&#9662;</span></span>
+        <span>Capture full conversation or choose a range</span>
       </div>
       <div class="how-step">
-        <span class="how-num">→</span>
-        <span>Published on mdfy.cc with a permanent, shareable URL</span>
+        <span class="how-arrow">→</span>
+        <span>Published on mdfy.cc with a permanent URL</span>
       </div>
     </div>
   </div>
