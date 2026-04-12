@@ -1230,8 +1230,8 @@
 
   const layoutConfig = {
     chatgpt: { headerH: 56, inputH: 100 },
-    claude: { headerH: 48, inputH: 150 },
-    gemini: { headerH: 64, inputH: 160 },
+    claude: { headerH: 8, inputH: 150 },
+    gemini: { headerH: 8, inputH: 200 },
   };
   const layout = layoutConfig[platform] || { headerH: 48, inputH: 100 };
   document.documentElement.style.setProperty("--mdfy-header-h", layout.headerH + "px");
