@@ -1415,6 +1415,7 @@ export default function MdEditor() {
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "drafts" | "published" | "cloud">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
+  const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -4660,10 +4661,18 @@ ${html}
                     <div className="shrink-0 space-y-0.5 pt-1 pb-0 pl-2 pr-2">
                       <div className="flex items-center gap-1.5 px-1 pb-1.5">
                         <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                          {(["all", "drafts", "published", "cloud"] as const).map((f) => (
+                          {(["all", "drafts", "published", "cloud"] as const).map((f) => {
+                            const tips: Record<string, string> = {
+                              all: "Show all documents",
+                              drafts: "Documents not yet published",
+                              published: "Documents published to mdfy.cc",
+                              cloud: "Documents only on mdfy.cc cloud",
+                            };
+                            return (
                             <button
                               key={f}
                               onClick={() => setDocFilter(f)}
+                              title={tips[f]}
                               className="flex-1 text-[9px] font-semibold py-1 transition-colors"
                               style={{
                                 fontFamily: "'SF Mono', 'Fira Code', monospace",
@@ -4673,9 +4682,26 @@ ${html}
                             >
                               {f === "all" ? `ALL` : f === "drafts" ? `DRAFTS` : f === "published" ? `PUB` : "CLOUD"}
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
+                        <button
+                          onClick={() => setShowSidebarHelp(!showSidebarHelp)}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-all"
+                          style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-faint)", opacity: showSidebarHelp ? 1 : 0.4 }}
+                          title="What do these mean?"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+                        </button>
                       </div>
+                      {showSidebarHelp && (
+                        <div className="mx-1 mb-1.5 p-2.5 rounded-md text-[10px] space-y-1.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+                          <div className="flex items-start gap-2"><span style={{ color: "var(--accent)" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
+                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>DRAFTS</span><span style={{ color: "var(--text-muted)" }}>Not yet published, only visible to you</span></div>
+                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>PUB</span><span style={{ color: "var(--text-muted)" }}>Published to mdfy.cc with a shareable URL</span></div>
+                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>CLOUD</span><span style={{ color: "var(--text-muted)" }}>Exists only on mdfy.cc, not in this session</span></div>
+                        </div>
+                      )}
                       {/* Search — fixed */}
                       <div className="relative px-1 pb-1.5">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
