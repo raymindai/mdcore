@@ -10,6 +10,8 @@ const platformDot = document.getElementById("platform-dot");
 const platformNameEl = document.getElementById("platform-name");
 const btnCapture = document.getElementById("btn-capture");
 const btnSelection = document.getElementById("btn-selection");
+const rangeSelect = document.getElementById("range-select");
+const rangeSelector = document.getElementById("range-selector");
 
 // ─── Compression (same as content.js / share.ts) ───
 
@@ -34,6 +36,25 @@ async function compressToBase64Url(text) {
   }
 }
 
+// ─── Proxy Fetch & Auth (via background service worker) ───
+
+function proxyFetch(url, options = {}) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { action: "proxy-fetch", url, options },
+      (r) => resolve(r || { ok: false, error: "no response" })
+    );
+  });
+}
+
+function getUserId() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ action: "get-user-id" }, (response) => {
+      resolve(response?.userId || null);
+    });
+  });
+}
+
 // ─── Status ───
 
 function setStatus(text, type = "") {
@@ -49,6 +70,31 @@ async function openInMdfy(markdown) {
     return;
   }
 
+  // Try authenticated sharing first
+  const userId = await getUserId();
+  if (userId) {
+    try {
+      const titleMatch = markdown.match(/^#\s+(.+)/m);
+      const title = titleMatch ? titleMatch[1].trim().slice(0, 100) : "Captured content";
+
+      const res = await proxyFetch(MDFY_URL + "/api/docs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown, userId, title, editMode: "account" }),
+      });
+
+      if (res.ok) {
+        const { id } = JSON.parse(res.body);
+        chrome.tabs.create({ url: MDFY_URL + "/?doc=" + id });
+        setStatus("Published to mdfy.cc", "success");
+        return;
+      }
+    } catch (err) {
+      console.warn("[mdfy] Authenticated share failed, falling back to hash URL:", err);
+    }
+  }
+
+  // Fallback: hash-based URL
   const compressed = await compressToBase64Url(markdown);
   const url = MDFY_URL + "/#md=" + compressed;
 
@@ -56,14 +102,11 @@ async function openInMdfy(markdown) {
     chrome.tabs.create({ url });
     setStatus("Opened in mdfy.cc", "success");
   } else {
-    // Content too large for URL — copy to clipboard and open
     let copied = false;
     try {
       await navigator.clipboard.writeText(markdown);
       copied = true;
-    } catch {
-      // Popup may not have clipboard access — try fallback
-    }
+    } catch { }
     chrome.tabs.create({ url: MDFY_URL });
     if (copied) {
       setStatus("Content copied — paste into mdfy.cc", "success");
@@ -106,6 +149,7 @@ async function detectPlatform() {
       platformNameEl.classList.add("active");
       platformNameEl.textContent = PLATFORM_NAMES[platform] + " detected";
       btnCapture.disabled = false;
+      rangeSelector.style.display = "flex";
       return { tab, platform };
     } else {
       showNotOnAiPage();
@@ -124,17 +168,18 @@ function showNotOnAiPage() {
   platformNameEl.classList.add("active");
   platformNameEl.textContent = "Any webpage";
   document.getElementById("platform-hint").textContent = "Capture this page as Markdown";
-  // Enable capture button but change label
   btnCapture.disabled = false;
   btnCapture.querySelector(".btn-label").textContent = "Capture This Page";
   btnCapture.querySelector(".btn-desc").textContent = "Page content → clean Markdown document";
   btnCapture.dataset.mode = "page";
+  rangeSelector.style.display = "none";
 }
 
 // ─── Actions ───
 
 btnCapture.addEventListener("click", async () => {
   const isPageMode = btnCapture.dataset.mode === "page";
+  const lastN = parseInt(rangeSelect.value) || 0;
   setStatus("Capturing...");
   btnCapture.disabled = true;
 
@@ -142,7 +187,6 @@ btnCapture.addEventListener("click", async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (isPageMode) {
-      // Capture full page via background script's page extraction
       const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
@@ -174,9 +218,9 @@ btnCapture.addEventListener("click", async () => {
         setStatus("No content found", "error");
       }
     } else {
-      // AI conversation capture
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: "capture-conversation",
+        lastN,
       });
 
       if (response && response.markdown) {
@@ -186,7 +230,6 @@ btnCapture.addEventListener("click", async () => {
       }
     }
   } catch (err) {
-    // Content script might not be loaded — try injecting
     setStatus("Retrying...");
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -197,6 +240,7 @@ btnCapture.addEventListener("click", async () => {
       await new Promise((r) => setTimeout(r, 200));
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: "capture-conversation",
+        lastN,
       });
       if (response && response.markdown) {
         await openInMdfy(response.markdown);
@@ -217,7 +261,6 @@ btnSelection.addEventListener("click", async () => {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // Try sending to content script first
     let markdown = null;
     try {
       const response = await chrome.tabs.sendMessage(tab.id, {
@@ -225,7 +268,6 @@ btnSelection.addEventListener("click", async () => {
       });
       markdown = response?.markdown;
     } catch {
-      // Content script not available — use scripting API
       const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
@@ -245,6 +287,21 @@ btnSelection.addEventListener("click", async () => {
     await openInMdfy(markdown);
   } catch (err) {
     setStatus("Failed: " + err.message, "error");
+  }
+});
+
+// ─── Range label sync ───
+
+rangeSelect.addEventListener("change", () => {
+  const val = parseInt(rangeSelect.value);
+  const label = btnCapture.querySelector(".btn-label");
+  const desc = btnCapture.querySelector(".btn-desc");
+  if (val === 0) {
+    label.textContent = "Capture Full Conversation";
+    desc.textContent = "All messages → beautiful Markdown document";
+  } else {
+    label.textContent = "Capture Last " + val + " Exchanges";
+    desc.textContent = "Recent " + val + " Q&A pairs → Markdown document";
   }
 });
 

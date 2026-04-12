@@ -1,62 +1,151 @@
 /* ─── mdfy.cc Chrome Extension Styles ─── */
 
-/* ─── Floating Button ─── */
+/* ─── Floating Button Container ─── */
 
-#mdfy-float-btn {
+#mdfy-float-container {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 999999;
+  display: flex;
+  align-items: stretch;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#mdfy-float-container:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+
+/* ─── Floating Button (Main) ─── */
+
+#mdfy-float-btn {
   display: flex;
   align-items: center;
   gap: 5px;
   height: 30px;
   padding: 0 10px;
   border: 1px solid rgba(251, 146, 60, 0.25);
-  border-radius: 15px;
+  border-right: none;
+  border-radius: 15px 0 0 15px;
   background: #09090b;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
-  transition: all 0.2s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: background 0.15s ease;
+  font-family: inherit;
   line-height: 1;
-  opacity: 0.7;
 }
 
 #mdfy-float-btn:hover {
-  opacity: 1;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(251, 146, 60, 0.3);
+  background: #111113;
 }
 
 #mdfy-float-btn:active {
-  transform: translateY(0) scale(0.97);
+  transform: scale(0.97);
 }
 
-#mdfy-float-btn.mdfy-loading {
+/* ─── Floating Button Dropdown Toggle ─── */
+
+#mdfy-float-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  width: 22px;
+  border: 1px solid rgba(251, 146, 60, 0.25);
+  border-left: 1px solid rgba(251, 146, 60, 0.1);
+  border-radius: 0 15px 15px 0;
+  background: #09090b;
+  cursor: pointer;
+  color: #52525b;
+  font-size: 9px;
+  font-family: inherit;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: color 0.15s, background 0.15s;
+}
+
+#mdfy-float-toggle:hover {
+  color: #fb923c;
+  background: #18181b;
+}
+
+/* ─── Floating Button States ─── */
+
+#mdfy-float-container.mdfy-loading,
+#mdfy-float-container.mdfy-done,
+#mdfy-float-container.mdfy-error {
   pointer-events: none;
   opacity: 1;
-  border-color: rgba(251, 146, 60, 0.3);
 }
 
-#mdfy-float-btn.mdfy-loading .mdfy-btn-label {
+#mdfy-float-container.mdfy-loading .mdfy-btn-label {
   animation: mdfy-pulse 1.2s ease-in-out infinite;
 }
 
-#mdfy-float-btn.mdfy-done {
-  pointer-events: none;
-  opacity: 1;
+#mdfy-float-container.mdfy-loading #mdfy-float-btn,
+#mdfy-float-container.mdfy-loading #mdfy-float-toggle {
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+#mdfy-float-container.mdfy-done #mdfy-float-btn,
+#mdfy-float-container.mdfy-done #mdfy-float-toggle {
   border-color: rgba(74, 222, 128, 0.4);
 }
 
-#mdfy-float-btn.mdfy-error {
-  pointer-events: none;
-  opacity: 1;
+#mdfy-float-container.mdfy-error #mdfy-float-btn,
+#mdfy-float-container.mdfy-error #mdfy-float-toggle {
   border-color: rgba(248, 113, 113, 0.4);
 }
 
-.mdfy-btn-status-done { color: #4ade80 !important; border-color: rgba(74, 222, 128, 0.2) !important; }
-.mdfy-btn-status-error { color: #f87171 !important; border-color: rgba(248, 113, 113, 0.2) !important; }
+.mdfy-btn-status-done { color: #4ade80 !important; }
+.mdfy-btn-status-error { color: #f87171 !important; }
+
+/* ─── Floating Button Dropdown Menu ─── */
+
+#mdfy-float-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+#mdfy-float-menu.mdfy-menu-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mdfy-menu-item {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.mdfy-menu-item:hover {
+  background: #18181b;
+  color: #fafafa;
+}
+
+.mdfy-menu-item:first-child { border-radius: 9px 9px 0 0; }
+.mdfy-menu-item:last-child { border-radius: 0 0 9px 9px; }
+.mdfy-menu-accent { color: #fb923c; }
+
+/* ─── Floating Button Logo & Label ─── */
 
 .mdfy-btn-logo {
   font-size: 12px;

@@ -10,7 +10,7 @@
   "use strict";
 
   // Prevent double-injection
-  if (document.getElementById("mdfy-float-btn")) return;
+  if (document.getElementById("mdfy-float-container")) return;
 
   const MDFY_URL = "https://mdfy.cc";
   const MAX_URL_BYTES = 8000; // ~8KB limit for URL hash
@@ -56,18 +56,24 @@
   // ─── Proxy Fetch (via background to bypass CORS) ───
 
   function proxyFetch(url, options = {}) {
+    if (!chrome.runtime?.id) return Promise.resolve({ ok: false, error: "extension context invalidated" });
     return new Promise((resolve) => {
-      // Convert body to string if needed
       const serializableOptions = { ...options };
       if (options.body instanceof FormData) {
-        // FormData can't be sent via message — skip proxy for FormData
         resolve({ ok: false, error: "FormData not supported via proxy" });
         return;
       }
-      chrome.runtime.sendMessage(
-        { action: "proxy-fetch", url, options: serializableOptions },
-        (r) => resolve(r || { ok: false, error: "no response" })
-      );
+      try {
+        chrome.runtime.sendMessage(
+          { action: "proxy-fetch", url, options: serializableOptions },
+          (r) => {
+            if (chrome.runtime.lastError) { resolve({ ok: false, error: chrome.runtime.lastError.message }); return; }
+            resolve(r || { ok: false, error: "no response" });
+          }
+        );
+      } catch {
+        resolve({ ok: false, error: "extension context invalidated" });
+      }
     });
   }
 
@@ -174,42 +180,42 @@
     });
 
     // ── Step 2: KaTeX rendered math → LaTeX source ──
-    // Claude uses KaTeX: look for .katex elements with annotation[encoding="application/x-tex"]
-    clone.querySelectorAll(".katex, .katex-display, [class*='katex']").forEach((katexEl) => {
-      const annotation = katexEl.querySelector('annotation[encoding="application/x-tex"]');
-      if (annotation) {
-        const tex = annotation.textContent.trim();
-        // Check if display or inline
-        const isDisplay = katexEl.classList.contains("katex-display") ||
-                          !!katexEl.closest(".katex-display") ||
-                          katexEl.closest("[class*='display']");
-        if (isDisplay) {
-          katexEl.textContent = "\n$$\n" + tex + "\n$$\n";
-        } else {
-          katexEl.textContent = "$" + tex + "$";
-        }
-      } else {
-        // Fallback: try to get from aria-label or data attribute
-        const ariaLabel = katexEl.getAttribute("aria-label");
-        if (ariaLabel) {
-          const isDisplay = katexEl.classList.contains("katex-display") ||
-                            !!katexEl.closest(".katex-display");
-          if (isDisplay) {
-            katexEl.textContent = "\n$$\n" + ariaLabel + "\n$$\n";
-          } else {
-            katexEl.textContent = "$" + ariaLabel + "$";
-          }
-        }
+    // Process display math FIRST (outermost), then inline — prevents duplication
+    clone.querySelectorAll(".katex-display").forEach((el) => {
+      const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+      const tex = annotation?.textContent?.trim() ||
+                  el.getAttribute("aria-label") || "";
+      if (tex) {
+        // Normalize display math: collapse internal whitespace to single spaces
+        el.textContent = "\n$$\n" + tex.replace(/\s+/g, " ") + "\n$$\n";
       }
     });
 
-    // Also handle math rendered with MathJax or other renderers
+    // Inline math: .katex elements still in DOM (not destroyed by display processing)
+    clone.querySelectorAll(".katex").forEach((el) => {
+      if (!clone.contains(el)) return;
+      const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+      const tex = annotation?.textContent?.trim() ||
+                  el.getAttribute("aria-label") || "";
+      if (tex) {
+        // Inline math: collapse ALL whitespace to single space (LaTeX ignores whitespace in math)
+        el.textContent = "$" + tex.replace(/\s+/g, " ") + "$";
+      }
+    });
+
+    // Clean up remaining MathML that would produce garbage text
+    clone.querySelectorAll("math, .katex-mathml, [class*='katex-mathml']").forEach((el) => {
+      if (clone.contains(el)) el.remove();
+    });
+
+    // Also handle MathJax or other renderers
     clone.querySelectorAll("[data-math-style], .MathJax, .MathJax_Display").forEach((mathEl) => {
       const src = mathEl.getAttribute("data-math-src") || mathEl.getAttribute("aria-label") || "";
       if (src) {
         const isDisplay = mathEl.getAttribute("data-math-style") === "display" ||
                           mathEl.classList.contains("MathJax_Display");
-        mathEl.textContent = isDisplay ? "\n$$\n" + src + "\n$$\n" : "$" + src + "$";
+        const cleanSrc = isDisplay ? src : src.replace(/\s*\n\s*/g, " ");
+        mathEl.textContent = isDisplay ? "\n$$\n" + cleanSrc + "\n$$\n" : "$" + cleanSrc + "$";
       }
     });
 
@@ -308,16 +314,17 @@
     });
 
     // ── Step 10: Lists ──
+    // Collapse internal newlines from DOM whitespace text nodes to keep list items single-line
     clone.querySelectorAll("ol").forEach((ol) => {
       const items = ol.querySelectorAll(":scope > li");
       items.forEach((li, i) => {
-        li.textContent = (i + 1) + ". " + li.textContent.trim();
+        li.textContent = (i + 1) + ". " + li.textContent.replace(/\n\s*/g, " ").trim();
       });
     });
     clone.querySelectorAll("ul").forEach((ul) => {
       const items = ul.querySelectorAll(":scope > li");
       items.forEach((li) => {
-        li.textContent = "- " + li.textContent.trim();
+        li.textContent = "- " + li.textContent.replace(/\n\s*/g, " ").trim();
       });
     });
 
@@ -718,14 +725,14 @@
   }
 
   async function getUserId() {
-    // Try to get user info from mdfy.cc cookies via background script
+    if (!chrome.runtime?.id) return null; // extension context invalidated
     return new Promise((resolve) => {
       try {
         chrome.runtime.sendMessage({ action: "get-user-id" }, (response) => {
+          if (chrome.runtime.lastError) { resolve(null); return; }
           resolve(response?.userId || null);
         });
-      } catch (err) {
-        console.warn("[mdfy] getUserId failed:", err);
+      } catch {
         resolve(null);
       }
     });
@@ -836,11 +843,32 @@
   // ─── Floating Button ───
 
   function createFloatingButton() {
+    const container = document.createElement("div");
+    container.id = "mdfy-float-container";
+
     const btn = document.createElement("button");
     btn.id = "mdfy-float-btn";
     btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">All</span>';
     btn.title = "Capture entire conversation and publish on mdfy.cc";
-    document.body.appendChild(btn);
+
+    const toggle = document.createElement("button");
+    toggle.id = "mdfy-float-toggle";
+    toggle.innerHTML = "&#9662;";
+    toggle.title = "Choose range";
+
+    const menu = document.createElement("div");
+    menu.id = "mdfy-float-menu";
+    menu.innerHTML = [
+      '<div class="mdfy-menu-item" data-range="0"><span class="mdfy-menu-accent">All</span> messages</div>',
+      '<div class="mdfy-menu-item" data-range="3">Last <span class="mdfy-menu-accent">3</span> exchanges</div>',
+      '<div class="mdfy-menu-item" data-range="5">Last <span class="mdfy-menu-accent">5</span> exchanges</div>',
+      '<div class="mdfy-menu-item" data-range="10">Last <span class="mdfy-menu-accent">10</span> exchanges</div>',
+    ].join("");
+
+    container.appendChild(btn);
+    container.appendChild(toggle);
+    container.appendChild(menu);
+    document.body.appendChild(container);
 
     const setFloatStatus = (status, state) => {
       const logo = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span>';
@@ -851,26 +879,47 @@
       btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">All</span>';
     };
 
-    btn.addEventListener("click", async () => {
-      btn.classList.remove("mdfy-done", "mdfy-error");
-      btn.classList.add("mdfy-loading");
+    async function captureAndSend(lastN) {
+      menu.classList.remove("mdfy-menu-visible");
+      container.classList.remove("mdfy-done", "mdfy-error");
+      container.classList.add("mdfy-loading");
       setFloatStatus("Capturing...");
       try {
         await preProcessArtifactIframes();
         setFloatStatus("Converting...");
-        const messages = extractConversation();
+        let messages = extractConversation();
+        if (lastN > 0) messages = messages.slice(-(lastN * 2));
         const markdown = formatConversation(messages);
         setFloatStatus("Publishing...");
         await sendToMdfy(markdown);
-        btn.classList.remove("mdfy-loading");
-        btn.classList.add("mdfy-done");
+        container.classList.remove("mdfy-loading");
+        container.classList.add("mdfy-done");
         setFloatStatus("Published ✓", "done");
-        setTimeout(() => { btn.classList.remove("mdfy-done"); resetFloat(); }, 3000);
+        setTimeout(() => { container.classList.remove("mdfy-done"); resetFloat(); }, 3000);
       } catch (err) {
-        btn.classList.remove("mdfy-loading");
-        btn.classList.add("mdfy-error");
+        container.classList.remove("mdfy-loading");
+        container.classList.add("mdfy-error");
         setFloatStatus("Failed", "error");
-        setTimeout(() => { btn.classList.remove("mdfy-error"); resetFloat(); }, 3000);
+        setTimeout(() => { container.classList.remove("mdfy-error"); resetFloat(); }, 3000);
+      }
+    }
+
+    btn.addEventListener("click", () => captureAndSend(0));
+
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("mdfy-menu-visible");
+    });
+
+    menu.querySelectorAll(".mdfy-menu-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        captureAndSend(parseInt(item.dataset.range));
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!container.contains(e.target)) {
+        menu.classList.remove("mdfy-menu-visible");
       }
     });
   }
@@ -890,26 +939,84 @@
     }
   }
 
-  function addMiniButtons() {
-    const selector = getAssistantMessageSelector();
-    if (!selector) return;
+  function getUserMessageSelector() {
+    switch (platform) {
+      case "chatgpt":
+        return "[data-message-author-role='user']";
+      case "claude":
+        return "[data-testid='user-message'], .font-user-message";
+      case "gemini":
+        return "user-query, .user-query, [data-message-author='user']";
+      default:
+        return null;
+    }
+  }
 
-    const messages = document.querySelectorAll(selector);
-    messages.forEach((msg) => {
-      // Skip if already has a mini button
+  function findQAPair(messageEl, role) {
+    const userSelector = getUserMessageSelector();
+    const assistantSelector = getAssistantMessageSelector();
+    if (!userSelector || !assistantSelector) return { userEl: null, assistantEl: null };
+
+    const allUsers = [...document.querySelectorAll(userSelector)];
+    const allAssistants = [...document.querySelectorAll(assistantSelector)];
+
+    if (role === "assistant") {
+      let nearestUser = null;
+      for (const userEl of allUsers) {
+        const pos = userEl.compareDocumentPosition(messageEl);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+          nearestUser = userEl;
+        }
+      }
+      return { userEl: nearestUser, assistantEl: messageEl };
+    } else {
+      let nearestAssistant = null;
+      for (const aEl of allAssistants) {
+        const pos = messageEl.compareDocumentPosition(aEl);
+        if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
+          nearestAssistant = aEl;
+          break;
+        }
+      }
+      return { userEl: messageEl, assistantEl: nearestAssistant };
+    }
+  }
+
+  function formatQAPair(userEl, assistantEl) {
+    const pName = platformName();
+    const date = new Date().toLocaleDateString();
+    const userText = userEl ? htmlToMarkdown(userEl) : "";
+    const assistantText = assistantEl ? htmlToMarkdown(assistantEl) : "";
+
+    const firstLine = userText.split("\n")[0].replace(/^#+\s*/, "").trim();
+    const title = firstLine.length > 80 ? firstLine.slice(0, 77) + "..." : firstLine;
+
+    let md = "";
+    if (title) md += "# " + title + "\n\n";
+    md += "> Captured from " + pName + " on " + date + "\n\n---\n\n";
+    if (userText) md += "## User\n\n" + userText + "\n\n---\n\n";
+    if (assistantText) md += "## " + pName + "\n\n" + assistantText + "\n";
+    return md;
+  }
+
+  function addMiniButtons() {
+    const assistantSelector = getAssistantMessageSelector();
+    const userSelector = getUserMessageSelector();
+
+    function attachMiniButton(msg, role) {
       if (msg.querySelector(".mdfy-mini-btn")) return;
 
-      // Ensure the message container has position relative for the button
       const computedPos = window.getComputedStyle(msg).position;
-      if (computedPos === "static") {
-        msg.style.position = "relative";
-      }
+      if (computedPos === "static") msg.style.position = "relative";
 
       const miniBtn = document.createElement("button");
       miniBtn.className = "mdfy-mini-btn";
       miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
-      miniBtn.title = "Send this message to mdfy.cc";
+      miniBtn.title = "Send this Q&A to mdfy.cc";
 
+      const resetMini = () => {
+        miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
+      };
       const setMiniStatus = (status, state) => {
         const logo = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span>';
         const stateClass = state === "done" ? " mdfy-mini-status-done" : state === "error" ? " mdfy-mini-status-error" : "";
@@ -925,38 +1032,38 @@
         try {
           await preProcessArtifactIframes();
           setMiniStatus("Converting...");
-          const text = htmlToMarkdown(msg);
-          const markdown = "> Single response from " + platformName() + "\n\n" + text;
+          const { userEl, assistantEl } = findQAPair(msg, role);
+          const markdown = formatQAPair(userEl, assistantEl);
           setMiniStatus("Publishing...");
           await sendToMdfy(markdown);
           miniBtn.classList.remove("mdfy-loading");
           miniBtn.classList.add("mdfy-done");
           setMiniStatus("Published ✓", "done");
-          setTimeout(() => {
-            miniBtn.classList.remove("mdfy-done");
-            miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
-          }, 3000);
+          setTimeout(() => { miniBtn.classList.remove("mdfy-done"); resetMini(); }, 3000);
         } catch (err) {
           miniBtn.classList.remove("mdfy-loading");
           miniBtn.classList.add("mdfy-error");
           setMiniStatus("Failed", "error");
-          setTimeout(() => {
-            miniBtn.classList.remove("mdfy-error");
-            miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
-          }, 3000);
+          setTimeout(() => { miniBtn.classList.remove("mdfy-error"); resetMini(); }, 3000);
         }
       });
 
       msg.insertBefore(miniBtn, msg.firstChild);
-    });
+    }
+
+    if (assistantSelector) {
+      document.querySelectorAll(assistantSelector).forEach((msg) => attachMiniButton(msg, "assistant"));
+    }
   }
 
   // ─── Listen for messages from popup/background ───
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "capture-conversation") {
+      const lastN = request.lastN || 0;
       preProcessArtifactIframes().then(() => {
-        const messages = extractConversation();
+        let messages = extractConversation();
+        if (lastN > 0) messages = messages.slice(-(lastN * 2));
         const markdown = formatConversation(messages);
         sendResponse({ markdown, platform });
       });
