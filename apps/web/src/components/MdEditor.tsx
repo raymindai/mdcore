@@ -1419,6 +1419,7 @@ export default function MdEditor() {
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const lastClickedTabIdRef = useRef<string | null>(null);
+  const [confirmTrash, setConfirmTrash] = useState(false);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -4883,14 +4884,15 @@ ${html}
                                 <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                               )}
                               <span className="truncate flex-1">{folder.name}</span>
-                              <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
+                              <span className="text-[9px] opacity-50 group-hover:hidden transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  e.preventDefault();
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                   setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
                                 }}
-                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-5"
+                                className="shrink-0 rounded hidden group-hover:flex items-center justify-center ml-auto"
                                 style={{ color: "var(--text-muted)", padding: "2px" }}
                               >
                                 <MoreHorizontal width={14} height={14} />
@@ -5234,35 +5236,52 @@ ${html}
 
           {/* Multi-select action bar */}
           {selectedTabIds.size > 0 && (
-            <div className="shrink-0 px-2 py-2 flex items-center gap-1.5" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-              <span className="text-[10px] font-medium px-1" style={{ color: "var(--accent)" }}>{selectedTabIds.size} selected</span>
-              <div className="flex-1" />
-              {folders.filter(f => !f.section || f.section === "my").length > 0 && (
-                <div className="relative group/move">
-                  <button className="flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)" }} title="Move to folder">
-                    <Folder width={12} height={12} /><span>Move</span><ChevronDown width={8} height={8} />
-                  </button>
-                  <div className="absolute bottom-full left-0 mb-1 rounded-lg py-1 hidden group-hover/move:block" style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 140, zIndex: 9999 }}>
-                    {folders.filter(f => !f.section || f.section === "my").map(f => (
-                      <button key={f.id} onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: f.id } : t)); setSelectedTabIds(new Set()); }}
-                        className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)" }}>{f.name}</button>
-                    ))}
-                    <button onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: undefined } : t)); setSelectedTabIds(new Set()); }}
-                      className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-dim)" }}>Move to root</button>
+            <div className="shrink-0 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+              {/* Header: count + clear */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{selectedTabIds.size} document{selectedTabIds.size > 1 ? "s" : ""} selected</span>
+                <button onClick={() => setSelectedTabIds(new Set())} className="text-[10px] px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }} title="Clear selection">
+                  Clear
+                </button>
+              </div>
+              {/* Actions */}
+              <div className="flex gap-1.5">
+                {folders.filter(f => !f.section || f.section === "my").length > 0 && (
+                  <div className="relative group/move flex-1">
+                    <button className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }} title="Move to folder">
+                      <Folder width={11} height={11} /><span>Move</span><ChevronDown width={8} height={8} />
+                    </button>
+                    <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg py-1 hidden group-hover/move:block" style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", zIndex: 9999 }}>
+                      {folders.filter(f => !f.section || f.section === "my").map(f => (
+                        <button key={f.id} onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: f.id } : t)); setSelectedTabIds(new Set()); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          <Folder width={11} height={11} style={{ color: "var(--text-faint)" }} />{f.name}
+                        </button>
+                      ))}
+                      <button onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: undefined } : t)); setSelectedTabIds(new Set()); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-dim)" }}>
+                        <FileIcon width={11} height={11} style={{ color: "var(--text-faint)" }} />Root
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-              <button onClick={() => {
-                const ids = selectedTabIds;
-                setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
-                if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
-                setSelectedTabIds(new Set());
-              }} className="flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors hover:bg-[rgba(239,68,68,0.15)]" style={{ color: "#ef4444" }} title="Move to Trash">
-                <Trash2 width={12} height={12} /><span>Trash</span>
-              </button>
-              <button onClick={() => setSelectedTabIds(new Set())} className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }} title="Clear selection">
-                <X width={10} height={10} />
-              </button>
+                )}
+                <button onClick={() => {
+                  if (!confirmTrash) {
+                    setConfirmTrash(true);
+                    setTimeout(() => { setConfirmTrash(false); }, 3000);
+                    return;
+                  }
+                  setConfirmTrash(false);
+                  const ids = selectedTabIds;
+                  setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                  if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
+                  setSelectedTabIds(new Set());
+                }} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors ${confirmTrash ? "bg-[#ef4444]" : ""}`}
+                  style={{ color: confirmTrash ? "#fff" : "#ef4444", border: confirmTrash ? "1px solid #ef4444" : "1px solid rgba(239,68,68,0.3)" }}
+                  title="Move to Trash">
+                  <Trash2 width={11} height={11} /><span>{confirmTrash ? "Confirm?" : "Trash"}</span>
+                </button>
+              </div>
             </div>
           )}
           {/* Folder + Sort actions moved to section headers */}
