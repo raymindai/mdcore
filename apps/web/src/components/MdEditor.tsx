@@ -22,8 +22,8 @@ import {
   Undo2, Redo2, List, ListOrdered, Indent, Outdent, Quote, Minus, Link,
   Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
-  FolderPlus, Folder, FolderOpen, FileCheck, File as FileIcon, MoreHorizontal,
-  User, Search, Cloud, X,
+  FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
+  User, Users, Search, Cloud, X,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { useAutoSave } from "@/lib/useAutoSave";
@@ -834,6 +834,7 @@ interface Tab {
   isDraft?: boolean;       // auto-saved but not yet published
   permission?: "mine" | "editable" | "readonly";  // for sidebar badge
   isSharedByMe?: boolean;  // I've shared this doc with others
+  isRestricted?: boolean;  // shared with specific people (allowed_emails)
   ownerEmail?: string;     // owner's email (for shared docs)
 }
 
@@ -2405,10 +2406,15 @@ export default function MdEditor() {
               )
               .map((d: { id: string }) => d.id)
           );
-          // Sync isDraft from server (shared = isDraft false)
+          // Sync isDraft + restricted from server
           const publishedIds = new Set(
             data.documents
               .filter((d: { is_draft?: boolean }) => d.is_draft === false)
+              .map((d: { id: string }) => d.id)
+          );
+          const restrictedIds = new Set(
+            data.documents
+              .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.length > 0)
               .map((d: { id: string }) => d.id)
           );
           setTabs(prev => prev.map(t => {
@@ -2416,6 +2422,7 @@ export default function MdEditor() {
             const updates: Partial<Tab> = {};
             if (sharedDocIds.has(t.cloudId)) updates.isSharedByMe = true;
             if (publishedIds.has(t.cloudId)) updates.isDraft = false;
+            if (restrictedIds.has(t.cloudId)) updates.isRestricted = true;
             return Object.keys(updates).length ? { ...t, ...updates } : t;
           }));
         }
@@ -4746,7 +4753,9 @@ ${html}
                           onClick={() => tab.id !== activeTabId && switchTab(tab.id)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.isDraft === false ? (
+                          {tab.isDraft === false && tab.isRestricted ? (
+                            <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
+                          ) : tab.isDraft === false ? (
                             <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                           ) : (
                             <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
