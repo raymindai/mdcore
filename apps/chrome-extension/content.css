@@ -5,7 +5,7 @@
 #mdfy-float-container {
   position: fixed;
   bottom: var(--mdfy-input-h, 100px);
-  right: 24px;
+  right: var(--mdfy-content-right, 24px);
   z-index: 999999;
   display: flex;
   align-items: stretch;

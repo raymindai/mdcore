@@ -1237,6 +1237,22 @@
   document.documentElement.style.setProperty("--mdfy-header-h", layout.headerH + "px");
   document.documentElement.style.setProperty("--mdfy-input-h", layout.inputH + "px");
 
+  // Align mdfy All to the right edge of the message content area
+  function measureContentRight() {
+    const msgSelectors = {
+      chatgpt: "[data-message-author-role='assistant']",
+      claude: ".font-claude-response",
+      gemini: "model-response, .model-response",
+    };
+    const msg = document.querySelector(msgSelectors[platform] || "main");
+    if (msg) {
+      const right = window.innerWidth - msg.getBoundingClientRect().right;
+      document.documentElement.style.setProperty("--mdfy-content-right", Math.max(8, right) + "px");
+    }
+  }
+  measureContentRight();
+  window.addEventListener("resize", measureContentRight);
+
   // ─── Initialize ───
 
   createFloatingButton();
@@ -1245,6 +1261,7 @@
   // Re-run mini button injection when new messages appear (MutationObserver)
   const observer = new MutationObserver(() => {
     addMiniButtons();
+    measureContentRight();
   });
 
   // Observe the main content area for changes
