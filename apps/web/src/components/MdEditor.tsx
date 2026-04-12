@@ -1413,7 +1413,7 @@ export default function MdEditor() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
-  const [docFilter, setDocFilter] = useState<"all" | "drafts" | "published" | "cloud">("all");
+  const [docFilter, setDocFilter] = useState<"all" | "private" | "shared">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
@@ -4614,13 +4614,12 @@ ${html}
             {(() => {
               const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
               const myTabs = docFilter === "all" ? allMyTabs
-                : docFilter === "drafts" ? allMyTabs.filter(t => t.isDraft !== false)
-                : docFilter === "published" ? allMyTabs.filter(t => t.isDraft === false)
-                : docFilter === "cloud" ? [] // cloud-only docs shown separately
+                : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
+                : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
-              const draftCount = allMyTabs.filter(t => t.isDraft !== false).length;
-              const publishedCount = allMyTabs.filter(t => t.isDraft === false).length;
+              const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
+              const sharedCount = allMyTabs.filter(t => t.isDraft === false).length;
               return (
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-3`}>
                   <div
@@ -4661,13 +4660,13 @@ ${html}
                     <div className="shrink-0 space-y-0.5 pt-1 pb-0 pl-2 pr-2">
                       <div className="flex items-center gap-1.5 px-1 pb-1.5">
                         <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                          {(["all", "drafts", "published", "cloud"] as const).map((f) => {
+                          {(["all", "private", "shared"] as const).map((f) => {
                             const tips: Record<string, string> = {
                               all: "Show all documents",
-                              drafts: "Documents not yet published",
-                              published: "Documents published to mdfy.cc",
-                              cloud: "Documents only on mdfy.cc cloud",
+                              private: "Only visible to you",
+                              shared: "Shared via public URL",
                             };
+                            const labels: Record<string, string> = { all: "ALL", private: "PRIVATE", shared: "SHARED" };
                             return (
                             <button
                               key={f}
@@ -4680,7 +4679,7 @@ ${html}
                                 background: docFilter === f ? "var(--accent-dim)" : "transparent",
                               }}
                             >
-                              {f === "all" ? `ALL` : f === "drafts" ? `DRAFTS` : f === "published" ? `PUB` : "CLOUD"}
+                              {labels[f]}
                             </button>
                             );
                           })}
@@ -4696,10 +4695,9 @@ ${html}
                       </div>
                       {showSidebarHelp && (
                         <div className="mx-1 mb-1.5 p-2.5 rounded-md text-[10px] space-y-1.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
-                          <div className="flex items-start gap-2"><span style={{ color: "var(--accent)" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
-                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>DRAFTS</span><span style={{ color: "var(--text-muted)" }}>Not yet published, only visible to you</span></div>
-                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>PUB</span><span style={{ color: "var(--text-muted)" }}>Published to mdfy.cc with a shareable URL</span></div>
-                          <div className="flex items-start gap-2"><span style={{ color: "var(--text-faint)" }}>CLOUD</span><span style={{ color: "var(--text-muted)" }}>Exists only on mdfy.cc, not in this session</span></div>
+                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
+                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you. Not yet shared.</span></div>
+                          <div className="flex items-start gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared via URL. Anyone with the link can view.</span></div>
                         </div>
                       )}
                       {/* Search — fixed */}
@@ -4864,52 +4862,11 @@ ${html}
                         </div>
                       )}
 
-                      {myTabs.length === 0 && folders.length === 0 && docFilter !== "cloud" && (
+                      {myTabs.length === 0 && folders.length === 0 && (
                         <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>No documents yet</div>
                       )}
 
                       {/* Cloud-only documents (not linked locally) */}
-                      {docFilter === "cloud" && (() => {
-                        const localCloudIds = new Set(allMyTabs.filter(t => t.cloudId).map(t => t.cloudId));
-                        const cloudOnly = serverDocs.filter(d => !localCloudIds.has(d.id));
-                        if (!user) return (
-                          <div className="px-2.5 py-3 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
-                            Sign in to see cloud documents
-                          </div>
-                        );
-                        if (cloudOnly.length === 0) return (
-                          <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>All cloud documents are linked locally</div>
-                        );
-                        return cloudOnly.map(doc => (
-                          <div
-                            key={doc.id}
-                            className="group flex items-center gap-1.5 px-1.5 py-1.5 rounded cursor-pointer transition-colors"
-                            style={{ color: "var(--text-secondary)" }}
-                            onClick={() => {
-                              // Pull cloud doc into local tab
-                              fetch(`/api/docs/${doc.id}`, {
-                                headers: user?.id ? { "x-user-id": user.id } : {},
-                              })
-                                .then(r => r.ok ? r.json() : null)
-                                .then(data => {
-                                  if (!data?.markdown) return;
-                                  const tabId = `tab-${Date.now()}`;
-                                  setTabs(prev => [...prev, { id: tabId, title: data.title || doc.title || "Untitled", markdown: data.markdown, cloudId: doc.id }]);
-                                  setActiveTabId(tabId);
-                                  setMarkdown(data.markdown);
-                                  doRender(data.markdown);
-                                })
-                                .catch(() => {});
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--menu-hover)")}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                          >
-                            <Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} />
-                            <span className="flex-1 text-xs truncate">{doc.title || "Untitled"}</span>
-                            <span className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-faint)" }}>Pull</span>
-                          </div>
-                        ));
-                      })()}
                     </div>
                   </>
                   )}
