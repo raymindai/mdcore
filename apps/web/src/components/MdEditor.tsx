@@ -4655,8 +4655,9 @@ ${html}
                     {!showMyDocs && myTabCount > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>}
                   </div>
                   {showMyDocs && (
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
-                      {/* Grouped tab filter */}
+                    <>
+                    {/* Grouped tab filter — fixed */}
+                    <div className="shrink-0 space-y-0.5 pt-1 pb-0 pl-2 pr-2">
                       <div className="flex items-center gap-1.5 px-1 pb-1.5">
                         <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                           {(["all", "drafts", "published", "cloud"] as const).map((f) => (
@@ -4675,7 +4676,7 @@ ${html}
                           ))}
                         </div>
                       </div>
-                      {/* Search */}
+                      {/* Search — fixed */}
                       <div className="relative px-1 pb-1.5">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width={11} height={11} style={{ color: "var(--text-faint)" }} />
                         <input
@@ -4687,6 +4688,9 @@ ${html}
                           style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "none", outline: "none" }}
                         />
                       </div>
+                    </div>
+                    {/* Document list — scrollable */}
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
                         if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
@@ -4881,6 +4885,7 @@ ${html}
                         ));
                       })()}
                     </div>
+                  </>
                   )}
                 </div>
               );
