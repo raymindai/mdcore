@@ -47,7 +47,7 @@ import {
 
 const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
-> **The fastest way from thought to shared document.**
+> **Your Markdown, Beautifully Published.**
 > Import anything. Render beautifully. Share instantly.
 
 ## Get Started
@@ -1659,10 +1659,10 @@ export default function MdEditor() {
     setActiveTabId(tab.id);
     setMarkdownRaw(tab.markdown);
     setTitle(tab.title || undefined);
-    setHtml("");
     undoStack.current = [tab.markdown];
     redoStack.current = [];
-    doRenderRef.current(tab.markdown);
+    // Use microtask to ensure React state updates are flushed before render starts
+    Promise.resolve().then(() => doRenderRef.current(tab.markdown));
     // Update permission + doc state based on tab
     setDocId(tab.cloudId || null);
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
