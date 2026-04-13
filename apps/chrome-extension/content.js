@@ -255,7 +255,7 @@
 
     // ── Step 2: KaTeX rendered math → LaTeX source ──
     // Process display math FIRST (outermost), then inline — prevents duplication
-    clone.querySelectorAll(".katex-display").forEach((el) => {
+    clone.querySelectorAll(".katex-display, [data-math-mode='display'], [data-math-style='display']").forEach((el) => {
       const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
       const tex = annotation?.textContent?.trim() ||
                   el.getAttribute("aria-label") || "";
@@ -487,6 +487,14 @@
     text = text.replace(/Click any node to learn more\s*/gi, "");
     text = text.replace(/\bConnecting to\s*\.{3}\s*/gi, "");
     text = text.replace(/^\s*V\s*$/gm, "");
+
+    // Fix list items: collapse internal newlines so bullet + math + text stay on one line
+    text = text.replace(/^([-*] |\d+\. )(.+)/gm, (match, prefix, content) => {
+      if (content.includes("\n")) {
+        return prefix + content.replace(/\n\s*/g, " ").trim();
+      }
+      return match;
+    });
 
     // Fix inline math spanning multiple lines: $...$ must be single-line
     // Only match LaTeX-like content (contains backslash) to avoid catching code variables like $add
