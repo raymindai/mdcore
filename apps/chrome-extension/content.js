@@ -719,7 +719,7 @@
       const iframe = targets[ti];
       try {
         // Scroll iframe into view
-        iframe.scrollIntoView({ behavior: "instant", block: "center" });
+        iframe.scrollIntoView({ behavior: "instant", block: "start" });
         // Wait for scroll + render
         await new Promise((r) => setTimeout(r, 300));
 
