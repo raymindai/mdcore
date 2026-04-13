@@ -147,28 +147,37 @@
       }
     });
 
-    // ── Step 0a2: Extract math BEFORE cleanup (aria-hidden removal destroys math on some platforms) ──
+    // ── Step 0b: Remove injected UI (but NOT aria-hidden yet — math needs it) ──
+    clone.querySelectorAll(
+      ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
+      "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
+      "[class*='view-transition'], style, script, noscript, " +
+      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
+      "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
+      "button[aria-expanded], .sr-only"
+    ).forEach((el) => el.remove());
+
+    // ── Step 0c: Extract math from KaTeX/MathJax annotations ──
     const processedMathEls = new Set();
     clone.querySelectorAll('annotation[encoding="application/x-tex"]').forEach((annotation) => {
       const tex = annotation.textContent?.trim();
       if (!tex) return;
-      let mathEl = annotation.closest(".katex-display") ||
-                   annotation.closest(".katex") ||
-                   annotation.closest("[class*='katex']") ||
-                   annotation.closest("[class*='MathJax']") ||
-                   annotation.closest("span[class]") ||
-                   annotation.parentElement?.parentElement?.parentElement;
+      // Find the outermost math container (specific selectors only)
+      const mathEl = annotation.closest(".katex-display") ||
+                     annotation.closest(".katex") ||
+                     annotation.closest("[class*='katex']") ||
+                     annotation.closest(".MathJax_Display") ||
+                     annotation.closest(".MathJax") ||
+                     annotation.closest("[role='math']");
       if (!mathEl || !clone.contains(mathEl) || processedMathEls.has(mathEl)) return;
       const isDisplay = mathEl.classList?.contains("katex-display") ||
-                        !!mathEl.closest?.(".katex-display") ||
-                        mathEl.classList?.contains("MathJax_Display") ||
-                        mathEl.getAttribute?.("data-math-style") === "display";
+                        mathEl.classList?.contains("MathJax_Display");
       const cleanTex = tex.replace(/\s+/g, " ");
       mathEl.textContent = isDisplay ? "\n$$\n" + cleanTex + "\n$$\n" : "$" + cleanTex + "$";
       processedMathEls.add(mathEl);
     });
-    // Fallback: aria-label on unprocessed math elements
-    clone.querySelectorAll(".katex, .katex-display, [class*='katex'], .MathJax, .MathJax_Display, [role='math']").forEach((el) => {
+    // Fallback: aria-label on math elements without annotation
+    clone.querySelectorAll(".katex, .katex-display, .MathJax, .MathJax_Display, [role='math']").forEach((el) => {
       if (!clone.contains(el) || processedMathEls.has(el)) return;
       const ariaLabel = el.getAttribute("aria-label");
       if (ariaLabel && ariaLabel.length > 1) {
@@ -178,16 +187,8 @@
       }
     });
 
-    // ── Step 0b: Remove injected UI and non-content elements ──
-    clone.querySelectorAll(
-      ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
-      "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
-      "[class*='view-transition'], style, script, noscript, " +
-      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
-      "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
-      "button[aria-expanded], " +
-      "[aria-hidden='true'], .sr-only"
-    ).forEach((el) => el.remove());
+    // ── Step 0d: NOW remove aria-hidden (math already extracted above) ──
+    clone.querySelectorAll("[aria-hidden='true']").forEach((el) => el.remove());
 
     // ── Step 1a: Iframes → mermaid code blocks or artifact placeholders ──
     clone.querySelectorAll("iframe").forEach((iframe) => {
