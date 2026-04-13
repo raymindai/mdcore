@@ -42,6 +42,12 @@ export function postProcessHtml(
     ' style="text-align:$1"'
   );
 
+  // Wrap tables in scrollable container for wide tables
+  result = result.replace(
+    /<table([\s\S]*?)<\/table>/g,
+    '<div class="table-wrapper"><table$1</table></div>'
+  );
+
   // Process images: extract alignment/sizing from alt text, wrap in <figure> for captions
   result = processImages(result);
 

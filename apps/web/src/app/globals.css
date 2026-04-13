@@ -194,7 +194,7 @@ body {
 
 /* Nested blockquotes */
 .mdcore-rendered blockquote blockquote {
-  border-left-color: #71717a;
+  border-left-color: var(--text-muted);
   margin: 0.5rem 0;
 }
 
@@ -212,7 +212,7 @@ body {
 .mdcore-rendered pre {
   margin: 1rem 0;
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: hidden; /* contain code-header within border-radius */
   border: 1px solid var(--border);
   position: relative;
 }
@@ -222,32 +222,30 @@ body {
   color: var(--accent) !important;
 }
 
-.mdcore-rendered pre {
-  overflow: hidden;
-}
-
 .mdcore-rendered pre code {
   display: block;
   padding: 1rem 1.25rem;
   background: var(--surface);
   color: var(--text-secondary);
   font-size: 0.8125rem;
-  border-radius: 0;
-  overflow-x: auto;
-  line-height: 1.65;
   border-radius: 8px;
   overflow-x: auto;
+  line-height: 1.65;
 }
 
 /* Tables */
+.mdcore-rendered .table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 .mdcore-rendered table {
   width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.875rem;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border);
 }
 
 .mdcore-rendered th {
@@ -273,9 +271,16 @@ body {
   content: "\00a0";
 }
 
-
 .mdcore-rendered tr:last-child td {
   border-bottom: none;
+}
+
+.mdcore-rendered tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+[data-theme="light"] .mdcore-rendered tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.015);
 }
 
 .mdcore-rendered tr:hover td {
@@ -465,6 +470,15 @@ body {
 
 .mdcore-rendered .katex-display > .katex {
   color: var(--math-display-color);
+}
+
+/* Math error fallback */
+.mdcore-rendered .math-error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  font-size: 0.8125rem;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
 }
 
 /* ─── Diagram design system — imported from separate file ─── */
