@@ -189,11 +189,17 @@
 
     // ── Step 1b: SVG diagrams → inline image or mermaid code ──
     clone.querySelectorAll("svg").forEach((svg) => {
-      // Skip tiny icons (< 50px)
+      // Skip icons: check class, size, and Lottie/animation SVGs
+      const svgCls = svg.className?.baseVal || svg.getAttribute("class") || "";
+      if (/\bicon\b|lottie/i.test(svgCls)) { svg.remove(); return; }
+      // Skip Lottie animation SVGs (Gemini uses these for UI icons)
+      if (svg.querySelector("defs clipPath, defs mask, defs linearGradient") && !svg.querySelector("text, foreignObject")) {
+        svg.remove(); return;
+      }
       const w = parseInt(svg.getAttribute("width") || svg.style.width || "0");
       const h = parseInt(svg.getAttribute("height") || svg.style.height || "0");
       const viewBox = svg.getAttribute("viewBox");
-      const isLarge = w > 50 || h > 50 || (viewBox && !svg.closest("button"));
+      const isLarge = w > 100 || h > 100 || (viewBox && w > 50 && h > 50);
 
       if (!isLarge) {
         svg.remove();
