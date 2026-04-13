@@ -1,5 +1,5 @@
 {
-  "name": "@mdcore/mcp",
+  "name": "mdfy-mcp",
   "version": "0.1.0",
   "description": "MCP server for mdfy.cc — let AI tools create and manage Markdown documents",
   "type": "module",
