@@ -6677,6 +6677,31 @@ ${html}
             const curTabId = activeTabIdRef.current;
             setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isRestricted: emails.length > 0 } : t));
           }}
+          onMakePrivate={async () => {
+            const cid = docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId;
+            if (!cid || !user) return;
+            try {
+              const res = await fetch(`/api/docs/${cid}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "unpublish", userId: user.id }),
+              });
+              if (!res.ok) { showToast("Failed to make private", "error"); return; }
+              const curTabId = activeTabIdRef.current;
+              setTabs(prev => prev.map(t => t.id === curTabId ? {
+                ...t,
+                isDraft: true,
+                isSharedByMe: false,
+                isRestricted: false,
+              } : t));
+              setAllowedEmailsState([]);
+              setAllowedEditorsState([]);
+              setDocEditMode("owner");
+              setEditMode("owner");
+              setShowShareModal(false);
+              showToast("Document is now private", "info");
+            } catch { showToast("Failed to make private", "error"); }
+          }}
         />
       )}
 

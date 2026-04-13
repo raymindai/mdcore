@@ -286,6 +286,38 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true });
   }
 
+  // ─── Action: unpublish (make private — flip is_draft to true, clear sharing) ───
+  if (body.action === "unpublish") {
+    const { userId, anonymousId, editToken } = body;
+
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("edit_token, user_id, anonymous_id")
+      .eq("id", id)
+      .single();
+
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isOwner =
+      !!(userId && doc.user_id && userId === doc.user_id) ||
+      !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
+    const hasToken = !!(editToken && doc.edit_token === editToken);
+
+    if (!isOwner && !hasToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const { error } = await supabase.from("documents").update({
+      is_draft: true,
+      edit_mode: "owner",
+      allowed_emails: [],
+      allowed_editors: [],
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to unpublish" }, { status: 500 });
+
+    return NextResponse.json({ ok: true });
+  }
+
   // ─── Action: publish (flip is_draft to false) ───
   if (body.action === "publish") {
     const { userId, anonymousId, editToken } = body;
