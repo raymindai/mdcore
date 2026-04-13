@@ -273,13 +273,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const isAllowedEditor = (doc.allowed_editors || []).some((e: string) => e.toLowerCase() === userEmail.toLowerCase());
     const editModeVal = doc.edit_mode || "token";
 
-    if (!isOwner && !isAllowedEditor) {
+    if (!isOwner && !hasToken && !isAllowedEditor) {
       if (editModeVal === "owner" || editModeVal === "account" || editModeVal === "view") {
         return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
       } else if (editModeVal === "token") {
-        if (!hasToken) {
-          return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
       }
       // editMode === "public" → anyone can auto-save
     }
