@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mdfy": {
+      "command": "node",
+      "args": ["/Users/hyunsangcho/Desktop/Projects/mdcore/packages/mcp/dist/index.js"],
+      "env": {
+        "MDFY_EMAIL": "hi@raymind.ai"
+      }
+    }
+  }
+}

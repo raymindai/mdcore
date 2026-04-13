@@ -33,6 +33,7 @@ export default function PluginsPage() {
             <div style={{ display: "flex", gap: 16 }}>
               <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
               <Link href="/plugins" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Plugins</Link>
+              <Link href="/docs" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>API</Link>
             </div>
           </div>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -881,6 +882,7 @@ export default function PluginsPage() {
                 { label: "Editor", href: "/" },
                 { label: "About", href: "/about" },
                 { label: "Plugins", href: "/plugins" },
+                { label: "API", href: "/docs" },
                 { label: "Pricing", href: "/about#pricing" },
               ].map((l) => (
                 <Link key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</Link>
