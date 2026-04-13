@@ -150,6 +150,12 @@ async function detectPlatform() {
       platform = "gemini";
     }
 
+    // Check if on mdfy.cc
+    if (url.includes("mdfy.cc")) {
+      showOnMdfy();
+      return null;
+    }
+
     if (platform) {
       platformDot.classList.remove("inactive");
       platformDot.classList.add("active");
@@ -166,6 +172,17 @@ async function detectPlatform() {
     showNotOnAiPage();
     return null;
   }
+}
+
+function showOnMdfy() {
+  platformDot.classList.remove("inactive");
+  platformDot.classList.add("active");
+  platformDot.style.background = "#fb923c";
+  platformNameEl.classList.add("active");
+  platformNameEl.textContent = "mdfy.cc";
+  btnCapture.disabled = true;
+  btnCapture.querySelector(".label").innerHTML = 'You\'re on mdfy.cc<span class="desc">Create and edit documents directly here</span>';
+  rangeSelector.style.display = "none";
 }
 
 function showNotOnAiPage() {
