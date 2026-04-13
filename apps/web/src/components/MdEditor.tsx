@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
+import katex from "katex";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
   isAiConversation,
@@ -3255,13 +3256,36 @@ export default function MdEditor() {
         setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
       }
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
-      // then re-render to apply KaTeX/Mermaid that may have been affected by editing
       setTimeout(() => {
         wysiwygEditingRef.current = false;
-        // Re-render to restore any special elements (math, mermaid) that were
-        // damaged by contentEditable editing near them
-        doRenderRef.current(newMd);
-      }, 600);
+      }, 500);
+
+      // Re-process math elements that may have been damaged by contentEditable
+      // This is targeted — only restores broken math, doesn't replace entire DOM
+      requestAnimationFrame(() => {
+        const article = previewRef.current?.querySelector("article");
+        if (!article) return;
+        // Find any raw math spans that lost their KaTeX rendering
+        article.querySelectorAll("[data-math-style]").forEach((el) => {
+          const tex = el.textContent || "";
+          const mode = el.getAttribute("data-math-style");
+          if (!tex || el.querySelector(".katex")) return; // already rendered
+          try {
+            const rendered = katex.renderToString(tex.trim(), {
+              displayMode: mode === "display",
+              throwOnError: false,
+            });
+            const wrapper = document.createElement(mode === "display" ? "div" : "span");
+            wrapper.className = "math-rendered";
+            wrapper.setAttribute("data-math-src", encodeURIComponent(tex.trim()));
+            wrapper.setAttribute("data-math-mode", mode || "inline");
+            wrapper.setAttribute("contenteditable", "false");
+            wrapper.style.cursor = "pointer";
+            wrapper.innerHTML = rendered;
+            el.replaceWith(wrapper);
+          } catch { /* ignore */ }
+        });
+      });
     }, 150);
   }, [setMarkdown, cmSetDoc]);
 
