@@ -406,17 +406,19 @@ html, body {
 
 .mdcore-rendered pre {
   margin-bottom: 1em;
-  padding: 16px;
   background: var(--code-bg);
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   line-height: 1.5;
+  position: relative;
 }
 
 .mdcore-rendered pre code {
+  display: block;
+  padding: 1rem 1.25rem;
   background: transparent;
-  padding: 0;
-  border-radius: 0;
+  border-radius: 8px;
+  overflow-x: auto;
   font-size: 0.85em;
 }
 
@@ -428,15 +430,19 @@ html, body {
 /* Tables */
 .mdcore-rendered table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   margin-bottom: 1em;
   font-size: 0.95em;
+  border-radius: 8px;
+  border: 1px solid var(--table-border);
+  overflow: hidden;
 }
 
 .mdcore-rendered th,
 .mdcore-rendered td {
   padding: 8px 12px;
-  border: 1px solid var(--table-border);
+  border-bottom: 1px solid var(--table-border);
   text-align: left;
 }
 
@@ -445,8 +451,25 @@ html, body {
   font-weight: 600;
 }
 
-.mdcore-rendered tr:nth-child(even) {
+.mdcore-rendered tr:last-child td {
+  border-bottom: none;
+}
+
+.mdcore-rendered tbody tr:nth-child(even) td {
   background: var(--table-stripe-bg);
+}
+
+.mdcore-rendered tr:hover td {
+  background: var(--surface-hover);
+}
+
+/* Math error */
+.mdcore-rendered .math-error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  font-size: 0.8125rem;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
 }
 
 /* Images */
