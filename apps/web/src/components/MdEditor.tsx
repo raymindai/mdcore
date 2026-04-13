@@ -3255,8 +3255,13 @@ export default function MdEditor() {
         setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
       }
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
-      // (setMarkdown → doRender → html state → ref callback must all see wysiwygEditingRef=true)
-      setTimeout(() => { wysiwygEditingRef.current = false; }, 500);
+      // then re-render to apply KaTeX/Mermaid that may have been affected by editing
+      setTimeout(() => {
+        wysiwygEditingRef.current = false;
+        // Re-render to restore any special elements (math, mermaid) that were
+        // damaged by contentEditable editing near them
+        doRenderRef.current(newMd);
+      }, 600);
     }, 150);
   }, [setMarkdown, cmSetDoc]);
 
