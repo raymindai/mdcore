@@ -10,7 +10,7 @@ import { homedir } from "os";
 // ─── Config ───
 
 const BASE_URL = (process.env.MDFY_BASE_URL || "https://www.mdfy.cc").replace(/\/$/, "");
-const USER_ID = process.env.MDFY_USER_ID || "";
+const USER_EMAIL = process.env.MDFY_EMAIL || "";
 const TOKEN_FILE = join(homedir(), ".mdfy", "tokens.json");
 
 // ─── Token Store ───
@@ -44,7 +44,7 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> || {}),
   };
-  if (USER_ID) headers["x-user-id"] = USER_ID;
+  if (USER_EMAIL) headers["x-user-email"] = USER_EMAIL;
 
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
@@ -77,7 +77,7 @@ server.tool(
         markdown,
         title,
         isDraft: draft ?? false,
-        userId: USER_ID || undefined,
+        userEmail: USER_EMAIL || undefined,
       }),
     });
 
@@ -131,7 +131,7 @@ server.tool(
         markdown,
         title,
         editToken,
-        userId: USER_ID || undefined,
+        userEmail: USER_EMAIL || undefined,
         action: "auto-save",
       }),
     });
@@ -151,11 +151,11 @@ server.tool(
   "List all documents owned by the current user on mdfy.cc",
   {},
   async () => {
-    if (!USER_ID) {
+    if (!USER_EMAIL) {
       return {
         content: [{
           type: "text" as const,
-          text: "Error: MDFY_USER_ID environment variable is required to list documents.",
+          text: "Error: MDFY_EMAIL environment variable is required to list documents.",
         }],
       };
     }
@@ -195,7 +195,7 @@ server.tool(
       method: "DELETE",
       body: JSON.stringify({
         editToken,
-        userId: USER_ID || undefined,
+        userEmail: USER_EMAIL || undefined,
       }),
     });
 
@@ -221,7 +221,7 @@ server.tool(
       method: "PATCH",
       body: JSON.stringify({
         action: published ? "publish" : "unpublish",
-        userId: USER_ID || undefined,
+        userEmail: USER_EMAIL || undefined,
       }),
     });
 

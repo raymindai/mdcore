@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     password?: string;
     expiresIn?: number;
     userId?: string;
+    userEmail?: string;
     anonymousId?: string;
     editMode?: string;
     isDraft?: boolean;
@@ -38,7 +39,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, userId, anonymousId, editMode, isDraft } = body;
+  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft } = body;
+  let { userId } = body;
+
+  // Resolve email → userId if email provided
+  if (!userId && body.userEmail) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data } = await supabase.auth.admin.listUsers();
+        const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());
+        if (user) userId = user.id;
+      } catch { /* ignore */ }
+    }
+  }
 
   // Allow empty markdown for auto-save (draft creation)
   if (typeof markdown !== "string") {

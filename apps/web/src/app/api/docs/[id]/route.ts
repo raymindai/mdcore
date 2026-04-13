@@ -134,6 +134,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Resolve email → userId if provided
+  if (!body.userId && body.userEmail) {
+    try {
+      const { data } = await supabase.auth.admin.listUsers();
+      const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());
+      if (user) body.userId = user.id;
+    } catch { /* ignore */ }
+  }
+
   // Size limit (same as POST)
   if (body.markdown && body.markdown.length > 500_000) {
     return NextResponse.json({ error: "Document too large (max 500KB)" }, { status: 413 });

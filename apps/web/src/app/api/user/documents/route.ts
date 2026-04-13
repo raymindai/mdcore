@@ -2,16 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
-  const userId = req.headers.get("x-user-id");
+  let userId = req.headers.get("x-user-id");
   const anonymousId = req.headers.get("x-anonymous-id");
-
-  if (!userId && !anonymousId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const userEmail = req.headers.get("x-user-email");
 
   const supabase = getSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+  }
+
+  // Resolve email → userId if email provided without userId
+  if (!userId && userEmail) {
+    try {
+      const { data } = await supabase.auth.admin.listUsers();
+      const user = data?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
+      if (user) userId = user.id;
+    } catch { /* ignore */ }
+  }
+
+  if (!userId && !anonymousId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let query = supabase
