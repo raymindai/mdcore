@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     user_id: userId || null,
     anonymous_id: (!userId && anonymousId) ? anonymousId : null,
     edit_mode: resolvedEditMode,
-    is_draft: isDraft ?? false,
+    is_draft: isDraft ?? true,
   });
 
   if (error) {

@@ -115,6 +115,7 @@ export async function createShortUrl(
       userId: options?.userId,
       anonymousId: options?.anonymousId,
       editMode: options?.editMode,
+      isDraft: false, // Shared documents are not drafts
     }),
   });
 
