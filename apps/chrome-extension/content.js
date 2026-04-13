@@ -333,6 +333,7 @@
       // e.g., "Mermaidflowchart LR", "Bashemcc add.c", "JavaScriptconst wasm"
       // Claude/Gemini use <code class="language-xxx"> so class detection works for them
       if (!lang && platform === "chatgpt") {
+        text = text.trimStart();
         const textLower = text.toLowerCase();
         const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","wat","md","go","js","ts","sh"];
         for (const lp of langPrefixes) {
