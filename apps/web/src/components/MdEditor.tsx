@@ -4941,7 +4941,9 @@ ${html}
                                     onClick={(e) => handleDocClick(tab.id, e)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
-                                    {tab.cloudId ? (
+                                    {tab.isDraft === false && tab.isRestricted ? (
+                                      <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
+                                    ) : tab.isDraft === false ? (
                                       <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
                                     ) : (
                                       <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
@@ -6318,7 +6320,7 @@ ${html}
             <button
               key={item.label}
               onClick={() => { item.action(); setDocContextMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-xs transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
               style={{ color: (item as { danger?: boolean }).danger ? "#ef4444" : "var(--text-secondary)" }}
             >
               {item.label}
