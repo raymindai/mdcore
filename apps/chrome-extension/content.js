@@ -253,43 +253,55 @@
       }
     });
 
-    // ── Step 2: KaTeX rendered math → LaTeX source ──
-    // Process display math FIRST (outermost), then inline — prevents duplication
-    clone.querySelectorAll(".katex-display, [data-math-mode='display'], [data-math-style='display']").forEach((el) => {
-      const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
-      const tex = annotation?.textContent?.trim() ||
-                  el.getAttribute("aria-label") || "";
-      if (tex) {
-        // Normalize display math: collapse internal whitespace to single spaces
-        el.textContent = "\n$$\n" + tex.replace(/\s+/g, " ") + "\n$$\n";
+    // ── Step 2: KaTeX/MathJax → LaTeX source ──
+    // Strategy: find annotation elements directly (works regardless of KaTeX class structure)
+    const processedMathEls = new Set();
+    clone.querySelectorAll('annotation[encoding="application/x-tex"]').forEach((annotation) => {
+      const tex = annotation.textContent?.trim();
+      if (!tex) return;
+
+      // Walk up to find the outermost math container
+      let mathEl = annotation.closest(".katex-display") ||
+                   annotation.closest(".katex") ||
+                   annotation.closest("[class*='katex']") ||
+                   annotation.closest("span[class]") ||
+                   annotation.parentElement?.parentElement?.parentElement; // semantics > math > katex-mathml > katex
+      if (!mathEl || !clone.contains(mathEl) || processedMathEls.has(mathEl)) return;
+
+      // Determine display vs inline
+      const isDisplay = mathEl.classList?.contains("katex-display") ||
+                        !!mathEl.closest?.(".katex-display") ||
+                        mathEl.getAttribute?.("data-math-style") === "display";
+
+      const cleanTex = tex.replace(/\s+/g, " ");
+      mathEl.textContent = isDisplay ? "\n$$\n" + cleanTex + "\n$$\n" : "$" + cleanTex + "$";
+      processedMathEls.add(mathEl);
+    });
+
+    // Fallback: handle elements with aria-label math that have no annotation
+    clone.querySelectorAll(".katex, .katex-display, [class*='katex']").forEach((el) => {
+      if (!clone.contains(el) || processedMathEls.has(el)) return;
+      const ariaLabel = el.getAttribute("aria-label");
+      if (ariaLabel && ariaLabel.length > 1) {
+        const isDisplay = el.classList.contains("katex-display");
+        el.textContent = isDisplay ? "\n$$\n" + ariaLabel + "\n$$\n" : "$" + ariaLabel + "$";
+        processedMathEls.add(el);
       }
     });
 
-    // Inline math: .katex elements still in DOM (not destroyed by display processing)
-    clone.querySelectorAll(".katex").forEach((el) => {
-      if (!clone.contains(el)) return;
-      const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
-      const tex = annotation?.textContent?.trim() ||
-                  el.getAttribute("aria-label") || "";
-      if (tex) {
-        // Inline math: collapse ALL whitespace to single space (LaTeX ignores whitespace in math)
-        el.textContent = "$" + tex.replace(/\s+/g, " ") + "$";
-      }
-    });
-
-    // Clean up remaining MathML that would produce garbage text
-    clone.querySelectorAll("math, .katex-mathml, [class*='katex-mathml']").forEach((el) => {
+    // Clean up ALL remaining MathML / KaTeX internals that would produce garbage
+    clone.querySelectorAll("math, .katex-mathml, [class*='katex-mathml'], annotation, semantics").forEach((el) => {
       if (clone.contains(el)) el.remove();
     });
 
-    // Also handle MathJax or other renderers
+    // Also handle MathJax renderers
     clone.querySelectorAll("[data-math-style], .MathJax, .MathJax_Display").forEach((mathEl) => {
+      if (processedMathEls.has(mathEl)) return;
       const src = mathEl.getAttribute("data-math-src") || mathEl.getAttribute("aria-label") || "";
       if (src) {
         const isDisplay = mathEl.getAttribute("data-math-style") === "display" ||
                           mathEl.classList.contains("MathJax_Display");
-        const cleanSrc = isDisplay ? src : src.replace(/\s*\n\s*/g, " ");
-        mathEl.textContent = isDisplay ? "\n$$\n" + cleanSrc + "\n$$\n" : "$" + cleanSrc + "$";
+        mathEl.textContent = isDisplay ? "\n$$\n" + src + "\n$$\n" : "$" + src.replace(/\s+/g, " ") + "$";
       }
     });
 
