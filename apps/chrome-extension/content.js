@@ -473,6 +473,8 @@
     text = text.replace(/\bshow_widget\b\s*/gi, "");
     text = text.replace(/Reading\s+\w+\s+design\s+skill[^\n]*/gi, "");
     text = text.replace(/Click any node to learn more\s*/gi, "");
+    text = text.replace(/\bConnecting to\s*\.{3}\s*/gi, "");
+    text = text.replace(/^\s*V\s*$/gm, "");
 
     // Fix inline math spanning multiple lines: $...$ must be single-line
     // Only match LaTeX-like content (contains backslash) to avoid catching code variables like $add
