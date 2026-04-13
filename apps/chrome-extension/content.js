@@ -371,7 +371,7 @@
         pre.textContent = "";
         return;
       }
-      pre.textContent = "\n\n```" + lang + "\n" + text.trim() + "\n```\n\n";
+      pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
     });
 
     // ── Step 5: Inline code ──
@@ -502,6 +502,8 @@
       return match;
     });
 
+    // Clean up: collapse excessive newlines and remove trailing spaces per line
+    text = text.replace(/[ \t]+$/gm, ""); // trailing whitespace per line
     text = text.replace(/\n{3,}/g, "\n\n");
     return text.trim();
   }
