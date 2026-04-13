@@ -303,20 +303,22 @@
     });
 
     // ── Step 4: Code blocks ──
-    const knownLangs = /^(mermaid|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx)$/i;
+    const knownLangs = /^(mermaid|wat|wasm|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx)$/i;
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
       const target = code || pre;
       // Replace <br> with \n — some sites use <br> for line breaks in code
       target.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
-      let text = target.textContent;
+      // Use innerText for code: respects visual line breaks from <div>, <span> lines, white-space:pre
+      // textContent misses line breaks on Claude/Gemini where lines are in block elements
+      let text = target.innerText || target.textContent;
       let lang = "";
       // Try class-based detection
       const langClass = (code || pre).className.match(/language-(\w+)|lang-(\w+)/);
       if (langClass) lang = langClass[1] || langClass[2];
       // Check pre's lang attribute
       if (!lang && pre.getAttribute("lang")) lang = pre.getAttribute("lang");
-      // ChatGPT/Claude: check previous sibling header for language name
+      // Check previous sibling header for language name
       if (!lang) {
         const header = pre.previousElementSibling;
         if (header && header.textContent.trim().length < 30) {
@@ -327,12 +329,12 @@
           }
         }
       }
-      // ChatGPT: language name prepended to code without separator
+      // ChatGPT ONLY: language name prepended to code without separator
       // e.g., "Mermaidflowchart LR", "Bashemcc add.c", "JavaScriptconst wasm"
-      if (!lang) {
+      // Claude/Gemini use <code class="language-xxx"> so class detection works for them
+      if (!lang && platform === "chatgpt") {
         const textLower = text.toLowerCase();
-        // Try longest names first to avoid partial matches (e.g., "js" matching before "json")
-        const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","md","go","js","ts","sh"];
+        const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","wat","md","go","js","ts","sh"];
         for (const lp of langPrefixes) {
           if (textLower.startsWith(lp) && text.length > lp.length) {
             lang = lp;
@@ -340,7 +342,6 @@
             break;
           }
         }
-        // Single-char languages (c, r) — only match if first line is just the letter
         if (!lang) {
           const firstLine = text.split("\n")[0].trim().toLowerCase();
           if ((firstLine === "c" || firstLine === "r") && text.split("\n").length > 1) {
