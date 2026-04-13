@@ -1661,8 +1661,9 @@ export default function MdEditor() {
     setTitle(tab.title || undefined);
     undoStack.current = [tab.markdown];
     redoStack.current = [];
-    // Use microtask to ensure React state updates are flushed before render starts
-    Promise.resolve().then(() => doRenderRef.current(tab.markdown));
+    // Cancel any pending debounced render from CodeMirror
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    doRenderRef.current(tab.markdown);
     // Update permission + doc state based on tab
     setDocId(tab.cloudId || null);
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
