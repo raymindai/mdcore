@@ -116,6 +116,9 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
             lastSavedMdRef.current = args.markdown;
             retryCountRef.current = 0; // Reset on success
             setState({ isSaving: false, lastSaved: new Date(), error: null });
+          } else if (res.status === 403) {
+            // Permission error — likely session expired or owner mismatch
+            setState((s) => ({ ...s, isSaving: false, error: "Session expired. Refresh to continue editing." }));
           } else {
             const err = await res.json().catch(() => ({}));
             setState((s) => ({ ...s, isSaving: false, error: err.error || "Save failed" }));
