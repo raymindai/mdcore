@@ -4575,7 +4575,7 @@ ${html}
               <button
                 onClick={() => setShowSidebarHelp(!showSidebarHelp)}
                 className="w-4 h-4 rounded flex items-center justify-center transition-all"
-                style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-faint)", opacity: showSidebarHelp ? 1 : 0.4 }}
+                style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-muted)", opacity: showSidebarHelp ? 1 : 0.6 }}
                 title="What do the icons and filters mean?"
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
@@ -4691,7 +4691,7 @@ ${html}
           />
           {/* Help panel — global, under FILES header */}
           {showSidebarHelp && (
-            <div className="shrink-0 mx-2 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+            <div className="shrink-0 mx-2 mt-1.5 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
               <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you</span></div>
@@ -4723,7 +4723,7 @@ ${html}
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
               const sharedCount = allMyTabs.filter(t => t.isDraft === false).length;
               return (
-                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-3`}>
+                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => { setShowMyDocs(!showMyDocs); }}
