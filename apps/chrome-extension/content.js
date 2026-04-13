@@ -502,7 +502,9 @@
       return match;
     });
 
-    // Clean up: collapse excessive newlines and remove trailing spaces per line
+    // Clean up: remove invisible unicode characters that break markdown parsing
+    text = text.replace(/[\u200B\u200C\u200D\uFEFF]/g, ""); // zero-width chars
+    text = text.replace(/\u00A0/g, " "); // non-breaking space → regular space
     text = text.replace(/[ \t]+$/gm, ""); // trailing whitespace per line
     text = text.replace(/\n{3,}/g, "\n\n");
     return text.trim();
