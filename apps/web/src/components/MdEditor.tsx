@@ -5135,7 +5135,12 @@ ${html}
                                     ) : (
                                       <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
-                                    <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="truncate block">{tab.title || "Untitled"}</span>
+                                      {showSharedOwner && tab.ownerEmail && (
+                                        <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
