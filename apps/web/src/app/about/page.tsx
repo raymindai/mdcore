@@ -5,7 +5,7 @@ import MdfyLogo from "@/components/MdfyLogo";
 export const metadata: Metadata = {
   title: "About — mdfy.cc",
   description:
-    "mdfy.cc — the fastest way from thought to shared document. Import anything, render beautifully, share instantly. Powered by Rust + WASM.",
+    "mdfy.cc — Your Markdown, Beautifully Published. Import anything, render beautifully, share instantly. Powered by Rust + WASM.",
   openGraph: {
     title: "About — mdfy.cc",
     description:
@@ -946,7 +946,7 @@ export default function AboutPage() {
                 <MdfyLogo size={18} />
               </div>
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
-                The fastest way from thought to shared document.
+                Your Markdown, Beautifully Published.
                 Permanent URL. Always editable. Cross-AI.
               </p>
             </div>

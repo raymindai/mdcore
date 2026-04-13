@@ -1102,8 +1102,7 @@ export default function PluginsPage() {
                 <MdfyLogo size={18} />
               </div>
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
-                The fastest way from thought to shared document.
-                Permanent URL. Always editable. Cross-AI.
+                Your Markdown, Beautifully Published.
               </p>
             </div>
             <div>

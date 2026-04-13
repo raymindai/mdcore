@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.cc -- The fastest way from thought to shared document.",
+  title: "mdfy.cc -- Your Markdown, Beautifully Published.",
   description:
     "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
   keywords: [
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   authors: [{ name: "mdfy", url: "https://mdfy.cc" }],
   metadataBase: new URL("https://mdfy.cc"),
   openGraph: {
-    title: "mdfy.cc -- Create. Share. Publish.",
+    title: "mdfy.cc -- Your Markdown, Beautifully Published.",
     description:
       "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
     url: "https://mdfy.cc",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.cc -- The fastest way from thought to shared document.",
+    title: "mdfy.cc -- Your Markdown, Beautifully Published.",
     description:
       "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API.",
     images: ["/api/og"],

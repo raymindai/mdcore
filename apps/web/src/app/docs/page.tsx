@@ -1022,8 +1022,7 @@ export default function DocsPage() {
                   maxWidth: 260,
                 }}
               >
-                The fastest way from thought to shared document. Permanent URL.
-                Always editable. Cross-AI.
+                Your Markdown, Beautifully Published.
               </p>
             </div>
             {/* Product */}
