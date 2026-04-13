@@ -2234,6 +2234,9 @@ export default function MdEditor() {
                 markdown: doc.markdown,
                 title: doc.title || t.title,
                 permission: perm,
+                isDraft: doc.is_draft === false ? false : true,
+                isSharedByMe: docIsSharedByMe || false,
+                isRestricted: (doc.allowedEmails?.length > 0) || false,
               } : t));
             } else {
               // Create new tab
