@@ -75,6 +75,31 @@ const features = [
     desc: "Two carefully crafted themes. Your preference is saved locally.",
     color: "#94a3b8",
   },
+  {
+    label: "Document Sharing",
+    desc: "Share publicly via URL or restrict to specific people. Toggle between Private and Shared states anytime.",
+    color: "#22c55e",
+  },
+  {
+    label: "Multi-Select",
+    desc: "Cmd+Click to toggle, Shift+Click for range. Batch move to folders or trash.",
+    color: "#a78bfa",
+  },
+  {
+    label: "MCP Server",
+    desc: "Let Claude Code, ChatGPT, and other AI tools create and manage documents via mdfy-mcp.",
+    color: "#38bdf8",
+  },
+  {
+    label: "VS Code Extension",
+    desc: "WYSIWYG preview, sidebar with local/synced/cloud bridge, one-click publish, bidirectional sync.",
+    color: "#f472b6",
+  },
+  {
+    label: "Chrome Extension",
+    desc: "Capture AI outputs from ChatGPT, Claude, and Gemini with one click. Auto-format and publish.",
+    color: "#34d399",
+  },
 ];
 
 const timeline = [
@@ -956,7 +981,7 @@ export default function AboutPage() {
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
                 { label: "Twitter / X", href: "#" },
                 { label: "Terms of Service", href: "#" },
-                { label: "Privacy Policy", href: "#" },
+                { label: "Privacy Policy", href: "/privacy" },
               ].map((l) => (
                 <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
               ))}

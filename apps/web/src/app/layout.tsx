@@ -15,26 +15,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.cc — Paste Markdown. See it beautiful.",
+  title: "mdfy.cc -- The fastest way from thought to shared document.",
   description:
-    "The universal Markdown renderer for the AI era. Paste any Markdown — GFM, Obsidian, MDX, Pandoc — and see it rendered instantly via Rust + WASM. No login required.",
+    "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
   keywords: [
     "markdown",
-    "renderer",
-    "GFM",
-    "obsidian",
-    "MDX",
-    "WASM",
-    "rust",
+    "editor",
+    "publisher",
+    "share",
+    "document",
+    "WYSIWYG",
+    "MCP",
+    "API",
     "AI",
-    "mdcore",
   ],
   authors: [{ name: "mdfy", url: "https://mdfy.cc" }],
   metadataBase: new URL("https://mdfy.cc"),
   openGraph: {
-    title: "mdfy.cc — The Markdown Engine for the AI Era",
+    title: "mdfy.cc -- Create. Share. Publish.",
     description:
-      "Paste any Markdown, see it beautiful. Powered by a Rust engine compiled to WASM. Supports every flavor: GFM, Obsidian, MDX, Pandoc, KaTeX, Mermaid.",
+      "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
     url: "https://mdfy.cc",
     siteName: "mdfy.cc",
     type: "website",
@@ -42,9 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.cc — Paste Markdown. See it beautiful.",
+    title: "mdfy.cc -- The fastest way from thought to shared document.",
     description:
-      "Universal Markdown renderer. Rust + WASM. Every flavor supported.",
+      "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API.",
     images: ["/api/og"],
   },
   robots: {

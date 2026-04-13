@@ -367,6 +367,236 @@ export default function PluginsPage() {
         </div>
       </section>
 
+      {/* ───────── MCP SERVER ───────── */}
+      <section
+        style={{
+          maxWidth: 1080,
+          margin: "0 auto",
+          padding: "0 24px 60px",
+        }}
+      >
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: "36px 32px 28px",
+              borderBottom: "1px solid var(--border-dim)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "#18181b",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid #27272a",
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    MCP Server
+                  </h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+                    mdfy-mcp on npm
+                  </p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Connect any AI tool to mdfy.cc. Create, read, update, and manage documents programmatically.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: "#4ade8015",
+                  color: "#4ade80",
+                }}
+              >
+                Available on npm
+              </span>
+              <span
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: "var(--toggle-bg)",
+                  color: "var(--text-faint)",
+                }}
+              >
+                TypeScript
+              </span>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 1,
+              background: "var(--border-dim)",
+            }}
+          >
+            {[
+              {
+                title: "6 MCP Tools",
+                items: ["create -- new document with shareable URL", "read -- fetch document content by ID", "update -- update existing document content", "list -- list all your documents", "publish -- toggle Private/Shared", "delete -- delete a document"],
+              },
+              {
+                title: "Compatibility",
+                items: ["Works with Claude Code", "Works with Claude Desktop", "Works with any MCP-compatible tool", "Email-based auth -- no API keys needed"],
+              },
+              {
+                title: "Developer Experience",
+                items: ["Auto-managed edit tokens", "Zero config -- just npx mdfy-mcp", "JSON in, JSON out", "Full REST API fallback"],
+              },
+            ].map((section) => (
+              <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, marginTop: 0 }}>
+                  {section.title}
+                </h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {section.items.map((item) => (
+                    <li
+                      key={item}
+                      style={{
+                        fontSize: 13,
+                        color: "var(--text-muted)",
+                        padding: "4px 0",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ color: "var(--accent)", flexShrink: 0 }}>+</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* Install */}
+          <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
+              Install
+            </h3>
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--text-muted)",
+                marginBottom: 12,
+                marginTop: 0,
+              }}
+            >
+              Create{" "}
+              <code
+                style={{
+                  background: "#18181b",
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
+                  color: "var(--accent)",
+                }}
+              >
+                .mcp.json
+              </code>{" "}
+              in your project:
+            </p>
+            <pre
+              style={{
+                background: "#18181b",
+                borderRadius: 10,
+                padding: "18px 20px",
+                overflow: "auto",
+                fontSize: 13,
+                lineHeight: 1.7,
+                fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
+                color: "var(--text-secondary)",
+                margin: 0,
+                border: "none",
+              }}
+            >
+              <code>{`{
+  "mcpServers": {
+    "mdfy": {
+      "command": "npx",
+      "args": ["mdfy-mcp"],
+      "env": {
+        "MDFY_EMAIL": "your@email.com"
+      }
+    }
+  }
+}`}</code>
+            </pre>
+            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+              <a
+                href="https://www.npmjs.com/package/mdfy-mcp"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  background: "var(--accent)",
+                  color: "#000",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                View on npm
+              </a>
+              <Link
+                href="/docs"
+                style={{
+                  display: "inline-block",
+                  background: "var(--accent-dim)",
+                  color: "var(--accent)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Full API Reference
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── VS CODE EXTENSION ───────── */}
       <section
         style={{
@@ -454,7 +684,7 @@ export default function PluginsPage() {
               },
               {
                 title: "Editor Integration",
-                items: ["Status bar: \u2713 synced / \u2191 pushing / \u2193 pulling", "OAuth login via browser redirect", ".mdfy.json sidecar for sync metadata", "Publish from command palette"],
+                items: ["Status bar: \u2713 synced / \u2191 pushing / \u2193 pulling", "OAuth login via browser redirect", ".mdfy.json sidecar for sync metadata", "Publish from command palette", "Sidebar with local/synced/cloud document bridge", "CodeMirror source view with GFM syntax highlighting", "View mode switcher (Live/Source)"],
               },
             ].map((section) => (
               <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
@@ -906,7 +1136,7 @@ export default function PluginsPage() {
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
                 { label: "Twitter / X", href: "#" },
                 { label: "Terms of Service", href: "#" },
-                { label: "Privacy Policy", href: "#" },
+                { label: "Privacy Policy", href: "/privacy" },
               ].map((l) => (
                 <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
               ))}

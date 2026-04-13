@@ -19,7 +19,7 @@ const mcpTools = [
   { name: "mdfy_read", desc: "Fetch document content by ID" },
   { name: "mdfy_update", desc: "Update existing document content" },
   { name: "mdfy_list", desc: "List all your documents" },
-  { name: "mdfy_publish", desc: "Toggle between public and private" },
+  { name: "mdfy_publish", desc: "Toggle between Private and Shared" },
   { name: "mdfy_delete", desc: "Delete a document" },
 ];
 
@@ -1123,7 +1123,7 @@ export default function DocsPage() {
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
                 { label: "Twitter / X", href: "#" },
                 { label: "Terms of Service", href: "#" },
-                { label: "Privacy Policy", href: "#" },
+                { label: "Privacy Policy", href: "/privacy" },
               ].map((l) => (
                 <a
                   key={l.label}

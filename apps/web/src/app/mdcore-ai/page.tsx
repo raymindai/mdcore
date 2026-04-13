@@ -772,7 +772,7 @@ markdown = client.convert(url)` },
                 { label: "Playground", href: "#playground" },
                 { label: "Pricing", href: "#pricing" },
                 { label: "mdfy.cc", href: "https://mdfy.cc" },
-                { label: "Chrome Extension", href: "#" },
+                { label: "Chrome Extension", href: "/plugins" },
                 { label: "@mdcore/terminal", href: "#" },
               ].map((link) => (
                 <a key={link.label} href={link.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "4px 0" }}>{link.label}</a>

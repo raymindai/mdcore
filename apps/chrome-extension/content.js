@@ -722,6 +722,8 @@
       try {
         // Scroll iframe into view
         iframe.scrollIntoView({ behavior: "instant", block: "start" });
+        // Scroll down 30px extra to clear sticky header
+        iframe.closest("[style*='overflow']")?.scrollBy(0, -30) || window.scrollBy(0, -30);
         // Wait for scroll + render
         await new Promise((r) => setTimeout(r, 300));
 
