@@ -4572,6 +4572,14 @@ ${html}
                 </div>
               </div>
               <span style={{ color: "var(--accent)" }}>FILES</span>
+              <button
+                onClick={() => setShowSidebarHelp(!showSidebarHelp)}
+                className="w-4 h-4 rounded flex items-center justify-center transition-all"
+                style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-faint)", opacity: showSidebarHelp ? 1 : 0.4 }}
+                title="What do the icons and filters mean?"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+              </button>
             </div>
             <div className="flex items-stretch gap-1">
               <div className="relative group flex">
@@ -4581,7 +4589,6 @@ ${html}
                   style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                 >
                   <Download width={10} height={10} />
-                  {sidebarWidth >= 200 && "IMPORT"}
                 </button>
                 <div className="absolute top-full left-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -4682,6 +4689,22 @@ ${html}
               e.target.value = "";
             }}
           />
+          {/* Help panel — global, under FILES header */}
+          {showSidebarHelp && (
+            <div className="shrink-0 mx-2 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Has a public URL</span></div>
+              <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
+              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Icons</div>
+              <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private document</span></div>
+              <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared publicly</span></div>
+              <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
+              <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
+              <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Editable (shared with me)</span></div>
+            </div>
+          )}
           {/* Document list — 3 permanent sections, accordion layout */}
           <div className="flex-1 flex flex-col min-h-0" onContextMenu={(e) => {
             e.preventDefault();
@@ -4771,30 +4794,7 @@ ${html}
                             );
                           })}
                         </div>
-                        <button
-                          onClick={() => setShowSidebarHelp(!showSidebarHelp)}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-all"
-                          style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-faint)", opacity: showSidebarHelp ? 1 : 0.4 }}
-                          title="What do these mean?"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
-                        </button>
                       </div>
-                      {showSidebarHelp && (
-                        <div className="mx-1 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
-                          <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
-                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
-                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you</span></div>
-                          <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Has a public URL</span></div>
-                          <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                          <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Icons</div>
-                          <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private document</span></div>
-                          <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared publicly</span></div>
-                          <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
-                          <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
-                          <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Editable (shared with me)</span></div>
-                        </div>
-                      )}
                       {/* Search — toggle with icon */}
                       {(sidebarSearch || showSidebarSearch) && (
                         <div className="flex items-center gap-1.5 mx-1 mb-1.5 px-2 rounded" style={{ background: "var(--toggle-bg)" }}>
