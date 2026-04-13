@@ -2167,7 +2167,7 @@ export default function MdEditor() {
         loadTab(sharedTab);
         setIsSharedDoc(true);
         setViewMode("preview");
-        await doRender(shared);
+        // loadTab already triggers doRender — no duplicate call
         window.history.replaceState(null, "", "/");
         return;
       }
