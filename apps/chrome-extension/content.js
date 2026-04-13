@@ -718,8 +718,14 @@
         if (rect.width < 50 || rect.height < 50) continue;
 
         // Take screenshot
+        if (!chrome.runtime?.id) continue;
         const screenshotDataUrl = await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ action: "capture-tab" }, (r) => resolve(r?.dataUrl || null));
+          try {
+            chrome.runtime.sendMessage({ action: "capture-tab" }, (r) => {
+              if (chrome.runtime.lastError) { resolve(null); return; }
+              resolve(r?.dataUrl || null);
+            });
+          } catch { resolve(null); }
         });
         if (!screenshotDataUrl) continue;
 
@@ -828,15 +834,20 @@
 
   async function uploadImageToMdfy(imageUrl) {
     try {
+      if (!chrome.runtime?.id) return null;
       const userId = await getUserId();
 
       // Upload via background service worker (bypasses CORS)
-      // Works with or without userId (anonymous uploads are rate-limited server-side)
       const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage(
-          { action: "upload-image", dataUrl: imageUrl, userId: userId || undefined },
-          (r) => resolve(r || { error: "no response" })
-        );
+        try {
+          chrome.runtime.sendMessage(
+            { action: "upload-image", dataUrl: imageUrl, userId: userId || undefined },
+            (r) => {
+              if (chrome.runtime.lastError) { resolve({ error: chrome.runtime.lastError.message }); return; }
+              resolve(r || { error: "no response" });
+            }
+          );
+        } catch { resolve({ error: "extension context invalidated" }); }
       });
 
       if (response.url) return response.url;
