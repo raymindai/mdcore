@@ -2246,7 +2246,9 @@ export default function MdEditor() {
                 markdown: doc.markdown,
                 permission: perm,
                 shared: perm !== "mine",
+                isDraft: doc.is_draft === false ? false : true,
                 isSharedByMe: docIsSharedByMe || undefined,
+                isRestricted: (doc.allowedEmails?.length > 0) || false,
                 ownerEmail: doc.ownerEmail || undefined,
               };
               setTabs(prev => {
@@ -2481,11 +2483,13 @@ export default function MdEditor() {
           );
           setTabs(prev => prev.map(t => {
             if (!t.cloudId) return t;
-            const updates: Partial<Tab> = {};
-            if (sharedDocIds.has(t.cloudId)) updates.isSharedByMe = true;
-            if (publishedIds.has(t.cloudId)) updates.isDraft = false;
-            if (restrictedIds.has(t.cloudId)) updates.isRestricted = true;
-            return Object.keys(updates).length ? { ...t, ...updates } : t;
+            // Bidirectional sync: set AND clear based on server state
+            return {
+              ...t,
+              isDraft: publishedIds.has(t.cloudId) ? false : true,
+              isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
+              isRestricted: restrictedIds.has(t.cloudId) ? true : false,
+            };
           }));
         }
       })
@@ -3393,8 +3397,8 @@ export default function MdEditor() {
 
     const isMine = !currentTab?.permission || currentTab.permission === "mine";
     if (cid && isMine && isAuthenticated && user) {
-      // Publish the draft first if needed
-      if (currentTab?.isDraft) {
+      // Publish the draft first if needed (isDraft could be true OR undefined)
+      if (currentTab?.isDraft !== false) {
         try {
           await fetch(`/api/docs/${cid}`, {
             method: "PATCH",
@@ -3468,7 +3472,7 @@ export default function MdEditor() {
         saveEditToken(newDocId, editToken);
         setDocId(newDocId);
         setIsOwner(true);
-        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false } : t));
+        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false, isSharedByMe: true } : t));
         window.history.replaceState(null, "", `/?doc=${newDocId}`);
         // Open share modal immediately after creation
         setShareState("idle");
@@ -3481,7 +3485,7 @@ export default function MdEditor() {
           saveEditToken(newDocId, editToken);
           setDocId(newDocId);
           setIsOwner(true);
-          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false } : t));
+          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false, isSharedByMe: true } : t));
           await copyToClipboard(url);
           window.history.replaceState(null, "", `/?doc=${newDocId}`);
           setShareState("copied");
