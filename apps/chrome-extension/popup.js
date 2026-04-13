@@ -175,13 +175,18 @@ async function detectPlatform() {
 }
 
 function showOnMdfy() {
-  platformDot.classList.remove("inactive");
-  platformDot.classList.add("active");
-  platformDot.style.background = "#fb923c";
-  platformNameEl.classList.add("active");
-  platformNameEl.textContent = "mdfy.cc";
+  if (platformDot) {
+    platformDot.classList.remove("inactive");
+    platformDot.classList.add("active");
+    platformDot.style.background = "#fb923c";
+  }
+  if (platformNameEl) {
+    platformNameEl.classList.add("active");
+    platformNameEl.textContent = "mdfy.cc";
+  }
   btnCapture.disabled = true;
-  btnCapture.querySelector(".label").innerHTML = 'You\'re on mdfy.cc<span class="desc">Create and edit documents directly here</span>';
+  const labelEl = btnCapture.querySelector(".label");
+  if (labelEl) labelEl.innerHTML = 'You\'re on mdfy.cc<span class="desc">Create and edit documents directly here</span>';
   rangeSelector.style.display = "none";
 }
 
