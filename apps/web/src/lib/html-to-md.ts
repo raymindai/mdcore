@@ -15,6 +15,54 @@ export function htmlToMarkdown(html: string): string {
 
   turndown.use(gfm);
 
+  // Code blocks: preserve language from pre[lang] attribute
+  turndown.addRule("fenced-code-with-lang", {
+    filter: (node) => {
+      return (
+        node.nodeName === "PRE" &&
+        !!node.getAttribute("lang")
+      );
+    },
+    replacement: (_content, node) => {
+      const lang = (node as HTMLElement).getAttribute("lang") || "";
+      const code = (node as HTMLElement).querySelector("code");
+      const text = code ? code.textContent || "" : (node as HTMLElement).textContent || "";
+      return `\n\n\`\`\`${lang}\n${text.replace(/\n$/, "")}\n\`\`\`\n\n`;
+    },
+  });
+
+  // Mermaid: preserve mermaid code from rendered containers
+  turndown.addRule("mermaid-container", {
+    filter: (node) => {
+      return (
+        node.classList.contains("mermaid-container") ||
+        node.classList.contains("mermaid-rendered")
+      );
+    },
+    replacement: (_content, node) => {
+      // Try to find original code from data attribute or pre element
+      const el = node as HTMLElement;
+      const originalCode = el.getAttribute("data-original-code") ||
+        el.querySelector("pre")?.textContent ||
+        el.querySelector(".mermaid")?.getAttribute("data-original-code") ||
+        el.textContent || "";
+      return `\n\n\`\`\`mermaid\n${originalCode.trim()}\n\`\`\`\n\n`;
+    },
+  });
+
+  // ASCII rendered diagrams: preserve original code
+  turndown.addRule("ascii-rendered", {
+    filter: (node) => {
+      return node.classList.contains("ascii-rendered");
+    },
+    replacement: (_content, node) => {
+      const el = node as HTMLElement;
+      const originalCode = el.getAttribute("data-original-code") || "";
+      if (originalCode) return `\n\n\`\`\`\n${originalCode.trim()}\n\`\`\`\n\n`;
+      return "";
+    },
+  });
+
   // Math: convert .math-rendered back to $...$ or $$...$$
   turndown.addRule("math-inline", {
     filter: (node) => {

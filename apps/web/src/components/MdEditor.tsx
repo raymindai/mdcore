@@ -3241,9 +3241,15 @@ export default function MdEditor() {
     wysiwygDebounce.current = setTimeout(() => {
       const article = previewRef.current?.querySelector("article");
       if (!article) return;
-      // Strip copy buttons and other UI elements before converting
+      // Strip ALL UI elements before converting to markdown
       const clone = article.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll(".code-copy-btn, .mermaid-edit-btn, .code-lang-label").forEach(el => el.remove());
+      // Remove UI overlays (buttons, headers, spacers, toolbars)
+      clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(el => el.remove());
+      // Unwrap table-wrapper divs (keep the table inside)
+      clone.querySelectorAll(".table-wrapper").forEach(wrapper => {
+        const table = wrapper.querySelector("table");
+        if (table) wrapper.replaceWith(table);
+      });
       const newMd = htmlToMarkdown(clone.innerHTML);
       setMarkdown(newMd);
       cmSetDoc(newMd);
