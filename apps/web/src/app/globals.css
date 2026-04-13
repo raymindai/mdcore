@@ -448,8 +448,14 @@ body {
   white-space: normal;
 }
 
-.mdcore-rendered .katex-display {
+/* Display math container */
+.mdcore-rendered .math-rendered[data-math-mode="display"] {
+  display: block;
   margin: 1.5rem 0;
+}
+
+.mdcore-rendered .katex-display {
+  margin: 0;
   padding: 1rem;
   background: var(--surface);
   border-radius: 8px;

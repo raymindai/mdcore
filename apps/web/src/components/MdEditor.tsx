@@ -518,13 +518,23 @@ Click the **flavor badge** (e.g. \`GFM ▾\`) in the Source header to convert be
 
 Paste output from **Claude Code** or any terminal — unicode tables and checkmarks auto-convert:
 
+Before (terminal output):
+
 \`\`\`
-┌──────────┬────────┐         | Feature  | Status |
-│ Feature  │ Status │   →     |----------|--------|
-├──────────┼────────┤         | Auth     | Done   |
-│ Auth     │ ✅     │         | Export   | Done   |
+┌──────────┬────────┐
+│ Feature  │ Status │
+├──────────┼────────┤
+│ Auth     │ Done   │
+│ Export   │ Done   │
 └──────────┴────────┘
 \`\`\`
+
+After (auto-converted):
+
+| Feature | Status |
+|---------|--------|
+| Auth    | Done   |
+| Export  | Done   |
 
 ## Narrow View
 
