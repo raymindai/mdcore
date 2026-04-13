@@ -467,8 +467,9 @@
     text = text.replace(/Click any node to learn more\s*/gi, "");
 
     // Fix inline math spanning multiple lines: $...$ must be single-line
+    // Only match LaTeX-like content (contains backslash) to avoid catching code variables like $add
     text = text.replace(/\$([^$]+?)\$/g, (match, inner) => {
-      if (inner.includes("\n")) {
+      if (inner.includes("\n") && inner.includes("\\")) {
         return "$" + inner.replace(/\s*\n\s*/g, " ").trim() + "$";
       }
       return match;
