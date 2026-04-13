@@ -152,8 +152,8 @@
       ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
       "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
       "[class*='view-transition'], style, script, noscript, " +
-      "[class*='skill'], [class*='toolbar'], " +
-      "[class*='show_widget'], " +
+      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
+      "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
       "button[aria-expanded], " +
       "[aria-hidden='true'], .sr-only"
     ).forEach((el) => el.remove());
@@ -460,9 +460,11 @@
     let text = extractText(clone);
 
     // Remove Claude UI artifacts that slip through
-    text = text.replace(/V?visualize\s*V?visualize\s*/gi, "");
-    text = text.replace(/show_widget\s*/gi, "");
-    text = text.replace(/Reading\s+\w+\s+design\s+skill\s*/gi, "");
+    text = text.replace(/\bV\s*\n\s*visualize\b/gi, "");
+    text = text.replace(/\bvisualize\b\s*/gi, "");
+    text = text.replace(/\bshow_widget\b\s*/gi, "");
+    text = text.replace(/Reading\s+\w+\s+design\s+skill[^\n]*/gi, "");
+    text = text.replace(/Click any node to learn more\s*/gi, "");
 
     // Fix inline math spanning multiple lines: $...$ must be single-line
     text = text.replace(/\$([^$]+?)\$/g, (match, inner) => {
@@ -683,6 +685,7 @@
    * with inline images. Uses chrome.tabs.captureVisibleTab + canvas crop.
    */
   async function preProcessArtifactIframes() {
+    if (!chrome.runtime?.id) return; // extension context invalidated
     const iframes = document.querySelectorAll(".font-claude-response iframe");
     if (iframes.length === 0) return;
 
