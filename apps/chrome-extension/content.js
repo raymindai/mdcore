@@ -335,25 +335,37 @@
           }
         }
       }
-      // ChatGPT ONLY: language name prepended to code without separator
-      // e.g., "Mermaidflowchart LR", "Bashemcc add.c", "JavaScriptconst wasm"
-      // Claude/Gemini use <code class="language-xxx"> so class detection works for them
+      // ChatGPT ONLY: language label in first child element or first line
+      // ChatGPT has no <code>, uses <div> children inside <pre>
       if (!lang && platform === "chatgpt") {
-        text = text.trimStart();
-        const textLower = text.toLowerCase();
-        const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","wat","md","go","js","ts","sh"];
-        for (const lp of langPrefixes) {
-          if (textLower.startsWith(lp) && text.length > lp.length) {
-            lang = lp;
-            text = text.slice(lp.length);
-            break;
+        // Method 1: check first child element for language name
+        const firstChild = pre.children[0];
+        if (firstChild && firstChild !== (code || pre)) {
+          const childText = firstChild.textContent.trim().toLowerCase();
+          if (knownLangs.test(childText) || childText === "c" || childText === "r") {
+            lang = childText;
+            firstChild.remove();
+            text = (target.innerText || target.textContent);
           }
         }
+        // Method 2: prefix matching on text content
         if (!lang) {
-          const firstLine = text.split("\n")[0].trim().toLowerCase();
-          if ((firstLine === "c" || firstLine === "r") && text.split("\n").length > 1) {
-            lang = firstLine;
-            text = text.split("\n").slice(1).join("\n");
+          text = text.trimStart();
+          const textLower = text.toLowerCase();
+          const langPrefixes = ["objective-c","javascript","typescript","powershell","dockerfile","protobuf","plaintext","assembly","markdown","graphql","makefile","mermaid","csharp","python","kotlin","haskell","elixir","erlang","clojure","groovy","matlab","golang","apache","latex","swift","scala","shell","nginx","ruby","rust","java","bash","html","scss","css","json","yaml","toml","diff","dart","perl","php","lua","vim","ini","csv","tsx","jsx","sql","cpp","asm","yml","zsh","tex","wat","md","go","js","ts","sh"];
+          for (const lp of langPrefixes) {
+            if (textLower.startsWith(lp) && text.length > lp.length) {
+              lang = lp;
+              text = text.slice(lp.length);
+              break;
+            }
+          }
+          if (!lang) {
+            const firstLine = text.split("\n")[0].trim().toLowerCase();
+            if ((firstLine === "c" || firstLine === "r") && text.split("\n").length > 1) {
+              lang = firstLine;
+              text = text.split("\n").slice(1).join("\n");
+            }
           }
         }
       }
