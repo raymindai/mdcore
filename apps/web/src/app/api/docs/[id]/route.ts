@@ -423,11 +423,20 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
-  let body: { editToken?: string; userId?: string; anonymousId?: string };
+  let body: { editToken?: string; userId?: string; userEmail?: string; anonymousId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Resolve email → userId
+  if (!body.userId && body.userEmail) {
+    try {
+      const { data } = await supabase.auth.admin.listUsers();
+      const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());
+      if (user) body.userId = user.id;
+    } catch { /* ignore */ }
   }
 
   const { editToken, userId, anonymousId } = body;

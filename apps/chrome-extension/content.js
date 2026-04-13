@@ -965,8 +965,9 @@
         });
 
         if (res.ok) {
-          const { id } = JSON.parse(res.body);
-          window.open(MDFY_URL + "/?doc=" + id, "mdfy_" + Date.now());
+          const { id, editToken } = JSON.parse(res.body);
+          const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
+          window.open(MDFY_URL + "/?doc=" + id + tokenParam, "mdfy_" + Date.now());
           return;
         }
       } catch (err) {

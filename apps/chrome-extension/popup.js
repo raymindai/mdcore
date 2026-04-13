@@ -91,8 +91,9 @@ async function openInMdfy(markdown) {
       });
 
       if (res.ok) {
-        const { id } = JSON.parse(res.body);
-        chrome.tabs.create({ url: MDFY_URL + "/?doc=" + id });
+        const { id, editToken } = JSON.parse(res.body);
+        const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
+        chrome.tabs.create({ url: MDFY_URL + "/?doc=" + id + tokenParam });
         setStatus("Published to mdfy.cc", "success");
         return;
       }

@@ -2176,6 +2176,15 @@ export default function MdEditor() {
       // Check ?from= or ?doc= parameter
       const params = new URLSearchParams(window.location.search);
       const fromId = params.get("from") || params.get("doc");
+      // Save editToken from URL if provided (from Chrome extension)
+      const urlToken = params.get("token");
+      if (fromId && urlToken) {
+        saveEditToken(fromId, urlToken);
+        // Clean up URL to remove token
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("token");
+        window.history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search);
+      }
       if (fromId) {
         try {
           const headers: Record<string, string> = {};
@@ -2235,6 +2244,7 @@ export default function MdEditor() {
                 markdown: doc.markdown,
                 title: doc.title || t.title,
                 permission: perm,
+                editToken: t.editToken || token || undefined,
                 isDraft: doc.is_draft === false ? false : true,
                 isSharedByMe: docIsSharedByMe || false,
                 isRestricted: (doc.allowedEmails?.length > 0) || false,
