@@ -3425,7 +3425,11 @@ export default function MdEditor() {
             const hasSharing = (doc.allowedEmails?.length > 0) ||
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account");
             if (hasSharing) {
-              setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isSharedByMe: true } : t));
+              setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
+                ...t,
+                isSharedByMe: true,
+                isRestricted: (doc.allowedEmails?.length > 0) || false,
+              } : t));
             }
           }
         } catch { /* ignore */ }
@@ -6645,8 +6649,16 @@ ${html}
             setShowShareModal(false);
             const curTabId = activeTabIdRef.current;
             const ct = tabs.find(t => t.id === curTabId);
-            if (ct?.cloudId && !ct.isDraft && !ct.isSharedByMe) {
-              setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isSharedByMe: true } : t));
+            if (ct?.cloudId) {
+              setTabs(prev => prev.map(t => {
+                if (t.id !== curTabId) return t;
+                return {
+                  ...t,
+                  isDraft: false,
+                  isSharedByMe: true,
+                  isRestricted: allowedEmails.length > 0,
+                };
+              }));
             }
           }}
           onEditModeChange={(mode) => {
@@ -6654,6 +6666,9 @@ ${html}
           }}
           onAllowedEmailsChange={(emails) => {
             setAllowedEmailsState(emails);
+            // Update tab's isRestricted immediately
+            const curTabId = activeTabIdRef.current;
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isRestricted: emails.length > 0 } : t));
           }}
         />
       )}
