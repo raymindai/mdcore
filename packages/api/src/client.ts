@@ -8,6 +8,7 @@ import type {
   PublishResult,
   UpdateOptions,
   Document,
+  DocumentSummary,
   Version,
   VersionSummary,
   UploadResult,
@@ -164,6 +165,53 @@ export class MdfyClient {
       method: "DELETE",
       body: JSON.stringify({
         editToken,
+        userId: this.userId,
+        anonymousId: this.anonymousId,
+      }),
+    });
+  }
+
+  /**
+   * List all documents owned by the current user.
+   *
+   * @returns Array of document summaries
+   */
+  async list(): Promise<DocumentSummary[]> {
+    if (!this.userId && !this.anonymousId) {
+      throw new MdfyApiError("userId or anonymousId required to list documents", 400);
+    }
+    const data = await this.request<{ documents: DocumentSummary[] }>(
+      "/api/user/documents"
+    );
+    return data.documents || [];
+  }
+
+  /**
+   * Publish a document (set is_draft to false, making it publicly accessible).
+   *
+   * @param id - Document ID
+   */
+  async setPublished(id: string): Promise<void> {
+    await this.request(`/api/docs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action: "publish",
+        userId: this.userId,
+        anonymousId: this.anonymousId,
+      }),
+    });
+  }
+
+  /**
+   * Make a document private (set is_draft to true, clear sharing settings).
+   *
+   * @param id - Document ID
+   */
+  async setDraft(id: string): Promise<void> {
+    await this.request(`/api/docs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        action: "unpublish",
         userId: this.userId,
         anonymousId: this.anonymousId,
       }),

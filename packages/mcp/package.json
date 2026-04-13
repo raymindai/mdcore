@@ -1,0 +1,23 @@
+{
+  "name": "@mdcore/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for mdfy.cc — let AI tools create and manage Markdown documents",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mdfy-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsup": "^8.4.0"
+  },
+  "keywords": ["mdfy", "mcp", "markdown", "ai", "publish"],
+  "license": "MIT"
+}

@@ -62,6 +62,26 @@ export interface Document {
   edit_mode: string;
 }
 
+/** Summary of a document (from list endpoint) */
+export interface DocumentSummary {
+  /** Document ID */
+  id: string;
+  /** Document title */
+  title: string | null;
+  /** Creation timestamp (ISO 8601) */
+  created_at: string;
+  /** Last update timestamp (ISO 8601) */
+  updated_at: string;
+  /** View count */
+  view_count: number;
+  /** Whether this is a draft (private) */
+  is_draft: boolean;
+  /** Edit mode */
+  edit_mode: string;
+  /** Allowed viewer emails */
+  allowed_emails: string[];
+}
+
 /** A version snapshot of a document */
 export interface Version {
   /** Version row ID */
