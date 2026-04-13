@@ -4875,7 +4875,7 @@ ${html}
                               draggable
                               onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
                               onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
-                              className={`flex items-center gap-1.5 px-1.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                              className={`flex items-center gap-1 px-0.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                               style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
@@ -5100,7 +5100,7 @@ ${html}
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
-                              className="flex items-center gap-1.5 px-1.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group"
+                              className="flex items-center gap-1 px-0.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group"
                               style={{ color: "var(--text-muted)" }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
