@@ -15,6 +15,53 @@ export function htmlToMarkdown(html: string): string {
 
   turndown.use(gfm);
 
+  // Math: convert .math-rendered back to $...$ or $$...$$
+  turndown.addRule("math-inline", {
+    filter: (node) => {
+      return (
+        node.nodeName === "SPAN" &&
+        node.classList.contains("math-rendered") &&
+        node.getAttribute("data-math-mode") === "inline"
+      );
+    },
+    replacement: (_content, node) => {
+      const src = (node as HTMLElement).getAttribute("data-math-src");
+      if (src) return `$${decodeURIComponent(src)}$`;
+      return `$${(node as HTMLElement).textContent || ""}$`;
+    },
+  });
+
+  turndown.addRule("math-display", {
+    filter: (node) => {
+      return (
+        (node.nodeName === "DIV" || node.nodeName === "SPAN") &&
+        node.classList.contains("math-rendered") &&
+        node.getAttribute("data-math-mode") === "display"
+      );
+    },
+    replacement: (_content, node) => {
+      const src = (node as HTMLElement).getAttribute("data-math-src");
+      if (src) return `\n\n$$${decodeURIComponent(src)}$$\n\n`;
+      return `\n\n$$${(node as HTMLElement).textContent || ""}$$\n\n`;
+    },
+  });
+
+  // Math: handle raw data-math-style spans (before KaTeX processing)
+  turndown.addRule("math-raw", {
+    filter: (node) => {
+      return (
+        node.nodeName === "SPAN" &&
+        !!node.getAttribute("data-math-style")
+      );
+    },
+    replacement: (_content, node) => {
+      const style = (node as HTMLElement).getAttribute("data-math-style");
+      const tex = (node as HTMLElement).textContent || "";
+      if (style === "display") return `\n\n$$${tex}$$\n\n`;
+      return `$${tex}$`;
+    },
+  });
+
   let md = turndown.turndown(html);
   md = md.replace(/\n{3,}/g, "\n\n");
 
