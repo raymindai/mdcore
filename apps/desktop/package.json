@@ -27,6 +27,7 @@
       "preload.js",
       "mime-types.js",
       "renderer/**/*",
+      "wasm/**/*",
       "assets/**/*",
       "package.json"
     ],
