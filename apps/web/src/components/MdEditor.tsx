@@ -1411,6 +1411,7 @@ export default function MdEditor() {
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
+  const mermaidIsNewRef = useRef(false); // true = inserting new, false = editing existing
   const [showMermaidModal, setShowMermaidModal] = useState(false);
   // History panel state
   const [showHistory, setShowHistory] = useState(false);
@@ -1570,6 +1571,7 @@ export default function MdEditor() {
     setDoc: cmSetDoc,
     scrollToLine: cmScrollToLine,
     setSelection: cmSetSelection,
+    getCursorPos: cmGetCursorPos,
     refresh: cmRefresh,
     wrapSelection: cmWrapSelection,
     insertAtCursor: cmInsertAtCursor,
@@ -3288,21 +3290,18 @@ export default function MdEditor() {
     const text = e.clipboardData.getData("text/plain");
     const html = e.clipboardData.getData("text/html");
 
-    // Check for CLI output first
+    // Check for CLI output first — insert at cursor, don't replace document
     if (text && isCliOutput(text)) {
       e.preventDefault();
       const converted = cliToMarkdown(text);
-      setMarkdown(converted);
-      cmSetDoc(converted);
-      doRender(converted);
+      document.execCommand("insertText", false, converted);
       return;
     }
 
-    // Check for HTML paste
+    // Check for HTML paste — insert converted markdown at cursor
     if (html && isHtmlContent(html)) {
       e.preventDefault();
       const md = htmlToMarkdown(html);
-      // Insert at cursor position in contentEditable
       document.execCommand("insertText", false, md);
       return;
     }
@@ -3980,7 +3979,20 @@ ${html}
     const article = previewRef.current?.querySelector("article");
     const sel = window.getSelection();
     if (!article || !sel?.rangeCount || !article.contains(sel.getRangeAt(0).startContainer)) {
-      // Cursor not in article — fallback to end
+      // Cursor not in article — try CodeMirror cursor (source/split mode)
+      if (editorContainerRef.current?.contains(document.activeElement)) {
+        // CM cursor: snap to end of current line for block insertion
+        const cmPos = cmGetCursorPos();
+        const lines = md.split("\n");
+        let charCount = 0;
+        for (let i = 0; i < lines.length; i++) {
+          charCount += lines[i].length + 1;
+          if (charCount > cmPos) {
+            insertPosRef.current = charCount; // end of current line
+            return;
+          }
+        }
+      }
       insertPosRef.current = md.length;
       return;
     }
@@ -4072,6 +4084,7 @@ ${html}
         setShowMathModal(true);
         return;
       case "mermaid":
+        mermaidIsNewRef.current = true;
         setCanvasMermaid("graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E");
         setShowMermaidModal(true);
         return;
@@ -7111,21 +7124,20 @@ ${html}
               }}
               onGenerate={(md) => {
                 let newMarkdown: string;
-                if (canvasMermaid) {
+                if (!mermaidIsNewRef.current && canvasMermaid) {
+                  // Editing existing diagram — find and replace in-place
                   const originalBlock = "```mermaid\n" + canvasMermaid + "\n```";
                   if (markdown.includes(originalBlock)) {
                     newMarkdown = markdown.replace(originalBlock, md);
                   } else {
+                    // Fuzzy match: find block containing first content line
                     const mermaidBlockRegex = /```mermaid\n[\s\S]*?```/g;
                     const blocks = [...markdown.matchAll(mermaidBlockRegex)];
-                    const match = blocks.find(b => {
-                      const firstLine = canvasMermaid.split("\n")[1]?.trim();
-                      return firstLine && b[0].includes(firstLine);
-                    });
+                    const firstContentLine = canvasMermaid.split("\n")[0]?.trim();
+                    const match = blocks.find(b => firstContentLine && b[0].includes(firstContentLine));
                     if (match && match.index !== undefined) {
                       newMarkdown = markdown.slice(0, match.index) + md + markdown.slice(match.index + match[0].length);
                     } else {
-                      // New diagram — insert at saved cursor position
                       newMarkdown = insertBlockAtCursor(md);
                     }
                   }
@@ -7133,6 +7145,7 @@ ${html}
                   // New diagram — insert at saved cursor position
                   newMarkdown = insertBlockAtCursor(md);
                 }
+                mermaidIsNewRef.current = false;
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
@@ -7248,13 +7261,25 @@ ${html}
                 setInitialMath(undefined);
               }}
               onGenerate={(md) => {
-                let newMarkdown: string;
-                if (mathOriginalRef.current && markdown.includes(mathOriginalRef.current)) {
-                  // Replace existing math expression
-                  newMarkdown = markdown.replace(mathOriginalRef.current, md);
-                } else {
-                  // New math — insert at saved cursor position
-                  newMarkdown = insertBlockAtCursor(md);
+                let newMarkdown = insertBlockAtCursor(md); // default: insert at cursor
+                const orig = mathOriginalRef.current;
+                if (orig && markdown.includes(orig)) {
+                  // Replace existing math expression (exact match)
+                  newMarkdown = markdown.replace(orig, md);
+                } else if (orig) {
+                  // Try fuzzy match: find math block containing the same TeX source
+                  const origTex = orig.replace(/^\$+\s*|\s*\$+$/g, "").trim();
+                  if (origTex) {
+                    const mathRegex = /\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g;
+                    const matches = [...markdown.matchAll(mathRegex)];
+                    const best = matches.find(m => {
+                      const mTex = m[0].replace(/^\$+\s*|\s*\$+$/g, "").trim();
+                      return mTex === origTex;
+                    });
+                    if (best && best.index !== undefined) {
+                      newMarkdown = markdown.slice(0, best.index) + md + markdown.slice(best.index + best[0].length);
+                    }
+                  }
                 }
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
