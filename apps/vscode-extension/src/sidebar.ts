@@ -684,7 +684,7 @@ body {
       <button class="filter-btn active" data-filter="all" title="Show all documents">ALL</button>
       <button class="filter-btn" data-filter="synced" title="Local files linked to mdfy.cc">SYNCED</button>
       <button class="filter-btn" data-filter="local" title="Local files not yet published">LOCAL</button>
-      <button class="filter-btn" data-filter="cloud" title="Cloud documents not pulled locally">CLOUD</button>
+      <button class="filter-btn" data-filter="cloud" title="Cloud documents not synced locally">CLOUD</button>
     </div>
   </div>
 
@@ -696,12 +696,12 @@ body {
 
   <div class="help-panel hidden" id="help-panel">
     <div class="help-row"><span class="help-icon" style="color:#22c55e"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg></span><div><strong>Synced</strong><span class="help-desc">Local file linked to mdfy.cc. Edits can be pushed/pulled.</span></div></div>
-    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/></svg></span><div><strong>Local</strong><span class="help-desc">Only on your machine. Publish to get a shareable URL.</span></div></div>
-    <div class="help-row"><span class="help-icon" style="color:#60a5fa"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg></span><div><strong>Cloud</strong><span class="help-desc">Only on mdfy.cc. Pull to create a local copy.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/></svg></span><div><strong>Local</strong><span class="help-desc">Only on your machine. Sync to upload to mdfy.cc.</span></div></div>
+    <div class="help-row"><span class="help-icon" style="color:#60a5fa"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg></span><div><strong>Cloud</strong><span class="help-desc">Only on mdfy.cc. Sync to download a local copy.</span></div></div>
     <div class="help-divider"></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg></span><div><strong>Copy URL</strong><span class="help-desc">Copy the mdfy.cc link to clipboard.</span></div></div>
-    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg></span><div><strong>Publish</strong><span class="help-desc">Upload to mdfy.cc and get a shareable URL.</span></div></div>
-    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg></span><div><strong>Pull</strong><span class="help-desc">Download cloud document to your local workspace.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg></span><div><strong>Sync Up</strong><span class="help-desc">Upload local file to mdfy.cc and get a shareable URL.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg></span><div><strong>Sync Down</strong><span class="help-desc">Download cloud document to your local workspace.</span></div></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
   </div>
 
@@ -915,7 +915,7 @@ body {
     function renderLocalDoc(doc) {
       var ic = '<div class="doc-icon local">' + icon('circle', 14) + '</div>';
       var meta = doc.relativePath;
-      var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Publish to mdfy.cc">' + icon('upload', 14) + '</button>';
+      var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
@@ -925,7 +925,7 @@ body {
     function renderCloudDoc(doc) {
       var ic = '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>';
       var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '');
-      var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Pull to local">' + icon('download', 14) + '</button>'
+      var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Sync to local">' + icon('download', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
         + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unlink', 14) + '</button>';
       return '<li class="doc-item" data-action="openCloud" data-url="' + esc(doc.url) + '" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '">'

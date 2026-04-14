@@ -758,10 +758,10 @@ body.split-mode #editor-wrapper {
   flex-direction: row !important;
 }
 body.split-mode #live-pane {
-  width: 50% !important;
+  width: 50%;
 }
 body.split-mode #source-view {
-  width: 50% !important;
+  width: 50%;
   display: flex !important;
 }
 
