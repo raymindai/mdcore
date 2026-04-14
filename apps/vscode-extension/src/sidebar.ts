@@ -78,6 +78,16 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
             await this.unlinkDocument(msg.filePath);
           }
           break;
+        case "deleteSynced":
+          if (msg.filePath) {
+            await this.deleteSyncedDocument(msg.filePath);
+          }
+          break;
+        case "deleteCloud":
+          if (msg.docId) {
+            await this.deleteCloudDocument(msg.docId);
+          }
+          break;
         case "login":
           vscode.commands.executeCommand("mdfy.login");
           break;
@@ -134,6 +144,66 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       vscode.window.showInformationMessage(`"${fileName}" unlinked from mdfy.cc.`);
     } catch {
       vscode.window.showErrorMessage("Failed to remove sync file.");
+    }
+  }
+
+  private async deleteSyncedDocument(filePath: string): Promise<void> {
+    const fileName = path.basename(filePath);
+    const confirm = await vscode.window.showWarningMessage(
+      `Delete "${fileName}" from mdfy.cc? The local file stays, but the cloud copy will be removed.`,
+      "Delete from Cloud",
+      "Cancel"
+    );
+    if (confirm !== "Delete from Cloud") return;
+
+    const config = await loadMdfyConfig(filePath);
+    if (config) {
+      // Soft-delete on server
+      try {
+        const baseUrl = getApiBaseUrl();
+        const token = await this._authManager.getToken();
+        const userId = await this._authManager.getUserId();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        await fetch(`${baseUrl}/api/docs/${config.docId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ action: "soft-delete", userId, editToken: config.editToken }),
+        });
+      } catch { /* silent */ }
+      // Remove sidecar
+      const ext = path.extname(filePath);
+      const base = path.basename(filePath, ext);
+      const configPath = path.join(path.dirname(filePath), `${base}.mdfy.json`);
+      try { await vscode.workspace.fs.delete(vscode.Uri.file(configPath)); } catch {}
+    }
+    this.refresh();
+    vscode.window.showInformationMessage(`"${fileName}" removed from mdfy.cc.`);
+  }
+
+  private async deleteCloudDocument(docId: string): Promise<void> {
+    const confirm = await vscode.window.showWarningMessage(
+      `Delete this document from mdfy.cc? This cannot be undone.`,
+      "Delete",
+      "Cancel"
+    );
+    if (confirm !== "Delete") return;
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      const token = await this._authManager.getToken();
+      const userId = await this._authManager.getUserId();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch(`${baseUrl}/api/docs/${docId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ action: "soft-delete", userId }),
+      });
+      this.refresh();
+      vscode.window.showInformationMessage("Document removed from mdfy.cc.");
+    } catch {
+      vscode.window.showErrorMessage("Failed to delete document.");
     }
   }
 
@@ -297,6 +367,14 @@ body {
   color: var(--vscode-foreground);
   background: var(--vscode-sideBar-background);
   overflow-x: hidden;
+}
+
+/* Sticky top area — doesn't scroll */
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--vscode-sideBar-background);
 }
 
 /* Header */
@@ -578,9 +656,16 @@ body {
 </style>
 </head>
 <body>
+  <div class="sticky-top">
   <div class="header">
     <span class="logo"><span class="logo-md">md</span><span class="logo-fy">fy</span>.cc</span>
     <div class="header-actions">
+      <button class="icon-btn" id="btn-search-toggle" title="Search">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+      </button>
+      <button class="icon-btn help-btn" id="btn-help" title="Help">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+      </button>
       <button class="icon-btn" id="btn-refresh" title="Refresh">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>
       </button>
@@ -594,9 +679,12 @@ body {
       <button class="filter-btn" data-filter="local" title="Local files not yet published">LOCAL</button>
       <button class="filter-btn" data-filter="cloud" title="Cloud documents not pulled locally">CLOUD</button>
     </div>
-    <button class="icon-btn help-btn" id="btn-help" title="What do these mean?">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
-    </button>
+  </div>
+
+  <div class="search-box hidden" id="search-box">
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+    <input type="text" id="search" placeholder="Search documents..." />
+  </div>
   </div>
 
   <div class="help-panel hidden" id="help-panel">
@@ -608,11 +696,6 @@ body {
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg></span><div><strong>Publish</strong><span class="help-desc">Upload to mdfy.cc and get a shareable URL.</span></div></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg></span><div><strong>Pull</strong><span class="help-desc">Download cloud document to your local workspace.</span></div></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
-  </div>
-
-  <div class="search-box">
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
-    <input type="text" id="search" placeholder="Search documents..." />
   </div>
 
   <div id="doc-container" style="padding-bottom: 40px;"></div>
@@ -690,6 +773,20 @@ body {
 
     document.getElementById('btn-refresh').addEventListener('click', function() {
       vscode.postMessage({ type: 'refresh' });
+    });
+
+    document.getElementById('btn-search-toggle').addEventListener('click', function() {
+      var box = document.getElementById('search-box');
+      if (box) {
+        box.classList.toggle('hidden');
+        if (!box.classList.contains('hidden')) {
+          box.querySelector('input').focus();
+        } else {
+          box.querySelector('input').value = '';
+          searchQuery = '';
+          render();
+        }
+      }
     });
 
     document.getElementById('btn-help').addEventListener('click', function() {
@@ -780,7 +877,8 @@ body {
       var actions = ''
         + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
-        + '<button class="doc-action" data-action="unlink" data-path="' + esc(doc.filePath) + '" title="Unlink">' + icon('unlink', 14) + '</button>';
+        + '<button class="doc-action" data-action="unlink" data-path="' + esc(doc.filePath) + '" title="Unlink">' + icon('unlink', 14) + '</button>'
+        + '<button class="doc-action" data-action="deleteSynced" data-path="' + esc(doc.filePath) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unlink', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
@@ -801,7 +899,8 @@ body {
       var ic = '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>';
       var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '');
       var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Pull to local">' + icon('download', 14) + '</button>'
-        + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>';
+        + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
+        + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unlink', 14) + '</button>';
       return '<li class="doc-item" data-action="openCloud" data-url="' + esc(doc.url) + '" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.title) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
@@ -837,6 +936,18 @@ body {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
           vscode.postMessage({ type: 'unlink', filePath: btn.dataset.path });
+        });
+      });
+      container.querySelectorAll('[data-action="deleteSynced"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          vscode.postMessage({ type: 'deleteSynced', filePath: btn.dataset.path });
+        });
+      });
+      container.querySelectorAll('[data-action="deleteCloud"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          vscode.postMessage({ type: 'deleteCloud', docId: btn.dataset.docid });
         });
       });
       var loginBtn = document.getElementById('login-btn');
