@@ -705,7 +705,7 @@ body {
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
   </div>
 
-  <div id="doc-container" style="padding-bottom: 50px;"></div>
+  <div id="doc-container" style="padding-bottom: 70px;"></div>
 
   <div class="user-bar" id="user-bar">
     <div class="user-bar-loggedout" id="user-loggedout">
