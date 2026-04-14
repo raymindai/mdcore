@@ -802,40 +802,56 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <div id="editor-wrapper">
     <!-- Live pane: own header + content -->
     <div id="live-pane">
-      <div id="live-toolbar" class="pane-toolbar">
+      <!-- Live pane header: label + toggle icons (like mdfy.cc) -->
+      <div id="live-header" class="pane-header">
         <span class="pane-label" style="color:var(--accent)">LIVE</span>
+        <span style="flex:1"></span>
+        <button id="btn-toggle-toolbar" class="pane-icon-btn active" title="Formatting toolbar">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
+        </button>
+        <button id="btn-toggle-narrow" class="pane-icon-btn active" title="Narrow view">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" stroke-linecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <!-- Collapsible formatting toolbar -->
+      <div id="live-formatting-toolbar" class="pane-toolbar">
         <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
         <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
         <span class="toolbar-divider"></span>
-        <button data-action="h1" data-tip="Heading 1"><span style="font-size:10px;font-weight:700">H1</span></button>
-        <button data-action="h2" data-tip="Heading 2"><span style="font-size:10px;font-weight:700">H2</span></button>
-        <button data-action="h3" data-tip="Heading 3"><span style="font-size:10px;font-weight:600">H3</span></button>
-        <button data-action="p" data-tip="Paragraph"><span style="font-size:10px">P</span></button>
+        <button data-action="h1" title="H1"><span style="font-size:10px;font-weight:700">H1</span></button>
+        <button data-action="h2" title="H2"><span style="font-size:10px;font-weight:700">H2</span></button>
+        <button data-action="h3" title="H3"><span style="font-size:10px;font-weight:600">H3</span></button>
+        <button data-action="p" title="P"><span style="font-size:10px">P</span></button>
         <span class="toolbar-divider"></span>
-        <button data-action="bold" data-tip="Bold (Cmd+B)"><span style="font-weight:700;font-size:12px">B</span></button>
-        <button data-action="italic" data-tip="Italic (Cmd+I)"><span style="font-style:italic;font-size:12px">I</span></button>
-        <button data-action="strikethrough" data-tip="Strikethrough"><span style="text-decoration:line-through;font-size:12px">S</span></button>
-        <button data-action="code" data-tip="Inline code"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
+        <button data-action="bold" title="Bold"><span style="font-weight:700;font-size:12px">B</span></button>
+        <button data-action="italic" title="Italic"><span style="font-style:italic;font-size:12px">I</span></button>
+        <button data-action="strikethrough" title="S"><span style="text-decoration:line-through;font-size:12px">S</span></button>
+        <button data-action="code" title="Code"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
         <span class="toolbar-divider"></span>
-        <button data-action="ul" data-tip="Bullet list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
-        <button data-action="ol" data-tip="Numbered list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+        <button data-action="ul" title="List"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+        <button data-action="ol" title="Numbered"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
         <span class="toolbar-divider"></span>
-        <button data-action="blockquote" data-tip="Blockquote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
+        <button data-action="blockquote" title="Quote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
         <button data-action="link" title="Link"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5l-1 1"/><path d="M9.5 7.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5l1-1"/></svg></button>
         <button data-action="image" title="Image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <button data-action="table" title="Table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
-        <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
+        <button data-action="codeblock" title="Code"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
+        <button data-action="removeFormat" title="Clear"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
       </div>
       <article id="content" class="mdcore-rendered narrow" contenteditable="true">
         ${renderedHtml}
       </article>
     </div>
 
-    <!-- Source pane: own header + CodeMirror -->
+    <!-- Source pane: header with flavor + copy + download -->
     <div id="source-view" class="hidden">
-      <div id="source-toolbar" class="pane-toolbar">
+      <div id="source-header" class="pane-header">
         <span class="pane-label">SOURCE</span>
+        <button id="flavor-badge" class="pane-badge" title="Flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
         <span style="flex:1"></span>
+        <button class="pane-icon-btn" id="btn-copy-md" title="Copy Markdown">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+        </button>
       </div>
       <div id="source-editor-container"></div>
       <textarea id="source-editor" style="display:none">${markdown.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</textarea>

@@ -41,6 +41,34 @@
     });
   })();
 
+  // Live pane header buttons
+  (function initPaneButtons() {
+    var toolbarToggle = document.getElementById('btn-toggle-toolbar');
+    var formattingBar = document.getElementById('live-formatting-toolbar');
+    if (toolbarToggle && formattingBar) {
+      toolbarToggle.addEventListener('click', function() {
+        formattingBar.classList.toggle('hidden');
+        toolbarToggle.classList.toggle('active');
+      });
+    }
+    var narrowToggle = document.getElementById('btn-toggle-narrow');
+    if (narrowToggle) {
+      narrowToggle.addEventListener('click', function() {
+        content.classList.toggle('narrow');
+        narrowToggle.classList.toggle('active');
+      });
+    }
+    var copyMdBtn = document.getElementById('btn-copy-md');
+    if (copyMdBtn) {
+      copyMdBtn.addEventListener('click', function() {
+        navigator.clipboard.writeText(currentMarkdown).then(function() {
+          copyMdBtn.style.color = '#4ade80';
+          setTimeout(function() { copyMdBtn.style.color = ''; }, 1500);
+        });
+      });
+    }
+  })();
+
   // Current markdown source (kept in sync with extension)
   let currentMarkdown = window.__initialMarkdown || "";
   let currentFlavor = (window.__initialFlavor && window.__initialFlavor.primary) || "gfm";
