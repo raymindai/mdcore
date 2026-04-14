@@ -677,10 +677,11 @@ pre.ascii-original.hidden {
 }
 .pane-badge:hover { background: var(--surface-hover); }
 
-/* Pane formatting toolbar — collapsible row below header */
+/* Pane formatting toolbar — collapsible row below header, centered */
 .pane-toolbar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 2px 8px;
   border-bottom: 1px solid var(--border);

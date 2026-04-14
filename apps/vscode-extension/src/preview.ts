@@ -821,6 +821,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="h1" title="H1"><span style="font-size:10px;font-weight:700">H1</span></button>
         <button data-action="h2" title="H2"><span style="font-size:10px;font-weight:700">H2</span></button>
         <button data-action="h3" title="H3"><span style="font-size:10px;font-weight:600">H3</span></button>
+        <button data-action="h4" title="H4"><span style="font-size:10px">H4</span></button>
+        <button data-action="h5" title="H5"><span style="font-size:10px">H5</span></button>
+        <button data-action="h6" title="H6"><span style="font-size:10px">H6</span></button>
         <button data-action="p" title="P"><span style="font-size:10px">P</span></button>
         <span class="toolbar-divider"></span>
         <button data-action="bold" title="Bold"><span style="font-weight:700;font-size:12px">B</span></button>
@@ -828,15 +831,23 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="strikethrough" title="S"><span style="text-decoration:line-through;font-size:12px">S</span></button>
         <button data-action="code" title="Code"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
         <span class="toolbar-divider"></span>
-        <button data-action="ul" title="List"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
-        <button data-action="ol" title="Numbered"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+        <button data-action="ul" title="Bullet list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+        <button data-action="ol" title="Numbered list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
+        <button data-action="task" title="Task list"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><path d="M3.5 4.5l1 1 2-2" stroke-linecap="round"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="3" width="5" height="2" rx="0.5" fill="currentColor"/><rect x="9" y="10" width="5" height="2" rx="0.5" fill="currentColor"/></svg></button>
+        <button data-action="indent" title="Indent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg></button>
+        <button data-action="outdent" title="Outdent"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg></button>
         <span class="toolbar-divider"></span>
         <button data-action="blockquote" title="Quote"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg></button>
+        <button data-action="hr" title="Horizontal rule"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
+        <span class="toolbar-divider"></span>
         <button data-action="link" title="Link"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5l-1 1"/><path d="M9.5 7.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5l1-1"/></svg></button>
         <button data-action="image" title="Image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button data-action="table" title="Table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
-        <button data-action="codeblock" title="Code"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
         <button data-action="removeFormat" title="Clear"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
+        <span class="toolbar-divider"></span>
+        <button data-action="table" title="Table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
+        <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
+        <button data-action="math" title="Math"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" font-size="11" font-family="serif" font-style="italic">fx</text></svg></button>
+        <button data-action="mermaid" title="Mermaid"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="1" width="5" height="4" rx="1"/><rect x="9" y="1" width="5" height="4" rx="1"/><rect x="5.5" y="11" width="5" height="4" rx="1"/><path d="M4.5 5v2.5a2 2 0 002 2h3a2 2 0 002-2V5"/><path d="M8 9.5V11"/></svg></button>
       </div>
       <article id="content" class="mdcore-rendered narrow" contenteditable="true">
         ${renderedHtml}
