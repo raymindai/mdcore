@@ -4496,8 +4496,8 @@ ${html}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
-            onClick={handleClear}
-            title="mdfy.cc — New document"
+            onClick={() => setShowSidebar(s => !s)}
+            title="mdfy.cc — Toggle sidebar"
           >
             <MdfyLogo size={18} />
           </h1>
