@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -9,7 +7,7 @@ import { homedir } from "os";
 
 // ─── Config ───
 
-const BASE_URL = (process.env.MDFY_BASE_URL || "https://www.mdfy.cc").replace(/\/$/, "");
+const BASE_URL = (process.env.MDFY_BASE_URL || "https://mdfy.cc").replace(/\/$/, "");
 const USER_EMAIL = process.env.MDFY_EMAIL || "";
 const TOKEN_FILE = join(homedir(), ".mdfy", "tokens.json");
 
@@ -29,7 +27,7 @@ function saveToken(docId: string, editToken: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const tokens = loadTokens();
   tokens[docId] = editToken;
-  writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
+  writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
 }
 
 function getToken(docId: string): string | undefined {
@@ -54,11 +52,17 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// Error wrapper for tool handlers
+function errorResult(err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true as const };
+}
+
 // ─── MCP Server ───
 
 const server = new McpServer({
   name: "mdfy",
-  version: "0.1.0",
+  version: "0.2.0",
 });
 
 // Tool: Create document
@@ -71,25 +75,28 @@ server.tool(
     draft: z.boolean().optional().describe("If true, document is private (default: false = publicly accessible)"),
   },
   async ({ markdown, title, draft }) => {
-    const result = await api<{ id: string; editToken: string }>("/api/docs", {
-      method: "POST",
-      body: JSON.stringify({
-        markdown,
-        title,
-        isDraft: draft ?? false,
-        userEmail: USER_EMAIL || undefined,
-      }),
-    });
+    try {
+      const result = await api<{ id: string; editToken: string }>("/api/docs", {
+        method: "POST",
+        body: JSON.stringify({
+          markdown,
+          title,
+          isDraft: draft ?? false,
+          userEmail: USER_EMAIL || undefined,
+          source: "mcp",
+        }),
+      });
 
-    saveToken(result.id, result.editToken);
-    const url = `${BASE_URL}/d/${result.id}`;
+      saveToken(result.id, result.editToken);
+      const url = `${BASE_URL}/d/${result.id}`;
 
-    return {
-      content: [{
-        type: "text" as const,
-        text: `Document created:\n- URL: ${url}\n- ID: ${result.id}\n- Status: ${draft ? "private draft" : "publicly accessible"}`,
-      }],
-    };
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Document created:\n- URL: ${url}\n- ID: ${result.id}\n- Status: ${draft ? "private draft" : "publicly accessible"}`,
+        }],
+      };
+    } catch (err) { return errorResult(err); }
   }
 );
 
@@ -101,16 +108,17 @@ server.tool(
     id: z.string().describe("Document ID (the short code from the URL)"),
   },
   async ({ id }) => {
-    const doc = await api<{ markdown: string; title: string | null; updated_at: string; is_draft: boolean }>(
-      `/api/docs/${id}`
-    );
-
-    return {
-      content: [{
-        type: "text" as const,
-        text: `# ${doc.title || "Untitled"}\n\n${doc.markdown}`,
-      }],
-    };
+    try {
+      const doc = await api<{ markdown: string; title: string | null; updated_at: string; is_draft: boolean }>(
+        `/api/docs/${id}`
+      );
+      return {
+        content: [{
+          type: "text" as const,
+          text: `# ${doc.title || "Untitled"}\n\n${doc.markdown}`,
+        }],
+      };
+    } catch (err) { return errorResult(err); }
   }
 );
 
@@ -124,24 +132,18 @@ server.tool(
     title: z.string().optional().describe("New title"),
   },
   async ({ id, markdown, title }) => {
-    const editToken = getToken(id) || "";
-    await api(`/api/docs/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        markdown,
-        title,
-        editToken,
-        userEmail: USER_EMAIL || undefined,
-        action: "auto-save",
-      }),
-    });
-
-    return {
-      content: [{
-        type: "text" as const,
-        text: `Document ${id} updated successfully.`,
-      }],
-    };
+    try {
+      const editToken = getToken(id) || "";
+      await api(`/api/docs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          markdown, title, editToken,
+          userEmail: USER_EMAIL || undefined,
+          action: "auto-save",
+        }),
+      });
+      return { content: [{ type: "text" as const, text: `Document ${id} updated successfully.` }] };
+    } catch (err) { return errorResult(err); }
   }
 );
 
@@ -152,59 +154,54 @@ server.tool(
   {},
   async () => {
     if (!USER_EMAIL) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: MDFY_EMAIL environment variable is required to list documents.",
-        }],
-      };
+      return errorResult("MDFY_EMAIL environment variable is required to list documents.");
     }
-
-    const data = await api<{ documents: Array<{ id: string; title: string | null; updated_at: string; is_draft: boolean; view_count: number }> }>(
-      "/api/user/documents"
-    );
-
-    const docs = data.documents || [];
-    if (docs.length === 0) {
-      return { content: [{ type: "text" as const, text: "No documents found." }] };
-    }
-
-    const lines = docs.map((d, i) =>
-      `${i + 1}. ${d.title || "Untitled"} (${d.id}) — ${d.is_draft ? "private" : "shared"} — ${d.view_count} views — ${d.updated_at}`
-    );
-
-    return {
-      content: [{
-        type: "text" as const,
-        text: `Found ${docs.length} documents:\n\n${lines.join("\n")}`,
-      }],
-    };
+    try {
+      const data = await api<{ documents: Array<{ id: string; title: string | null; updated_at: string; is_draft: boolean; view_count: number }> }>(
+        "/api/user/documents"
+      );
+      const docs = data.documents || [];
+      if (docs.length === 0) {
+        return { content: [{ type: "text" as const, text: "No documents found." }] };
+      }
+      const lines = docs.map((d, i) =>
+        `${i + 1}. ${d.title || "Untitled"} (${d.id}) — ${d.is_draft ? "private" : "shared"} — ${d.view_count} views — ${d.updated_at}`
+      );
+      return { content: [{ type: "text" as const, text: `Found ${docs.length} documents:\n\n${lines.join("\n")}` }] };
+    } catch (err) { return errorResult(err); }
   }
 );
 
 // Tool: Delete document
 server.tool(
   "mdfy_delete",
-  "Delete a document from mdfy.cc",
+  "Delete a document from mdfy.cc (moves to trash, can be restored)",
   {
     id: z.string().describe("Document ID to delete"),
+    permanent: z.boolean().optional().describe("If true, permanently delete (default: false = soft delete / trash)"),
   },
-  async ({ id }) => {
-    const editToken = getToken(id) || "";
-    await api(`/api/docs/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify({
-        editToken,
-        userEmail: USER_EMAIL || undefined,
-      }),
-    });
+  async ({ id, permanent }) => {
+    try {
+      const editToken = getToken(id) || "";
+      if (permanent) {
+        await api(`/api/docs/${id}`, {
+          method: "DELETE",
+          body: JSON.stringify({ editToken, userEmail: USER_EMAIL || undefined }),
+        });
+      } else {
+        await api(`/api/docs/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ action: "soft-delete", editToken, userEmail: USER_EMAIL || undefined }),
+        });
+      }
 
-    return {
-      content: [{
-        type: "text" as const,
-        text: `Document ${id} deleted.`,
-      }],
-    };
+      return {
+        content: [{
+          type: "text" as const,
+          text: permanent ? `Document ${id} permanently deleted.` : `Document ${id} moved to trash.`,
+        }],
+      };
+    } catch (err) { return errorResult(err); }
   }
 );
 
@@ -217,23 +214,26 @@ server.tool(
     published: z.boolean().describe("true = make publicly accessible, false = make private"),
   },
   async ({ id, published }) => {
-    await api(`/api/docs/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        action: published ? "publish" : "unpublish",
-        userEmail: USER_EMAIL || undefined,
-      }),
-    });
-
-    const url = `${BASE_URL}/d/${id}`;
-    return {
-      content: [{
-        type: "text" as const,
-        text: published
-          ? `Document ${id} is now publicly accessible at ${url}`
-          : `Document ${id} is now private (draft).`,
-      }],
-    };
+    try {
+      const editToken = getToken(id) || "";
+      await api(`/api/docs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: published ? "publish" : "unpublish",
+          editToken,
+          userEmail: USER_EMAIL || undefined,
+        }),
+      });
+      const url = `${BASE_URL}/d/${id}`;
+      return {
+        content: [{
+          type: "text" as const,
+          text: published
+            ? `Document ${id} is now publicly accessible at ${url}`
+            : `Document ${id} is now private (draft).`,
+        }],
+      };
+    } catch (err) { return errorResult(err); }
   }
 );
 

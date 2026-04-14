@@ -27,7 +27,7 @@ Create `.mcp.json` in your project root:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MDFY_EMAIL` | For list/publish/delete | Your mdfy.cc account email |
-| `MDFY_BASE_URL` | No | API base URL (default: `https://www.mdfy.cc`) |
+| `MDFY_BASE_URL` | No | API base URL (default: `https://mdfy.cc`) |
 
 ## Tools
 
