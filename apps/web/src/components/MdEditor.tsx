@@ -6709,7 +6709,9 @@ ${html}
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</a>
           <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</a>
-          <a href="/docs" className="transition-colors" style={{ color: "var(--text-muted)" }}>API</a>
+          <a href="/docs" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>API</a>
+          <a href="/privacy" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Privacy</a>
+          <a href="/terms" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Terms</a>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         {/* Right: stats + engine badges — tap to expand on mobile */}

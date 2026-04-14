@@ -468,6 +468,8 @@ export default function DocumentViewer({
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</Link>
           <Link href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</Link>
+          <Link href="/privacy" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Privacy</Link>
+          <Link href="/terms" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Terms</Link>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <div className="flex items-center gap-3 shrink-0">
