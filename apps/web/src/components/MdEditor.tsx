@@ -3808,6 +3808,14 @@ ${html}
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
+  // Delete document from server (fire-and-forget for trash operations)
+  const deleteFromServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
+    if (!tab.cloudId) return;
+    const token = tab.editToken || getEditToken(tab.cloudId);
+    if (!token) return;
+    deleteDocument(tab.cloudId, token, { userId: user?.id }).catch(() => {/* silent */});
+  }, [user?.id]);
+
   const handleDelete = useCallback(async () => {
     if (!docId) return;
     if (!confirmDeleteDoc) { setConfirmDeleteDoc(true); return; }
@@ -5469,7 +5477,7 @@ ${html}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
                             Restore
                           </button>
-                          <button onClick={() => setTabs(prev => prev.filter(t => t.id !== tab.id))}
+                          <button onClick={() => { deleteFromServer(tab); setTabs(prev => prev.filter(t => t.id !== tab.id)); }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
                             Delete
                           </button>
@@ -5480,6 +5488,7 @@ ${html}
                           onClick={(e) => {
                             const btn = e.currentTarget;
                             if (btn.dataset.confirm === "true") {
+                              tabs.filter(t => t.deleted && t.cloudId).forEach(t => deleteFromServer(t));
                               setTabs(prev => prev.filter(t => !t.deleted));
                               btn.dataset.confirm = "";
                               btn.textContent = "Empty Trash";
@@ -5546,6 +5555,8 @@ ${html}
                   }
                   setConfirmTrash(false);
                   const ids = selectedTabIds;
+                  // Delete from server for cloud documents
+                  tabs.filter(t => ids.has(t.id) && t.cloudId).forEach(t => deleteFromServer(t));
                   setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
                   if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
                   setSelectedTabIds(new Set());
@@ -6535,6 +6546,8 @@ ${html}
               action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
             }] : []),
             ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
+              const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
+              if (trashTab) deleteFromServer(trashTab);
               setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
               if (docContextMenu.tabId === activeTabId) {
                 const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
