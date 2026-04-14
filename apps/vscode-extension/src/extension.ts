@@ -32,6 +32,13 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  context.subscriptions.push(
+    authManager.onDidLogout(() => {
+      syncEngine?.stopPolling();
+      sidebarProvider?.refresh();
+    })
+  );
+
   // Sidebar WebviewView
   sidebarProvider = new MdfySidebarProvider(context.extensionUri, authManager);
   context.subscriptions.push(
@@ -39,6 +46,13 @@ export function activate(context: vscode.ExtensionContext): void {
       MdfySidebarProvider.viewType,
       sidebarProvider
     )
+  );
+
+  // Command: Refresh sidebar
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.sidebar.refresh", () => {
+      sidebarProvider?.refresh();
+    })
   );
 
   // Refresh sidebar when files are saved or created
@@ -58,6 +72,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidDeleteFiles(() => {
+      sidebarProvider?.refresh();
+    })
+  );
+
+  // Handle file renames — move .mdfy.json sidecar alongside renamed file
+  context.subscriptions.push(
+    vscode.workspace.onDidRenameFiles(async (e) => {
+      for (const { oldUri, newUri } of e.files) {
+        if (!oldUri.fsPath.endsWith(".md")) continue;
+        const oldConfig = getMdfyConfigPath(oldUri.fsPath);
+        const newConfig = getMdfyConfigPath(newUri.fsPath);
+        try {
+          await vscode.workspace.fs.rename(vscode.Uri.file(oldConfig), vscode.Uri.file(newConfig));
+        } catch { /* sidecar didn't exist */ }
+      }
       sidebarProvider?.refresh();
     })
   );
@@ -427,12 +456,14 @@ export async function saveMdfyConfig(
 }
 
 function markdownToSlack(md: string): string {
-  return md
-    // Bold: **text** or __text__ → *text*
-    .replace(/\*\*(.+?)\*\*/g, "*$1*")
-    .replace(/__(.+?)__/g, "*$1*")
-    // Italic: *text* or _text_ → _text_
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_")
+  // Bold first with placeholder to avoid italic regex matching
+  let slack = md.replace(/\*\*(.+?)\*\*/g, "⟦BOLD⟧$1⟦/BOLD⟧");
+  slack = slack.replace(/__(.+?)__/g, "⟦BOLD⟧$1⟦/BOLD⟧");
+  // Then italic (won't match placeholders)
+  slack = slack.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_");
+  // Restore bold
+  slack = slack.replace(/⟦BOLD⟧/g, "*").replace(/⟦\/BOLD⟧/g, "*");
+  return slack
     // Strikethrough: ~~text~~ → ~text~
     .replace(/~~(.+?)~~/g, "~$1~")
     // Links: [text](url) → <url|text>

@@ -266,7 +266,14 @@ export class SyncEngine {
           if (openDoc) {
             await this.pull(openDoc);
           } else {
-            // File not open — pull directly to disk
+            // File not open — check if it still exists before pulling to disk
+            try {
+              await vscode.workspace.fs.stat(vscode.Uri.file(mdPath));
+            } catch {
+              // File was deleted locally — clean up orphaned sidecar
+              try { await vscode.workspace.fs.delete(sidecarUri); } catch {}
+              continue;
+            }
             const remote = await pullDocument(config.docId, this.authManager);
             await vscode.workspace.fs.writeFile(
               vscode.Uri.file(mdPath),
@@ -369,10 +376,13 @@ export class SyncEngine {
       if (!config) {continue;}
 
       try {
+        // Re-read file content instead of using stale queue data
+        const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(item.filePath));
+        const currentMarkdown = Buffer.from(fileContent).toString("utf-8");
         const updateResult = await updateDocument(
           config.docId,
           config.editToken,
-          item.markdown,
+          currentMarkdown,
           item.title,
           this.authManager
         );

@@ -24,6 +24,7 @@ export class StatusBarManager {
 
   setIdle(): void {
     this.clearResetTimer();
+    this.publishedUrl = undefined;
     this.item.text = "$(markdown) mdfy";
     this.item.tooltip = "mdfy.cc - Click for sync actions";
     this.item.backgroundColor = undefined;

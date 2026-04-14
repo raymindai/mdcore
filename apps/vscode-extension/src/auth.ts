@@ -209,6 +209,7 @@ export class AuthManager {
     await this.context.secrets.delete(TOKEN_KEY);
     await this.context.secrets.delete("mdfy.refreshToken");
     await this.context.globalState.update(USER_ID_KEY, undefined);
+    this._onDidLogout.fire();
   }
 
   /**

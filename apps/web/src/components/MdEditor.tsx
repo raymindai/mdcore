@@ -930,13 +930,15 @@ function TBtn({ tip, active, onClick, children }: {
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload }: {
+function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload, onUndo, onRedo }: {
   onInsert: (type: "code" | "math" | "mermaid") => void;
   onInsertTable: (cols: number, rows: number) => void;
   onInputPopup: (config: { label: string; onSubmit: (v: string) => void }) => void;
   cmWrap: (prefix: string, suffix?: string) => void;
   cmInsert: (text: string) => void;
   onImageUpload: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
 }) {
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
@@ -992,6 +994,9 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 
   // Smart exec: routes to execCommand (Preview) or CM6 wrap (Source)
   const exec = (cmd: string, value?: string) => {
+    // Undo/Redo always uses app's undo stack, not browser's execCommand
+    if (cmd === "undo") { onUndo(); return; }
+    if (cmd === "redo") { onRedo(); return; }
     if (isInCM6()) {
       const mdMap: Record<string, [string, string?]> = {
         bold: ["**"],
@@ -1416,6 +1421,7 @@ export default function MdEditor() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const mermaidIsNewRef = useRef(false); // true = inserting new, false = editing existing
+  const mermaidSourceIndexRef = useRef<number>(-1); // character offset of mermaid block in markdown
   const [showMermaidModal, setShowMermaidModal] = useState(false);
   // History panel state
   const [showHistory, setShowHistory] = useState(false);
@@ -1428,6 +1434,7 @@ export default function MdEditor() {
   const [showEditModeMenu, setShowEditModeMenu] = useState(false);
   const [initialMath, setInitialMath] = useState<string | undefined>();
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
+  const mathSourceIndexRef = useRef<number>(-1); // character offset of the math block in markdown
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -1548,9 +1555,13 @@ export default function MdEditor() {
   const cmSetDocRef = useRef<((doc: string) => void) | null>(null);
   const markdownForImageRef = useRef(markdown);
   markdownForImageRef.current = markdown;
-  const handlePasteImageForCM = useCallback(async (file: File) => {
+  const handlePasteImageForCM = useCallback(async (file: File, cursorOffset: number) => {
     const placeholder = `![Uploading ${file.name}...]()\n`;
-    const withPlaceholder = markdownForImageRef.current + placeholder;
+    // Insert placeholder at cursor position instead of appending to end
+    const md = markdownForImageRef.current;
+    const before = md.slice(0, cursorOffset);
+    const after = md.slice(cursorOffset);
+    const withPlaceholder = before + placeholder + after;
     setMarkdown(withPlaceholder);
     doRenderRef.current(withPlaceholder);
     cmSetDocRef.current?.(withPlaceholder);
@@ -1866,8 +1877,21 @@ export default function MdEditor() {
       setDocId(result.id);
       // Update URL without navigation
       window.history.replaceState(null, "", `/?doc=${result.id}`);
+      // BUG 8 fix: If content changed during cloud creation window, trigger save
+      const currentMd = markdownRef.current;
+      if (currentMd !== initialMd) {
+        autoSave.scheduleSave({
+          cloudId: result.id,
+          markdown: currentMd,
+          title: tabTitle,
+          userId: user?.id,
+          userEmail: user?.email,
+          anonymousId: anonId,
+          editToken: result.editToken,
+        });
+      }
     }
-  }, [loadTab, autoSave, user?.id, anonymousId]);
+  }, [loadTab, autoSave, user?.id, user?.email, anonymousId]);
 
   const addTab = useCallback(() => {
     setShowTemplatePicker(true);
@@ -2038,6 +2062,32 @@ export default function MdEditor() {
           wrapper.addEventListener("dblclick", (ev) => {
             ev.stopPropagation();
             ev.preventDefault();
+            // Find the exact character offset of this mermaid block in markdown
+            const block = "```mermaid\n" + code + "\n```";
+            const md = markdownRef.current;
+            // Count which occurrence of this exact block is being edited
+            // by checking the order of mermaid containers in the rendered output
+            const allMermaidWrappers = previewRef.current?.querySelectorAll(".mermaid-container") || [];
+            let occurrenceIndex = 0;
+            for (const mw of allMermaidWrappers) {
+              if (mw === wrapper) break;
+              // Check if this wrapper has the same code
+              const mwCode = mw.querySelector(".mermaid-rendered")?.textContent;
+              const mwBtn = mw.querySelector(".mermaid-edit-btn") as HTMLElement;
+              const mwEncoded = mwBtn?.getAttribute("data-mermaid-src");
+              let mwSrc = "";
+              if (mwEncoded) try { mwSrc = decodeURIComponent(atob(mwEncoded)); } catch { /* */ }
+              if (mwSrc === code || ("```mermaid\n" + mwSrc + "\n```") === block) {
+                occurrenceIndex++;
+              }
+            }
+            let searchFrom = 0;
+            for (let n = 0; n <= occurrenceIndex; n++) {
+              const idx = md.indexOf(block, searchFrom);
+              if (idx === -1) { searchFrom = -1; break; }
+              searchFrom = n < occurrenceIndex ? idx + block.length : idx;
+            }
+            mermaidSourceIndexRef.current = searchFrom;
             setCanvasMermaid(code);
             setShowMermaidModal(true);
           });
@@ -2211,7 +2261,30 @@ export default function MdEditor() {
         const mode = (el as HTMLElement).dataset.mathMode;
         if (src) {
           // Store original MD syntax for replacement
-          mathOriginalRef.current = mode === "display" ? `$$\n${src}\n$$` : `$${src}$`;
+          const orig = mode === "display" ? `$$\n${src}\n$$` : `$${src}$`;
+          mathOriginalRef.current = orig;
+          // Find the exact character offset of THIS math block (not just the first match)
+          // by counting which occurrence of this math text it is in the rendered output
+          const allMathEls = previewRef.current?.querySelectorAll(".math-rendered[data-math-src]") || [];
+          let occurrenceIndex = 0;
+          for (const mel of allMathEls) {
+            const mSrc = decodeURIComponent((mel as HTMLElement).dataset.mathSrc || "");
+            const mMode = (mel as HTMLElement).dataset.mathMode;
+            const mOrig = mMode === "display" ? `$$\n${mSrc}\n$$` : `$${mSrc}$`;
+            if (mOrig === orig) {
+              if (mel === el) break;
+              occurrenceIndex++;
+            }
+          }
+          // Find the nth occurrence of this math block in markdown
+          const md = markdownRef.current;
+          let searchFrom = 0;
+          for (let n = 0; n <= occurrenceIndex; n++) {
+            const idx = md.indexOf(orig, searchFrom);
+            if (idx === -1) { searchFrom = -1; break; }
+            searchFrom = n < occurrenceIndex ? idx + orig.length : idx;
+          }
+          mathSourceIndexRef.current = searchFrom;
           setInitialMath(src);
           setShowMathModal(true);
         }
@@ -2474,6 +2547,9 @@ export default function MdEditor() {
       const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
       if (!currentTab?.cloudId || currentTab.readonly || currentTab.deleted) return;
 
+      // BUG 15 fix: Skip if no edits were made during this session
+      if (!sessionSnapshotCreated.current.has(currentTab.cloudId)) return;
+
       // Use sendBeacon for reliable delivery during unload
       // 1. Save current content
       const payload = JSON.stringify({
@@ -2488,16 +2564,14 @@ export default function MdEditor() {
       navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([payload], { type: "application/json" }));
 
       // 2. Create session-end snapshot (version history)
-      if (sessionSnapshotCreated.current.has(currentTab.cloudId)) {
-        const snapshotPayload = JSON.stringify({
-          action: "snapshot",
-          userId: user?.id,
-          anonymousId: (!user?.id) ? getAnonymousId() : undefined,
-          editToken: currentTab.editToken,
-          changeSummary: "Session end",
-        });
-        navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([snapshotPayload], { type: "application/json" }));
-      }
+      const snapshotPayload = JSON.stringify({
+        action: "snapshot",
+        userId: user?.id,
+        anonymousId: (!user?.id) ? getAnonymousId() : undefined,
+        editToken: currentTab.editToken,
+        changeSummary: "Session end",
+      });
+      navigator.sendBeacon(`/api/docs/${currentTab.cloudId}`, new Blob([snapshotPayload], { type: "application/json" }));
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -2984,6 +3058,36 @@ export default function MdEditor() {
       const cell = target.closest("td, th") as HTMLTableCellElement | null;
       if (!cell) return;
 
+      // Determine column index for precise cell replacement
+      const row = cell.closest("tr");
+      const colIndex = row ? Array.from(row.children).indexOf(cell) : -1;
+
+      // Find table sourcepos for accurate line mapping
+      const table = cell.closest("table");
+      const tableEl = table?.closest("[data-sourcepos]") as HTMLElement | null;
+      const sp = tableEl?.getAttribute("data-sourcepos");
+      const spMatch = sp?.match(/^(\d+):\d+-(\d+):\d+$/);
+
+      // Calculate frontmatter offset
+      const currentMdLines = markdownRef.current.split("\n");
+      let fmOffset = 0;
+      if (currentMdLines[0]?.trim() === "---") {
+        for (let k = 1; k < currentMdLines.length; k++) {
+          if (currentMdLines[k]?.trim() === "---") { fmOffset = k + 1; while (fmOffset < currentMdLines.length && !currentMdLines[fmOffset]?.trim()) fmOffset++; break; }
+        }
+      }
+
+      // Determine which markdown row this cell maps to
+      const rowIndex = table ? Array.from(table.querySelectorAll("tr")).indexOf(row!) : -1;
+      const isHeader = cell.tagName === "TH";
+      // header = row 0 in DOM -> line tableStart (row 0 in md)
+      // separator line = tableStart + 1
+      // data rows start at tableStart + 2, rowIndex includes header row (rowIndex 0 = header)
+      const tableStart = spMatch ? parseInt(spMatch[1]) - 1 + fmOffset : -1;
+      const mdRowLine = tableStart >= 0
+        ? (isHeader ? tableStart : tableStart + 1 + rowIndex)
+        : -1;
+
       // Lock cell dimensions before editing
       const rect = cell.getBoundingClientRect();
       const currentText = cell.textContent || "";
@@ -3026,10 +3130,24 @@ export default function MdEditor() {
 
         if (newText !== currentText) {
           const lines = markdownRef.current.split("\n");
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].includes("|") && lines[i].includes(currentText)) {
-              lines[i] = lines[i].replace(currentText, newText);
-              break;
+          if (mdRowLine >= 0 && mdRowLine < lines.length && colIndex >= 0) {
+            // Parse table row into cells, replace the exact target cell, rebuild
+            const tableCells = lines[mdRowLine].split("|").slice(1, -1); // remove leading/trailing empty
+            if (colIndex < tableCells.length) {
+              // Preserve cell padding style
+              const oldCell = tableCells[colIndex];
+              const leadingSpace = oldCell.match(/^(\s*)/)?.[1] || " ";
+              const trailingSpace = oldCell.match(/(\s*)$/)?.[1] || " ";
+              tableCells[colIndex] = leadingSpace + newText + trailingSpace;
+              lines[mdRowLine] = "|" + tableCells.join("|") + "|";
+            }
+          } else {
+            // Fallback: find table line containing the cell text (less precise)
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].includes("|") && lines[i].includes(currentText)) {
+                lines[i] = lines[i].replace(currentText, newText);
+                break;
+              }
             }
           }
           const newMd = lines.join("\n");
@@ -3066,8 +3184,8 @@ export default function MdEditor() {
       const spMatch = sp.match(/^(\d+):\d+-(\d+):\d+$/);
       if (!spMatch) return;
 
-      // Calculate frontmatter offset
-      const mdLines = markdown.split("\n");
+      // Calculate frontmatter offset — use markdownRef for fresh state
+      const mdLines = markdownRef.current.split("\n");
       let fmOffset = 0;
       if (mdLines[0]?.trim() === "---") {
         for (let k = 1; k < mdLines.length; k++) {
@@ -3134,7 +3252,9 @@ export default function MdEditor() {
         if (!btn) return;
         const action = btn.getAttribute("data-action");
 
-        const tableLines = mdLines.slice(tableStart, tableEnd + 1);
+        // Re-read markdown fresh at click time to avoid stale data
+        const freshLines = markdownRef.current.split("\n");
+        const tableLines = freshLines.slice(tableStart, tableEnd + 1);
         const parsedRows = tableLines.filter((l) => l.trim().startsWith("|")).map((l) => {
           const cells = l.split("|").slice(1, -1).map((c) => c.trim());
           return cells;
@@ -3183,8 +3303,8 @@ export default function MdEditor() {
           ...dataRows.map(buildLine),
         ];
 
-        mdLines.splice(tableStart, tableEnd - tableStart + 1, ...newTableLines);
-        const newMd = mdLines.join("\n");
+        freshLines.splice(tableStart, tableEnd - tableStart + 1, ...newTableLines);
+        const newMd = freshLines.join("\n");
         setMarkdown(newMd);
         doRender(newMd);
         closeMenu();
@@ -3227,9 +3347,13 @@ export default function MdEditor() {
     }
   }, [showMenu, showExportMenu, showEditModeMenu]);
 
+  // Guard to skip cmSetDoc when the change originated from CM6 itself
+  const cmUpdateRef = useRef(false);
+
   // Debounced render — called when CM6 content changes
   const handleChange = useCallback(
     (value: string) => {
+      cmUpdateRef.current = true;
       setMarkdown(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => doRender(value), 150);
@@ -3241,6 +3365,10 @@ export default function MdEditor() {
 
   // Sync external markdown changes (undo/redo, tab switch, inline edit) → CM6
   useEffect(() => {
+    if (cmUpdateRef.current) {
+      cmUpdateRef.current = false;
+      return;
+    }
     cmSetDoc(markdown);
   }, [markdown, cmSetDoc]);
 
@@ -3255,14 +3383,16 @@ export default function MdEditor() {
     const imageItems = items.filter(item => item.type.startsWith("image/"));
     if (imageItems.length > 0) {
       e.preventDefault();
+      // Save cursor position BEFORE async upload so we insert at the right place
+      saveInsertPosition();
       (async () => {
         for (const imageItem of imageItems) {
           const file = imageItem.getAsFile();
           if (!file) continue;
           const ts = Date.now();
           const placeholder = `![Uploading ${file.name || "image"}-${ts}...]()\n`;
-          // Insert placeholder at current position via markdown append
-          const withPh = markdownForImageRef.current + placeholder;
+          // Insert placeholder at cursor position
+          const withPh = insertBlockAtCursor(placeholder);
           setMarkdown(withPh); doRender(withPh); cmSetDoc(withPh);
           const url = await uploadImage(file);
           const current = markdownForImageRef.current;
@@ -3296,6 +3426,7 @@ export default function MdEditor() {
       document.execCommand("insertText", false, md);
       return;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
   }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
   const handleWysiwygInput = useCallback(() => {
@@ -3369,13 +3500,14 @@ export default function MdEditor() {
       const imageFiles = files.filter(f => f.type.startsWith("image/"));
       if (imageFiles.length > 0) {
         if (imageFiles.length > 1) showToast(`Uploading ${imageFiles.length} images...`, "info");
+        // Save cursor position BEFORE async upload so we insert at the right place
+        saveInsertPosition();
         let failed = 0;
         for (const img of imageFiles) {
           const url = await uploadImage(img);
           if (url) {
-            const current = markdownForImageRef.current;
             const imgMd = `![${img.name}](${url})\n\n`;
-            const updated = current + imgMd;
+            const updated = insertBlockAtCursor(imgMd);
             setMarkdown(updated);
             doRender(updated);
             cmSetDoc(updated);
@@ -3396,12 +3528,24 @@ export default function MdEditor() {
           const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
           // Always create a new tab for imports
           const tabId = `tab-${tabIdCounter++}`;
-          setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+          setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md, isDraft: true, permission: "mine" }]);
           setTimeout(() => switchTab(tabId), 50);
           if (!isMobile) setViewMode("split");
           if (isPlainFormat && md.length > 50) {
             setMdfyPrompt({ text: md, filename: file.name, tabId });
           }
+          // BUG 7 fix: Create cloud document for imported files
+          const anonId = user?.id ? undefined : ensureAnonymousId();
+          autoSave.createDocument({
+            markdown: md,
+            title: name,
+            userId: user?.id,
+            anonymousId: anonId,
+          }).then(result => {
+            if (result) {
+              setTabs(prev => prev.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t));
+            }
+          });
         } catch (err) {
           console.error(`Failed to import ${files[idx].name}:`, err);
           const message = err instanceof Error ? err.message : "Failed to import file";
@@ -3409,7 +3553,8 @@ export default function MdEditor() {
         }
       }
     },
-    [doRender, isMobile, markdown, uploadImage, cmSetDoc]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
+    [doRender, isMobile, markdown, uploadImage, cmSetDoc, autoSave, user?.id]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -3836,6 +3981,8 @@ ${html}
     setIsSharedDoc(false);
     setDocId(null);
     setIsOwner(false);
+    // Clear cloudId on active tab to prevent auto-save overwriting server doc
+    setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: undefined, editToken: undefined } : t));
     window.history.replaceState(null, "", "/");
     doRender("");
     setShowMenu(false);
@@ -4878,12 +5025,24 @@ ${html}
                   const isPlainFormat = /\.(pdf|rtf|txt|csv|json|xml|pptx?|xlsx?|od[pst])$/i.test(file.name);
                   // Always create a new tab for imports
                   const tabId = `tab-${tabIdCounter++}`;
-                  setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md }]);
+                  setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md, isDraft: true, permission: "mine" }]);
                   setTimeout(() => switchTab(tabId), 50);
                   if (!isMobile) setViewMode("split");
                   if (isPlainFormat && md.length > 50) {
                     setMdfyPrompt({ text: md, filename: file.name, tabId });
                   }
+                  // BUG 7 fix: Create cloud document for imported files
+                  const anonId = user?.id ? undefined : ensureAnonymousId();
+                  autoSave.createDocument({
+                    markdown: md,
+                    title: name,
+                    userId: user?.id,
+                    anonymousId: anonId,
+                  }).then(result => {
+                    if (result) {
+                      setTabs(prev => prev.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t));
+                    }
+                  });
                 } catch (err) {
                   console.error(`Failed to import ${files[idx].name}:`, err);
                   const message = err instanceof Error ? err.message : "Failed to import file";
@@ -4904,10 +5063,12 @@ ${html}
               const files = Array.from(e.target.files || []);
               if (files.length === 0) return;
               if (files.length > 1) showToast(`Uploading ${files.length} images...`, "info");
+              // Save cursor position before async uploads
+              saveInsertPosition();
               for (const file of files) {
                 const ts = Date.now();
                 const placeholder = `![Uploading ${file.name}-${ts}...]()\n`;
-                const withPlaceholder = markdownForImageRef.current + placeholder;
+                const withPlaceholder = insertBlockAtCursor(placeholder);
                 setMarkdown(withPlaceholder);
                 doRender(withPlaceholder);
                 cmSetDoc(withPlaceholder);
@@ -5413,7 +5574,7 @@ ${html}
                                 return;
                               }
                               const d = await res.json();
-                              const perm = doc.editMode === "public" ? "editable" : "readonly";
+                              const perm = (doc.editMode === "public" || d.isEditor) ? "editable" : "readonly";
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true, ownerEmail: d.ownerEmail || undefined };
                               setTabs(prev => {
@@ -5472,7 +5633,7 @@ ${html}
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
-                          <button onClick={() => { if (tab.cloudId) restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {}); setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t)); }}
+                          <button onClick={() => { if (tab.cloudId) restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {}); setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t)); }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
                             Restore
                           </button>
@@ -5977,6 +6138,8 @@ ${html}
                 cmWrap={cmWrapSelection}
                 cmInsert={cmInsertAtCursor}
                 onImageUpload={() => imageFileRef.current?.click()}
+                onUndo={undo}
+                onRedo={redo}
               />
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
@@ -6471,8 +6634,8 @@ ${html}
         <div
           className="fixed rounded-lg shadow-xl py-1"
           style={{
-            left: docContextMenu.x,
-            top: docContextMenu.y,
+            left: Math.min(docContextMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 180),
+            top: Math.min(docContextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 200),
             zIndex: 9999,
             background: "var(--menu-bg)",
             border: "1px solid var(--border)",
@@ -6536,7 +6699,7 @@ ${html}
                 URL.revokeObjectURL(url);
               }
             }},
-            ...folders.map(f => ({
+            ...folders.filter(f => !f.section || f.section === "my").map(f => ({
               label: `Move to ${f.name}`,
               action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
             })),
@@ -7139,7 +7302,12 @@ ${html}
                 if (!mermaidIsNewRef.current && canvasMermaid) {
                   // Editing existing diagram — find and replace in-place
                   const originalBlock = "```mermaid\n" + canvasMermaid + "\n```";
-                  if (markdown.includes(originalBlock)) {
+                  const sourceIdx = mermaidSourceIndexRef.current;
+                  if (sourceIdx >= 0 && sourceIdx < markdown.length && markdown.slice(sourceIdx, sourceIdx + originalBlock.length) === originalBlock) {
+                    // Replace at exact saved position (handles duplicate mermaid blocks)
+                    newMarkdown = markdown.slice(0, sourceIdx) + md + markdown.slice(sourceIdx + originalBlock.length);
+                  } else if (markdown.includes(originalBlock)) {
+                    // Fallback: replace first occurrence
                     newMarkdown = markdown.replace(originalBlock, md);
                   } else {
                     // Fuzzy match: find block containing first content line
@@ -7158,6 +7326,7 @@ ${html}
                   newMarkdown = insertBlockAtCursor(md);
                 }
                 mermaidIsNewRef.current = false;
+                mermaidSourceIndexRef.current = -1;
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
@@ -7275,8 +7444,12 @@ ${html}
               onGenerate={(md) => {
                 let newMarkdown = insertBlockAtCursor(md); // default: insert at cursor
                 const orig = mathOriginalRef.current;
-                if (orig && markdown.includes(orig)) {
-                  // Replace existing math expression (exact match)
+                const sourceIdx = mathSourceIndexRef.current;
+                if (orig && sourceIdx >= 0 && sourceIdx < markdown.length && markdown.slice(sourceIdx, sourceIdx + orig.length) === orig) {
+                  // Replace at exact saved position (handles duplicate math blocks)
+                  newMarkdown = markdown.slice(0, sourceIdx) + md + markdown.slice(sourceIdx + orig.length);
+                } else if (orig && markdown.includes(orig)) {
+                  // Fallback: replace first occurrence
                   newMarkdown = markdown.replace(orig, md);
                 } else if (orig) {
                   // Try fuzzy match: find math block containing the same TeX source
@@ -7298,6 +7471,7 @@ ${html}
                 doRender(newMarkdown);
                 setInitialMath(undefined);
                 mathOriginalRef.current = null;
+                mathSourceIndexRef.current = -1;
                 setShowMathModal(false);
               }}
             />

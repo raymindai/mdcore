@@ -106,7 +106,7 @@ export interface UseCodeMirrorOptions {
   onChange: (value: string) => void;
   onCursorActivity?: (line: number) => void;
   onPaste?: (text: string, html: string) => string | null;
-  onPasteImage?: (file: File) => void;
+  onPasteImage?: (file: File, cursorOffset: number) => void;
   theme: "dark" | "light";
   placeholder?: string;
 }
@@ -192,7 +192,8 @@ export function useCodeMirror({
               const file = imageItem.getAsFile();
               if (file) {
                 event.preventDefault();
-                onPasteImageRef.current(file);
+                const cursorOffset = view.state.selection.main.head;
+                onPasteImageRef.current(file, cursorOffset);
                 return true;
               }
             }
