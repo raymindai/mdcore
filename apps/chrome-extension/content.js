@@ -219,7 +219,7 @@
         const cont = iframe.closest("div");
         const heading = cont?.querySelector("h1, h2, h3, [class*='title']");
         const title = heading?.textContent?.trim() || iframe.getAttribute("title") || "";
-        const label = title ? "📊 *" + title + "*" : "📊 *Interactive diagram*";
+        const label = title ? "**" + title + "**" : "**Interactive diagram**";
         iframe.textContent = "\n\n" + label + "\n*(Download the diagram from the original conversation and paste it here)*\n\n";
       }
     });
@@ -1293,12 +1293,14 @@
     }
 
     if (request.action === "capture-page") {
-      // On AI pages: extract conversation
+      // On AI pages: extract conversation (with artifact pre-processing)
       // On other pages: return null (background.js will handle it)
       if (platform) {
-        const messages = extractConversation();
-        const markdown = formatConversation(messages);
-        sendResponse({ markdown });
+        preProcessArtifactIframes().then(() => {
+          const messages = extractConversation();
+          const markdown = formatConversation(messages);
+          sendResponse({ markdown });
+        });
       } else {
         sendResponse({ markdown: null });
       }
@@ -1339,9 +1341,14 @@
   addMiniButtons();
 
   // Re-run mini button injection when new messages appear (MutationObserver)
+  // Debounced to avoid performance issues during streaming responses
+  let observerTimer;
   const observer = new MutationObserver(() => {
-    addMiniButtons();
-    measureContentRight();
+    if (observerTimer) clearTimeout(observerTimer);
+    observerTimer = setTimeout(() => {
+      addMiniButtons();
+      measureContentRight();
+    }, 300);
   });
 
   // Observe the main content area for changes

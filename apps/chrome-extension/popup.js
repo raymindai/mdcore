@@ -199,8 +199,8 @@ function showNotOnAiPage() {
   platformNameEl.textContent = "Any webpage";
   document.getElementById("platform-hint").textContent = "Capture this page as Markdown";
   btnCapture.disabled = false;
-  btnCapture.querySelector(".label").textContent = "Capture This Page";
-  btnCapture.querySelector(".desc").textContent = "Page content → clean Markdown document";
+  const labelEl = btnCapture.querySelector(".label");
+  if (labelEl) labelEl.innerHTML = 'Capture This Page<span class="desc">Page content → clean Markdown document</span>';
   btnCapture.dataset.mode = "page";
   rangeSelector.style.display = "none";
 }

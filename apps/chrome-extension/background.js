@@ -6,7 +6,7 @@
  */
 
 const MDFY_URL = "https://mdfy.cc";
-const MDFY_COOKIE_URL = "https://www.mdfy.cc";
+const MDFY_COOKIE_URL = "https://mdfy.cc";
 const MAX_URL_BYTES = 8000;
 
 // ─── Compression (same as content.js / share.ts) ───
