@@ -3896,47 +3896,120 @@ ${html}
     return () => window.removeEventListener("keydown", handler);
   }, [handleShare, handleCopyHtml, undo, redo]);
 
+  // ── Cursor-aware insertion ──
+  // Saves WYSIWYG cursor position so inserts go where the user expects
+  const insertPosRef = useRef<number>(-1);
+
+  const saveInsertPosition = useCallback(() => {
+    const md = markdownRef.current;
+
+    // Source / split mode: use CodeMirror cursor directly
+    if (viewMode !== "preview") {
+      // cmInsertAtCursor handles source mode; for split we still want position
+      insertPosRef.current = -1; // will use cmInsertAtCursor for source
+      return;
+    }
+
+    // WYSIWYG mode: map DOM cursor → markdown position via Turndown marker
+    const article = previewRef.current?.querySelector("article");
+    const sel = window.getSelection();
+    if (!article || !sel?.rangeCount || !article.contains(sel.getRangeAt(0).startContainer)) {
+      insertPosRef.current = md.length;
+      return;
+    }
+
+    const MARKER = "MDFYINSERT7X9K";
+    const range = sel.getRangeAt(0);
+    const markerNode = document.createTextNode(MARKER);
+    range.insertNode(markerNode);
+
+    // Clone article with marker, then immediately remove marker from live DOM
+    const clone = article.cloneNode(true) as HTMLElement;
+    markerNode.remove();
+    article.normalize();
+
+    // Move marker out of ce-spacers in clone (spacers are stripped before Turndown)
+    clone.querySelectorAll(".ce-spacer").forEach(spacer => {
+      if (spacer.textContent?.includes(MARKER)) {
+        const txt = document.createTextNode(MARKER);
+        spacer.parentNode?.insertBefore(txt, spacer.nextSibling);
+      }
+      spacer.remove();
+    });
+    clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn").forEach(el => el.remove());
+    clone.querySelectorAll(".table-wrapper").forEach(wrapper => {
+      const table = wrapper.querySelector("table");
+      if (table) wrapper.replaceWith(table);
+    });
+
+    const mdWithMarker = htmlToMarkdown(clone.innerHTML);
+    const markerIdx = mdWithMarker.indexOf(MARKER);
+
+    if (markerIdx !== -1) {
+      // Remove marker text to get clean position
+      const clean = mdWithMarker.slice(0, markerIdx) + mdWithMarker.slice(markerIdx + MARKER.length);
+      // Snap to end of current line (block-level insert boundary)
+      const nextNl = clean.indexOf("\n", markerIdx);
+      insertPosRef.current = nextNl !== -1 ? nextNl + 1 : clean.length;
+    } else {
+      insertPosRef.current = md.length;
+    }
+  }, [viewMode]);
+
+  const insertBlockAtCursor = useCallback((content: string): string => {
+    const md = markdownRef.current;
+    const pos = insertPosRef.current;
+
+    if (pos < 0 || pos >= md.length) {
+      // Fallback / source-mode handled by cmInsertAtCursor
+      const suffix = md.endsWith("\n") ? "\n" : "\n\n";
+      return md + suffix + content;
+    }
+
+    const before = md.slice(0, pos);
+    const after = md.slice(pos);
+    const gap1 = before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+    const gap2 = after.startsWith("\n") ? "" : "\n";
+    return before + gap1 + content + gap2 + after;
+  }, []);
+
   // Insert special blocks (table, code, math, mermaid)
   const handleInsertTable = useCallback((cols: number, rows: number) => {
-    const md = markdownRef.current;
-    const suffix = md.endsWith("\n") ? "\n" : "\n\n";
+    saveInsertPosition();
     const header = "| " + Array.from({ length: cols }, (_, i) => `Column ${i + 1}`).join(" | ") + " |";
     const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
     const row = "| " + Array.from({ length: cols }, () => "cell").join(" | ") + " |";
     const tableRows = Array.from({ length: rows }, () => row).join("\n");
-    const newMd = md + `${suffix}${header}\n${separator}\n${tableRows}\n`;
+    const block = `${header}\n${separator}\n${tableRows}`;
+    const newMd = insertBlockAtCursor(block);
     setMarkdown(newMd);
+    cmSetDoc(newMd);
     doRender(newMd);
-  }, [doRender, setMarkdown]);
+  }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
 
   const handleInsertBlock = useCallback((type: "code" | "math" | "mermaid") => {
-    const md = markdownRef.current;
-    const suffix = md.endsWith("\n") ? "\n" : "\n\n";
-    let insert = "";
+    saveInsertPosition();
 
     switch (type) {
-      case "code":
-        // Insert code block with placeholder — double-click to edit in modal
-        insert = `${suffix}\`\`\`\ncode here\n\`\`\`\n`;
+      case "code": {
+        const block = "```\ncode here\n```";
+        const newMd = insertBlockAtCursor(block);
+        setMarkdown(newMd);
+        cmSetDoc(newMd);
+        doRender(newMd);
         break;
+      }
       case "math":
         setInitialMath("");
-        mathOriginalRef.current = null; // new math, not editing existing
+        mathOriginalRef.current = null;
         setShowMathModal(true);
         return;
       case "mermaid":
-        // Open visual editor with default flowchart template
         setCanvasMermaid("graph TD\n    A[Start] --> B{Decision}\n    B -->|Yes| C[Action 1]\n    B -->|No| D[Action 2]\n    C --> E[End]\n    D --> E");
         setShowMermaidModal(true);
         return;
     }
-
-    if (insert) {
-      const newMd = md + insert;
-      setMarkdown(newMd);
-      doRender(newMd);
-    }
-  }, [doRender, setMarkdown]);
+  }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
 
   // Protect special elements from contentEditable — make them non-editable islands
   useEffect(() => {
@@ -6985,13 +7058,16 @@ ${html}
                     if (match && match.index !== undefined) {
                       newMarkdown = markdown.slice(0, match.index) + md + markdown.slice(match.index + match[0].length);
                     } else {
-                      newMarkdown = markdown + "\n\n" + md;
+                      // New diagram — insert at saved cursor position
+                      newMarkdown = insertBlockAtCursor(md);
                     }
                   }
                 } else {
-                  newMarkdown = markdown ? markdown + "\n\n" + md + "\n" : md + "\n";
+                  // New diagram — insert at saved cursor position
+                  newMarkdown = insertBlockAtCursor(md);
                 }
                 setMarkdown(newMarkdown);
+                cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
                 setCanvasMermaid(undefined);
                 setShowMermaidModal(false);
@@ -7110,10 +7186,11 @@ ${html}
                   // Replace existing math expression
                   newMarkdown = markdown.replace(mathOriginalRef.current, md);
                 } else {
-                  // Insert new
-                  newMarkdown = markdown ? markdown + "\n\n" + md + "\n" : md + "\n";
+                  // New math — insert at saved cursor position
+                  newMarkdown = insertBlockAtCursor(md);
                 }
                 setMarkdown(newMarkdown);
+                cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
                 setInitialMath(undefined);
                 mathOriginalRef.current = null;
