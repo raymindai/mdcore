@@ -234,6 +234,8 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
 
       const headers: Record<string, string> = { "x-user-id": userId };
       if (token) { headers["Authorization"] = `Bearer ${token}`; }
+      const email = await this._authManager.getEmail();
+      if (email) { headers["x-user-email"] = email; }
 
       const res = await fetch(`${baseUrl}/api/user/documents`, { headers });
       if (!res.ok) { return []; }

@@ -115,11 +115,11 @@ export function activate(context: vscode.ExtensionContext): void {
       if (existing) {
         statusBar?.setSyncing("Pushing...");
         try {
-          await updateDocument(
+          const updateResult = await updateDocument(
             existing.docId, existing.editToken, markdown, title, authManager
           );
           existing.lastSyncedAt = new Date().toISOString();
-          existing.lastServerUpdatedAt = new Date().toISOString();
+          existing.lastServerUpdatedAt = updateResult.updated_at;
           await saveMdfyConfig(fileName, existing);
 
           const url = `${baseUrl}/d/${existing.docId}`;
@@ -452,7 +452,7 @@ function markdownToSlack(md: string): string {
     .replace(/^---+$/gm, "———");
 }
 
-function getMdfyConfigPath(mdFilePath: string): string {
+export function getMdfyConfigPath(mdFilePath: string): string {
   const path = require("path");
   const dir = path.dirname(mdFilePath);
   const base = path.basename(mdFilePath, path.extname(mdFilePath));

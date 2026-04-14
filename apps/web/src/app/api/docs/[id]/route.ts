@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -11,9 +12,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
+  // Verify JWT for authenticated requests
+  const verified = await verifyAuthToken(_req.headers.get("authorization"));
+
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token")
     .eq("id", id)
     .single();
 
@@ -26,10 +30,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document expired" }, { status: 410 });
   }
 
+  // Use JWT-verified userId if available, otherwise fall back to headers
+  const requesterId = verified?.userId || _req.headers.get("x-user-id");
+  const requesterAnonId = _req.headers.get("x-anonymous-id");
+
   // Draft documents: only accessible by owner
   if (data.is_draft) {
-    const requesterId = _req.headers.get("x-user-id");
-    const requesterAnonId = _req.headers.get("x-anonymous-id");
     const isDraftOwner =
       !!(requesterId && data.user_id && requesterId === data.user_id) ||
       !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
@@ -41,8 +47,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   // Email-restricted access: if allowed_emails is set, only those emails (+ owner) can access
   const allowedEmails: string[] = data.allowed_emails || [];
   if (allowedEmails.length > 0) {
-    const requesterId = _req.headers.get("x-user-id");
-    const requesterEmail = _req.headers.get("x-user-email") || "";
+    const requesterEmail = verified?.email || _req.headers.get("x-user-email") || "";
     const isOwner = !!(requesterId && data.user_id && requesterId === data.user_id);
     const isAllowed = allowedEmails.some(e => e.toLowerCase() === requesterEmail.toLowerCase());
     if (!isOwner && !isAllowed) {
@@ -73,18 +78,16 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     .then(() => {});
 
   // Check ownership: by user_id or anonymous_id
-  const requesterId = _req.headers.get("x-user-id");
-  const requesterAnonId = _req.headers.get("x-anonymous-id");
   const isOwnedByRequester =
     !!(requesterId && data.user_id && requesterId === data.user_id) ||
     !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
 
   // Don't expose sensitive fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, ...safeData } = data;
+  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, edit_token: _et, ...safeData } = data;
 
   // Check if requester is an allowed editor (for non-owner edit access)
-  const requesterEmail = _req.headers.get("x-user-email") || "";
+  const requesterEmail = verified?.email || _req.headers.get("x-user-email") || "";
   const isAllowedEditor = (data.allowed_editors || []).some((e: string) => e.toLowerCase() === requesterEmail.toLowerCase());
 
   // Resolve owner email for non-owners (so they can see who owns the doc)
@@ -102,7 +105,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     editMode: data.edit_mode || "token",
     isOwner: isOwnedByRequester,
     isEditor: isAllowedEditor,
-    ...(isOwnedByRequester ? { allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
+    ...(isOwnedByRequester ? { editToken: data.edit_token, allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
     ...(ownerEmail ? { ownerEmail } : {}),
   });
 }
@@ -283,14 +286,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     // Update without creating version history
-    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const updatedAt = new Date().toISOString();
+    const updates: Record<string, unknown> = { updated_at: updatedAt };
     if (markdown !== undefined) updates.markdown = markdown;
     if (title !== undefined) updates.title = title;
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, updated_at: updatedAt });
   }
 
   // ─── Action: unpublish (make private — flip is_draft to true, clear sharing) ───
@@ -466,4 +470,31 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
 
   return NextResponse.json({ ok: true });
+}
+
+export async function HEAD(_req: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return new Response(null, { status: 503 });
+  }
+
+  const { data, error } = await supabase
+    .from("documents")
+    .select("updated_at, expires_at")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    return new Response(null, { status: 404 });
+  }
+
+  if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    return new Response(null, { status: 410 });
+  }
+
+  return new Response(null, {
+    status: 200,
+    headers: { "x-updated-at": data.updated_at || "" },
+  });
 }

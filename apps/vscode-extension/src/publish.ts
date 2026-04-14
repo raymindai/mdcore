@@ -11,6 +11,7 @@ interface PullResult {
   markdown: string;
   title: string | null;
   updated_at: string;
+  editToken?: string;
 }
 
 /**
@@ -40,6 +41,10 @@ export async function publishDocument(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+  const email = await authManager?.getEmail();
+  if (email) {
+    headers["x-user-email"] = email;
+  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -61,7 +66,7 @@ export async function publishDocument(
 
 /**
  * Update an existing document on mdfy.cc.
- * PATCH /api/docs/{id} → { ok: true }
+ * PATCH /api/docs/{id} → { ok: true, updated_at }
  */
 export async function updateDocument(
   id: string,
@@ -69,7 +74,7 @@ export async function updateDocument(
   markdown: string,
   title: string,
   authManager?: AuthManager
-): Promise<void> {
+): Promise<{ updated_at: string }> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}/api/docs/${id}`;
 
@@ -85,12 +90,20 @@ export async function updateDocument(
     body.userId = userId;
   }
 
+  const email = await authManager?.getEmail();
+  if (email) {
+    body.userEmail = email;
+  }
+
   const token = await authManager?.getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (email) {
+    headers["x-user-email"] = email;
   }
 
   const response = await fetch(url, {
@@ -106,6 +119,9 @@ export async function updateDocument(
         `HTTP ${response.status}: ${response.statusText}`
     );
   }
+
+  const data = await response.json() as { ok: boolean; updated_at?: string };
+  return { updated_at: data.updated_at || new Date().toISOString() };
 }
 
 /**
@@ -128,6 +144,10 @@ export async function pullDocument(
   if (userId) {
     headers["x-user-id"] = userId;
   }
+  const email = await authManager?.getEmail();
+  if (email) {
+    headers["x-user-email"] = email;
+  }
 
   const response = await fetch(url, {
     method: "GET",
@@ -148,16 +168,29 @@ export async function pullDocument(
 
 /**
  * Check if the server document has been updated since last sync.
- * Returns the updated_at timestamp from the server.
+ * Returns status with updated_at timestamp, or "deleted"/"error".
  */
 export async function checkServerUpdatedAt(
   id: string,
   authManager?: AuthManager
-): Promise<string | undefined> {
+): Promise<{ status: "ok"; updated_at: string } | { status: "deleted" } | { status: "error" }> {
+  const baseUrl = getApiBaseUrl();
+  const headers: Record<string, string> = {};
+  const token = await authManager?.getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   try {
-    const data = await pullDocument(id, authManager);
-    return data.updated_at;
+    const response = await fetch(`${baseUrl}/api/docs/${id}`, {
+      method: "HEAD",
+      headers,
+    });
+    if (response.status === 404 || response.status === 410) {
+      return { status: "deleted" };
+    }
+    if (!response.ok) return { status: "error" };
+    const updatedAt = response.headers.get("x-updated-at");
+    return updatedAt ? { status: "ok", updated_at: updatedAt } : { status: "error" };
   } catch {
-    return undefined;
+    return { status: "error" };
   }
 }

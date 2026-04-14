@@ -31,7 +31,11 @@ export default function VSCodeAuthPage() {
 
       // We have a token — redirect to VS Code URI handler
       const token = session.access_token;
-      const vscodeUri = `vscode://raymindai.mdfy-vscode/auth?token=${encodeURIComponent(token)}`;
+      const refreshToken = (session as { refresh_token?: string }).refresh_token;
+      let vscodeUri = `vscode://raymindai.mdfy-vscode/auth?token=${encodeURIComponent(token)}`;
+      if (refreshToken) {
+        vscodeUri += `&refresh_token=${encodeURIComponent(refreshToken)}`;
+      }
 
       // Try to open VS Code
       window.location.href = vscodeUri;
@@ -39,7 +43,10 @@ export default function VSCodeAuthPage() {
 
       // Also try the insiders variant after a delay
       setTimeout(() => {
-        const insidersUri = `vscode-insiders://raymindai.mdfy-vscode/auth?token=${encodeURIComponent(token)}`;
+        let insidersUri = `vscode-insiders://raymindai.mdfy-vscode/auth?token=${encodeURIComponent(token)}`;
+        if (refreshToken) {
+          insidersUri += `&refresh_token=${encodeURIComponent(refreshToken)}`;
+        }
         // Create hidden iframe to try insiders without navigating away
         const iframe = document.createElement("iframe");
         iframe.style.display = "none";

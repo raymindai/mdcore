@@ -69,12 +69,19 @@ export class AuthManager {
   handleAuthCallback(uri: vscode.Uri): void {
     const query = new URLSearchParams(uri.query);
     const token = query.get("token");
+    const refreshToken = query.get("refresh_token");
 
     if (token && this.pendingAuthResolve) {
+      if (refreshToken) {
+        this.context.secrets.store("mdfy.refreshToken", refreshToken);
+      }
       this.pendingAuthResolve(token);
       this.pendingAuthResolve = undefined;
     } else if (token) {
       // Callback received without pending login (e.g., direct URI open)
+      if (refreshToken) {
+        this.context.secrets.store("mdfy.refreshToken", refreshToken);
+      }
       this.storeToken(token).then(() => {
         this._onDidLogin.fire();
         vscode.window.showInformationMessage(
@@ -90,7 +97,7 @@ export class AuthManager {
 
   /**
    * Get the stored auth token, or undefined if not logged in.
-   * Returns undefined if the token is expired.
+   * Returns undefined if the token is expired (tries refresh first).
    */
   async getToken(): Promise<string | undefined> {
     const token = await this.context.secrets.get(TOKEN_KEY);
@@ -100,6 +107,25 @@ export class AuthManager {
     try {
       const payload = decodeJwtPayload(token);
       if (payload.exp && Date.now() > Number(payload.exp) * 1000) {
+        // Try refresh before logging out
+        const refreshToken = await this.context.secrets.get("mdfy.refreshToken");
+        if (refreshToken) {
+          try {
+            const response = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            if (response.ok) {
+              const data = await response.json() as { access_token: string; refresh_token?: string };
+              await this.storeToken(data.access_token);
+              if (data.refresh_token) {
+                await this.context.secrets.store("mdfy.refreshToken", data.refresh_token);
+              }
+              return data.access_token;
+            }
+          } catch { /* refresh failed, logout */ }
+        }
         await this.logout();
         return undefined;
       }
@@ -181,6 +207,7 @@ export class AuthManager {
    */
   async logout(): Promise<void> {
     await this.context.secrets.delete(TOKEN_KEY);
+    await this.context.secrets.delete("mdfy.refreshToken");
     await this.context.globalState.update(USER_ID_KEY, undefined);
   }
 

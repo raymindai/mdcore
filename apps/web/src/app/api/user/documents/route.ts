@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 export async function GET(req: NextRequest) {
-  let userId = req.headers.get("x-user-id");
+  // Try JWT verification first
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+
+  let userId = verified?.userId || req.headers.get("x-user-id");
   const anonymousId = req.headers.get("x-anonymous-id");
-  const userEmail = req.headers.get("x-user-email");
+  const userEmail = verified?.email || req.headers.get("x-user-email");
 
   const supabase = getSupabaseClient();
   if (!supabase) {

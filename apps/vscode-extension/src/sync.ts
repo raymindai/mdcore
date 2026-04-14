@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import {
   loadMdfyConfig,
   saveMdfyConfig,
+  getMdfyConfigPath,
   MdfyConfig,
 } from "./extension";
 import {
@@ -95,14 +96,27 @@ export class SyncEngine {
     }
 
     // Check for conflicts before pushing
-    const serverUpdatedAt = await checkServerUpdatedAt(
+    const checkResult = await checkServerUpdatedAt(
       config.docId,
       this.authManager
     );
+
+    if (checkResult.status === "deleted") {
+      const configPath = getMdfyConfigPath(filePath);
+      try {
+        await vscode.workspace.fs.delete(vscode.Uri.file(configPath));
+      } catch { /* already gone */ }
+      vscode.window.showWarningMessage(
+        `"${vscode.workspace.asRelativePath(document.uri)}" was deleted on mdfy.cc. Local sync removed.`
+      );
+      this.statusBar.setIdle();
+      return;
+    }
+
     if (
-      serverUpdatedAt &&
+      checkResult.status === "ok" &&
       config.lastServerUpdatedAt &&
-      new Date(serverUpdatedAt).getTime() >
+      new Date(checkResult.updated_at).getTime() >
         new Date(config.lastServerUpdatedAt).getTime()
     ) {
       // Server changed since last sync — conflict
@@ -133,7 +147,7 @@ export class SyncEngine {
     PreviewPanel.updateSyncStatusForDocument(document.uri, "syncing");
 
     try {
-      await updateDocument(
+      const result = await updateDocument(
         config.docId,
         config.editToken,
         markdown,
@@ -142,7 +156,7 @@ export class SyncEngine {
       );
 
       config.lastSyncedAt = new Date().toISOString();
-      config.lastServerUpdatedAt = new Date().toISOString();
+      config.lastServerUpdatedAt = result.updated_at;
       await saveMdfyConfig(filePath, config);
 
       this.statusBar.setSynced();
@@ -190,6 +204,9 @@ export class SyncEngine {
 
       config.lastSyncedAt = new Date().toISOString();
       config.lastServerUpdatedAt = remote.updated_at;
+      if (remote.editToken) {
+        config.editToken = remote.editToken;
+      }
       await saveMdfyConfig(filePath, config);
 
       this.statusBar.setSynced();
@@ -204,59 +221,71 @@ export class SyncEngine {
 
   /**
    * Poll all tracked (published) markdown files for server changes.
+   * Scans workspace for .mdfy.json sidecar files, not just open documents.
    */
   private async pollAllTrackedFiles(): Promise<void> {
-    // First, flush offline queue
     await this.flushOfflineQueue();
 
-    // Check all open markdown documents for sync state (not just visible editors)
-    for (const document of vscode.workspace.textDocuments) {
-      if (document.languageId !== "markdown") {continue;}
+    // Scan workspace for .mdfy.json sidecar files (not just open docs)
+    const sidecarFiles = await vscode.workspace.findFiles(
+      "**/*.mdfy.json",
+      "{**/node_modules/**,**/dist/**,**/.git/**}",
+      50 // limit to prevent overload
+    );
 
-      const filePath = document.fileName;
-      const config = await loadMdfyConfig(filePath);
-      if (!config) {continue;}
+    for (const sidecarUri of sidecarFiles) {
+      const sidecarPath = sidecarUri.fsPath;
+      // Derive the .md file path: foo.mdfy.json → foo.md
+      const mdPath = sidecarPath.replace(/\.mdfy\.json$/, ".md");
+
+      const config = await loadMdfyConfig(mdPath);
+      if (!config) continue;
 
       try {
-        const serverUpdatedAt = await checkServerUpdatedAt(
-          config.docId,
-          this.authManager
-        );
+        const result = await checkServerUpdatedAt(config.docId, this.authManager);
 
-        if (!serverUpdatedAt) {continue;}
+        if (result.status === "deleted") {
+          try { await vscode.workspace.fs.delete(sidecarUri); } catch { /* already gone */ }
+          continue;
+        }
+        if (result.status === "error") continue;
 
-        const localMtime = config.lastSyncedAt;
-        const serverTime = new Date(serverUpdatedAt).getTime();
-        const localTime = new Date(localMtime).getTime();
+        const serverTime = new Date(result.updated_at).getTime();
+        const localTime = new Date(config.lastSyncedAt).getTime();
 
-        // Check if local file has unsaved changes
-        const localDirty = document.isDirty;
+        // Check if the file is currently open
+        const openDoc = vscode.workspace.textDocuments.find(d => d.fileName === mdPath);
+        const localDirty = openDoc?.isDirty ?? false;
 
         if (serverTime > localTime && !localDirty) {
-          // Only server changed, and local is clean: pull
-          await this.pull(document);
+          if (openDoc) {
+            await this.pull(openDoc);
+          } else {
+            // File not open — pull directly to disk
+            const remote = await pullDocument(config.docId, this.authManager);
+            await vscode.workspace.fs.writeFile(
+              vscode.Uri.file(mdPath),
+              Buffer.from(remote.markdown, "utf-8")
+            );
+            config.lastSyncedAt = new Date().toISOString();
+            config.lastServerUpdatedAt = remote.updated_at;
+            if (remote.editToken) config.editToken = remote.editToken;
+            await saveMdfyConfig(mdPath, config);
+          }
         } else if (serverTime > localTime && localDirty) {
-          // Both changed: conflict
           this.statusBar.setConflict();
-          PreviewPanel.updateSyncStatusForDocument(document.uri, "conflict");
-
-          const action = await vscode.window.showWarningMessage(
-            `Conflict detected for ${vscode.workspace.asRelativePath(document.uri)}. The server version has changed.`,
-            "Pull (Overwrite Local)",
-            "Push (Overwrite Server)",
-            "Show Diff"
-          );
-
-          if (action === "Pull (Overwrite Local)") {
-            await this.pull(document);
-          } else if (action === "Push (Overwrite Server)") {
-            await this.push(document);
-          } else if (action === "Show Diff") {
-            await this.showConflictDiff(document, config);
+          if (openDoc) {
+            const action = await vscode.window.showWarningMessage(
+              `Conflict: "${vscode.workspace.asRelativePath(openDoc.uri)}" changed on server.`,
+              "Pull", "Push", "Show Diff"
+            );
+            if (action === "Pull") await this.pull(openDoc);
+            else if (action === "Push") await this.push(openDoc);
+            else if (action === "Show Diff") await this.showConflictDiff(openDoc, config);
           }
         }
       } catch {
-        // Network error during polling, skip silently
+        // Network error, skip
       }
     }
   }
@@ -334,7 +363,7 @@ export class SyncEngine {
       if (!config) {continue;}
 
       try {
-        await updateDocument(
+        const updateResult = await updateDocument(
           config.docId,
           config.editToken,
           item.markdown,
@@ -343,7 +372,7 @@ export class SyncEngine {
         );
 
         config.lastSyncedAt = new Date().toISOString();
-        config.lastServerUpdatedAt = new Date().toISOString();
+        config.lastServerUpdatedAt = updateResult.updated_at;
         await saveMdfyConfig(item.filePath, config);
       } catch {
         // Still offline, re-queue with incremented retryCount
