@@ -16,6 +16,31 @@
   /** @type {HTMLElement} */
   const toolbar = document.getElementById("toolbar");
 
+  // Rich tooltips for toolbar buttons with data-tip + data-preview
+  (function initRichTooltips() {
+    var tipEl = document.createElement("div");
+    tipEl.className = "toolbar-rich-tip";
+    document.body.appendChild(tipEl);
+    var hideTimer;
+    document.addEventListener("mouseover", function(e) {
+      var btn = e.target.closest("[data-tip]");
+      if (!btn) { tipEl.classList.remove("show"); return; }
+      clearTimeout(hideTimer);
+      var tip = btn.getAttribute("data-tip");
+      var preview = btn.getAttribute("data-preview");
+      tipEl.innerHTML = '<div class="tip-label">' + (tip || "") + '</div>' + (preview ? '<div class="tip-preview">' + preview + '</div>' : '');
+      tipEl.classList.add("show");
+      var r = btn.getBoundingClientRect();
+      tipEl.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 210)) + "px";
+      tipEl.style.top = (r.bottom + 6) + "px";
+    });
+    document.addEventListener("mouseout", function(e) {
+      if (e.target.closest("[data-tip]")) {
+        hideTimer = setTimeout(function() { tipEl.classList.remove("show"); }, 100);
+      }
+    });
+  })();
+
   // Current markdown source (kept in sync with extension)
   let currentMarkdown = window.__initialMarkdown || "";
   let currentFlavor = (window.__initialFlavor && window.__initialFlavor.primary) || "gfm";

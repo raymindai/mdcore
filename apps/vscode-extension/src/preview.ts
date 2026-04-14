@@ -799,18 +799,18 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
     <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
     <span class="toolbar-divider"></span>
-    <button data-action="h1" title="Heading 1"><span style="font-size:10px;font-weight:700">H1</span></button>
-    <button data-action="h2" title="Heading 2"><span style="font-size:10px;font-weight:700">H2</span></button>
-    <button data-action="h3" title="Heading 3"><span style="font-size:10px;font-weight:600">H3</span></button>
-    <button data-action="h4" title="Heading 4"><span style="font-size:10px">H4</span></button>
+    <button data-action="h1" data-tip="Heading 1 — # text" data-preview="<span style='font-size:1.3em;font-weight:700'>Heading 1</span>"><span style="font-size:10px;font-weight:700">H1</span></button>
+    <button data-action="h2" data-tip="Heading 2 — ## text" data-preview="<span style='font-size:1.1em;font-weight:600'>Heading 2</span>"><span style="font-size:10px;font-weight:700">H2</span></button>
+    <button data-action="h3" data-tip="Heading 3 — ### text" data-preview="<span style='font-size:0.95em;font-weight:600'>Heading 3</span>"><span style="font-size:10px;font-weight:600">H3</span></button>
+    <button data-action="h4" data-tip="Heading 4 — #### text" data-preview="<span style='font-size:0.85em;font-weight:600'>Heading 4</span>"><span style="font-size:10px">H4</span></button>
     <button data-action="h5" title="Heading 5"><span style="font-size:10px">H5</span></button>
     <button data-action="h6" title="Heading 6"><span style="font-size:10px">H6</span></button>
     <button data-action="p" title="Paragraph"><span style="font-size:10px">P</span></button>
     <span class="toolbar-divider"></span>
-    <button data-action="bold" title="Bold (Cmd+B)"><span style="font-weight:700;font-size:12px">B</span></button>
-    <button data-action="italic" title="Italic (Cmd+I)"><span style="font-style:italic;font-size:12px">I</span></button>
-    <button data-action="strikethrough" title="Strikethrough"><span style="text-decoration:line-through;font-size:12px">S</span></button>
-    <button data-action="code" title="Inline code"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
+    <button data-action="bold" data-tip="Bold (Cmd+B) → **text**" data-preview="<b>Bold text</b>"><span style="font-weight:700;font-size:12px">B</span></button>
+    <button data-action="italic" data-tip="Italic (Cmd+I) → *text*" data-preview="<i>Italic text</i>"><span style="font-style:italic;font-size:12px">I</span></button>
+    <button data-action="strikethrough" data-tip="Strikethrough → ~~text~~" data-preview="<s style='opacity:0.6'>Strikethrough</s>"><span style="text-decoration:line-through;font-size:12px">S</span></button>
+    <button data-action="code" data-tip="Inline code → \`code\`" data-preview="<code style='font-family:monospace;font-size:11px;background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;color:#fb923c'>inline code</code>"><span style="font-family:monospace;font-size:10px">&lt;/&gt;</span></button>
     <span class="toolbar-divider"></span>
     <button data-action="ul" title="Bullet list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
     <button data-action="ol" title="Numbered list"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" font-size="4.5" font-weight="700">1</text><text x="1" y="9" font-size="4.5" font-weight="700">2</text><text x="1" y="13" font-size="4.5" font-weight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg></button>
