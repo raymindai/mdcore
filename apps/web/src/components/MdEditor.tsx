@@ -1905,14 +1905,16 @@ export default function MdEditor() {
           const { styleMermaidSvg } = await import("@/lib/mermaid-style");
           const svg = styleMermaidSvg(rawSvg, isDark);
 
-          // Build container
+          // Build container — store original source for Turndown roundtrip
           const wrapper = document.createElement("div");
           wrapper.className = "mermaid-container";
+          wrapper.setAttribute("data-original-code", code);
           const sourcepos = pre.getAttribute("data-sourcepos");
           if (sourcepos) wrapper.setAttribute("data-sourcepos", sourcepos);
 
           // Toolbar: Edit | Copy
           const toolbar = document.createElement("div");
+          toolbar.className = "mermaid-toolbar";
           toolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap;opacity:0;transition:opacity 0.15s";
 
           const btnStyle = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;border-radius:4px;cursor:pointer;line-height:14px";
@@ -3903,17 +3905,11 @@ ${html}
   const saveInsertPosition = useCallback(() => {
     const md = markdownRef.current;
 
-    // Source / split mode: use CodeMirror cursor directly
-    if (viewMode !== "preview") {
-      // cmInsertAtCursor handles source mode; for split we still want position
-      insertPosRef.current = -1; // will use cmInsertAtCursor for source
-      return;
-    }
-
-    // WYSIWYG mode: map DOM cursor → markdown position via Turndown marker
+    // Check if cursor is in the WYSIWYG article (works in preview AND split modes)
     const article = previewRef.current?.querySelector("article");
     const sel = window.getSelection();
     if (!article || !sel?.rangeCount || !article.contains(sel.getRangeAt(0).startContainer)) {
+      // Cursor not in article — fallback to end
       insertPosRef.current = md.length;
       return;
     }

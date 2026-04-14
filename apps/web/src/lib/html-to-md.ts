@@ -57,11 +57,13 @@ export function htmlToMarkdown(html: string): string {
     },
     replacement: (_content, node) => {
       // Try to find original code from data attribute or pre element
+      // Never fall back to el.textContent — it captures rendered SVG/CSS garbage
       const el = node as HTMLElement;
       const originalCode = el.getAttribute("data-original-code") ||
         el.querySelector("pre")?.textContent ||
         el.querySelector(".mermaid")?.getAttribute("data-original-code") ||
-        el.textContent || "";
+        "";
+      if (!originalCode.trim()) return ""; // drop unrecoverable mermaid
       return `\n\n\`\`\`mermaid\n${originalCode.trim()}\n\`\`\`\n\n`;
     },
   });
