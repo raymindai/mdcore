@@ -1089,9 +1089,15 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
         <TBtn tip="Heading 4 — #### text" active={blockType==="h4"} onClick={() => fmtBlock("h4")}
           preview={<div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 4</div>}>
           <span className="text-[10px]">H4</span></TBtn>
-        <TBtn tip="Heading 5" active={blockType==="h5"} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></TBtn>
-        <TBtn tip="Heading 6" active={blockType==="h6"} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></TBtn>
-        <TBtn tip="Paragraph" active={blockType==="p"} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></TBtn>
+        <TBtn tip="Heading 5 — ##### text" active={blockType==="h5"} onClick={() => fmtBlock("h5")}
+          preview={<div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>Heading 5</div>}>
+          <span className="text-[10px]">H5</span></TBtn>
+        <TBtn tip="Heading 6 — ###### text" active={blockType==="h6"} onClick={() => fmtBlock("h6")}
+          preview={<div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.025em" }}>Heading 6</div>}>
+          <span className="text-[10px]">H6</span></TBtn>
+        <TBtn tip="Paragraph — normal text" active={blockType==="p"} onClick={() => fmtBlock("p")}
+          preview={<div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Normal paragraph text</div>}>
+          <span className="text-[10px]">P</span></TBtn>
       </div>
       {sep}
       {/* Text style */}
@@ -1119,6 +1125,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
         <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}
           preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>1. First item</div><div style={{ color: "var(--text-muted)" }}>2. Second item</div></div>}>
           <ListOrdered size={I} />
+        </TBtn>
+        <TBtn tip="Task list → - [ ] item" onClick={() => { if (isInCM6()) { cmInsert("- [ ] "); } else { exec("insertUnorderedList"); } }}
+          preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>☐ To do item</div><div style={{ color: "var(--accent)" }}>☑ Done item</div></div>}>
+          <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><path d="M3.5 4.5l1 1 2-2" strokeLinecap="round"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="3" width="5" height="2" rx="0.5" fill="currentColor"/><rect x="9" y="10" width="5" height="2" rx="0.5" fill="currentColor"/></svg>
         </TBtn>
         <TBtn tip="Indent" onClick={() => exec("indent")}>
           <Indent size={I} />
@@ -6137,10 +6147,10 @@ ${html}
                 {canEdit && <div className="relative group">
                   <button
                     onClick={() => setShowToolbar(!showToolbar)}
-                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: showToolbar ? "var(--accent-dim)" : "transparent", color: showToolbar ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -6152,10 +6162,10 @@ ${html}
                 <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowView(!narrowView)}
-                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: narrowView ? "var(--accent-dim)" : "transparent", color: narrowView ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -6167,10 +6177,10 @@ ${html}
                 <div className="relative group">
                   <button
                     onClick={toggleDiagramMode}
-                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
                   </button>
                   <div className="absolute top-full right-0 mt-1.5 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -6183,10 +6193,10 @@ ${html}
                   <div className="relative group">
                     <button
                       onClick={handleToggleHistory}
-                      className="flex items-center justify-center w-7 h-7 rounded-md transition-colors relative"
+                      className="flex items-center justify-center h-6 w-6 rounded-md transition-colors relative"
                       style={{ background: showHistory ? "var(--accent-dim)" : "transparent", color: showHistory ? "var(--accent)" : "var(--text-faint)" }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
                       {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-[7px] flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
                     </button>
                     <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
@@ -6567,7 +6577,7 @@ ${html}
                 <div className="relative group" style={{ display: isMobile || editorPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowSource(!narrowSource)}
-                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: narrowSource ? "var(--accent-dim)" : "transparent", color: narrowSource ? "var(--accent)" : "var(--text-faint)" }}
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
