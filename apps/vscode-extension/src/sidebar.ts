@@ -820,15 +820,24 @@ body {
       var container = document.getElementById('doc-container');
       var html = '';
 
-      var synced = isLoggedIn ? allDocs.filter(function(d) { return d.published; }) : [];
-      var local = isLoggedIn ? allDocs.filter(function(d) { return !d.published; }) : allDocs;
+      var syncedDocs = allDocs.filter(function(d) { return d.published; });
+      var localOnlyDocs = allDocs.filter(function(d) { return !d.published; });
 
-      // Apply filter
-      var showSynced = (currentFilter === 'all' || currentFilter === 'synced');
-      var showLocal = (currentFilter === 'all' || currentFilter === 'local');
-      var showCloud = (currentFilter === 'all' || currentFilter === 'cloud');
+      // Filter logic: synced is in both LOCAL and CLOUD
+      var showSynced, showLocal, showCloud;
+      if (currentFilter === 'all') {
+        showSynced = true; showLocal = true; showCloud = true;
+      } else if (currentFilter === 'synced') {
+        showSynced = true; showLocal = false; showCloud = false;
+      } else if (currentFilter === 'local') {
+        showSynced = true; showLocal = true; showCloud = false; // synced has local files
+      } else if (currentFilter === 'cloud') {
+        showSynced = true; showLocal = false; showCloud = true; // synced is on cloud
+      }
 
       // Apply search
+      var synced = syncedDocs;
+      var local = localOnlyDocs;
       if (searchQuery) {
         synced = synced.filter(function(d) { return d.fileName.toLowerCase().includes(searchQuery) || d.relativePath.toLowerCase().includes(searchQuery); });
         local = local.filter(function(d) { return d.fileName.toLowerCase().includes(searchQuery) || d.relativePath.toLowerCase().includes(searchQuery); });
@@ -839,9 +848,9 @@ body {
         cloudFiltered = cloudFiltered.filter(function(d) { return d.title.toLowerCase().includes(searchQuery) || d.docId.toLowerCase().includes(searchQuery); });
       }
 
-      // Synced
+      // Synced section
       if (showSynced) {
-        if (!isLoggedIn) {
+        if (!isLoggedIn && currentFilter !== 'local') {
           html += secHeader('sync', 'Synced', '');
           html += '<div class="login-prompt"><p>Sign in to sync your documents between VS Code and mdfy.cc.</p><button class="login-btn" id="login-btn">Sign in to mdfy.cc</button></div>';
         } else if (synced.length > 0) {
@@ -852,7 +861,7 @@ body {
         }
       }
 
-      // Local
+      // Local-only section
       if (showLocal && local.length > 0) {
         html += secHeader('file', 'Local', local.length);
         html += '<ul class="doc-list">';
