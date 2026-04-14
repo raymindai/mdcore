@@ -5230,7 +5230,15 @@ ${html}
             {(() => {
               // Shared tabs not in any folder (organized ones show under My Documents folders)
               const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id) && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
-              const openCloudIds = new Set(sharedTabs.map(t => t.cloudId).filter(Boolean));
+              // Deduplicate sharedTabs by cloudId (prevent duplicate entries)
+              const seenCloudIds = new Set<string>();
+              const dedupedSharedTabs = sharedTabs.filter(t => {
+                if (!t.cloudId) return true;
+                if (seenCloudIds.has(t.cloudId)) return false;
+                seenCloudIds.add(t.cloudId);
+                return true;
+              });
+              const openCloudIds = new Set(tabs.filter(t => !t.deleted && t.cloudId).map(t => t.cloudId!));
               // All my document cloudIds — to exclude from shared section
               const myCloudIds = new Set(tabs.filter(t => !t.deleted && (!t.permission || t.permission === "mine") && t.cloudId).map(t => t.cloudId!));
               // Unread notification document IDs — for orange dot indicator
@@ -5241,7 +5249,7 @@ ${html}
                 .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
                 .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view", ownerName: n.fromUserName }));
               const allExtra = [...extraShared, ...notifDocs];
-              const totalShared = sharedTabs.length + allExtra.length;
+              const totalShared = dedupedSharedTabs.length + allExtra.length;
               return (<>
                 <div className={`shrink-0 ${showSharedDocs ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
@@ -5287,7 +5295,7 @@ ${html}
                   {showSharedDocs && (
                     <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Shared tabs already open — draggable to folders */}
-                      {sharedTabs.map((tab) => (
+                      {dedupedSharedTabs.map((tab) => (
                         <div
                           key={tab.id}
                           draggable
