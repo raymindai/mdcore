@@ -854,6 +854,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
       </article>
     </div>
 
+    <!-- Draggable divider for split view -->
+    <div id="split-divider"></div>
+
     <!-- Source pane: header with flavor + copy + download -->
     <div id="source-view" class="hidden">
       <div id="source-header" class="pane-header">
@@ -905,44 +908,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <a href="#" id="badge-view-link" target="_blank" class="badge-view">View document →</a>
   </div>
 
-  <div id="bottom-bar">
-    <div class="bar-left">
-      <button class="toggle-pill" id="toolbar-toggle" data-active="true" title="Show/hide formatting toolbar">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
-        <span>TOOLBAR</span>
-        <span class="toggle-switch on"><span class="toggle-track"></span><span class="toggle-ball"></span></span>
-      </button>
-      <button class="toggle-pill" id="narrow-toggle" data-active="true" title="Narrow content width for comfortable reading">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 2v12M12 2v12M1 8h3M12 8h3"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5"/></svg>
-        <span>NARROW</span>
-        <span class="toggle-switch on"><span class="toggle-track"></span><span class="toggle-ball"></span></span>
-      </button>
-      <div id="flavor-area">
-        <button id="flavor-badge" title="Markdown flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
-        <div id="flavor-dropdown" class="flavor-dropdown hidden">
-          <div class="flavor-dropdown-header">Convert to</div>
-          <button class="flavor-option" data-flavor="gfm">
-            <span class="flavor-option-name">GFM (GitHub)</span>
-            <span class="flavor-option-desc">Tables, task lists, strikethrough</span>
-          </button>
-          <button class="flavor-option" data-flavor="commonmark">
-            <span class="flavor-option-name">CommonMark</span>
-            <span class="flavor-option-desc">Standard, maximum compatibility</span>
-          </button>
-          <button class="flavor-option" data-flavor="obsidian">
-            <span class="flavor-option-name">Obsidian</span>
-            <span class="flavor-option-desc">Wikilinks, callouts, embeds</span>
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="bar-right">
-      <span id="sync-status">Ready</span>
-      <button class="toggle-pill" id="publish-btn" data-active="false" style="display:none">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="3" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="4" cy="8" r="2"/><path d="M5.8 7l4.4-3M5.8 9l4.4 3"/></svg>
-        <span>SHARE</span>
-      </button>
-    </div>
+  <div id="bottom-bar" style="display:none">
   </div>
 
   <!-- Syntax highlighting -->

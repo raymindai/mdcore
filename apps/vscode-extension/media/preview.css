@@ -731,6 +731,21 @@ pre.ascii-original.hidden {
   border-left: 1px solid var(--border);
 }
 
+/* Split divider — draggable */
+#split-divider {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+  display: none;
+}
+#split-divider:hover,
+#split-divider.dragging {
+  background: var(--accent);
+}
+body.split-mode #split-divider { display: block; }
+
 /* Source mode: hide live pane entirely */
 body.source-mode #live-pane { display: none; }
 body.source-mode #source-view { border-left: none; }

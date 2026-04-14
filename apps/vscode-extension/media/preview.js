@@ -69,6 +69,41 @@
     }
   })();
 
+  // Split divider drag
+  (function initSplitDivider() {
+    var divider = document.getElementById('split-divider');
+    if (!divider) return;
+    var livePane = document.getElementById('live-pane');
+    var isDragging = false;
+    divider.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      divider.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging || !livePane) return;
+      var wrapper = document.getElementById('editor-wrapper');
+      if (!wrapper) return;
+      var rect = wrapper.getBoundingClientRect();
+      var pct = ((e.clientX - rect.left) / rect.width) * 100;
+      pct = Math.max(20, Math.min(80, pct));
+      livePane.style.width = pct + '%';
+      var sv = document.getElementById('source-view');
+      if (sv) sv.style.width = (100 - pct) + '%';
+      if (cmEditor) cmEditor.refresh();
+    });
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      divider.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      if (cmEditor) cmEditor.refresh();
+    });
+  })();
+
   // Current markdown source (kept in sync with extension)
   let currentMarkdown = window.__initialMarkdown || "";
   let currentFlavor = (window.__initialFlavor && window.__initialFlavor.primary) || "gfm";
