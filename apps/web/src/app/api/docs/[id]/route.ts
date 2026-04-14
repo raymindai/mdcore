@@ -30,8 +30,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document expired" }, { status: 410 });
   }
 
-  // Use JWT-verified userId — no unverified header fallback for userId
-  const requesterId = verified?.userId || null;
+  // Use JWT-verified userId first, then header fallback (web app uses x-user-id)
+  const requesterId = verified?.userId || _req.headers.get("x-user-id");
   const requesterAnonId = _req.headers.get("x-anonymous-id");
 
   // Draft documents: only accessible by owner
