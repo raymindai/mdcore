@@ -30,6 +30,12 @@
       "assets/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "../quicklook/MdfyQuickLook/build/MdfyQuickLook.app",
+        "to": "MdfyQuickLook.app"
+      }
+    ],
     "protocols": [
       {
         "name": "mdfy",

@@ -23,6 +23,8 @@ const { mime } = require("./mime-types");
 let mainWindow = null;
 let currentFilePath = null;
 let queuedFilePath = null;
+let fileWatcher = null;
+let lastAutoSaveTime = 0; // Track our own saves to ignore watcher triggers
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -209,6 +211,7 @@ function createWindow() {
   });
 
   mainWindow.on("closed", () => {
+    stopFileWatcher();
     mainWindow = null;
   });
 
@@ -218,10 +221,28 @@ function createWindow() {
     if (title === "__MDFY_HOME__") {
       event.preventDefault();
       currentFilePath = null;
+      stopFileWatcher();
       // Try to extract user session before leaving mdfy.cc
       extractUserFromWeb().catch(() => {});
       mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
       mainWindow.setTitle("mdfy");
+      return;
+    }
+
+    // Auto-save signal (periodic, local file only)
+    if (title.startsWith("__MDFY_AUTOSAVE__:")) {
+      event.preventDefault();
+      try {
+        const data = JSON.parse(title.slice("__MDFY_AUTOSAVE__:".length));
+        if (currentFilePath && data.markdown) {
+          lastAutoSaveTime = Date.now();
+          fs.writeFileSync(currentFilePath, data.markdown, "utf8");
+        }
+      } catch {}
+      // Restore title
+      if (currentFilePath) {
+        mainWindow.setTitle(`${path.basename(currentFilePath)} — mdfy`);
+      }
       return;
     }
 
@@ -284,6 +305,20 @@ function injectNativeBridge() {
         }
       \`;
       document.head.appendChild(style);
+    }
+
+    // Auto-save to local file periodically
+    if (!window.__MDFY_LOCAL_AUTOSAVE__) {
+      window.__MDFY_LOCAL_AUTOSAVE__ = true;
+      var _lastAutoSaved = '';
+      setInterval(function() {
+        if (typeof window.__MDFY_GET_MARKDOWN__ !== 'function') return;
+        var md = window.__MDFY_GET_MARKDOWN__();
+        if (md && md !== _lastAutoSaved && md.length > 5) {
+          _lastAutoSaved = md;
+          document.title = '__MDFY_AUTOSAVE__:' + JSON.stringify({ markdown: md });
+        }
+      }, 5000);
     }
 
     // Listen for save/publish messages from the web app
@@ -468,6 +503,41 @@ function saveMdfyConfig(filePath, config) {
   }
 }
 
+// ─── File Watcher ───
+// Watch the current file for external changes and reload content
+
+function startFileWatcher(filePath) {
+  stopFileWatcher();
+  try {
+    fileWatcher = fs.watch(filePath, (eventType) => {
+      if (eventType === "change" && mainWindow) {
+        // Debounce to avoid catching our own saves
+        if (fileWatcher._debounce) clearTimeout(fileWatcher._debounce);
+        fileWatcher._debounce = setTimeout(() => {
+          // Skip if this change was likely from our own auto-save (within 2s)
+          if (Date.now() - lastAutoSaveTime < 2000) return;
+          try {
+            const content = fs.readFileSync(filePath, "utf8");
+            // Notify the web app about the external change
+            mainWindow.webContents.executeJavaScript(`
+              if (window.__MDFY_SET_MARKDOWN__ && typeof window.__MDFY_SET_MARKDOWN__ === 'function') {
+                window.__MDFY_SET_MARKDOWN__(${JSON.stringify(content)});
+              }
+            `).catch(() => {});
+          } catch {}
+        }, 1000);
+      }
+    });
+  } catch {}
+}
+
+function stopFileWatcher() {
+  if (fileWatcher) {
+    fileWatcher.close();
+    fileWatcher = null;
+  }
+}
+
 // ─── Open File in App ───
 
 function isTextFile(filePath) {
@@ -496,6 +566,7 @@ function openFileInApp(filePath) {
     }
 
     currentFilePath = absolutePath;
+    startFileWatcher(absolutePath);
     const fileName = path.basename(absolutePath);
     mainWindow.setTitle(`${fileName} — mdfy`);
 
@@ -686,6 +757,7 @@ ipcMain.handle("open-file-path", (event, filePath) => {
 
 ipcMain.handle("open-editor", () => {
   currentFilePath = null;
+  stopFileWatcher();
   loadMdfyOrOffline(MDFY_URL);
   mainWindow.setTitle("mdfy — New Document");
   // After mdfy.cc loads, clear to blank editor
@@ -951,6 +1023,7 @@ function buildMenu() {
           accelerator: "CmdOrCtrl+Shift+H",
           click: () => {
             currentFilePath = null;
+            stopFileWatcher();
             mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
             mainWindow.setTitle("mdfy");
           },
@@ -961,6 +1034,7 @@ function buildMenu() {
           accelerator: "CmdOrCtrl+N",
           click: () => {
             currentFilePath = null;
+            stopFileWatcher();
             const url = mainWindow.webContents.getURL();
             if (url.startsWith("https://mdfy.cc")) {
               // Already on mdfy.cc, just clear
@@ -1034,6 +1108,33 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ─── QuickLook Extension Installer ───
+// Copies MdfyQuickLook.app to /Applications on first launch to register the extension
+
+function installQuickLookExtension() {
+  const marker = path.join(app.getPath("userData"), ".quicklook-installed");
+  if (fs.existsSync(marker)) return;
+
+  const qlAppSource = path.join(process.resourcesPath, "MdfyQuickLook.app");
+  const qlAppDest = "/Applications/MdfyQuickLook.app";
+
+  if (!fs.existsSync(qlAppSource)) return;
+
+  // Copy to /Applications (may need admin permissions)
+  try {
+    if (!fs.existsSync(qlAppDest)) {
+      const { execSync } = require("child_process");
+      execSync(`cp -R "${qlAppSource}" "${qlAppDest}"`);
+      // Open once to register the QuickLook extension
+      execSync(`open "${qlAppDest}"`);
+    }
+    fs.writeFileSync(marker, new Date().toISOString());
+  } catch (err) {
+    console.log("[quicklook] Could not auto-install:", err.message);
+    // Not fatal — user can install manually
+  }
+}
+
 // ─── App Events ───
 
 // Handle file open from OS (double-click .md file) — must be registered
@@ -1060,6 +1161,7 @@ app.whenReady().then(() => {
 
   buildMenu();
   createWindow();
+  installQuickLookExtension();
 
   // Open queued file from pre-ready open-file event
   if (queuedFilePath) {
@@ -1084,6 +1186,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  stopFileWatcher();
   if (process.platform !== "darwin") {
     app.quit();
   }
