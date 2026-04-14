@@ -132,6 +132,16 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
+      // Require login for publish
+      if (!await authManager?.isLoggedIn()) {
+        const choice = await vscode.window.showWarningMessage(
+          "Sign in to mdfy.cc to publish documents.",
+          "Sign In"
+        );
+        if (choice === "Sign In") { vscode.commands.executeCommand("mdfy.login"); }
+        return;
+      }
+
       const markdown = editor.document.getText();
       const fileName = editor.document.fileName;
       const title =

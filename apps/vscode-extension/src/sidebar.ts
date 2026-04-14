@@ -48,8 +48,12 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       switch (msg.type) {
         case "ready":
-        case "refresh":
           await this.sendDocuments();
+          break;
+        case "refresh":
+          this._view?.webview.postMessage({ type: "refreshing", state: true });
+          await this.sendDocuments();
+          this._view?.webview.postMessage({ type: "refreshing", state: false });
           break;
         case "openFile":
           this.openFile(msg.filePath);
@@ -582,17 +586,20 @@ body {
   height: 1px; margin: 6px 0;
   background: var(--vscode-panel-border, rgba(255,255,255,0.08));
 }
-.help-btn { opacity: 0.4; transition: opacity 0.15s, color 0.15s; }
-.help-btn:hover { opacity: 1; }
-.help-btn.open { opacity: 1; color: #fb923c; }
+.help-btn { transition: color 0.15s; }
+.help-btn.open { color: #fb923c; }
 
-/* User bar */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.icon-btn.spinning svg { animation: spin 0.8s linear infinite; }
+
+/* User bar — always visible at bottom */
 .user-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   padding: 10px 14px;
   border-top: 1px solid var(--vscode-panel-border, rgba(255,255,255,0.1));
   background: var(--vscode-sideBar-background);
   font-size: 11px;
+  z-index: 5;
 }
 
 /* Logged out state */
@@ -698,7 +705,7 @@ body {
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
   </div>
 
-  <div id="doc-container" style="padding-bottom: 40px;"></div>
+  <div id="doc-container" style="padding-bottom: 50px;"></div>
 
   <div class="user-bar" id="user-bar">
     <div class="user-bar-loggedout" id="user-loggedout">
@@ -746,6 +753,14 @@ body {
     }
 
     window.addEventListener('message', function(e) {
+      if (e.data.type === 'refreshing') {
+        var refreshBtn = document.getElementById('btn-refresh');
+        if (refreshBtn) {
+          if (e.data.state) refreshBtn.classList.add('spinning');
+          else { refreshBtn.classList.remove('spinning'); }
+        }
+        return;
+      }
       if (e.data.type === 'documents') {
         allDocs = e.data.items || [];
         cloudDocs = e.data.cloudDocs || [];
@@ -777,9 +792,12 @@ body {
 
     document.getElementById('btn-search-toggle').addEventListener('click', function() {
       var box = document.getElementById('search-box');
+      var btn = document.getElementById('btn-search-toggle');
       if (box) {
         box.classList.toggle('hidden');
-        if (!box.classList.contains('hidden')) {
+        var isOpen = !box.classList.contains('hidden');
+        if (btn) btn.style.color = isOpen ? '#fb923c' : '';
+        if (isOpen) {
           box.querySelector('input').focus();
         } else {
           box.querySelector('input').value = '';
