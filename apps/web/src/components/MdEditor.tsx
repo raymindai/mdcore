@@ -3170,7 +3170,7 @@ export default function MdEditor() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => doRender(value), 150);
     },
-    [doRender]
+    [doRender, setMarkdown]
   );
   // Keep CM6 onChange ref in sync
   handleChangeRef.current = handleChange;
