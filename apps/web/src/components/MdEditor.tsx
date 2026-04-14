@@ -904,8 +904,8 @@ function InlineInput({ label, defaultValue, onSubmit, onCancel, position }: {
 }
 
 // ─── Toolbar Button with instant tooltip ───
-function TBtn({ tip, active, onClick, children }: {
-  tip: string; active?: boolean; onClick: () => void; children: React.ReactNode;
+function TBtn({ tip, preview, active, onClick, children }: {
+  tip: string; preview?: React.ReactNode; active?: boolean; onClick: () => void; children: React.ReactNode;
 }) {
   return (
     <div className="relative group shrink-0">
@@ -920,11 +920,19 @@ function TBtn({ tip, active, onClick, children }: {
         {children}
       </button>
       <div
-        className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap
-          opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+        className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 rounded-lg
+          opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]
+          ${preview ? "p-2.5 w-48" : "px-2 py-1 whitespace-nowrap"}`}
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}
       >
-        {tip}
+        {preview ? (
+          <>
+            <div className="mb-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>{tip}</div>
+            <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 6 }}>{preview}</div>
+          </>
+        ) : (
+          <span className="text-[10px]">{tip}</span>
+        )}
       </div>
     </div>
   );
@@ -1069,10 +1077,18 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {sep}
       {/* Headings */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Heading 1" active={blockType==="h1"} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></TBtn>
-        <TBtn tip="Heading 2" active={blockType==="h2"} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></TBtn>
-        <TBtn tip="Heading 3" active={blockType==="h3"} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></TBtn>
-        <TBtn tip="Heading 4" active={blockType==="h4"} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></TBtn>
+        <TBtn tip="Heading 1 — # text" active={blockType==="h1"} onClick={() => fmtBlock("h1")}
+          preview={<div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.025em" }}>Heading 1</div>}>
+          <span className="text-[10px] font-bold">H1</span></TBtn>
+        <TBtn tip="Heading 2 — ## text" active={blockType==="h2"} onClick={() => fmtBlock("h2")}
+          preview={<div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 2</div>}>
+          <span className="text-[10px] font-bold">H2</span></TBtn>
+        <TBtn tip="Heading 3 — ### text" active={blockType==="h3"} onClick={() => fmtBlock("h3")}
+          preview={<div style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 3</div>}>
+          <span className="text-[10px] font-semibold">H3</span></TBtn>
+        <TBtn tip="Heading 4 — #### text" active={blockType==="h4"} onClick={() => fmtBlock("h4")}
+          preview={<div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 4</div>}>
+          <span className="text-[10px]">H4</span></TBtn>
         <TBtn tip="Heading 5" active={blockType==="h5"} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></TBtn>
         <TBtn tip="Heading 6" active={blockType==="h6"} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></TBtn>
         <TBtn tip="Paragraph" active={blockType==="p"} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></TBtn>
@@ -1080,18 +1096,28 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {sep}
       {/* Text style */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></TBtn>
-        <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></TBtn>
-        <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></TBtn>
-        <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}><span className="font-mono text-[10px]">{`</>`}</span></TBtn>
+        <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}
+          preview={<span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>Bold text</span>}>
+          <span className="font-bold text-[12px]">B</span></TBtn>
+        <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}
+          preview={<span style={{ fontStyle: "italic", color: "var(--text-secondary)", fontSize: 13 }}>Italic text</span>}>
+          <span className="italic text-[12px]">I</span></TBtn>
+        <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}
+          preview={<span style={{ textDecoration: "line-through", color: "var(--text-muted)", fontSize: 13 }}>Strikethrough</span>}>
+          <span className="line-through text-[12px]">S</span></TBtn>
+        <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}
+          preview={<code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, background: "var(--border)", padding: "2px 6px", borderRadius: 4, color: "var(--accent)" }}>inline code</code>}>
+          <span className="font-mono text-[10px]">{`</>`}</span></TBtn>
       </div>
       {sep}
       {/* Lists */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}>
+        <TBtn tip="Bullet list → - item" active={active.ul} onClick={() => exec("insertUnorderedList")}
+          preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>• First item</div><div style={{ color: "var(--text-muted)" }}>• Second item</div></div>}>
           <List size={I} />
         </TBtn>
-        <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}>
+        <TBtn tip="Numbered list → 1. item" active={active.ol} onClick={() => exec("insertOrderedList")}
+          preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>1. First item</div><div style={{ color: "var(--text-muted)" }}>2. Second item</div></div>}>
           <ListOrdered size={I} />
         </TBtn>
         <TBtn tip="Indent" onClick={() => exec("indent")}>
@@ -1104,7 +1130,8 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {sep}
       {/* Block elements */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}>
+        <TBtn tip="Blockquote → > text" active={blockType==="blockquote"} onClick={() => fmtBlock("blockquote")}
+          preview={<div style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 8, color: "var(--text-muted)", fontSize: 12, fontStyle: "italic" }}>Quoted text</div>}>
           <Quote size={I} />
         </TBtn>
         <TBtn tip="Horizontal rule → ---" onClick={() => exec("insertHorizontalRule")}>
