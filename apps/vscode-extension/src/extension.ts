@@ -175,7 +175,7 @@ export function activate(context: vscode.ExtensionContext): void {
           docId: result.id,
           editToken: result.editToken,
           lastSyncedAt: new Date().toISOString(),
-          lastServerUpdatedAt: new Date().toISOString(),
+          lastServerUpdatedAt: result.created_at || new Date().toISOString(),
         });
 
         await vscode.env.clipboard.writeText(url);

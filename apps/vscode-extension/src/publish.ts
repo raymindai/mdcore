@@ -5,6 +5,7 @@ import { AuthManager } from "./auth";
 interface PublishResult {
   id: string;
   editToken: string;
+  created_at?: string;
 }
 
 interface PullResult {

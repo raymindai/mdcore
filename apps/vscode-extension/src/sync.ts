@@ -251,12 +251,17 @@ export class SyncEngine {
 
         if (result.status === "deleted") {
           try { await vscode.workspace.fs.delete(sidecarUri); } catch { /* already gone */ }
+          const fileName = sidecarPath.replace(/\.mdfy\.json$/, ".md");
+          vscode.window.showInformationMessage(
+            `"${vscode.workspace.asRelativePath(fileName)}" was deleted on mdfy.cc. Sync removed.`
+          );
           continue;
         }
         if (result.status === "error") continue;
 
         const serverTime = new Date(result.updated_at).getTime();
-        const localTime = new Date(config.lastSyncedAt).getTime();
+        // Compare against server timestamp (not client clock) to avoid clock skew
+        const localTime = new Date(config.lastServerUpdatedAt || config.lastSyncedAt).getTime();
 
         // Check if the file is currently open
         const openDoc = vscode.workspace.textDocuments.find(d => d.fileName === mdPath);
