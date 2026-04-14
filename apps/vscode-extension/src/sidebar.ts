@@ -118,7 +118,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     suppressAutoPreviewFor(500);
     const uri = vscode.Uri.file(filePath);
     const doc = await vscode.workspace.openTextDocument(uri);
-    await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.One, preserveFocus: true });
+    // Show mdfy preview only — don't open native editor separately
     PreviewPanel.createOrShow(this._extensionUri, doc);
   }
 

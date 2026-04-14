@@ -434,13 +434,40 @@
   }
 
   function setViewMode(mode) {
-    sourceVisible = (mode === 'source');
+    sourceVisible = (mode === 'source' || mode === 'split');
     document.querySelectorAll('.view-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
-    if (sourceVisible) {
-      content.classList.add("hidden");
+    if (mode === 'split') {
+      // Split: show both side by side
+      content.classList.remove("hidden");
       sourceView.classList.remove("hidden");
+      content.style.width = "50%";
+      content.style.display = "block";
+      content.style.overflow = "auto";
+      sourceView.style.width = "50%";
+      sourceView.style.display = "block";
+      var wrapper = content.parentElement;
+      if (wrapper) {
+        wrapper.style.display = "flex";
+        wrapper.style.flexDirection = "row";
+      }
+      if (!cmEditor) {
+        initCodeMirror();
+      } else {
+        cmEditor.setValue(currentMarkdown);
+      }
+      if (cmEditor) setTimeout(function() { cmEditor.refresh(); }, 50);
+    } else if (mode === 'source') {
+      content.classList.add("hidden");
+      content.style.width = "";
+      content.style.display = "";
+      content.style.overflow = "";
+      sourceView.classList.remove("hidden");
+      sourceView.style.width = "";
+      sourceView.style.display = "";
+      var wrapper = content.parentElement;
+      if (wrapper) { wrapper.style.display = ""; wrapper.style.flexDirection = ""; }
       if (!cmEditor) {
         initCodeMirror();
       } else {
@@ -448,8 +475,16 @@
       }
       if (cmEditor) cmEditor.focus();
     } else {
+      // Live
       sourceView.classList.add("hidden");
+      sourceView.style.width = "";
+      sourceView.style.display = "";
       content.classList.remove("hidden");
+      content.style.width = "";
+      content.style.display = "";
+      content.style.overflow = "";
+      var wrapper = content.parentElement;
+      if (wrapper) { wrapper.style.display = ""; wrapper.style.flexDirection = ""; }
       content.focus();
     }
   }

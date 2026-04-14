@@ -1035,6 +1035,7 @@ pre.ascii-original.hidden {
   width: 100%;
   height: 100%;
   display: flex;
+  border-left: 1px solid var(--border);
 }
 
 #source-view.hidden {
