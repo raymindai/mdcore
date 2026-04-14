@@ -1719,11 +1719,15 @@
     var codeEl = pre.querySelector('code');
     if (!codeEl) return;
 
-    // Find the index of this code block among all code blocks
+    // Find the index of this code block among non-mermaid code blocks
+    // (must match preview.ts handleCodeBlockEdit which skips mermaid)
     var allPres = content.querySelectorAll('pre[lang]');
     var blockIndex = -1;
+    var nonMermaidCount = 0;
     for (var i = 0; i < allPres.length; i++) {
-      if (allPres[i] === pre) { blockIndex = i; break; }
+      if (allPres[i].getAttribute('lang') === 'mermaid') continue;
+      if (allPres[i] === pre) { blockIndex = nonMermaidCount; break; }
+      nonMermaidCount++;
     }
 
     e.stopPropagation();
