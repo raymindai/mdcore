@@ -105,7 +105,13 @@ export function useAuth() {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "global" });
+    // Clear all Supabase-related storage to prevent auto-login on next sign-in
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes("supabase") || key.includes("sb-")) {
+        localStorage.removeItem(key);
+      }
+    });
     setState({ user: null, profile: null, loading: false, accessToken: null });
   }, [supabase]);
 
