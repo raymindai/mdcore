@@ -151,13 +151,15 @@
     clone.querySelectorAll(
       ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
       "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
-      "[class*='view-transition'], style, script, noscript, " +
-      "button[class*='skill'], button[class*='status'], [class*='toolbar'], " +
+      "style, script, noscript, " +
+      "button[class*='skill'], button[class*='status'], " +
       "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
-      "button[aria-expanded], .sr-only"
+      "[class*='thinking'], [class*='streaming'], [class*='feedback'], " +
+      "[class*='thumbs'], button[class*='share'], button[class*='export'], " +
+      "[class*='artifact-control'], [class*='canvas-control'], " +
+      ".sr-only"
     ).forEach((el) => {
-      // Don't remove elements that contain code blocks or tables — prevents
-      // accidentally stripping content inside broad class-matching containers
+      // Don't remove elements that contain code blocks or tables
       if (el.querySelector("pre, code, table")) return;
       el.remove();
     });
@@ -182,7 +184,7 @@
       processedMathEls.add(mathEl);
     });
     // Fallback: aria-label on math elements without annotation
-    clone.querySelectorAll(".katex, .katex-display, .MathJax, .MathJax_Display, [role='math']").forEach((el) => {
+    clone.querySelectorAll(".katex, .katex-display, .MathJax, .MathJax_Display, mjx-container, [role='math'], .math-inline, .math-display").forEach((el) => {
       if (!clone.contains(el) || processedMathEls.has(el)) return;
       const ariaLabel = el.getAttribute("aria-label");
       if (ariaLabel && ariaLabel.length > 1) {
@@ -296,7 +298,7 @@
     });
 
     // ── Step 4: Code blocks ──
-    const knownLangs = /^(mermaid|wat|wasm|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx)$/i;
+    const knownLangs = /^(mermaid|wat|wasm|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx|zig|nim|mojo|svelte|astro|solidity|sol|prisma|terraform|tf|hcl|nix|cuda|v)$/i;
     clone.querySelectorAll("pre").forEach((pre) => {
       const code = pre.querySelector("code");
       const target = code || pre;
@@ -519,14 +521,19 @@
 
     let text = extractText(clone);
 
-    // Remove Claude UI artifacts that slip through
-    text = text.replace(/\bV\s*\n\s*visualize\b/gi, "");
-    text = text.replace(/\bvisualize\b\s*/gi, "");
-    text = text.replace(/\bshow_widget\b\s*/gi, "");
-    text = text.replace(/Reading\s+\w+\s+design\s+skill[^\n]*/gi, "");
-    text = text.replace(/Click any node to learn more\s*/gi, "");
-    text = text.replace(/\bConnecting to\s*\.{3}\s*/gi, "");
-    text = text.replace(/^\s*V\s*$/gm, "");
+    // Remove platform-specific UI artifacts that slip through
+    if (platform === "claude") {
+      text = text.replace(/\bV\s*\n\s*visualize\b/gi, "");
+      text = text.replace(/^\s*visualize\s*$/gim, ""); // only standalone "visualize" lines
+      text = text.replace(/\bshow_widget\b\s*/gi, "");
+      text = text.replace(/Reading\s+\w+\s+design\s+skill[^\n]*/gi, "");
+      text = text.replace(/Click any node to learn more\s*/gi, "");
+      text = text.replace(/\bConnecting to\s*\.{3}\s*/gi, "");
+      text = text.replace(/^\s*Analyzing\.\.\.\s*$/gm, "");
+      text = text.replace(/^\s*Creating artifact\.\.\.\s*$/gm, "");
+      text = text.replace(/^\s*Running code\.\.\.\s*$/gm, "");
+      text = text.replace(/^\s*V\s*$/gm, "");
+    }
 
     // Fix list items: collapse internal newlines so bullet + math + text stay on one line
     text = text.replace(/^([-*] |\d+\. )(.+)/gm, (match, prefix, content) => {
@@ -606,22 +613,22 @@
     // Claude DOM structure changes frequently. Try multiple selector strategies.
     // Each strategy returns {userEls, assistantEls} or null.
     const strategies = [
-      // Strategy 1: 2025 DOM (data-testid + font-claude-response)
+      // Strategy 1: data-testid + font-claude (broad partial match for resilience)
       () => {
-        const userEls = document.querySelectorAll("[data-testid='user-message']");
-        const assistantEls = document.querySelectorAll(".font-claude-response");
+        const userEls = document.querySelectorAll("[data-testid='user-message'], [data-testid*='user-turn']");
+        const assistantEls = document.querySelectorAll("[class*='font-claude'], [data-testid*='assistant']");
         return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
       },
-      // Strategy 2: font-user-message + font-claude-message
+      // Strategy 2: specific font classes (legacy + current)
       () => {
-        const userEls = document.querySelectorAll(".font-user-message");
-        const assistantEls = document.querySelectorAll(".font-claude-message, .font-claude-response");
+        const userEls = document.querySelectorAll(".font-user-message, [class*='font-user']");
+        const assistantEls = document.querySelectorAll(".font-claude-message, .font-claude-response, [class*='font-claude']");
         return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
       },
-      // Strategy 3: data-test-render-count turns
+      // Strategy 3: data-test-render-count or testid-based turns
       () => {
-        const userEls = document.querySelectorAll("[data-test-render-count] [data-testid*='user'], .user-turn");
-        const assistantEls = document.querySelectorAll("[data-test-render-count] .standard-markdown, .assistant-turn");
+        const userEls = document.querySelectorAll("[data-test-render-count] [data-testid*='user'], .user-turn, [data-testid*='human']");
+        const assistantEls = document.querySelectorAll("[data-test-render-count] .standard-markdown, .assistant-turn, [data-testid*='assistant']");
         return userEls.length || assistantEls.length ? { userEls, assistantEls } : null;
       },
       // Strategy 4: structural fallback — alternating divs in main scroll container
@@ -1133,9 +1140,9 @@
       case "chatgpt":
         return "[data-message-author-role='assistant']";
       case "claude":
-        return ".font-claude-response";
+        return ".font-claude-response, [class*='font-claude'], [data-testid*='assistant']";
       case "gemini":
-        return "model-response:not(user-query), .model-response:not(.user-query):not(.user-message), [data-message-author='model']";
+        return "model-response, .model-response, [data-message-author='model']";
       default:
         return null;
     }
