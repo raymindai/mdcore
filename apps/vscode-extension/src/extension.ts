@@ -466,6 +466,8 @@ function markdownToSlack(md: string): string {
   return slack
     // Strikethrough: ~~text~~ → ~text~
     .replace(/~~(.+?)~~/g, "~$1~")
+    // Images BEFORE links (![alt](url) contains [alt](url) pattern)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<$2|$1>")
     // Links: [text](url) → <url|text>
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "<$2|$1>")
     // Headers: # text → *text*
@@ -476,9 +478,6 @@ function markdownToSlack(md: string): string {
     // Task lists: - [x] → :white_check_mark:, - [ ] → :white_large_square:
     .replace(/^(\s*)- \[x\]\s/gm, "$1:white_check_mark: ")
     .replace(/^(\s*)- \[ \]\s/gm, "$1:white_large_square: ")
-    // Blockquote: > text → > text (same in Slack)
-    // Images: ![alt](url) → <url|alt>
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "<$2|$1>")
     // Horizontal rule
     .replace(/^---+$/gm, "———");
 }

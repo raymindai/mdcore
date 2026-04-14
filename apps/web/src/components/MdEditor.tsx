@@ -2025,6 +2025,8 @@ export default function MdEditor() {
           editBtn.style.cssText = `${btnStyle};background:none;color:var(--text-muted);border:1px solid var(--border-dim)`;
           editBtn.addEventListener("click", (ev) => {
             ev.stopPropagation();
+            mermaidIsNewRef.current = false;
+            mermaidSourceIndexRef.current = -1;
             setCanvasMermaid(code);
             setShowMermaidModal(true);
           });
@@ -2071,13 +2073,9 @@ export default function MdEditor() {
             let occurrenceIndex = 0;
             for (const mw of allMermaidWrappers) {
               if (mw === wrapper) break;
-              // Check if this wrapper has the same code
-              const mwCode = mw.querySelector(".mermaid-rendered")?.textContent;
-              const mwBtn = mw.querySelector(".mermaid-edit-btn") as HTMLElement;
-              const mwEncoded = mwBtn?.getAttribute("data-mermaid-src");
-              let mwSrc = "";
-              if (mwEncoded) try { mwSrc = decodeURIComponent(atob(mwEncoded)); } catch { /* */ }
-              if (mwSrc === code || ("```mermaid\n" + mwSrc + "\n```") === block) {
+              // Check if this wrapper has the same code via data-original-code
+              const mwOrigCode = mw.getAttribute("data-original-code") || "";
+              if (mwOrigCode === code) {
                 occurrenceIndex++;
               }
             }
@@ -3977,16 +3975,17 @@ ${html}
 
   // Clear
   const handleClear = useCallback(() => {
-    setMarkdown("");
+    autoSave.cancel(); // prevent saving empty content to cloud
+    // Clear cloudId FIRST to prevent auto-save race
+    setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: undefined, editToken: undefined } : t));
+    setMarkdownRaw("");
     setIsSharedDoc(false);
     setDocId(null);
     setIsOwner(false);
-    // Clear cloudId on active tab to prevent auto-save overwriting server doc
-    setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: undefined, editToken: undefined } : t));
     window.history.replaceState(null, "", "/");
     doRender("");
     setShowMenu(false);
-  }, [doRender]);
+  }, [doRender, autoSave]);
 
   // ─── Desktop Bridge (Electron) ───
   // Expose markdown state and functions to the desktop app
