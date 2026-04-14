@@ -463,6 +463,10 @@
     document.querySelectorAll('.view-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
+    // Body class for CSS-driven layout changes
+    document.body.classList.toggle('source-mode', mode === 'source');
+    document.body.classList.toggle('split-mode', mode === 'split');
+    document.body.classList.toggle('live-mode', mode === 'live');
     if (mode === 'split') {
       // Split: show both side by side
       content.classList.remove("hidden");

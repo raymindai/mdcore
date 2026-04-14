@@ -791,11 +791,12 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
 <body>
   <div id="toolbar">
     <span class="toolbar-logo"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span></span>
-    <div class="view-switcher" style="margin-left:6px;margin-right:6px">
+    <div class="view-switcher" style="margin-left:6px;margin-right:auto">
       <button class="view-btn active" data-view="live" title="Live preview"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 6l2.5 2-2.5 2"/><line x1="9" y1="10" x2="11.5" y2="10"/></svg> Live</button>
       <button class="view-btn" data-view="split" title="Split view — preview + source"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="8" y1="2" x2="8" y2="14"/></svg> Split</button>
       <button class="view-btn" data-view="source" title="Source view"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg> Source</button>
     </div>
+    <span id="toolbar-live-tools" class="toolbar-live-tools">
     <button data-action="undo" title="Undo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg></button>
     <button data-action="redo" title="Redo"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg></button>
     <span class="toolbar-divider"></span>
@@ -826,6 +827,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <button data-action="table" title="Insert table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
     <button data-action="codeblock" title="Code block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
     <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
+    </span>
   </div>
 
   <div id="editor-wrapper">

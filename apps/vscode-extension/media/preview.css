@@ -646,6 +646,41 @@ pre.ascii-original.hidden {
   outline-color: var(--accent);
 }
 
+/* === Split/Source mode: hide Live-only toolbar buttons === */
+body.source-mode .toolbar-live-tools,
+body.source-mode #selection-toolbar { display: none; }
+
+/* Split mode layout */
+body.split-mode #editor-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+}
+body.split-mode #content {
+  width: 50% !important;
+  overflow: auto !important;
+  border-right: 1px solid var(--border);
+}
+body.split-mode #source-view {
+  width: 50% !important;
+  display: flex !important;
+}
+
+/* Source header label */
+#source-view::before {
+  content: "SOURCE";
+  display: block;
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--fg-muted);
+  opacity: 0.4;
+  z-index: 1;
+  pointer-events: none;
+}
+
 /* === Toolbar Rich Tooltips === */
 .toolbar-rich-tip {
   position: fixed;
