@@ -646,40 +646,81 @@ pre.ascii-original.hidden {
   outline-color: var(--accent);
 }
 
-/* === Split/Source mode: hide Live-only toolbar buttons === */
-body.source-mode .toolbar-live-tools,
+/* === Pane-based layout (like mdfy.cc) === */
+
+/* Pane toolbars — each pane has its own header */
+.pane-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.pane-toolbar button {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: 4px;
+  color: var(--fg-muted); cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.pane-toolbar button:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.pane-label {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: "SF Mono", "Fira Code", monospace;
+  letter-spacing: 0.5px;
+  margin-right: 6px;
+  color: var(--fg-muted);
+}
+
+/* Live pane */
+#live-pane {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+#live-pane #content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Source pane */
+#source-view {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+
+/* Source mode: hide live pane entirely */
+body.source-mode #live-pane { display: none; }
+body.source-mode #source-view { border-left: none; }
 body.source-mode #selection-toolbar { display: none; }
 
-/* Split mode layout */
+/* Split mode: side by side */
 body.split-mode #editor-wrapper {
   display: flex !important;
   flex-direction: row !important;
 }
-body.split-mode #content {
+body.split-mode #live-pane {
   width: 50% !important;
-  overflow: auto !important;
-  border-right: 1px solid var(--border);
 }
 body.split-mode #source-view {
   width: 50% !important;
   display: flex !important;
 }
 
-/* Source header label */
-#source-view::before {
-  content: "SOURCE";
-  display: block;
-  position: absolute;
-  top: 4px;
-  right: 8px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--fg-muted);
-  opacity: 0.4;
-  z-index: 1;
-  pointer-events: none;
-}
+/* Live mode: hide source pane */
+body.live-mode #source-view { display: none; }
 
 /* === Toolbar Rich Tooltips === */
 .toolbar-rich-tip {
