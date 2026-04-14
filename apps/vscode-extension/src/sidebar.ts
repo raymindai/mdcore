@@ -242,10 +242,11 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         lastServerUpdatedAt: remote.updated_at,
       });
 
-      // Open the file
+      // Open in mdfy preview only (no native editor)
+      suppressAutoPreviewFor(500);
       const doc = await vscode.workspace.openTextDocument(saveUri);
-      await vscode.window.showTextDocument(doc);
-      vscode.window.showInformationMessage(`Pulled: ${safeName}.md`);
+      PreviewPanel.createOrShow(this._extensionUri, doc);
+      vscode.window.showInformationMessage(`Synced: ${safeName}.md`);
 
       this.refresh();
     } catch (err) {
