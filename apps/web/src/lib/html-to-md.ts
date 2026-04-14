@@ -71,11 +71,15 @@ export function htmlToMarkdown(html: string): string {
   // ASCII rendered diagrams: preserve original code
   turndown.addRule("ascii-rendered", {
     filter: (node) => {
-      return node.classList.contains("ascii-rendered");
+      return (
+        node.classList.contains("ascii-rendered") ||
+        node.classList.contains("ascii-diagram")
+      );
     },
     replacement: (_content, node) => {
       const el = node as HTMLElement;
-      const originalCode = el.getAttribute("data-original-code") || "";
+      const encoded = el.getAttribute("data-original-code") || "";
+      const originalCode = encoded ? decodeURIComponent(encoded) : "";
       if (originalCode) return `\n\n\`\`\`\n${originalCode.trim()}\n\`\`\`\n\n`;
       return "";
     },
