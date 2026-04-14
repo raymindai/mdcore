@@ -92,6 +92,11 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
             await this.deleteCloudDocument(msg.docId);
           }
           break;
+        case "previewCloud":
+          if (msg.docId) {
+            await this.previewCloudDocument(msg.docId, msg.title);
+          }
+          break;
         case "login":
           vscode.commands.executeCommand("mdfy.login");
           break;
@@ -208,6 +213,23 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       vscode.window.showInformationMessage("Document removed from mdfy.cc.");
     } catch {
       vscode.window.showErrorMessage("Failed to delete document.");
+    }
+  }
+
+  private async previewCloudDocument(docId: string, title: string): Promise<void> {
+    try {
+      const remote = await pullDocument(docId, this._authManager);
+      // Create a temporary untitled document with the cloud content
+      const doc = await vscode.workspace.openTextDocument({
+        content: remote.markdown,
+        language: "markdown",
+      });
+      suppressAutoPreviewFor(500);
+      PreviewPanel.createOrShow(this._extensionUri, doc);
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        `Failed to load: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
@@ -957,7 +979,7 @@ body {
       container.querySelectorAll('[data-action="openCloud"]').forEach(function(el) {
         el.addEventListener('click', function(e) {
           if (e.target.closest('.doc-action')) return;
-          vscode.postMessage({ type: 'openBrowser', url: el.dataset.url });
+          vscode.postMessage({ type: 'previewCloud', docId: el.dataset.docid, title: el.dataset.title });
         });
       });
       container.querySelectorAll('[data-action="unlink"]').forEach(function(btn) {
