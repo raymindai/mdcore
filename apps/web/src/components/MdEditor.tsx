@@ -1585,57 +1585,69 @@ export default function MdEditor() {
   cmSetDocRef.current = cmSetDoc;
 
   // Source → Preview sync: highlight corresponding preview element when cursor moves in CM
-  const onCursorActivityRef = useRef<((line: number) => void) | null>(null);
   const prevHighlightRef = useRef<HTMLElement | null>(null);
-  onCursorActivityRef.current = useCallback((line: number) => {
-    if (viewMode === "editor") return; // no preview to sync
-    const article = previewRef.current?.querySelector("article");
-    if (!article) return;
+  const cursorSyncTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-    // Clear previous highlight
+  const clearHighlight = useCallback(() => {
     if (prevHighlightRef.current) {
       prevHighlightRef.current.style.outline = "";
       prevHighlightRef.current.style.outlineOffset = "";
       prevHighlightRef.current = null;
     }
+  }, []);
 
-    // Account for frontmatter offset
-    const lines = markdownRef.current.split("\n");
-    let fmOffset = 0;
-    if (lines[0]?.trim() === "---") {
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i]?.trim() === "---") { fmOffset = i + 1; break; }
-      }
-    }
-    const sourceLine = line - fmOffset; // comrak sourcepos is 1-indexed, already matches
+  const onCursorActivityRef = useRef<((line: number) => void) | null>(null);
+  onCursorActivityRef.current = (line: number) => {
+    // Debounce to avoid scroll jank during selection drag
+    if (cursorSyncTimer.current) clearTimeout(cursorSyncTimer.current);
+    cursorSyncTimer.current = setTimeout(() => {
+      if (viewMode === "editor") return;
+      const article = previewRef.current?.querySelector("article");
+      if (!article) return;
 
-    // Find the preview element whose data-sourcepos range contains this line
-    const els = article.querySelectorAll("[data-sourcepos]");
-    let bestEl: HTMLElement | null = null;
-    let bestRange = Infinity;
-    els.forEach(el => {
-      const sp = el.getAttribute("data-sourcepos");
-      if (!sp) return;
-      const m = sp.match(/^(\d+):\d+-(\d+):\d+$/);
-      if (!m) return;
-      const start = parseInt(m[1]);
-      const end = parseInt(m[2]);
-      if (sourceLine >= start && sourceLine <= end) {
-        const range = end - start;
-        if (range < bestRange) {
-          bestRange = range;
-          bestEl = el as HTMLElement;
+      clearHighlight();
+
+      // Account for frontmatter offset
+      const mdLines = markdownRef.current.split("\n");
+      let fmOffset = 0;
+      if (mdLines[0]?.trim() === "---") {
+        for (let i = 1; i < mdLines.length; i++) {
+          if (mdLines[i]?.trim() === "---") { fmOffset = i + 1; break; }
         }
       }
-    });
+      const sourceLine = line - fmOffset;
 
-    if (bestEl) {
-      (bestEl as HTMLElement).style.outline = "1px solid var(--accent)";
-      (bestEl as HTMLElement).style.outlineOffset = "2px";
-      (bestEl as HTMLElement).scrollIntoView({ block: "nearest", behavior: "smooth" });
-      prevHighlightRef.current = bestEl;
-    }
-  }, [viewMode]);
+      // Find the tightest data-sourcepos range containing this line
+      const els = article.querySelectorAll("[data-sourcepos]");
+      let bestEl: HTMLElement | null = null;
+      let bestRange = Infinity;
+      els.forEach(el => {
+        const sp = el.getAttribute("data-sourcepos");
+        if (!sp) return;
+        const m = sp.match(/^(\d+):\d+-(\d+):\d+$/);
+        if (!m) return;
+        const start = parseInt(m[1]);
+        const end = parseInt(m[2]);
+        if (sourceLine >= start && sourceLine <= end) {
+          const range = end - start;
+          if (range < bestRange) {
+            bestRange = range;
+            bestEl = el as HTMLElement;
+          }
+        }
+      });
+
+      if (bestEl) {
+        (bestEl as HTMLElement).style.outline = "1px solid var(--accent)";
+        (bestEl as HTMLElement).style.outlineOffset = "2px";
+        (bestEl as HTMLElement).scrollIntoView({ block: "nearest", behavior: "smooth" });
+        prevHighlightRef.current = bestEl;
+      }
+    }, 80);
+  };
+
+  // Clean up highlight on tab switch or unmount
+  useEffect(() => clearHighlight, [clearHighlight]);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -4009,14 +4021,14 @@ ${html}
     } else {
       insertPosRef.current = md.length;
     }
-  }, [viewMode]);
+  }, []);
 
   const insertBlockAtCursor = useCallback((content: string): string => {
     const md = markdownRef.current;
     const pos = insertPosRef.current;
 
-    if (pos < 0 || pos >= md.length) {
-      // Fallback / source-mode handled by cmInsertAtCursor
+    if (pos < 0) {
+      // No saved position — append at end
       const suffix = md.endsWith("\n") ? "\n" : "\n\n";
       return md + suffix + content;
     }

@@ -32,12 +32,14 @@ export function htmlToMarkdown(html: string): string {
   });
 
   // Code blocks: <pre> without lang attribute (handles copy button inside pre)
+  // Skip <pre> inside ascii-diagram containers (handled by ascii-rendered rule)
   turndown.addRule("fenced-code-no-lang", {
     filter: (node) => {
       return (
         node.nodeName === "PRE" &&
         !node.getAttribute("lang") &&
-        !!node.querySelector("code")
+        !!node.querySelector("code") &&
+        !node.closest(".ascii-diagram, .ascii-rendered")
       );
     },
     replacement: (_content, node) => {
@@ -96,7 +98,7 @@ export function htmlToMarkdown(html: string): string {
     },
     replacement: (_content, node) => {
       const src = (node as HTMLElement).getAttribute("data-math-src");
-      if (src) return `$${decodeURIComponent(src)}$`;
+      if (src) { try { return `$${decodeURIComponent(src)}$`; } catch { return `$${src}$`; } }
       return `$${(node as HTMLElement).textContent || ""}$`;
     },
   });
@@ -111,7 +113,7 @@ export function htmlToMarkdown(html: string): string {
     },
     replacement: (_content, node) => {
       const src = (node as HTMLElement).getAttribute("data-math-src");
-      if (src) return `\n\n$$${decodeURIComponent(src)}$$\n\n`;
+      if (src) { try { return `\n\n$$${decodeURIComponent(src)}$$\n\n`; } catch { return `\n\n$$${src}$$\n\n`; } }
       return `\n\n$$${(node as HTMLElement).textContent || ""}$$\n\n`;
     },
   });
