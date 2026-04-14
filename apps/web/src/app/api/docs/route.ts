@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     anonymousId?: string;
     editMode?: string;
     isDraft?: boolean;
+    source?: string;
   };
   try {
     body = await req.json();
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft } = body;
+  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source } = body;
   let { userId } = body;
 
   // Resolve email → userId if email provided
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
     anonymous_id: (!userId && anonymousId) ? anonymousId : null,
     edit_mode: resolvedEditMode,
     is_draft: isDraft ?? true,
+    source: source || null,
   });
 
   if (error) {

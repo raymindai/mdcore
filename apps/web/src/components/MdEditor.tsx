@@ -21,7 +21,7 @@ import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-impor
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import {
   Undo2, Redo2, List, ListOrdered, Indent, Outdent, Quote, Minus, Link,
-  Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
+  Image as ImageIcon, RemoveFormatting, Table, Code, Code2, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, Cloud, X, Trash2,
@@ -855,6 +855,7 @@ interface Tab {
   isSharedByMe?: boolean;  // I've shared this doc with others
   isRestricted?: boolean;  // shared with specific people (allowed_emails)
   ownerEmail?: string;     // owner's email (for shared docs)
+  source?: string;         // origin: "vscode" | "chrome" | null
 }
 
 let tabIdCounter = Date.now();
@@ -1446,7 +1447,7 @@ export default function MdEditor() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
-  const [docFilter, setDocFilter] = useState<"all" | "private" | "shared">("all");
+  const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
@@ -1806,6 +1807,7 @@ export default function MdEditor() {
     const myTabs = docFilter === "all" ? allMyTabs
       : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
       : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
+      : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
       : allMyTabs;
     const sortFn = (a: Tab, b: Tab) => {
       if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
@@ -2644,6 +2646,10 @@ export default function MdEditor() {
               .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.length > 0)
               .map((d: { id: string }) => d.id)
           );
+          // Build source map from server docs
+          const sourceMap = new Map<string, string | null>(
+            data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
+          );
           setTabs(prev => prev.map(t => {
             if (!t.cloudId) return t;
             // Bidirectional sync: set AND clear based on server state
@@ -2652,6 +2658,7 @@ export default function MdEditor() {
               isDraft: publishedIds.has(t.cloudId) ? false : true,
               isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
               isRestricted: restrictedIds.has(t.cloudId) ? true : false,
+              source: sourceMap.get(t.cloudId) || undefined,
             };
           }));
         }
@@ -5113,6 +5120,7 @@ ${html}
               const myTabs = docFilter === "all" ? allMyTabs
                 : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
                 : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
+                : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
@@ -5165,13 +5173,14 @@ ${html}
                     <div className="shrink-0 space-y-0.5 pt-1 pb-0 pl-2 pr-2">
                       <div className="flex items-center gap-1.5 px-1 pb-1.5">
                         <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                          {(["all", "private", "shared"] as const).map((f) => {
+                          {(["all", "private", "shared", "synced"] as const).map((f) => {
                             const tips: Record<string, string> = {
                               all: "Show all documents",
                               private: "Only visible to you",
                               shared: "Shared via public URL",
+                              synced: "Synced from VS Code",
                             };
-                            const labels: Record<string, string> = { all: "ALL", private: "PRIVATE", shared: "SHARED" };
+                            const labels: Record<string, string> = { all: "ALL", private: "PRIVATE", shared: "SHARED", synced: "SYNCED" };
                             return (
                             <button
                               key={f}
@@ -5241,7 +5250,9 @@ ${html}
                           onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.isDraft === false && tab.isRestricted ? (
+                          {tab.source === "vscode" ? (
+                            <Code2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
+                          ) : tab.isDraft === false && tab.isRestricted ? (
                             <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
                           ) : tab.isDraft === false ? (
                             <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
@@ -5336,7 +5347,9 @@ ${html}
                                     onClick={(e) => handleDocClick(tab.id, e)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
-                                    {tab.isDraft === false && tab.isRestricted ? (
+                                    {tab.source === "vscode" ? (
+                                      <Code2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
+                                    ) : tab.isDraft === false && tab.isRestricted ? (
                                       <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
                                     ) : tab.isDraft === false ? (
                                       <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />

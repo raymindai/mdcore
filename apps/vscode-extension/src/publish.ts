@@ -26,7 +26,7 @@ export async function publishDocument(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}/api/docs`;
 
-  const body: Record<string, unknown> = { markdown, title, isDraft: false };
+  const body: Record<string, unknown> = { markdown, title, isDraft: false, source: "vscode" };
 
   // Attach userId if logged in
   const userId = await authManager?.getUserId();
