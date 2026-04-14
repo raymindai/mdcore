@@ -914,10 +914,6 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <button data-action="removeFormat" title="Clear formatting"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg></button>
   </div>
 
-  <div id="mdfy-badge" class="hidden">
-    <a href="https://mdfy.cc" target="_blank" id="badge-link">Published with <span style="color:var(--accent);font-weight:700">mdfy</span>.cc</a>
-    <a href="#" id="badge-view-link" target="_blank" class="badge-view">View document →</a>
-  </div>
 
   <div id="bottom-bar-removed" style="display:none">
   </div>
