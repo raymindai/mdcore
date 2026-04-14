@@ -417,7 +417,7 @@ html, body {
   display: block;
   padding: 1rem 1.25rem;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 0;
   overflow-x: auto;
   font-size: 0.85em;
 }

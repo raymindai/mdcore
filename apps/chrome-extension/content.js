@@ -152,10 +152,15 @@
       ".mdfy-mini-btn, .mdfy-float-btn, #mdfy-float-btn, [class*='mdfy'], " +
       "button[class*='copy'], button[class*='Copy'], button[class*='group/status'], " +
       "[class*='view-transition'], style, script, noscript, " +
-      "[class*='skill'], [class*='status'], [class*='toolbar'], " +
+      "button[class*='skill'], button[class*='status'], [class*='toolbar'], " +
       "[class*='show_widget'], [class*='Visualize'], [class*='visualize'], " +
       "button[aria-expanded], .sr-only"
-    ).forEach((el) => el.remove());
+    ).forEach((el) => {
+      // Don't remove elements that contain code blocks or tables — prevents
+      // accidentally stripping content inside broad class-matching containers
+      if (el.querySelector("pre, code, table")) return;
+      el.remove();
+    });
 
     // ── Step 0c: Extract math from KaTeX/MathJax annotations ──
     const processedMathEls = new Set();
@@ -290,21 +295,6 @@
       if (clone.contains(el)) el.remove();
     });
 
-    // ── Step 3: Tables ──
-    clone.querySelectorAll("table").forEach((table) => {
-      let md = "\n";
-      const rows = table.querySelectorAll("tr");
-      rows.forEach((row, rowIndex) => {
-        const cells = row.querySelectorAll("th, td");
-        const cellTexts = Array.from(cells).map((c) => c.textContent.trim());
-        md += "| " + cellTexts.join(" | ") + " |\n";
-        if (rowIndex === 0) {
-          md += "| " + cellTexts.map(() => "---").join(" | ") + " |\n";
-        }
-      });
-      table.textContent = md;
-    });
-
     // ── Step 4: Code blocks ──
     const knownLangs = /^(mermaid|wat|wasm|rust|python|javascript|typescript|js|ts|go|golang|java|c\+\+|cpp|c#|csharp|c|ruby|swift|kotlin|bash|sh|shell|zsh|sql|html|css|scss|json|yaml|yml|xml|toml|dockerfile|makefile|r|php|perl|scala|haskell|lua|dart|graphql|proto|protobuf|text|plaintext|markdown|md|diff|assembly|asm|powershell|objective-c|elixir|erlang|clojure|groovy|matlab|latex|tex|vim|ini|nginx|apache|csv|tsx|jsx)$/i;
     clone.querySelectorAll("pre").forEach((pre) => {
@@ -374,6 +364,20 @@
       pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
     });
 
+    // ── Step 4b: Multi-line <code> with language class but no <pre> wrapper ──
+    // Some platforms (Claude edge cases) render code blocks as <code class="language-X">
+    // without a <pre> wrapper. Convert these to fenced code blocks.
+    clone.querySelectorAll("code[class*='language-'], code[class*='lang-']").forEach((code) => {
+      if (code.closest("pre")) return; // Already handled by Step 4
+      const text = code.innerText || code.textContent || "";
+      if (text.split("\n").length < 2) return; // Single line → keep as inline code
+      const langMatch = code.className.match(/language-(\w+)|lang-(\w+)/);
+      const lang = langMatch ? (langMatch[1] || langMatch[2]) : "";
+      const pre = document.createElement("pre");
+      pre.textContent = "\n```" + lang + "\n" + text.trim() + "\n```\n";
+      code.replaceWith(pre);
+    });
+
     // ── Step 5: Inline code ──
     clone.querySelectorAll("code").forEach((code) => {
       if (code.closest("pre")) return;
@@ -429,18 +433,57 @@
       el.remove();
     });
 
+    // ── Tables ── (moved after inline formatting so cells contain **bold**, `code`, [links], etc.)
+    clone.querySelectorAll("table").forEach((table) => {
+      const rows = table.querySelectorAll("tr");
+      if (rows.length === 0) return;
+      let md = "\n";
+      rows.forEach((row, rowIndex) => {
+        const cells = row.querySelectorAll("th, td");
+        const cellTexts = Array.from(cells).map((c) =>
+          c.textContent.trim().replace(/\n\s*/g, " ").replace(/\|/g, "\\|") || " "
+        );
+        md += "| " + cellTexts.join(" | ") + " |\n";
+        if (rowIndex === 0) {
+          md += "| " + cellTexts.map(() => "---").join(" | ") + " |\n";
+        }
+      });
+      table.textContent = md;
+    });
+
     // ── Step 10: Lists ──
-    // Collapse internal newlines from DOM whitespace text nodes to keep list items single-line
+    // Preserve code blocks and tables inside list items (don't collapse their newlines)
     clone.querySelectorAll("ol").forEach((ol) => {
       const items = ol.querySelectorAll(":scope > li");
       items.forEach((li, i) => {
-        li.textContent = (i + 1) + ". " + li.textContent.replace(/\n\s*/g, " ").trim();
+        const prefix = (i + 1) + ". ";
+        if (li.querySelector("pre, table")) {
+          // Has code block or table — preserve structure, indent continuation lines
+          const text = li.textContent.trim();
+          const lines = text.split("\n");
+          const indent = " ".repeat(prefix.length);
+          li.textContent = prefix + lines[0] + (lines.length > 1
+            ? "\n" + lines.slice(1).map((l) => indent + l).join("\n")
+            : "");
+        } else {
+          li.textContent = prefix + li.textContent.replace(/\n\s*/g, " ").trim();
+        }
       });
     });
     clone.querySelectorAll("ul").forEach((ul) => {
       const items = ul.querySelectorAll(":scope > li");
       items.forEach((li) => {
-        li.textContent = "- " + li.textContent.replace(/\n\s*/g, " ").trim();
+        const prefix = "- ";
+        if (li.querySelector("pre, table")) {
+          const text = li.textContent.trim();
+          const lines = text.split("\n");
+          const indent = " ".repeat(prefix.length);
+          li.textContent = prefix + lines[0] + (lines.length > 1
+            ? "\n" + lines.slice(1).map((l) => indent + l).join("\n")
+            : "");
+        } else {
+          li.textContent = prefix + li.textContent.replace(/\n\s*/g, " ").trim();
+        }
       });
     });
 

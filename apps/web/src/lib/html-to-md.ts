@@ -31,6 +31,22 @@ export function htmlToMarkdown(html: string): string {
     },
   });
 
+  // Code blocks: <pre> without lang attribute (handles copy button inside pre)
+  turndown.addRule("fenced-code-no-lang", {
+    filter: (node) => {
+      return (
+        node.nodeName === "PRE" &&
+        !node.getAttribute("lang") &&
+        !!node.querySelector("code")
+      );
+    },
+    replacement: (_content, node) => {
+      const code = (node as HTMLElement).querySelector("code");
+      const text = code ? code.textContent || "" : (node as HTMLElement).textContent || "";
+      return `\n\n\`\`\`\n${text.replace(/\n$/, "")}\n\`\`\`\n\n`;
+    },
+  });
+
   // Mermaid: preserve mermaid code from rendered containers
   turndown.addRule("mermaid-container", {
     filter: (node) => {

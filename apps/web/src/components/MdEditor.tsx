@@ -3948,25 +3948,38 @@ ${html}
     article.querySelectorAll(nonEditableSelector).forEach(el => {
       (el as HTMLElement).contentEditable = "false";
 
+      // Skip spacers for inline math — <p> spacers break list/paragraph layout
+      if (el.classList.contains("math-rendered") &&
+          el.getAttribute("data-math-mode") === "inline") {
+        return;
+      }
+
+      // For tables inside table-wrapper, add spacers to wrapper (not inside it)
+      let spacerTarget: Element = el;
+      if (el.tagName === "TABLE" && el.parentElement?.classList.contains("table-wrapper")) {
+        spacerTarget = el.parentElement;
+        (spacerTarget as HTMLElement).contentEditable = "false";
+      }
+
       // Add editable spacer AFTER if missing — so cursor can be placed below
-      const next = el.nextElementSibling;
+      const next = spacerTarget.nextElementSibling;
       if (!next || (next.getAttribute("contenteditable") === "false" && !next.classList.contains("ce-spacer"))) {
-        if (!el.nextElementSibling?.classList.contains("ce-spacer")) {
+        if (!spacerTarget.nextElementSibling?.classList.contains("ce-spacer")) {
           const spacer = document.createElement("p");
           spacer.innerHTML = "<br>";
           spacer.className = "ce-spacer";
-          el.parentNode?.insertBefore(spacer, el.nextSibling);
+          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget.nextSibling);
         }
       }
 
       // Add editable spacer BEFORE if missing — so cursor can be placed above
-      const prev = el.previousElementSibling;
+      const prev = spacerTarget.previousElementSibling;
       if (!prev || (prev.getAttribute("contenteditable") === "false" && !prev.classList.contains("ce-spacer"))) {
-        if (!el.previousElementSibling?.classList.contains("ce-spacer")) {
+        if (!spacerTarget.previousElementSibling?.classList.contains("ce-spacer")) {
           const spacer = document.createElement("p");
           spacer.innerHTML = "<br>";
           spacer.className = "ce-spacer";
-          el.parentNode?.insertBefore(spacer, el);
+          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget);
         }
       }
     });
