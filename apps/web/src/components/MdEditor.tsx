@@ -1733,15 +1733,23 @@ export default function MdEditor() {
       }
       setRenderTime(elapsed);
       setCharCount(md.length);
-      setWordCount(md.trim() ? md.trim().split(/\s+/).length : 0);
-      setLineCount(md.split("\n").length);
       setIsLoading(false);
 
-      // Detect AI conversation
-      if (md.length > 50 && isAiConversation(md)) {
-        setShowAiBanner(true);
+      // Defer expensive stats and AI detection for large documents
+      const computeStats = () => {
+        if (thisRender !== renderIdRef.current) return;
+        setWordCount(md.trim() ? md.trim().split(/\s+/).length : 0);
+        setLineCount(md.split("\n").length);
+        if (md.length > 50 && isAiConversation(md)) {
+          setShowAiBanner(true);
+        } else {
+          setShowAiBanner(false);
+        }
+      };
+      if (md.length > 50000 && typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(computeStats);
       } else {
-        setShowAiBanner(false);
+        computeStats();
       }
     } catch (e) {
       console.error("Render error:", e);
@@ -3361,7 +3369,9 @@ export default function MdEditor() {
       cmUpdateRef.current = true;
       setMarkdown(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => doRender(value), 150);
+      // Increase debounce for large documents to avoid lag
+      const debounceTime = value.length > 50000 ? 500 : 150;
+      debounceRef.current = setTimeout(() => doRender(value), debounceTime);
     },
     [doRender, setMarkdown]
   );
@@ -3440,26 +3450,117 @@ export default function MdEditor() {
     wysiwygDebounce.current = setTimeout(() => {
       const article = previewRef.current?.querySelector("article");
       if (!article) return;
-      // Strip ALL UI elements before converting to markdown
-      const clone = article.cloneNode(true) as HTMLElement;
-      // Remove UI overlays (buttons, headers, spacers, toolbars)
-      clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(el => el.remove());
-      // Unwrap table-wrapper divs (keep the table inside)
-      clone.querySelectorAll(".table-wrapper").forEach(wrapper => {
-        const table = wrapper.querySelector("table");
-        if (table) wrapper.replaceWith(table);
-      });
-      const newMd = htmlToMarkdown(clone.innerHTML);
-      setMarkdown(newMd);
-      cmSetDoc(newMd);
-      // Sync title from edited markdown to sidebar
-      const h1Match = newMd.match(/^#\s+(.+)/m);
-      if (h1Match) {
-        const newTitle = h1Match[1].trim();
-        setTitle(newTitle);
-        const curTabId = activeTabIdRef.current;
-        setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+
+      // Helper: strip UI elements from a cloned element
+      const stripUiElements = (el: HTMLElement) => {
+        el.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+        el.querySelectorAll(".table-wrapper").forEach(wrapper => {
+          const table = wrapper.querySelector("table");
+          if (table) wrapper.replaceWith(table);
+        });
+      };
+
+      // Helper: compute frontmatter line offset
+      const computeFrontmatterOffset = (md: string): number => {
+        const lines = md.split("\n");
+        if (lines[0]?.trim() !== "---") return 0;
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i]?.trim() === "---") return i + 1;
+        }
+        return 0;
+      };
+
+      // --- Partial update strategy using data-sourcepos ---
+      // Instead of converting the entire document on every keystroke,
+      // find the specific edited block and convert only that block.
+      // This preserves unedited markdown constructs perfectly.
+      let didPartialUpdate = false;
+      try {
+        const sel = window.getSelection();
+        if (sel?.rangeCount) {
+          // Walk from cursor to nearest ancestor with data-sourcepos
+          let node: Node | null = sel.getRangeAt(0).startContainer;
+          if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+          let editedBlock: HTMLElement | null = null;
+          while (node && node !== article) {
+            if ((node as HTMLElement).getAttribute?.("data-sourcepos")) {
+              editedBlock = node as HTMLElement;
+              break;
+            }
+            node = (node as HTMLElement).parentElement;
+          }
+
+          if (editedBlock) {
+            const sourcepos = editedBlock.getAttribute("data-sourcepos");
+            const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
+            if (spMatch) {
+              const startLine = parseInt(spMatch[1]) - 1; // 0-indexed
+              const endLine = parseInt(spMatch[2]) - 1;
+
+              const md = markdownRef.current;
+              const lines = md.split("\n");
+              const fmOffset = computeFrontmatterOffset(md);
+              const actualStart = startLine + fmOffset;
+              const actualEnd = endLine + fmOffset;
+
+              // Sanity check: sourcepos must reference valid lines
+              if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
+                // Clone and strip UI from just the edited block
+                const clone = editedBlock.cloneNode(true) as HTMLElement;
+                stripUiElements(clone);
+
+                // Convert only this block to markdown
+                const blockMd = htmlToMarkdown(clone.outerHTML).trim();
+
+                // Replace only the corresponding lines in the original markdown
+                const before = lines.slice(0, actualStart);
+                const after = lines.slice(actualEnd + 1);
+                const newMd = [...before, blockMd, ...after].join("\n");
+
+                // Validate: the partial update should produce reasonable output
+                // If the new markdown is drastically shorter, something went wrong
+                if (newMd.length > md.length * 0.5 || md.length < 20) {
+                  setMarkdown(newMd);
+                  cmSetDoc(newMd);
+                  didPartialUpdate = true;
+
+                  // Sync title from edited markdown to sidebar
+                  const h1Match = newMd.match(/^#\s+(.+)/m);
+                  if (h1Match) {
+                    const newTitle = h1Match[1].trim();
+                    setTitle(newTitle);
+                    const curTabId = activeTabIdRef.current;
+                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Any error in partial update path — fall through to full conversion
       }
+
+      // --- Fallback: full document conversion ---
+      // Used when: no cursor/selection, no data-sourcepos found, block was deleted,
+      // blocks were merged/split, or partial update validation failed.
+      if (!didPartialUpdate) {
+        const clone = article.cloneNode(true) as HTMLElement;
+        stripUiElements(clone);
+        const newMd = htmlToMarkdown(clone.innerHTML);
+        setMarkdown(newMd);
+        cmSetDoc(newMd);
+
+        // Sync title from edited markdown to sidebar
+        const h1Match = newMd.match(/^#\s+(.+)/m);
+        if (h1Match) {
+          const newTitle = h1Match[1].trim();
+          setTitle(newTitle);
+          const curTabId = activeTabIdRef.current;
+          setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+        }
+      }
+
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       setTimeout(() => {
         wysiwygEditingRef.current = false;
@@ -3491,7 +3592,8 @@ export default function MdEditor() {
           } catch { /* ignore */ }
         });
       });
-    }, 150);
+    // Increase debounce for large documents to avoid lag
+    }, markdownRef.current.length > 50000 ? 500 : 150);
   }, [setMarkdown, cmSetDoc]);
 
   // File drop handler
@@ -3604,6 +3706,7 @@ export default function MdEditor() {
       setVersions(data.versions || []);
     } catch {
       setVersions([]);
+      showToast("Failed to load version history", "error");
     }
     setHistoryLoading(false);
   }, [docId]);
@@ -3633,7 +3736,7 @@ export default function MdEditor() {
         setHtml(processed);
       }
     } catch {
-      // ignore
+      showToast("Failed to load version preview", "error");
     }
   }, [docId, previewVersion, markdown, doRender]);
 
@@ -3653,7 +3756,7 @@ export default function MdEditor() {
         await loadVersions();
       }
     } catch {
-      // ignore
+      showToast("Failed to restore version", "error");
     }
     setRestoringVersion(null);
   }, [docId, doRender, loadVersions]);
@@ -3909,6 +4012,7 @@ ${html}
       setTimeout(() => setUpdateState("idle"), 3000);
     } catch {
       setUpdateState("error");
+      showToast("Failed to update document. Check your connection.", "error");
       setTimeout(() => setUpdateState("idle"), 3000);
     }
   }, [docId, markdown, title, user]);
@@ -3928,7 +4032,7 @@ ${html}
       const newToken = await rotateEditToken(docId, user.id);
       saveEditToken(docId, newToken);
     } catch {
-      // ignore
+      showToast("Failed to rotate edit token", "error");
     }
     setRotatingToken(false);
     setConfirmRotateToken(false);
@@ -3941,7 +4045,7 @@ ${html}
       await changeEditMode(docId, user.id, newMode);
       setDocEditMode(newMode);
     } catch {
-      // ignore
+      showToast("Failed to change edit mode", "error");
     }
     setChangingEditMode(false);
     setShowDocEditModeMenu(false);

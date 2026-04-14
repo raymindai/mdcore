@@ -1076,3 +1076,86 @@ textarea::selection {
 .cm-editor .cm-scroller {
   overflow: auto !important;
 }
+
+/* ========================================
+   Mobile optimizations
+   ======================================== */
+@media (max-width: 768px) {
+  /* Ensure minimum touch target sizes (44px) for interactive elements */
+  .mdcore-rendered ul li input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 11px;
+    box-sizing: content-box;
+    margin: -11px;
+    margin-right: 0.25rem;
+  }
+
+  /* Prevent horizontal overflow on small screens */
+  .mdcore-rendered {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .mdcore-rendered pre code {
+    font-size: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .mdcore-rendered table {
+    font-size: 0.8rem;
+  }
+
+  .mdcore-rendered th,
+  .mdcore-rendered td {
+    padding: 0.375rem 0.5rem;
+  }
+
+  /* Larger headings for readability */
+  .mdcore-rendered h1 {
+    font-size: 1.5rem;
+  }
+
+  .mdcore-rendered h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Disable hover outlines on touch devices — they persist after tap */
+  .mdcore-rendered h1:hover,
+  .mdcore-rendered h2:hover,
+  .mdcore-rendered h3:hover,
+  .mdcore-rendered h4:hover,
+  .mdcore-rendered h5:hover,
+  .mdcore-rendered h6:hover,
+  .mdcore-rendered p:hover,
+  .mdcore-rendered li:hover,
+  .mdcore-rendered dt:hover,
+  .mdcore-rendered dd:hover {
+    outline: none;
+  }
+
+  .mdcore-rendered td:hover,
+  .mdcore-rendered th:hover {
+    outline: none;
+  }
+
+  /* Image context menu — ensure it stays in viewport */
+  .mdcore-img-menu {
+    max-width: calc(100vw - 32px);
+  }
+
+  /* KaTeX display math — prevent horizontal overflow */
+  .mdcore-rendered .katex-display {
+    padding: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Lightbox — tighter padding on mobile */
+  .mdcore-lightbox img {
+    max-width: 98vw;
+    max-height: 85vh;
+  }
+}

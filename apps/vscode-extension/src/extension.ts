@@ -262,7 +262,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const items: vscode.QuickPickItem[] = [
         { label: "$(file-code) Copy as HTML", description: "Copy rendered HTML to clipboard" },
-        { label: "$(file-text) Copy as Rich Text", description: "For Google Docs, Email, Word" },
+        { label: "$(file-text) Copy as HTML (for email/docs)", description: "Rich paste into Google Docs, Email, Word" },
         { label: "$(comment-discussion) Copy as Slack", description: "Slack mrkdwn format" },
         { label: "$(desktop-download) Save as HTML", description: "Save rendered HTML file" },
       ];
@@ -274,14 +274,14 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!selected) { return; }
       const markdown = editor.document.getText();
 
-      if (selected.label.includes("Copy as HTML")) {
+      if (selected.label.includes("for email/docs")) {
+        const html = PreviewPanel.renderToHtml(markdown);
+        await vscode.env.clipboard.writeText(html);
+        vscode.window.showInformationMessage("HTML copied — paste into Google Docs, Email, or Word.");
+      } else if (selected.label.includes("Copy as HTML")) {
         const html = PreviewPanel.renderToHtml(markdown);
         await vscode.env.clipboard.writeText(html);
         vscode.window.showInformationMessage("HTML copied to clipboard.");
-      } else if (selected.label.includes("Rich Text")) {
-        const html = PreviewPanel.renderToHtml(markdown);
-        await vscode.env.clipboard.writeText(html);
-        vscode.window.showInformationMessage("Rich Text HTML copied to clipboard.");
       } else if (selected.label.includes("Slack")) {
         const slack = markdownToSlack(markdown);
         await vscode.env.clipboard.writeText(slack);
