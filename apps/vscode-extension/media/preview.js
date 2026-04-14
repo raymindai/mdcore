@@ -69,13 +69,37 @@
     }
   })();
 
-  // Split divider drag
+  // Flavor dropdown toggle
+  (function initFlavorDropdown() {
+    var badge = document.getElementById('flavor-badge');
+    var dropdown = document.getElementById('flavor-dropdown');
+    if (!badge || !dropdown) return;
+    badge.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', function() {
+      dropdown.classList.add('hidden');
+    });
+    dropdown.querySelectorAll('.flavor-option').forEach(function(btn) {
+      btn.addEventListener('mouseover', function() { btn.style.background = 'var(--surface-hover)'; });
+      btn.addEventListener('mouseout', function() { btn.style.background = 'none'; });
+      btn.addEventListener('click', function() {
+        var flavor = btn.getAttribute('data-flavor');
+        dropdown.classList.add('hidden');
+        vscode.postMessage({ type: 'convertFlavor', target: flavor });
+      });
+    });
+  })();
+
+  // Split divider drag (only active in split mode)
   (function initSplitDivider() {
     var divider = document.getElementById('split-divider');
     if (!divider) return;
     var livePane = document.getElementById('live-pane');
     var isDragging = false;
     divider.addEventListener('mousedown', function(e) {
+      if (!document.body.classList.contains('split-mode')) return;
       isDragging = true;
       divider.classList.add('dragging');
       document.body.style.cursor = 'col-resize';

@@ -860,8 +860,16 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <!-- Source pane: header with flavor + copy + download -->
     <div id="source-view" class="hidden">
       <div id="source-header" class="pane-header">
-        <span class="pane-label">SOURCE</span>
-        <button id="flavor-badge" class="pane-badge" title="Flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
+        <span class="pane-label" style="color:var(--accent)">SOURCE</span>
+        <div style="position:relative;display:inline-block">
+          <button id="flavor-badge" class="pane-badge" title="Markdown flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
+          <div id="flavor-dropdown" class="flavor-dropdown hidden" style="position:absolute;top:100%;left:0;margin-top:4px;min-width:180px;padding:4px;border-radius:8px;background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:999">
+            <div style="padding:4px 8px;font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px">Convert to</div>
+            <button class="flavor-option" data-flavor="gfm" style="display:block;width:100%;text-align:left;padding:6px 8px;border:none;background:none;color:var(--fg);font-size:11px;cursor:pointer;border-radius:4px"><b>GFM</b> <span style="color:var(--fg-muted);font-size:10px">Tables, task lists</span></button>
+            <button class="flavor-option" data-flavor="commonmark" style="display:block;width:100%;text-align:left;padding:6px 8px;border:none;background:none;color:var(--fg);font-size:11px;cursor:pointer;border-radius:4px"><b>CommonMark</b> <span style="color:var(--fg-muted);font-size:10px">Standard</span></button>
+            <button class="flavor-option" data-flavor="obsidian" style="display:block;width:100%;text-align:left;padding:6px 8px;border:none;background:none;color:var(--fg);font-size:11px;cursor:pointer;border-radius:4px"><b>Obsidian</b> <span style="color:var(--fg-muted);font-size:10px">Wikilinks, callouts</span></button>
+          </div>
+        </div>
         <span style="flex:1"></span>
         <button class="pane-icon-btn" id="btn-copy-md" title="Copy Markdown">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
