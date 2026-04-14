@@ -1405,7 +1405,7 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(true);
   const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -6106,85 +6106,67 @@ ${html}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
-                {/* Toolbar toggle — only when editing is allowed */}
+                {/* Toolbar toggle — icon only with rich tooltip */}
                 {canEdit && <div className="relative group">
                   <button
                     onClick={() => setShowToolbar(!showToolbar)}
-                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
-                    style={{ background: showToolbar ? "var(--accent-dim)" : "var(--toggle-bg)", color: showToolbar ? "var(--accent)" : "var(--text-muted)" }}
+                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    style={{ background: showToolbar ? "var(--accent-dim)" : "transparent", color: showToolbar ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
-                    {!renderPaneNarrow && <span className="text-[10px] font-medium">TOOLBAR</span>}
-                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
-                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showToolbar ? "var(--accent)" : "var(--text-faint)", opacity: showToolbar ? 1 : 0.3 }} />
-                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: showToolbar ? "translateX(11px)" : "translateX(2px)" }} />
-                    </span>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-44 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    Show formatting toolbar with bold, italic, headings, lists, and more.
+                    <p style={{ color: showToolbar ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Formatting Toolbar {showToolbar ? "ON" : "OFF"}</p>
+                    <p>Bold, italic, headings, lists, links, and more.</p>
                   </div>
                 </div>}
-                {/* Narrow view toggle — hidden when pane is already narrower than max-w-3xl (768px) */}
+                {/* Narrow view toggle */}
                 <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowView(!narrowView)}
-                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
-                    style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
+                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    style={{ background: narrowView ? "var(--accent-dim)" : "transparent", color: narrowView ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
-                    {!renderPaneNarrow && <span className="text-[10px] font-medium">NARROW</span>}
-                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
-                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowView ? "var(--accent)" : "var(--text-faint)", opacity: narrowView ? 1 : 0.3 }} />
-                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowView ? "translateX(11px)" : "translateX(2px)" }} />
-                    </span>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                    Limit content width for comfortable reading
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                    <p style={{ color: narrowView ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Narrow View {narrowView ? "ON" : "OFF"}</p>
+                    <p>Limit content width for comfortable reading, like a book layout.</p>
                   </div>
                 </div>
-                {/* AI ASCII RENDER — mini toggle + hover tooltip */}
+                {/* AI ASCII RENDER — icon only with rich tooltip */}
                 <div className="relative group">
                   <button
                     onClick={toggleDiagramMode}
-                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
-                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "var(--toggle-bg)", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-muted)" }}
+                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
-                    {!renderPaneNarrow && <span className="text-[10px] font-medium">AI ASCII RENDER</span>}
-                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
-                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", opacity: diagramMode === "ai" ? 1 : 0.3 }} />
-                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: diagramMode === "ai" ? "translateX(11px)" : "translateX(2px)" }} />
-                    </span>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
                   </button>
-                  <div className="absolute top-full right-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                  <div className="absolute top-full right-0 mt-1.5 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    {diagramMode === "ai" ? (
-                      <><p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>AI ASCII RENDER ON</p><p>ASCII art diagrams are automatically converted to styled visuals using AI (Gemini).</p></>
-                    ) : (
-                      <><p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII RENDER OFF</p><p>ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams.</p></>
-                    )}
+                    <p style={{ color: diagramMode === "ai" ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render {diagramMode === "ai" ? "ON" : "OFF"}</p>
+                    <p>{diagramMode === "ai" ? "ASCII art diagrams are automatically converted to styled visuals using AI (Gemini)." : "ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams."}</p>
                   </div>
                 </div>
-                {/* History toggle — only when document has been shared */}
+                {/* History — icon only */}
                 {docId && (
                   <div className="relative group">
                     <button
                       onClick={handleToggleHistory}
-                      className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
-                      style={{ background: showHistory ? "var(--accent-dim)" : "var(--toggle-bg)", color: showHistory ? "var(--accent)" : "var(--text-muted)" }}
+                      className="flex items-center justify-center w-7 h-7 rounded-md transition-colors relative"
+                      style={{ background: showHistory ? "var(--accent-dim)" : "transparent", color: showHistory ? "var(--accent)" : "var(--text-faint)" }}
                     >
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
-                      {!renderPaneNarrow && <span className="text-[10px] font-medium">HISTORY</span>}
-                      {versions.length > 0 && <span className="text-[9px] opacity-50">{versions.length}</span>}
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-[7px] flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
                     </button>
-                    {!showHistory && (
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                        Version history
-                      </div>
-                    )}
+                    <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                      <p style={{ color: showHistory ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Version History</p>
+                      <p>{versions.length > 0 ? `${versions.length} version${versions.length > 1 ? "s" : ""} saved. Click to browse and restore.` : "Save history appears after sharing your document."}</p>
+                    </div>
                   </div>
                 )}
                 {/* Export dropdown */}
@@ -6558,19 +6540,15 @@ ${html}
                 <div className="relative group" style={{ display: isMobile || editorPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowSource(!narrowSource)}
-                    className="flex items-center gap-1.5 h-6 px-2 rounded-md transition-colors"
-                    style={{ background: narrowSource ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowSource ? "var(--accent)" : "var(--text-muted)" }}
+                    className="flex items-center justify-center w-7 h-7 rounded-md transition-colors"
+                    style={{ background: narrowSource ? "var(--accent-dim)" : "transparent", color: narrowSource ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
-                    {!editorPaneNarrow && <span className="text-[10px] font-medium">NARROW</span>}
-                    <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
-                      <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowSource ? "var(--accent)" : "var(--text-faint)", opacity: narrowSource ? 1 : 0.3 }} />
-                      <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowSource ? "translateX(11px)" : "translateX(2px)" }} />
-                    </span>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
                   </button>
-                  <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                    Limit content width for comfortable editing
+                  <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                    <p style={{ color: narrowSource ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Narrow View {narrowSource ? "ON" : "OFF"}</p>
+                    <p>Limit content width for comfortable editing.</p>
                   </div>
                 </div>
                 {/* Copy MD */}
