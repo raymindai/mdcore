@@ -3,10 +3,10 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 
 export async function GET(req: NextRequest) {
-  // Try JWT verification first
+  // JWT verification required for userId — no unverified header fallback
   const verified = await verifyAuthToken(req.headers.get("authorization"));
 
-  let userId = verified?.userId || req.headers.get("x-user-id");
+  let userId = verified?.userId || null;
   const anonymousId = req.headers.get("x-anonymous-id");
   const userEmail = verified?.email || req.headers.get("x-user-email");
 

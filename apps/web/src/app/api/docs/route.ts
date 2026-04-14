@@ -102,5 +102,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   }
 
-  return NextResponse.json({ id, editToken });
+  return NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
 }

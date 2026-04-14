@@ -30,8 +30,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document expired" }, { status: 410 });
   }
 
-  // Use JWT-verified userId if available, otherwise fall back to headers
-  const requesterId = verified?.userId || _req.headers.get("x-user-id");
+  // Use JWT-verified userId — no unverified header fallback for userId
+  const requesterId = verified?.userId || null;
   const requesterAnonId = _req.headers.get("x-anonymous-id");
 
   // Draft documents: only accessible by owner
@@ -137,8 +137,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Resolve email → userId if provided
-  if (!body.userId && body.userEmail) {
+  // Verify JWT — use verified identity over body values when available
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  if (verified) {
+    body.userId = verified.userId;
+    body.userEmail = verified.email;
+  } else if (!body.userId && body.userEmail) {
+    // Fallback: resolve email → userId (for non-JWT clients with editToken)
     try {
       const { data } = await supabase.auth.admin.listUsers();
       const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());
@@ -434,8 +439,12 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Resolve email → userId
-  if (!body.userId && body.userEmail) {
+  // Verify JWT — use verified identity over body values
+  const verifiedDel = await verifyAuthToken(req.headers.get("authorization"));
+  if (verifiedDel) {
+    body.userId = verifiedDel.userId;
+    body.userEmail = verifiedDel.email;
+  } else if (!body.userId && body.userEmail) {
     try {
       const { data } = await supabase.auth.admin.listUsers();
       const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());

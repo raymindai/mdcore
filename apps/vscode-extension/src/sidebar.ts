@@ -163,7 +163,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       // Write .mdfy.json sidecar
       await saveMdfyConfig(saveUri.fsPath, {
         docId,
-        editToken: "pulled",
+        editToken: remote.editToken || "pulled",
         lastSyncedAt: new Date().toISOString(),
         lastServerUpdatedAt: remote.updated_at,
       });
