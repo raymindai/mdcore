@@ -5038,7 +5038,7 @@ ${html}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
-            minWidth: isMobile ? 260 : 200,
+            minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
             ...(isMobile ? { animation: "sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1)" } : {}),
           }}
