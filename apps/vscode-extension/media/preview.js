@@ -58,6 +58,12 @@
         narrowToggle.classList.toggle('active');
       });
     }
+    var exportBtn = document.getElementById('btn-export');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function() {
+        vscode.postMessage({ type: 'export' });
+      });
+    }
     var copyMdBtn = document.getElementById('btn-copy-md');
     if (copyMdBtn) {
       copyMdBtn.addEventListener('click', function() {
@@ -550,12 +556,17 @@
     document.querySelectorAll('.view-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
-    // Body class drives all layout via CSS
     document.body.classList.toggle('source-mode', mode === 'source');
     document.body.classList.toggle('split-mode', mode === 'split');
     document.body.classList.toggle('live-mode', mode === 'live');
 
     var livePane = document.getElementById('live-pane');
+
+    // Reset split sizes when leaving split mode
+    if (mode !== 'split' && livePane) {
+      livePane.style.width = '';
+      sourceView.style.width = '';
+    }
 
     if (mode === 'source' || mode === 'split') {
       sourceView.classList.remove("hidden");

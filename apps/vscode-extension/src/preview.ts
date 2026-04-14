@@ -812,6 +812,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button id="btn-toggle-narrow" class="pane-icon-btn active" title="Narrow view">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" stroke-linecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" stroke-linecap="round"/></svg>
         </button>
+        <button class="pane-icon-btn" id="btn-export" title="Export">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
+        </button>
       </div>
       <!-- Collapsible formatting toolbar -->
       <div id="live-formatting-toolbar" class="pane-toolbar">
@@ -916,7 +919,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <a href="#" id="badge-view-link" target="_blank" class="badge-view">View document →</a>
   </div>
 
-  <div id="bottom-bar" style="display:none">
+  <div id="bottom-bar-removed" style="display:none">
   </div>
 
   <!-- Syntax highlighting -->
