@@ -1322,6 +1322,23 @@ export default function MdEditor() {
     return () => clearTimeout(timer);
   }, [tabs, activeTabId, markdown, folders]);
 
+  // Trigger auto-save without undo tracking (used by undo/redo)
+  const triggerAutoSave = useCallback((val: string) => {
+    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+    if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
+      maybeCreateSessionSnapshot(currentTab.cloudId);
+      autoSave.scheduleSave({
+        cloudId: currentTab.cloudId,
+        markdown: val,
+        title: currentTab.title,
+        userId: user?.id,
+        userEmail: user?.email,
+        anonymousId,
+        editToken: currentTab.editToken,
+      });
+    }
+  }, [tabs, user?.id, user?.email, anonymousId, autoSave]);
+
   // Wrapper that tracks undo history + triggers auto-save
   const setMarkdown = useCallback((val: string) => {
     setMarkdownRaw(val);
@@ -1335,23 +1352,8 @@ export default function MdEditor() {
         redoStack.current = [];
       }
     }, 500);
-
-    // Auto-save to server if document has a cloudId
-    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
-    if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
-      // Create session snapshot on first edit
-      maybeCreateSessionSnapshot(currentTab.cloudId);
-      autoSave.scheduleSave({
-        cloudId: currentTab.cloudId,
-        markdown: val,
-        title: currentTab.title,
-        userId: user?.id,
-        userEmail: user?.email,
-        anonymousId,
-        editToken: currentTab.editToken,
-      });
-    }
-  }, [tabs, user?.id, anonymousId, autoSave]);
+    triggerAutoSave(val);
+  }, [triggerAutoSave]);
 
   const undo = useCallback(() => {
     if (undoStack.current.length <= 1) return;
@@ -1360,7 +1362,8 @@ export default function MdEditor() {
     const prev = undoStack.current[undoStack.current.length - 1];
     setMarkdownRaw(prev);
     doRender(prev);
-  }, []);
+    triggerAutoSave(prev);
+  }, [triggerAutoSave]);
 
   const redo = useCallback(() => {
     if (redoStack.current.length === 0) return;
@@ -1368,7 +1371,8 @@ export default function MdEditor() {
     undoStack.current.push(next);
     setMarkdownRaw(next);
     doRender(next);
-  }, []);
+    triggerAutoSave(next);
+  }, [triggerAutoSave]);
 
   // Tab functions use doRenderRef to avoid circular dependency
   const doRenderRef = useRef<(md: string) => void>(() => {});
@@ -1572,12 +1576,67 @@ export default function MdEditor() {
   } = useCodeMirror({
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
+    onCursorActivity: (line: number) => onCursorActivityRef.current?.(line),
     onPaste: handlePasteForCM,
     onPasteImage: handlePasteImageForCM,
     theme,
     placeholder: "Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything...",
   });
   cmSetDocRef.current = cmSetDoc;
+
+  // Source → Preview sync: highlight corresponding preview element when cursor moves in CM
+  const onCursorActivityRef = useRef<((line: number) => void) | null>(null);
+  const prevHighlightRef = useRef<HTMLElement | null>(null);
+  onCursorActivityRef.current = useCallback((line: number) => {
+    if (viewMode === "editor") return; // no preview to sync
+    const article = previewRef.current?.querySelector("article");
+    if (!article) return;
+
+    // Clear previous highlight
+    if (prevHighlightRef.current) {
+      prevHighlightRef.current.style.outline = "";
+      prevHighlightRef.current.style.outlineOffset = "";
+      prevHighlightRef.current = null;
+    }
+
+    // Account for frontmatter offset
+    const lines = markdownRef.current.split("\n");
+    let fmOffset = 0;
+    if (lines[0]?.trim() === "---") {
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]?.trim() === "---") { fmOffset = i + 1; break; }
+      }
+    }
+    const sourceLine = line - fmOffset; // comrak sourcepos is 1-indexed, already matches
+
+    // Find the preview element whose data-sourcepos range contains this line
+    const els = article.querySelectorAll("[data-sourcepos]");
+    let bestEl: HTMLElement | null = null;
+    let bestRange = Infinity;
+    els.forEach(el => {
+      const sp = el.getAttribute("data-sourcepos");
+      if (!sp) return;
+      const m = sp.match(/^(\d+):\d+-(\d+):\d+$/);
+      if (!m) return;
+      const start = parseInt(m[1]);
+      const end = parseInt(m[2]);
+      if (sourceLine >= start && sourceLine <= end) {
+        const range = end - start;
+        if (range < bestRange) {
+          bestRange = range;
+          bestEl = el as HTMLElement;
+        }
+      }
+    });
+
+    if (bestEl) {
+      (bestEl as HTMLElement).style.outline = "1px solid var(--accent)";
+      (bestEl as HTMLElement).style.outlineOffset = "2px";
+      (bestEl as HTMLElement).scrollIntoView({ block: "nearest", behavior: "smooth" });
+      prevHighlightRef.current = bestEl;
+    }
+  }, [viewMode]);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Set default view mode based on screen size

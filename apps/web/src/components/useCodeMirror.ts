@@ -104,6 +104,7 @@ const lightColorTheme = EditorView.theme({
 export interface UseCodeMirrorOptions {
   initialDoc: string;
   onChange: (value: string) => void;
+  onCursorActivity?: (line: number) => void;
   onPaste?: (text: string, html: string) => string | null;
   onPasteImage?: (file: File) => void;
   theme: "dark" | "light";
@@ -127,6 +128,7 @@ export interface UseCodeMirrorReturn {
 export function useCodeMirror({
   initialDoc,
   onChange,
+  onCursorActivity,
   onPaste,
   onPasteImage,
   theme,
@@ -136,12 +138,14 @@ export function useCodeMirror({
   const viewRef = useRef<EditorView | null>(null);
   const themeCompartment = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
+  const onCursorRef = useRef(onCursorActivity);
   const onPasteRef = useRef(onPaste);
   const onPasteImageRef = useRef(onPasteImage);
   const isExternalUpdate = useRef(false); // suppress onChange during setDoc
 
   // Keep refs up to date
   onChangeRef.current = onChange;
+  onCursorRef.current = onCursorActivity;
   onPasteRef.current = onPaste;
   onPasteImageRef.current = onPasteImage;
 
@@ -171,6 +175,11 @@ export function useCodeMirror({
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isExternalUpdate.current) {
             onChangeRef.current(update.state.doc.toString());
+          }
+          // Fire cursor activity on selection changes (not during external updates)
+          if (update.selectionSet && !isExternalUpdate.current && onCursorRef.current) {
+            const line = update.state.doc.lineAt(update.state.selection.main.head).number;
+            onCursorRef.current(line);
           }
         }),
         // Paste handler
