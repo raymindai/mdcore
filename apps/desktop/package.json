@@ -7,6 +7,8 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:dmg": "electron-builder --mac dmg",
+    "build:mas": "electron-builder --mac mas",
+    "build:all": "electron-builder --mac dmg mas",
     "build:universal": "electron-builder --mac --universal"
   },
   "dependencies": {},
@@ -39,13 +41,16 @@
       "icon": "assets/icon.png",
       "darkModeSupport": true,
       "target": [
-        {
-          "target": "dmg",
-          "arch": ["universal"]
-        }
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "mas", "arch": ["universal"] }
       ],
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist"
+    },
+    "mas": {
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "hardenedRuntime": false
     },
     "dmg": {
       "title": "mdfy",
