@@ -4934,7 +4934,7 @@ ${html}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
-            minWidth: isMobile ? 260 : 160,
+            minWidth: isMobile ? 260 : 200,
             background: "var(--background)",
             ...(isMobile ? { animation: "sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1)" } : {}),
           }}
@@ -5387,8 +5387,14 @@ ${html}
                         </div>
                       )}
 
-                      {myTabs.length === 0 && folders.length === 0 && (
-                        <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>No documents yet</div>
+                      {myTabs.length === 0 && (
+                        <div className="px-3 py-4 text-center text-[11px]" style={{ color: "var(--text-faint)" }}>
+                          {docFilter === "all" ? "No documents yet. Create one with the + button above." :
+                           docFilter === "synced" ? "No synced documents. Publish from VS Code to see them here." :
+                           docFilter === "private" ? "No private documents." :
+                           docFilter === "shared" ? "No shared documents." :
+                           "No documents found."}
+                        </div>
                       )}
 
                       {/* Cloud-only documents (not linked locally) */}
