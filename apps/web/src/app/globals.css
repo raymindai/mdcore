@@ -380,6 +380,18 @@ body {
   transform: rotate(45deg);
 }
 
+/* CE spacers — thin cursor targets between non-editable blocks */
+.mdcore-rendered .ce-spacer {
+  margin: 0 !important;
+  padding: 2px 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  min-height: 0 !important;
+}
+.mdcore-rendered .ce-spacer:hover {
+  outline: none !important;
+}
+
 /* Editable elements hint on hover */
 .mdcore-rendered h1:hover,
 .mdcore-rendered h2:hover,
