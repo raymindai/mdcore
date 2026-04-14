@@ -25,7 +25,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-            Last updated: April 10, 2026
+            Last updated: April 15, 2026
           </p>
         </div>
 
@@ -60,6 +60,19 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>File content:</strong> The extension reads Markdown files you explicitly open or publish. Content is sent to mdfy.cc only when you use the Publish or Sync features.</li>
             <li><strong>No telemetry:</strong> We do not collect usage telemetry from the VS Code extension.</li>
+          </ul>
+
+          <h3 className="font-medium mt-4" style={{ color: "var(--text-primary)" }}>mdfy for Mac</h3>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>Local files:</strong> The desktop app reads files you open via Finder or Cmd+O. Files are edited through mdfy.cc and auto-saved locally.</li>
+            <li><strong>No phone-home:</strong> The app does not send data to any server unless you explicitly publish or sync a document.</li>
+          </ul>
+
+          <h3 className="font-medium mt-4" style={{ color: "var(--text-primary)" }}>MCP Server (mdfy-mcp)</h3>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><strong>Document operations:</strong> The MCP server creates, reads, and manages documents on mdfy.cc via its API. Documents are stored on mdfy.cc servers.</li>
+            <li><strong>Local tokens:</strong> Edit tokens are stored locally at <code style={{ fontSize: "0.85em" }}>~/.mdfy/tokens.json</code> with owner-only permissions (0600).</li>
+            <li><strong>Email:</strong> Your email (MDFY_EMAIL) is sent to the API for document ownership. It is not shared with third parties.</li>
           </ul>
         </section>
 
