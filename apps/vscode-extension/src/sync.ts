@@ -27,9 +27,14 @@ export class SyncEngine {
     retryCount: number;
   }> = [];
 
-  constructor(authManager: AuthManager, statusBar: StatusBarManager) {
+  constructor(authManager: AuthManager, statusBar: StatusBarManager, private context: vscode.ExtensionContext) {
     this.authManager = authManager;
     this.statusBar = statusBar;
+    this.offlineQueue = this.context.globalState.get<typeof this.offlineQueue>("mdfy.offlineQueue") || [];
+  }
+
+  private async persistQueue(): Promise<void> {
+    await this.context.globalState.update("mdfy.offlineQueue", this.offlineQueue);
   }
 
   /**
@@ -342,6 +347,7 @@ export class SyncEngine {
     }
 
     this.offlineQueue.push({ filePath, markdown, title, retryCount });
+    this.persistQueue();
   }
 
   /**
@@ -382,6 +388,7 @@ export class SyncEngine {
         });
       }
     }
+    await this.persistQueue();
   }
 
   dispose(): void {

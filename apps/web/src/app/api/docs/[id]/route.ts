@@ -255,6 +255,50 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true, version: nextVersion });
   }
 
+  // ─── Action: soft-delete (move to trash) ───
+  if (body.action === "soft-delete") {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id, edit_token")
+      .eq("id", id)
+      .single();
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isOwner = !!(body.userId && doc.user_id === body.userId);
+    const hasToken = !!(body.editToken && doc.edit_token === body.editToken);
+    if (!isOwner && !hasToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const { error } = await supabase.from("documents")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to trash" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: restore (restore from trash) ───
+  if (body.action === "restore") {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id, edit_token")
+      .eq("id", id)
+      .single();
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isOwner = !!(body.userId && doc.user_id === body.userId);
+    const hasToken = !!(body.editToken && doc.edit_token === body.editToken);
+    if (!isOwner && !hasToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const { error } = await supabase.from("documents")
+      .update({ deleted_at: null })
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to restore" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   // ─── Action: auto-save (no version history) ───
   if (body.action === "auto-save") {
     const { markdown, title, userId, anonymousId, editToken } = body;
@@ -490,7 +534,7 @@ export async function HEAD(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("updated_at, expires_at")
+    .select("updated_at, expires_at, deleted_at")
     .eq("id", id)
     .single();
 
@@ -500,6 +544,10 @@ export async function HEAD(_req: NextRequest, { params }: RouteParams) {
 
   if (data.expires_at && new Date(data.expires_at) < new Date()) {
     return new Response(null, { status: 410 });
+  }
+
+  if (data.deleted_at) {
+    return new Response(null, { status: 410 }); // Gone (trashed)
   }
 
   return new Response(null, {

@@ -27,6 +27,7 @@ import {
   User, Users, Search, Cloud, X, Trash2,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
+import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
 import {
@@ -36,6 +37,8 @@ import {
   getEditToken,
   updateDocument,
   deleteDocument,
+  softDeleteDocument,
+  restoreDocument,
   rotateEditToken,
   changeEditMode,
   extractFromUrl,
@@ -1172,9 +1175,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const { theme, toggleTheme } = useTheme();
-  const { user, profile, loading: authLoading, isAuthenticated, signInWithGoogle, signInWithGitHub, signInWithEmail, signOut } = useAuth();
+  const { user, profile, loading: authLoading, accessToken, isAuthenticated, signInWithGoogle, signInWithGitHub, signInWithEmail, signOut } = useAuth();
   // Only use anonymousId when not logged in
   const anonymousId = (!user?.id && typeof window !== "undefined") ? getAnonymousId() : "";
+  const authHeaders = useMemo(() => buildAuthHeaders({ accessToken, userId: user?.id, userEmail: user?.email, anonymousId }), [accessToken, user?.id, user?.email, anonymousId]);
   const autoSave = useAutoSave({ debounceMs: 2500 });
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [authEmailInput, setAuthEmailInput] = useState("");
@@ -1499,15 +1503,14 @@ export default function MdEditor() {
     const compressed = await compressImage(file);
     const formData = new FormData();
     formData.append("file", compressed);
-    const headers: Record<string, string> = {};
-    if (user?.id) headers["x-user-id"] = user.id;
-    else { const anonId = ensureAnonymousId(); if (anonId) headers["x-anonymous-id"] = anonId; }
+    const uploadHeaders: Record<string, string> = { ...authHeaders };
+    if (!user?.id) { const anonId = ensureAnonymousId(); if (anonId) uploadHeaders["x-anonymous-id"] = anonId; }
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
       const res = await fetch("/api/upload", {
         method: "POST",
-        headers,
+        headers: uploadHeaders,
         body: formData,
         signal: controller.signal,
       });
@@ -2273,10 +2276,7 @@ export default function MdEditor() {
       }
       if (fromId) {
         try {
-          const headers: Record<string, string> = {};
-          if (user?.id) headers["x-user-id"] = user.id;
-          if (user?.email) headers["x-user-email"] = user.email;
-          if (anonymousId) headers["x-anonymous-id"] = anonymousId;
+          const headers: Record<string, string> = { ...authHeaders };
           // Check for password from viewer (stored in sessionStorage)
           const savedPw = sessionStorage.getItem(`mdfy-pw-${fromId}`);
           if (savedPw) {
@@ -2364,7 +2364,7 @@ export default function MdEditor() {
             if (user?.id) {
               fetch("/api/user/visit", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-user-id": user.id },
+                headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify({ documentId: fromId }),
               }).catch(() => {});
             }
@@ -2396,7 +2396,7 @@ export default function MdEditor() {
     if (currentId && prevId === "" && savedAnonId) {
       fetch("/api/user/migrate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-user-id": currentId },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ anonymousId: savedAnonId }),
       }).then(res => res.json()).then(data => {
         if (data.migrated > 0) {
@@ -2450,11 +2450,7 @@ export default function MdEditor() {
     (async () => {
       for (const tab of emptyCloudTabs) {
         try {
-          const headers: Record<string, string> = {};
-          if (user?.id) headers["x-user-id"] = user.id;
-          if (user?.email) headers["x-user-email"] = user.email;
-          if (anonymousId) headers["x-anonymous-id"] = anonymousId;
-          const res = await fetch(`/api/docs/${tab.cloudId}`, { headers });
+          const res = await fetch(`/api/docs/${tab.cloudId}`, { headers: authHeaders });
           if (res.ok) {
             const doc = await res.json();
             if (doc.markdown) {
@@ -2536,18 +2532,13 @@ export default function MdEditor() {
   // Fetch recently visited (shared with me) + server docs for logged-in OR anonymous users
   useEffect(() => {
     if (authLoading) return;
-    const headers: Record<string, string> = {};
-    if (user?.id) {
-      headers["x-user-id"] = user.id;
-    } else if (anonymousId) {
-      headers["x-anonymous-id"] = anonymousId;
-    } else {
+    if (!user?.id && !anonymousId) {
       setRecentDocs([]);
       setServerDocs([]);
       return;
     }
     // Fetch recent visits — only for logged-in users (Shared With Me)
-    if (user?.id) fetch("/api/user/recent", { headers })
+    if (user?.id) fetch("/api/user/recent", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.recent) {
@@ -2556,7 +2547,7 @@ export default function MdEditor() {
       })
       .catch(() => {});
     // Fetch user's own documents from server
-    fetch("/api/user/documents", { headers })
+    fetch("/api/user/documents", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.documents) {
@@ -2600,7 +2591,7 @@ export default function MdEditor() {
   useEffect(() => {
     if (!user?.email) { setNotifications([]); setUnreadCount(0); return; }
     const fetchNotifs = () => {
-      fetch("/api/notifications", { headers: { "x-user-email": user.email! } })
+      fetch("/api/notifications", { headers: authHeaders })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data) {
@@ -3550,7 +3541,7 @@ export default function MdEditor() {
         }
         // Fetch current sharing state
         try {
-          const res = await fetch(`/api/docs/${cid}`, { headers: { "x-user-id": user.id, "x-user-email": user.email || "" } });
+          const res = await fetch(`/api/docs/${cid}`, { headers: authHeaders });
           if (res.ok) {
             const doc = await res.json();
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
@@ -3578,7 +3569,7 @@ export default function MdEditor() {
       // Fetch owner info if we don't have it
       if (!currentTab?.ownerEmail && user) {
         try {
-          const res = await fetch(`/api/docs/${cid}`, { headers: { "x-user-id": user.id, "x-user-email": user.email || "" } });
+          const res = await fetch(`/api/docs/${cid}`, { headers: authHeaders });
           if (res.ok) {
             const doc = await res.json();
             if (doc.ownerEmail) {
@@ -3808,12 +3799,18 @@ ${html}
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
-  // Delete document from server (fire-and-forget for trash operations)
-  const deleteFromServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
+  // Soft delete document on server (move to trash — fire-and-forget)
+  const softDeleteOnServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
+    if (!tab.cloudId) return;
+    const token = tab.editToken || getEditToken(tab.cloudId);
+    softDeleteDocument(tab.cloudId, { userId: user?.id, editToken: token || undefined }).catch(() => {});
+  }, [user?.id]);
+  // Hard delete document from server (permanent — fire-and-forget)
+  const hardDeleteOnServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
     if (!tab.cloudId) return;
     const token = tab.editToken || getEditToken(tab.cloudId);
     if (!token) return;
-    deleteDocument(tab.cloudId, token, { userId: user?.id }).catch(() => {/* silent */});
+    deleteDocument(tab.cloudId, token, { userId: user?.id }).catch(() => {});
   }, [user?.id]);
 
   const handleDelete = useCallback(async () => {
@@ -4432,7 +4429,7 @@ ${html}
                               setUnreadCount(prev => Math.max(0, prev - 1));
                               fetch("/api/notifications", {
                                 method: "PATCH",
-                                headers: { "Content-Type": "application/json", "x-user-email": user?.email || "" },
+                                headers: { "Content-Type": "application/json", ...authHeaders },
                                 body: JSON.stringify({ ids: [n.id] }),
                               }).catch(() => {});
                             }
@@ -4445,10 +4442,7 @@ ${html}
                             }
                             // Fetch and open as new tab
                             try {
-                              const headers: Record<string, string> = {};
-                              if (user?.id) headers["x-user-id"] = user.id;
-                              if (user?.email) headers["x-user-email"] = user.email;
-                              const res = await fetch(`/api/docs/${n.documentId}`, { headers });
+                              const res = await fetch(`/api/docs/${n.documentId}`, { headers: authHeaders });
                               if (!res.ok) {
                                 setNotifications(prev => prev.filter(x => x.documentId !== n.documentId));
                                 return;
@@ -5404,10 +5398,7 @@ ${html}
                             const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
                             if (existing) { switchTab(existing.id); return; }
                             try {
-                              const headers: Record<string, string> = {};
-                              if (user?.id) headers["x-user-id"] = user.id;
-                              if (user?.email) headers["x-user-email"] = user.email;
-                              const res = await fetch(`/api/docs/${doc.id}`, { headers });
+                              const res = await fetch(`/api/docs/${doc.id}`, { headers: authHeaders });
                               if (!res.ok) {
                                 console.error("[shared] Failed to load doc", doc.id, res.status, await res.text().catch(() => ""));
                                 // Don't remove — might be a temporary error
@@ -5473,11 +5464,11 @@ ${html}
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
-                          <button onClick={() => setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t))}
+                          <button onClick={() => { if (tab.cloudId) restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {}); setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined, folderId: undefined } : t)); }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
                             Restore
                           </button>
-                          <button onClick={() => { deleteFromServer(tab); setTabs(prev => prev.filter(t => t.id !== tab.id)); }}
+                          <button onClick={() => { hardDeleteOnServer(tab); setTabs(prev => prev.filter(t => t.id !== tab.id)); }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
                             Delete
                           </button>
@@ -5488,7 +5479,7 @@ ${html}
                           onClick={(e) => {
                             const btn = e.currentTarget;
                             if (btn.dataset.confirm === "true") {
-                              tabs.filter(t => t.deleted && t.cloudId).forEach(t => deleteFromServer(t));
+                              tabs.filter(t => t.deleted && t.cloudId).forEach(t => hardDeleteOnServer(t));
                               setTabs(prev => prev.filter(t => !t.deleted));
                               btn.dataset.confirm = "";
                               btn.textContent = "Empty Trash";
@@ -5555,8 +5546,8 @@ ${html}
                   }
                   setConfirmTrash(false);
                   const ids = selectedTabIds;
-                  // Delete from server for cloud documents
-                  tabs.filter(t => ids.has(t.id) && t.cloudId).forEach(t => deleteFromServer(t));
+                  // Soft delete from server for cloud documents
+                  tabs.filter(t => ids.has(t.id) && t.cloudId).forEach(t => softDeleteOnServer(t));
                   setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
                   if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
                   setSelectedTabIds(new Set());
@@ -6547,7 +6538,7 @@ ${html}
             }] : []),
             ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
               const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (trashTab) deleteFromServer(trashTab);
+              if (trashTab) softDeleteOnServer(trashTab);
               setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
               if (docContextMenu.tabId === activeTabId) {
                 const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);

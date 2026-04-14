@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("documents")
     .select("id, title, created_at, updated_at, view_count, is_draft, edit_mode, allowed_emails")
+    .is("deleted_at", null)
     .order("updated_at", { ascending: false })
     .limit(100);
 

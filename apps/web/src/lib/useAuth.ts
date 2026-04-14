@@ -14,6 +14,7 @@ interface AuthState {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  accessToken: string | null;
 }
 
 function fetchProfile(
@@ -37,35 +38,36 @@ export function useAuth() {
     user: null,
     profile: null,
     loading: true,
+    accessToken: null,
   });
 
   const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
     if (!supabase) {
-      setState({ user: null, profile: null, loading: false });
+      setState({ user: null, profile: null, loading: false, accessToken: null });
       return;
     }
 
-    supabase.auth.getSession().then((res: { data: { session: { user: User } | null } }) => {
+    supabase.auth.getSession().then((res: { data: { session: { user: User; access_token?: string } | null } }) => {
       const session = res.data.session;
       if (session?.user) {
-        setState((prev) => ({ ...prev, user: session.user, loading: false }));
+        setState((prev) => ({ ...prev, user: session.user, accessToken: session.access_token || null, loading: false }));
         fetchProfile(supabase, session.user.id, setState);
       } else {
-        setState({ user: null, profile: null, loading: false });
+        setState({ user: null, profile: null, loading: false, accessToken: null });
       }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event: string, session: { user: User } | null) => {
+      (_event: string, session: { user: User; access_token?: string } | null) => {
         if (session?.user) {
-          setState((prev) => ({ ...prev, user: session.user, loading: false }));
+          setState((prev) => ({ ...prev, user: session.user, accessToken: session.access_token || null, loading: false }));
           fetchProfile(supabase, session.user.id, setState);
         } else {
-          setState({ user: null, profile: null, loading: false });
+          setState({ user: null, profile: null, loading: false, accessToken: null });
         }
       }
     );
@@ -104,13 +106,14 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
-    setState({ user: null, profile: null, loading: false });
+    setState({ user: null, profile: null, loading: false, accessToken: null });
   }, [supabase]);
 
   return {
     user: state.user,
     profile: state.profile,
     loading: state.loading,
+    accessToken: state.accessToken,
     isAuthenticated: !!state.user,
     signInWithGoogle,
     signInWithGitHub,

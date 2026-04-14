@@ -20,7 +20,7 @@ export function suppressAutoPreviewFor(ms: number): void {
 export function activate(context: vscode.ExtensionContext): void {
   authManager = new AuthManager(context);
   statusBar = new StatusBarManager();
-  syncEngine = new SyncEngine(authManager, statusBar);
+  syncEngine = new SyncEngine(authManager, statusBar, context);
 
   // Share AuthManager with preview panels for image upload
   PreviewPanel.setAuthManager(authManager);

@@ -203,6 +203,44 @@ export async function deleteDocument(
   if (!res.ok) throw new Error("Failed to delete document");
 }
 
+// ─── Soft delete & restore ───
+
+export async function softDeleteDocument(
+  id: string,
+  options?: { userId?: string; editToken?: string; accessToken?: string }
+): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (options?.accessToken) headers["Authorization"] = `Bearer ${options.accessToken}`;
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      action: "soft-delete",
+      userId: options?.userId,
+      editToken: options?.editToken,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to trash document");
+}
+
+export async function restoreDocument(
+  id: string,
+  options?: { userId?: string; editToken?: string; accessToken?: string }
+): Promise<void> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (options?.accessToken) headers["Authorization"] = `Bearer ${options.accessToken}`;
+  const res = await fetch(`/api/docs/${id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      action: "restore",
+      userId: options?.userId,
+      editToken: options?.editToken,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to restore document");
+}
+
 // ─── Access management ───
 
 export async function setAllowedEmails(
