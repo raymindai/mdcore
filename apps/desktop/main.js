@@ -50,6 +50,17 @@ const FILE_FILTERS = [
   { name: "All Files", extensions: ["*"] },
 ];
 
+// ─── URL Scheme: mdfy:// ───
+// Allows QuickLook "Edit in mdfy" to open files in the desktop app
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient("mdfy", process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient("mdfy");
+}
+
 // ─── Single Instance ───
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -60,6 +71,12 @@ if (!gotTheLock) {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
+      // Handle mdfy:// URL from second instance
+      const mdfyUrl = argv.find((a) => a.startsWith("mdfy://"));
+      if (mdfyUrl) {
+        handleMdfyUrl(mdfyUrl);
+        return;
+      }
       // Open file from argv if it has a supported extension
       const filePath = argv.find((a) => {
         const ext = path.extname(a).toLowerCase();
@@ -68,6 +85,31 @@ if (!gotTheLock) {
       if (filePath) openFileInApp(filePath);
     }
   });
+
+  // macOS: handle mdfy:// URL when app is already running
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    handleMdfyUrl(url);
+  });
+}
+
+function handleMdfyUrl(url) {
+  // mdfy://open?file=/path/to/file.md
+  // mdfy://doc/abc123
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "open" || parsed.pathname.startsWith("/open")) {
+      const filePath = parsed.searchParams.get("file");
+      if (filePath && fs.existsSync(filePath)) {
+        openFileInApp(filePath);
+      }
+    } else if (parsed.hostname === "doc" || parsed.pathname.startsWith("/doc")) {
+      const docId = parsed.pathname.split("/").pop();
+      if (docId && mainWindow) {
+        loadMdfyWithTimeout(`${MDFY_URL}/?doc=${docId}`);
+      }
+    }
+  } catch { /* ignore malformed URLs */ }
 }
 
 // ─── Connectivity Check ───
