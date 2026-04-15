@@ -1488,7 +1488,7 @@ export default function MdEditor() {
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
-  const [showSharedOwner, setShowSharedOwner] = useState(true);
+  const [showSharedOwner, setShowSharedOwner] = useState(false);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
