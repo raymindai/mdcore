@@ -322,6 +322,19 @@ export default function ShareModal({
           className="flex items-center justify-between px-5 py-3"
           style={{ borderTop: "1px solid var(--border-dim)" }}
         >
+          {onMakePrivate && (
+            <button
+              onClick={() => {
+                if (!confirm("Make this document private? This will remove all sharing settings and revoke access for everyone.")) return;
+                onMakePrivate();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[rgba(239,68,68,0.1)]"
+              style={{ color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>
+              Make Private
+            </button>
+          )}
           <button
             onClick={handleCopyLink}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -332,6 +345,7 @@ export default function ShareModal({
             </svg>
             {copied ? "Link copied!" : "Copy link"}
           </button>
+          <span style={{ flex: 1 }} />
           <button
             onClick={onClose}
             className="px-5 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -340,22 +354,6 @@ export default function ShareModal({
             Done
           </button>
         </div>
-
-        {/* Make Private */}
-        {onMakePrivate && (
-          <div className="mt-3 pt-3 flex justify-center" style={{ borderTop: "1px solid var(--border-dim)" }}>
-            <button
-              onClick={() => {
-                if (!confirm("Make this document private? This will remove all sharing settings and revoke access for everyone.")) return;
-                onMakePrivate();
-              }}
-              className="text-[11px] px-3 py-1 rounded transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-              style={{ color: "#ef4444" }}
-            >
-              Make Private
-            </button>
-          </div>
-        )}
 
         {/* Saving indicator */}
         {saving && (
