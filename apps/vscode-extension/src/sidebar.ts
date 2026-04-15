@@ -684,7 +684,7 @@ body {
 <body>
   <div class="sticky-top">
   <div class="header">
-    <a class="logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span class="logo-md">md</span><span class="logo-fy">fy</span>.cc</a>
+    <a class="logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span class="logo-md">md</span><span class="logo-fy">fy</span><span style="color:#737373;font-weight:400">.cc</span></a>
     <div class="header-actions">
       <button class="icon-btn" id="btn-search-toggle" title="Search">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
