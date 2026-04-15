@@ -24,7 +24,7 @@ import {
   Image as ImageIcon, RemoveFormatting, Table, Code, Code2, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
-  User, Users, Search, Cloud, X, Trash2,
+  User, Users, Search, Cloud, X, Trash2, RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -5291,6 +5291,43 @@ ${html}
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
                     {showMyDocs && (
                       <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const btn = e.currentTarget;
+                            btn.style.animation = "spin 0.6s linear";
+                            setTimeout(() => { btn.style.animation = ""; }, 600);
+                            // Re-fetch server docs
+                            if (user?.id) {
+                              fetch("/api/user/documents", { headers: authHeaders })
+                                .then(res => res.ok ? res.json() : null)
+                                .then(data => {
+                                  if (data?.documents) {
+                                    setServerDocs(data.documents);
+                                    const sourceMap = new Map(data.documents.map((d: { id: string; source?: string }) => [d.id, d.source]));
+                                    setTabs(prev => {
+                                      const existingCloudIds = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
+                                      const newTabs = data.documents
+                                        .filter((d: { id: string }) => !existingCloudIds.has(d.id))
+                                        .map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
+                                          id: `cloud-${d.id}`, title: d.title || "Untitled", markdown: "",
+                                          cloudId: d.id, isDraft: d.is_draft !== false, source: d.source || undefined, permission: "mine" as const,
+                                        }));
+                                      return [...prev.map(t => {
+                                        if (!t.cloudId) return t;
+                                        return { ...t, source: (sourceMap.get(t.cloudId) as string) || undefined };
+                                      }), ...newTabs];
+                                    });
+                                  }
+                                }).catch(() => {});
+                            }
+                          }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Refresh"
+                        >
+                          <RefreshCw width={10} height={10} />
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setShowSidebarSearch(!showSidebarSearch); if (showSidebarSearch) setSidebarSearch(""); }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
