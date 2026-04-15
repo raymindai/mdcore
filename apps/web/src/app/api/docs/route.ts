@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 export async function POST(req: NextRequest) {
   // Rate limit by IP
@@ -43,16 +44,27 @@ export async function POST(req: NextRequest) {
   const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source } = body;
   let { userId } = body;
 
-  // Resolve email → userId if email provided
-  if (!userId && body.userEmail) {
-    const supabase = getSupabaseClient();
+  // Verify JWT from Authorization header (VS Code extension, MCP, etc.)
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  if (!userId && verified?.userId) {
+    userId = verified.userId;
+  }
+
+  // Resolve email → userId: check body.userEmail, then x-user-email header
+  const resolvedEmail = body.userEmail || verified?.email || req.headers.get("x-user-email") || "";
+  if (!userId && resolvedEmail) {
     if (supabase) {
       try {
         const { data } = await supabase.auth.admin.listUsers();
-        const user = data?.users?.find(u => u.email?.toLowerCase() === body.userEmail!.toLowerCase());
+        const user = data?.users?.find(u => u.email?.toLowerCase() === resolvedEmail.toLowerCase());
         if (user) userId = user.id;
       } catch { /* ignore */ }
     }
+  }
+
+  // Also check x-user-id header as final fallback (web app)
+  if (!userId) {
+    userId = req.headers.get("x-user-id") || undefined;
   }
 
   // Allow empty markdown for auto-save (draft creation)
