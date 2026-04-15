@@ -1231,6 +1231,8 @@ export default function MdEditor() {
   // Only use anonymousId when not logged in
   const anonymousId = (!user?.id && typeof window !== "undefined") ? getAnonymousId() : "";
   const authHeaders = useMemo(() => buildAuthHeaders({ accessToken, userId: user?.id, userEmail: user?.email, anonymousId }), [accessToken, user?.id, user?.email, anonymousId]);
+  const authHeadersRef = useRef(authHeaders);
+  authHeadersRef.current = authHeaders;
   const autoSave = useAutoSave({ debounceMs: 2500 });
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [authEmailInput, setAuthEmailInput] = useState("");
@@ -1834,13 +1836,9 @@ export default function MdEditor() {
     // Update ref IMMEDIATELY so doRender uses correct tab ID
     activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
-    setMarkdownRaw(tab.markdown);
     setTitle(tab.title || undefined);
-    undoStack.current = [tab.markdown];
-    redoStack.current = [];
     // Cancel any pending debounced render from CodeMirror
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    doRenderRef.current(tab.markdown);
     // Update permission + doc state based on tab
     setDocId(tab.cloudId || null);
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
@@ -1856,6 +1854,35 @@ export default function MdEditor() {
       window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
     } else {
       window.history.replaceState(null, "", "/");
+    }
+
+    // If cloud tab has no content, fetch it from server
+    if (tab.cloudId && !tab.markdown) {
+      setMarkdownRaw("");
+      setIsLoading(true);
+      fetch(`/api/docs/${tab.cloudId}`, { headers: authHeadersRef.current })
+        .then(res => res.ok ? res.json() : null)
+        .then(doc => {
+          if (!doc || activeTabIdRef.current !== tab.id) return; // Tab changed while loading
+          const md = doc.markdown || "";
+          const title = doc.title || tab.title;
+          setMarkdownRaw(md);
+          setTitle(title);
+          undoStack.current = [md];
+          redoStack.current = [];
+          doRenderRef.current(md);
+          // Update tab in state with fetched content
+          setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, markdown: md, title } : t));
+        })
+        .catch(() => {
+          // Failed to load — show the tab as-is (empty)
+          doRenderRef.current("");
+        });
+    } else {
+      setMarkdownRaw(tab.markdown);
+      undoStack.current = [tab.markdown];
+      redoStack.current = [];
+      doRenderRef.current(tab.markdown);
     }
   }, []);
 
