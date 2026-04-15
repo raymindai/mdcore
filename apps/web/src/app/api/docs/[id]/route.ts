@@ -130,6 +130,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     changeSummary?: string;
     editMode?: string;
     isDraft?: boolean;
+    source?: string;
   };
   try {
     body = await req.json();
@@ -339,6 +340,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const updates: Record<string, unknown> = { updated_at: updatedAt };
     if (markdown !== undefined) updates.markdown = markdown;
     if (title !== undefined) updates.title = title;
+    if (body.source) updates.source = body.source;
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
