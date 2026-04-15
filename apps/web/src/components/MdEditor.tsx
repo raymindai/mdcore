@@ -2529,8 +2529,6 @@ export default function MdEditor() {
               isSharedByMe: docIsSharedByMe || false,
               isRestricted: (doc.allowedEmails?.length > 0) || false,
               ownerEmail: doc.ownerEmail || undefined,
-              deleted: false, // Always undelete when explicitly opening via URL
-              deletedAt: undefined,
             };
 
             // Render content immediately (don't depend on setTabs callback timing)
