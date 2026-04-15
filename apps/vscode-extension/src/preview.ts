@@ -81,9 +81,13 @@ export class PreviewPanel {
    * Create a read-only preview for a cloud document (no local file).
    * Shows a banner indicating it's cloud-only and needs sync to edit.
    */
+  /**
+   * Create a read-only preview for a cloud document.
+   * Takes raw markdown string — no TextDocument needed, so no editor tab opens.
+   */
   public static createOrShowCloud(
     extensionUri: vscode.Uri,
-    document: vscode.TextDocument,
+    markdown: string,
     title: string,
     docId: string
   ): void {
@@ -91,9 +95,8 @@ export class PreviewPanel {
     const existing = PreviewPanel.panels.get(key);
 
     if (existing) {
-      existing.trackedDocument = document;
       existing.panel.reveal(vscode.ViewColumn.One);
-      existing.updateContent(document.getText(), title, true);
+      existing.updateContent(markdown, title, true);
       return;
     }
 
@@ -112,11 +115,14 @@ export class PreviewPanel {
       light: vscode.Uri.joinPath(extensionUri, "media", "icon-light.svg"),
     };
 
-    const previewPanel = new PreviewPanel(panel, extensionUri, document);
+    // Create panel without a tracked document (read-only, no source sync)
+    const previewPanel = new PreviewPanel(panel, extensionUri, undefined as unknown as vscode.TextDocument);
     previewPanel.isCloudPreview = true;
     previewPanel.cloudTitle = title;
+    previewPanel.trackedDocument = undefined;
     PreviewPanel.panels.set(key, previewPanel);
-    previewPanel.updateContent(document.getText(), title, true);
+    // Set initial HTML directly
+    panel.webview.html = previewPanel.getHtml(markdown);
   }
 
   /**
@@ -836,9 +842,15 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.css">
   <link rel="stylesheet" href="${cssUri}">
+  ${this.isCloudPreview ? `<style>
+    #formatting-toolbar, #source-view, #split-divider, .toolbar-group { display: none !important; }
+    #live-view { width: 100% !important; }
+    body { cursor: default; }
+    article[contenteditable="false"] { user-select: text; }
+  </style>` : ""}
   <title>mdfy Preview</title>
 </head>
-<body>
+<body${this.isCloudPreview ? ' class="live-mode"' : ""}>
   <!-- Global toolbar: logo + view mode only -->
   <div id="toolbar">
     <a class="toolbar-logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span></a>
@@ -902,7 +914,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="math" title="Math"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" font-size="11" font-family="serif" font-style="italic">fx</text></svg></button>
         <button data-action="mermaid" title="Mermaid"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="1" width="5" height="4" rx="1"/><rect x="9" y="1" width="5" height="4" rx="1"/><rect x="5.5" y="11" width="5" height="4" rx="1"/><path d="M4.5 5v2.5a2 2 0 002 2h3a2 2 0 002-2V5"/><path d="M8 9.5V11"/></svg></button>
       </div>
-      <article id="content" class="mdcore-rendered narrow" contenteditable="true">
+      <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}">
         ${renderedHtml}
       </article>
     </div>
