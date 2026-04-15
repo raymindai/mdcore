@@ -553,9 +553,13 @@ Toggle **NARROW** in the panel header to constrain content width for comfortable
 - **Sort** by newest, oldest, A→Z, Z→A
 `;
 
-/** DiceBear identicon avatar URL */
+/** DiceBear identicon avatar URL — fallback when no profile/OAuth avatar */
 function dicebearUrl(seed: string, size = 40): string {
   return `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
+}
+/** Resolve best avatar: profile DB → OAuth metadata → DiceBear */
+function resolveAvatar(profile: { avatar_url?: string | null } | null, user: { email?: string; user_metadata?: { avatar_url?: string } } | null, size = 40): string {
+  return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
 }
 
 /** Extract title from markdown (first # heading, or first line) */
@@ -6006,7 +6010,7 @@ ${html}
                   onClick={() => setShowAuthMenu(!showAuthMenu)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
                 >
-                  <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
+                  <img src={resolveAvatar(profile, user, 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0 text-left">
                     <div className="text-[11px] truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
                     <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
@@ -6021,7 +6025,7 @@ ${html}
                       {/* Profile header */}
                       <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <div className="flex items-center gap-2.5">
-                          <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
+                          <img src={resolveAvatar(profile, user, 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[12px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || "User"}</div>
                             <div className="text-[10px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
@@ -6156,7 +6160,7 @@ ${html}
               style={{ color: isAuthenticated ? "var(--accent)" : "var(--text-faint)" }}
             >
               {isAuthenticated ? (
-                <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 16)} alt="" className="w-4 h-4 rounded-full" />
+                <img src={resolveAvatar(profile, user, 16)} alt="" className="w-4 h-4 rounded-full" />
               ) : (
                 <User width={14} height={14} />
               )}
