@@ -2436,6 +2436,11 @@ export default function MdEditor() {
             sessionStorage.removeItem(`mdfy-pw-${fromId}`); // One-time use
           }
           const res = await fetch(`/api/docs/${fromId}`, { headers });
+          if (!res.ok) {
+            // Document not accessible — redirect to viewer page which handles 404/auth properly
+            window.location.href = `/d/${fromId}`;
+            return;
+          }
           if (res.ok) {
             const doc = await res.json();
             setMarkdownRaw(doc.markdown); // Use raw setter to avoid triggering auto-save during load
