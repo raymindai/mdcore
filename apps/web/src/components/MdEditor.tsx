@@ -6314,6 +6314,15 @@ ${html}
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
                     This document is shared with specific people only. If you believe you should have access, contact the document owner.
                   </p>
+                  <button onClick={() => {
+                    setEditorPlaceholder(null);
+                    window.history.replaceState(null, "", "/");
+                    const validTab = tabs.find(t => !t.deleted);
+                    if (validTab) loadTab(validTab);
+                    setShowSidebar(true);
+                  }} className="px-4 py-2 rounded-lg text-sm font-medium mt-2" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                    My documents
+                  </button>
                 </>
               )}
               {editorPlaceholder === "not-found" && (
@@ -6323,9 +6332,20 @@ ${html}
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
                     This document may have been deleted or the link is incorrect.
                   </p>
-                  <button onClick={() => { setEditorPlaceholder(null); window.history.replaceState(null, "", "/"); }} className="px-4 py-2 rounded-lg text-sm font-medium mt-2" style={{ background: "var(--accent)", color: "#000" }}>
-                    Create a new document
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => { setEditorPlaceholder(null); window.history.replaceState(null, "", "/"); addTab(); }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--accent)", color: "#000" }}>
+                      New document
+                    </button>
+                    <button onClick={() => {
+                      setEditorPlaceholder(null);
+                      window.history.replaceState(null, "", "/");
+                      const validTab = tabs.find(t => !t.deleted);
+                      if (validTab) loadTab(validTab);
+                      setShowSidebar(true);
+                    }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                      My documents
+                    </button>
+                  </div>
                 </>
               )}
               {editorPlaceholder === "deleted" && (
@@ -6353,7 +6373,18 @@ ${html}
                     }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--accent)", color: "#000" }}>
                       Restore
                     </button>
-                    <button onClick={() => { setEditorPlaceholder(null); setDeletedDocId(null); window.history.replaceState(null, "", "/"); }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                    <button onClick={() => {
+                      setEditorPlaceholder(null);
+                      setDeletedDocId(null);
+                      window.history.replaceState(null, "", "/");
+                      // Load a valid tab or open sidebar
+                      const validTab = tabs.find(t => !t.deleted && t.id !== activeTabId) || tabs.find(t => !t.deleted);
+                      if (validTab) {
+                        loadTab(validTab);
+                      } else {
+                        setShowSidebar(true);
+                      }
+                    }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
                       Go back
                     </button>
                   </div>
