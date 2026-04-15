@@ -5591,7 +5591,7 @@ ${html}
 
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
-              // Shared tabs not in any folder (organized ones show under My Documents folders)
+              // Shared tabs not in any folder
               const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id) && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
               // Deduplicate sharedTabs by cloudId (prevent duplicate entries)
               const seenCloudIds = new Set<string>();
