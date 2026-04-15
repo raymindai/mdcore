@@ -17,12 +17,21 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token, deleted_at, source")
     .eq("id", id)
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Soft-deleted documents are not accessible (except by owner)
+  if (data.deleted_at) {
+    const requesterId = verified?.userId || _req.headers.get("x-user-id");
+    const isOwner = !!(requesterId && data.user_id && requesterId === data.user_id);
+    if (!isOwner) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   // Check expiration
@@ -84,7 +93,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   // Don't expose sensitive fields
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, edit_token: _et, ...safeData } = data;
+  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, edit_token: _et, deleted_at: _da, ...safeData } = data;
 
   // Check if requester is an allowed editor (for non-owner edit access)
   const requesterEmail = verified?.email || _req.headers.get("x-user-email") || "";

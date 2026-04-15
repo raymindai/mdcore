@@ -84,7 +84,6 @@ export async function updateDocument(
     markdown,
     title,
     action: "auto-save",
-    source: "vscode",
   };
 
   const userId = await authManager?.getUserId();

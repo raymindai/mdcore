@@ -1011,7 +1011,7 @@
         const res = await proxyFetch(MDFY_URL + "/api/docs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ markdown, userId, title, editMode: "account", source: "chrome" }),
+          body: JSON.stringify({ markdown, userId, title, editMode: "account", source: "chrome", isDraft: false }),
         });
 
         if (res.ok) {

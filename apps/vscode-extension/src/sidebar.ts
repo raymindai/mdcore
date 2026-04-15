@@ -192,7 +192,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
 
   private async deleteCloudDocument(docId: string): Promise<void> {
     const confirm = await vscode.window.showWarningMessage(
-      `Delete this document from mdfy.cc? This cannot be undone.`,
+      `Move this document to trash on mdfy.cc? You can restore it later.`,
       "Delete",
       "Cancel"
     );
