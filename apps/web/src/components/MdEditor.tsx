@@ -5591,8 +5591,16 @@ ${html}
 
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
-              // Shared tabs not in any folder
-              const sharedTabs = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id) && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+              // Shared tabs: when not logged in, only show example-owned docs
+              const sharedTabs = tabs.filter(t => {
+                if (t.deleted || t.folderId) return false;
+                if (t.permission !== "readonly" && t.permission !== "editable") return false;
+                if (hiddenExampleIds.has(t.id)) return false;
+                if (sidebarSearch && !(t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())) return false;
+                // Not logged in: only show examples (ownerEmail === EXAMPLE_OWNER)
+                if (!isAuthenticated && t.ownerEmail !== EXAMPLE_OWNER) return false;
+                return true;
+              });
               // Deduplicate sharedTabs by cloudId (prevent duplicate entries)
               const seenCloudIds = new Set<string>();
               const dedupedSharedTabs = sharedTabs.filter(t => {
@@ -5819,7 +5827,8 @@ ${html}
 
             {/* ── Section 3: TRASH ── */}
             {(() => {
-              const trashTabs = tabs.filter(t => t.deleted);
+              // Not logged in: no identity, no trash
+              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted) : [];
               return (<>
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
