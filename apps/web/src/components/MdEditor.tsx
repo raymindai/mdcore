@@ -7008,9 +7008,7 @@ ${html}
         <div className="flex items-center gap-3 shrink-0">
           {/* Desktop: always visible */}
           <span className="hidden sm:inline">{wordCount.toLocaleString()} words</span>
-          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
           <span className="hidden sm:inline">{charCount.toLocaleString()} chars</span>
-          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
           <span className="hidden sm:inline">{lineCount.toLocaleString()} lines</span>
           {/* Mobile: compact tap-to-expand */}
           <button
@@ -7032,9 +7030,7 @@ ${html}
           </button>
           <div className="sm:hidden flex items-center gap-2 absolute bottom-full right-3 mb-1 px-3 py-1.5 rounded-lg" style={{ display: "none", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
             <span>{wordCount.toLocaleString()} words</span>
-            <span style={{ color: "var(--border)" }}>·</span>
             <span>{charCount.toLocaleString()} chars</span>
-            <span style={{ color: "var(--border)" }}>·</span>
             <span>{lineCount.toLocaleString()} lines</span>
           </div>
           {/* Flavor badges moved to SOURCE MD header */}
