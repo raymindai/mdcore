@@ -855,7 +855,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
 <body${this.isCloudPreview ? ' class="live-mode"' : ""}>
   <!-- Global toolbar: logo + view mode only -->
   <div id="toolbar">
-    <a class="toolbar-logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span><span style="color:var(--text-muted);font-weight:400">.cc</span></a>
+    <a class="toolbar-logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span><span style="color:var(--text-muted)">.cc</span></a>
     <div class="view-switcher" style="margin-left:6px">
       <button class="view-btn active" data-view="live" title="Live preview"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5.5 6l2.5 2-2.5 2"/><line x1="9" y1="10" x2="11.5" y2="10"/></svg> Live</button>
       <button class="view-btn" data-view="split" title="Split view"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="8" y1="2" x2="8" y2="14"/></svg> Split</button>
