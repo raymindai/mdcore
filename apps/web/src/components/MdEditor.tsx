@@ -1332,6 +1332,27 @@ export default function MdEditor() {
   const redoStack = useRef<string[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Global safety net: immediately remove cloudId duplicates from state
+  useEffect(() => {
+    const seen = new Set<string>();
+    let hasDup = false;
+    for (const t of tabs) {
+      if (t.cloudId) {
+        if (seen.has(t.cloudId)) { hasDup = true; break; }
+        seen.add(t.cloudId);
+      }
+    }
+    if (hasDup) {
+      const keep = new Set<string>();
+      setTabs(prev => prev.filter(t => {
+        if (!t.cloudId) return true;
+        if (keep.has(t.cloudId)) return false;
+        keep.add(t.cloudId);
+        return true;
+      }));
+    }
+  }, [tabs]);
+
   // Persist tabs + folders + active tab to localStorage
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -3702,7 +3723,10 @@ export default function MdEditor() {
             anonymousId: anonId,
           }).then(result => {
             if (result) {
-              setTabs(prev => prev.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t));
+              setTabs(prev => {
+                const withoutDup = prev.filter(t => !(t.cloudId === result.id && t.id !== tabId));
+                return withoutDup.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t);
+              });
             }
           });
         } catch (err) {
@@ -5243,7 +5267,10 @@ ${html}
                     anonymousId: anonId,
                   }).then(result => {
                     if (result) {
-                      setTabs(prev => prev.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t));
+                      setTabs(prev => {
+                        const withoutDup = prev.filter(t => !(t.cloudId === result.id && t.id !== tabId));
+                        return withoutDup.map(t => t.id === tabId ? { ...t, cloudId: result.id, editToken: result.editToken } : t);
+                      });
                     }
                   });
                 } catch (err) {
@@ -6895,7 +6922,10 @@ ${html}
                   anonymousId: !user?.id ? ensureAnonymousId() : undefined,
                 }).then(result => {
                   if (result) {
-                    setTabs(prev => prev.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x));
+                    setTabs(prev => {
+                      const withoutDup = prev.filter(x => !(x.cloudId === result.id && x.id !== id));
+                      return withoutDup.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x);
+                    });
                   }
                 });
               }
