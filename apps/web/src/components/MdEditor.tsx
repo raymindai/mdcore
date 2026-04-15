@@ -6235,9 +6235,9 @@ ${html}
         }}
         onTouchEnd={() => { isDraggingSplit.current = false; }}
       >
-        {/* Editor placeholder overlay — covers all panes */}
-        {editorPlaceholder && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: "var(--background)" }}>
+        {/* Editor placeholder — replaces all panes when active */}
+        {editorPlaceholder ? (
+          <div className="flex-1 flex items-center justify-center" style={{ background: "var(--background)" }}>
             <div className="flex flex-col items-center gap-4 px-6 max-w-sm text-center">
               {editorPlaceholder === "sign-in" && (
                 <>
@@ -6279,8 +6279,7 @@ ${html}
               )}
             </div>
           </div>
-        )}
-
+        ) : (<>
         {/* Render pane (left/top) */}
         {viewMode !== "editor" && (
           <div
@@ -6430,7 +6429,7 @@ ${html}
             </div>
             {/* WYSIWYG Formatting Toolbar */}
             {/* Formatting toolbar — LIVE view only */}
-            {showToolbar && canEdit && (
+            {showToolbar && canEdit && !editorPlaceholder && (
               <WysiwygToolbar
                 onInsert={handleInsertBlock}
                 onInsertTable={handleInsertTable}
@@ -6781,6 +6780,7 @@ ${html}
               />
             </div>
           </div>
+        </>)}
       </div>
       </div>{/* end main content wrapper */}
 
