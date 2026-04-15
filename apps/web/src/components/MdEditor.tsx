@@ -5826,9 +5826,9 @@ ${html}
                               className="flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group"
                               style={{ color: "var(--text-muted)" }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
-                              onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
+                              onDragOver={(e) => { if (folder.id === EXAMPLES_FOLDER_ID) return; e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
                               onDragLeave={() => setDragOverTarget(null)}
-                              onDrop={(e) => { e.preventDefault(); if (dragTabId) { setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t)); } setDragTabId(null); setDragOverTarget(null); }}
+                              onDrop={(e) => { if (folder.id === EXAMPLES_FOLDER_ID) return; e.preventDefault(); if (dragTabId) { setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t)); } setDragTabId(null); setDragOverTarget(null); }}
                             >
                               <ChevronDown width={8} height={8} className="shrink-0 -mr-1"
                                 style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
@@ -5927,6 +5927,23 @@ ${html}
                           )}
                         </div>
                       ))}
+                      {/* Drop zone for removing from shared folder */}
+                      {dragTabId && (
+                        <div
+                          className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
+                          style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "shared-root" ? "var(--accent-dim)" : "transparent" }}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverTarget("shared-root"); }}
+                          onDragLeave={() => setDragOverTarget(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (dragTabId) setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: undefined } : t));
+                            setDragTabId(null);
+                            setDragOverTarget(null);
+                          }}
+                        >
+                          Move to root
+                        </div>
+                      )}
                       {totalShared === 0 && (
                         <div className="px-2.5 py-3 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
                           {!isAuthenticated ? "Sign in to see documents shared with you." : "No shared documents"}
