@@ -116,7 +116,7 @@ export class PreviewPanel {
     };
 
     // Create panel without a tracked document (read-only, no source sync)
-    const previewPanel = new PreviewPanel(panel, extensionUri, undefined as unknown as vscode.TextDocument);
+    const previewPanel = new PreviewPanel(panel, extensionUri);
     previewPanel.isCloudPreview = true;
     previewPanel.cloudTitle = title;
     previewPanel.trackedDocument = undefined;
@@ -238,13 +238,15 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
-    document: vscode.TextDocument
+    document?: vscode.TextDocument
   ) {
     this.panel = panel;
     this.extensionUri = extensionUri;
     this.trackedDocument = document;
 
-    this.panel.webview.html = this.getHtml(document.getText());
+    if (document) {
+      this.panel.webview.html = this.getHtml(document.getText());
+    }
 
     // Handle messages from webview
     this.panel.webview.onDidReceiveMessage(
