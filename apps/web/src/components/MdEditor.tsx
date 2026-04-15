@@ -5812,8 +5812,8 @@ ${html}
                           )}
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{doc.title || "Untitled"}</span>
-                            {showSharedOwner && (doc as { ownerName?: string }).ownerName && (
-                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{(doc as { ownerName?: string }).ownerName}</span>
+                            {showSharedOwner && ((doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName) && (
+                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{(doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName}</span>
                             )}
                           </div>
                           {unreadDocIds.has(doc.id) && (

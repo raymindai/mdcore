@@ -25,6 +25,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
   }
 
+  // Resolve owner emails for non-owned documents
+  const ownerIds = new Set(
+    (data || [])
+      .filter(r => r.documents)
+      .map(r => (r.documents as unknown as { user_id: string }).user_id)
+      .filter(uid => uid && uid !== userId)
+  );
+  const ownerEmailMap = new Map<string, string>();
+  for (const ownerId of ownerIds) {
+    try {
+      const { data: ownerAuth } = await supabase.auth.admin.getUserById(ownerId);
+      if (ownerAuth?.user?.email) ownerEmailMap.set(ownerId, ownerAuth.user.email);
+    } catch { /* ignore */ }
+  }
+
   // Format response
   const recent = (data || [])
     .filter((r) => r.documents)
@@ -37,6 +52,7 @@ export async function GET(req: NextRequest) {
         visitedAt: r.last_visited_at,
         isOwner: doc.user_id === userId,
         editMode: doc.edit_mode,
+        ownerEmail: doc.user_id !== userId ? ownerEmailMap.get(doc.user_id) || undefined : undefined,
       };
     });
 
