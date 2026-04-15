@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
             <div style={{ display: "flex", alignItems: "baseline" }}>
               <span style={{ color: "#fb923c", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>md</span>
               <span style={{ color: "#fafafa", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>fy</span>
-              <span style={{ color: "#52525b", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.cc</span>
+              <span style={{ color: "#737373", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.cc</span>
             </div>
 
             {hasTitle ? (
@@ -155,7 +155,7 @@ export async function GET(req: NextRequest) {
                 </div>
                 {displayAuthor && (
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "#52525b", fontSize: "20px", fontWeight: 500 }}>by</span>
+                    <span style={{ color: "#737373", fontSize: "20px", fontWeight: 500 }}>by</span>
                     <span style={{ color: "#a1a1aa", fontSize: "20px", fontWeight: 600 }}>{displayAuthor}</span>
                   </div>
                 )}
@@ -197,7 +197,7 @@ export async function GET(req: NextRequest) {
           }}
         >
           <span style={{ color: "#3f3f46", fontSize: "17px" }}>published with</span>
-          <span style={{ color: "#52525b", fontSize: "17px", fontWeight: 700 }}>mdfy.cc</span>
+          <span style={{ color: "#737373", fontSize: "17px", fontWeight: 700 }}>mdfy.cc</span>
         </div>
       </div>
     ),

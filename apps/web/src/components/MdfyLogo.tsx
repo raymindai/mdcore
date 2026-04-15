@@ -5,7 +5,7 @@
  * Renders inline SVG so CSS variables are respected for theming.
  * Source of truth: assets/brand/
  *
- * Colors (dark):  md=#fb923c  fy=#fafafa  .cc=#52525b
+ * Colors (dark):  md=#fb923c  fy=#fafafa  .cc=#737373
  * Colors (light): md=#ea580c  fy=#09090b  .cc=#a1a1aa
  */
 export default function MdfyLogo({
