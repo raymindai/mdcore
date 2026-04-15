@@ -5266,6 +5266,8 @@ ${html}
               const myTabCount = allMyTabs.length;
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
               const sharedCount = allMyTabs.filter(t => t.isDraft === false).length;
+              const syncedCount = allMyTabs.filter(t => t.source === "vscode").length;
+              const filterCounts: Record<string, number> = { all: myTabCount, private: privateCount, shared: sharedCount, synced: syncedCount };
               return (
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
                   <div
@@ -5334,7 +5336,7 @@ ${html}
                                 background: docFilter === f ? "var(--accent-dim)" : "transparent",
                               }}
                             >
-                              {labels[f]}
+                              {labels[f]}{filterCounts[f] > 0 && f !== "all" ? ` ${filterCounts[f]}` : ""}
                             </button>
                             );
                           })}
@@ -5391,9 +5393,7 @@ ${html}
                           onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.source === "vscode" ? (
-                            <Code2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                          ) : tab.isDraft === false && tab.isRestricted ? (
+                          {tab.isDraft === false && tab.isRestricted ? (
                             <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
                           ) : tab.isDraft === false ? (
                             <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
@@ -5401,6 +5401,7 @@ ${html}
                             <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                          {tab.source === "vscode" && <Code2 width={10} height={10} className="shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }} />}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <MoreHorizontal width={14} height={14} />
@@ -5488,9 +5489,7 @@ ${html}
                                     onClick={(e) => handleDocClick(tab.id, e)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
-                                    {tab.source === "vscode" ? (
-                                      <Code2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                                    ) : tab.isDraft === false && tab.isRestricted ? (
+                                    {tab.isDraft === false && tab.isRestricted ? (
                                       <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
                                     ) : tab.isDraft === false ? (
                                       <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
@@ -5498,6 +5497,7 @@ ${html}
                                       <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                                    {tab.source === "vscode" && <Code2 width={10} height={10} className="shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }} />}
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                                       <MoreHorizontal width={14} height={14} />
