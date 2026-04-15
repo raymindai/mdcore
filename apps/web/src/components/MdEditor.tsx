@@ -2520,7 +2520,7 @@ export default function MdEditor() {
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account") ||
               (doc.allowedEmails && doc.allowedEmails.length > 0)
             );
-            const tabUpdates = {
+            const tabProps = {
               markdown: doc.markdown,
               title: doc.title || undefined,
               permission: perm,
@@ -2530,29 +2530,34 @@ export default function MdEditor() {
               isRestricted: (doc.allowedEmails?.length > 0) || false,
               ownerEmail: doc.ownerEmail || undefined,
             };
-            // Use functional updater to check latest state (avoids race with server sync)
-            let tabToLoad: Tab | null = null;
+
+            // Render content immediately (don't depend on setTabs callback timing)
+            activeTabIdRef.current = ""; // Will be set properly below
+            await doRender(doc.markdown);
+
+            // Update tabs state (functional updater for latest state)
+            const newTabId = `tab-${Date.now()}`;
             setTabs(prev => {
               const existing = prev.find(t => t.cloudId === fromId);
               if (existing) {
-                // Merge into existing tab
-                const merged = { ...existing, ...tabUpdates, title: doc.title || existing.title, editToken: existing.editToken || token || undefined };
-                tabToLoad = merged;
+                const merged = { ...existing, ...tabProps, title: doc.title || existing.title, editToken: existing.editToken || token || undefined };
+                // Set activeTabIdRef to the correct tab id
+                activeTabIdRef.current = merged.id;
+                setActiveTabId(merged.id);
                 return prev.map(t => t.cloudId === fromId ? merged : t);
               }
-              // Create new tab
-              const newTabId = `tab-${Date.now()}`;
               const newTab: Tab = {
-                id: newTabId, cloudId: fromId, ...tabUpdates,
+                id: newTabId, cloudId: fromId, ...tabProps,
                 title: doc.title || "Shared Document",
                 shared: perm !== "mine",
               };
-              tabToLoad = newTab;
+              activeTabIdRef.current = newTab.id;
+              setActiveTabId(newTab.id);
               const curTabId = activeTabIdRef.current;
               const saved = prev.map(t => t.id === curTabId ? { ...t, markdown: markdownRef.current } : t);
               return [...saved, newTab];
             });
-            if (tabToLoad) loadTab(tabToLoad);
+            window.history.replaceState(null, "", `/?doc=${fromId}`);
 
             // Record visit (fire-and-forget)
             if (user?.id) {
@@ -4844,19 +4849,16 @@ ${html}
                               const perm = d.isOwner ? "mine" : (d.isEditor || d.editMode === "public") ? "editable" : "readonly";
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine", ownerEmail: d.ownerEmail || n.fromUserName || undefined };
-                              let tabToLoad: Tab = newTab;
+                              // Render immediately, then update tabs
                               setTabs(prev => {
-                                // Check latest state for existing tab with same cloudId
                                 const dup = prev.find(t => t.cloudId === n.documentId);
                                 if (dup) {
-                                  const merged = { ...dup, markdown: d.markdown, title: d.title || dup.title, permission: perm as "mine" | "editable" | "readonly" };
-                                  tabToLoad = merged;
-                                  return prev.map(t => t.cloudId === n.documentId ? merged : t);
+                                  return prev.map(t => t.cloudId === n.documentId ? { ...t, markdown: d.markdown, title: d.title || t.title, permission: perm as "mine" | "editable" | "readonly" } : t);
                                 }
                                 const saved = prev.map(t => t.id !== activeTabIdRef.current || t.readonly ? t : { ...t, markdown: markdownRef.current });
                                 return [...saved, newTab];
                               });
-                              loadTab(tabToLoad);
+                              loadTab(newTab);
                             } catch {
                               window.location.href = `/?from=${n.documentId}`;
                             }
@@ -5883,19 +5885,16 @@ ${html}
                               const perm = (doc.editMode === "public" || d.isEditor) ? "editable" : "readonly";
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true, ownerEmail: d.ownerEmail || undefined };
-                              let tabToLoad: Tab = newTab;
+                              // Render immediately, then update tabs
                               setTabs(prev => {
-                                // Check latest state — tab may have been created by a concurrent effect
                                 const dup = prev.find(t => !t.deleted && t.cloudId === doc.id);
                                 if (dup) {
-                                  const merged = { ...dup, markdown: d.markdown, title: d.title || dup.title };
-                                  tabToLoad = merged;
-                                  return prev.map(t => t.cloudId === doc.id ? merged : t);
+                                  return prev.map(t => t.cloudId === doc.id ? { ...t, markdown: d.markdown, title: d.title || t.title } : t);
                                 }
                                 const saved = prev.map(t => t.id !== activeTabIdRef.current || t.readonly ? t : { ...t, markdown: markdownRef.current });
                                 return [...saved, newTab];
                               });
-                              loadTab(tabToLoad);
+                              loadTab(newTab);
                               setDocId(doc.id);
                               setDocEditMode(d.editMode || "token");
                               setIsOwner(false);
