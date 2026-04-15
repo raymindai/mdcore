@@ -1507,7 +1507,8 @@ export default function MdEditor() {
   const mathSourceIndexRef = useRef<number>(-1); // character offset of the math block in markdown
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [editorPlaceholder, setEditorPlaceholder] = useState<"sign-in" | "restricted" | "not-found" | null>(null);
+  const [editorPlaceholder, setEditorPlaceholder] = useState<"sign-in" | "restricted" | "not-found" | "deleted" | null>(null);
+  const [deletedDocId, setDeletedDocId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null);
@@ -2530,6 +2531,14 @@ export default function MdEditor() {
               isRestricted: (doc.allowedEmails?.length > 0) || false,
               ownerEmail: doc.ownerEmail || undefined,
             };
+
+            // Check if this doc was previously deleted by the user
+            const prevDeleted = tabs.find(t => t.cloudId === fromId && t.deleted);
+            if (prevDeleted) {
+              setDeletedDocId(fromId);
+              setEditorPlaceholder("deleted");
+              return;
+            }
 
             // Render content immediately (don't depend on setTabs callback timing)
             activeTabIdRef.current = ""; // Will be set properly below
@@ -6307,6 +6316,37 @@ ${html}
                   <button onClick={() => { setEditorPlaceholder(null); window.history.replaceState(null, "", "/"); }} className="px-4 py-2 rounded-lg text-sm font-medium mt-2" style={{ background: "var(--accent)", color: "#000" }}>
                     Create a new document
                   </button>
+                </>
+              )}
+              {editorPlaceholder === "deleted" && (
+                <>
+                  <Trash2 width={48} height={48} strokeWidth={1.2} style={{ color: "var(--text-faint)" }} />
+                  <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>This document is in your Trash</h2>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    You previously removed this document. Would you like to restore it?
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => {
+                      if (deletedDocId) {
+                        // Restore the tab
+                        setTabs(prev => prev.map(t => t.cloudId === deletedDocId ? { ...t, deleted: false, deletedAt: undefined } : t));
+                        // Restore on server if it's our doc
+                        const tab = tabs.find(t => t.cloudId === deletedDocId);
+                        if (tab?.cloudId && (tab.permission === "mine" || !tab.permission)) {
+                          restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {});
+                        }
+                      }
+                      setEditorPlaceholder(null);
+                      setDeletedDocId(null);
+                      // Reload the page to properly load the document
+                      window.location.reload();
+                    }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--accent)", color: "#000" }}>
+                      Restore
+                    </button>
+                    <button onClick={() => { setEditorPlaceholder(null); setDeletedDocId(null); window.history.replaceState(null, "", "/"); }} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                      Go back
+                    </button>
+                  </div>
                 </>
               )}
             </div>
