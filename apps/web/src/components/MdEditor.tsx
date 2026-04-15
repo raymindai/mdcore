@@ -5426,7 +5426,7 @@ ${html}
                           draggable
                           onDragStart={() => setDragTabId(tab.id)}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -5467,7 +5467,7 @@ ${html}
                               draggable
                               onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
                               onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
-                              className={`flex items-center gap-1 px-0.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                              className={`flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                               style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
@@ -5522,7 +5522,7 @@ ${html}
                                     draggable
                                     onDragStart={() => setDragTabId(tab.id)}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                                       color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -5677,7 +5677,7 @@ ${html}
                           draggable
                           onDragStart={() => setDragTabId(tab.id)}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -5721,7 +5721,7 @@ ${html}
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
-                              className="flex items-center gap-1 px-0.5 py-1.5 rounded-md cursor-pointer text-xs font-medium transition-colors group"
+                              className="flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group"
                               style={{ color: "var(--text-muted)" }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
@@ -5742,7 +5742,7 @@ ${html}
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {folderTabs.map(tab => (
                                   <div key={tab.id} draggable onDragStart={() => setDragTabId(tab.id)} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                                       color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -5848,7 +5848,7 @@ ${html}
                   {showTrash && (
                     <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
-                        <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
+                        <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
                           <button onClick={() => { if (tab.cloudId) restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {}); setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t)); }}
