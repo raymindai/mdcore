@@ -6474,6 +6474,8 @@ ${html}
               />
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
+              // Clear source→preview highlight when clicking in Live
+              clearHighlight();
               // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {
                 const article = e.currentTarget.querySelector("article");
