@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Generate mdfy icon 1024x1024</title>
+</head>
+<body style="background:#222;display:flex;flex-direction:column;align-items:center;padding:40px;gap:20px">
+<canvas id="c" width="1024" height="1024" style="width:256px;height:256px;border:1px solid #444"></canvas>
+<button id="dl" style="padding:12px 24px;font-size:16px;cursor:pointer">Download 1024x1024 PNG</button>
+<script>
+const S = 1024;
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+
+// Background with rounded corners
+const rx = S * 24 / 128; // scale from 128 design
+ctx.beginPath();
+roundRect(ctx, 0, 0, S, S, rx);
+ctx.fillStyle = '#09090b';
+ctx.fill();
+
+// "md" text - main
+ctx.textAlign = 'center';
+ctx.textBaseline = 'alphabetic';
+ctx.font = `800 ${S * 0.5}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif`;
+
+// Measure to position precisely
+const mWidth = ctx.measureText('m').width;
+const dWidth = ctx.measureText('d').width;
+const totalWidth = ctx.measureText('md').width;
+const startX = (S - totalWidth) / 2;
+const mainY = S * 0.58;
+
+// Draw 'm' in accent
+ctx.fillStyle = '#fb923c';
+ctx.textAlign = 'left';
+ctx.fillText('m', startX, mainY);
+
+// Draw 'd' in primary
+ctx.fillStyle = '#fafafa';
+ctx.fillText('d', startX + mWidth, mainY);
+
+// "fy.cc" subtitle
+ctx.font = `500 ${S * 0.125}px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif`;
+ctx.fillStyle = '#737373';
+ctx.textAlign = 'center';
+ctx.letterSpacing = `${S * 0.008}px`;
+ctx.fillText('fy.cc', S / 2, S * 0.78);
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+document.getElementById('dl').onclick = () => {
+  const a = document.createElement('a');
+  a.download = 'icon-1024.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+};
+</script>
+</body>
+</html>

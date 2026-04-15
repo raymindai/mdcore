@@ -96,7 +96,7 @@ All variables are set on `:root` (dark default) and overridden under `[data-them
 | `--text-secondary` | `#d4d4d8` | `#3f3f46` | Body text |
 | `--text-tertiary` | `#a1a1aa` | `#71717a` | Subdued text |
 | `--text-muted` | `#71717a` | `#71717a` | Muted text, list markers |
-| `--text-faint` | `#52525b` | `#a1a1aa` | Placeholders, faint text |
+| `--text-faint` | `#737373` | `#a1a1aa` | Placeholders, faint text |
 | `--h2-color` | `#e4e4e7` | `#27272a` | H2-H4 heading color |
 
 ### Editor

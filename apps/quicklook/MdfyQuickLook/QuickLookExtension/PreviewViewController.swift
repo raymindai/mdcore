@@ -326,14 +326,14 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       --text-secondary: #d4d4d8;
       --text-tertiary: #a1a1aa;
       --text-muted: #71717a;
-      --text-faint: #52525b;
+      --text-faint: #737373;
       --math-color: #c4b5fd;
       --math-display-color: #ddd6fe;
       --h2-color: #e4e4e7;
       --scrollbar-thumb: #27272a;
       --scrollbar-hover: #3f3f46;
       --fg: #fafafa;
-      --muted: #52525b;
+      --muted: #737373;
     }
 
     /* Light theme */
@@ -607,9 +607,9 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         root.setProperty('--text-primary', '#fafafa');
         root.setProperty('--text-secondary', '#d4d4d8');
         root.setProperty('--text-muted', '#71717a');
-        root.setProperty('--text-faint', '#52525b');
+        root.setProperty('--text-faint', '#737373');
         root.setProperty('--fg', '#fafafa');
-        root.setProperty('--muted', '#52525b');
+        root.setProperty('--muted', '#737373');
         root.setProperty('--accent-dim', 'rgba(251, 146, 60, 0.15)');
         root.setProperty('--surface-hover', 'rgba(251, 146, 60, 0.03)');
         root.setProperty('--text-tertiary', '#a1a1aa');
@@ -895,7 +895,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
             fontFamily: 'var(--font-sans)',
             themeVariables: isDark ? {
               primaryColor: '#27272a', primaryTextColor: '#d4d4d8',
-              primaryBorderColor: '#3f3f46', lineColor: '#52525b',
+              primaryBorderColor: '#3f3f46', lineColor: '#737373',
               secondaryColor: '#18181b', tertiaryColor: '#09090b',
               background: '#18181b', mainBkg: '#27272a',
               nodeBorder: '#3f3f46', clusterBkg: '#18181b',

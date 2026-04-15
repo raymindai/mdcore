@@ -55,7 +55,7 @@ interface ThemeColors {
 }
 
 const DARK_COLORS: ThemeColors = {
-  line: "#52525b",   // zinc-600
+  line: "#737373",   // zinc-600
   text: "#d4d4d8",   // zinc-300
   fill: "rgba(39, 39, 42, 0.5)", // surface with alpha
   bg: "#18181b",     // zinc-900

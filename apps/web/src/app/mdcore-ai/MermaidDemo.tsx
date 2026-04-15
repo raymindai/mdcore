@@ -34,7 +34,7 @@ export default function MermaidDemo() {
             tertiaryColor: "rgba(196,181,253,0.12)",
             tertiaryBorderColor: "#c4b5fd",
             tertiaryTextColor: "#c4b5fd",
-            lineColor: "#52525b",
+            lineColor: "#737373",
             textColor: "#a1a1aa",
             mainBkg: "rgba(251,146,60,0.12)",
             nodeBorder: "#fb923c",

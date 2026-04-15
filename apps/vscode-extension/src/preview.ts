@@ -928,7 +928,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     <div id="source-view" class="hidden">
       <div id="source-header" class="pane-header">
         <span class="pane-label" style="color:var(--accent)">SOURCE</span>
-        <div style="position:relative;display:inline-block">
+        <div style="position:relative;display:flex;align-items:center">
           <button id="flavor-badge" class="pane-badge" title="Markdown flavor">${result.flavor.primary.toUpperCase()} &#9662;</button>
           <div id="flavor-dropdown" class="flavor-dropdown hidden" style="position:absolute;top:100%;left:0;margin-top:4px;min-width:180px;padding:4px;border-radius:8px;background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:999">
             <div style="padding:4px 8px;font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px">Convert to</div>
