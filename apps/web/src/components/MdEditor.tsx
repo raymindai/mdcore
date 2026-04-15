@@ -5704,15 +5704,16 @@ ${html}
                 seenCloudIds.add(t.cloudId);
                 return true;
               });
-              const openCloudIds = new Set(tabs.filter(t => !t.deleted && t.cloudId).map(t => t.cloudId!));
+              // Include deleted tabs' cloudIds so they don't reappear in extraShared
+              const allCloudIds = new Set(tabs.filter(t => t.cloudId).map(t => t.cloudId!));
               // All my document cloudIds — to exclude from shared section
               const myCloudIds = new Set(tabs.filter(t => !t.deleted && (!t.permission || t.permission === "mine") && t.cloudId).map(t => t.cloudId!));
               // Unread notification document IDs — for orange dot indicator
               const unreadDocIds = new Set(notifications.filter(n => !n.read && n.documentId).map(n => n.documentId));
-              // Merge recentDocs + notification-based shared docs (exclude my own docs)
-              const extraShared = recentDocs.filter(d => !openCloudIds.has(d.id) && !myCloudIds.has(d.id));
+              // Merge recentDocs + notification-based shared docs (exclude my own + already-open/deleted)
+              const extraShared = recentDocs.filter(d => !allCloudIds.has(d.id) && !myCloudIds.has(d.id));
               const notifDocs = notifications
-                .filter(n => n.type === "share" && n.documentId && !openCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
+                .filter(n => n.type === "share" && n.documentId && !allCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
                 .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view", ownerName: n.fromUserName }));
               const allExtra = [...extraShared, ...notifDocs];
               const totalShared = dedupedSharedTabs.length + allExtra.length;
@@ -5931,8 +5932,8 @@ ${html}
 
             {/* ── Section 3: TRASH ── */}
             {(() => {
-              // Not logged in: no identity, no trash
-              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted) : [];
+              // Trash: only MY deleted documents (not shared ones — you can't trash someone else's doc)
+              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted && (!t.permission || t.permission === "mine")) : [];
               return (<>
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
