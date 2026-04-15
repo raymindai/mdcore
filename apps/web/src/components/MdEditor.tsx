@@ -5575,9 +5575,13 @@ ${html}
                       {myTabs.length === 0 && (
                         <div className="px-3 py-4 text-center text-[11px]" style={{ color: "var(--text-faint)" }}>
                           {docFilter === "all" ? "No documents yet. Create one with the + button above." :
-                           docFilter === "synced" ? "No synced documents. Publish from VS Code to see them here." :
+                           docFilter === "synced" ? (
+                             !isAuthenticated
+                               ? "Sign in to see synced documents. Files synced from VS Code or mdfy for Mac will appear here."
+                               : "No synced documents. Publish from VS Code or mdfy for Mac to see them here."
+                           ) :
                            docFilter === "private" ? "No private documents." :
-                           docFilter === "shared" ? "No shared documents." :
+                           docFilter === "shared" ? (!isAuthenticated ? "Sign in to share documents." : "No shared documents.") :
                            "No documents found."}
                         </div>
                       )}
