@@ -24,7 +24,7 @@ import {
   Image as ImageIcon, RemoveFormatting, Table, Code, Code2, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
-  User, Users, Search, Cloud, X, Trash2, RefreshCw,
+  User, Users, Search, Cloud, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -1505,6 +1505,7 @@ export default function MdEditor() {
   const mathSourceIndexRef = useRef<number>(-1); // character offset of the math block in markdown
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
+  const [editorPlaceholder, setEditorPlaceholder] = useState<"sign-in" | "restricted" | "not-found" | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null);
@@ -1828,6 +1829,8 @@ export default function MdEditor() {
 
   // ─── Tab management ───
   const loadTab = useCallback((tab: Tab) => {
+    // Clear any placeholder overlay when loading a real document
+    setEditorPlaceholder(null);
     // Update ref IMMEDIATELY so doRender uses correct tab ID
     activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
@@ -2437,31 +2440,19 @@ export default function MdEditor() {
           }
           const res = await fetch(`/api/docs/${fromId}`, { headers });
           if (!res.ok) {
-            // Show appropriate message based on auth state
             const errorBody = await res.json().catch(() => ({}));
             if (errorBody.restricted) {
-              // Access restricted to specific people
-              const errorMd = "# Access Restricted\n\nThis document is shared with specific people only.\n\nIf you believe you should have access, contact the document owner.";
-              setMarkdownRaw(errorMd);
-              setViewMode("preview");
-              await doRender(errorMd);
+              setEditorPlaceholder("restricted");
             } else if (!isAuthenticated) {
-              // Not logged in — could be a private doc
-              const errorMd = "# Sign in Required\n\nThis document may be private or shared with specific people.\n\nSign in to view it if you have access.";
-              setMarkdownRaw(errorMd);
-              setViewMode("preview");
-              await doRender(errorMd);
+              setEditorPlaceholder("sign-in");
             } else {
-              // Logged in but still can't access — truly not found
-              const errorMd = "# Document Not Found\n\nThis document may have been deleted or the link is incorrect.";
-              setMarkdownRaw(errorMd);
-              setViewMode("preview");
-              await doRender(errorMd);
+              setEditorPlaceholder("not-found");
             }
             return;
           }
           {
             const doc = await res.json();
+            setEditorPlaceholder(null); // Clear any previous placeholder
             setMarkdownRaw(doc.markdown); // Use raw setter to avoid triggering auto-save during load
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
@@ -6200,7 +6191,7 @@ ${html}
       {/* Editor + Render area */}
       <div
         ref={splitContainerRef}
-        className={`flex flex-1 min-h-0 overflow-hidden ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
+        className={`flex flex-1 min-h-0 overflow-hidden relative ${isMobile && viewMode === "split" ? "flex-col" : ""}`}
         onMouseMove={(e) => {
           if (!isDraggingSplit.current || !splitContainerRef.current) return;
           const rect = splitContainerRef.current.getBoundingClientRect();
@@ -6244,6 +6235,52 @@ ${html}
         }}
         onTouchEnd={() => { isDraggingSplit.current = false; }}
       >
+        {/* Editor placeholder overlay — covers all panes */}
+        {editorPlaceholder && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: "var(--background)" }}>
+            <div className="flex flex-col items-center gap-4 px-6 max-w-sm text-center">
+              {editorPlaceholder === "sign-in" && (
+                <>
+                  <Lock width={48} height={48} strokeWidth={1.2} style={{ color: "var(--text-faint)" }} />
+                  <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Sign in to continue</h2>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    This document may be private or shared with specific people. Sign in to view it if you have access.
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={signInWithGoogle} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--accent)", color: "#000" }}>
+                      Sign in with Google
+                    </button>
+                    <button onClick={signInWithGitHub} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                      GitHub
+                    </button>
+                  </div>
+                </>
+              )}
+              {editorPlaceholder === "restricted" && (
+                <>
+                  <ShieldAlert width={48} height={48} strokeWidth={1.2} style={{ color: "var(--text-faint)" }} />
+                  <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Access Restricted</h2>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    This document is shared with specific people only. If you believe you should have access, contact the document owner.
+                  </p>
+                </>
+              )}
+              {editorPlaceholder === "not-found" && (
+                <>
+                  <FileX width={48} height={48} strokeWidth={1.2} style={{ color: "var(--text-faint)" }} />
+                  <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Document Not Found</h2>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    This document may have been deleted or the link is incorrect.
+                  </p>
+                  <button onClick={() => { setEditorPlaceholder(null); window.history.replaceState(null, "", "/"); }} className="px-4 py-2 rounded-lg text-sm font-medium mt-2" style={{ background: "var(--accent)", color: "#000" }}>
+                    Create a new document
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Render pane (left/top) */}
         {viewMode !== "editor" && (
           <div
