@@ -1677,8 +1677,10 @@ export default function MdEditor() {
 
   const clearHighlight = useCallback(() => {
     if (prevHighlightRef.current) {
-      prevHighlightRef.current.style.outline = "";
-      prevHighlightRef.current.style.outlineOffset = "";
+      prevHighlightRef.current.style.boxShadow = "";
+      prevHighlightRef.current.style.background = "";
+      prevHighlightRef.current.style.borderRadius = "";
+      prevHighlightRef.current.style.transition = "";
       prevHighlightRef.current = null;
     }
   }, []);
@@ -1725,8 +1727,10 @@ export default function MdEditor() {
       });
 
       if (bestEl) {
-        (bestEl as HTMLElement).style.outline = "1px solid var(--accent)";
-        (bestEl as HTMLElement).style.outlineOffset = "2px";
+        (bestEl as HTMLElement).style.boxShadow = "inset 3px 0 0 var(--accent)";
+        (bestEl as HTMLElement).style.background = "color-mix(in srgb, var(--accent) 6%, transparent)";
+        (bestEl as HTMLElement).style.borderRadius = "0 4px 4px 0";
+        (bestEl as HTMLElement).style.transition = "background 0.2s, box-shadow 0.2s";
         (bestEl as HTMLElement).scrollIntoView({ block: "nearest", behavior: "smooth" });
         prevHighlightRef.current = bestEl;
       }
