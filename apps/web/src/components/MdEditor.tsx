@@ -553,6 +553,11 @@ Toggle **NARROW** in the panel header to constrain content width for comfortable
 - **Sort** by newest, oldest, A→Z, Z→A
 `;
 
+/** DiceBear identicon avatar URL */
+function dicebearUrl(seed: string, size = 40): string {
+  return `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
+}
+
 /** Extract title from markdown (first # heading, or first line) */
 function extractTitleFromMd(md: string): string {
   const match = md.match(/^#\s+(.+)/m);
@@ -4806,9 +4811,7 @@ ${html}
                             }
                           }}
                         >
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                            {n.fromUserName?.[0]?.toUpperCase() || "?"}
-                          </div>
+                          <img src={dicebearUrl(n.fromUserName || "user", 24)} alt="" className="w-6 h-6 rounded-full shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] leading-relaxed" style={{ color: n.read ? "var(--text-muted)" : "var(--text-primary)" }}>
                               <span className="font-medium">{n.fromUserName}</span> {n.message}
@@ -6003,13 +6006,7 @@ ${html}
                   onClick={() => setShowAuthMenu(!showAuthMenu)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
                 >
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="w-5 h-5 rounded-full shrink-0" />
-                  ) : (
-                    <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                      {(profile?.display_name || user?.email || "U")[0].toUpperCase()}
-                    </div>
-                  )}
+                  <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0 text-left">
                     <div className="text-[11px] truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
                     <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
@@ -6024,13 +6021,7 @@ ${html}
                       {/* Profile header */}
                       <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <div className="flex items-center gap-2.5">
-                          {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-sm font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                              {(profile?.display_name || user?.email || "U")[0]?.toUpperCase()}
-                            </div>
-                          )}
+                          <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[12px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || "User"}</div>
                             <div className="text-[10px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
@@ -6164,8 +6155,8 @@ ${html}
               className="p-1 rounded transition-colors"
               style={{ color: isAuthenticated ? "var(--accent)" : "var(--text-faint)" }}
             >
-              {isAuthenticated && profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-4 h-4 rounded-full" />
+              {isAuthenticated ? (
+                <img src={profile?.avatar_url || dicebearUrl(user?.email || "user", 16)} alt="" className="w-4 h-4 rounded-full" />
               ) : (
                 <User width={14} height={14} />
               )}
@@ -7377,9 +7368,7 @@ ${html}
             {/* Owner info */}
             <div className="px-5 pb-4">
               <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                  {(tabs.find(t => t.id === activeTabId)?.ownerEmail || "O")[0]?.toUpperCase()}
-                </div>
+                <img src={dicebearUrl(tabs.find(t => t.id === activeTabId)?.ownerEmail || "owner", 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
                     {tabs.find(t => t.id === activeTabId)?.ownerEmail || "Document owner"}
