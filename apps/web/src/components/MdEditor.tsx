@@ -5958,13 +5958,23 @@ ${html}
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
-                          <button onClick={() => { if (tab.cloudId) restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {}); setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t)); }}
+                          <button onClick={() => {
+                            // Only call server restore for MY docs
+                            if (tab.cloudId && (!tab.permission || tab.permission === "mine")) {
+                              restoreDocument(tab.cloudId, { userId: user?.id, editToken: tab.editToken || undefined }).catch(() => {});
+                            }
+                            setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t));
+                          }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}>
                             Restore
                           </button>
-                          <button onClick={() => { hardDeleteOnServer(tab); setTabs(prev => prev.filter(t => t.id !== tab.id)); }}
+                          <button onClick={() => {
+                            // Only hard-delete on server for MY docs — shared docs just remove from local list
+                            if (!tab.permission || tab.permission === "mine") hardDeleteOnServer(tab);
+                            setTabs(prev => prev.filter(t => t.id !== tab.id));
+                          }}
                             className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}>
-                            Delete
+                            {(!tab.permission || tab.permission === "mine") ? "Delete" : "Remove"}
                           </button>
                         </div>
                       ))}
@@ -5973,7 +5983,7 @@ ${html}
                           onClick={(e) => {
                             const btn = e.currentTarget;
                             if (btn.dataset.confirm === "true") {
-                              tabs.filter(t => t.deleted && t.cloudId).forEach(t => hardDeleteOnServer(t));
+                              tabs.filter(t => t.deleted && t.cloudId && (!t.permission || t.permission === "mine")).forEach(t => hardDeleteOnServer(t));
                               setTabs(prev => prev.filter(t => !t.deleted));
                               btn.dataset.confirm = "";
                               btn.textContent = "Empty Trash";
