@@ -77,9 +77,9 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
             await this.pullCloudDocument(msg.docId, msg.title);
           }
           break;
-        case "unlink":
+        case "unsync":
           if (msg.filePath) {
-            await this.unlinkDocument(msg.filePath);
+            await this.unsyncDocument(msg.filePath);
           }
           break;
         case "deleteSynced":
@@ -134,14 +134,14 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     vscode.commands.executeCommand("mdfy.publish");
   }
 
-  private async unlinkDocument(filePath: string): Promise<void> {
+  private async unsyncDocument(filePath: string): Promise<void> {
     const fileName = path.basename(filePath);
     const confirm = await vscode.window.showWarningMessage(
-      `Unlink "${fileName}" from mdfy.cc? The local file stays, only the sync connection is removed.`,
-      "Unlink",
+      `Unsync "${fileName}" from mdfy.cc? The local file stays, only the sync connection is removed.`,
+      "Unsync",
       "Cancel"
     );
-    if (confirm !== "Unlink") { return; }
+    if (confirm !== "Unsync") { return; }
 
     // Delete .mdfy.json sidecar
     const ext = path.extname(filePath);
@@ -150,7 +150,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     try {
       await vscode.workspace.fs.delete(vscode.Uri.file(configPath));
       this.refresh();
-      vscode.window.showInformationMessage(`"${fileName}" unlinked from mdfy.cc.`);
+      vscode.window.showInformationMessage(`"${fileName}" unsynced from mdfy.cc.`);
     } catch {
       vscode.window.showErrorMessage("Failed to remove sync file.");
     }
@@ -725,7 +725,7 @@ body {
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="8" height="8" rx="1.5"/><path d="M6 10H4.5A1.5 1.5 0 013 8.5v-5A1.5 1.5 0 014.5 2h5A1.5 1.5 0 0111 3.5V6"/></svg></span><div><strong>Copy URL</strong><span class="help-desc">Copy the mdfy.cc link to clipboard.</span></div></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg></span><div><strong>Sync Up</strong><span class="help-desc">Upload local file to mdfy.cc and get a shareable URL.</span></div></div>
     <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg></span><div><strong>Sync Down</strong><span class="help-desc">Download cloud document to your local workspace.</span></div></div>
-    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5l-1.8 1.8a2.4 2.4 0 01-3.4-3.4L3.5 6.1"/><path d="M9 6.5l1.8-1.8a2.4 2.4 0 013.4 3.4L12.5 9.9"/><path d="M5 3L3 1M13 13l-2-2"/></svg></span><div><strong>Unlink</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
+    <div class="help-row"><span class="help-icon"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M4 4l8 8"/></svg></span><div><strong>Unsync</strong><span class="help-desc">Remove sync connection. File stays local, moves back to Local.</span></div></div>
   </div>
 
   <div id="doc-container" style="padding-bottom: 70px;"></div>
@@ -765,7 +765,7 @@ body {
       externalLink: '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4.5a1.5 1.5 0 01-1.5 1.5h-8A1.5 1.5 0 011 13.5v-8A1.5 1.5 0 012.5 4H7"/><path d="M10 1h5v5"/><path d="M15 1L7 9"/></svg>',
       upload:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 10V2"/><path d="M5 4.5L8 1.5l3 3"/></svg>',
       download:     '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg>',
-      unlink:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/><path d="M3 3l10 10"/></svg>',
+      unsync:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M4 4l8 8"/></svg>',
       refresh:      '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>',
       file:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
       sync:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>',
@@ -927,8 +927,8 @@ body {
       var actions = ''
         + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
-        + '<button class="doc-action" data-action="unlink" data-path="' + esc(doc.filePath) + '" title="Unlink">' + icon('unlink', 14) + '</button>'
-        + '<button class="doc-action" data-action="deleteSynced" data-path="' + esc(doc.filePath) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unlink', 14) + '</button>';
+        + '<button class="doc-action" data-action="unsync" data-path="' + esc(doc.filePath) + '" title="Unsync">' + icon('unsync', 14) + '</button>'
+        + '<button class="doc-action" data-action="deleteSynced" data-path="' + esc(doc.filePath) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unsync', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
@@ -950,7 +950,7 @@ body {
       var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '');
       var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Sync to local">' + icon('download', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
-        + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unlink', 14) + '</button>';
+        + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('unsync', 14) + '</button>';
       return '<li class="doc-item" data-action="openCloud" data-url="' + esc(doc.url) + '" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.title) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
@@ -982,10 +982,10 @@ body {
           vscode.postMessage({ type: 'previewCloud', docId: el.dataset.docid, title: el.dataset.title });
         });
       });
-      container.querySelectorAll('[data-action="unlink"]').forEach(function(btn) {
+      container.querySelectorAll('[data-action="unsync"]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
-          vscode.postMessage({ type: 'unlink', filePath: btn.dataset.path });
+          vscode.postMessage({ type: 'unsync', filePath: btn.dataset.path });
         });
       });
       container.querySelectorAll('[data-action="deleteSynced"]').forEach(function(btn) {
