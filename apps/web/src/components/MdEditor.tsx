@@ -5941,8 +5941,8 @@ ${html}
 
             {/* ── Section 3: TRASH ── */}
             {(() => {
-              // Trash: only MY deleted documents (not shared ones — you can't trash someone else's doc)
-              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted && (!t.permission || t.permission === "mine")) : [];
+              // Trash: all deleted documents (mine + shared I removed from list)
+              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted) : [];
               return (<>
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
