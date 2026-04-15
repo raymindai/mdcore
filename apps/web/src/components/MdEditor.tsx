@@ -2484,9 +2484,17 @@ export default function MdEditor() {
             return;
           }
           {
+            // Check if this doc was previously deleted by the user BEFORE loading content
+            const prevDeleted = tabs.find(t => t.cloudId === fromId && t.deleted);
+            if (prevDeleted) {
+              setDeletedDocId(fromId);
+              setEditorPlaceholder("deleted");
+              return;
+            }
+
             const doc = await res.json();
-            setEditorPlaceholder(null); // Clear any previous placeholder
-            setMarkdownRaw(doc.markdown); // Use raw setter to avoid triggering auto-save during load
+            setEditorPlaceholder(null);
+            setMarkdownRaw(doc.markdown);
             if (doc.title) setTitle(doc.title);
             setDocId(fromId);
             setDocEditMode(doc.editMode || "token");
@@ -2516,7 +2524,6 @@ export default function MdEditor() {
               setViewMode("preview");
             }
 
-            // Create a new tab for the opened document (don't overwrite current tab)
             const docIsSharedByMe = perm === "mine" && (
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account") ||
               (doc.allowedEmails && doc.allowedEmails.length > 0)
@@ -2532,16 +2539,8 @@ export default function MdEditor() {
               ownerEmail: doc.ownerEmail || undefined,
             };
 
-            // Check if this doc was previously deleted by the user
-            const prevDeleted = tabs.find(t => t.cloudId === fromId && t.deleted);
-            if (prevDeleted) {
-              setDeletedDocId(fromId);
-              setEditorPlaceholder("deleted");
-              return;
-            }
-
             // Render content immediately (don't depend on setTabs callback timing)
-            activeTabIdRef.current = ""; // Will be set properly below
+            activeTabIdRef.current = "";
             await doRender(doc.markdown);
 
             // Update tabs state (functional updater for latest state)
