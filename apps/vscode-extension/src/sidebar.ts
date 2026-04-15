@@ -873,7 +873,7 @@ body {
 
       // Synced section
       if (showSynced) {
-        if (!isLoggedIn && currentFilter !== 'local') {
+        if (!isLoggedIn && (currentFilter === 'all' || currentFilter === 'synced')) {
           html += secHeader('sync', 'Synced', '');
           html += '<div class="login-prompt"><p>Sign in to sync your documents between VS Code and mdfy.cc.</p><button class="login-btn" id="login-btn">Sign in to mdfy.cc</button></div>';
         } else if (synced.length > 0) {
