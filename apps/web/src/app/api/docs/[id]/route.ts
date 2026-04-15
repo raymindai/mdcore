@@ -45,8 +45,21 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   // Draft documents: only accessible by owner
   if (data.is_draft) {
+    // Resolve email to userId for MCP and other email-only clients
+    let resolvedOwnerId = requesterId;
+    if (!resolvedOwnerId && !requesterAnonId) {
+      const reqEmail = verified?.email || _req.headers.get("x-user-email") || "";
+      if (reqEmail && data.user_id) {
+        try {
+          const { data: ownerUser } = await supabase.auth.admin.getUserById(data.user_id);
+          if (ownerUser?.user?.email?.toLowerCase() === reqEmail.toLowerCase()) {
+            resolvedOwnerId = data.user_id;
+          }
+        } catch { /* ignore */ }
+      }
+    }
     const isDraftOwner =
-      !!(requesterId && data.user_id && requesterId === data.user_id) ||
+      !!(resolvedOwnerId && data.user_id && resolvedOwnerId === data.user_id) ||
       !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
     if (!isDraftOwner) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -269,12 +282,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (body.action === "soft-delete") {
     const { data: doc } = await supabase
       .from("documents")
-      .select("user_id, edit_token")
+      .select("user_id, anonymous_id, edit_token")
       .eq("id", id)
       .single();
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const isOwner = !!(body.userId && doc.user_id === body.userId);
+    const isOwner = !!(body.userId && doc.user_id === body.userId) ||
+      !!(body.anonymousId && doc.anonymous_id === body.anonymousId);
     const hasToken = !!(body.editToken && doc.edit_token === body.editToken);
     if (!isOwner && !hasToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -291,12 +305,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (body.action === "restore") {
     const { data: doc } = await supabase
       .from("documents")
-      .select("user_id, edit_token")
+      .select("user_id, anonymous_id, edit_token")
       .eq("id", id)
       .single();
     if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const isOwner = !!(body.userId && doc.user_id === body.userId);
+    const isOwner = !!(body.userId && doc.user_id === body.userId) ||
+      !!(body.anonymousId && doc.anonymous_id === body.anonymousId);
     const hasToken = !!(body.editToken && doc.edit_token === body.editToken);
     if (!isOwner && !hasToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
