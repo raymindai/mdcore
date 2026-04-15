@@ -5118,6 +5118,35 @@ ${html}
               </div>
               <span style={{ color: "var(--accent)" }}>FILES</span>
               <button
+                id="sidebar-refresh-btn"
+                onClick={() => {
+                  const btn = document.getElementById("sidebar-refresh-btn");
+                  if (btn) { btn.classList.add("animate-spin"); setTimeout(() => btn.classList.remove("animate-spin"), 600); }
+                  if (user?.id) {
+                    fetch("/api/user/documents", { headers: authHeaders })
+                      .then(res => res.ok ? res.json() : null)
+                      .then(data => {
+                        if (data?.documents) {
+                          setServerDocs(data.documents);
+                          const sm = new Map(data.documents.map((d: { id: string; source?: string }) => [d.id, d.source]));
+                          setTabs(prev => {
+                            const ids = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
+                            const nw = data.documents.filter((d: { id: string }) => !ids.has(d.id)).map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
+                              id: `cloud-${d.id}`, title: d.title || "Untitled", markdown: "", cloudId: d.id, isDraft: d.is_draft !== false, source: d.source || undefined, permission: "mine" as const,
+                            }));
+                            return [...prev.map(t => t.cloudId ? { ...t, source: (sm.get(t.cloudId) as string) || undefined } : t), ...nw];
+                          });
+                        }
+                      }).catch(() => {});
+                  }
+                }}
+                className="w-4 h-4 rounded flex items-center justify-center transition-colors"
+                style={{ color: "var(--text-faint)" }}
+                title="Refresh"
+              >
+                <RefreshCw width={10} height={10} />
+              </button>
+              <button
                 onClick={() => setShowSidebarHelp(!showSidebarHelp)}
                 className="w-4 h-4 rounded flex items-center justify-center transition-all"
                 style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-muted)", opacity: showSidebarHelp ? 1 : 0.6 }}
@@ -5291,43 +5320,6 @@ ${html}
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
                     {showMyDocs && (
                       <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const btn = e.currentTarget;
-                            btn.style.animation = "spin 0.6s linear";
-                            setTimeout(() => { btn.style.animation = ""; }, 600);
-                            // Re-fetch server docs
-                            if (user?.id) {
-                              fetch("/api/user/documents", { headers: authHeaders })
-                                .then(res => res.ok ? res.json() : null)
-                                .then(data => {
-                                  if (data?.documents) {
-                                    setServerDocs(data.documents);
-                                    const sourceMap = new Map(data.documents.map((d: { id: string; source?: string }) => [d.id, d.source]));
-                                    setTabs(prev => {
-                                      const existingCloudIds = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
-                                      const newTabs = data.documents
-                                        .filter((d: { id: string }) => !existingCloudIds.has(d.id))
-                                        .map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
-                                          id: `cloud-${d.id}`, title: d.title || "Untitled", markdown: "",
-                                          cloudId: d.id, isDraft: d.is_draft !== false, source: d.source || undefined, permission: "mine" as const,
-                                        }));
-                                      return [...prev.map(t => {
-                                        if (!t.cloudId) return t;
-                                        return { ...t, source: (sourceMap.get(t.cloudId) as string) || undefined };
-                                      }), ...newTabs];
-                                    });
-                                  }
-                                }).catch(() => {});
-                            }
-                          }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--text-faint)" }}
-                          title="Refresh"
-                        >
-                          <RefreshCw width={10} height={10} />
-                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setShowSidebarSearch(!showSidebarSearch); if (showSidebarSearch) setSidebarSearch(""); }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
