@@ -2529,6 +2529,8 @@ export default function MdEditor() {
               isSharedByMe: docIsSharedByMe || false,
               isRestricted: (doc.allowedEmails?.length > 0) || false,
               ownerEmail: doc.ownerEmail || undefined,
+              deleted: false, // Always undelete when explicitly opening via URL
+              deletedAt: undefined,
             };
 
             // Render content immediately (don't depend on setTabs callback timing)
@@ -2537,11 +2539,11 @@ export default function MdEditor() {
 
             // Update tabs state (functional updater for latest state)
             const newTabId = `tab-${Date.now()}`;
+            const prevActiveId = activeTabIdRef.current; // Save before overwriting
             setTabs(prev => {
               const existing = prev.find(t => t.cloudId === fromId);
               if (existing) {
                 const merged = { ...existing, ...tabProps, title: doc.title || existing.title, editToken: existing.editToken || token || undefined };
-                // Set activeTabIdRef to the correct tab id
                 activeTabIdRef.current = merged.id;
                 setActiveTabId(merged.id);
                 return prev.map(t => t.cloudId === fromId ? merged : t);
@@ -2553,8 +2555,8 @@ export default function MdEditor() {
               };
               activeTabIdRef.current = newTab.id;
               setActiveTabId(newTab.id);
-              const curTabId = activeTabIdRef.current;
-              const saved = prev.map(t => t.id === curTabId ? { ...t, markdown: markdownRef.current } : t);
+              // Save previous tab's markdown before adding new one
+              const saved = prev.map(t => t.id === prevActiveId && !t.readonly ? { ...t, markdown: markdownRef.current } : t);
               return [...saved, newTab];
             });
             window.history.replaceState(null, "", `/?doc=${fromId}`);
