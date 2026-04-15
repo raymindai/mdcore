@@ -7487,11 +7487,13 @@ ${html}
                 if (!folder) return;
                 setInlineInput({ label: "Folder name", defaultValue: folder.name, onSubmit: (name) => {
                   setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name } : f));
+                  fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folder.id, name }) }).catch(() => {});
                   setInlineInput(null);
                 }});
               }},
               { label: "Collapse / Expand", action: () => {
                 setFolders(prev => prev.map(f => f.id === folderContextMenu.folderId ? { ...f, collapsed: !f.collapsed } : f));
+                fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId, collapsed: !folders.find(f => f.id === folderContextMenu.folderId)?.collapsed }) }).catch(() => {});
               }},
               { label: "Delete folder", action: () => {
                 setFolderContextMenu(prev => prev ? { ...prev, confirmDelete: true } : null);

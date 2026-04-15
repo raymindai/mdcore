@@ -18,6 +18,14 @@ interface CloudDoc {
   title: string | null;
   updated_at: string;
   is_draft: boolean;
+  folder_id?: string | null;
+}
+
+interface CloudFolder {
+  id: string;
+  name: string;
+  section?: string;
+  collapsed?: boolean;
 }
 
 export class MdfySidebarProvider implements vscode.WebviewViewProvider {
@@ -291,11 +299,13 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       lastSynced: d.config?.lastSyncedAt,
     }));
 
-    // Fetch cloud documents if logged in
+    // Fetch cloud documents + folders if logged in
     const isLoggedIn = await this._authManager.isLoggedIn();
     let cloudDocs: CloudDoc[] = [];
+    let cloudFolders: CloudFolder[] = [];
     if (isLoggedIn) {
       cloudDocs = await this.fetchCloudDocuments();
+      cloudFolders = await this.fetchCloudFolders();
       // Exclude documents already linked locally
       const linkedIds = new Set(items.filter((i) => i.docId).map((i) => i.docId));
       cloudDocs = cloudDocs.filter((c) => !linkedIds.has(c.id));
@@ -311,7 +321,14 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         title: c.title || c.id,
         updatedAt: c.updated_at,
         isDraft: c.is_draft,
+        folderId: c.folder_id || null,
         url: `${baseUrl}/d/${c.id}`,
+      })),
+      cloudFolders: cloudFolders.map((f) => ({
+        id: f.id,
+        name: f.name,
+        section: f.section || "my",
+        collapsed: f.collapsed || false,
       })),
       isLoggedIn,
       userEmail: userEmail || null,
@@ -335,6 +352,26 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
 
       const data = (await res.json()) as { documents: CloudDoc[] };
       return data.documents || [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async fetchCloudFolders(): Promise<CloudFolder[]> {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const token = await this._authManager.getToken();
+      const userId = await this._authManager.getUserId();
+      if (!userId) { return []; }
+
+      const headers: Record<string, string> = { "x-user-id": userId };
+      if (token) { headers["Authorization"] = `Bearer ${token}`; }
+
+      const res = await fetch(`${baseUrl}/api/user/folders`, { headers });
+      if (!res.ok) { return []; }
+
+      const data = (await res.json()) as { folders: CloudFolder[] };
+      return data.folders || [];
     } catch {
       return [];
     }
@@ -640,6 +677,14 @@ body {
 }
 
 /* Logged in state */
+.cloud-folder { margin-bottom: 4px; }
+.cloud-folder-header {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 12px; font-size: 11px; font-weight: 600;
+  color: var(--fg-muted); user-select: none;
+}
+.cloud-folder-count { font-size: 9px; opacity: 0.5; margin-left: auto; }
+.cloud-folder-list { padding-left: 8px; }
 .user-bar-loggedin {
   display: flex; align-items: center; gap: 8px;
 }
@@ -748,6 +793,7 @@ body {
     var vscode = acquireVsCodeApi();
     var allDocs = [];
     var cloudDocs = [];
+    var cloudFolders = [];
     var isLoggedIn = false;
     var currentFilter = 'all';
     var searchQuery = '';
@@ -783,6 +829,7 @@ body {
       if (e.data.type === 'documents') {
         allDocs = e.data.items || [];
         cloudDocs = e.data.cloudDocs || [];
+        cloudFolders = e.data.cloudFolders || [];
         isLoggedIn = e.data.isLoggedIn || false;
         currentUserId = e.data.userEmail || null;
         render();
@@ -888,16 +935,35 @@ body {
         html += '</ul>';
       }
 
-      // Cloud
+      // Cloud — grouped by folder
       if (showCloud) {
         if (!isLoggedIn) {
           html += secHeader('globe', 'Cloud', '');
           html += '<div class="login-prompt"><p>Sign in to access your cloud documents and pull them to your workspace.</p><button class="login-btn" id="login-btn">Sign in to mdfy.cc</button></div>';
         } else if (cloudFiltered.length > 0) {
           html += secHeader('globe', 'Cloud', cloudFiltered.length);
-          html += '<ul class="doc-list">';
-          cloudFiltered.forEach(function(doc) { html += renderCloudDoc(doc); });
-          html += '</ul>';
+          // Docs without folder
+          var rootCloud = cloudFiltered.filter(function(d) { return !d.folderId; });
+          // Docs in folders
+          var folderIds = [];
+          cloudFolders.forEach(function(f) {
+            var docs = cloudFiltered.filter(function(d) { return d.folderId === f.id; });
+            if (docs.length > 0) folderIds.push({ folder: f, docs: docs });
+          });
+          // Render folders first
+          folderIds.forEach(function(group) {
+            html += '<div class="cloud-folder">'
+              + '<div class="cloud-folder-header">' + icon('file', 12) + ' <span>' + esc(group.folder.name) + '</span> <span class="cloud-folder-count">' + group.docs.length + '</span></div>'
+              + '<ul class="doc-list cloud-folder-list">';
+            group.docs.forEach(function(doc) { html += renderCloudDoc(doc); });
+            html += '</ul></div>';
+          });
+          // Then root docs
+          if (rootCloud.length > 0) {
+            html += '<ul class="doc-list">';
+            rootCloud.forEach(function(doc) { html += renderCloudDoc(doc); });
+            html += '</ul>';
+          }
         }
       }
 
