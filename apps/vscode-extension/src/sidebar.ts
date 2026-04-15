@@ -219,13 +219,22 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
   private async previewCloudDocument(docId: string, title: string): Promise<void> {
     try {
       const remote = await pullDocument(docId, this._authManager);
-      // Create a temporary untitled document with the cloud content
+      // Create a temporary document for preview only (don't show in editor)
       const doc = await vscode.workspace.openTextDocument({
         content: remote.markdown,
         language: "markdown",
       });
       suppressAutoPreviewFor(500);
-      PreviewPanel.createOrShow(this._extensionUri, doc);
+      // Open preview in the main column (not beside), and don't open the source editor
+      PreviewPanel.createOrShowCloud(this._extensionUri, doc, title || "Cloud Document", docId);
+      // Close the text editor that was auto-opened (we only want the preview)
+      const editors = vscode.window.visibleTextEditors.filter(
+        e => e.document.uri.toString() === doc.uri.toString()
+      );
+      for (const editor of editors) {
+        await vscode.window.showTextDocument(editor.document, { preview: true, preserveFocus: false });
+        await vscode.commands.executeCommand("workbench.action.closeActiveEditor");
+      }
     } catch (err) {
       vscode.window.showErrorMessage(
         `Failed to load: ${err instanceof Error ? err.message : String(err)}`

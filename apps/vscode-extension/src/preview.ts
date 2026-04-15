@@ -30,6 +30,8 @@ export class PreviewPanel {
   private trackedDocument: vscode.TextDocument | undefined;
   private isUpdatingFromWebview = false;
   private disposables: vscode.Disposable[] = [];
+  public isCloudPreview = false;
+  public cloudTitle = "";
 
   /**
    * Set the shared AuthManager reference for image uploads.
@@ -73,6 +75,48 @@ export class PreviewPanel {
 
     const previewPanel = new PreviewPanel(panel, extensionUri, document);
     PreviewPanel.panels.set(key, previewPanel);
+  }
+
+  /**
+   * Create a read-only preview for a cloud document (no local file).
+   * Shows a banner indicating it's cloud-only and needs sync to edit.
+   */
+  public static createOrShowCloud(
+    extensionUri: vscode.Uri,
+    document: vscode.TextDocument,
+    title: string,
+    docId: string
+  ): void {
+    const key = `cloud:${docId}`;
+    const existing = PreviewPanel.panels.get(key);
+
+    if (existing) {
+      existing.trackedDocument = document;
+      existing.panel.reveal(vscode.ViewColumn.One);
+      existing.updateContent(document.getText(), title, true);
+      return;
+    }
+
+    const panel = vscode.window.createWebviewPanel(
+      PreviewPanel.viewType,
+      `☁ ${title}`,
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
+      }
+    );
+    panel.iconPath = {
+      dark: vscode.Uri.joinPath(extensionUri, "media", "icon-dark.svg"),
+      light: vscode.Uri.joinPath(extensionUri, "media", "icon-light.svg"),
+    };
+
+    const previewPanel = new PreviewPanel(panel, extensionUri, document);
+    previewPanel.isCloudPreview = true;
+    previewPanel.cloudTitle = title;
+    PreviewPanel.panels.set(key, previewPanel);
+    previewPanel.updateContent(document.getText(), title, true);
   }
 
   /**
@@ -321,11 +365,17 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     }
   }
 
-  private updateContent(markdown: string): void {
+  private updateContent(markdown: string, cloudTitle?: string, isCloud?: boolean): void {
     const result = renderMarkdownWithFlavor(markdown);
+    const cloudBanner = (isCloud || this.isCloudPreview)
+      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
+          <span>Cloud document (read-only). <strong>Sync to local</strong> to edit.</span>
+        </div>`
+      : "";
     this.panel.webview.postMessage({
       type: "update",
-      html: result.html,
+      html: cloudBanner + result.html,
       markdown,
       flavor: result.flavor,
     });
