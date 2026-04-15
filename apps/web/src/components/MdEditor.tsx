@@ -3818,6 +3818,7 @@ export default function MdEditor() {
   const handleShare = useCallback(async () => {
     setShowPermDropdown(false);
     if (!markdown.trim()) { showToast("Write something first", "info"); return; }
+    if (!isAuthenticated) { showToast("Sign in to share documents", "info"); return; }
 
     // If doc already has a cloudId and user is owner, open share modal
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
