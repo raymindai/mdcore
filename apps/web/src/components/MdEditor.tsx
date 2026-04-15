@@ -2695,17 +2695,33 @@ export default function MdEditor() {
           const sourceMap = new Map<string, string | null>(
             data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
           );
-          setTabs(prev => prev.map(t => {
-            if (!t.cloudId) return t;
-            // Bidirectional sync: set AND clear based on server state
-            return {
-              ...t,
-              isDraft: publishedIds.has(t.cloudId) ? false : true,
-              isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
-              isRestricted: restrictedIds.has(t.cloudId) ? true : false,
-              source: sourceMap.get(t.cloudId) || undefined,
-            };
-          }));
+          setTabs(prev => {
+            // Update existing tabs with server state
+            const updated = prev.map(t => {
+              if (!t.cloudId) return t;
+              return {
+                ...t,
+                isDraft: publishedIds.has(t.cloudId) ? false : true,
+                isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
+                isRestricted: restrictedIds.has(t.cloudId) ? true : false,
+                source: sourceMap.get(t.cloudId) || undefined,
+              };
+            });
+            // Create tabs for server docs that don't have local tabs
+            const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
+            const newTabs = data.documents
+              .filter((d: { id: string }) => !existingCloudIds.has(d.id))
+              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
+                id: `cloud-${d.id}`,
+                title: d.title || "Untitled",
+                markdown: "",
+                cloudId: d.id,
+                isDraft: d.is_draft !== false,
+                source: d.source || undefined,
+                permission: "mine" as const,
+              }));
+            return [...updated, ...newTabs];
+          });
         }
       })
       .catch(() => {});
@@ -5266,8 +5282,6 @@ ${html}
               const myTabCount = allMyTabs.length;
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
               const sharedCount = allMyTabs.filter(t => t.isDraft === false).length;
-              const syncedCount = allMyTabs.filter(t => t.source === "vscode").length;
-              const filterCounts: Record<string, number> = { all: myTabCount, private: privateCount, shared: sharedCount, synced: syncedCount };
               return (
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
                   <div
@@ -5336,7 +5350,7 @@ ${html}
                                 background: docFilter === f ? "var(--accent-dim)" : "transparent",
                               }}
                             >
-                              {labels[f]}{filterCounts[f] > 0 && f !== "all" ? ` ${filterCounts[f]}` : ""}
+                              {labels[f]}
                             </button>
                             );
                           })}
