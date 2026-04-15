@@ -1867,20 +1867,21 @@ export default function MdEditor() {
       fetch(`/api/docs/${tab.cloudId}`, { headers: authHeadersRef.current })
         .then(res => res.ok ? res.json() : null)
         .then(doc => {
-          if (!doc || activeTabIdRef.current !== tab.id) return; // Tab changed while loading
+          if (!doc || activeTabIdRef.current !== tab.id) return;
           const md = doc.markdown || "";
-          const title = doc.title || tab.title;
+          const t = doc.title || tab.title;
           setMarkdownRaw(md);
-          setTitle(title);
+          setTitle(t);
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
-          // Update tab in state with fetched content
-          setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, markdown: md, title } : t));
+          setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
         })
         .catch(() => {
-          // Failed to load — show the tab as-is (empty)
           doRenderRef.current("");
+        })
+        .finally(() => {
+          if (activeTabIdRef.current === tab.id) setIsLoading(false);
         });
     } else {
       setMarkdownRaw(tab.markdown);
