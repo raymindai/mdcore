@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     editMode?: string;
     isDraft?: boolean;
     source?: string;
+    folderId?: string;
   };
   try {
     body = await req.json();
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source } = body;
+  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source, folderId } = body;
   let { userId } = body;
 
   // Verify JWT from Authorization header (VS Code extension, MCP, etc.)
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
     edit_mode: resolvedEditMode,
     is_draft: isDraft ?? true,
     source: source || null,
+    folder_id: folderId || null,
   });
 
   if (error) {

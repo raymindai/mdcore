@@ -153,6 +153,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     editMode?: string;
     isDraft?: boolean;
     source?: string;
+    folderId?: string | null;
   };
   try {
     body = await req.json();
@@ -365,11 +366,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (markdown !== undefined) updates.markdown = markdown;
     if (title !== undefined) updates.title = title;
     if (body.source) updates.source = body.source;
+    if (body.folderId !== undefined) updates.folder_id = body.folderId || null;
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
 
     return NextResponse.json({ ok: true, updated_at: updatedAt });
+  }
+
+  // ─── Action: move-to-folder ───
+  if (body.action === "move-to-folder") {
+    const { error } = await supabase
+      .from("documents")
+      .update({ folder_id: body.folderId || null, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to move" }, { status: 500 });
+    return NextResponse.json({ ok: true });
   }
 
   // ─── Action: unpublish (make private — flip is_draft to true, clear sharing) ───

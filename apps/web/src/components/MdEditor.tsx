@@ -1364,6 +1364,28 @@ export default function MdEditor() {
     }
   }, [tabs]);
 
+  // Sync document folder changes to server
+  const prevFolderMapRef = useRef<Map<string, string | undefined>>(new Map());
+  useEffect(() => {
+    const newMap = new Map<string, string | undefined>();
+    for (const t of tabs) {
+      if (t.cloudId) newMap.set(t.cloudId, t.folderId);
+    }
+    // Compare and sync changes
+    for (const [cloudId, folderId] of newMap) {
+      const prev = prevFolderMapRef.current.get(cloudId);
+      if (prev !== folderId && prevFolderMapRef.current.has(cloudId)) {
+        // Folder changed — update server
+        fetch(`/api/docs/${cloudId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeadersRef.current },
+          body: JSON.stringify({ action: "move-to-folder", folderId: folderId || null }),
+        }).catch(() => {});
+      }
+    }
+    prevFolderMapRef.current = newMap;
+  }, [tabs]);
+
   // Persist tabs + folders + active tab to localStorage
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2780,36 +2802,68 @@ export default function MdEditor() {
               .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.length > 0)
               .map((d: { id: string }) => d.id)
           );
-          // Build source map from server docs
+          // Build source + folder maps from server docs
           const sourceMap = new Map<string, string | null>(
             data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
+          );
+          const folderMap = new Map<string, string | null>(
+            data.documents.map((d: { id: string; folder_id?: string | null }) => [d.id, d.folder_id ?? null])
           );
           setTabs(prev => {
             // Update existing tabs with server state
             const updated = prev.map(t => {
               if (!t.cloudId) return t;
+              const serverFolderId = folderMap.get(t.cloudId);
               return {
                 ...t,
                 isDraft: publishedIds.has(t.cloudId) ? false : true,
                 isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
                 isRestricted: restrictedIds.has(t.cloudId) ? true : false,
                 source: sourceMap.get(t.cloudId) || undefined,
+                folderId: serverFolderId || t.folderId, // Server folder takes precedence
               };
             });
             // Create tabs for server docs that don't have local tabs
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
             const newTabs = data.documents
               .filter((d: { id: string }) => !existingCloudIds.has(d.id))
-              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
+              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string }) => ({
                 id: `cloud-${d.id}`,
                 title: d.title || "Untitled",
                 markdown: "",
                 cloudId: d.id,
                 isDraft: d.is_draft !== false,
                 source: d.source || undefined,
+                folderId: d.folder_id || undefined,
                 permission: "mine" as const,
               }));
             return [...updated, ...newTabs];
+          });
+        }
+      })
+      .catch(() => {});
+    // Fetch server folders and merge with local (skip Examples folder)
+    if (user?.id) fetch("/api/user/folders", { headers: authHeaders })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.folders) {
+          setFolders(prev => {
+            const serverFolders = data.folders.map((f: { id: string; name: string; section?: string; collapsed?: boolean; sort_order?: number }) => ({
+              id: f.id, name: f.name, collapsed: f.collapsed || false, section: (f.section || "my") as "my" | "shared",
+            }));
+            // Keep Examples folder + merge server folders (server wins on conflict)
+            const serverIds = new Set(serverFolders.map((f: { id: string }) => f.id));
+            const localOnly = prev.filter(f => f.id === "folder-shared-examples" || (!serverIds.has(f.id) && !f.id.startsWith("folder-")));
+            // Upload local-only folders to server (one-time migration)
+            const toUpload = prev.filter(f => f.id !== "folder-shared-examples" && !serverIds.has(f.id) && f.id.startsWith("folder-"));
+            for (const f of toUpload) {
+              fetch("/api/user/folders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders },
+                body: JSON.stringify({ id: f.id, name: f.name, section: f.section || "my" }),
+              }).catch(() => {});
+            }
+            return [...localOnly, ...serverFolders, ...toUpload];
           });
         }
       })
@@ -5443,7 +5497,8 @@ ${html}
                             e.stopPropagation();
                             const id = `folder-${Date.now()}`;
                             setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); setInlineInput(null); }});
+                            fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
+                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
                           }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-faint)" }}
@@ -5758,7 +5813,8 @@ ${html}
                             e.stopPropagation();
                             const id = `folder-${Date.now()}`;
                             setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "shared" }]);
-                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); setInlineInput(null); }});
+                            fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "shared" }) }).catch(() => {});
+                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
                           }}
                           className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-faint)" }}
@@ -7386,7 +7442,8 @@ ${html}
             <button onClick={() => {
               const id = `folder-${Date.now()}`;
               setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); setInlineInput(null); }});
+              fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
+              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
               setSidebarContextMenu(null);
             }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
             <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
@@ -7459,6 +7516,7 @@ ${html}
                   <button onClick={() => {
                     setTabs(prev => prev.map(t => t.folderId === folderContextMenu.folderId ? { ...t, folderId: undefined } : t));
                     setFolders(prev => prev.filter(f => f.id !== folderContextMenu.folderId));
+                    fetch("/api/user/folders", { method: "DELETE", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId }) }).catch(() => {});
                     setFolderContextMenu(null);
                   }} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
                 </div>
