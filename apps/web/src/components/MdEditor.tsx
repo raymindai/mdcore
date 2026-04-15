@@ -2437,11 +2437,30 @@ export default function MdEditor() {
           }
           const res = await fetch(`/api/docs/${fromId}`, { headers });
           if (!res.ok) {
-            // Document not accessible — redirect to viewer page which handles 404/auth properly
-            window.location.href = `/d/${fromId}`;
+            // Show appropriate message based on auth state
+            const errorBody = await res.json().catch(() => ({}));
+            if (errorBody.restricted) {
+              // Access restricted to specific people
+              const errorMd = "# Access Restricted\n\nThis document is shared with specific people only.\n\nIf you believe you should have access, contact the document owner.";
+              setMarkdownRaw(errorMd);
+              setViewMode("preview");
+              await doRender(errorMd);
+            } else if (!isAuthenticated) {
+              // Not logged in — could be a private doc
+              const errorMd = "# Sign in Required\n\nThis document may be private or shared with specific people.\n\nSign in to view it if you have access.";
+              setMarkdownRaw(errorMd);
+              setViewMode("preview");
+              await doRender(errorMd);
+            } else {
+              // Logged in but still can't access — truly not found
+              const errorMd = "# Document Not Found\n\nThis document may have been deleted or the link is incorrect.";
+              setMarkdownRaw(errorMd);
+              setViewMode("preview");
+              await doRender(errorMd);
+            }
             return;
           }
-          if (res.ok) {
+          {
             const doc = await res.json();
             setMarkdownRaw(doc.markdown); // Use raw setter to avoid triggering auto-save during load
             if (doc.title) setTitle(doc.title);
