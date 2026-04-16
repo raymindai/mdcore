@@ -578,7 +578,15 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
     Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private document";
   }
 
-  return <span className="shrink-0 flex items-center" title={tip}><Icon width={14} height={14} style={{ color }} /></span>;
+  return (
+    <div className="relative shrink-0 flex items-center group/icon">
+      <Icon width={14} height={14} style={{ color }} />
+      <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/icon:opacity-100 transition-opacity z-[9998]"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+        {tip}
+      </div>
+    </div>
+  );
 }
 
 /** Extract title from markdown (first # heading, or first line) */
