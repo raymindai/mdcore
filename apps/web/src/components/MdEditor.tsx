@@ -1958,7 +1958,7 @@ export default function MdEditor() {
     const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
     const myTabs = docFilter === "all" ? allMyTabs
       : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
-      : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
+      : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
       : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
       : allMyTabs;
     const sortFn = (a: Tab, b: Tab) => {
@@ -5480,7 +5480,7 @@ ${html}
               const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
               const myTabs = docFilter === "all" ? allMyTabs
                 : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
-                : docFilter === "shared" ? allMyTabs.filter(t => t.isDraft === false)
+                : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
                 : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
