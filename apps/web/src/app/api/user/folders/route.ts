@@ -4,7 +4,22 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 async function resolveUserId(req: NextRequest): Promise<string | null> {
   const verified = await verifyAuthToken(req.headers.get("authorization"));
-  return verified?.userId || req.headers.get("x-user-id") || null;
+  if (verified?.userId) return verified.userId;
+  const headerId = req.headers.get("x-user-id");
+  if (headerId) return headerId;
+  // Resolve email → userId
+  const email = verified?.email || req.headers.get("x-user-email");
+  if (email) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data } = await supabase.auth.admin.listUsers();
+        const user = data?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (user) return user.id;
+      } catch { /* ignore */ }
+    }
+  }
+  return null;
 }
 
 export async function GET(req: NextRequest) {
