@@ -4047,21 +4047,19 @@ export default function MdEditor() {
       return;
     }
 
-    // Non-owner with existing doc — open viewer share modal
+    // Non-owner with existing doc — open viewer share modal immediately
     if (cid && !isMine) {
-      // Fetch owner info if we don't have it
+      setShowViewerShareModal(true);
+      // Fetch owner info in background if we don't have it
       if (!currentTab?.ownerEmail && user) {
-        try {
-          const res = await fetch(`/api/docs/${cid}`, { headers: authHeaders });
-          if (res.ok) {
-            const doc = await res.json();
-            if (doc.ownerEmail) {
+        fetch(`/api/docs/${cid}`, { headers: authHeaders })
+          .then(res => res.ok ? res.json() : null)
+          .then(doc => {
+            if (doc?.ownerEmail) {
               setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, ownerEmail: doc.ownerEmail } : t));
             }
-          }
-        } catch { /* ignore */ }
+          }).catch(() => {});
       }
-      setShowViewerShareModal(true);
       return;
     }
 
