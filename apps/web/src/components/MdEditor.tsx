@@ -5610,8 +5610,8 @@ ${html}
                       }).map((tab) => (
                         <div
                           key={tab.id}
-                          draggable
-                          onDragStart={() => setDragTabId(tab.id)}
+                          draggable={tab.ownerEmail !== EXAMPLE_OWNER}
+                          onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
@@ -5928,7 +5928,7 @@ ${html}
                             {!folder.collapsed && (
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {folderTabs.map(tab => (
-                                  <div key={tab.id} draggable onDragStart={() => setDragTabId(tab.id)} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                                  <div key={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
@@ -7147,92 +7147,104 @@ ${html}
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           }}
         >
-          {[
-            { label: "Rename", action: () => {
-              const tab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (!tab) return;
-              setInlineInput({
-                label: "Document name",
-                defaultValue: tab.title,
-                onSubmit: (trimmed) => {
-                  setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
-                  if (tab.id === activeTabIdRef.current) {
-                    const md = markdownRef.current;
-                    const lines = md.split("\n");
-                    const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
-                    if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
-                    else { lines.unshift(`# ${trimmed}`, ""); }
-                    const newMd = lines.join("\n");
-                    setMarkdown(newMd);
-                    doRender(newMd);
-                    setTitle(trimmed);
-                  }
-                  setInlineInput(null);
-                },
-              });
-            }},
-            { label: "Duplicate", action: () => {
-              const tab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (tab) {
-                const id = `tab-${tabIdCounter++}`;
-                const t = tab.title + " (copy)";
-                setTabs(prev => [...prev, { id, title: t, markdown: tab.markdown, permission: "mine", shared: false, isDraft: true }]);
-                autoSave.createDocument({
-                  markdown: tab.markdown,
-                  title: t,
-                  userId: user?.id,
-                  anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                }).then(result => {
-                  if (result) {
-                    setTabs(prev => {
-                      const withoutDup = prev.filter(x => !(x.cloudId === result.id && x.id !== id));
-                      return withoutDup.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x);
-                    });
-                  }
-                });
-              }
-            }},
-            { label: "Share", action: () => {
-              const tab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (tab) { switchTab(tab.id); setTimeout(() => handleShare(), 100); }
-            }},
-            { label: "Download .md", action: () => {
-              const tab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (tab) {
-                const blob = new Blob([tab.markdown], { type: "text/markdown" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = `${tab.title || "document"}.md`; a.click();
-                URL.revokeObjectURL(url);
-              }
-            }},
-            ...folders.filter(f => !f.section || f.section === "my").map(f => ({
-              label: `Move to ${f.name}`,
-              action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
-            })),
-            ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
-              label: "Move to root",
-              action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
-            }] : []),
-            ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
-              const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
-              if (trashTab) softDeleteOnServer(trashTab);
-              setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
-              if (docContextMenu.tabId === activeTabId) {
-                const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
-                if (remaining.length) switchTab(remaining[0].id);
-              }
-            }, danger: true }] : []),
-            ...(tabs.find(t => t.id === docContextMenu.tabId)?.ownerEmail === EXAMPLE_OWNER ? [{
-              label: "Hide example", action: () => {
+          {(() => {
+            const isExample = tabs.find(t => t.id === docContextMenu.tabId)?.ownerEmail === EXAMPLE_OWNER;
+            return isExample ? [
+              { label: "Download .md", action: () => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (tab) {
+                  const blob = new Blob([tab.markdown], { type: "text/markdown" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `${tab.title || "document"}.md`; a.click();
+                  URL.revokeObjectURL(url);
+                }
+              }},
+              { label: "Hide example", action: () => {
                 setHiddenExampleIds(prev => new Set([...prev, docContextMenu.tabId]));
                 if (docContextMenu.tabId === activeTabId) {
                   const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId && !hiddenExampleIds.has(t.id));
                   if (remaining.length) switchTab(remaining[0].id);
                 }
-              },
-            }] : []),
-          ].map((item) => (
+              }},
+            ] : [
+              { label: "Rename", action: () => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (!tab) return;
+                setInlineInput({
+                  label: "Document name",
+                  defaultValue: tab.title,
+                  onSubmit: (trimmed) => {
+                    setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
+                    if (tab.id === activeTabIdRef.current) {
+                      const md = markdownRef.current;
+                      const lines = md.split("\n");
+                      const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
+                      if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
+                      else { lines.unshift(`# ${trimmed}`, ""); }
+                      const newMd = lines.join("\n");
+                      setMarkdown(newMd);
+                      doRender(newMd);
+                      setTitle(trimmed);
+                    }
+                    setInlineInput(null);
+                  },
+                });
+              }},
+              { label: "Duplicate", action: () => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (tab) {
+                  const id = `tab-${tabIdCounter++}`;
+                  const t = tab.title + " (copy)";
+                  setTabs(prev => [...prev, { id, title: t, markdown: tab.markdown, permission: "mine", shared: false, isDraft: true }]);
+                  autoSave.createDocument({
+                    markdown: tab.markdown,
+                    title: t,
+                    userId: user?.id,
+                    anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                  }).then(result => {
+                    if (result) {
+                      setTabs(prev => {
+                        const withoutDup = prev.filter(x => !(x.cloudId === result.id && x.id !== id));
+                        return withoutDup.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x);
+                      });
+                    }
+                  });
+                }
+              }},
+              { label: "Share", action: () => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (tab) { switchTab(tab.id); setTimeout(() => handleShare(), 100); }
+              }},
+              { label: "Download .md", action: () => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (tab) {
+                  const blob = new Blob([tab.markdown], { type: "text/markdown" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `${tab.title || "document"}.md`; a.click();
+                  URL.revokeObjectURL(url);
+                }
+              }},
+              ...folders.filter(f => !f.section || f.section === "my").map(f => ({
+                label: `Move to ${f.name}`,
+                action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
+              })),
+              ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
+                label: "Move to root",
+                action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
+              }] : []),
+              ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
+                const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (trashTab) softDeleteOnServer(trashTab);
+                setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                if (docContextMenu.tabId === activeTabId) {
+                  const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
+                  if (remaining.length) switchTab(remaining[0].id);
+                }
+              }, danger: true }] : []),
+            ];
+          })().map((item) => (
             <button
               key={item.label}
               onClick={() => { item.action(); setDocContextMenu(null); }}
@@ -7473,13 +7485,13 @@ ${html}
             <button onClick={() => {
               const t = Date.now();
               const existingExampleIds = new Set(tabs.filter(tab => tab.ownerEmail === EXAMPLE_OWNER).map(tab => tab.id));
-              const newExamples = EXAMPLE_TABS.map((ex, i) => ({
-                ...ex,
-                id: existingExampleIds.has(ex.id) ? `tab-${t}-${i}` : ex.id,
-              })).filter(ex => !existingExampleIds.has(ex.id));
-              if (newExamples.length > 0) {
-                setTabs(prev => [...prev, ...newExamples]);
+              // Only restore examples that were deleted — never create duplicates
+              const missingExamples = EXAMPLE_TABS.filter(ex => !existingExampleIds.has(ex.id));
+              if (missingExamples.length > 0) {
+                setTabs(prev => [...prev, ...missingExamples]);
               }
+              // Also un-delete any soft-deleted examples
+              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER && t.deleted ? { ...t, deleted: false } : t));
               // Unhide all hidden examples
               setHiddenExampleIds(new Set());
               setSidebarContextMenu(null);
@@ -7505,7 +7517,7 @@ ${html}
             }}
           >
             {[
-              { label: "Rename", action: () => {
+              ...(folderContextMenu.folderId !== EXAMPLES_FOLDER_ID ? [{ label: "Rename", action: () => {
                 const folder = folders.find(f => f.id === folderContextMenu.folderId);
                 if (!folder) return;
                 setInlineInput({ label: "Folder name", defaultValue: folder.name, onSubmit: (name) => {
@@ -7513,14 +7525,14 @@ ${html}
                   fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folder.id, name }) }).catch(() => {});
                   setInlineInput(null);
                 }});
-              }},
+              }}] : []),
               { label: "Collapse / Expand", action: () => {
                 setFolders(prev => prev.map(f => f.id === folderContextMenu.folderId ? { ...f, collapsed: !f.collapsed } : f));
                 fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId, collapsed: !folders.find(f => f.id === folderContextMenu.folderId)?.collapsed }) }).catch(() => {});
               }},
-              { label: "Delete folder", action: () => {
+              ...(folderContextMenu.folderId !== EXAMPLES_FOLDER_ID ? [{ label: "Delete folder", action: () => {
                 setFolderContextMenu(prev => prev ? { ...prev, confirmDelete: true } : null);
-              }, danger: true, noClose: true },
+              }, danger: true, noClose: true }] : []),
             ].map((item) => (
               <button
                 key={item.label}

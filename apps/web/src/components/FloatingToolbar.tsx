@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  Undo2, Redo2, List, ListOrdered, IndentIncrease, IndentDecrease,
+  Quote, Minus, Link2, ImageIcon, RemoveFormatting,
+} from "lucide-react";
 
 interface FloatingToolbarProps {
   containerRef: React.RefObject<HTMLElement | null>;
@@ -109,10 +113,10 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
     >
       {/* Undo / Redo */}
       <button className={b} onClick={() => exec("undo")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+        <Undo2 size={I} strokeWidth={1.5} />
       </button>
       <button className={b} onClick={() => exec("redo")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 7H6a3 3 0 000 6h2"/><path d="M10 4l3 3-3 3"/></svg>
+        <Redo2 size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
@@ -140,40 +144,40 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
 
       {/* Lists */}
       <button className={`${b} ${active.ul ? on : ""}`} onClick={() => exec("insertUnorderedList")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="4" r="1"/><circle cx="3" cy="8" r="1"/><circle cx="3" cy="12" r="1"/><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+        <List size={I} strokeWidth={1.5} />
       </button>
       <button className={`${b} ${active.ol ? on : ""}`} onClick={() => exec("insertOrderedList")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><text x="1" y="5" fontSize="4.5" fontWeight="700">1</text><text x="1" y="9" fontSize="4.5" fontWeight="700">2</text><text x="1" y="13" fontSize="4.5" fontWeight="700">3</text><rect x="6" y="3" width="8" height="2" rx="0.5"/><rect x="6" y="7" width="8" height="2" rx="0.5"/><rect x="6" y="11" width="8" height="2" rx="0.5"/></svg>
+        <ListOrdered size={I} strokeWidth={1.5} />
       </button>
       <button className={b} onClick={() => exec("indent")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M3 7l2 1.5L3 10"/></svg>
+        <IndentIncrease size={I} strokeWidth={1.5} />
       </button>
       <button className={b} onClick={() => exec("outdent")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 4h10M7 8h6M7 12h6M5 7l-2 1.5L5 10"/></svg>
+        <IndentDecrease size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
       {/* Block */}
       <button className={`${b} ${blockType === "blockquote" ? on : ""}`} onClick={() => fmtBlock("blockquote")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h4v4H5.5L4 10H3V3zm6 0h4v4h-1.5L10 10H9V3z"/></svg>
+        <Quote size={I} strokeWidth={1.5} />
       </button>
       <button className={b} onClick={() => exec("insertHorizontalRule")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg>
+        <Minus size={I} strokeWidth={2} />
       </button>
       {sep}
 
       {/* Link, Image */}
       <button className={b} onClick={() => setInputPopup({ label: "URL", onSubmit: (u) => { exec("createLink", u); setInputPopup(null); } })}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M7 9l2-2"/><rect x="1" y="7" width="5" height="5" rx="1.5" transform="rotate(-45 3.5 9.5)"/><rect x="7" y="1" width="5" height="5" rx="1.5" transform="rotate(-45 9.5 3.5)"/></svg>
+        <Link2 size={I} strokeWidth={1.5} />
       </button>
       <button className={b} onClick={() => setInputPopup({ label: "Image URL", onSubmit: (u) => { exec("insertImage", u); setInputPopup(null); } })}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.2"/><path d="M2 11l3.5-3 2.5 2 3-2.5L14 11" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <ImageIcon size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
       {/* Clear */}
       <button className={b} onClick={() => exec("removeFormat")}>
-        <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 13h10M6 3l-2.5 7h9L10 3"/><line x1="4" y1="8" x2="12" y2="8"/></svg>
+        <RemoveFormatting size={I} strokeWidth={1.5} />
       </button>
       {/* Inline input popup */}
       {inputPopup && (
