@@ -572,9 +572,8 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
-  } else if (tab.source) {
-    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e";
-    tip = tab.source === "vscode" ? "Synced from VS Code" : tab.source === "chrome" ? "Captured from Chrome" : tab.source === "mcp" ? "Created via MCP" : "Synced";
+  } else if (tab.source || tab.cloudId) {
+    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e"; tip = "Synced";
   } else {
     Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private document";
   }
