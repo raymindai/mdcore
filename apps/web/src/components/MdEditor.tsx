@@ -562,13 +562,17 @@ function resolveAvatar(profile: { avatar_url?: string | null } | null, user: { e
   return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
 }
 
-/** Document status icon with native title tooltip */
-function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string }; isActive: boolean }) {
+/** Document status icon with hover tooltip */
+function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string; permission?: string }; isActive: boolean }) {
   let Icon: typeof Cloud;
   let color: string;
   let tip: string;
 
-  if (tab.isDraft === false && tab.isRestricted) {
+  if (tab.permission === "readonly") {
+    Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
+  } else if (tab.permission === "editable") {
+    Icon = Pencil; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Editable";
+  } else if (tab.isDraft === false && tab.isRestricted) {
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
@@ -5884,18 +5888,7 @@ ${html}
                           onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.permission === "readonly" ? (
-                            <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          ) : tab.permission === "editable" ? (
-                            /* Pencil icon — editor access */
-                            <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          ) : tab.isSharedByMe ? (
-                            /* Share icon — my doc, shared with others */
-                            <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          ) : (
-                            /* Document icon — my doc, not shared */
-                            <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          )}
+                          <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{tab.title || "Untitled"}</span>
                             {showSharedOwner && tab.ownerEmail && (
@@ -5947,11 +5940,7 @@ ${html}
                                     }}
                                     onClick={(e) => handleDocClick(tab.id, e)}
                                   >
-                                    {tab.permission === "editable" ? (
-                                      <Pencil width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                                    ) : (
-                                      <Eye width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                                    )}
+                                    <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                                     <div className="flex-1 min-w-0">
                                       <span className="truncate block">{tab.title || "Untitled"}</span>
                                       {showSharedOwner && tab.ownerEmail && (
@@ -6005,11 +5994,7 @@ ${html}
                             } catch { window.location.href = `/?from=${doc.id}`; }
                           }}
                         >
-                          {doc.editMode === "public" ? (
-                            <Pencil width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
-                          ) : (
-                            <Eye width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
-                          )}
+                          <DocStatusIcon tab={{ permission: doc.editMode === "public" ? "editable" : "readonly" }} isActive={false} />
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{doc.title || "Untitled"}</span>
                             {showSharedOwner && ((doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName) && (
