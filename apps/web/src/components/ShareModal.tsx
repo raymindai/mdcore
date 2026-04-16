@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { setAllowedEmails, changeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
+import { Lock, Link2, Unlock, X, Trash2, Lock as LockIcon, Link as LinkIcon } from "lucide-react";
 
 interface ShareModalProps {
   docId: string;
@@ -144,9 +145,7 @@ export default function ShareModal({
             className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
             style={{ color: "var(--text-muted)" }}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8"/>
-            </svg>
+            <X width={14} height={14} />
           </button>
         </div>
 
@@ -267,9 +266,7 @@ export default function ShareModal({
                     style={{ color: "var(--text-faint)" }}
                     title="Remove access"
                   >
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <path d="M4 4l8 8M12 4l-8 8"/>
-                    </svg>
+                    <X width={10} height={10} />
                   </button>
                 </div>
                 );
@@ -285,9 +282,9 @@ export default function ShareModal({
           </label>
           <div className="flex flex-col gap-1.5">
             {([
-              { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
-              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007-7l-5-5a5 5 0 00-7 7l5 5z"/><path d="M6 6l4 4"/></svg> },
-              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M10 7V5a2 2 0 00-4 0"/></svg> },
+              { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <Lock width={16} height={16} strokeWidth={1.5} /> },
+              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <Link2 width={16} height={16} strokeWidth={1.5} /> },
+              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <Unlock width={16} height={16} strokeWidth={1.5} /> },
             ]).map((opt) => {
               const selected = generalAccess === opt.value;
               return (
@@ -331,7 +328,7 @@ export default function ShareModal({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[rgba(239,68,68,0.1)]"
               style={{ color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="8" width="10" height="7" rx="1.5"/><path d="M5 8V5a3 3 0 016 0v3"/></svg>
+              <Lock width={12} height={12} />
               Make Private
             </button>
           )}
@@ -340,9 +337,7 @@ export default function ShareModal({
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: copied ? "#4ade80" : "var(--text-secondary)" }}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 10l4-4"/><path d="M8.5 3.5L10 2a2 2 0 012.83 2.83L11.5 6.17"/><path d="M4.5 9.83L3.17 11.17A2 2 0 006 14l1.5-1.5"/>
-            </svg>
+            <Link2 width={14} height={14} />
             {copied ? "Link copied!" : "Copy link"}
           </button>
           <span style={{ flex: 1 }} />
