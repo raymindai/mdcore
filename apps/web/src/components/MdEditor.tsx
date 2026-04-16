@@ -5595,13 +5595,14 @@ ${html}
                         >
                           {tab.isDraft === false && tab.isRestricted ? (
                             <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                          ) : tab.isDraft === false ? (
+                          ) : tab.isDraft === false && tab.isSharedByMe ? (
                             <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
+                          ) : tab.source ? (
+                            <RefreshCw width={12} height={12} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#22c55e" }} />
                           ) : (
                             <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                           )}
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                          {tab.source === "vscode" && <Code2 width={10} height={10} className="shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }} />}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                             <MoreHorizontal width={14} height={14} />
@@ -5714,13 +5715,14 @@ ${html}
                                   >
                                     {tab.isDraft === false && tab.isRestricted ? (
                                       <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                                    ) : tab.isDraft === false ? (
+                                    ) : tab.isDraft === false && tab.isSharedByMe ? (
                                       <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
+                                    ) : tab.source ? (
+                                      <RefreshCw width={12} height={12} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#22c55e" }} />
                                     ) : (
                                       <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
                                     )}
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                                    {tab.source === "vscode" && <Code2 width={10} height={10} className="shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }} />}
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
                                       <MoreHorizontal width={14} height={14} />
