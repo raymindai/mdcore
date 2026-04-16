@@ -467,16 +467,14 @@ export default function DocumentViewer({
       >
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</Link>
-          <Link href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }}>Plugins</Link>
-          <Link href="/privacy" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Privacy</Link>
-          <Link href="/terms" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }}>Terms</Link>
+          <a href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">VS Code</a>
+          <a href="https://chrome.google.com/webstore" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">Chrome</a>
+          <Link href="/privacy" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }}>Privacy</Link>
           <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <span className="hidden sm:inline">{markdown.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
-          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
           <span>{markdown.length.toLocaleString()} chars</span>
-          <span className="hidden sm:inline" style={{ color: "var(--border)" }}>·</span>
           <span className="hidden sm:inline">{markdown.split("\n").length.toLocaleString()} lines</span>
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
