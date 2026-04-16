@@ -563,7 +563,7 @@ function resolveAvatar(profile: { avatar_url?: string | null } | null, user: { e
 }
 
 /** Document status icon with native title tooltip */
-function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string }; isActive: boolean }) {
+function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string }; isActive: boolean }) {
   let Icon: typeof Cloud;
   let color: string;
   let tip: string;
