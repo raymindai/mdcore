@@ -286,8 +286,8 @@ export default function ShareModal({
           <div className="flex flex-col gap-1.5">
             {([
               { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M6 7V5a2 2 0 114 0v2"/></svg> },
-              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12"/></svg> },
-              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c-2 2.5-2 9.5 0 12M8 2c2 2.5 2 9.5 0 12"/></svg> },
+              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007-7l-5-5a5 5 0 00-7 7l5 5z"/><path d="M6 6l4 4"/></svg> },
+              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="4" y="7" width="8" height="6" rx="1.5"/><path d="M10 7V5a2 2 0 00-4 0"/></svg> },
             ]).map((opt) => {
               const selected = generalAccess === opt.value;
               return (

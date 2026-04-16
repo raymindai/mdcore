@@ -4003,19 +4003,21 @@ export default function MdEditor() {
 
     const isMine = !currentTab?.permission || currentTab.permission === "mine";
     if (cid && isMine && isAuthenticated && user) {
-      // Publish the draft first if needed (isDraft could be true OR undefined)
-      if (currentTab?.isDraft !== false) {
-        try {
-          await fetch(`/api/docs/${cid}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "publish", userId: user.id }),
-          });
-          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
-        } catch { showToast("Failed to publish document", "error"); }
-      }
-      // Sync title + fetch sharing info before opening modal
-      if (cid) {
+      // Open modal immediately — data loads in background
+      setShowShareModal(true);
+
+      // Background: publish, sync title, fetch sharing state
+      (async () => {
+        if (currentTab?.isDraft !== false) {
+          try {
+            await fetch(`/api/docs/${cid}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "publish", userId: user.id }),
+            });
+            setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
+          } catch { showToast("Failed to publish document", "error"); }
+        }
         if (title) {
           fetch(`/api/docs/${cid}`, {
             method: "PATCH",
@@ -4023,7 +4025,6 @@ export default function MdEditor() {
             body: JSON.stringify({ action: "auto-save", title, userId: user.id }),
           }).catch(() => {});
         }
-        // Fetch current sharing state
         try {
           const res = await fetch(`/api/docs/${cid}`, { headers: authHeaders });
           if (res.ok) {
@@ -4031,7 +4032,6 @@ export default function MdEditor() {
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
             if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
             if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
-            // Mark as shared if it has sharing settings
             const hasSharing = (doc.allowedEmails?.length > 0) ||
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account");
             if (hasSharing) {
@@ -4043,8 +4043,7 @@ export default function MdEditor() {
             }
           }
         } catch { /* ignore */ }
-      }
-      setShowShareModal(true);
+      })();
       return;
     }
 
