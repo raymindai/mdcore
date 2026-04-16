@@ -25,6 +25,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, Cloud, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -5333,7 +5334,7 @@ ${html}
                 style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-muted)", opacity: showSidebarHelp ? 1 : 0.6 }}
                 title="What do the icons and filters mean?"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a2 2 0 013.6.8c0 1.2-1.8 1.2-1.8 2.4"/><circle cx="8" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>
+                <HelpCircle width={12} height={12} />
               </button>
             </div>
             <div className="flex items-stretch gap-1">
@@ -6247,7 +6248,7 @@ ${html}
                           className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 12l3.5-4-3.5-4M14 8H6"/></svg>
+                          <LogOut width={12} height={12} />
                           Sign Out
                         </button>
                       </div>
@@ -6543,7 +6544,7 @@ ${html}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 4.5L14 6l-4.5 1.5L8 12l-1.5-4.5L2 6l4.5-1.5z"/><path d="M12 10l.75 2.25L15 13l-2.25.75L12 16l-.75-2.25L9 13l2.25-.75z" opacity="0.6"/></svg>
+                    <Sparkles width={11} height={11} />
                   </button>
                   <div className="absolute top-full right-0 mt-1.5 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -6559,7 +6560,7 @@ ${html}
                       className="flex items-center justify-center h-6 w-6 rounded-md transition-colors relative"
                       style={{ background: showHistory ? "var(--accent-dim)" : "transparent", color: showHistory ? "var(--accent)" : "var(--text-faint)" }}
                     >
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      <Clock width={11} height={11} />
                       {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-[7px] flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
                     </button>
                     <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
@@ -6576,7 +6577,7 @@ ${html}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
+                    <Upload width={11} height={11} />
                   </button>
                   {!showExportMenu && (
                     <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
@@ -6590,15 +6591,15 @@ ${html}
                       {/* Download section */}
                       <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Download</div>
                       <button onClick={() => { handleDownloadMd(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 1h8a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"/><path d="M6 5h4M6 8h4M6 11h2" strokeLinecap="round"/></svg>
+                        <FileText width={12} height={12} />
                         Markdown (.md)
                       </button>
                       <button onClick={handleDownloadHtml} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5M9 2l-2 12"/></svg>
+                        <Code width={12} height={12} />
                         HTML (.html)
                       </button>
                       <button onClick={handleDownloadTxt} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="3" y="1" width="10" height="14" rx="1"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>
+                        <FileText width={12} height={12} />
                         Plain Text (.txt)
                       </button>
                       <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
@@ -6612,11 +6613,11 @@ ${html}
                       {/* Copy as section */}
                       <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy to Clipboard</div>
                       <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 3.5L1.5 6L4 8.5M12 3.5l2.5 2.5L12 8.5"/></svg>
+                        <Code width={12} height={12} />
                         Raw HTML
                       </button>
                       <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 6h6M5 8.5h4M5 11h5"/></svg>
+                        <FileText width={12} height={12} />
                         Rich Text (Docs / Email)
                       </button>
                       <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
@@ -6624,7 +6625,7 @@ ${html}
                         Slack (mrkdwn)
                       </button>
                       <button onClick={() => { handleCopyPlainText(); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="3" y="1" width="10" height="14" rx="1"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>
+                        <FileText width={12} height={12} />
                         Plain Text
                       </button>
                     </div>
@@ -6729,7 +6730,7 @@ ${html}
                   {/* History header */}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ color: "var(--accent)" }}><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                      <Clock width={12} height={12} style={{ color: "var(--accent)" }} />
                       <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>Version History</span>
                       {versions.length > 0 && (
                         <span className="text-[9px] px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{versions.length}</span>
@@ -6740,7 +6741,7 @@ ${html}
                       className="flex items-center justify-center w-5 h-5 rounded transition-colors"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                      <X width={10} height={10} />
                     </button>
                   </div>
                   {/* Version list */}
@@ -6751,7 +6752,7 @@ ${html}
                       </div>
                     ) : versions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                        <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" style={{ color: "var(--text-faint)", marginBottom: 8 }}><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                        <Clock width={24} height={24} strokeWidth={1} style={{ color: "var(--text-faint)", marginBottom: 8 }} />
                         <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>No versions yet</p>
                         <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>Versions are created each time you update the document.</p>
                       </div>
@@ -6801,7 +6802,7 @@ ${html}
                                   {restoringVersion === v.id ? (
                                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                                   ) : (
-                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 8a6 6 0 1111.5-2.3"/><path d="M2 3v5h5"/></svg>
+                                    <RotateCcw width={10} height={10} />
                                   )}
                                   {restoringVersion === v.id ? "Restoring..." : "Restore"}
                                 </button>
@@ -6960,7 +6961,7 @@ ${html}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                    <Copy width={11} height={11} />
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
                 </div>
@@ -6971,7 +6972,7 @@ ${html}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M8 2v8M5 7l3 3 3-3M3 12h10"/></svg>
+                    <Download width={11} height={11} />
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
                 </div>
@@ -7101,7 +7102,7 @@ ${html}
               }
             }}
           >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+            <AlignLeft width={10} height={10} />
             {wordCount.toLocaleString()}w
           </button>
           <div className="sm:hidden flex items-center gap-2 absolute bottom-full right-3 mb-1 px-3 py-1.5 rounded-lg" style={{ display: "none", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
@@ -7119,7 +7120,7 @@ ${html}
           </div>
           <div className="relative group hidden sm:block">
             <span className="flex items-center gap-0.5" style={{ color: "var(--accent)" }}>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M9 1L4 9h4l-1 6 5-8H8l1-6z"/></svg>
+              <Zap width={10} height={10} fill="currentColor" stroke="none" />
               {renderTime.toFixed(0)}ms
             </span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
@@ -7633,7 +7634,7 @@ ${html}
                 className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                 style={{ color: "var(--text-muted)" }}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                <X width={14} height={14} />
               </button>
             </div>
 
