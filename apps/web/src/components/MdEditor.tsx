@@ -562,6 +562,26 @@ function resolveAvatar(profile: { avatar_url?: string | null } | null, user: { e
   return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
 }
 
+/** Document status icon with native title tooltip */
+function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string }; isActive: boolean }) {
+  let Icon: typeof Cloud;
+  let color: string;
+  let tip: string;
+
+  if (tab.isDraft === false && tab.isRestricted) {
+    Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
+  } else if (tab.isDraft === false && tab.isSharedByMe) {
+    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
+  } else if (tab.source) {
+    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e";
+    tip = tab.source === "vscode" ? "Synced from VS Code" : tab.source === "chrome" ? "Captured from Chrome" : tab.source === "mcp" ? "Created via MCP" : "Synced";
+  } else {
+    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private document";
+  }
+
+  return <span className="shrink-0 flex items-center" title={tip}><Icon width={14} height={14} style={{ color }} /></span>;
+}
+
 /** Extract title from markdown (first # heading, or first line) */
 function extractTitleFromMd(md: string): string {
   const match = md.match(/^#\s+(.+)/m);
@@ -5593,15 +5613,7 @@ ${html}
                           onClick={(e) => handleDocClick(tab.id, e)}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                         >
-                          {tab.isDraft === false && tab.isRestricted ? (
-                            <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                          ) : tab.isDraft === false && tab.isSharedByMe ? (
-                            <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
-                          ) : tab.source ? (
-                            <RefreshCw width={12} height={12} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#22c55e" }} />
-                          ) : (
-                            <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          )}
+                          <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
@@ -5713,15 +5725,7 @@ ${html}
                                     onClick={(e) => handleDocClick(tab.id, e)}
                                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                                   >
-                                    {tab.isDraft === false && tab.isRestricted ? (
-                                      <Users width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#60a5fa" }} />
-                                    ) : tab.isDraft === false && tab.isSharedByMe ? (
-                                      <Share2 width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#4ade80" }} />
-                                    ) : tab.source ? (
-                                      <RefreshCw width={12} height={12} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "#22c55e" }} />
-                                    ) : (
-                                      <FileIcon width={14} height={14} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                                    )}
+                                    <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
