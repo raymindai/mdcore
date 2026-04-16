@@ -5457,11 +5457,13 @@ ${html}
             <div className="shrink-0 mx-2 mt-1.5 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
               <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
-              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Only visible to you</span></div>
-              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Has a public URL</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Not shared with anyone</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared with others</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Chrome, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Icons</div>
               <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private document</span></div>
+              <div className="flex items-center gap-2"><Cloud width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Synced from external source</span></div>
               <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared publicly</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
               <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
