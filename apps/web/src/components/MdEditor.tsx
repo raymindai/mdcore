@@ -5466,7 +5466,7 @@ ${html}
             <div className="shrink-0 mx-2 mt-1.5 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
               <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
-              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Not shared with anyone</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Not shared with anyone (includes synced)</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared with others</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Chrome, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
@@ -5490,9 +5490,9 @@ ${html}
             {(() => {
               const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
               const myTabs = docFilter === "all" ? allMyTabs
-                : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
+                : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
                 : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
-                : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
+                : docFilter === "synced" ? allMyTabs.filter(t => !!t.source)
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
