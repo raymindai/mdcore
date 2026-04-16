@@ -5632,12 +5632,29 @@ ${html}
                               className={`flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                               style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
-                              onDragOver={(e) => { e.preventDefault(); if (dragTabId) setDragOverTarget(folder.id); }}
+                              onDragOver={(e) => { e.preventDefault(); if (dragTabId || dragFolderId) setDragOverTarget(folder.id); }}
                               onDragLeave={() => setDragOverTarget(null)}
                               onDrop={(e) => {
                                 e.preventDefault();
                                 if (dragTabId) {
                                   setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
+                                }
+                                if (dragFolderId && dragFolderId !== folder.id) {
+                                  // Reorder: move dragged folder before this one
+                                  setFolders(prev => {
+                                    const dragged = prev.find(f => f.id === dragFolderId);
+                                    if (!dragged) return prev;
+                                    const without = prev.filter(f => f.id !== dragFolderId);
+                                    const targetIdx = without.findIndex(f => f.id === folder.id);
+                                    without.splice(targetIdx, 0, dragged);
+                                    // Sync sort_order to server
+                                    without.forEach((f, i) => {
+                                      if (f.id !== "folder-shared-examples") {
+                                        fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, sortOrder: i }) }).catch(() => {});
+                                      }
+                                    });
+                                    return without;
+                                  });
                                 }
                                 setDragTabId(null);
                                 setDragFolderId(null);
