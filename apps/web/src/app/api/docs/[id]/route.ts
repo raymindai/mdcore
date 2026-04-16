@@ -376,6 +376,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   // ─── Action: move-to-folder ───
   if (body.action === "move-to-folder") {
+    const requesterId = verified?.userId || req.headers.get("x-user-id");
+    if (!requesterId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Verify ownership
+    const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
+    if (!doc || doc.user_id !== requesterId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { error } = await supabase
       .from("documents")
       .update({ folder_id: body.folderId || null, updated_at: new Date().toISOString() })
