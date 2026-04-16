@@ -47,18 +47,17 @@ async function sendToMdfy(text) {
 // ─── Context Menus ───
 
 chrome.runtime.onInstalled.addListener(() => {
-  // Selection → send to mdfy
-  chrome.contextMenus.create({
-    id: "mdfy-send-selection",
-    title: "Send selection to mdfy.cc",
-    contexts: ["selection"],
-  });
-
-  // Page → capture full page as MD
-  chrome.contextMenus.create({
-    id: "mdfy-capture-page",
-    title: "Send this page to mdfy.cc",
-    contexts: ["page"],
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "mdfy-send-selection",
+      title: "Send selection to mdfy.cc",
+      contexts: ["selection"],
+    });
+    chrome.contextMenus.create({
+      id: "mdfy-capture-page",
+      title: "Send this page to mdfy.cc",
+      contexts: ["page"],
+    });
   });
 });
 
