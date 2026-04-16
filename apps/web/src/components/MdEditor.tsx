@@ -5610,13 +5610,19 @@ ${html}
                       ))}
 
                       {/* Folders */}
-                      {[...folders].filter(f => !f.section || f.section === "my").filter(f => !sidebarSearch || tabs.some(t => !t.deleted && t.folderId === f.id && (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
+                      {[...folders].filter(f => !f.section || f.section === "my").filter(f => {
+                        // Hide empty folders when search or filter is active
+                        const hasDocs = myTabs.some(t => t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+                        if (sidebarSearch && !hasDocs) return false;
+                        if (docFilter !== "all" && !hasDocs) return false;
+                        return true;
+                      }).sort((a, b) => {
                         if (sortMode === "az") return a.name.localeCompare(b.name);
                         if (sortMode === "za") return b.name.localeCompare(a.name);
                         const ai = folders.indexOf(a), bi = folders.indexOf(b);
                         return sortMode === "oldest" ? ai - bi : bi - ai;
                       }).map(folder => {
-                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+                        const folderTabs = myTabs.filter(t => t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
