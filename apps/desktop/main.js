@@ -1,6 +1,10 @@
 /* =========================================================
-   mdfy Desktop — Electron Shell with Local WASM Rendering
-   Uses @mdcore/engine WASM for offline Markdown rendering
+   mdfy for Mac — Electron + Local WASM + Sidebar + Sync
+   Architecture: mirrors VS Code extension model
+   - Sidebar with file list (ALL/SYNCED/LOCAL/CLOUD)
+   - SyncEngine (push/pull/conflict/offline queue/polling)
+   - AuthManager (mdfy:// OAuth callback, JWT tokens)
+   - Workspace folder scanning
    ========================================================= */
 
 const {
@@ -11,12 +15,34 @@ const {
   ipcMain,
   shell,
   nativeTheme,
-  protocol,
   net,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { mime } = require("./mime-types");
+
+// ─── Constants ───
+
+const MDFY_URL = "https://mdfy.cc";
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const SYNC_POLL_INTERVAL = 30000; // 30 seconds
+const PUSH_DEBOUNCE_MS = 2000;
+const MAX_OFFLINE_RETRIES = 5;
+const AUTO_SAVE_INTERVAL = 3000;
+
+const TEXT_EXTENSIONS = new Set([".md", ".markdown", ".mdown", ".mkd", ".txt"]);
+const ALL_SUPPORTED_EXTENSIONS = new Set([
+  ".md", ".markdown", ".mdown", ".mkd",
+  ".pdf", ".docx", ".pptx", ".xlsx",
+  ".html", ".csv", ".json", ".txt",
+]);
+
+const FILE_FILTERS = [
+  { name: "All Supported", extensions: ["md", "markdown", "txt", "pdf", "docx", "pptx", "xlsx", "html", "csv", "json"] },
+  { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
+  { name: "Documents", extensions: ["pdf", "docx", "pptx", "xlsx"] },
+  { name: "All Files", extensions: ["*"] },
+];
 
 // ─── WASM Engine ───
 
@@ -28,12 +54,8 @@ function renderMarkdown(markdown) {
     const html = result.html;
     const flavor = result.flavor;
     const flavorPrimary = flavor ? flavor.primary : "gfm";
-    // Free WASM objects to avoid memory leaks
     try { result.free(); } catch {}
-    return {
-      html: html,
-      flavor: { primary: flavorPrimary },
-    };
+    return { html, flavor: { primary: flavorPrimary } };
   } catch (err) {
     console.error("[wasm] Render error:", err);
     return {
@@ -43,214 +65,154 @@ function renderMarkdown(markdown) {
   }
 }
 
-// ─── State ───
+// ─── Persistent State Paths ───
+
+const USER_DATA_DIR = app.getPath("userData");
+const AUTH_PATH = path.join(USER_DATA_DIR, "auth.json");
+const RECENT_FILES_PATH = path.join(USER_DATA_DIR, "recent-files.json");
+const OFFLINE_QUEUE_PATH = path.join(USER_DATA_DIR, "offline-queue.json");
+const WORKSPACE_PATH = path.join(USER_DATA_DIR, "workspace.json");
+
+// ─── App State ───
 
 let mainWindow = null;
 let currentFilePath = null;
-let queuedFilePath = null;
+let currentWorkspaceFolder = null;
 let fileWatcher = null;
+let folderWatcher = null;
 let lastAutoSaveTime = 0;
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// ─── AuthManager ───
 
-const MDFY_URL = "https://mdfy.cc";
+const AuthManager = {
+  _data: null,
 
-// ─── Supported File Types ───
-
-const TEXT_EXTENSIONS = new Set([".md", ".markdown", ".mdown", ".mkd", ".txt"]);
-
-const ALL_SUPPORTED_EXTENSIONS = new Set([
-  ".md", ".markdown", ".mdown", ".mkd",
-  ".pdf", ".docx", ".pptx", ".xlsx",
-  ".html", ".csv", ".json",
-  ".txt",
-]);
-
-const FILE_FILTERS = [
-  { name: "All Supported", extensions: [
-    "md", "markdown", "txt", "pdf", "docx", "pptx", "xlsx",
-    "html", "csv", "json",
-  ]},
-  { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd"] },
-  { name: "Documents", extensions: ["pdf", "docx", "pptx", "xlsx"] },
-  { name: "Web & Data", extensions: ["html", "csv", "json"] },
-  { name: "All Files", extensions: ["*"] },
-];
-
-// ─── URL Scheme: mdfy:// ───
-
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient("mdfy", process.execPath, [path.resolve(process.argv[1])]);
-  }
-} else {
-  app.setAsDefaultProtocolClient("mdfy");
-}
-
-// ─── Single Instance ───
-
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-} else {
-  app.on("second-instance", (event, argv) => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-      const mdfyUrl = argv.find((a) => a.startsWith("mdfy://"));
-      if (mdfyUrl) {
-        handleMdfyUrl(mdfyUrl);
-        return;
-      }
-      const filePath = argv.find((a) => {
-        const ext = path.extname(a).toLowerCase();
-        return ALL_SUPPORTED_EXTENSIONS.has(ext);
-      });
-      if (filePath) openFileInApp(filePath);
-    }
-  });
-
-  app.on("open-url", (event, url) => {
-    event.preventDefault();
-    handleMdfyUrl(url);
-  });
-}
-
-function handleMdfyUrl(url) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === "open" || parsed.pathname.startsWith("/open")) {
-      const filePath = parsed.searchParams.get("file");
-      if (filePath && fs.existsSync(filePath)) {
-        openFileInApp(filePath);
-      }
-    } else if (parsed.hostname === "doc" || parsed.pathname.startsWith("/doc")) {
-      const docId = parsed.pathname.split("/").pop();
-      if (docId && mainWindow) {
-        openCloudDocumentInApp(docId);
-      }
-    }
-  } catch { /* ignore malformed URLs */ }
-}
-
-// ─── Connectivity Check ───
-
-function isOnline() {
-  return net.isOnline();
-}
-
-// ─── Create Window ───
-
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 600,
-    minHeight: 400,
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 16 },
-    backgroundColor: "#09090b",
-    webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-    },
-    icon: path.join(__dirname, "assets", "icon.png"),
-  });
-
-  // Show dashboard by default
-  mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
-
-  // Open DevTools in development
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools({ mode: "detach" });
-  }
-
-  // Handle new window requests (open in browser)
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("http")) {
-      shell.openExternal(url);
-    }
-    return { action: "deny" };
-  });
-
-  mainWindow.on("close", (e) => {
-    // No unsaved-changes prompt for now; auto-save handles it
-  });
-
-  mainWindow.on("closed", () => {
-    stopFileWatcher();
-    mainWindow = null;
-  });
-}
-
-// ─── Desktop Save & Publish ───
-
-function handleDesktopSave(markdown, docTitle) {
-  if (!markdown && markdown !== "") return;
-
-  if (currentFilePath) {
+  load() {
+    if (this._data) return this._data;
     try {
-      lastAutoSaveTime = Date.now();
-      fs.writeFileSync(currentFilePath, markdown, "utf8");
-      mainWindow.setTitle(`${path.basename(currentFilePath)} — mdfy`);
-      console.log("[save] Saved to:", currentFilePath);
+      this._data = JSON.parse(fs.readFileSync(AUTH_PATH, "utf8"));
+      return this._data;
+    } catch { return null; }
+  },
 
-      // If published, also push to cloud
-      const config = loadMdfyConfig(currentFilePath);
-      if (config && config.docId) {
-        pushToCloud(config, markdown, docTitle).catch((err) => {
-          console.error("[push] Cloud push failed:", err.message);
+  save(data) {
+    this._data = data;
+    try { fs.writeFileSync(AUTH_PATH, JSON.stringify(data, null, 2)); } catch {}
+  },
+
+  clear() {
+    this._data = null;
+    try { fs.unlinkSync(AUTH_PATH); } catch {}
+  },
+
+  getToken() {
+    const data = this.load();
+    if (!data || !data.token) return null;
+    // Check expiry via JWT decode (no verification)
+    try {
+      const payload = JSON.parse(
+        Buffer.from(data.token.split(".")[1], "base64").toString()
+      );
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Token expired — try refresh
+        return null;
+      }
+      return data.token;
+    } catch {
+      return data.token; // Can't decode, return as-is
+    }
+  },
+
+  getUserId() {
+    const data = this.load();
+    if (!data) return null;
+    if (data.userId) return data.userId;
+    if (data.token) {
+      try {
+        const payload = JSON.parse(
+          Buffer.from(data.token.split(".")[1], "base64").toString()
+        );
+        return payload.sub || payload.userId || payload.user_id || null;
+      } catch { return null; }
+    }
+    return null;
+  },
+
+  getEmail() {
+    const data = this.load();
+    return data?.email || null;
+  },
+
+  isLoggedIn() {
+    return !!this.getToken();
+  },
+
+  getHeaders() {
+    const headers = { "Content-Type": "application/json" };
+    const token = this.getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const userId = this.getUserId();
+    if (userId) headers["x-user-id"] = userId;
+    const email = this.getEmail();
+    if (email) headers["x-user-email"] = email;
+    return headers;
+  },
+
+  async refreshToken() {
+    const data = this.load();
+    if (!data?.refreshToken) return false;
+    try {
+      const resp = await net.fetch(`${MDFY_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: data.refreshToken }),
+      });
+      if (!resp.ok) return false;
+      const result = await resp.json();
+      if (result.token) {
+        data.token = result.token;
+        if (result.refreshToken) data.refreshToken = result.refreshToken;
+        this.save(data);
+        return true;
+      }
+    } catch {}
+    return false;
+  },
+
+  handleAuthCallback(url) {
+    try {
+      const parsed = new URL(url);
+      const token = parsed.searchParams.get("token");
+      const refreshToken = parsed.searchParams.get("refresh_token");
+      if (!token) return false;
+
+      // Decode user info from JWT
+      let userId = null, email = null;
+      try {
+        const payload = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64").toString()
+        );
+        userId = payload.sub || payload.userId || payload.user_id;
+        email = payload.email;
+      } catch {}
+
+      this.save({ token, refreshToken, userId, email });
+
+      // Notify renderer
+      if (mainWindow) {
+        mainWindow.webContents.send("auth-changed", {
+          loggedIn: true,
+          email,
+          userId,
         });
       }
-    } catch (err) {
-      dialog.showErrorBox("Save Error", err.message);
-    }
-  } else {
-    dialog.showSaveDialog(mainWindow, {
-      defaultPath: (docTitle || "untitled") + ".md",
-      filters: [{ name: "Markdown", extensions: ["md"] }],
-    }).then((result) => {
-      if (!result.canceled && result.filePath) {
-        currentFilePath = result.filePath;
-        lastAutoSaveTime = Date.now();
-        fs.writeFileSync(result.filePath, markdown, "utf8");
-        mainWindow.setTitle(`${path.basename(result.filePath)} — mdfy`);
-        addToRecentFiles(result.filePath);
-      }
-    });
-  }
-}
+      return true;
+    } catch { return false; }
+  },
+};
 
-async function pushToCloud(config, markdown, title) {
-  const user = cachedUser || loadCachedUser();
-  const headers = { "Content-Type": "application/json" };
-  if (user) headers["x-user-id"] = user.id;
+// ─── .mdfy.json Sidecar ───
 
-  const response = await net.fetch(`${MDFY_URL}/api/docs/${config.docId}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({
-      editToken: config.editToken,
-      markdown,
-      title: title || extractTitleFromMd(markdown),
-      action: "auto-save",
-      userId: user?.id,
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`Push failed: ${response.status}`);
-  }
-  return true;
-}
-
-function extractTitleFromMd(md) {
-  const match = md.match(/^#\s+(.+)$/m);
-  return match ? match[1].trim() : null;
-}
-
-// .mdfy.json sidecar management
 function getMdfyConfigPath(filePath) {
   const dir = path.dirname(filePath);
   const base = path.basename(filePath, path.extname(filePath));
@@ -259,24 +221,487 @@ function getMdfyConfigPath(filePath) {
 
 function loadMdfyConfig(filePath) {
   try {
-    const configPath = getMdfyConfigPath(filePath);
-    const data = fs.readFileSync(configPath, "utf8");
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
+    return JSON.parse(fs.readFileSync(getMdfyConfigPath(filePath), "utf8"));
+  } catch { return null; }
 }
 
 function saveMdfyConfig(filePath, config) {
   try {
-    const configPath = getMdfyConfigPath(filePath);
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    fs.writeFileSync(getMdfyConfigPath(filePath), JSON.stringify(config, null, 2));
   } catch (err) {
     console.error("[config] Failed to save .mdfy.json:", err.message);
   }
 }
 
-// ─── File Watcher ───
+function deleteMdfyConfig(filePath) {
+  try { fs.unlinkSync(getMdfyConfigPath(filePath)); } catch {}
+}
+
+// ─── API Functions (mirrors publish.ts) ───
+
+async function apiPublish(markdown, title) {
+  const body = {
+    markdown,
+    title,
+    isDraft: false,
+    source: "desktop",
+  };
+  const userId = AuthManager.getUserId();
+  const email = AuthManager.getEmail();
+  if (userId) body.userId = userId;
+  if (email) body.userEmail = email;
+
+  const resp = await net.fetch(`${MDFY_URL}/api/docs`, {
+    method: "POST",
+    headers: AuthManager.getHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Publish failed: ${resp.status}`);
+  return resp.json();
+}
+
+async function apiUpdate(docId, editToken, markdown, title) {
+  const body = {
+    editToken,
+    markdown,
+    title,
+    action: "auto-save",
+  };
+  const userId = AuthManager.getUserId();
+  const email = AuthManager.getEmail();
+  if (userId) body.userId = userId;
+  if (email) body.userEmail = email;
+
+  const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
+    method: "PATCH",
+    headers: AuthManager.getHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Update failed: ${resp.status}`);
+  return resp.json();
+}
+
+async function apiPull(docId) {
+  const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
+    method: "GET",
+    headers: AuthManager.getHeaders(),
+  });
+  if (!resp.ok) throw new Error(`Pull failed: ${resp.status}`);
+  return resp.json();
+}
+
+async function apiCheckUpdatedAt(docId) {
+  try {
+    const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
+      method: "HEAD",
+      headers: AuthManager.getHeaders(),
+    });
+    if (resp.status === 404 || resp.status === 410) return { status: "deleted" };
+    if (!resp.ok) return { status: "error" };
+    const updatedAt = resp.headers.get("x-updated-at") || resp.headers.get("last-modified");
+    return { status: "ok", updated_at: updatedAt };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+async function apiGetCloudDocuments() {
+  const userId = AuthManager.getUserId();
+  if (!userId) return [];
+  try {
+    const resp = await net.fetch(`${MDFY_URL}/api/user/documents`, {
+      headers: AuthManager.getHeaders(),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.documents || [];
+  } catch { return []; }
+}
+
+async function apiDeleteDocument(docId, editToken) {
+  const body = { action: "soft-delete" };
+  if (editToken) body.editToken = editToken;
+  const userId = AuthManager.getUserId();
+  if (userId) body.userId = userId;
+
+  const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
+    method: "PATCH",
+    headers: AuthManager.getHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(`Delete failed: ${resp.status}`);
+  return true;
+}
+
+// ─── SyncEngine ───
+
+const SyncEngine = {
+  _pollTimer: null,
+  _pushTimers: new Map(),
+  _offlineQueue: [],
+
+  start() {
+    this.loadQueue();
+    this.startPolling();
+  },
+
+  stop() {
+    this.stopPolling();
+    for (const t of this._pushTimers.values()) clearTimeout(t);
+    this._pushTimers.clear();
+  },
+
+  startPolling() {
+    this.stopPolling();
+    this._pollTimer = setInterval(() => this.pollAll(), SYNC_POLL_INTERVAL);
+  },
+
+  stopPolling() {
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
+  },
+
+  loadQueue() {
+    try {
+      this._offlineQueue = JSON.parse(fs.readFileSync(OFFLINE_QUEUE_PATH, "utf8"));
+    } catch {
+      this._offlineQueue = [];
+    }
+  },
+
+  persistQueue() {
+    try {
+      fs.writeFileSync(OFFLINE_QUEUE_PATH, JSON.stringify(this._offlineQueue, null, 2));
+    } catch {}
+  },
+
+  // Debounced push on file save
+  onFileSaved(filePath, markdown) {
+    const existing = this._pushTimers.get(filePath);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(async () => {
+      this._pushTimers.delete(filePath);
+      try {
+        await this.push(filePath, markdown);
+      } catch (err) {
+        console.error("[sync] Push failed, queueing offline:", err.message);
+        this.queueOffline(filePath, markdown);
+      }
+    }, PUSH_DEBOUNCE_MS);
+
+    this._pushTimers.set(filePath, timer);
+  },
+
+  async push(filePath, markdown) {
+    const config = loadMdfyConfig(filePath);
+    if (!config) return; // Not published
+
+    // Conflict check
+    const check = await apiCheckUpdatedAt(config.docId);
+    if (check.status === "deleted") {
+      deleteMdfyConfig(filePath);
+      sendToRenderer("sync-status", { filePath, status: "unlinked" });
+      return;
+    }
+
+    if (
+      check.status === "ok" &&
+      config.lastServerUpdatedAt &&
+      new Date(check.updated_at).getTime() >
+        new Date(config.lastServerUpdatedAt).getTime()
+    ) {
+      // Server has newer changes — notify renderer for conflict resolution
+      sendToRenderer("sync-conflict", {
+        filePath,
+        serverUpdatedAt: check.updated_at,
+        localUpdatedAt: config.lastServerUpdatedAt,
+      });
+      return;
+    }
+
+    const title = extractTitle(markdown) || path.basename(filePath, ".md");
+    sendToRenderer("sync-status", { filePath, status: "syncing" });
+
+    const result = await apiUpdate(config.docId, config.editToken, markdown, title);
+    config.lastSyncedAt = new Date().toISOString();
+    config.lastServerUpdatedAt = result.updated_at;
+    saveMdfyConfig(filePath, config);
+
+    sendToRenderer("sync-status", { filePath, status: "synced" });
+  },
+
+  async pull(filePath) {
+    const config = loadMdfyConfig(filePath);
+    if (!config) return null;
+
+    sendToRenderer("sync-status", { filePath, status: "syncing" });
+
+    const remote = await apiPull(config.docId);
+    const markdown = remote.markdown || remote.content || "";
+
+    // Write to file
+    lastAutoSaveTime = Date.now();
+    fs.writeFileSync(filePath, markdown, "utf8");
+
+    // Update config
+    config.lastSyncedAt = new Date().toISOString();
+    config.lastServerUpdatedAt = remote.updated_at;
+    if (remote.editToken) config.editToken = remote.editToken;
+    saveMdfyConfig(filePath, config);
+
+    sendToRenderer("sync-status", { filePath, status: "synced" });
+
+    // If this file is currently open, reload it
+    if (filePath === currentFilePath && mainWindow) {
+      const result = renderMarkdown(markdown);
+      mainWindow.webContents.send("file-changed", {
+        markdown,
+        html: result.html,
+        flavor: result.flavor.primary,
+      });
+    }
+
+    return markdown;
+  },
+
+  async pullCloudDocument(docId, title) {
+    const remote = await apiPull(docId);
+    const markdown = remote.markdown || remote.content || "";
+
+    // Ask user where to save
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: (title || "untitled").replace(/[^a-zA-Z0-9-_ ]/g, "") + ".md",
+      filters: [{ name: "Markdown", extensions: ["md"] }],
+    });
+
+    if (result.canceled || !result.filePath) return null;
+
+    fs.writeFileSync(result.filePath, markdown, "utf8");
+    saveMdfyConfig(result.filePath, {
+      docId,
+      editToken: remote.editToken || "pulled",
+      lastSyncedAt: new Date().toISOString(),
+      lastServerUpdatedAt: remote.updated_at,
+    });
+
+    addToRecentFiles(result.filePath);
+    return result.filePath;
+  },
+
+  async pollAll() {
+    // Flush offline queue first
+    await this.flushOfflineQueue();
+
+    if (!AuthManager.isLoggedIn()) return;
+
+    // Find all .mdfy.json files in workspace
+    const sidecarFiles = this.findSidecars();
+
+    for (const sidecarPath of sidecarFiles) {
+      const mdPath = sidecarPath.replace(/\.mdfy\.json$/, ".md");
+      const config = loadMdfyConfig(mdPath);
+      if (!config) continue;
+
+      try {
+        const check = await apiCheckUpdatedAt(config.docId);
+
+        if (check.status === "deleted") {
+          deleteMdfyConfig(mdPath);
+          sendToRenderer("sync-status", { filePath: mdPath, status: "unlinked" });
+          continue;
+        }
+        if (check.status === "error") continue;
+
+        const serverTime = new Date(check.updated_at).getTime();
+        const localTime = new Date(config.lastServerUpdatedAt || config.lastSyncedAt).getTime();
+
+        if (serverTime > localTime) {
+          // Server has newer content — auto-pull if file not dirty
+          if (mdPath !== currentFilePath) {
+            // File not currently being edited — safe to auto-pull
+            await this.pull(mdPath);
+          } else {
+            // Currently editing — show conflict
+            sendToRenderer("sync-conflict", {
+              filePath: mdPath,
+              serverUpdatedAt: check.updated_at,
+              localUpdatedAt: config.lastServerUpdatedAt,
+            });
+          }
+        }
+      } catch {
+        // Network error, skip
+      }
+    }
+  },
+
+  findSidecars() {
+    const results = [];
+    const searchDirs = [];
+
+    if (currentWorkspaceFolder) {
+      searchDirs.push(currentWorkspaceFolder);
+    }
+
+    // Also check recent files' directories
+    const recent = loadRecentFiles();
+    for (const r of recent) {
+      const dir = path.dirname(r.path);
+      if (!searchDirs.includes(dir)) searchDirs.push(dir);
+    }
+
+    for (const dir of searchDirs) {
+      try {
+        const files = fs.readdirSync(dir);
+        for (const f of files) {
+          if (f.endsWith(".mdfy.json")) {
+            results.push(path.join(dir, f));
+          }
+        }
+      } catch {}
+    }
+
+    return results;
+  },
+
+  queueOffline(filePath, markdown) {
+    const existing = this._offlineQueue.find((i) => i.filePath === filePath);
+    const retryCount = existing ? existing.retryCount + 1 : 0;
+    this._offlineQueue = this._offlineQueue.filter((i) => i.filePath !== filePath);
+
+    if (retryCount >= MAX_OFFLINE_RETRIES) {
+      console.warn("[sync] Max retries exceeded for:", filePath);
+      return;
+    }
+
+    this._offlineQueue.push({
+      filePath,
+      title: extractTitle(markdown) || path.basename(filePath, ".md"),
+      retryCount,
+      queuedAt: new Date().toISOString(),
+    });
+    this.persistQueue();
+  },
+
+  async flushOfflineQueue() {
+    if (this._offlineQueue.length === 0) return;
+    const queue = [...this._offlineQueue];
+    this._offlineQueue = [];
+
+    for (const item of queue) {
+      if (item.retryCount >= MAX_OFFLINE_RETRIES) continue;
+      const config = loadMdfyConfig(item.filePath);
+      if (!config) continue;
+
+      try {
+        // Re-read file content (not stale queue data)
+        const markdown = fs.readFileSync(item.filePath, "utf8");
+        const result = await apiUpdate(config.docId, config.editToken, markdown, item.title);
+        config.lastSyncedAt = new Date().toISOString();
+        config.lastServerUpdatedAt = result.updated_at;
+        saveMdfyConfig(item.filePath, config);
+      } catch {
+        this._offlineQueue.push({ ...item, retryCount: item.retryCount + 1 });
+      }
+    }
+    this.persistQueue();
+  },
+};
+
+// ─── Workspace Scanner ───
+
+function scanWorkspaceFiles(folderPath) {
+  const results = [];
+  const folders = [];
+  if (!folderPath) return { files: results, folders };
+
+  function walk(dir, depth) {
+    if (depth > 5) return;
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name.startsWith(".")) continue;
+        if (entry.name === "node_modules") continue;
+        if (entry.name.endsWith(".mdfy.json")) continue;
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          folders.push({
+            path: fullPath,
+            name: entry.name,
+            relativePath: path.relative(folderPath, fullPath),
+            depth,
+          });
+          walk(fullPath, depth + 1);
+        } else if (entry.isFile() && entry.name.endsWith(".md")) {
+          const config = loadMdfyConfig(fullPath);
+          const stats = fs.statSync(fullPath);
+          results.push({
+            filePath: fullPath,
+            fileName: entry.name,
+            relativePath: path.relative(folderPath, fullPath),
+            parentFolder: path.relative(folderPath, dir) || null,
+            config: config || null,
+            modifiedAt: stats.mtime.toISOString(),
+            size: stats.size,
+          });
+        }
+      }
+    } catch {}
+  }
+
+  walk(folderPath, 0);
+  return { files: results, folders };
+}
+
+// ─── Recent Files ───
+
+function loadRecentFiles() {
+  try {
+    const data = JSON.parse(fs.readFileSync(RECENT_FILES_PATH, "utf8"));
+    return data
+      .map((f) => (typeof f === "string" ? { path: f, openedAt: new Date().toISOString() } : f))
+      .filter((f) => f.path && fs.existsSync(f.path));
+  } catch { return []; }
+}
+
+function addToRecentFiles(filePath) {
+  const recent = loadRecentFiles();
+  const filtered = recent.filter((f) => f.path !== filePath);
+  filtered.unshift({ path: filePath, openedAt: new Date().toISOString() });
+  const trimmed = filtered.slice(0, 20);
+  try {
+    fs.writeFileSync(RECENT_FILES_PATH, JSON.stringify(trimmed, null, 2));
+  } catch {}
+}
+
+// ─── Workspace Persistence ───
+
+function loadWorkspace() {
+  try {
+    return JSON.parse(fs.readFileSync(WORKSPACE_PATH, "utf8"));
+  } catch { return null; }
+}
+
+function saveWorkspace(data) {
+  try {
+    fs.writeFileSync(WORKSPACE_PATH, JSON.stringify(data, null, 2));
+  } catch {}
+}
+
+// ─── File Operations ───
+
+function isTextFile(filePath) {
+  return TEXT_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
+function extractTitle(md) {
+  const match = (md || "").match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : null;
+}
 
 function startFileWatcher(filePath) {
   stopFileWatcher();
@@ -285,7 +710,6 @@ function startFileWatcher(filePath) {
       if (eventType === "change" && mainWindow) {
         if (fileWatcher._debounce) clearTimeout(fileWatcher._debounce);
         fileWatcher._debounce = setTimeout(() => {
-          // Skip if this change was likely from our own auto-save (within 2s)
           if (Date.now() - lastAutoSaveTime < 2000) return;
           try {
             const content = fs.readFileSync(filePath, "utf8");
@@ -309,23 +733,33 @@ function stopFileWatcher() {
   }
 }
 
-// ─── Open File in App ───
+function startFolderWatcher(folderPath) {
+  stopFolderWatcher();
+  try {
+    folderWatcher = fs.watch(folderPath, { recursive: true }, (eventType, filename) => {
+      if (!filename || !filename.endsWith(".md")) return;
+      if (folderWatcher._debounce) clearTimeout(folderWatcher._debounce);
+      folderWatcher._debounce = setTimeout(() => {
+        sendToRenderer("workspace-changed");
+      }, 500);
+    });
+  } catch {}
+}
 
-function isTextFile(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  return TEXT_EXTENSIONS.has(ext);
+function stopFolderWatcher() {
+  if (folderWatcher) {
+    folderWatcher.close();
+    folderWatcher = null;
+  }
 }
 
 function openFileInApp(filePath) {
   if (!mainWindow) return;
   const absolutePath = path.resolve(filePath);
   const ext = path.extname(absolutePath).toLowerCase();
-  console.log("[openFileInApp]", absolutePath, "ext:", ext, "isText:", isTextFile(absolutePath));
-  addToRecentFiles(absolutePath);
 
   if (!ALL_SUPPORTED_EXTENSIONS.has(ext)) {
-    const supported = Array.from(ALL_SUPPORTED_EXTENSIONS).map(e => e.slice(1)).join(", ");
-    dialog.showErrorBox("Unsupported Format", `mdfy does not support .${ext.slice(1)} files.\n\nSupported formats: ${supported}`);
+    dialog.showErrorBox("Unsupported Format", `mdfy does not support ${ext} files.`);
     return;
   }
 
@@ -336,172 +770,249 @@ function openFileInApp(filePath) {
       return;
     }
 
-    currentFilePath = absolutePath;
-    startFileWatcher(absolutePath);
-    const fileName = path.basename(absolutePath);
-    mainWindow.setTitle(`${fileName} — mdfy`);
+    addToRecentFiles(absolutePath);
 
     if (isTextFile(absolutePath)) {
-      // Text files: render locally with WASM
+      currentFilePath = absolutePath;
+      startFileWatcher(absolutePath);
       const content = fs.readFileSync(absolutePath, "utf8");
       const result = renderMarkdown(content);
-      loadEditorWithContent(content, result.html, absolutePath, result.flavor.primary);
+      const config = loadMdfyConfig(absolutePath);
+
+      mainWindow.setTitle(`${path.basename(absolutePath)} — mdfy`);
+      mainWindow.webContents.send("load-document", {
+        html: result.html,
+        markdown: content,
+        filePath: absolutePath,
+        flavor: result.flavor.primary,
+        config: config,
+      });
     } else {
-      // Binary/non-text files: try to open in browser or show error
-      openFileViaImport(absolutePath, fileName);
+      // Non-text: show import message
+      const msg = `Import ${ext} files by opening them on mdfy.cc.`;
+      const md = `# ${path.basename(absolutePath)}\n\n${msg}`;
+      const result = renderMarkdown(md);
+      mainWindow.webContents.send("load-document", {
+        html: result.html,
+        markdown: md,
+        filePath: null,
+        flavor: "gfm",
+        config: null,
+      });
     }
   } catch (err) {
     dialog.showErrorBox("Error", `Could not open file: ${err.message}`);
   }
 }
 
-function loadEditorWithContent(markdown, html, filePath, flavor) {
-  mainWindow.loadFile(path.join(__dirname, "renderer", "editor.html"));
-  mainWindow.webContents.once("did-finish-load", () => {
-    mainWindow.webContents.send("load-document", {
-      html: html,
-      markdown: markdown,
-      filePath: filePath || null,
-      flavor: flavor || "gfm",
-    });
+// ─── Helper ───
+
+function sendToRenderer(channel, data) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, data);
+  }
+}
+
+// ─── URL Scheme: mdfy:// ───
+
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient("mdfy", process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient("mdfy");
+}
+
+// ─── Single Instance ───
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (event, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+
+      const mdfyUrl = argv.find((a) => a.startsWith("mdfy://"));
+      if (mdfyUrl) {
+        handleMdfyUrl(mdfyUrl);
+        return;
+      }
+
+      const filePath = argv.find((a) => {
+        const ext = path.extname(a).toLowerCase();
+        return ALL_SUPPORTED_EXTENSIONS.has(ext);
+      });
+      if (filePath) openFileInApp(filePath);
+    }
+  });
+
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    handleMdfyUrl(url);
   });
 }
 
-function openFileViaImport(absolutePath, fileName) {
-  const stats = fs.statSync(absolutePath);
-  if (stats.size > MAX_FILE_SIZE) {
-    dialog.showErrorBox("File too large", "Files larger than 50MB are not supported.");
-    return;
-  }
+function handleMdfyUrl(url) {
+  try {
+    const parsed = new URL(url);
 
-  // For non-text files, we need the web app's import pipeline
-  // Open in browser as fallback
-  if (isOnline()) {
-    const buffer = fs.readFileSync(absolutePath);
-    const base64 = buffer.toString("base64");
-    const mimeType = mime(absolutePath);
-    const encoded = Buffer.from(`# Imported: ${fileName}\n\nThis file type requires the web editor for import.\n\nOpen at [mdfy.cc](https://mdfy.cc) to import .${path.extname(absolutePath).slice(1)} files.`).toString("utf8");
-    const result = renderMarkdown(encoded);
-    loadEditorWithContent(encoded, result.html, null, "gfm");
-  } else {
-    dialog.showErrorBox("Unsupported offline", `Importing ${path.extname(absolutePath)} files requires the web editor. Please open mdfy.cc in your browser.`);
+    // Auth callback: mdfy://auth?token=...&refresh_token=...
+    if (parsed.hostname === "auth" || parsed.pathname.startsWith("/auth")) {
+      AuthManager.handleAuthCallback(url);
+      return;
+    }
+
+    // Open file: mdfy://open?file=/path/to/file.md
+    if (parsed.hostname === "open" || parsed.pathname.startsWith("/open")) {
+      const filePath = parsed.searchParams.get("file");
+      if (filePath && fs.existsSync(filePath)) openFileInApp(filePath);
+      return;
+    }
+
+    // Open cloud doc: mdfy://doc/{docId}
+    if (parsed.hostname === "doc" || parsed.pathname.startsWith("/doc")) {
+      const docId = parsed.pathname.split("/").pop();
+      if (docId) openCloudDocumentInApp(docId);
+      return;
+    }
+  } catch {}
+}
+
+async function openCloudDocumentInApp(docId) {
+  if (!mainWindow || !net.isOnline()) return;
+  try {
+    const data = await apiPull(docId);
+    const markdown = data.markdown || data.content || "";
+    const result = renderMarkdown(markdown);
+    currentFilePath = null;
+    mainWindow.setTitle((data.title || docId) + " — mdfy");
+    mainWindow.webContents.send("load-document", {
+      html: result.html,
+      markdown,
+      filePath: null,
+      flavor: result.flavor.primary,
+      config: { docId, editToken: data.editToken },
+    });
+  } catch (err) {
+    shell.openExternal(`${MDFY_URL}/d/${docId}`);
   }
 }
 
-// Save current editor content to local file
-function saveCurrentToFile() {
-  // In the new architecture, the editor.js sends auto-save via IPC
-  // For manual "Save to Local File", we use the current markdown from auto-save
-  if (!mainWindow) return;
+// ─── Create Window ───
 
-  mainWindow.webContents.executeJavaScript(`
-    (function() {
-      // Try to get markdown from the global state in editor.js
-      var content = document.getElementById('content');
-      if (!content) return '';
-      // Quick extraction from contentEditable
-      return content.innerText || '';
-    })();
-  `).then(async (markdown) => {
-    if (!markdown) return;
-    if (currentFilePath) {
-      lastAutoSaveTime = Date.now();
-      fs.writeFileSync(currentFilePath, markdown, "utf8");
-      mainWindow.setTitle(path.basename(currentFilePath) + " — mdfy");
-    } else {
-      const result = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: "untitled.md",
-        filters: [{ name: "Markdown", extensions: ["md"] }],
-      });
-      if (!result.canceled && result.filePath) {
-        lastAutoSaveTime = Date.now();
-        fs.writeFileSync(result.filePath, markdown, "utf8");
-        currentFilePath = result.filePath;
-        mainWindow.setTitle(path.basename(result.filePath) + " — mdfy");
-        addToRecentFiles(result.filePath);
-      }
-    }
-  }).catch(() => {});
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 700,
+    minHeight: 400,
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 16, y: 16 },
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#09090b" : "#faf9f7",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+    },
+    icon: path.join(__dirname, "assets", "icon.png"),
+  });
+
+  // Single page — always load index.html
+  mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools({ mode: "detach" });
+  }
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("http")) shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  mainWindow.on("closed", () => {
+    stopFileWatcher();
+    stopFolderWatcher();
+    mainWindow = null;
+  });
 }
 
 // ─── IPC Handlers ───
+
+// --- File operations ---
 
 ipcMain.handle("open-file-dialog", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openFile"],
     filters: FILE_FILTERS,
   });
-  if (!result.canceled && result.filePaths.length > 0) {
+  if (!result.canceled && result.filePaths[0]) {
     openFileInApp(result.filePaths[0]);
     return result.filePaths[0];
   }
   return null;
 });
 
-ipcMain.handle("save-file-dialog", async (event, defaultName) => {
-  const result = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: defaultName || "untitled.md",
-    filters: [{ name: "Markdown", extensions: ["md"] }],
+ipcMain.handle("open-folder-dialog", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory"],
   });
-  return result.canceled ? null : result.filePath;
-});
-
-ipcMain.handle("save-file", async (event, filePath, content) => {
-  try {
-    lastAutoSaveTime = Date.now();
-    fs.writeFileSync(filePath, content, "utf8");
-    currentFilePath = filePath;
-    mainWindow.setTitle(`${path.basename(filePath)} — mdfy`);
-    return true;
-  } catch (err) {
-    dialog.showErrorBox("Save Error", err.message);
-    return false;
+  if (!result.canceled && result.filePaths[0]) {
+    currentWorkspaceFolder = result.filePaths[0];
+    saveWorkspace({ folder: currentWorkspaceFolder });
+    startFolderWatcher(currentWorkspaceFolder);
+    return currentWorkspaceFolder;
   }
+  return null;
 });
-
-ipcMain.handle("get-file-path", () => currentFilePath);
 
 ipcMain.handle("open-file-path", (event, filePath) => {
-  console.log("[IPC] open-file-path:", filePath);
   openFileInApp(filePath);
 });
 
-ipcMain.handle("open-editor", () => {
+ipcMain.handle("new-document", () => {
   currentFilePath = null;
   stopFileWatcher();
-  mainWindow.setTitle("mdfy — New Document");
-  loadEditorWithContent("", "", null, "gfm");
+  mainWindow.setTitle("Untitled — mdfy");
+  mainWindow.webContents.send("load-document", {
+    html: "<p><br></p>",
+    markdown: "",
+    filePath: null,
+    flavor: "gfm",
+    config: null,
+  });
 });
 
-ipcMain.handle("open-editor-with-content", (event, markdown, fileName) => {
-  currentFilePath = null;
-  stopFileWatcher();
-  const result = renderMarkdown(markdown || "");
-  mainWindow.setTitle(fileName || "mdfy");
-  loadEditorWithContent(markdown || "", result.html, null, result.flavor.primary);
-});
+ipcMain.handle("save-file", async (event, markdown) => {
+  if (currentFilePath) {
+    lastAutoSaveTime = Date.now();
+    fs.writeFileSync(currentFilePath, markdown, "utf8");
 
-ipcMain.handle("get-version", () => {
-  return app.getVersion();
-});
-
-ipcMain.handle("read-clipboard", () => {
-  const { clipboard } = require("electron");
-  return clipboard.readText() || "";
-});
-
-ipcMain.handle("get-recent-files", () => {
-  return loadRecentFiles();
-});
-
-ipcMain.handle("open-in-browser", (event, url) => {
-  shell.openExternal(url);
-});
-
-// ─── New IPC Handlers for Local WASM Rendering ───
-
-ipcMain.handle("render-markdown", (event, markdown) => {
-  return renderMarkdown(markdown);
+    // Push to cloud if published
+    const config = loadMdfyConfig(currentFilePath);
+    if (config && config.docId) {
+      SyncEngine.onFileSaved(currentFilePath, markdown);
+    }
+    return currentFilePath;
+  } else {
+    const title = extractTitle(markdown) || "untitled";
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: title + ".md",
+      filters: [{ name: "Markdown", extensions: ["md"] }],
+    });
+    if (!result.canceled && result.filePath) {
+      currentFilePath = result.filePath;
+      lastAutoSaveTime = Date.now();
+      fs.writeFileSync(result.filePath, markdown, "utf8");
+      mainWindow.setTitle(`${path.basename(result.filePath)} — mdfy`);
+      addToRecentFiles(result.filePath);
+      startFileWatcher(result.filePath);
+      return result.filePath;
+    }
+    return null;
+  }
 });
 
 ipcMain.handle("auto-save", (event, markdown) => {
@@ -509,232 +1020,396 @@ ipcMain.handle("auto-save", (event, markdown) => {
     lastAutoSaveTime = Date.now();
     try {
       fs.writeFileSync(currentFilePath, markdown, "utf8");
-    } catch (err) {
-      console.error("[auto-save] Failed:", err.message);
-    }
+    } catch {}
 
-    // Also push to cloud if published
     const config = loadMdfyConfig(currentFilePath);
     if (config && config.docId) {
-      pushToCloud(config, markdown, extractTitleFromMd(markdown)).catch((err) => {
-        console.error("[auto-save push] Cloud push failed:", err.message);
-      });
+      SyncEngine.onFileSaved(currentFilePath, markdown);
     }
   }
 });
 
-ipcMain.handle("go-home", () => {
-  currentFilePath = null;
-  stopFileWatcher();
-  mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
-  mainWindow.setTitle("mdfy");
+ipcMain.handle("save-file-as", async (event, content, defaultName, filters) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: defaultName || "export",
+    filters: filters || [{ name: "All Files", extensions: ["*"] }],
+  });
+  if (!result.canceled && result.filePath) {
+    fs.writeFileSync(result.filePath, content, "utf8");
+    return result.filePath;
+  }
+  return null;
 });
 
-// ─── User Auth & Cloud Documents ───
+ipcMain.handle("get-file-path", () => currentFilePath);
 
-let cachedUser = null;
+// --- Rendering ---
 
-const USER_CACHE_PATH = path.join(
-  app.getPath("userData"),
-  "user-cache.json"
-);
+ipcMain.handle("render-markdown", (event, markdown) => {
+  return renderMarkdown(markdown);
+});
 
-function loadCachedUser() {
+// --- Workspace ---
+
+ipcMain.handle("get-workspace-files", () => {
+  var result = scanWorkspaceFiles(currentWorkspaceFolder);
+  return result.files || result; // backward compat
+});
+
+ipcMain.handle("get-workspace-tree", () => {
+  return scanWorkspaceFiles(currentWorkspaceFolder);
+});
+
+ipcMain.handle("create-folder", async (event, parentPath) => {
+  const target = parentPath || currentWorkspaceFolder;
+  if (!target) return { error: "No workspace" };
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: path.join(target, "New Folder"),
+    buttonLabel: "Create Folder",
+  });
+  if (result.canceled || !result.filePath) return { error: "Cancelled" };
   try {
-    const data = fs.readFileSync(USER_CACHE_PATH, "utf8");
-    return JSON.parse(data);
-  } catch { return null; }
-}
-
-function saveCachedUser(user) {
-  cachedUser = user;
-  try {
-    fs.writeFileSync(USER_CACHE_PATH, JSON.stringify(user, null, 2));
-  } catch {}
-}
-
-function clearCachedUser() {
-  cachedUser = null;
-  try { fs.unlinkSync(USER_CACHE_PATH); } catch {}
-}
-
-// Fetch user's cloud documents via API
-async function fetchCloudDocuments(userId) {
-  if (!userId) return [];
-  try {
-    const response = await net.fetch(`${MDFY_URL}/api/user/documents`, {
-      headers: {
-        "x-user-id": userId,
-      },
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.documents || [];
-  } catch {
-    return [];
+    fs.mkdirSync(result.filePath, { recursive: true });
+    return { ok: true, path: result.filePath };
+  } catch (err) {
+    return { error: err.message };
   }
-}
+});
 
-async function fetchRecentDocuments(userId) {
-  if (!userId) return [];
+ipcMain.handle("move-file", async (event, fromPath, toFolder) => {
   try {
-    const response = await net.fetch(`${MDFY_URL}/api/user/recent`, {
-      headers: {
-        "x-user-id": userId,
-      },
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.recent || [];
-  } catch {
-    return [];
+    const fileName = path.basename(fromPath);
+    const destPath = path.join(toFolder, fileName);
+    if (fs.existsSync(destPath)) return { error: "File already exists in destination" };
+    fs.renameSync(fromPath, destPath);
+    // Move sidecar too
+    const oldConfig = getMdfyConfigPath(fromPath);
+    const newConfig = getMdfyConfigPath(destPath);
+    if (fs.existsSync(oldConfig)) fs.renameSync(oldConfig, newConfig);
+    // Update current file path if it was the moved file
+    if (currentFilePath === fromPath) {
+      currentFilePath = destPath;
+      startFileWatcher(destPath);
+    }
+    addToRecentFiles(destPath);
+    return { ok: true, newPath: destPath };
+  } catch (err) {
+    return { error: err.message };
   }
-}
+});
 
-function openCloudDocumentInApp(docId) {
-  if (!mainWindow || !isOnline()) return;
-  // Fetch the document markdown from the API
-  net.fetch(`${MDFY_URL}/api/docs/${docId}`)
-    .then((response) => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then((data) => {
-      const markdown = data.markdown || data.content || "";
-      const result = renderMarkdown(markdown);
-      mainWindow.setTitle((data.title || docId) + " — mdfy");
-      loadEditorWithContent(markdown, result.html, null, result.flavor.primary);
-    })
-    .catch((err) => {
-      console.error("[cloud] Failed to fetch document:", err.message);
-      // Fallback: open in browser
-      shell.openExternal(`${MDFY_URL}/d/${docId}`);
+ipcMain.handle("get-workspace-folder", () => currentWorkspaceFolder);
+
+ipcMain.handle("get-recent-files", () => {
+  return loadRecentFiles().map((f) => {
+    const config = loadMdfyConfig(f.path);
+    return { ...f, config: config || null };
+  });
+});
+
+// --- Auth ---
+
+ipcMain.handle("login", () => {
+  const callbackUrl = encodeURIComponent("mdfy://auth");
+  shell.openExternal(`${MDFY_URL}/auth/desktop?redirect=${callbackUrl}`);
+});
+
+ipcMain.handle("logout", () => {
+  AuthManager.clear();
+  SyncEngine.stopPolling();
+  sendToRenderer("auth-changed", { loggedIn: false });
+});
+
+ipcMain.handle("get-auth-state", () => {
+  return {
+    loggedIn: AuthManager.isLoggedIn(),
+    email: AuthManager.getEmail(),
+    userId: AuthManager.getUserId(),
+  };
+});
+
+// --- Sync ---
+
+ipcMain.handle("publish", async (event, markdown) => {
+  if (!AuthManager.isLoggedIn()) {
+    return { error: "Not logged in" };
+  }
+
+  const title = extractTitle(markdown) || "Untitled";
+
+  // If current file is already published, push update
+  if (currentFilePath) {
+    const existing = loadMdfyConfig(currentFilePath);
+    if (existing) {
+      try {
+        const result = await apiUpdate(existing.docId, existing.editToken, markdown, title);
+        existing.lastSyncedAt = new Date().toISOString();
+        existing.lastServerUpdatedAt = result.updated_at;
+        saveMdfyConfig(currentFilePath, existing);
+        return { url: `${MDFY_URL}/d/${existing.docId}`, docId: existing.docId };
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+  }
+
+  // First publish
+  try {
+    const result = await apiPublish(markdown, title);
+    const url = `${MDFY_URL}/d/${result.id}`;
+
+    if (currentFilePath) {
+      saveMdfyConfig(currentFilePath, {
+        docId: result.id,
+        editToken: result.editToken,
+        lastSyncedAt: new Date().toISOString(),
+        lastServerUpdatedAt: result.created_at || new Date().toISOString(),
+      });
+    }
+
+    return { url, docId: result.id, editToken: result.editToken };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("sync-push", async () => {
+  if (!currentFilePath) return { error: "No file open" };
+  const config = loadMdfyConfig(currentFilePath);
+  if (!config) return { error: "Not published" };
+
+  try {
+    const markdown = fs.readFileSync(currentFilePath, "utf8");
+    await SyncEngine.push(currentFilePath, markdown);
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("sync-pull", async (event, filePath) => {
+  const target = filePath || currentFilePath;
+  if (!target) return { error: "No file" };
+
+  try {
+    const markdown = await SyncEngine.pull(target);
+    return { ok: true, markdown };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("sync-pull-cloud", async (event, docId, title) => {
+  try {
+    const savedPath = await SyncEngine.pullCloudDocument(docId, title);
+    if (savedPath) {
+      openFileInApp(savedPath);
+      return { ok: true, filePath: savedPath };
+    }
+    return { error: "Cancelled" };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("sync-unlink", async (event, filePath) => {
+  deleteMdfyConfig(filePath || currentFilePath);
+  return { ok: true };
+});
+
+ipcMain.handle("sync-delete", async (event, filePath) => {
+  const target = filePath || currentFilePath;
+  const config = loadMdfyConfig(target);
+  if (!config) return { error: "Not published" };
+
+  try {
+    await apiDeleteDocument(config.docId, config.editToken);
+    deleteMdfyConfig(target);
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("delete-cloud-doc", async (event, docId) => {
+  try {
+    await apiDeleteDocument(docId, null);
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("resolve-conflict", async (event, action, filePath) => {
+  const target = filePath || currentFilePath;
+  if (!target) return;
+  if (action === "push") {
+    const markdown = fs.readFileSync(target, "utf8");
+    const config = loadMdfyConfig(target);
+    if (config) {
+      const title = extractTitle(markdown) || path.basename(target, ".md");
+      const result = await apiUpdate(config.docId, config.editToken, markdown, title);
+      config.lastSyncedAt = new Date().toISOString();
+      config.lastServerUpdatedAt = result.updated_at;
+      saveMdfyConfig(target, config);
+      sendToRenderer("sync-status", { filePath: target, status: "synced" });
+    }
+  } else if (action === "pull") {
+    await SyncEngine.pull(target);
+  }
+});
+
+// Get server version for diff view
+ipcMain.handle("get-server-version", async (event, filePath) => {
+  const target = filePath || currentFilePath;
+  if (!target) return { error: "No file" };
+  const config = loadMdfyConfig(target);
+  if (!config) return { error: "Not published" };
+  try {
+    const remote = await apiPull(config.docId);
+    const local = fs.readFileSync(target, "utf8");
+    return { serverMarkdown: remote.markdown || remote.content || "", localMarkdown: local, serverUpdatedAt: remote.updated_at };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("preview-cloud-doc", async (event, docId, title) => {
+  try {
+    const data = await apiPull(docId);
+    const markdown = data.markdown || data.content || "";
+    const result = renderMarkdown(markdown);
+    currentFilePath = null;
+    stopFileWatcher();
+    mainWindow.setTitle((title || docId) + " (Cloud) — mdfy");
+    mainWindow.webContents.send("load-document", {
+      html: result.html,
+      markdown,
+      filePath: null,
+      flavor: result.flavor.primary,
+      config: null,
+      cloudDoc: { docId, title: title || docId },
+      readOnly: true,
     });
-}
-
-ipcMain.handle("get-user", async () => {
-  if (cachedUser) return cachedUser;
-  cachedUser = loadCachedUser();
-  return cachedUser;
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
 });
 
 ipcMain.handle("get-cloud-documents", async () => {
-  const user = cachedUser || loadCachedUser();
-  if (!user) return { documents: [], recent: [] };
-  const [documents, recent] = await Promise.all([
-    fetchCloudDocuments(user.id),
-    fetchRecentDocuments(user.id),
-  ]);
-  return { documents, recent };
+  return apiGetCloudDocuments();
 });
 
-ipcMain.handle("sign-in", () => {
-  // Open mdfy.cc sign-in page in the default browser
-  shell.openExternal(`${MDFY_URL}/auth/signin`);
-});
+// --- Misc ---
 
-ipcMain.handle("sign-out", () => {
-  clearCachedUser();
-});
-
-ipcMain.handle("open-cloud-document", (event, docId) => {
-  openCloudDocumentInApp(docId);
-});
-
-ipcMain.handle("refresh-user", async () => {
-  return cachedUser || loadCachedUser();
-});
-
-// ─── Recent Files ───
-
-const RECENT_FILES_PATH = path.join(
-  app.getPath("userData"),
-  "recent-files.json"
-);
-
-function loadRecentFiles() {
+ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => {
+  if (!net.isOnline()) return { error: "Offline" };
   try {
-    const data = fs.readFileSync(RECENT_FILES_PATH, "utf8");
-    const parsed = JSON.parse(data);
-    return parsed
-      .map((f) => typeof f === "string" ? { path: f, openedAt: new Date().toISOString() } : f)
-      .filter((f) => f.path && fs.existsSync(f.path));
-  } catch {
-    return [];
-  }
-}
+    const buffer = Buffer.from(base64Data, "base64");
+    const boundary = "----mdfyUpload" + Date.now();
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`),
+      buffer,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const headers = {
+      "Content-Type": `multipart/form-data; boundary=${boundary}`,
+    };
+    const userId = AuthManager.getUserId();
+    if (userId) headers["x-user-id"] = userId;
+    const token = AuthManager.getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-function addToRecentFiles(filePath) {
-  const recent = loadRecentFiles();
-  const filtered = recent.filter((f) => f.path !== filePath);
-  filtered.unshift({ path: filePath, openedAt: new Date().toISOString() });
-  const trimmed = filtered.slice(0, 10);
-  try {
-    fs.writeFileSync(RECENT_FILES_PATH, JSON.stringify(trimmed, null, 2));
+    const resp = await net.fetch(`${MDFY_URL}/api/upload`, {
+      method: "POST",
+      headers,
+      body,
+    });
+    if (!resp.ok) return { error: `Upload failed: ${resp.status}` };
+    const result = await resp.json();
+    return { url: result.url };
   } catch (err) {
-    console.error("Failed to write recent files:", err);
+    return { error: err.message };
   }
-}
+});
+
+ipcMain.handle("get-version", () => app.getVersion());
+
+ipcMain.handle("open-in-browser", (event, url) => {
+  shell.openExternal(url);
+});
+
+ipcMain.handle("read-clipboard", () => {
+  const { clipboard } = require("electron");
+  return clipboard.readText() || "";
+});
+
+ipcMain.handle("write-clipboard", (event, text) => {
+  const { clipboard } = require("electron");
+  clipboard.writeText(text);
+});
+
+ipcMain.handle("get-theme", () => {
+  return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+});
 
 // ─── Menu ───
 
 function buildMenu() {
   const isMac = process.platform === "darwin";
-
   const template = [
-    ...(isMac
-      ? [
-          {
-            label: "mdfy",
-            submenu: [
-              { role: "about" },
-              { type: "separator" },
-              { role: "services" },
-              { type: "separator" },
-              { role: "hide" },
-              { role: "hideOthers" },
-              { role: "unhide" },
-              { type: "separator" },
-              { role: "quit" },
-            ],
-          },
-        ]
-      : []),
+    ...(isMac ? [{
+      label: "mdfy",
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" }, { role: "hideOthers" }, { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    }] : []),
     {
       label: "File",
       submenu: [
         {
-          label: "Home",
-          accelerator: "CmdOrCtrl+Shift+H",
-          click: () => {
-            currentFilePath = null;
-            stopFileWatcher();
-            mainWindow.loadFile(path.join(__dirname, "renderer", "dashboard.html"));
-            mainWindow.setTitle("mdfy");
-          },
-        },
-        { type: "separator" },
-        {
-          label: "New",
+          label: "New Document",
           accelerator: "CmdOrCtrl+N",
           click: () => {
+            if (!mainWindow) return;
             currentFilePath = null;
             stopFileWatcher();
-            mainWindow.setTitle("mdfy — New Document");
-            loadEditorWithContent("", "", null, "gfm");
+            mainWindow.setTitle("Untitled — mdfy");
+            mainWindow.webContents.send("load-document", {
+              html: "", markdown: "", filePath: null, flavor: "gfm", config: null,
+            });
           },
         },
         {
-          label: "Open...",
+          label: "Open File...",
           accelerator: "CmdOrCtrl+O",
           click: async () => {
             const result = await dialog.showOpenDialog(mainWindow, {
               properties: ["openFile"],
               filters: FILE_FILTERS,
             });
+            if (!result.canceled && result.filePaths[0]) openFileInApp(result.filePaths[0]);
+          },
+        },
+        {
+          label: "Open Folder...",
+          accelerator: "CmdOrCtrl+Shift+O",
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              properties: ["openDirectory"],
+            });
             if (!result.canceled && result.filePaths[0]) {
-              openFileInApp(result.filePaths[0]);
-              addToRecentFiles(result.filePaths[0]);
+              currentWorkspaceFolder = result.filePaths[0];
+              saveWorkspace({ folder: currentWorkspaceFolder });
+              startFolderWatcher(currentWorkspaceFolder);
+              sendToRenderer("workspace-changed");
             }
           },
         },
@@ -743,99 +1418,67 @@ function buildMenu() {
           label: "Save",
           accelerator: "CmdOrCtrl+S",
           click: () => {
-            // Trigger save via IPC — the renderer will send auto-save
             if (mainWindow) {
-              mainWindow.webContents.executeJavaScript(`
-                if (window.mdfyDesktop && window.mdfyDesktop.autoSave) {
-                  // Get current markdown from editor
-                  var content = document.getElementById('content');
-                  if (content) {
-                    // Dispatch a synthetic Cmd+S event to trigger the editor's save handler
-                    var evt = new KeyboardEvent('keydown', { key: 's', metaKey: true, bubbles: true });
-                    content.dispatchEvent(evt);
-                  }
-                }
-              `).catch(() => {});
+              mainWindow.webContents.send("trigger-save");
             }
           },
         },
+        { type: "separator" },
         {
-          label: "Save As...",
-          accelerator: "CmdOrCtrl+Shift+S",
-          click: () => saveCurrentToFile(),
+          label: "Publish to mdfy.cc",
+          accelerator: "CmdOrCtrl+Shift+P",
+          click: () => {
+            if (mainWindow) mainWindow.webContents.send("trigger-publish");
+          },
         },
         { type: "separator" },
         isMac ? { role: "close" } : { role: "quit" },
       ],
     },
-    { label: "Edit", submenu: [
-      { role: "undo" }, { role: "redo" }, { type: "separator" },
-      { role: "cut" }, { role: "copy" }, { role: "paste" },
-      { role: "selectAll" },
-    ]},
-    { label: "View", submenu: [
-      { role: "reload" },
-      { role: "toggleDevTools" },
-      { type: "separator" },
-      { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" },
-      { type: "separator" },
-      { role: "togglefullscreen" },
-    ]},
-    { label: "Window", submenu: [
-      { role: "minimize" }, { role: "zoom" },
-      ...(isMac ? [{ type: "separator" }, { role: "front" }] : []),
-    ]},
-    { label: "Help", submenu: [
-      {
-        label: "mdfy.cc Website",
-        click: () => shell.openExternal("https://mdfy.cc"),
-      },
-      {
-        label: "About mdfy",
-        click: () => shell.openExternal("https://mdfy.cc/about"),
-      },
-      {
-        label: "Plugins",
-        click: () => shell.openExternal("https://mdfy.cc/plugins"),
-      },
-    ]},
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" }, { role: "redo" }, { type: "separator" },
+        { role: "cut" }, { role: "copy" }, { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" }, { role: "zoom" },
+        ...(isMac ? [{ type: "separator" }, { role: "front" }] : []),
+      ],
+    },
+    {
+      label: "Help",
+      submenu: [
+        { label: "mdfy.cc", click: () => shell.openExternal("https://mdfy.cc") },
+        { label: "About mdfy", click: () => shell.openExternal("https://mdfy.cc/about") },
+      ],
+    },
   ];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
-}
-
-// ─── QuickLook Extension Installer ───
-
-function installQuickLookExtension() {
-  const marker = path.join(app.getPath("userData"), ".quicklook-installed");
-  if (fs.existsSync(marker)) return;
-
-  const qlAppSource = path.join(process.resourcesPath, "MdfyQuickLook.app");
-  const qlAppDest = "/Applications/MdfyQuickLook.app";
-
-  if (!fs.existsSync(qlAppSource)) return;
-
-  try {
-    if (!fs.existsSync(qlAppDest)) {
-      const { execSync } = require("child_process");
-      execSync(`cp -R "${qlAppSource}" "${qlAppDest}"`);
-      execSync(`open "${qlAppDest}"`);
-    }
-    fs.writeFileSync(marker, new Date().toISOString());
-  } catch (err) {
-    console.log("[quicklook] Could not auto-install:", err.message);
-  }
 }
 
 // ─── App Events ───
 
 app.on("open-file", (event, filePath) => {
   event.preventDefault();
-  if (mainWindow) {
-    openFileInApp(filePath);
-  } else {
-    queuedFilePath = filePath;
-  }
+  if (mainWindow) openFileInApp(filePath);
+  else app._queuedFile = filePath;
 });
 
 app.whenReady().then(() => {
@@ -850,33 +1493,43 @@ app.whenReady().then(() => {
 
   buildMenu();
   createWindow();
-  installQuickLookExtension();
 
-  // Open queued file from pre-ready open-file event
-  if (queuedFilePath) {
-    openFileInApp(queuedFilePath);
-    queuedFilePath = null;
+  // Restore workspace
+  const ws = loadWorkspace();
+  if (ws && ws.folder && fs.existsSync(ws.folder)) {
+    currentWorkspaceFolder = ws.folder;
+    startFolderWatcher(currentWorkspaceFolder);
   }
 
-  // Handle argv (file passed as argument)
+  // Start sync engine
+  SyncEngine.start();
+
+  // Handle theme changes
+  nativeTheme.on("updated", () => {
+    sendToRenderer("theme-changed", nativeTheme.shouldUseDarkColors ? "dark" : "light");
+  });
+
+  // Open queued file
+  if (app._queuedFile) {
+    openFileInApp(app._queuedFile);
+    app._queuedFile = null;
+  }
+
+  // Handle argv file
   const filePath = process.argv.find((a) => {
     const ext = path.extname(a).toLowerCase();
     return ALL_SUPPORTED_EXTENSIONS.has(ext);
   });
-  if (filePath) {
-    openFileInApp(filePath);
-  }
+  if (filePath) openFileInApp(filePath);
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on("window-all-closed", () => {
   stopFileWatcher();
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  stopFolderWatcher();
+  SyncEngine.stop();
+  if (process.platform !== "darwin") app.quit();
 });

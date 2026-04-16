@@ -1,7 +1,7 @@
 {
   "name": "mdfy-desktop",
-  "version": "1.0.0",
-  "description": "mdfy for Mac — Markdown publishing with native file integration",
+  "version": "1.1.0",
+  "description": "mdfy for Mac — Markdown publishing with sidebar, sync, and local WASM rendering",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -31,12 +31,6 @@
       "assets/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "../quicklook/MdfyQuickLook/build/MdfyQuickLook.app",
-        "to": "MdfyQuickLook.app"
-      }
-    ],
     "protocols": [
       {
         "name": "mdfy",
@@ -47,6 +41,7 @@
       "category": "public.app-category.productivity",
       "icon": "assets/icon.png",
       "darkModeSupport": true,
+      "hardenedRuntime": true,
       "target": [
         { "target": "dmg", "arch": ["universal"] }
       ],
@@ -80,54 +75,9 @@
         "role": "Editor"
       },
       {
-        "ext": "mdown",
-        "name": "Markdown Document",
-        "role": "Editor"
-      },
-      {
-        "ext": "mkd",
-        "name": "Markdown Document",
-        "role": "Editor"
-      },
-      {
         "ext": "txt",
         "name": "Text Document",
         "role": "Editor"
-      },
-      {
-        "ext": "pdf",
-        "name": "PDF Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "docx",
-        "name": "Word Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "pptx",
-        "name": "PowerPoint Presentation",
-        "role": "Viewer"
-      },
-      {
-        "ext": "xlsx",
-        "name": "Excel Spreadsheet",
-        "role": "Viewer"
-      },
-      {
-        "ext": "html",
-        "name": "HTML Document",
-        "role": "Viewer"
-      },
-      {
-        "ext": "csv",
-        "name": "CSV File",
-        "role": "Viewer"
-      },
-      {
-        "ext": "json",
-        "name": "JSON File",
-        "role": "Viewer"
       }
     ]
   }

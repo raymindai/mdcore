@@ -3,37 +3,61 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("mdfyDesktop", {
   isDesktop: true,
 
-  // File operations
+  // ─── File Operations ───
   openFile: () => ipcRenderer.invoke("open-file-dialog"),
+  openFolder: () => ipcRenderer.invoke("open-folder-dialog"),
   openFilePath: (filePath) => ipcRenderer.invoke("open-file-path", filePath),
-  openEditor: () => ipcRenderer.invoke("open-editor"),
-  openEditorWithContent: (markdown, fileName) => ipcRenderer.invoke("open-editor-with-content", markdown, fileName),
-  saveFile: (filePath, content) => ipcRenderer.invoke("save-file", filePath, content),
-  saveFileDialog: (name) => ipcRenderer.invoke("save-file-dialog", name),
-  getFilePath: () => ipcRenderer.invoke("get-file-path"),
-  getRecentFiles: () => ipcRenderer.invoke("get-recent-files"),
-  openInBrowser: (url) => ipcRenderer.invoke("open-in-browser", url),
-  getVersion: () => ipcRenderer.invoke("get-version"),
-  readClipboard: () => ipcRenderer.invoke("read-clipboard"),
-
-  // User & cloud
-  getUser: () => ipcRenderer.invoke("get-user"),
-  getCloudDocuments: () => ipcRenderer.invoke("get-cloud-documents"),
-  signIn: () => ipcRenderer.invoke("sign-in"),
-  signOut: () => ipcRenderer.invoke("sign-out"),
-  openCloudDocument: (docId) => ipcRenderer.invoke("open-cloud-document", docId),
-  refreshUser: () => ipcRenderer.invoke("refresh-user"),
-
-  // Local WASM rendering
-  renderMarkdown: (markdown) => ipcRenderer.invoke("render-markdown", markdown),
+  newDocument: () => ipcRenderer.invoke("new-document"),
+  saveFile: (markdown) => ipcRenderer.invoke("save-file", markdown),
+  saveFileAs: (content, defaultName, filters) => ipcRenderer.invoke("save-file-as", content, defaultName, filters),
   autoSave: (markdown) => ipcRenderer.invoke("auto-save", markdown),
-  goHome: () => ipcRenderer.invoke("go-home"),
+  getFilePath: () => ipcRenderer.invoke("get-file-path"),
 
-  // Events from main process
-  onLoadDocument: (callback) => {
-    ipcRenderer.on("load-document", (event, data) => callback(data));
-  },
-  onFileChanged: (callback) => {
-    ipcRenderer.on("file-changed", (event, data) => callback(data));
-  },
+  // ─── Rendering ───
+  renderMarkdown: (markdown) => ipcRenderer.invoke("render-markdown", markdown),
+
+  // ─── Workspace ───
+  getWorkspaceFiles: () => ipcRenderer.invoke("get-workspace-files"),
+  getWorkspaceTree: () => ipcRenderer.invoke("get-workspace-tree"),
+  createFolder: (parentPath) => ipcRenderer.invoke("create-folder", parentPath),
+  moveFile: (fromPath, toFolder) => ipcRenderer.invoke("move-file", fromPath, toFolder),
+  getWorkspaceFolder: () => ipcRenderer.invoke("get-workspace-folder"),
+  getRecentFiles: () => ipcRenderer.invoke("get-recent-files"),
+
+  // ─── Auth ───
+  login: () => ipcRenderer.invoke("login"),
+  logout: () => ipcRenderer.invoke("logout"),
+  getAuthState: () => ipcRenderer.invoke("get-auth-state"),
+
+  // ─── Sync ───
+  publish: (markdown) => ipcRenderer.invoke("publish", markdown),
+  syncPush: () => ipcRenderer.invoke("sync-push"),
+  syncPull: (filePath) => ipcRenderer.invoke("sync-pull", filePath),
+  syncPullCloud: (docId, title) => ipcRenderer.invoke("sync-pull-cloud", docId, title),
+  syncUnlink: (filePath) => ipcRenderer.invoke("sync-unlink", filePath),
+  syncDelete: (filePath) => ipcRenderer.invoke("sync-delete", filePath),
+  deleteCloudDoc: (docId) => ipcRenderer.invoke("delete-cloud-doc", docId),
+  resolveConflict: (action, filePath) => ipcRenderer.invoke("resolve-conflict", action, filePath),
+  getServerVersion: (filePath) => ipcRenderer.invoke("get-server-version", filePath),
+  previewCloudDoc: (docId, title) => ipcRenderer.invoke("preview-cloud-doc", docId, title),
+  getCloudDocuments: () => ipcRenderer.invoke("get-cloud-documents"),
+
+  // ─── Misc ───
+  uploadImage: (base64, mime, name) => ipcRenderer.invoke("upload-image", base64, mime, name),
+  getVersion: () => ipcRenderer.invoke("get-version"),
+  openInBrowser: (url) => ipcRenderer.invoke("open-in-browser", url),
+  readClipboard: () => ipcRenderer.invoke("read-clipboard"),
+  writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
+  getTheme: () => ipcRenderer.invoke("get-theme"),
+
+  // ─── Events from main process ───
+  onLoadDocument: (cb) => ipcRenderer.on("load-document", (_, d) => cb(d)),
+  onFileChanged: (cb) => ipcRenderer.on("file-changed", (_, d) => cb(d)),
+  onAuthChanged: (cb) => ipcRenderer.on("auth-changed", (_, d) => cb(d)),
+  onSyncStatus: (cb) => ipcRenderer.on("sync-status", (_, d) => cb(d)),
+  onSyncConflict: (cb) => ipcRenderer.on("sync-conflict", (_, d) => cb(d)),
+  onWorkspaceChanged: (cb) => ipcRenderer.on("workspace-changed", () => cb()),
+  onThemeChanged: (cb) => ipcRenderer.on("theme-changed", (_, t) => cb(t)),
+  onTriggerSave: (cb) => ipcRenderer.on("trigger-save", () => cb()),
+  onTriggerPublish: (cb) => ipcRenderer.on("trigger-publish", () => cb()),
 });

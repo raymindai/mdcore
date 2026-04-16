@@ -1691,6 +1691,55 @@ body {
   width: 13px;
   height: 13px;
 }
+/* Folder items */
+.folder-item {
+  margin: 1px 0;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.folder-header:hover { background: var(--sidebar-hover); }
+
+.folder-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.folder-chevron.collapsed { transform: rotate(-90deg); }
+
+.folder-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  font-size: 9px;
+  color: var(--text-faint);
+  background: var(--surface);
+  padding: 0 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.folder-children {
+  padding-left: 12px;
+}
+
+.file-item[draggable="true"] { cursor: grab; }
+.file-item[draggable="true"]:active { cursor: grabbing; }
+
 .file-icon.synced { color: #22c55e; }
 .file-icon.local { color: var(--fg-muted); }
 .file-icon.cloud { color: #60a5fa; }
@@ -2329,6 +2378,24 @@ body {
   flex-shrink: 0;
 }
 
+.header-url {
+  font-size: 10px;
+  font-family: "SF Mono", ui-monospace, monospace;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  flex-shrink: 0;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-url:hover { background: rgba(251, 146, 60, 0.25); }
+
 .header-center {
   flex-shrink: 0;
   -webkit-app-region: no-drag;
@@ -2852,6 +2919,49 @@ body {
   line-height: 1.7;
   background: var(--bg);
 }
+
+/* ─── Cloud Document Banner ─── */
+
+.cloud-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(96, 165, 250, 0.08);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+  flex-shrink: 0;
+}
+
+.cloud-banner-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #60a5fa;
+}
+
+.cloud-banner-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cloud-banner-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #000;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+.cloud-banner-btn:hover { background: var(--accent-hover); }
+.cloud-banner-btn.secondary {
+  background: var(--surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--border);
+}
+.cloud-banner-btn.secondary:hover { background: var(--surface-hover); color: var(--fg); }
 
 .help-row kbd {
   display: inline-block;
