@@ -1348,7 +1348,13 @@ export default function MdEditor() {
               }
               return true;
             });
-            return deduped;
+            // Remove duplicate example docs (same ownerEmail but non-canonical IDs)
+            const canonicalExampleIds = new Set(EXAMPLE_TABS.map(e => e.id));
+            const cleaned = deduped.filter((t: Tab) => {
+              if (t.ownerEmail === EXAMPLE_OWNER && !canonicalExampleIds.has(t.id)) return false;
+              return true;
+            });
+            return cleaned;
           }
         }
       } else {
