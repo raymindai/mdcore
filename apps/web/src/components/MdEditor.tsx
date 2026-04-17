@@ -6234,7 +6234,7 @@ ${html}
                     <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {/* Profile header */}
-                      <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                      <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <div className="flex items-center gap-2.5">
                           <img src={resolveAvatar(profile, user, 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -6277,6 +6277,20 @@ ${html}
                             Full access to all features.
                           </div>
                         )}
+                      </div>
+                      {/* Settings */}
+                      <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        <button
+                          onClick={() => { setShowExamples(!showExamples); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <BookOpen width={12} height={12} />
+                          <span className="flex-1">Show Examples</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: showExamples ? "var(--accent-dim)" : "var(--border-dim)", color: showExamples ? "var(--accent)" : "var(--text-faint)" }}>
+                            {showExamples ? "ON" : "OFF"}
+                          </span>
+                        </button>
                       </div>
                       {/* Actions */}
                       <div className="py-1">
