@@ -25,7 +25,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, Cloud, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal, BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -818,17 +818,15 @@ Introduction paragraph that hooks the reader.
 const EXAMPLE_OWNER = "master@mdfy.cc";
 const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
-const INITIAL_FOLDERS: Folder[] = [
-  { id: EXAMPLES_FOLDER_ID, name: "Examples", collapsed: false, section: "shared" },
-];
+const INITIAL_FOLDERS: Folder[] = [];
 
 const EXAMPLE_TABS: Tab[] = [
-  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
-  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER, folderId: EXAMPLES_FOLDER_ID },
+  { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
 ];
 
 const INITIAL_TABS: Tab[] = [
@@ -1349,13 +1347,13 @@ export default function MdEditor() {
               return true;
             });
             // Remove duplicate example docs (same ownerEmail but non-canonical IDs)
-            // and fix folderId for canonical examples
+            // and strip folderId — examples live in their own section now
             const canonicalExampleIds = new Set(EXAMPLE_TABS.map(e => e.id));
             const cleaned = deduped.filter((t: Tab) => {
               if (t.ownerEmail === EXAMPLE_OWNER && !canonicalExampleIds.has(t.id)) return false;
               return true;
             }).map((t: Tab) => {
-              if (canonicalExampleIds.has(t.id)) return { ...t, folderId: EXAMPLES_FOLDER_ID };
+              if (canonicalExampleIds.has(t.id)) { const { folderId: _, ...rest } = t; return rest; }
               return t;
             });
             return cleaned;
@@ -1587,6 +1585,7 @@ export default function MdEditor() {
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
+  const [showExamples, setShowExamples] = useState(true);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -2893,11 +2892,11 @@ export default function MdEditor() {
             const serverFolders = data.folders.map((f: { id: string; name: string; section?: string; collapsed?: boolean; sort_order?: number }) => ({
               id: f.id, name: f.name, collapsed: f.collapsed || false, section: (f.section || "my") as "my" | "shared",
             }));
-            // Keep Examples folder + merge server folders (server wins on conflict)
+            // Merge server folders (server wins on conflict), drop legacy Examples folder
             const serverIds = new Set(serverFolders.map((f: { id: string }) => f.id));
-            const localOnly = prev.filter(f => f.id === "folder-shared-examples" || (!serverIds.has(f.id) && !f.id.startsWith("folder-")));
+            const localOnly = prev.filter(f => f.id !== EXAMPLES_FOLDER_ID && !serverIds.has(f.id) && !f.id.startsWith("folder-"));
             // Upload local-only folders to server (one-time migration)
-            const toUpload = prev.filter(f => f.id !== "folder-shared-examples" && !serverIds.has(f.id) && f.id.startsWith("folder-"));
+            const toUpload = prev.filter(f => f.id !== EXAMPLES_FOLDER_ID && !serverIds.has(f.id) && f.id.startsWith("folder-"));
             for (const f of toUpload) {
               fetch("/api/user/folders", {
                 method: "POST",
@@ -5802,14 +5801,13 @@ ${html}
 
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
-              // Shared tabs: when not logged in, only show example-owned docs
+              // Shared tabs: exclude examples (they have their own section)
               const sharedTabs = tabs.filter(t => {
                 if (t.deleted || t.folderId) return false;
+                if (t.ownerEmail === EXAMPLE_OWNER) return false;
                 if (t.permission !== "readonly" && t.permission !== "editable") return false;
-                if (hiddenExampleIds.has(t.id)) return false;
                 if (sidebarSearch && !(t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())) return false;
-                // Not logged in: only show examples (ownerEmail === EXAMPLE_OWNER)
-                if (!isAuthenticated && t.ownerEmail !== EXAMPLE_OWNER) return false;
+                if (!isAuthenticated) return false;
                 return true;
               });
               // Deduplicate sharedTabs by cloudId (prevent duplicate entries)
@@ -5912,9 +5910,9 @@ ${html}
                           </button>
                         </div>
                       ))}
-                      {/* Shared folders */}
-                      {folders.filter(f => f.section === "shared").map(folder => {
-                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id && !hiddenExampleIds.has(t.id));
+                      {/* Shared folders (exclude legacy Examples folder) */}
+                      {folders.filter(f => f.section === "shared" && f.id !== EXAMPLES_FOLDER_ID).map(folder => {
+                        const folderTabs = tabs.filter(t => !t.deleted && t.folderId === folder.id);
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -6034,6 +6032,47 @@ ${html}
                       {totalShared === 0 && (
                         <div className="px-2.5 py-3 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
                           {!isAuthenticated ? "Sign in to see documents shared with you." : "No shared documents"}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>);
+            })()}
+
+            {/* ── Section: EXAMPLES ── */}
+            {(() => {
+              const exampleTabs = tabs.filter(t => !t.deleted && t.ownerEmail === EXAMPLE_OWNER && !hiddenExampleIds.has(t.id));
+              return (<>
+                <div className={`shrink-0 ${showExamples ? "" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
+                  <div
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
+                    onClick={() => setShowExamples(!showExamples)}
+                  >
+                    <BookOpen width={11} height={11} style={{ color: showExamples ? "var(--accent)" : "var(--text-faint)" }} />
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showExamples ? "var(--accent)" : "var(--text-muted)" }}>Examples</span>
+                    {!showExamples && exampleTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>}
+                  </div>
+                  {showExamples && (
+                    <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                      {exampleTabs.map(tab => (
+                        <div
+                          key={tab.id}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
+                          style={{
+                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                          }}
+                          onClick={(e) => handleDocClick(tab.id, e)}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                        >
+                          <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                          <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                        </div>
+                      ))}
+                      {exampleTabs.length === 0 && (
+                        <div className="px-2.5 py-2 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
+                          All examples hidden
                         </div>
                       )}
                     </div>
@@ -7500,10 +7539,11 @@ ${html}
               if (missingExamples.length > 0) {
                 setTabs(prev => [...prev, ...missingExamples]);
               }
-              // Un-delete soft-deleted examples and fix folderId back to Examples folder
-              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER ? { ...t, deleted: false, folderId: EXAMPLES_FOLDER_ID } : t));
-              // Unhide all hidden examples
+              // Un-delete soft-deleted examples and clear any stale folderId
+              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER ? { ...t, deleted: false, folderId: undefined } : t));
+              // Unhide all hidden examples and expand the section
               setHiddenExampleIds(new Set());
+              setShowExamples(true);
               setSidebarContextMenu(null);
             }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Restore Examples</button>
           </div>
