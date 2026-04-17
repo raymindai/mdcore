@@ -1,0 +1,380 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import MdfyLogo from "@/components/MdfyLogo";
+
+export const metadata: Metadata = {
+  title: "CLI Reference — mdfy.cc",
+  description:
+    "mdfy CLI reference. Publish Markdown from the command line. Pipe stdin, capture tmux panes, manage documents.",
+  openGraph: {
+    title: "CLI Reference — mdfy.cc",
+    description: "Publish Markdown from the command line.",
+    url: "https://mdfy.cc/docs/cli",
+  },
+};
+
+const mono =
+  "var(--font-geist-mono), 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace";
+
+function CodeBlock({ children, lang }: { children: string; lang?: string }) {
+  return (
+    <div style={{ position: "relative" }}>
+      {lang && (
+        <span style={{ position: "absolute", top: 10, right: 12, fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, textTransform: "uppercase", letterSpacing: 1 }}>{lang}</span>
+      )}
+      <pre style={{ background: "#18181b", borderRadius: 10, padding: "18px 20px", overflow: "auto", fontSize: 13, lineHeight: 1.7, fontFamily: mono, color: "var(--text-secondary)", margin: 0, border: "none" }}>
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
+
+function InlineCode({ children }: { children: string }) {
+  return (
+    <code style={{ background: "#18181b", padding: "2px 6px", borderRadius: 4, fontSize: 13, fontFamily: mono, color: "var(--accent)" }}>{children}</code>
+  );
+}
+
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeading({ id, children }: { id: string; children: string }) {
+  return (
+    <h2 id={id} style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginTop: 64, marginBottom: 16, letterSpacing: "-0.02em", scrollMarginTop: 80 }}>
+      {children}
+    </h2>
+  );
+}
+
+function SubLabel({ children }: { children: string }) {
+  return (
+    <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 24 }}>{children}</p>
+  );
+}
+
+function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 16, alignItems: "baseline", padding: "10px 0", borderBottom: "1px solid var(--border-dim)" }}>
+      <code style={{ fontSize: 13, fontFamily: mono, color: "var(--accent)", fontWeight: 600 }}>{cmd}</code>
+      <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>{desc}</span>
+    </div>
+  );
+}
+
+const sidebarItems = [
+  { id: "installation", label: "Installation" },
+  { id: "commands", label: "Commands" },
+  { id: "publish", label: "publish" },
+  { id: "update", label: "update" },
+  { id: "pull", label: "pull" },
+  { id: "delete", label: "delete" },
+  { id: "list", label: "list" },
+  { id: "open", label: "open" },
+  { id: "capture", label: "capture" },
+  { id: "auth-commands", label: "Authentication" },
+  { id: "pipes", label: "Pipe Examples" },
+  { id: "tmux", label: "tmux Integration" },
+  { id: "aliases", label: "Shell Aliases" },
+  { id: "config", label: "Configuration" },
+];
+
+export default function CliDocsPage() {
+  return (
+    <div style={{ background: "var(--background)", color: "var(--foreground)", minHeight: "100vh" }}>
+      {/* NAV */}
+      <nav style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid var(--border-dim)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <Link href="/" style={{ textDecoration: "none" }}><MdfyLogo size={22} /></Link>
+            <div style={{ display: "flex", gap: 16 }}>
+              <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
+              <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>Plugins</Link>
+              <Link href="/docs" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>API</Link>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>GitHub</a>
+            <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
+          </div>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "200px 1fr", gap: 48 }}>
+        {/* SIDEBAR */}
+        <aside style={{ position: "sticky", top: 72, height: "fit-content", maxHeight: "calc(100vh - 72px)", overflowY: "auto", paddingTop: 40, paddingBottom: 40 }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16, marginTop: 0 }}>On This Page</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {sidebarItems.map((item) => (
+              <a key={item.id} href={`#${item.id}`} style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none", padding: "5px 12px", borderRadius: 6, display: "block" }}>{item.label}</a>
+            ))}
+          </div>
+          <div style={{ borderTop: "1px solid var(--border-dim)", marginTop: 24, paddingTop: 16 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>Also See</p>
+            {[
+              { label: "REST API", href: "/docs/api" },
+              { label: "SDK", href: "/docs/sdk" },
+              { label: "MCP Server", href: "/docs/mcp" },
+            ].map((l) => (
+              <Link key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "4px 12px" }}>{l.label}</Link>
+            ))}
+          </div>
+        </aside>
+
+        {/* MAIN */}
+        <main style={{ paddingTop: 40, paddingBottom: 80, minWidth: 0 }}>
+          <p style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12, fontFamily: mono }}>CLI</p>
+          <h1 style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-primary)", margin: "0 0 16px" }}>
+            Command Line Interface
+          </h1>
+          <p style={{ fontSize: 16, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 32, maxWidth: 640 }}>
+            Publish Markdown from the terminal. Pipe stdin, capture tmux panes, manage documents.
+          </p>
+
+          {/* Installation */}
+          <SectionHeading id="installation">Installation</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`npm install -g mdfy`}</CodeBlock>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              Requires Node.js 18+. Also works with <InlineCode>{"npx mdfy"}</InlineCode> without global install.
+            </p>
+          </Card>
+
+          {/* Commands Overview */}
+          <SectionHeading id="commands">Commands</SectionHeading>
+          <Card>
+            <CommandRow cmd="mdfy publish <file>" desc="Publish a Markdown file or stdin to mdfy.cc." />
+            <CommandRow cmd="mdfy update <id> <file>" desc="Update an existing document with new content." />
+            <CommandRow cmd="mdfy pull <id>" desc="Download a document's Markdown content." />
+            <CommandRow cmd="mdfy delete <id>" desc="Soft-delete a document." />
+            <CommandRow cmd="mdfy list" desc="List all your documents." />
+            <CommandRow cmd="mdfy open <id>" desc="Open a document in the browser." />
+            <CommandRow cmd="mdfy capture" desc="Capture the current tmux pane and publish." />
+            <CommandRow cmd="mdfy login" desc="Authenticate with mdfy.cc." />
+            <CommandRow cmd="mdfy logout" desc="Clear stored credentials." />
+            <CommandRow cmd="mdfy whoami" desc="Show current authenticated user." />
+          </Card>
+
+          {/* publish */}
+          <SectionHeading id="publish">publish</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Publish a file or stdin. Returns the document URL.
+          </p>
+          <Card>
+            <CodeBlock lang="bash">{`# Publish a file
+mdfy publish README.md
+
+# Publish from stdin
+echo "# Hello World" | mdfy publish
+
+# Publish as draft
+mdfy publish README.md --draft
+
+# Publish with title
+mdfy publish README.md --title "My Document"
+
+# Publish with password
+mdfy publish README.md --password "secret"
+
+# Publish with expiration
+mdfy publish README.md --expires 7d`}</CodeBlock>
+            <SubLabel>Options</SubLabel>
+            <CommandRow cmd="--draft, -d" desc="Publish as draft (only visible to you)." />
+            <CommandRow cmd="--title, -t" desc="Set document title." />
+            <CommandRow cmd="--password, -p" desc="Password-protect the document." />
+            <CommandRow cmd="--expires, -e" desc="Set expiration: 1h, 1d, 7d, 30d." />
+            <CommandRow cmd="--open, -o" desc="Open in browser after publishing." />
+          </Card>
+
+          {/* update */}
+          <SectionHeading id="update">update</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Update an existing document. The edit token is stored automatically from the original publish.
+          </p>
+          <Card>
+            <CodeBlock lang="bash">{`# Update from file
+mdfy update abc123 README.md
+
+# Update from stdin
+echo "# Updated" | mdfy update abc123
+
+# Update with version note
+mdfy update abc123 README.md --message "Fixed typos"`}</CodeBlock>
+          </Card>
+
+          {/* pull */}
+          <SectionHeading id="pull">pull</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Download a document&apos;s Markdown content.
+          </p>
+          <Card>
+            <CodeBlock lang="bash">{`# Print to stdout
+mdfy pull abc123
+
+# Save to file
+mdfy pull abc123 -o output.md
+
+# Pull with password
+mdfy pull abc123 --password "secret"`}</CodeBlock>
+          </Card>
+
+          {/* delete */}
+          <SectionHeading id="delete">delete</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`mdfy delete abc123
+
+# Skip confirmation
+mdfy delete abc123 --yes`}</CodeBlock>
+          </Card>
+
+          {/* list */}
+          <SectionHeading id="list">list</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`mdfy list
+
+# Output:
+#  ID       TITLE              UPDATED         STATUS
+#  abc123   My Document        2 hours ago     published
+#  def456   Draft Note         5 minutes ago   draft`}</CodeBlock>
+          </Card>
+
+          {/* open */}
+          <SectionHeading id="open">open</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`mdfy open abc123
+# Opens https://mdfy.cc/d/abc123 in your default browser`}</CodeBlock>
+          </Card>
+
+          {/* capture */}
+          <SectionHeading id="capture">capture</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Capture the current tmux pane output and publish it as a code block.
+          </p>
+          <Card>
+            <CodeBlock lang="bash">{`# Capture current pane
+mdfy capture
+
+# Capture specific pane
+mdfy capture -t %3
+
+# Capture last N lines
+mdfy capture --lines 50`}</CodeBlock>
+          </Card>
+
+          {/* Auth */}
+          <SectionHeading id="auth-commands">Authentication</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`# Authenticate (opens browser for OAuth)
+mdfy login
+
+# Clear stored credentials
+mdfy logout
+
+# Show current user
+mdfy whoami
+# user@example.com (authenticated via OAuth)`}</CodeBlock>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              Authentication is optional. Without login, documents are created anonymously with edit tokens.
+              Login enables <InlineCode>{"mdfy list"}</InlineCode> and account-based ownership.
+            </p>
+          </Card>
+
+          {/* Pipe Examples */}
+          <SectionHeading id="pipes">Pipe Examples</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`# Clipboard to mdfy
+pbpaste | mdfy publish
+
+# Command output
+ls -la | mdfy publish
+
+# Cat a file
+cat report.md | mdfy publish
+
+# Generate with AI, publish directly
+claude "Write a guide to Rust" | mdfy publish
+
+# Git diff
+git diff | mdfy publish --title "Changes"
+
+# Docker logs
+docker logs my-app 2>&1 | mdfy publish
+
+# Pipe through multiple commands
+curl -s https://api.example.com/data | jq . | mdfy publish`}</CodeBlock>
+          </Card>
+
+          {/* tmux */}
+          <SectionHeading id="tmux">tmux Integration</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`# Capture current pane
+tmux capture-pane -p | mdfy publish
+
+# Capture and share with one keybinding
+# Add to ~/.tmux.conf:
+bind-key M run-shell "tmux capture-pane -p | mdfy publish"
+
+# Capture specific pane
+tmux capture-pane -t %3 -p | mdfy publish
+
+# Capture full scrollback
+tmux capture-pane -p -S - | mdfy publish`}</CodeBlock>
+          </Card>
+
+          {/* Aliases */}
+          <SectionHeading id="aliases">Shell Aliases</SectionHeading>
+          <Card>
+            <CodeBlock lang="bash">{`# Add to ~/.zshrc or ~/.bashrc
+
+# Quick publish
+alias mp="mdfy publish"
+
+# Publish clipboard
+alias mpc="pbpaste | mdfy publish"
+
+# Publish and open
+alias mpo="mdfy publish --open"
+
+# Capture tmux
+alias mtx="tmux capture-pane -p | mdfy publish"`}</CodeBlock>
+          </Card>
+
+          {/* Configuration */}
+          <SectionHeading id="config">Configuration</SectionHeading>
+          <Card>
+            <SubLabel>Environment Variables</SubLabel>
+            <CommandRow cmd="MDFY_API_URL" desc="Base URL for the API. Default: https://mdfy.cc" />
+            <CommandRow cmd="MDFY_EMAIL" desc="User email for identification." />
+            <CommandRow cmd="MDFY_TOKEN" desc="Authentication token (from mdfy login)." />
+
+            <SubLabel>Config File</SubLabel>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, marginBottom: 12, lineHeight: 1.7 }}>
+              Credentials are stored in <InlineCode>{"~/.mdfy/config.json"}</InlineCode> after <InlineCode>{"mdfy login"}</InlineCode>.
+              Edit tokens for published documents are stored in <InlineCode>{"~/.mdfy/tokens.json"}</InlineCode>.
+            </p>
+            <CodeBlock lang="json">{`// ~/.mdfy/config.json
+{
+  "apiUrl": "https://mdfy.cc",
+  "email": "user@example.com",
+  "token": "..."
+}`}</CodeBlock>
+          </Card>
+        </main>
+      </div>
+
+      {/* FOOTER */}
+      <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <p style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: mono, margin: 0 }}>
+            <Link href="/docs" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Documentation</Link>{" / "}CLI
+          </p>
+          <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: mono, margin: 0 }}>&copy; 2026 mdfy.cc</p>
+        </div>
+      </footer>
+    </div>
+  );
+}

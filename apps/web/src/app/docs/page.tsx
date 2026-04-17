@@ -5,29 +5,19 @@ import MdfyLogo from "@/components/MdfyLogo";
 export const metadata: Metadata = {
   title: "Documentation — mdfy.cc",
   description:
-    "Complete API reference for mdfy.cc. REST API, CLI, JavaScript SDK, MCP server, and npm packages. Publish Markdown documents programmatically.",
+    "Complete developer documentation for mdfy.cc. REST API, CLI, JavaScript SDK, MCP server, and npm packages.",
   openGraph: {
     title: "Documentation — mdfy.cc",
     description:
-      "Complete API reference. REST, CLI, SDK, MCP server. Publish Markdown instantly.",
+      "Complete developer documentation. REST API, CLI, SDK, MCP server.",
     url: "https://mdfy.cc/docs",
   },
 };
 
-/* ────────────────────────────────────────────────────────────
-   Shared styles
-   ──────────────────────────────────────────────────────────── */
-
 const mono =
   "var(--font-geist-mono), 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace";
 
-function CodeBlock({
-  children,
-  lang,
-}: {
-  children: string;
-  lang?: string;
-}) {
+function CodeBlock({ children, lang }: { children: string; lang?: string }) {
   return (
     <div style={{ position: "relative" }}>
       {lang && (
@@ -67,32 +57,6 @@ function CodeBlock({
   );
 }
 
-function SectionHeading({
-  id,
-  children,
-}: {
-  id: string;
-  children: string;
-}) {
-  return (
-    <h2
-      id={id}
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        letterSpacing: 2,
-        textTransform: "uppercase",
-        color: "var(--text-muted)",
-        marginBottom: 32,
-        fontFamily: mono,
-        scrollMarginTop: 80,
-      }}
-    >
-      {children}
-    </h2>
-  );
-}
-
 function InlineCode({ children }: { children: string }) {
   return (
     <code
@@ -110,61 +74,77 @@ function InlineCode({ children }: { children: string }) {
   );
 }
 
-function MethodBadge({ method }: { method: string }) {
-  const colors: Record<string, { fg: string; bg: string }> = {
-    POST: { fg: "#4ade80", bg: "#4ade8015" },
-    GET: { fg: "#60a5fa", bg: "#60a5fa15" },
-    PATCH: { fg: "#fbbf24", bg: "#fbbf2415" },
-    DELETE: { fg: "#f87171", bg: "#f8717115" },
-    HEAD: { fg: "#a78bfa", bg: "#a78bfa15" },
-  };
-  const c = colors[method] || { fg: "var(--text-secondary)", bg: "var(--surface)" };
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 700,
-        fontFamily: mono,
-        color: c.fg,
-        background: c.bg,
-        padding: "3px 10px",
-        borderRadius: 6,
-      }}
-    >
-      {method}
-    </span>
-  );
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border-dim)",
-        borderRadius: 14,
-        padding: "28px 24px",
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
 /* ────────────────────────────────────────────────────────────
    Data
    ──────────────────────────────────────────────────────────── */
 
-const tocItems = [
-  { id: "quick-start", label: "Quick Start" },
-  { id: "rest-api", label: "REST API" },
-  { id: "cli", label: "CLI" },
-  { id: "sdk", label: "JavaScript SDK" },
-  { id: "mcp", label: "MCP Server" },
-  { id: "auth", label: "Authentication" },
-  { id: "integrations", label: "Integrations" },
-  { id: "packages", label: "npm Packages" },
+const quickStartCards = [
+  {
+    tag: "curl",
+    title: "REST API",
+    desc: "Create, read, update, and delete documents with HTTP requests.",
+    href: "/docs/api",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+  },
+  {
+    tag: "terminal",
+    title: "CLI",
+    desc: "Publish from the command line. Pipe stdin, capture tmux panes.",
+    href: "/docs/cli",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" y1="19" x2="20" y2="19" />
+      </svg>
+    ),
+  },
+  {
+    tag: "JS",
+    title: "JavaScript SDK",
+    desc: "TypeScript-first client. MdfyClient class and standalone functions.",
+    href: "/docs/sdk",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+  },
+  {
+    tag: "MCP",
+    title: "MCP Server",
+    desc: "Let Claude, Cursor, and Windsurf manage documents directly.",
+    href: "/docs/mcp",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+  },
+];
+
+const exploreCards = [
+  {
+    title: "Integrations",
+    desc: "VS Code, Mac app, Chrome extension, QuickLook plugin.",
+    href: "/plugins",
+  },
+  {
+    title: "Authentication",
+    desc: "Edit tokens, user identity headers, OAuth bearer tokens.",
+    href: "/docs/api#authentication",
+  },
+  {
+    title: "npm Packages",
+    desc: "@mdcore/api, engine, styles, ai. Independent packages.",
+    href: "/docs/sdk#packages",
+  },
 ];
 
 /* ────────────────────────────────────────────────────────────
@@ -277,7 +257,7 @@ export default function DocsPage() {
           position: "relative",
           maxWidth: 1080,
           margin: "0 auto",
-          padding: "100px 24px 60px",
+          padding: "100px 24px 80px",
         }}
       >
         <div
@@ -331,8 +311,8 @@ export default function DocsPage() {
             marginTop: 28,
           }}
         >
-          Publish Markdown documents programmatically. REST API, CLI, JavaScript
-          SDK, MCP server for AI tools, and npm packages.
+          The publishing API for developers. Create, manage, and share
+          Markdown documents programmatically.
         </p>
 
         <p
@@ -343,680 +323,191 @@ export default function DocsPage() {
             fontFamily: mono,
           }}
         >
-          Base URL:{" "}
-          <InlineCode>https://mdfy.cc</InlineCode>
+          Base URL: <InlineCode>{"https://mdfy.cc"}</InlineCode>
         </p>
-
-        {/* TOC */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            marginTop: 32,
-          }}
-        >
-          {tocItems.map((t) => (
-            <a
-              key={t.id}
-              href={`#${t.id}`}
-              style={{
-                fontSize: 12,
-                fontFamily: mono,
-                color: "var(--text-muted)",
-                textDecoration: "none",
-                padding: "5px 12px",
-                borderRadius: 6,
-                border: "1px solid var(--border-dim)",
-                background: "var(--surface)",
-              }}
-            >
-              {t.label}
-            </a>
-          ))}
-        </div>
       </section>
 
       {/* ───────── QUICK START ───────── */}
       <section
         style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
       >
-        <SectionHeading id="quick-start">Quick Start</SectionHeading>
+        <h2
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            marginBottom: 32,
+            fontFamily: mono,
+          }}
+        >
+          Quick Start
+        </h2>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
             gap: 16,
           }}
         >
-          {/* curl */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <span
-                style={{
-                  color: "var(--accent)",
-                  fontFamily: mono,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "var(--accent-dim)",
-                  padding: "3px 8px",
-                  borderRadius: 6,
-                }}
-              >
-                curl
-              </span>
-              <span style={{ color: "var(--text-primary)", fontSize: 15, fontWeight: 700 }}>
-                REST API
-              </span>
-            </div>
-            <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/docs \\
-  -H "Content-Type: application/json" \\
-  -d '{"markdown": "# Hello World"}'
-
-# Response:
-# {"id":"abc123","editToken":"tok_..."}
-# View at: https://mdfy.cc/d/abc123`}</CodeBlock>
-          </Card>
-
-          {/* CLI */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <span
-                style={{
-                  color: "var(--accent)",
-                  fontFamily: mono,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "var(--accent-dim)",
-                  padding: "3px 8px",
-                  borderRadius: 6,
-                }}
-              >
-                CLI
-              </span>
-              <span style={{ color: "var(--text-primary)", fontSize: 15, fontWeight: 700 }}>
-                Command Line
-              </span>
-            </div>
-            <CodeBlock lang="bash">{`npm install -g mdfy
-
-echo "# Hello World" | mdfy publish
-# Published: https://mdfy.cc/d/abc123
-
-mdfy publish README.md
-mdfy update abc123 README.md`}</CodeBlock>
-          </Card>
-
-          {/* SDK */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <span
-                style={{
-                  color: "var(--accent)",
-                  fontFamily: mono,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "var(--accent-dim)",
-                  padding: "3px 8px",
-                  borderRadius: 6,
-                }}
-              >
-                JS
-              </span>
-              <span style={{ color: "var(--text-primary)", fontSize: 15, fontWeight: 700 }}>
-                JavaScript SDK
-              </span>
-            </div>
-            <CodeBlock lang="typescript">{`import { publish } from "@mdcore/api";
-
-const result = await publish("# Hello");
-console.log(result.url);
-// https://mdfy.cc/d/abc123`}</CodeBlock>
-          </Card>
-        </div>
-      </section>
-
-      {/* ───────── REST API REFERENCE ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="rest-api">REST API Reference</SectionHeading>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--text-muted)",
-            marginBottom: 32,
-            lineHeight: 1.7,
-            maxWidth: 640,
-          }}
-        >
-          All endpoints accept and return JSON. Base URL:{" "}
-          <InlineCode>https://mdfy.cc</InlineCode>.
-          Rate limit: 10 requests per minute per IP. Max document size: 500KB.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-          {/* POST /api/docs */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="POST" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/docs
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Create a new document. Returns document ID, edit token, and creation timestamp.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  Request Body
-                </p>
-                <CodeBlock lang="json">{`{
-  "markdown": "# Hello World",
-  "title": "My Document",
-  "isDraft": false,
-  "source": "api",
-  "password": "optional-password",
-  "expiresIn": 168,
-  "editMode": "token",
-  "userId": "user-uuid",
-  "folderId": "folder-id"
-}`}</CodeBlock>
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: mono, margin: 0, lineHeight: 1.8 }}>
-                    markdown: string (required)<br />
-                    title: string (optional)<br />
-                    isDraft: boolean (default: true)<br />
-                    source: &quot;api&quot; | &quot;web&quot; | &quot;vscode&quot; | &quot;mcp&quot;<br />
-                    password: string (optional, protects reading)<br />
-                    expiresIn: number (hours until expiry)<br />
-                    editMode: &quot;token&quot; | &quot;account&quot;
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  Response 200
-                </p>
-                <CodeBlock lang="json">{`{
-  "id": "abc123",
-  "editToken": "tok_aBcDeFgH...",
-  "created_at": "2026-04-15T00:00:00Z"
-}`}</CodeBlock>
-                <div style={{ marginTop: 16 }}>
-                  <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                    curl Example
-                  </p>
-                  <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/docs \\
-  -H "Content-Type: application/json" \\
-  -d '{"markdown":"# Hello","isDraft":false}'`}</CodeBlock>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* GET /api/docs/{id} */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="GET" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/docs/{"{id}"}
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Read a document by ID. Draft documents are only accessible by their owner.
-              Password-protected documents require <InlineCode>x-document-password</InlineCode> header.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  Headers (optional)
-                </p>
-                <CodeBlock>{`x-user-id: user-uuid
-x-anonymous-id: anon-uuid
-x-document-password: secret
-x-user-email: user@example.com
-Authorization: Bearer <token>`}</CodeBlock>
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  Response 200
-                </p>
-                <CodeBlock lang="json">{`{
-  "id": "abc123",
-  "title": "My Document",
-  "markdown": "# Hello World",
-  "created_at": "2026-04-15T00:00:00Z",
-  "updated_at": "2026-04-15T01:00:00Z",
-  "view_count": 42,
-  "is_draft": false,
-  "editMode": "token",
-  "isOwner": true,
-  "editToken": "tok_...",
-  "hasPassword": false
-}`}</CodeBlock>
-              </div>
-            </div>
-          </Card>
-
-          {/* PATCH /api/docs/{id} */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="PATCH" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/docs/{"{id}"}
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Update a document. Requires edit token or owner authentication.
-              Also supports actions: <InlineCode>soft-delete</InlineCode>, <InlineCode>rotate-token</InlineCode>.
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  Request Body
-                </p>
-                <CodeBlock lang="json">{`{
-  "editToken": "tok_...",
-  "markdown": "# Updated content",
-  "title": "New Title",
-  "isDraft": false,
-  "changeSummary": "Fixed typo"
-}`}</CodeBlock>
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: mono, margin: 0, lineHeight: 1.8 }}>
-                    editToken: string (required for token mode)<br />
-                    markdown: string (new content)<br />
-                    title: string (new title)<br />
-                    isDraft: boolean (publish/unpublish)<br />
-                    action: &quot;soft-delete&quot; | &quot;rotate-token&quot;<br />
-                    changeSummary: string (version note)
-                  </p>
-                </div>
-              </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, marginTop: 0 }}>
-                  curl Example
-                </p>
-                <CodeBlock lang="bash">{`# Update content
-curl -X PATCH https://mdfy.cc/api/docs/abc123 \\
-  -H "Content-Type: application/json" \\
-  -d '{"editToken":"tok_...","markdown":"# New"}'
-
-# Soft delete
-curl -X PATCH https://mdfy.cc/api/docs/abc123 \\
-  -H "Content-Type: application/json" \\
-  -d '{"editToken":"tok_...","action":"soft-delete"}'`}</CodeBlock>
-              </div>
-            </div>
-          </Card>
-
-          {/* HEAD /api/docs/{id} */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="HEAD" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/docs/{"{id}"}
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Check when a document was last updated. Returns <InlineCode>x-updated-at</InlineCode> header.
-              Useful for sync polling without downloading full content.
-            </p>
-            <CodeBlock lang="bash">{`curl -I https://mdfy.cc/api/docs/abc123
-# x-updated-at: 2026-04-15T01:00:00Z`}</CodeBlock>
-          </Card>
-
-          {/* GET /api/user/documents */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="GET" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/user/documents
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              List all documents owned by a user. Requires <InlineCode>x-user-id</InlineCode> header
-              or <InlineCode>Authorization</InlineCode> bearer token.
-            </p>
-            <CodeBlock lang="bash">{`curl https://mdfy.cc/api/user/documents \\
-  -H "x-user-id: user-uuid"
-
-# Response: { "documents": [ { "id", "title", "created_at", ... } ] }`}</CodeBlock>
-          </Card>
-
-          {/* POST /api/upload */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <MethodBadge method="POST" />
-              <code style={{ fontSize: 14, fontFamily: mono, color: "var(--text-primary)" }}>
-                /api/upload
-              </code>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Upload an image. Returns a public URL. Accepts multipart form-data with a <InlineCode>file</InlineCode> field.
-            </p>
-            <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/upload \\
-  -F "file=@screenshot.png"
-
-# Response: { "url": "https://...storage.../screenshot.png" }`}</CodeBlock>
-          </Card>
-
-        </div>
-      </section>
-
-      {/* ───────── CLI REFERENCE ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="cli">CLI Reference</SectionHeading>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--text-muted)",
-            marginBottom: 24,
-            lineHeight: 1.7,
-            maxWidth: 640,
-          }}
-        >
-          Install the CLI globally with <InlineCode>npm install -g mdfy</InlineCode>.
-          Publish files or pipe stdin directly to mdfy.cc.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Core Commands
-            </p>
-            <CodeBlock lang="bash">{`# Publish a file
-mdfy publish README.md
-
-# Publish from stdin
-echo "# Hello World" | mdfy publish
-
-# Update an existing document
-mdfy update abc123 README.md
-
-# Download a document
-mdfy pull abc123
-mdfy pull abc123 -o output.md
-
-# Delete a document
-mdfy delete abc123
-
-# List your documents
-mdfy list
-
-# Open in browser
-mdfy open abc123`}</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Auth Commands
-            </p>
-            <CodeBlock lang="bash">{`mdfy login          # Authenticate with mdfy.cc
-mdfy logout         # Clear credentials
-mdfy whoami         # Show current user`}</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Pipe Examples
-            </p>
-            <CodeBlock lang="bash">{`# Clipboard to mdfy
-pbpaste | mdfy publish
-
-# Command output
-ls -la | mdfy publish
-
-# tmux pane capture
-tmux capture-pane -p | mdfy publish
-
-# Cat a file
-cat report.md | mdfy publish
-
-# Generate with AI, publish directly
-claude "Write a guide to Rust" | mdfy publish`}</CodeBlock>
-          </Card>
-        </div>
-      </section>
-
-      {/* ───────── JAVASCRIPT SDK ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="sdk">JavaScript SDK</SectionHeading>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--text-muted)",
-            marginBottom: 24,
-            lineHeight: 1.7,
-            maxWidth: 640,
-          }}
-        >
-          Install: <InlineCode>npm install @mdcore/api</InlineCode>.
-          Works in Node.js, Deno, Bun, and browsers. Zero dependencies (uses native fetch).
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              MdfyClient Class
-            </p>
-            <CodeBlock lang="typescript">{`import { MdfyClient } from "@mdcore/api";
-
-const client = new MdfyClient({
-  baseUrl: "https://mdfy.cc",  // default
-  userId: "user-uuid",          // optional
-  email: "user@example.com",    // optional
-});
-
-// Publish a document
-const result = await client.publish("# Hello World", {
-  title: "My Document",
-  isDraft: false,
-});
-console.log(result.id);        // "abc123"
-console.log(result.editToken); // "tok_..."
-console.log(result.url);       // "https://mdfy.cc/d/abc123"
-
-// Read a document
-const doc = await client.pull("abc123");
-console.log(doc.markdown);
-
-// Update a document
-await client.update("abc123", "# Updated", {
-  editToken: result.editToken,
-  title: "Updated Title",
-});
-
-// Delete a document (soft delete)
-await client.delete("abc123", result.editToken);
-
-// List user's documents
-const docs = await client.list();
-
-// Get version history
-const versions = await client.versions("abc123");
-
-// Upload an image
-const imageUrl = await client.upload(file);
-
-// Toggle draft/published
-await client.setPublished("abc123", result.editToken);
-await client.setDraft("abc123", result.editToken);`}</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Standalone Functions
-            </p>
-            <CodeBlock lang="typescript">{`import { publish, pull, update, deleteDocument, upload } from "@mdcore/api";
-
-// Quick publish (no client setup needed)
-const { id, editToken } = await publish("# Hello");
-
-// Read
-const doc = await pull(id);
-
-// Update
-await update(id, "# New content", editToken);
-
-// Delete
-await deleteDocument(id, editToken);`}</CodeBlock>
-          </Card>
-        </div>
-      </section>
-
-      {/* ───────── MCP SERVER ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="mcp">MCP Server</SectionHeading>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--text-muted)",
-            marginBottom: 24,
-            lineHeight: 1.7,
-            maxWidth: 640,
-          }}
-        >
-          The MCP (Model Context Protocol) server lets AI tools like Claude, Cursor, and Windsurf
-          create and manage documents on mdfy.cc directly.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Installation
-            </p>
-            <CodeBlock lang="bash">npx mdfy-mcp</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Claude Code (.mcp.json in project root)
-            </p>
-            <CodeBlock lang="json">{`{
-  "mcpServers": {
-    "mdfy": {
-      "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": {
-        "MDFY_EMAIL": "your@email.com"
-      }
-    }
-  }
-}`}</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Claude Desktop (claude_desktop_config.json)
-            </p>
-            <CodeBlock lang="json">{`{
-  "mcpServers": {
-    "mdfy": {
-      "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": {
-        "MDFY_EMAIL": "your@email.com"
-      }
-    }
-  }
-}`}</CodeBlock>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Available MCP Tools
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))",
-                gap: 12,
-              }}
+          {quickStartCards.map((card) => (
+            <Link
+              key={card.title}
+              href={card.href}
+              style={{ textDecoration: "none" }}
             >
-              {[
-                { name: "mdfy_create", desc: "Create a new document from Markdown. Returns URL, ID, and edit token.", args: "markdown, title, isDraft" },
-                { name: "mdfy_read", desc: "Fetch a document's content and metadata by ID.", args: "id" },
-                { name: "mdfy_update", desc: "Update an existing document's content or title.", args: "id, markdown, title, changeSummary" },
-                { name: "mdfy_list", desc: "List all documents owned by the authenticated user.", args: "none" },
-                { name: "mdfy_publish", desc: "Toggle a document between draft (private) and published (shared).", args: "id, isDraft" },
-                { name: "mdfy_delete", desc: "Soft-delete a document. Can be restored by owner.", args: "id" },
-              ].map((tool) => (
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border-dim)",
+                  borderRadius: 14,
+                  padding: "28px 24px",
+                  height: "100%",
+                  transition: "border-color 0.15s",
+                }}
+              >
                 <div
-                  key={tool.name}
                   style={{
-                    background: "#18181b",
-                    borderRadius: 10,
-                    padding: "16px 18px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 14,
                   }}
                 >
-                  <code
+                  <span
                     style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      fontFamily: mono,
                       color: "var(--accent)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: "var(--accent-dim)",
                     }}
                   >
-                    {tool.name}
-                  </code>
-                  <p
-                    style={{
-                      color: "var(--text-muted)",
-                      fontSize: 13,
-                      lineHeight: 1.6,
-                      margin: "6px 0 4px",
-                    }}
-                  >
-                    {tool.desc}
-                  </p>
-                  <p
-                    style={{
-                      color: "var(--text-faint)",
-                      fontSize: 11,
-                      fontFamily: mono,
-                      margin: 0,
-                    }}
-                  >
-                    args: {tool.args}
-                  </p>
+                    {card.icon}
+                  </span>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        fontFamily: mono,
+                        color: "var(--text-faint)",
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                      }}
+                    >
+                      {card.tag}
+                    </span>
+                    <p
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: "var(--text-primary)",
+                        margin: 0,
+                      }}
+                    >
+                      {card.title}
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", fontFamily: mono, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 0 }}>
-              Usage Example (in Claude)
-            </p>
-            <CodeBlock>{`You: "Create a technical blog post about WebAssembly
-      performance and publish it on mdfy.cc"
-
-Claude: [calls mdfy_create with markdown content]
-        Document created: https://mdfy.cc/d/abc123`}</CodeBlock>
-          </Card>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: "var(--text-muted)",
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
+                  {card.desc}
+                </p>
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginTop: 16,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                    fontFamily: mono,
+                  }}
+                >
+                  View docs &rarr;
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 
-      {/* ───────── AUTHENTICATION ───────── */}
+      {/* ───────── TRY IT ───────── */}
       <section
         style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
       >
-        <SectionHeading id="auth">Authentication</SectionHeading>
+        <h2
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            marginBottom: 32,
+            fontFamily: mono,
+          }}
+        >
+          Try It
+        </h2>
+
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border-dim)",
+            borderRadius: 14,
+            padding: "28px 24px",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              marginTop: 0,
+              marginBottom: 16,
+              lineHeight: 1.7,
+            }}
+          >
+            Publish your first document in under 30 seconds. No authentication
+            required.
+          </p>
+          <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/docs \\
+  -H "Content-Type: application/json" \\
+  -d '{"markdown": "# Hello World\\nPublished via API.", "isDraft": false}'
+
+# Response:
+# { "id": "abc123", "editToken": "tok_...", "created_at": "..." }
+# View at: https://mdfy.cc/d/abc123`}</CodeBlock>
+        </div>
+      </section>
+
+      {/* ───────── EXPLORE ───────── */}
+      <section
+        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
+      >
+        <h2
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            marginBottom: 32,
+            fontFamily: mono,
+          }}
+        >
+          Explore
+        </h2>
 
         <div
           style={{
@@ -1025,241 +516,63 @@ Claude: [calls mdfy_create with markdown content]
             gap: 16,
           }}
         >
-          <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 12 }}>
-              No auth required
-            </h3>
-            <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
-              Creating and reading public documents requires no authentication.
-              POST to <InlineCode>/api/docs</InlineCode> and get a URL instantly.
-              The returned <InlineCode>editToken</InlineCode> is your proof of ownership.
-            </p>
-          </Card>
-
-          <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 12 }}>
-              Edit tokens
-            </h3>
-            <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
-              Every document gets an <InlineCode>editToken</InlineCode> at creation.
-              Include it in PATCH requests to update or delete.
-              The MCP server and CLI manage tokens automatically.
-            </p>
-          </Card>
-
-          <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 12 }}>
-              User identity
-            </h3>
-            <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
-              For user-scoped actions (list documents, ownership), provide identity via:<br />
-              <InlineCode>x-user-id</InlineCode> header, or<br />
-              <InlineCode>x-user-email</InlineCode> header, or<br />
-              <InlineCode>Authorization: Bearer</InlineCode> JWT token (OAuth apps).
-            </p>
-          </Card>
-
-          <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 12 }}>
-              MCP / CLI auth
-            </h3>
-            <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
-              Set <InlineCode>MDFY_EMAIL</InlineCode> environment variable.
-              The MCP server uses this for user identification.
-              CLI uses <InlineCode>mdfy login</InlineCode> for OAuth-based auth.
-            </p>
-          </Card>
-        </div>
-      </section>
-
-      {/* ───────── INTEGRATIONS ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="integrations">Integrations</SectionHeading>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
-            gap: 16,
-          }}
-        >
-          {[
-            {
-              name: "VS Code Extension",
-              desc: "Edit, preview, and sync documents directly in VS Code. WYSIWYG mode, cloud sync, sidebar panel.",
-              link: "/plugins",
-            },
-            {
-              name: "mdfy for Mac",
-              desc: "Native macOS app. Menu bar access, drag-and-drop publishing, offline editing.",
-              link: "/plugins",
-            },
-            {
-              name: "Chrome Extension",
-              desc: "Capture AI conversations from ChatGPT, Claude, and Gemini. One-click publish to mdfy.cc.",
-              link: "/plugins",
-            },
-            {
-              name: "QuickLook",
-              desc: "Preview .md files in Finder with mdfy rendering quality. macOS QuickLook plugin.",
-              link: "/plugins",
-            },
-          ].map((item) => (
+          {exploreCards.map((card) => (
             <Link
-              key={item.name}
-              href={item.link}
-              style={{
-                textDecoration: "none",
-              }}
+              key={card.title}
+              href={card.href}
+              style={{ textDecoration: "none" }}
             >
-              <Card style={{ height: "100%" }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginTop: 0, marginBottom: 8 }}>
-                  {item.name}
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border-dim)",
+                  borderRadius: 14,
+                  padding: "24px",
+                  height: "100%",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: "var(--text-primary)",
+                    marginTop: 0,
+                    marginBottom: 8,
+                  }}
+                >
+                  {card.title}
                 </h3>
-                <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0 }}>
-                  {item.desc}
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text-muted)",
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
+                  {card.desc}
                 </p>
-              </Card>
+              </div>
             </Link>
           ))}
         </div>
 
-        <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 16 }}>
-          See all integrations at{" "}
-          <Link href="/plugins" style={{ color: "var(--accent)", textDecoration: "none" }}>
-            mdfy.cc/plugins
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--text-faint)",
+            marginTop: 24,
+            fontFamily: mono,
+          }}
+        >
+          For AI consumption, see{" "}
+          <Link
+            href="/docs/llms.txt"
+            style={{ color: "var(--accent)", textDecoration: "none" }}
+          >
+            /docs/llms.txt
           </Link>
         </p>
-      </section>
-
-      {/* ───────── NPM PACKAGES ───────── */}
-      <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
-      >
-        <SectionHeading id="packages">npm Packages</SectionHeading>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: "var(--text-muted)",
-            marginBottom: 24,
-            lineHeight: 1.7,
-            maxWidth: 640,
-          }}
-        >
-          Independent packages. Each can be installed and used separately. No cross-dependencies.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {[
-            {
-              pkg: "@mdcore/api",
-              desc: "HTTP client for mdfy.cc. Publish, read, update, delete documents. Zero dependencies (native fetch).",
-              install: "npm install @mdcore/api",
-            },
-            {
-              pkg: "@mdcore/engine",
-              desc: "WASM Markdown renderer (Rust/comrak). GFM, KaTeX math, Mermaid diagrams, syntax highlighting, code copy buttons.",
-              install: "npm install @mdcore/engine",
-            },
-            {
-              pkg: "@mdcore/styles",
-              desc: "CSS-only package. Dark/light themes, rendered document styles, print/PDF styles. No JavaScript.",
-              install: "npm install @mdcore/styles",
-            },
-            {
-              pkg: "@mdcore/ai",
-              desc: "AI provider integrations. Gemini, OpenAI, Anthropic. Text-to-Markdown, ASCII rendering, conversation parsing.",
-              install: "npm install @mdcore/ai",
-            },
-            {
-              pkg: "mdfy-mcp",
-              desc: "MCP server for AI tools. Claude Code, Claude Desktop, Cursor, Windsurf. 6 tools for document management.",
-              install: "npx mdfy-mcp",
-            },
-          ].map((p, i) => (
-            <div
-              key={p.pkg}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "200px 1fr 260px",
-                gap: 16,
-                alignItems: "center",
-                padding: "18px 20px",
-                background: i % 2 === 0 ? "var(--surface)" : "transparent",
-                borderRadius: 10,
-              }}
-            >
-              <code
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  fontFamily: mono,
-                  color: "var(--accent)",
-                }}
-              >
-                {p.pkg}
-              </code>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-muted)",
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                {p.desc}
-              </p>
-              <code
-                style={{
-                  fontSize: 12,
-                  fontFamily: mono,
-                  color: "var(--text-faint)",
-                }}
-              >
-                {p.install}
-              </code>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ───────── CTA ───────── */}
-      <section
-        style={{
-          maxWidth: 1080,
-          margin: "0 auto",
-          padding: "0 24px 100px",
-          textAlign: "center",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "clamp(28px, 4vw, 40px)",
-            fontWeight: 800,
-            color: "var(--text-primary)",
-            letterSpacing: "-0.02em",
-            marginBottom: 16,
-          }}
-        >
-          Start building.
-        </h2>
-        <p
-          style={{
-            color: "var(--text-muted)",
-            fontSize: 16,
-            marginBottom: 32,
-          }}
-        >
-          Publish your first document in under 30 seconds.
-        </p>
-        <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/docs \\
-  -H "Content-Type: application/json" \\
-  -d '{"markdown": "# Hello from the API", "isDraft": false}'`}</CodeBlock>
-        </div>
       </section>
 
       {/* ───────── FOOTER ───────── */}
@@ -1280,7 +593,6 @@ Claude: [calls mdfy_create with markdown content]
               marginBottom: 40,
             }}
           >
-            {/* Brand */}
             <div>
               <div style={{ marginBottom: 12 }}>
                 <MdfyLogo size={18} />
@@ -1297,7 +609,6 @@ Claude: [calls mdfy_create with markdown content]
                 Your Markdown, Beautifully Published.
               </p>
             </div>
-            {/* Product */}
             <div>
               <p
                 style={{
@@ -1318,7 +629,6 @@ Claude: [calls mdfy_create with markdown content]
                 { label: "About", href: "/about" },
                 { label: "Plugins", href: "/plugins" },
                 { label: "API", href: "/docs" },
-                { label: "Pricing", href: "/about#pricing" },
               ].map((l) => (
                 <Link
                   key={l.label}
@@ -1335,7 +645,6 @@ Claude: [calls mdfy_create with markdown content]
                 </Link>
               ))}
             </div>
-            {/* Resources */}
             <div>
               <p
                 style={{
@@ -1349,17 +658,16 @@ Claude: [calls mdfy_create with markdown content]
                   textTransform: "uppercase",
                 }}
               >
-                Resources
+                Developers
               </p>
               {[
-                {
-                  label: "GitHub",
-                  href: "https://github.com/raymindai/mdcore",
-                },
-                { label: "Chrome Extension", href: "/plugins" },
-                { label: "VS Code Extension", href: "/plugins" },
+                { label: "REST API", href: "/docs/api" },
+                { label: "CLI", href: "/docs/cli" },
+                { label: "SDK", href: "/docs/sdk" },
+                { label: "MCP Server", href: "/docs/mcp" },
+                { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
               ].map((l) => (
-                <a
+                <Link
                   key={l.label}
                   href={l.href}
                   style={{
@@ -1371,10 +679,9 @@ Claude: [calls mdfy_create with markdown content]
                   }}
                 >
                   {l.label}
-                </a>
+                </Link>
               ))}
             </div>
-            {/* Legal */}
             <div>
               <p
                 style={{
@@ -1392,8 +699,6 @@ Claude: [calls mdfy_create with markdown content]
               </p>
               {[
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
-                { label: "Twitter / X", href: "#" },
-                { label: "Terms of Service", href: "#" },
                 { label: "Privacy Policy", href: "/privacy" },
               ].map((l) => (
                 <a
@@ -1412,7 +717,6 @@ Claude: [calls mdfy_create with markdown content]
               ))}
             </div>
           </div>
-          {/* Bottom bar */}
           <div
             style={{
               borderTop: "1px solid var(--border-dim)",
