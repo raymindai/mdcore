@@ -304,6 +304,7 @@ function cmdHelp() {
 Usage:
   mdfy publish <file>          Publish a .md file and get a URL
   mdfy publish                 Publish from stdin (pipe support)
+  mdfy capture [source]        Capture terminal/AI output and publish
   mdfy update <id> <file>      Update an existing document
   mdfy pull <id>               Download a document to stdout
   mdfy pull <id> -o <file>     Download and save to file
@@ -328,6 +329,175 @@ Environment:
 Config:  ~/.mdfy/config.json
 Tokens:  ~/.mdfy/tokens.json
 `);
+}
+
+// ─── Capture ───
+
+async function cmdCapture(args) {
+  const target = args[0]; // "tmux", "clipboard", "last", or nothing (auto-detect)
+
+  let raw;
+
+  if (target === "tmux" || (!target && process.env.TMUX)) {
+    // Capture tmux pane
+    try {
+      raw = require("child_process").execSync("tmux capture-pane -p -S -3000", { encoding: "utf8" });
+    } catch {
+      console.error("Error: Not in a tmux session or tmux not available.");
+      process.exit(1);
+    }
+  } else if (target === "clipboard" || target === "cb") {
+    // Capture clipboard
+    if (process.platform === "darwin") {
+      try { raw = require("child_process").execSync("pbpaste", { encoding: "utf8" }); }
+      catch { console.error("Error: Could not read clipboard."); process.exit(1); }
+    } else {
+      try { raw = require("child_process").execSync("xclip -selection clipboard -o", { encoding: "utf8" }); }
+      catch { console.error("Error: xclip not available."); process.exit(1); }
+    }
+  } else if (target === "last") {
+    // Read stdin for piped last command
+    raw = await readStdin();
+    if (!raw) { console.error("Usage: some-command 2>&1 | mdfy capture last"); process.exit(1); }
+  } else if (!target) {
+    // Auto: try stdin, then clipboard
+    raw = await readStdin();
+    if (!raw && process.platform === "darwin") {
+      try { raw = require("child_process").execSync("pbpaste", { encoding: "utf8" }); }
+      catch {}
+    }
+    if (!raw) { console.error("Usage: mdfy capture [tmux|clipboard|last]"); process.exit(1); }
+  } else {
+    // Treat as file
+    if (fs.existsSync(target)) {
+      raw = fs.readFileSync(target, "utf8");
+    } else {
+      console.error(`Error: Unknown target '${target}'. Use: tmux, clipboard, last, or a file path.`);
+      process.exit(1);
+    }
+  }
+
+  // Strip ANSI escape codes
+  const clean = stripAnsi(raw);
+
+  // Detect and format AI conversation
+  const formatted = formatCapture(clean);
+
+  // Publish
+  const title = extractTitle(formatted) || "Terminal Capture";
+  try {
+    const result = await api("POST", "/api/docs", {
+      markdown: formatted,
+      title,
+      isDraft: false,
+      source: "cli-capture",
+    });
+
+    const url = `${BASE_URL}/d/${result.id}`;
+    console.log(url);
+
+    const tokens = loadTokens();
+    tokens[result.id] = result.editToken;
+    saveTokens(tokens);
+
+    if (process.platform === "darwin") {
+      try { require("child_process").execSync(`echo -n "${url}" | pbcopy`); console.error("  URL copied to clipboard"); } catch {}
+    }
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function stripAnsi(str) {
+  // Remove ANSI escape sequences (colors, cursor movement, etc.)
+  return str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "")
+    .replace(/\x1B\][^\x07]*\x07/g, "")  // OSC sequences
+    .replace(/\x1B[()][AB012]/g, "")      // Character set
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+function formatCapture(text) {
+  // Check if it's an AI conversation
+  if (isAiConversation(text)) {
+    return formatAiConversation(text);
+  }
+
+  // Check if it looks like a CLI session
+  if (isCliSession(text)) {
+    return formatCliSession(text);
+  }
+
+  // Plain text — wrap in code block if it looks like output
+  if (text.includes("$") || text.includes("❯") || text.includes(">>>")) {
+    return "# Terminal Output\n\n```\n" + text.trim() + "\n```\n";
+  }
+
+  return text;
+}
+
+function isAiConversation(text) {
+  const patterns = [
+    /^(User|Human|You|Question)\s*[:：]/im,
+    /^(Assistant|AI|ChatGPT|Claude|Gemini)\s*[:：]/im,
+    /^(❯|>|\$)\s*(claude|chatgpt|gemini|ollama)/im,
+    /╭─|╰─|━━━/m,  // Claude Code box drawing
+  ];
+  let matches = 0;
+  for (const p of patterns) { if (p.test(text)) matches++; }
+  return matches >= 1;
+}
+
+function formatAiConversation(text) {
+  const lines = text.split("\n");
+  let md = "# AI Conversation\n\n";
+  let currentRole = null;
+  let currentContent = [];
+
+  for (const line of lines) {
+    // Detect role changes
+    const userMatch = line.match(/^(?:❯|>|\$)?\s*(User|Human|You|Question)\s*[:：]\s*(.*)/i);
+    const aiMatch = line.match(/^(Assistant|AI|ChatGPT|Claude|Gemini|GPT)\s*[:：]\s*(.*)/i);
+
+    if (userMatch) {
+      if (currentRole) { md += flushRole(currentRole, currentContent); }
+      currentRole = "user";
+      currentContent = userMatch[2] ? [userMatch[2]] : [];
+    } else if (aiMatch) {
+      if (currentRole) { md += flushRole(currentRole, currentContent); }
+      currentRole = "assistant";
+      currentContent = aiMatch[2] ? [aiMatch[2]] : [];
+    } else {
+      currentContent.push(line);
+    }
+  }
+  if (currentRole) { md += flushRole(currentRole, currentContent); }
+
+  // If no roles detected, just return cleaned text
+  if (!md.includes("> **")) {
+    return "# Terminal Capture\n\n" + text;
+  }
+
+  return md;
+}
+
+function flushRole(role, content) {
+  const text = content.join("\n").trim();
+  if (!text) return "";
+  if (role === "user") {
+    return "> **You:** " + text.split("\n").join("\n> ") + "\n\n";
+  }
+  return text + "\n\n---\n\n";
+}
+
+function isCliSession(text) {
+  const promptPattern = /^[\$❯>]\s+/m;
+  return promptPattern.test(text);
+}
+
+function formatCliSession(text) {
+  return "# Terminal Session\n\n```bash\n" + text.trim() + "\n```\n";
 }
 
 // ─── Helpers ───
@@ -361,6 +531,9 @@ async function main() {
       break;
     case "open":
       await cmdOpen(args.slice(1));
+      break;
+    case "capture": case "cap": case "c":
+      await cmdCapture(args.slice(1));
       break;
     case "login":
       await cmdLogin();
