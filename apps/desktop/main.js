@@ -147,6 +147,15 @@ const AuthManager = {
     return !!this.getToken();
   },
 
+  async ensureValidToken() {
+    const token = this.getToken();
+    if (token) return token;
+    // Token expired — try refresh
+    const refreshed = await this.refreshToken();
+    if (refreshed) return this.getToken();
+    return null;
+  },
+
   getHeaders() {
     const headers = { "Content-Type": "application/json" };
     const token = this.getToken();
@@ -156,6 +165,11 @@ const AuthManager = {
     const email = this.getEmail();
     if (email) headers["x-user-email"] = email;
     return headers;
+  },
+
+  async getHeadersWithRefresh() {
+    await this.ensureValidToken();
+    return this.getHeaders();
   },
 
   async refreshToken() {
@@ -737,11 +751,14 @@ function startFolderWatcher(folderPath) {
   stopFolderWatcher();
   try {
     folderWatcher = fs.watch(folderPath, { recursive: true }, (eventType, filename) => {
-      if (!filename || !filename.endsWith(".md")) return;
-      if (folderWatcher._debounce) clearTimeout(folderWatcher._debounce);
-      folderWatcher._debounce = setTimeout(() => {
-        sendToRenderer("workspace-changed");
-      }, 500);
+      if (!filename) return;
+      // Watch for any .md file changes (create, rename, delete)
+      if (filename.endsWith(".md") || filename.endsWith(".mdfy.json")) {
+        if (folderWatcher._debounce) clearTimeout(folderWatcher._debounce);
+        folderWatcher._debounce = setTimeout(() => {
+          sendToRenderer("workspace-changed");
+        }, 300);
+      }
     });
   } catch {}
 }
@@ -932,6 +949,16 @@ function createWindow() {
     return { action: "deny" };
   });
 
+  // Save before close — auto-save current markdown
+  mainWindow.on("close", (e) => {
+    if (currentFilePath) {
+      try {
+        // Trigger one last auto-save synchronously
+        mainWindow.webContents.send("trigger-save");
+      } catch {}
+    }
+  });
+
   mainWindow.on("closed", () => {
     stopFileWatcher();
     stopFolderWatcher();
@@ -972,16 +999,30 @@ ipcMain.handle("open-file-path", (event, filePath) => {
   openFileInApp(filePath);
 });
 
-ipcMain.handle("new-document", () => {
-  currentFilePath = null;
-  stopFileWatcher();
-  mainWindow.setTitle("Untitled — mdfy");
+ipcMain.handle("new-document", async () => {
+  const defaultDir = currentWorkspaceFolder || app.getPath("desktop");
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: path.join(defaultDir, "Untitled.md"),
+    filters: [{ name: "Markdown", extensions: ["md"] }],
+  });
+  if (result.canceled || !result.filePath) {
+    // User cancelled — open empty editor without file
+    currentFilePath = null;
+    stopFileWatcher();
+    mainWindow.setTitle("Untitled — mdfy");
+    mainWindow.webContents.send("load-document", {
+      html: "<p><br></p>", markdown: "", filePath: null, flavor: "gfm", config: null,
+    });
+    return;
+  }
+  const filePath = result.filePath;
+  fs.writeFileSync(filePath, "", "utf8");
+  currentFilePath = filePath;
+  startFileWatcher(filePath);
+  addToRecentFiles(filePath);
+  mainWindow.setTitle(`${path.basename(filePath)} — mdfy`);
   mainWindow.webContents.send("load-document", {
-    html: "<p><br></p>",
-    markdown: "",
-    filePath: null,
-    flavor: "gfm",
-    config: null,
+    html: "<p><br></p>", markdown: "", filePath, flavor: "gfm", config: null,
   });
 });
 
@@ -1103,7 +1144,9 @@ ipcMain.handle("get-workspace-folder", () => currentWorkspaceFolder);
 ipcMain.handle("get-recent-files", () => {
   return loadRecentFiles().map((f) => {
     const config = loadMdfyConfig(f.path);
-    return { ...f, config: config || null };
+    let modifiedAt = f.openedAt;
+    try { modifiedAt = fs.statSync(f.path).mtime.toISOString(); } catch {}
+    return { ...f, config: config || null, modifiedAt };
   });
 });
 
@@ -1111,7 +1154,12 @@ ipcMain.handle("get-recent-files", () => {
 
 ipcMain.handle("login", () => {
   const callbackUrl = encodeURIComponent("mdfy://auth");
-  shell.openExternal(`${MDFY_URL}/auth/desktop?redirect=${callbackUrl}`);
+  const url = `${MDFY_URL}/auth/desktop?redirect=${callbackUrl}`;
+  console.log("[login] Opening:", url);
+  require("child_process").exec(`open "${url}"`, (err) => {
+    if (err) console.error("[login] exec error:", err);
+    else console.log("[login] Browser opened successfully");
+  });
 });
 
 ipcMain.handle("logout", () => {
@@ -1336,6 +1384,10 @@ ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => 
 
 ipcMain.handle("get-version", () => app.getVersion());
 
+ipcMain.handle("reveal-in-finder", (event, filePath) => {
+  shell.showItemInFolder(filePath);
+});
+
 ipcMain.handle("open-in-browser", (event, url) => {
   shell.openExternal(url);
 });
@@ -1348,6 +1400,11 @@ ipcMain.handle("read-clipboard", () => {
 ipcMain.handle("write-clipboard", (event, text) => {
   const { clipboard } = require("electron");
   clipboard.writeText(text);
+});
+
+ipcMain.handle("write-clipboard-html", (event, html) => {
+  const { clipboard } = require("electron");
+  clipboard.write({ text: html, html: html });
 });
 
 ipcMain.handle("get-theme", () => {
@@ -1383,7 +1440,7 @@ function buildMenu() {
             stopFileWatcher();
             mainWindow.setTitle("Untitled — mdfy");
             mainWindow.webContents.send("load-document", {
-              html: "", markdown: "", filePath: null, flavor: "gfm", config: null,
+              html: "<p><br></p>", markdown: "", filePath: null, flavor: "gfm", config: null,
             });
           },
         },
@@ -1473,6 +1530,50 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// ─── QuickLook Extension Installer ───
+
+function installQuickLook() {
+  const marker = path.join(USER_DATA_DIR, ".quicklook-installed");
+  if (fs.existsSync(marker)) return;
+
+  const qlSource = path.join(process.resourcesPath, "MdfyQuickLook.app");
+  if (!fs.existsSync(qlSource)) return;
+
+  const userApps = path.join(app.getPath("home"), "Applications");
+  const qlDest = path.join(userApps, "MdfyQuickLook.app");
+
+  try {
+    if (!fs.existsSync(userApps)) fs.mkdirSync(userApps, { recursive: true });
+    if (!fs.existsSync(qlDest)) {
+      const { execSync } = require("child_process");
+      execSync(`cp -R "${qlSource}" "${qlDest}"`);
+      execSync(`open "${qlDest}"`);
+      console.log("[quicklook] Installed to ~/Applications/");
+    }
+    fs.writeFileSync(marker, new Date().toISOString());
+
+    // Show activation dialog
+    setTimeout(() => {
+      if (!mainWindow) return;
+      dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "QuickLook Preview Installed",
+        message: "mdfy QuickLook has been installed.",
+        detail: "To preview .md files with Space in Finder, you need to enable the extension:\n\nSystem Settings → Privacy & Security → Extensions → Quick Look → Enable MdfyQuickLook",
+        buttons: ["Open Settings", "Later"],
+        defaultId: 0,
+      }).then((result) => {
+        if (result.response === 0) {
+          // Open System Settings > Extensions
+          require("child_process").exec('open "x-apple.systempreferences:com.apple.ExtensionsPreferences"');
+        }
+      });
+    }, 2000);
+  } catch (err) {
+    console.log("[quicklook] Install failed (non-critical):", err.message);
+  }
+}
+
 // ─── App Events ───
 
 app.on("open-file", (event, filePath) => {
@@ -1501,26 +1602,41 @@ app.whenReady().then(() => {
     startFolderWatcher(currentWorkspaceFolder);
   }
 
+  // Determine the file to open on startup (priority: queued > argv > recent)
+  let startupFile = null;
+  if (app._queuedFile) {
+    startupFile = app._queuedFile;
+    app._queuedFile = null;
+  }
+  if (!startupFile) {
+    startupFile = process.argv.find((a) => {
+      const ext = path.extname(a).toLowerCase();
+      return ALL_SUPPORTED_EXTENSIONS.has(ext);
+    }) || null;
+  }
+
+  // Restore workspace + open file after renderer loads
+  mainWindow.webContents.once("did-finish-load", () => {
+    if (currentWorkspaceFolder) {
+      sendToRenderer("workspace-changed");
+    }
+    // Only open a file if explicitly requested (double-click, argv, URL scheme)
+    // Otherwise show welcome screen
+    if (startupFile && fs.existsSync(startupFile)) {
+      setTimeout(() => openFileInApp(startupFile), 300);
+    }
+  });
+
   // Start sync engine
   SyncEngine.start();
+
+  // Install QuickLook extension on first run
+  installQuickLook();
 
   // Handle theme changes
   nativeTheme.on("updated", () => {
     sendToRenderer("theme-changed", nativeTheme.shouldUseDarkColors ? "dark" : "light");
   });
-
-  // Open queued file
-  if (app._queuedFile) {
-    openFileInApp(app._queuedFile);
-    app._queuedFile = null;
-  }
-
-  // Handle argv file
-  const filePath = process.argv.find((a) => {
-    const ext = path.extname(a).toLowerCase();
-    return ALL_SUPPORTED_EXTENSIONS.has(ext);
-  });
-  if (filePath) openFileInApp(filePath);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

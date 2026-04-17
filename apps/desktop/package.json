@@ -31,6 +31,12 @@
       "assets/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "../quicklook/MdfyQuickLook/build/MdfyQuickLook.app",
+        "to": "MdfyQuickLook.app"
+      }
+    ],
     "protocols": [
       {
         "name": "mdfy",
@@ -39,7 +45,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "assets/icon.png",
+      "icon": "assets/icon.icns",
       "darkModeSupport": true,
       "hardenedRuntime": true,
       "target": [
@@ -57,7 +63,6 @@
     },
     "dmg": {
       "title": "mdfy",
-      "icon": "assets/icon.png",
       "contents": [
         { "x": 130, "y": 220 },
         { "x": 410, "y": 220, "type": "link", "path": "/Applications" }

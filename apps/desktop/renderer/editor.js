@@ -132,6 +132,7 @@
     var tree = results[0] || {};
     sidebarState.workspaceFiles = tree.files || tree || [];
     sidebarState.workspaceFolders = tree.folders || [];
+    sidebarState.recentFiles = results[1] || [];
     sidebarState.authState = results[2] || { loggedIn: false };
 
     if (sidebarState.authState.loggedIn) {
@@ -183,7 +184,7 @@
           fileName: parts[parts.length - 1],
           relativePath: rf.path.replace(/^\/Users\/[^/]+/, "~"),
           config: rf.config,
-          modifiedAt: rf.openedAt,
+          modifiedAt: rf.modifiedAt || rf.openedAt,
           source: "recent",
         });
       }
@@ -207,8 +208,10 @@
     });
 
     // Categorize
-    var synced = allLocal.filter(function(f) { return f.config && f.config.docId; });
-    var local = allLocal.filter(function(f) { return !f.config || !f.config.docId; });
+    // Only show synced status when logged in — otherwise everything is "local"
+    var isLoggedIn = sidebarState.authState.loggedIn;
+    var synced = isLoggedIn ? allLocal.filter(function(f) { return f.config && f.config.docId; }) : [];
+    var local = isLoggedIn ? allLocal.filter(function(f) { return !f.config || !f.config.docId; }) : allLocal;
     var cloud = sidebarState.cloudDocs.filter(function(cd) {
       // Exclude cloud docs that already have local copies (synced)
       return !synced.some(function(s) { return s.config && s.config.docId === cd.id; });
@@ -224,69 +227,85 @@
     var html = "";
 
     if (currentFilter === "all") {
-      // ALL: unified folder tree — synced+local together, then cloud
-      var allFiles = allLocal; // already sorted
-      var folderGroups = {};
-      var rootFiles = [];
-      for (var ai = 0; ai < allFiles.length; ai++) {
-        var pf = allFiles[ai].parentFolder;
-        if (pf) {
-          if (!folderGroups[pf]) folderGroups[pf] = [];
-          folderGroups[pf].push(allFiles[ai]);
-        } else {
-          rootFiles.push(allFiles[ai]);
+      // Separate workspace files from recent-only files
+      var wsFiles = allLocal.filter(function(f) { return f.source === "workspace"; });
+      var recentOnly = allLocal.filter(function(f) { return f.source === "recent"; });
+
+      // Workspace section (folder tree)
+      if (wsFiles.length > 0) {
+        var folderGroups = {};
+        var wsRootFiles = [];
+        for (var ai = 0; ai < wsFiles.length; ai++) {
+          var pf = wsFiles[ai].parentFolder;
+          if (pf) {
+            if (!folderGroups[pf]) folderGroups[pf] = [];
+            folderGroups[pf].push(wsFiles[ai]);
+          } else {
+            wsRootFiles.push(wsFiles[ai]);
+          }
         }
+        html += secHeader("local", "Workspace", wsFiles.length);
+        var renderedFolders = Object.keys(folderGroups).sort();
+        for (var fi = 0; fi < renderedFolders.length; fi++) {
+          var folderRel = renderedFolders[fi];
+          var folderName = folderRel.split("/").pop();
+          var isCollapsed = collapsedFolders[folderRel] || false;
+          html += renderFolderGroup(folderRel, folderName, folderGroups[folderRel], isCollapsed);
+        }
+        for (var ri = 0; ri < wsRootFiles.length; ri++) html += renderFileItem(wsRootFiles[ri]);
       }
 
-      // Section header: FILES (count)
-      if (allFiles.length > 0) {
-        html += secHeader("local", "Files", allFiles.length);
+      // Recent section (files opened outside workspace)
+      if (recentOnly.length > 0) {
+        html += secHeader("local", "Recent", recentOnly.length);
+        for (var rci = 0; rci < recentOnly.length; rci++) html += renderFileItem(recentOnly[rci]);
       }
-
-      // Render folders
-      var renderedFolders = Object.keys(folderGroups).sort();
-      for (var fi = 0; fi < renderedFolders.length; fi++) {
-        var folderRel = renderedFolders[fi];
-        var folderName = folderRel.split("/").pop();
-        var isCollapsed = collapsedFolders[folderRel] || false;
-        html += renderFolderGroup(folderRel, folderName, folderGroups[folderRel], isCollapsed);
-      }
-
-      // Root files
-      for (var ri = 0; ri < rootFiles.length; ri++) html += renderFileItem(rootFiles[ri]);
 
       // Cloud docs
       if (cloud.length > 0 && sidebarState.authState.loggedIn) {
         html += secHeader("cloud", "Cloud", cloud.length);
         for (var ci = 0; ci < cloud.length; ci++) html += renderCloudItem(cloud[ci]);
       }
-    } else {
-      // SYNCED / LOCAL / CLOUD: flat lists by state
-      if ((currentFilter === "synced" || currentFilter === "local") && synced.length > 0) {
+    } else if (currentFilter === "synced") {
+      if (!sidebarState.authState.loggedIn) {
+        html += '<div class="sidebar-empty"><p>Sign in to see synced documents</p><p class="sidebar-empty-hint">Publish files to mdfy.cc to sync them across devices</p><button class="login-prompt-btn" onclick="window.mdfyDesktop.login()">Sign in</button></div>';
+      } else if (synced.length > 0) {
         html += secHeader("synced", "Synced", synced.length);
         for (var s = 0; s < synced.length; s++) html += renderSyncedItem(synced[s]);
+      } else {
+        html += '<div class="sidebar-empty"><p>No synced documents</p><p class="sidebar-empty-hint">Publish a file to sync it with mdfy.cc</p></div>';
       }
 
-      if (currentFilter === "local" && local.length > 0) {
-        html += secHeader("local", "Local", local.length);
-        for (var l = 0; l < local.length; l++) html += renderLocalItem(local[l]);
-      }
-
-      if ((currentFilter === "cloud" || currentFilter === "synced") && synced.length > 0 && currentFilter === "cloud") {
+    } else if (currentFilter === "local") {
+      // LOCAL: synced (has local copy) + local-only
+      if (synced.length > 0) {
         html += secHeader("synced", "Synced", synced.length);
         for (var s2 = 0; s2 < synced.length; s2++) html += renderSyncedItem(synced[s2]);
       }
-
-      if (currentFilter === "cloud" && cloud.length > 0 && sidebarState.authState.loggedIn) {
-        html += secHeader("cloud", "Cloud", cloud.length);
-        for (var c = 0; c < cloud.length; c++) html += renderCloudItem(cloud[c]);
+      if (local.length > 0) {
+        html += secHeader("local", "Local", local.length);
+        for (var l2 = 0; l2 < local.length; l2++) html += renderLocalItem(local[l2]);
+      }
+      if (synced.length === 0 && local.length === 0) {
+        html += '<div class="sidebar-empty"><p>No local documents</p></div>';
       }
 
-      if (currentFilter === "synced" && synced.length === 0) {
-        html += '<div class="sidebar-empty"><p>No synced documents</p></div>';
-      }
-      if (currentFilter === "cloud" && !sidebarState.authState.loggedIn) {
-        html += '<div class="sidebar-empty"><p>Sign in to see cloud documents</p></div>';
+    } else if (currentFilter === "cloud") {
+      // CLOUD: synced (exists on cloud) + cloud-only
+      if (!sidebarState.authState.loggedIn) {
+        html += '<div class="sidebar-empty"><p>Sign in to access cloud documents</p><p class="sidebar-empty-hint">Sync, publish, and access documents from anywhere</p><button class="login-prompt-btn" onclick="window.mdfyDesktop.login()">Sign in</button></div>';
+      } else {
+        if (synced.length > 0) {
+          html += secHeader("synced", "Synced", synced.length);
+          for (var s3 = 0; s3 < synced.length; s3++) html += renderSyncedItem(synced[s3]);
+        }
+        if (cloud.length > 0) {
+          html += secHeader("cloud", "Cloud", cloud.length);
+          for (var c2 = 0; c2 < cloud.length; c2++) html += renderCloudItem(cloud[c2]);
+        }
+        if (synced.length === 0 && cloud.length === 0) {
+          html += '<div class="sidebar-empty"><p>No cloud documents</p></div>';
+        }
       }
     }
 
@@ -300,13 +319,76 @@
 
     container.innerHTML = html;
 
-    // Folder toggle
+    // Section-level sort button
+    var secSort = document.getElementById("sec-sort");
+    if (secSort) {
+      secSort.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var modes = ["newest", "oldest", "az", "za"];
+        var idx = modes.indexOf(sortMode);
+        sortMode = modes[(idx + 1) % modes.length];
+        renderFileList();
+      });
+    }
+    var secNew = document.getElementById("sec-new-doc");
+    if (secNew) {
+      secNew.addEventListener("click", function(e) {
+        e.stopPropagation();
+        window.mdfyDesktop.newDocument();
+      });
+    }
+
+    // File context menu (right-click)
+    container.querySelectorAll(".file-item[data-path]").forEach(function(item) {
+      item.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var fp = item.getAttribute("data-path");
+        var config = findConfigByPath(fp);
+        showFileContextMenu(e.clientX, e.clientY, fp, config);
+      });
+    });
+
+    container.querySelectorAll(".file-item[data-cloud-id]").forEach(function(item) {
+      item.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var docId = item.getAttribute("data-cloud-id");
+        var title = item.querySelector(".file-name");
+        showCloudContextMenu(e.clientX, e.clientY, docId, title ? title.textContent : "");
+      });
+    });
+
+    // Folder toggle + context menu
     container.querySelectorAll("[data-toggle-folder]").forEach(function(el) {
       el.addEventListener("click", function(e) {
         e.stopPropagation();
         var folderRel = el.getAttribute("data-toggle-folder");
         collapsedFolders[folderRel] = !collapsedFolders[folderRel];
         renderFileList();
+      });
+      el.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var folderRel = el.getAttribute("data-toggle-folder");
+        window.mdfyDesktop.getWorkspaceFolder().then(function(wsFolder) {
+          if (!wsFolder) return;
+          var fullPath = wsFolder + "/" + folderRel;
+          hideFileContextMenu();
+          var menu = document.createElement("div");
+          menu.className = "file-ctx-menu";
+          var items = [
+            { label: "New File Here", action: function() {
+              var name = "Untitled.md";
+              var fp = fullPath + "/" + name;
+              var counter = 1;
+              // Can't check existence from renderer, just create
+              window.mdfyDesktop.saveFileAs("", name, [{ name: "Markdown", extensions: ["md"] }]);
+            }},
+            { label: "Reveal in Finder", action: function() { window.mdfyDesktop.revealInFinder(fullPath); } },
+          ];
+          renderContextMenu(menu, items, e.clientX, e.clientY);
+        });
       });
     });
 
@@ -362,7 +444,13 @@
           window.mdfyDesktop.openFilePath(fp);
         } else if (docId) {
           var docTitle = item.querySelector(".file-name");
-          window.mdfyDesktop.previewCloudDoc(docId, docTitle ? docTitle.textContent : docId);
+          var t = docTitle ? docTitle.textContent : docId;
+          // Show loading state
+          showEditor();
+          content.innerHTML = '<div class="cloud-loading"><div class="cloud-loading-spinner"></div><p>Loading ' + esc(t) + '...</p></div>';
+          content.setAttribute("contenteditable", "false");
+          if (headerTitle) headerTitle.textContent = t + " (Cloud)";
+          window.mdfyDesktop.previewCloudDoc(docId, t);
         }
       });
     });
@@ -370,7 +458,7 @@
 
   // Unified file item — shows synced or local icon based on config
   function renderFileItem(f) {
-    if (f.config && f.config.docId) return renderSyncedItem(f);
+    if (sidebarState.authState.loggedIn && f.config && f.config.docId) return renderSyncedItem(f);
     return renderLocalItem(f);
   }
 
@@ -400,7 +488,16 @@
       cloud: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>',
     };
     var countStr = (count === "" || count === undefined) ? "" : ' <span class="section-count">' + count + '</span>';
-    return '<div class="file-section-label">' + (icons[type] || "") + " " + label + countStr + '</div>';
+    // For "Files" section, add sort + new doc buttons (like VS Code)
+    var actions = "";
+    if (type === "local") {
+      var sortLabels = { newest: "Newest", oldest: "Oldest", az: "A→Z", za: "Z→A" };
+      actions = '<div class="sec-actions">' +
+        '<button class="sec-action-btn" id="sec-sort" title="Sort: ' + (sortLabels[sortMode] || sortMode) + '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></svg></button>' +
+        '<button class="sec-action-btn" id="sec-new-doc" title="New Document"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg></button>' +
+      '</div>';
+    }
+    return '<div class="file-section-label">' + (icons[type] || "") + " " + label + countStr + actions + '</div>';
   }
 
   // VS Code matching icons (14px, Lucide style)
@@ -421,7 +518,7 @@
     var meta = synced ? "synced " + synced : f.relativePath;
     var active = f.filePath === currentFilePath ? " active" : "";
     return '<div class="file-item' + active + '" data-path="' + esc(f.filePath) + '">' +
-      '<div class="file-icon synced">' + SBI.check + '</div>' +
+      '<div class="file-icon synced" title="Synced with mdfy.cc">' + SBI.check + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(f.fileName) + '</div><div class="file-meta">' + esc(meta) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="copy-url" data-path="' + esc(f.filePath) + '" title="Copy URL">' + SBI.copy + '</button>' +
@@ -436,7 +533,7 @@
   function renderLocalItem(f) {
     var active = f.filePath === currentFilePath ? " active" : "";
     return '<div class="file-item' + active + '" data-path="' + esc(f.filePath) + '">' +
-      '<div class="file-icon local">' + SBI.circle + '</div>' +
+      '<div class="file-icon local" title="Local only">' + SBI.circle + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(f.fileName) + '</div><div class="file-meta">' + esc(f.relativePath) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="publish" data-path="' + esc(f.filePath) + '" title="Sync to mdfy.cc">' + SBI.upload + '</button>' +
@@ -449,7 +546,7 @@
     var title = cd.title || "Untitled";
     var meta = timeAgo(cd.updated_at) + (cd.is_draft ? " · draft" : "");
     return '<div class="file-item" data-cloud-id="' + esc(cd.id) + '">' +
-      '<div class="file-icon cloud">' + SBI.cloud + '</div>' +
+      '<div class="file-icon cloud" title="Cloud document">' + SBI.cloud + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(title) + '</div><div class="file-meta">' + esc(meta) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="pull-cloud" data-id="' + esc(cd.id) + '" data-title="' + esc(title) + '" title="Sync to local">' + SBI.download + '</button>' +
@@ -468,14 +565,14 @@
       var email = sidebarState.authState.email || "User";
       var initial = email.charAt(0).toUpperCase();
       bar.innerHTML =
-        '<div class="user-info">' +
-          '<div class="user-avatar">' + initial + '</div>' +
+        '<div class="user-loggedin">' +
+          '<div class="user-avatar-circle">' + initial + '</div>' +
           '<div class="user-details">' +
             '<span class="user-email">' + esc(email) + '</span>' +
             '<span class="user-status"><span class="status-dot"></span> Connected</span>' +
           '</div>' +
-        '</div>' +
-        '<button class="user-btn" id="btn-signout">Sign out</button>';
+          '<button class="user-logout-btn" id="btn-signout">Sign out</button>' +
+        '</div>';
 
       document.getElementById("btn-signout").addEventListener("click", function() {
         window.mdfyDesktop.logout();
@@ -567,9 +664,8 @@
 
   // ─── Sidebar: Buttons ───
 
-  document.getElementById("btn-new-doc").addEventListener("click", function() {
-    window.mdfyDesktop.newDocument();
-  });
+  var btnNewDoc = document.getElementById("btn-new-doc");
+  if (btnNewDoc) btnNewDoc.addEventListener("click", function() { window.mdfyDesktop.newDocument(); });
 
   document.getElementById("btn-search-toggle").addEventListener("click", function() {
     var box = document.getElementById("search-box");
@@ -588,15 +684,14 @@
     renderFileList();
   });
 
-  document.getElementById("btn-sort").addEventListener("click", function() {
-    var modes = ["newest", "oldest", "az", "za"];
-    var idx = modes.indexOf(sortMode);
-    sortMode = modes[(idx + 1) % modes.length];
-    var btn = document.getElementById("btn-sort");
-    var labels = { newest: "Sort: newest first", oldest: "Sort: oldest first", az: "Sort: A → Z", za: "Sort: Z → A" };
-    btn.setAttribute("title", labels[sortMode]);
-    btn.style.color = (sortMode !== "newest") ? "var(--accent)" : "";
-    renderFileList();
+  // Help panel toggle
+  document.getElementById("btn-help-toggle").addEventListener("click", function() {
+    var panel = document.getElementById("help-panel");
+    var btn = document.getElementById("btn-help-toggle");
+    if (panel) {
+      panel.classList.toggle("hidden");
+      btn.style.color = panel.classList.contains("hidden") ? "" : "var(--accent)";
+    }
   });
 
   document.getElementById("btn-refresh").addEventListener("click", function() {
@@ -676,6 +771,11 @@
     showEditor();
     currentMarkdown = markdown || "";
     currentFilePath = filePath;
+    isReadOnly = false;
+    currentCloudDoc = null;
+    var oldBanner = document.getElementById("cloud-banner");
+    if (oldBanner) oldBanner.remove();
+    content.setAttribute("contenteditable", "true");
 
     window.mdfyDesktop.renderMarkdown(currentMarkdown).then(function(result) {
       if (result && result.html !== undefined) {
@@ -782,6 +882,7 @@
 
     // Menu triggers
     window.mdfyDesktop.onTriggerSave(function() {
+      if (isReadOnly) return;
       currentMarkdown = htmlToMarkdown(content);
       if (currentMarkdown) {
         window.mdfyDesktop.saveFile(currentMarkdown).then(function(p) {
@@ -812,6 +913,11 @@
   if (publishBtn) publishBtn.addEventListener("click", function() { doPublish(); });
 
   async function doPublish() {
+    // Extract fresh markdown from the Live editor before publishing
+    if (hasDocument && content && !isReadOnly) {
+      currentMarkdown = htmlToMarkdown(content);
+      updateDocStats(currentMarkdown);
+    }
     if (!currentMarkdown) return;
 
     var authState = await window.mdfyDesktop.getAuthState();
@@ -1013,10 +1119,20 @@
   //  WYSIWYG EDITING (kept from original editor.js)
   // ════════════════════════════════════════════════════════
 
+  // Save on blur (focus lost) to prevent data loss
+  content.addEventListener("blur", function() {
+    if (isDirty && hasDocument && currentFilePath && window.mdfyDesktop && !isReadOnly) {
+      currentMarkdown = htmlToMarkdown(content);
+      window.mdfyDesktop.autoSave(currentMarkdown);
+      isDirty = false;
+    }
+  });
+
   // On input in Live pane: extract markdown and sync to Source pane.
   // Never re-render the Live pane itself (user is typing there).
   var liveInputDebounce = null;
   content.addEventListener("input", function() {
+    if (isReadOnly) return;
     isDirty = true;
     updateSyncStatusUI("editing");
     if (liveInputDebounce) clearTimeout(liveInputDebounce);
@@ -1042,7 +1158,7 @@
         case "k": e.preventDefault(); insertLink(); break;
         case "s":
           e.preventDefault();
-          if (window.mdfyDesktop) {
+          if (window.mdfyDesktop && !isReadOnly) {
             currentMarkdown = htmlToMarkdown(content);
             updateDocStats(currentMarkdown);
             if (!currentFilePath) {
@@ -1070,7 +1186,7 @@
   // Auto-save every 3 seconds
   // Auto-save: extract markdown from DOM only at save time, not during typing.
   setInterval(function() {
-    if (isDirty && window.mdfyDesktop && !isReadOnly && currentFilePath) {
+    if (isDirty && hasDocument && window.mdfyDesktop && !isReadOnly && currentFilePath) {
       currentMarkdown = htmlToMarkdown(content);
       updateDocStats(currentMarkdown);
       window.mdfyDesktop.autoSave(currentMarkdown);
@@ -1169,14 +1285,28 @@
       indentUnit: 2,
       tabSize: 2,
       indentWithTabs: false,
-      viewportMargin: Infinity,
+      viewportMargin: 50,
       extraKeys: {
         Tab: function(cm) { cm.replaceSelection("  ", "end"); },
-        "Cmd-S": function() {
-          if (window.mdfyDesktop) {
-            window.mdfyDesktop.autoSave(currentMarkdown);
-            isDirty = false;
-            updateSyncStatusUI("synced");
+        "Cmd-S": function(cm) {
+          if (window.mdfyDesktop && !isReadOnly) {
+            currentMarkdown = cm.getValue();
+            updateDocStats(currentMarkdown);
+            if (!currentFilePath) {
+              window.mdfyDesktop.saveFile(currentMarkdown).then(function(p) {
+                if (p) {
+                  currentFilePath = p;
+                  isDirty = false;
+                  updateSyncStatusUI("synced");
+                  if (headerTitle) headerTitle.textContent = p.split("/").pop();
+                  refreshSidebarData().then(renderSidebar);
+                }
+              });
+            } else {
+              window.mdfyDesktop.autoSave(currentMarkdown);
+              isDirty = false;
+              updateSyncStatusUI("synced");
+            }
           }
         },
       },
@@ -1400,7 +1530,7 @@
   }
 
   function insertTable(cols, rows) {
-    cols = cols || 3; rows = rows || 2;
+    cols = cols || 3; rows = rows || 3;
     var sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return;
     var range = sel.getRangeAt(0);
     var blockNode = findBlockParent(range.startContainer);
@@ -1409,7 +1539,8 @@
     for (var h = 0; h < cols; h++) { var th = document.createElement("th"); th.textContent = "Header " + (h + 1); headerRow.appendChild(th); }
     thead.appendChild(headerRow); table.appendChild(thead);
     var tbody = document.createElement("tbody");
-    for (var r = 0; r < rows; r++) { var row = document.createElement("tr"); for (var c = 0; c < cols; c++) { var td = document.createElement("td"); td.textContent = ""; row.appendChild(td); } tbody.appendChild(row); }
+    var bodyRows = Math.max(1, rows - 1); // First row is the header
+    for (var r = 0; r < bodyRows; r++) { var row = document.createElement("tr"); for (var c = 0; c < cols; c++) { var td = document.createElement("td"); td.textContent = ""; row.appendChild(td); } tbody.appendChild(row); }
     table.appendChild(tbody);
     if (blockNode && blockNode !== content) { blockNode.parentNode.insertBefore(table, blockNode.nextSibling); }
     else { content.appendChild(table); }
@@ -1505,13 +1636,11 @@
             showToast("Uploading image...");
             window.mdfyDesktop.uploadImage(base64, mime, "pasted-image.png").then(function(result) {
               if (result.url) {
-                document.execCommand("insertText", false, "![image](" + result.url + ")");
-                triggerEditDebounce();
+                insertImageElement(result.url, "image");
                 showToast("Image uploaded");
               } else if (result.error) {
                 // Fallback: insert as data URL
-                document.execCommand("insertText", false, "![image](" + dataUrl + ")");
-                triggerEditDebounce();
+                insertImageElement(dataUrl, "image");
                 showToast("Image inserted locally (upload failed)");
               }
             });
@@ -1522,15 +1651,30 @@
       }
     }
 
-    // HTML paste
+    // HTML paste — sanitize and insert as HTML (preserving structure)
     var htmlData = cd.getData("text/html");
     if (htmlData && htmlData.trim()) {
       if (/<(h[1-6]|p|ul|ol|li|table|tr|td|th|blockquote|pre|code|a|strong|em|b|i|img)\b/i.test(htmlData)) {
         e.preventDefault();
         var temp = document.createElement("div"); temp.innerHTML = htmlData;
-        temp.querySelectorAll("style, script, meta, link").forEach(function(el) { el.remove(); });
-        document.execCommand("insertText", false, htmlToMarkdown(temp).trim());
-        triggerEditDebounce(); return;
+        temp.querySelectorAll("style, script, meta, link, svg").forEach(function(el) { el.remove(); });
+        // Strip all class/id/style attributes to get clean HTML
+        temp.querySelectorAll("*").forEach(function(el) {
+          el.removeAttribute("class"); el.removeAttribute("id"); el.removeAttribute("style");
+        });
+        // Convert to markdown then re-render to get clean mdfy HTML
+        var pastedMd = htmlToMarkdown(temp).trim();
+        if (pastedMd) {
+          window.mdfyDesktop.renderMarkdown(pastedMd).then(function(r) {
+            if (r && r.html) {
+              document.execCommand("insertHTML", false, r.html);
+            } else {
+              document.execCommand("insertText", false, pastedMd);
+            }
+            triggerEditDebounce();
+          });
+        }
+        return;
       }
     }
   });
@@ -1568,6 +1712,8 @@
   function nodeToMarkdown(node, depth) {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    // Skip UI elements injected by postProcessAll
+    if (node.classList && (node.classList.contains("ce-spacer") || node.classList.contains("code-header") || node.classList.contains("mermaid-edit-btn") || node.classList.contains("cloud-banner"))) return "";
     var tag = node.tagName.toLowerCase();
     var innerText = node.textContent || "";
     var childMd = "";
@@ -1612,10 +1758,25 @@
         }
         return "<details>\n<summary>" + summaryText + "</summary>\n\n" + childMd.trim() + "\n</details>\n\n";
       }
-      case "div": case "section": case "article": case "main": case "aside": case "header": case "footer": case "nav":
+      case "div":
+        // Mermaid diagrams: preserve original code
+        if (node.classList && node.classList.contains("mermaid") && node.getAttribute("data-original-code")) {
+          return "```mermaid\n" + node.getAttribute("data-original-code") + "\n```\n\n";
+        }
         for (var j = 0; j < node.childNodes.length; j++) childMd += nodeToMarkdown(node.childNodes[j], depth);
         return childMd;
-      case "span": return inlineChildrenToMd(node);
+      case "section": case "article": case "main": case "aside": case "header": case "footer": case "nav":
+        for (var j2 = 0; j2 < node.childNodes.length; j2++) childMd += nodeToMarkdown(node.childNodes[j2], depth);
+        return childMd;
+      case "span":
+        if (node.getAttribute("data-math-style") === "display") return "$$\n" + innerText.trim() + "\n$$\n\n";
+        if (node.getAttribute("data-math-style") === "inline") return "$" + innerText.trim() + "$";
+        // KaTeX-rendered spans have class "katex" or "katex-display"
+        if (node.classList && (node.classList.contains("katex") || node.classList.contains("katex-display"))) {
+          var mathEl = node.closest("[data-math-style]");
+          if (mathEl) return ""; // Already handled by parent
+        }
+        return inlineChildrenToMd(node);
       default: return innerText;
     }
   }
@@ -2078,8 +2239,55 @@
 
   // ─── Tooltips ───
 
-  // Tooltips — use native title attributes; no custom tooltip to avoid flicker.
-  // Buttons already have title attributes for native browser tooltips.
+  // ─── Custom Instant Tooltips (mdfy.cc style) ───
+  var tipEl = null;
+  var tipHideTimer = null;
+
+  document.addEventListener("mouseover", function(e) {
+    var target = e.target.closest("[title], [data-tip]");
+    if (!target) return;
+    if (tipHideTimer) { clearTimeout(tipHideTimer); tipHideTimer = null; }
+
+    var text = target.getAttribute("title");
+    if (text) {
+      target.setAttribute("data-tip", text);
+      target.removeAttribute("title");
+    } else {
+      text = target.getAttribute("data-tip");
+    }
+    if (!text) return;
+
+    if (!tipEl) { tipEl = document.createElement("div"); tipEl.className = "mdfy-tip"; document.body.appendChild(tipEl); }
+
+    var preview = target.getAttribute("data-preview");
+    if (preview) {
+      tipEl.innerHTML = '<div class="tip-label">' + esc(text) + '</div><div class="tip-preview">' + preview + '</div>';
+    } else {
+      tipEl.innerHTML = '<div class="tip-label">' + esc(text) + '</div>';
+    }
+
+    tipEl.classList.add("show");
+    var r = target.getBoundingClientRect();
+    var tw = tipEl.offsetWidth;
+    var th = tipEl.offsetHeight;
+    var top = r.bottom + 6;
+    if (top + th > window.innerHeight - 4) top = r.top - th - 6;
+    var left = r.left + (r.width / 2) - (tw / 2);
+    if (left < 4) left = 4;
+    if (left + tw > window.innerWidth - 4) left = window.innerWidth - tw - 4;
+    tipEl.style.left = left + "px";
+    tipEl.style.top = top + "px";
+  });
+
+  document.addEventListener("mouseout", function(e) {
+    var target = e.target.closest("[data-tip]");
+    if (!target) return;
+    tipHideTimer = setTimeout(function() {
+      if (tipEl) tipEl.classList.remove("show");
+    }, 50);
+  });
+
+  document.addEventListener("mousedown", function() { if (tipEl) tipEl.classList.remove("show"); });
 
   // ─── Utility ───
 
@@ -2176,7 +2384,7 @@
         break;
       case "copy-rich":
         window.mdfyDesktop.renderMarkdown(currentMarkdown).then(function(r) {
-          window.mdfyDesktop.writeClipboard(r.html);
+          window.mdfyDesktop.writeClipboardHtml(r.html);
           showToast("Rich text copied — paste into Docs or Email");
         });
         break;
@@ -2241,6 +2449,121 @@
     if (ed) ed.remove();
     hideTableContextMenu();
   });
+
+  // ─── File Context Menu ───
+
+  var fileCtxMenu = null;
+
+  function showFileContextMenu(x, y, filePath, config) {
+    hideFileContextMenu();
+    var menu = document.createElement("div");
+    menu.className = "file-ctx-menu";
+
+    var items = [];
+    items.push({ label: "Open", action: function() { window.mdfyDesktop.openFilePath(filePath); } });
+    items.push({ label: "Reveal in Finder", action: function() { window.mdfyDesktop.revealInFinder(filePath); } });
+    items.push({ divider: true });
+
+    if (config && config.docId) {
+      items.push({ label: "Copy URL", action: function() {
+        window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + config.docId);
+        showToast("URL copied");
+      }});
+      items.push({ label: "Open in Browser", action: function() {
+        window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + config.docId);
+      }});
+      items.push({ divider: true });
+      items.push({ label: "Unsync", action: async function() {
+        await window.mdfyDesktop.syncUnlink(filePath);
+        await refreshSidebarData(); renderSidebar();
+      }});
+      items.push({ label: "Delete from Cloud", danger: true, action: async function() {
+        if (confirm("Delete from mdfy.cc? Local file stays.")) {
+          await window.mdfyDesktop.syncDelete(filePath);
+          await refreshSidebarData(); renderSidebar();
+          showToast("Deleted from cloud");
+        }
+      }});
+    } else {
+      items.push({ label: "Publish to mdfy.cc", action: function() {
+        window.mdfyDesktop.openFilePath(filePath);
+        setTimeout(function() { doPublish(); }, 500);
+      }});
+    }
+
+    items.push({ divider: true });
+    items.push({ label: "Copy Path", action: function() {
+      window.mdfyDesktop.writeClipboard(filePath);
+      showToast("Path copied");
+    }});
+
+    renderContextMenu(menu, items, x, y);
+  }
+
+  function showCloudContextMenu(x, y, docId, title) {
+    hideFileContextMenu();
+    var menu = document.createElement("div");
+    menu.className = "file-ctx-menu";
+
+    var items = [
+      { label: "Preview", action: function() { window.mdfyDesktop.previewCloudDoc(docId, title); } },
+      { label: "Sync to Local", action: async function() {
+        var r = await window.mdfyDesktop.syncPullCloud(docId, title);
+        if (r && r.ok) { await refreshSidebarData(); renderSidebar(); }
+      }},
+      { label: "Open in Browser", action: function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + docId); } },
+      { divider: true },
+      { label: "Copy URL", action: function() {
+        window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + docId);
+        showToast("URL copied");
+      }},
+      { divider: true },
+      { label: "Delete from Cloud", danger: true, action: async function() {
+        if (confirm("Delete from mdfy.cc?")) {
+          await window.mdfyDesktop.deleteCloudDoc(docId);
+          await refreshSidebarData(); renderSidebar();
+          showToast("Deleted");
+        }
+      }},
+    ];
+
+    renderContextMenu(menu, items, x, y);
+  }
+
+  function renderContextMenu(menu, items, x, y) {
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].divider) {
+        var sep = document.createElement("div");
+        sep.className = "file-ctx-sep";
+        menu.appendChild(sep);
+      } else {
+        var btn = document.createElement("button");
+        btn.className = "file-ctx-item" + (items[i].danger ? " danger" : "");
+        btn.textContent = items[i].label;
+        btn.addEventListener("click", (function(action) {
+          return function(e) { e.stopPropagation(); hideFileContextMenu(); action(); };
+        })(items[i].action));
+        menu.appendChild(btn);
+      }
+    }
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
+    document.body.appendChild(menu);
+    fileCtxMenu = menu;
+
+    // Reposition if offscreen
+    var rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + "px";
+    if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + "px";
+
+    setTimeout(function() {
+      document.addEventListener("click", hideFileContextMenu, { once: true });
+    }, 0);
+  }
+
+  function hideFileContextMenu() {
+    if (fileCtxMenu) { fileCtxMenu.remove(); fileCtxMenu = null; }
+  }
 
   // ─── Published URL Display ───
 

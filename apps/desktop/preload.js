@@ -46,8 +46,10 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   uploadImage: (base64, mime, name) => ipcRenderer.invoke("upload-image", base64, mime, name),
   getVersion: () => ipcRenderer.invoke("get-version"),
   openInBrowser: (url) => ipcRenderer.invoke("open-in-browser", url),
+  revealInFinder: (path) => ipcRenderer.invoke("reveal-in-finder", path),
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
+  writeClipboardHtml: (html) => ipcRenderer.invoke("write-clipboard-html", html),
   getTheme: () => ipcRenderer.invoke("get-theme"),
 
   // ─── Events from main process ───
