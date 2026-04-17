@@ -6042,7 +6042,8 @@ ${html}
 
             {/* ── Section: EXAMPLES ── */}
             {(() => {
-              const exampleTabs = tabs.filter(t => !t.deleted && t.ownerEmail === EXAMPLE_OWNER && !hiddenExampleIds.has(t.id));
+              const canonicalIds = new Set(EXAMPLE_TABS.map(e => e.id));
+              const exampleTabs = tabs.filter(t => !t.deleted && canonicalIds.has(t.id) && !hiddenExampleIds.has(t.id));
               return (<>
                 <div className={`shrink-0 ${showExamples ? "" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
