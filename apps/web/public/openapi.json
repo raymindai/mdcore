@@ -1,0 +1,106 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "mdfy.cc API",
+    "description": "Publish, read, and manage Markdown documents. Create shareable URLs from any content.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://mdfy.cc" }
+  ],
+  "paths": {
+    "/api/docs": {
+      "post": {
+        "operationId": "publishDocument",
+        "summary": "Publish a new document and get a shareable URL",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["markdown"],
+                "properties": {
+                  "markdown": { "type": "string", "description": "Markdown content to publish" },
+                  "title": { "type": "string", "description": "Document title" },
+                  "isDraft": { "type": "boolean", "default": false },
+                  "source": { "type": "string", "default": "api" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "editToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/{id}": {
+      "get": {
+        "operationId": "readDocument",
+        "summary": "Read a document by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "markdown": { "type": "string" },
+                    "created_at": { "type": "string" },
+                    "updated_at": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDocument",
+        "summary": "Update an existing document",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["editToken", "markdown"],
+                "properties": {
+                  "editToken": { "type": "string" },
+                  "markdown": { "type": "string" },
+                  "title": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Document updated" }
+        }
+      }
+    }
+  }
+}

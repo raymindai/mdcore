@@ -288,6 +288,51 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* ───────── AI INTEGRATION ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>
+          Publish from any AI
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {[
+            {
+              ai: "Claude",
+              method: "MCP Server",
+              how: "Connect mdfy MCP server to Claude Code or Claude Desktop. Say \"publish this to mdfy\" and Claude creates a shareable URL directly.",
+              setup: "npx @mdcore/mcp",
+              example: "\"Publish this analysis to mdfy\"\n\u2192 mdfy_create tool \u2192 mdfy.cc/d/abc123",
+              color: "#fb923c",
+            },
+            {
+              ai: "ChatGPT",
+              method: "Custom GPT",
+              how: "Use the mdfy GPT in ChatGPT. Ask it to publish any response, read existing documents, or create formatted reports from conversations.",
+              setup: "Search \"mdfy\" in GPT Store",
+              example: "\"Turn this into a shareable doc\"\n\u2192 API call \u2192 mdfy.cc/d/xyz789",
+              color: "#4ade80",
+            },
+            {
+              ai: "Any AI",
+              method: "Chrome Extension",
+              how: "One-click capture from ChatGPT, Claude, or Gemini web interface. The extension detects AI conversations and formats them automatically.",
+              setup: "Chrome Web Store",
+              example: "Click mdfy icon \u2192 Captured!\n\u2192 mdfy.cc/d/def456 (URL copied)",
+              color: "#60a5fa",
+            },
+          ].map((item) => (
+            <div key={item.ai} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: item.color }}>{item.ai}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", background: "var(--background)", padding: "2px 8px", borderRadius: 4, fontFamily: "var(--font-geist-mono), monospace" }}>{item.method}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.6, flex: 1 }}>{item.how}</p>
+              <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace" }}>{item.setup}</div>
+              <pre style={{ margin: 0, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--border-dim)", fontSize: 11, fontFamily: "var(--font-geist-mono), monospace", color: item.color, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{item.example}</pre>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ───────── ECOSYSTEM ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>

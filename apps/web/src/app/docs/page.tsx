@@ -131,8 +131,13 @@ const quickStartCards = [
 
 const exploreCards = [
   {
+    title: "Publish from AI",
+    desc: "Claude (MCP), ChatGPT (GPT), Chrome Extension. Say \"publish this\" in any AI.",
+    href: "/about#ai-integration",
+  },
+  {
     title: "Integrations",
-    desc: "VS Code, Mac app, Chrome extension, QuickLook plugin.",
+    desc: "VS Code, Mac app, Chrome extension, QuickLook, tmux plugin.",
     href: "/plugins",
   },
   {
