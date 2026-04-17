@@ -1349,10 +1349,14 @@ export default function MdEditor() {
               return true;
             });
             // Remove duplicate example docs (same ownerEmail but non-canonical IDs)
+            // and fix folderId for canonical examples
             const canonicalExampleIds = new Set(EXAMPLE_TABS.map(e => e.id));
             const cleaned = deduped.filter((t: Tab) => {
               if (t.ownerEmail === EXAMPLE_OWNER && !canonicalExampleIds.has(t.id)) return false;
               return true;
+            }).map((t: Tab) => {
+              if (canonicalExampleIds.has(t.id)) return { ...t, folderId: EXAMPLES_FOLDER_ID };
+              return t;
             });
             return cleaned;
           }
@@ -7496,8 +7500,8 @@ ${html}
               if (missingExamples.length > 0) {
                 setTabs(prev => [...prev, ...missingExamples]);
               }
-              // Also un-delete any soft-deleted examples
-              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER && t.deleted ? { ...t, deleted: false } : t));
+              // Un-delete soft-deleted examples and fix folderId back to Examples folder
+              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER ? { ...t, deleted: false, folderId: EXAMPLES_FOLDER_ID } : t));
               // Unhide all hidden examples
               setHiddenExampleIds(new Set());
               setSidebarContextMenu(null);
