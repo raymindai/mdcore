@@ -1299,6 +1299,17 @@
       return true;
     }
 
+    if (request.action === "toggle-float-button") {
+      const existing = document.getElementById("mdfy-float-container");
+      if (request.show && !existing) {
+        createFloatingButton();
+      } else if (!request.show && existing) {
+        existing.remove();
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+
     if (request.action === "capture-page") {
       // On AI pages: extract conversation (with artifact pre-processing)
       // On other pages: return null (background.js will handle it)
@@ -1344,7 +1355,12 @@
 
   // ─── Initialize ───
 
-  createFloatingButton();
+  // Only show floating "mdfy All" button if user opted in (default: hidden)
+  chrome.storage.sync.get({ showFloatingButton: false }, (data) => {
+    if (data.showFloatingButton) {
+      createFloatingButton();
+    }
+  });
   addMiniButtons();
 
   // Re-run mini button injection when new messages appear (MutationObserver)

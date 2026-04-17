@@ -334,6 +334,23 @@ document.querySelectorAll('input[name="range"]').forEach((radio) => {
   });
 });
 
+// ─── Settings ───
+
+const chkFloat = document.getElementById("chk-float");
+chrome.storage.sync.get({ showFloatingButton: false }, (data) => {
+  chkFloat.checked = data.showFloatingButton;
+});
+chkFloat.addEventListener("change", () => {
+  const val = chkFloat.checked;
+  chrome.storage.sync.set({ showFloatingButton: val });
+  // Notify content script to show/hide immediately
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: "toggle-float-button", show: val }).catch(() => {});
+    }
+  });
+});
+
 // ─── Init ───
 
 detectPlatform();
