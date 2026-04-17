@@ -1446,6 +1446,7 @@ export default function MdEditor() {
         localStorage.setItem("mdfy-active-tab", activeTabId);
         localStorage.setItem("mdfy-folders", JSON.stringify(folders));
         localStorage.setItem("mdfy-hidden-examples", JSON.stringify([...hiddenExampleIds]));
+        localStorage.setItem("mdfy-show-examples", JSON.stringify(showExamples));
       } catch {
         // Quota exceeded — try saving without markdown bodies for cloud-synced tabs
         try {
@@ -1587,7 +1588,10 @@ export default function MdEditor() {
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
-  const [showExamples, setShowExamples] = useState(true);
+  const [showExamples, setShowExamples] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("mdfy-show-examples") !== "false";
+  });
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -6042,46 +6046,38 @@ ${html}
               </>);
             })()}
 
-            {/* ── Section: EXAMPLES ── */}
-            {(() => {
+            {/* ── Section: EXAMPLES (hidden entirely when toggle is OFF) ── */}
+            {showExamples && (() => {
               const canonicalIds = new Set(EXAMPLE_TABS.map(e => e.id));
               const exampleTabs = tabs.filter(t => !t.deleted && canonicalIds.has(t.id) && !hiddenExampleIds.has(t.id));
-              return (<>
-                <div className={`shrink-0 ${showExamples ? "" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
+              return (
+                <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setShowExamples(!showExamples)}
+                    className="flex items-center gap-1.5 px-3 h-7 select-none shrink-0"
                   >
-                    <BookOpen width={11} height={11} style={{ color: showExamples ? "var(--accent)" : "var(--text-faint)" }} />
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showExamples ? "var(--accent)" : "var(--text-muted)" }}>Examples</span>
-                    {!showExamples && exampleTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>}
+                    <BookOpen width={11} height={11} style={{ color: "var(--accent)" }} />
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: "var(--accent)" }}>Examples</span>
+                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
                   </div>
-                  {showExamples && (
-                    <div className="space-y-0.5 pb-1 pl-2 pr-2">
-                      {exampleTabs.map(tab => (
-                        <div
-                          key={tab.id}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
-                          style={{
-                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                            color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
-                          }}
-                          onClick={(e) => handleDocClick(tab.id, e)}
-                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                        >
-                          <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                          <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                        </div>
-                      ))}
-                      {exampleTabs.length === 0 && (
-                        <div className="px-2.5 py-2 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
-                          All examples hidden
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                    {exampleTabs.map(tab => (
+                      <div
+                        key={tab.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
+                        style={{
+                          background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
+                          color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                        }}
+                        onClick={(e) => handleDocClick(tab.id, e)}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                      >
+                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                        <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </>);
+              );
             })()}
 
             {/* ── Section 3: TRASH ── */}
