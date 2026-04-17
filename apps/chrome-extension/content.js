@@ -10,7 +10,8 @@
   "use strict";
 
   // Prevent double-injection
-  if (document.getElementById("mdfy-float-container")) return;
+  if (document.documentElement.dataset.mdfyInjected) return;
+  document.documentElement.dataset.mdfyInjected = "1";
 
   const MDFY_URL = "https://mdfy.cc";
   const MAX_URL_BYTES = 8000; // ~8KB limit for URL hash
@@ -1356,11 +1357,15 @@
   // ─── Initialize ───
 
   // Only show floating "mdfy All" button if user opted in (default: hidden)
-  chrome.storage.sync.get({ showFloatingButton: false }, (data) => {
-    if (data.showFloatingButton) {
-      createFloatingButton();
-    }
-  });
+  try {
+    chrome.storage.sync.get({ showFloatingButton: false }, (data) => {
+      if (data && data.showFloatingButton) {
+        createFloatingButton();
+      }
+    });
+  } catch (e) {
+    console.warn("[mdfy] storage access failed, skipping float button", e);
+  }
   addMiniButtons();
 
   // Re-run mini button injection when new messages appear (MutationObserver)
