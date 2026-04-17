@@ -1539,7 +1539,10 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(true);
+  const [showToolbar, setShowToolbar] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 768;
+  });
   const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -1816,7 +1819,7 @@ export default function MdEditor() {
   // Set default view mode based on screen size
   useEffect(() => {
     if (isMobile) {
-      setViewMode("split"); // vertical split on mobile
+      setViewMode("preview"); // Live view only on mobile by default
     }
   }, [isMobile]);
 
@@ -4754,16 +4757,16 @@ ${html}
               <div className="relative">
                 <button
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
-                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors"
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
                   style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
                 >
-                  VIEW ONLY
+                  VIEW&nbsp;ONLY
                   <ChevronDown width={8} height={8} />
                 </button>
                 {showPermDropdown && (
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
-                    <div className="absolute top-full right-0 mt-1 w-44 sm:w-48 rounded-lg shadow-xl py-1 z-[9999]"
+                    <div className="absolute top-full left-0 mt-1 w-44 sm:w-48 rounded-lg shadow-xl py-1 z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {docId && user?.email && (
                         <button
