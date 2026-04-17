@@ -1592,6 +1592,7 @@ export default function MdEditor() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
   });
+  const [examplesCollapsed, setExamplesCollapsed] = useState(false);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -6053,13 +6054,14 @@ ${html}
               return (
                 <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 select-none shrink-0"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
+                    onClick={() => setExamplesCollapsed(!examplesCollapsed)}
                   >
-                    <BookOpen width={11} height={11} style={{ color: "var(--accent)" }} />
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: "var(--accent)" }}>Examples</span>
-                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
+                    <BookOpen width={11} height={11} style={{ color: examplesCollapsed ? "var(--text-faint)" : "var(--accent)" }} />
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: examplesCollapsed ? "var(--text-muted)" : "var(--accent)" }}>Examples</span>
+                    {examplesCollapsed && exampleTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>}
                   </div>
-                  <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                  {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
                     {exampleTabs.map(tab => (
                       <div
                         key={tab.id}
@@ -6075,7 +6077,7 @@ ${html}
                         <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                       </div>
                     ))}
-                  </div>
+                  </div>}
                 </div>
               );
             })()}
