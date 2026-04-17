@@ -304,6 +304,7 @@ function cmdHelp() {
 Usage:
   mdfy publish <file>          Publish a .md file and get a URL
   mdfy publish                 Publish from stdin (pipe support)
+  mdfy read <id>               Read a document in terminal
   mdfy capture [source]        Capture terminal/AI output and publish
   mdfy update <id> <file>      Update an existing document
   mdfy pull <id>               Download a document to stdout
@@ -329,6 +330,77 @@ Environment:
 Config:  ~/.mdfy/config.json
 Tokens:  ~/.mdfy/tokens.json
 `);
+}
+
+// ─── Read ───
+
+async function cmdRead(args) {
+  let id = args[0];
+  if (!id) { console.error("Usage: mdfy read <id>"); process.exit(1); }
+
+  // Accept full URL or just ID
+  id = id.replace(/^https?:\/\/mdfy\.cc\/d\//, "").replace(/^mdfy\.cc\/d\//, "");
+
+  try {
+    const doc = await api("GET", `/api/docs/${id}`);
+    const markdown = doc.markdown || doc.content || "";
+    const title = doc.title || id;
+
+    // Render for terminal with basic formatting
+    const rendered = renderTerminal(markdown, title);
+    process.stdout.write(rendered);
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function renderTerminal(markdown, title) {
+  const BOLD = "\x1b[1m";
+  const DIM = "\x1b[2m";
+  const ITALIC = "\x1b[3m";
+  const UNDERLINE = "\x1b[4m";
+  const ORANGE = "\x1b[38;5;208m";
+  const GREEN = "\x1b[38;5;114m";
+  const BLUE = "\x1b[38;5;111m";
+  const GRAY = "\x1b[38;5;243m";
+  const RESET = "\x1b[0m";
+
+  let output = "";
+  output += `${GRAY}${"─".repeat(60)}${RESET}\n`;
+  output += `${ORANGE}${BOLD}${title}${RESET}\n`;
+  output += `${GRAY}${"─".repeat(60)}${RESET}\n\n`;
+
+  const lines = markdown.split("\n");
+  for (const line of lines) {
+    // Headings
+    if (/^######\s/.test(line)) { output += `${DIM}${line.replace(/^######\s+/, "      ")}${RESET}\n`; }
+    else if (/^#####\s/.test(line)) { output += `${DIM}${line.replace(/^#####\s+/, "     ")}${RESET}\n`; }
+    else if (/^####\s/.test(line)) { output += `${BOLD}${line.replace(/^####\s+/, "    ")}${RESET}\n`; }
+    else if (/^###\s/.test(line)) { output += `${BOLD}${line.replace(/^###\s+/, "   ")}${RESET}\n`; }
+    else if (/^##\s/.test(line)) { output += `\n${BOLD}${BLUE}${line.replace(/^##\s+/, "")}${RESET}\n${"─".repeat(40)}\n`; }
+    else if (/^#\s/.test(line)) { output += `${BOLD}${ORANGE}${line.replace(/^#\s+/, "")}${RESET}\n${"═".repeat(40)}\n`; }
+    // Code blocks
+    else if (/^```/.test(line)) { output += `${GRAY}${line}${RESET}\n`; }
+    // Blockquotes
+    else if (/^>\s/.test(line)) { output += `${GREEN}│ ${line.replace(/^>\s*/, "")}${RESET}\n`; }
+    // Lists
+    else if (/^[-*]\s/.test(line)) { output += `  ${ORANGE}•${RESET} ${line.replace(/^[-*]\s+/, "")}\n`; }
+    else if (/^\d+\.\s/.test(line)) { output += `  ${line}\n`; }
+    // Horizontal rule
+    else if (/^---/.test(line)) { output += `${GRAY}${"─".repeat(40)}${RESET}\n`; }
+    // Bold/italic inline
+    else {
+      let formatted = line;
+      formatted = formatted.replace(/\*\*(.+?)\*\*/g, `${BOLD}$1${RESET}`);
+      formatted = formatted.replace(/\*(.+?)\*/g, `${ITALIC}$1${RESET}`);
+      formatted = formatted.replace(/`(.+?)`/g, `${ORANGE}$1${RESET}`);
+      output += formatted + "\n";
+    }
+  }
+
+  output += `\n${GRAY}${"─".repeat(60)}${RESET}\n`;
+  return output;
 }
 
 // ─── Capture ───
@@ -531,6 +603,9 @@ async function main() {
       break;
     case "open":
       await cmdOpen(args.slice(1));
+      break;
+    case "read": case "view": case "cat":
+      await cmdRead(args.slice(1));
       break;
     case "capture": case "cap": case "c":
       await cmdCapture(args.slice(1));

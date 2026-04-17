@@ -208,6 +208,111 @@ export default function AboutPage() {
         </p>
       </section>
 
+      {/* ───────── WHAT IS MDFY ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 20, padding: "48px 40px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,146,60,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 32px", textAlign: "center" }}>
+            Write anywhere. Read everywhere.
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+            {[
+              { icon: "WRITE", color: "#fb923c", title: "Create from anywhere", items: ["Browser editor at mdfy.cc", "VS Code extension", "Mac desktop app", "CLI: mdfy publish", "Paste, drag & drop, import"] },
+              { icon: "SHARE", color: "#4ade80", title: "One URL, works everywhere", items: ["Send to anyone — no app needed", "Paste URL in Slack, email, docs", "Embed in websites (iframe)", "QR code for mobile", "Password protect or set expiry"] },
+              { icon: "READ", color: "#60a5fa", title: "Consume in any context", items: ["Browser — full rendered view", "AI — paste URL as context", "Terminal: mdfy read <id>", "Finder — Space to preview", "API — programmatic access"] },
+            ].map((col) => (
+              <div key={col.title}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: col.color, letterSpacing: 2, marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>{col.icon}</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 16px" }}>{col.title}</h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {col.items.map((item) => (
+                    <li key={item} style={{ fontSize: 14, color: "var(--text-muted)", padding: "5px 0", borderBottom: "1px solid var(--border-dim)", lineHeight: 1.5 }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── REAL USE CASES ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 32, fontFamily: "var(--font-geist-mono), monospace" }}>
+          How people use mdfy
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+          {[
+            {
+              title: "AI output → shareable doc in 3 seconds",
+              desc: "Claude writes a technical spec. You type \"publish this to mdfy\" → URL generated → paste in Slack. Recipient sees a polished document, not a chat screenshot.",
+              code: 'claude "write API spec" → mdfy_create → mdfy.cc/d/abc123',
+              color: "#fb923c",
+            },
+            {
+              title: "Terminal → document",
+              desc: "Capture any terminal output — git log, test results, AI conversations — and instantly publish. Share debugging sessions with your team.",
+              code: "git log --oneline -20 | mdfy publish\ntmux capture-pane -p | mdfy capture",
+              color: "#4ade80",
+            },
+            {
+              title: "Document → AI context",
+              desc: "Published a research doc? Paste the URL in any AI conversation. Claude, ChatGPT, Gemini can all read it. Your documents become reusable knowledge.",
+              code: '"Read mdfy.cc/d/abc123 and summarize"\n→ AI fetches and understands the full document',
+              color: "#60a5fa",
+            },
+            {
+              title: "Document → terminal",
+              desc: "Read any mdfy document right in your terminal. Rendered with colors, headings, code blocks. Pipe to less, grep, or other tools.",
+              code: "mdfy read abc123\nmdfy read abc123 | grep \"API\"\ncurl mdfy.cc/d/abc123.md",
+              color: "#c4b5fd",
+            },
+            {
+              title: "Cross-AI workflow",
+              desc: "ChatGPT researches a topic → capture with Chrome extension → URL created → paste in Claude → Claude refines → update same URL. One document, multiple AIs.",
+              code: "ChatGPT → Chrome ext → mdfy.cc/d/xyz\n→ Claude reads → refines → mdfy update",
+              color: "#fbbf24",
+            },
+            {
+              title: "Write in editor, share instantly",
+              desc: "Write in VS Code or mdfy Mac app. One command to publish. The URL auto-updates when you save. Your team always sees the latest version.",
+              code: "VS Code: Cmd+Alt+P → Published!\nMac app: Publish button → URL copied",
+              color: "#f472b6",
+            },
+          ].map((uc) => (
+            <div key={uc.title} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{uc.title}</h3>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>{uc.desc}</p>
+              <pre style={{ margin: 0, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--border-dim)", fontSize: 11, fontFamily: "var(--font-geist-mono), monospace", color: uc.color, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{uc.code}</pre>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ───────── ECOSYSTEM ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>
+          Available everywhere
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {[
+            { name: "Web Editor", desc: "mdfy.cc", icon: "BROWSER" },
+            { name: "VS Code", desc: "Extension", icon: "VSCODE" },
+            { name: "Mac App", desc: "Desktop", icon: "MAC" },
+            { name: "CLI", desc: "npm install -g mdfy", icon: "CLI" },
+            { name: "Chrome", desc: "AI capture", icon: "CHROME" },
+            { name: "QuickLook", desc: "Finder preview", icon: "FINDER" },
+            { name: "MCP Server", desc: "AI tool use", icon: "AI" },
+            { name: "REST API", desc: "Programmatic", icon: "API" },
+          ].map((p) => (
+            <div key={p.name} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 10, padding: "16px", textAlign: "center" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1, marginBottom: 8, fontFamily: "var(--font-geist-mono), monospace" }}>{p.icon}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{p.name}</div>
+              <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>{p.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ───────── FIGMA COMPARISON ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
