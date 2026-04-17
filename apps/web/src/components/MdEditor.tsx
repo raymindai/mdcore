@@ -577,8 +577,8 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
-  } else if (tab.source) {
-    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e"; tip = "Synced";
+  } else if (tab.cloudId) {
+    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e"; tip = tab.source ? `Synced (${tab.source})` : "Synced";
   } else {
     Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private document";
   }
@@ -4026,18 +4026,8 @@ export default function MdEditor() {
       // Open modal immediately — data loads in background
       setShowShareModal(true);
 
-      // Background: publish, sync title, fetch sharing state
+      // Background: sync title + fetch current sharing state (do NOT auto-publish)
       (async () => {
-        if (currentTab?.isDraft !== false) {
-          try {
-            await fetch(`/api/docs/${cid}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "publish", userId: user.id }),
-            });
-            setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, isDraft: false } : t));
-          } catch { showToast("Failed to publish document", "error"); }
-        }
         if (title) {
           fetch(`/api/docs/${cid}`, {
             method: "PATCH",
@@ -4054,13 +4044,11 @@ export default function MdEditor() {
             if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
             const hasSharing = (doc.allowedEmails?.length > 0) ||
               (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account");
-            if (hasSharing) {
-              setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
-                ...t,
-                isSharedByMe: true,
-                isRestricted: (doc.allowedEmails?.length > 0) || false,
-              } : t));
-            }
+            setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
+              ...t,
+              isSharedByMe: hasSharing,
+              isRestricted: (doc.allowedEmails?.length > 0) || false,
+            } : t));
           }
         } catch { /* ignore */ }
       })();
@@ -4095,9 +4083,9 @@ export default function MdEditor() {
         saveEditToken(newDocId, editToken);
         setDocId(newDocId);
         setIsOwner(true);
-        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false, isSharedByMe: true } : t));
+        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken } : t));
         window.history.replaceState(null, "", `/?doc=${newDocId}`);
-        // Open share modal immediately after creation
+        // Open share modal — doc stays as draft until user changes settings
         setShareState("idle");
         setShowShareModal(true);
       } else {
@@ -4108,7 +4096,7 @@ export default function MdEditor() {
           saveEditToken(newDocId, editToken);
           setDocId(newDocId);
           setIsOwner(true);
-          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken, isDraft: false, isSharedByMe: true } : t));
+          setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken } : t));
           await copyToClipboard(url);
           window.history.replaceState(null, "", `/?doc=${newDocId}`);
           setShareState("copied");
@@ -7768,12 +7756,24 @@ ${html}
           }}
           onEditModeChange={(mode) => {
             setDocEditMode(mode); setEditMode(mode);
+            // Publish (isDraft → false) when user explicitly changes sharing settings
+            const curTabId = activeTabIdRef.current;
+            const isShared = mode !== "owner";
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isSharedByMe: isShared } : t));
+            const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
+            if (cid && user) {
+              fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
+            }
           }}
           onAllowedEmailsChange={(emails) => {
             setAllowedEmailsState(emails);
-            // Update tab's isRestricted immediately
+            // Publish + update tab state when sharing with specific people
             const curTabId = activeTabIdRef.current;
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isRestricted: emails.length > 0 } : t));
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isSharedByMe: true, isRestricted: emails.length > 0 } : t));
+            const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
+            if (cid && user) {
+              fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
+            }
           }}
           onMakePrivate={async () => {
             const cid = docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId;
