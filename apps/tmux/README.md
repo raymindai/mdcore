@@ -28,7 +28,7 @@ set -g @plugin 'raymindai/mdfy-tmux'
 ### Prerequisite
 
 ```bash
-npm install -g mdfy
+npm install -g mdfy-cli
 ```
 
 ## Usage

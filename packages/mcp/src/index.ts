@@ -8,10 +8,45 @@ import { homedir } from "os";
 // ─── Config ───
 
 const BASE_URL = (process.env.MDFY_BASE_URL || "https://mdfy.cc").replace(/\/$/, "");
-const USER_EMAIL = process.env.MDFY_EMAIL || "";
-const TOKEN_FILE = join(homedir(), ".mdfy", "tokens.json");
+const MDFY_DIR = join(homedir(), ".mdfy");
+const CONFIG_FILE = join(MDFY_DIR, "config.json");
+const TOKEN_FILE = join(MDFY_DIR, "tokens.json");
 
-// ─── Token Store ───
+// ─── Auth (JWT from `mdfy login`) ───
+
+interface MdfyConfig {
+  token?: string;
+  userId?: string;
+  email?: string;
+}
+
+function loadConfig(): MdfyConfig {
+  try {
+    if (existsSync(CONFIG_FILE)) {
+      return JSON.parse(readFileSync(CONFIG_FILE, "utf-8"));
+    }
+  } catch { /* ignore */ }
+  return {};
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const config = loadConfig();
+  const headers: Record<string, string> = {};
+  if (config.token) headers["Authorization"] = `Bearer ${config.token}`;
+  if (config.userId) headers["x-user-id"] = config.userId;
+  return headers;
+}
+
+function isLoggedIn(): boolean {
+  const config = loadConfig();
+  return !!(config.token);
+}
+
+function getUserEmail(): string {
+  return loadConfig().email || "";
+}
+
+// ─── Edit Token Store ───
 
 function loadTokens(): Record<string, string> {
   try {
@@ -23,8 +58,7 @@ function loadTokens(): Record<string, string> {
 }
 
 function saveToken(docId: string, editToken: string): void {
-  const dir = join(homedir(), ".mdfy");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!existsSync(MDFY_DIR)) mkdirSync(MDFY_DIR, { recursive: true });
   const tokens = loadTokens();
   tokens[docId] = editToken;
   writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
@@ -40,9 +74,9 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...getAuthHeaders(),
     ...(options.headers as Record<string, string> || {}),
   };
-  if (USER_EMAIL) headers["x-user-email"] = USER_EMAIL;
 
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
@@ -58,11 +92,21 @@ function errorResult(err: unknown) {
   return { content: [{ type: "text" as const, text: `Error: ${msg}` }], isError: true as const };
 }
 
+function loginRequiredResult() {
+  return {
+    content: [{
+      type: "text" as const,
+      text: "Not logged in. Run `mdfy login` in your terminal first to authenticate with mdfy.cc.",
+    }],
+    isError: true as const,
+  };
+}
+
 // ─── MCP Server ───
 
 const server = new McpServer({
   name: "mdfy",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 // Tool: Create document
@@ -82,7 +126,6 @@ server.tool(
           markdown,
           title,
           isDraft: draft ?? false,
-          userEmail: USER_EMAIL || undefined,
           source: "mcp",
         }),
       });
@@ -138,7 +181,6 @@ server.tool(
         method: "PATCH",
         body: JSON.stringify({
           markdown, title, editToken,
-          userEmail: USER_EMAIL || undefined,
           action: "auto-save",
         }),
       });
@@ -153,9 +195,7 @@ server.tool(
   "List all documents owned by the current user on mdfy.cc",
   {},
   async () => {
-    if (!USER_EMAIL) {
-      return errorResult("MDFY_EMAIL environment variable is required to list documents.");
-    }
+    if (!isLoggedIn()) return loginRequiredResult();
     try {
       const data = await api<{ documents: Array<{ id: string; title: string | null; updated_at: string; is_draft: boolean; view_count: number }> }>(
         "/api/user/documents"
@@ -186,12 +226,12 @@ server.tool(
       if (permanent) {
         await api(`/api/docs/${id}`, {
           method: "DELETE",
-          body: JSON.stringify({ editToken, userEmail: USER_EMAIL || undefined }),
+          body: JSON.stringify({ editToken }),
         });
       } else {
         await api(`/api/docs/${id}`, {
           method: "PATCH",
-          body: JSON.stringify({ action: "soft-delete", editToken, userEmail: USER_EMAIL || undefined }),
+          body: JSON.stringify({ action: "soft-delete", editToken }),
         });
       }
 
@@ -221,7 +261,6 @@ server.tool(
         body: JSON.stringify({
           action: published ? "publish" : "unpublish",
           editToken,
-          userEmail: USER_EMAIL || undefined,
         }),
       });
       const url = `${BASE_URL}/d/${id}`;

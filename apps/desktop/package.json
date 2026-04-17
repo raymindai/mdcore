@@ -48,6 +48,7 @@
       "icon": "assets/icon.icns",
       "darkModeSupport": true,
       "hardenedRuntime": true,
+      "x64ArchFiles": "Contents/Resources/MdfyQuickLook.app/**/*",
       "target": [
         { "target": "dmg", "arch": ["universal"] }
       ],

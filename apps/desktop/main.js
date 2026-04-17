@@ -1330,15 +1330,21 @@ ipcMain.handle("preview-cloud-doc", async (event, docId, title) => {
     const result = renderMarkdown(markdown);
     currentFilePath = null;
     stopFileWatcher();
-    mainWindow.setTitle((title || docId) + " (Cloud) — mdfy");
+
+    // Check ownership — if user owns it, allow editing
+    const userId = AuthManager.getUserId();
+    const isOwner = !!(userId && data.user_id && data.user_id === userId);
+    const editToken = data.editToken || null;
+
+    mainWindow.setTitle((title || docId) + (isOwner ? "" : " (Cloud)") + " — mdfy");
     mainWindow.webContents.send("load-document", {
       html: result.html,
       markdown,
       filePath: null,
       flavor: result.flavor.primary,
-      config: null,
-      cloudDoc: { docId, title: title || docId },
-      readOnly: true,
+      config: isOwner && editToken ? { docId, editToken } : null,
+      cloudDoc: { docId, title: title || docId, isOwner },
+      readOnly: !isOwner,
     });
     return { ok: true };
   } catch (err) {
@@ -1391,6 +1397,18 @@ ipcMain.handle("reveal-in-finder", (event, filePath) => {
 
 ipcMain.handle("open-in-browser", (event, url) => {
   shell.openExternal(url);
+});
+
+ipcMain.handle("open-quicklook-settings", () => {
+  require("child_process").exec('open "x-apple.systempreferences:com.apple.ExtensionsPreferences"');
+  // Mark as installed after user opens settings
+  const marker = path.join(USER_DATA_DIR, ".quicklook-installed");
+  fs.writeFileSync(marker, new Date().toISOString());
+});
+
+ipcMain.handle("is-quicklook-installed", () => {
+  const marker = path.join(USER_DATA_DIR, ".quicklook-installed");
+  return fs.existsSync(marker);
 });
 
 ipcMain.handle("read-clipboard", () => {
@@ -1532,6 +1550,8 @@ function buildMenu() {
 }
 
 // ─── QuickLook Extension Installer ───
+// Copies MdfyQuickLook.app to ~/Applications/ so macOS can discover the .appex plugin.
+// Extensions in Contents/Resources/ of another app are NOT discovered by macOS.
 
 function installQuickLook() {
   const marker = path.join(USER_DATA_DIR, ".quicklook-installed");
@@ -1545,31 +1565,17 @@ function installQuickLook() {
 
   try {
     if (!fs.existsSync(userApps)) fs.mkdirSync(userApps, { recursive: true });
-    if (!fs.existsSync(qlDest)) {
+    // Always replace with latest version
+    if (fs.existsSync(qlDest)) {
       const { execSync } = require("child_process");
-      execSync(`cp -R "${qlSource}" "${qlDest}"`);
-      execSync(`open "${qlDest}"`);
-      console.log("[quicklook] Installed to ~/Applications/");
+      execSync(`rm -rf "${qlDest}"`);
     }
+    const { execSync } = require("child_process");
+    execSync(`cp -R "${qlSource}" "${qlDest}"`);
+    // Open the app to register the extension with macOS
+    execSync(`open "${qlDest}"`);
     fs.writeFileSync(marker, new Date().toISOString());
-
-    // Show activation dialog
-    setTimeout(() => {
-      if (!mainWindow) return;
-      dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "QuickLook Preview Installed",
-        message: "mdfy QuickLook has been installed.",
-        detail: "To preview .md files with Space in Finder, you need to enable the extension:\n\nSystem Settings → Privacy & Security → Extensions → Quick Look → Enable MdfyQuickLook",
-        buttons: ["Open Settings", "Later"],
-        defaultId: 0,
-      }).then((result) => {
-        if (result.response === 0) {
-          // Open System Settings > Extensions
-          require("child_process").exec('open "x-apple.systempreferences:com.apple.ExtensionsPreferences"');
-        }
-      });
-    }, 2000);
+    console.log("[quicklook] Installed to ~/Applications/");
   } catch (err) {
     console.log("[quicklook] Install failed (non-critical):", err.message);
   }

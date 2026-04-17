@@ -1,5 +1,5 @@
 {
-  "name": "mdfy",
+  "name": "mdfy-cli",
   "version": "1.0.0",
   "description": "mdfy CLI — publish Markdown from anywhere",
   "bin": {

@@ -4,7 +4,7 @@
 
 # Check if mdfy CLI is installed
 if ! command -v mdfy &> /dev/null; then
-  tmux display-message "mdfy not found. Install: npm install -g mdfy"
+  tmux display-message "mdfy not found. Install: npm install -g mdfy-cli"
   exit 1
 fi
 

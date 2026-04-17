@@ -10,8 +10,8 @@ Max Document Size: 500KB
 mdfy.cc uses progressive authentication:
 - No auth required for basic publish and read
 - Edit tokens for updates/deletes (returned at creation)
-- User identity via x-user-id, x-user-email, or Authorization: Bearer headers
-- MCP/CLI use MDFY_EMAIL env var
+- User identity via x-user-id or Authorization: Bearer JWT headers
+- MCP and CLI use JWT from \`mdfy login\` (stored in ~/.mdfy/config.json)
 
 ## Endpoints
 
@@ -190,7 +190,7 @@ Error response format:
 
 ## CLI
 
-Install: npm install -g mdfy
+Install: npm install -g mdfy-cli
 
 Commands:
 - mdfy publish <file>: Publish a file or stdin
@@ -231,7 +231,7 @@ const docs = await client.list();
 
 ## MCP Server
 
-Install: npx mdfy-mcp
+Prerequisites: npm install -g mdfy-cli && mdfy login
 
 Config (.mcp.json):
 \`\`\`json
@@ -239,8 +239,7 @@ Config (.mcp.json):
   "mcpServers": {
     "mdfy": {
       "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": { "MDFY_EMAIL": "your@email.com" }
+      "args": ["mdfy-mcp"]
     }
   }
 }

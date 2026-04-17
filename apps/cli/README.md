@@ -5,7 +5,7 @@ Publish Markdown from anywhere — terminal, scripts, CI/CD, tmux.
 ## Install
 
 ```bash
-npm install -g mdfy
+npm install -g mdfy-cli
 ```
 
 ## Quick Start

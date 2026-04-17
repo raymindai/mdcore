@@ -840,7 +840,7 @@ url = res.json()["url"]`}</CodeBlock>
               },
               {
                 title: "MCP / CLI auth",
-                desc: "Set MDFY_EMAIL environment variable for the MCP server. CLI uses mdfy login for OAuth-based authentication.",
+                desc: "Both MCP server and CLI use JWT from mdfy login. Run: npm install -g mdfy-cli && mdfy login",
               },
             ].map((item) => (
               <div

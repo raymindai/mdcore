@@ -248,10 +248,9 @@ export default function McpDocsPage() {
           {/* Installation */}
           <SectionHeading id="installation">Installation</SectionHeading>
           <Card>
-            <CodeBlock lang="bash">{`npx mdfy-mcp`}</CodeBlock>
+            <CodeBlock lang="bash">{`npm install -g mdfy-cli && mdfy login`}</CodeBlock>
             <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>
-              No global install needed. The server runs via <InlineCode>{"npx"}</InlineCode> and communicates over stdio.
-              Set <InlineCode>{"MDFY_EMAIL"}</InlineCode> for user identification.
+              The MCP server uses JWT authentication from <InlineCode>{"mdfy login"}</InlineCode>. No environment variables needed.
             </p>
           </Card>
 
@@ -265,10 +264,7 @@ export default function McpDocsPage() {
   "mcpServers": {
     "mdfy": {
       "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": {
-        "MDFY_EMAIL": "your@email.com"
-      }
+      "args": ["mdfy-mcp"]
     }
   }
 }`}</CodeBlock>
@@ -292,10 +288,7 @@ export default function McpDocsPage() {
   "mcpServers": {
     "mdfy": {
       "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": {
-        "MDFY_EMAIL": "your@email.com"
-      }
+      "args": ["mdfy-mcp"]
     }
   }
 }`}</CodeBlock>

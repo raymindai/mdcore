@@ -29,7 +29,8 @@
 			<key>QLSupportedContentTypes</key>
 			<array>
 				<string>net.daringfireball.markdown</string>
-				<string>public.text</string>
+				<string>dyn.ah62d4rv4ge81g6pq</string>
+				<string>dyn.ah62d4rv4ge81e5pe</string>
 			</array>
 			<key>QLSupportsFilePreviewsForTransientDocuments</key>
 			<true/>

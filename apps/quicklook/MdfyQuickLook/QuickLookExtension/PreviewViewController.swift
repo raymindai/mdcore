@@ -544,13 +544,12 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         <span class="mdfy-filename">{{FILE_NAME}}</span>
       </div>
       <div class="mdfy-topbar-right">
-        <a class="mdfy-btn" id="open-in-mdfy" href="https://mdfy.cc" target="_blank" rel="noopener"
-           onclick="return openInMdfy(event)">
+        <a class="mdfy-btn" id="open-in-mdfy" href="https://mdfy.cc" target="_blank" rel="noopener">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3M9 1h6m0 0v6m0-6L8 8"
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Open in mdfy
+          Open on mdfy.cc
         </a>
         <button class="mdfy-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
           <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">

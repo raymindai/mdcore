@@ -138,9 +138,9 @@ export default function CliDocsPage() {
           {/* Installation */}
           <SectionHeading id="installation">Installation</SectionHeading>
           <Card>
-            <CodeBlock lang="bash">{`npm install -g mdfy`}</CodeBlock>
+            <CodeBlock lang="bash">{`npm install -g mdfy-cli`}</CodeBlock>
             <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
-              Requires Node.js 18+. Also works with <InlineCode>{"npx mdfy"}</InlineCode> without global install.
+              Requires Node.js 18+. After install, use the <InlineCode>{"mdfy"}</InlineCode> command.
             </p>
           </Card>
 
@@ -347,9 +347,7 @@ alias mtx="tmux capture-pane -p | mdfy publish"`}</CodeBlock>
           <SectionHeading id="config">Configuration</SectionHeading>
           <Card>
             <SubLabel>Environment Variables</SubLabel>
-            <CommandRow cmd="MDFY_API_URL" desc="Base URL for the API. Default: https://mdfy.cc" />
-            <CommandRow cmd="MDFY_EMAIL" desc="User email for identification." />
-            <CommandRow cmd="MDFY_TOKEN" desc="Authentication token (from mdfy login)." />
+            <CommandRow cmd="MDFY_URL" desc="Base URL for the API. Default: https://mdfy.cc" />
 
             <SubLabel>Config File</SubLabel>
             <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, marginBottom: 12, lineHeight: 1.7 }}>

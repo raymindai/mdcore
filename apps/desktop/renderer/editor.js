@@ -100,6 +100,35 @@
       });
     });
 
+    // Sidebar logo → back to welcome
+    var sidebarLogo = document.querySelector(".sidebar-logo");
+    if (sidebarLogo) {
+      sidebarLogo.style.cursor = "pointer";
+      sidebarLogo.title = "Home";
+      sidebarLogo.addEventListener("click", function() {
+        if (isDirty && currentFilePath && window.mdfyDesktop) {
+          var md = htmlToMarkdown(content);
+          window.mdfyDesktop.autoSave(md);
+        }
+        isDirty = false;
+        currentFilePath = null;
+        currentConfig = null;
+        showWelcome();
+      });
+    }
+
+    // QuickLook button — hide if already installed
+    var welcomeQL = document.getElementById("welcome-quicklook");
+    if (welcomeQL) {
+      window.mdfyDesktop.isQuickLookInstalled().then(function(installed) {
+        if (installed) welcomeQL.style.display = "none";
+      });
+      welcomeQL.addEventListener("click", function() {
+        window.mdfyDesktop.openQuickLookSettings();
+        welcomeQL.style.display = "none";
+      });
+    }
+
     // Drop zone on welcome
     var dropzone = document.getElementById("welcome-dropzone");
     if (dropzone) {
@@ -612,7 +641,7 @@
       }
       case "open-browser": {
         var config2 = findConfigByPath(pathOrId);
-        if (config2) window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + config2.docId);
+        if (config2) window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + config2.docId);
         break;
       }
       case "unlink":
@@ -635,7 +664,7 @@
         }
         break;
       case "open-cloud-browser":
-        window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + pathOrId);
+        window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + pathOrId);
         break;
       case "delete-synced":
         if (confirm("Delete this document from mdfy.cc? The local file will remain.")) {
@@ -837,12 +866,17 @@
       var oldBanner = document.getElementById("cloud-banner");
       if (oldBanner) oldBanner.remove();
 
-      if (isReadOnly && currentCloudDoc) {
+      if (currentCloudDoc && !currentFilePath) {
+        var isOwnerDoc = currentCloudDoc.isOwner;
         var banner = document.createElement("div");
         banner.id = "cloud-banner";
         banner.className = "cloud-banner";
-        banner.innerHTML =
-          '<span class="cloud-banner-text">Cloud document — read only</span>' +
+        banner.innerHTML = isOwnerDoc
+          ? '<span class="cloud-banner-text">Cloud document — sync to edit locally</span>' +
+            '<div class="cloud-banner-actions">' +
+              '<button class="cloud-banner-btn" id="cloud-sync-local">Sync to Local</button>' +
+            '</div>'
+          : '<span class="cloud-banner-text">Cloud document — read only</span>' +
           '<div class="cloud-banner-actions">' +
             '<button class="cloud-banner-btn" id="cloud-sync-local">Sync to Local</button>' +
             '<button class="cloud-banner-btn secondary" id="cloud-open-browser">Open in Browser</button>' +
@@ -856,7 +890,7 @@
           });
         });
         document.getElementById("cloud-open-browser").addEventListener("click", function() {
-          window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + currentCloudDoc.docId);
+          window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + currentCloudDoc.docId);
         });
 
         // Hide toolbar in read-only mode
@@ -2495,7 +2529,7 @@
         showToast("URL copied");
       }});
       items.push({ label: "Open in Browser", action: function() {
-        window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + config.docId);
+        window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + config.docId);
       }});
       items.push({ divider: true });
       items.push({ label: "Unsync", action: async function() {
@@ -2536,7 +2570,7 @@
         var r = await window.mdfyDesktop.syncPullCloud(docId, title);
         if (r && r.ok) { await refreshSidebarData(); renderSidebar(); }
       }},
-      { label: "Open in Browser", action: function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc/d/" + docId); } },
+      { label: "Open in Browser", action: function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + docId); } },
       { divider: true },
       { label: "Copy URL", action: function() {
         window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + docId);
@@ -2597,7 +2631,7 @@
   function updatePublishedUrl() {
     if (!headerUrlBtn) return;
     if (currentConfig && currentConfig.docId) {
-      var url = "mdfy.cc/d/" + currentConfig.docId;
+      var url = "mdfy.cc/?doc=" + currentConfig.docId;
       headerUrlBtn.textContent = url;
       headerUrlBtn.style.display = "";
       headerUrlBtn.setAttribute("data-url", "https://" + url);
