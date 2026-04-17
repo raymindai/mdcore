@@ -1431,13 +1431,15 @@ export default function MdEditor() {
     const timer = setTimeout(() => {
       try {
         const updatedTabs = tabs.map(t => t.id === activeTabId ? { ...t, markdown } : t);
-        // Deduplicate by cloudId before persisting
+        // Deduplicate by cloudId + strip non-canonical example docs before persisting
         const seenCloud = new Set<string>();
+        const _canonicalIds = new Set(EXAMPLE_TABS.map(e => e.id));
         const cleanTabs = updatedTabs.filter(t => {
           if (t.cloudId) {
             if (seenCloud.has(t.cloudId)) return false;
             seenCloud.add(t.cloudId);
           }
+          if (t.ownerEmail === EXAMPLE_OWNER && !_canonicalIds.has(t.id)) return false;
           return true;
         });
         localStorage.setItem("mdfy-tabs", JSON.stringify(cleanTabs));
