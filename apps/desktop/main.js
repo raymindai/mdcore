@@ -771,6 +771,7 @@ function stopFolderWatcher() {
 }
 
 function openFileInApp(filePath) {
+
   if (!mainWindow) return;
   const absolutePath = path.resolve(filePath);
   const ext = path.extname(absolutePath).toLowerCase();

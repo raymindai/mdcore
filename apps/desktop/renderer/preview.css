@@ -2473,6 +2473,11 @@ body {
   gap: 10px;
   flex: 1;
   min-width: 0;
+}
+
+#app-header button,
+#app-header .view-btn,
+#app-header .header-url {
   -webkit-app-region: no-drag;
 }
 
@@ -2520,7 +2525,6 @@ body {
 
 .header-center {
   flex-shrink: 0;
-  -webkit-app-region: no-drag;
 }
 
 .header-right {
@@ -2529,7 +2533,6 @@ body {
   gap: 4px;
   flex: 1;
   justify-content: flex-end;
-  -webkit-app-region: no-drag;
 }
 
 .header-btn {

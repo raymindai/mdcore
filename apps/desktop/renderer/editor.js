@@ -437,9 +437,11 @@
     });
 
     container.querySelectorAll(".file-item").forEach(function(item) {
-      item.addEventListener("click", function() {
+      item.addEventListener("click", function(e) {
+        if (e.target.closest("[data-action]")) return; // Don't open file when clicking action buttons
         var fp = item.getAttribute("data-path");
         var docId = item.getAttribute("data-cloud-id");
+
         if (fp) {
           window.mdfyDesktop.openFilePath(fp);
         } else if (docId) {
@@ -749,11 +751,18 @@
 
   function showEditor() {
     hasDocument = true;
+    // Re-acquire DOM refs in case they were detached
+    content = document.getElementById("content");
+    splitContainer = document.getElementById("split-container");
+    renderPane = document.getElementById("render-pane");
+    editorPane = document.getElementById("editor-pane");
+    splitDivider = document.getElementById("split-divider");
+    welcome = document.getElementById("welcome");
+
     if (welcome) welcome.style.display = "none";
     if (splitContainer) splitContainer.style.display = "";
     document.getElementById("app-header").style.display = "";
     document.getElementById("bottom-bar").style.display = "";
-    // Apply current view mode
     setViewMode(currentViewMode || "live");
   }
 
@@ -794,6 +803,14 @@
 
   if (window.mdfyDesktop) {
     window.mdfyDesktop.onLoadDocument(function(data) {
+      // Save previous file before switching (if dirty)
+      if (isDirty && currentFilePath && window.mdfyDesktop) {
+        var prevMarkdown = htmlToMarkdown(content);
+        window.mdfyDesktop.autoSave(prevMarkdown);
+      }
+      isDirty = false; // Reset BEFORE changing currentFilePath
+
+      content = document.getElementById("content");
       currentMarkdown = data.markdown || "";
       currentFilePath = data.filePath || null;
       currentConfig = data.config || null;
@@ -922,8 +939,16 @@
 
     var authState = await window.mdfyDesktop.getAuthState();
     if (!authState.loggedIn) {
-      window.mdfyDesktop.login();
+      if (confirm("Sign in required to publish.\n\nYour document will be published as a shareable URL on mdfy.cc.\n\nSign in now?")) {
+        window.mdfyDesktop.login();
+      }
       return;
+    }
+
+    // Confirm first publish
+    var isUpdate = currentConfig && currentConfig.docId;
+    if (!isUpdate) {
+      if (!confirm("Publish to mdfy.cc?\n\nA shareable URL will be created and copied to your clipboard.")) return;
     }
 
     // Save first if needed

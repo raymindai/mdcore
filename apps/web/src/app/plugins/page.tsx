@@ -5,7 +5,7 @@ import MdfyLogo from "@/components/MdfyLogo";
 export const metadata: Metadata = {
   title: "Plugins — mdfy.cc",
   description:
-    "Chrome extension, macOS QuickLook, and more. Bring mdfy.cc rendering everywhere.",
+    "CLI tool, Mac app, Chrome extension, VS Code extension, QuickLook. Bring mdfy.cc everywhere.",
   openGraph: {
     title: "Plugins — mdfy.cc",
     description: "Chrome extension for AI chat capture. macOS QuickLook for Markdown preview.",
@@ -1090,6 +1090,90 @@ export default function PluginsPage() {
           >
             Open Editor
           </Link>
+        </div>
+      </section>
+
+      {/* ───────── CLI TOOL ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "36px 32px 28px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #27272a" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>CLI Tool</h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>mdfy — npm package</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Publish Markdown from your terminal. Pipe from any command — tmux, AI assistants, git log, clipboard. Every output becomes a shareable URL.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>npm install -g mdfy</span>
+            </div>
+          </div>
+          <div style={{ padding: "24px 32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              {[
+                { cmd: "mdfy publish README.md", desc: "Publish a file and get a URL" },
+                { cmd: 'echo "# Hello" | mdfy publish', desc: "Publish from stdin (pipe)" },
+                { cmd: "tmux capture-pane -p | mdfy publish", desc: "Capture tmux pane" },
+                { cmd: "pbpaste | mdfy publish", desc: "Publish clipboard contents" },
+                { cmd: "mdfy pull abc123 -o doc.md", desc: "Download a document" },
+                { cmd: "mdfy list", desc: "List your published documents" },
+              ].map((ex) => (
+                <div key={ex.cmd} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-dim)", background: "var(--background)" }}>
+                  <code style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--font-geist-mono), monospace", display: "block", marginBottom: 4 }}>{ex.cmd}</code>
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>{ex.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── MDFY FOR MAC ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "36px 32px 28px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #27272a" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>mdfy for Mac</h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>Native desktop app</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Full WYSIWYG Markdown editor with local WASM rendering, sidebar file management, cloud sync, and split view. Includes QuickLook for Finder preview.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>macOS</span>
+            </div>
+          </div>
+          <div style={{ padding: "24px 32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {[
+                { title: "WYSIWYG Editor", desc: "Live preview with formatting toolbar, split view, and source mode" },
+                { title: "Sidebar", desc: "File tree, recent files, cloud docs, search, sort, folder management" },
+                { title: "Cloud Sync", desc: "Publish, push, pull, conflict resolution with diff view" },
+                { title: "QuickLook", desc: "Press Space in Finder to preview any .md file with full rendering" },
+                { title: "Offline First", desc: "Local WASM rendering, auto-save, offline queue with retry" },
+                { title: "Export", desc: "MD, HTML, TXT files + clipboard copy for Slack, Docs, Email" },
+              ].map((f) => (
+                <div key={f.title} style={{ padding: "14px 16px", borderRadius: 8, border: "1px solid var(--border-dim)" }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 4px" }}>{f.title}</h4>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
