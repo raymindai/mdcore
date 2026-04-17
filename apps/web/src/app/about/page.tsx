@@ -307,7 +307,7 @@ export default function AboutPage() {
               ai: "ChatGPT",
               method: "Custom GPT",
               how: "Use the mdfy GPT in ChatGPT. Ask it to publish any response, read existing documents, or create formatted reports from conversations.",
-              setup: "Search \"mdfy\" in GPT Store",
+              setup: "chatgpt.com/g/g-69e2832dd74081919c09a9f8d03adc59",
               example: "\"Turn this into a shareable doc\"\n\u2192 API call \u2192 mdfy.cc/d/xyz789",
               color: "#4ade80",
             },

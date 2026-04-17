@@ -132,8 +132,8 @@ const quickStartCards = [
 const exploreCards = [
   {
     title: "Publish from AI",
-    desc: "Claude (MCP), ChatGPT (GPT), Chrome Extension. Say \"publish this\" in any AI.",
-    href: "/about#ai-integration",
+    desc: "Claude (MCP), ChatGPT (Custom GPT), Chrome Extension. Say \"publish this\" in any AI.",
+    href: "https://chatgpt.com/g/g-69e2832dd74081919c09a9f8d03adc59-mdfy-publish-documents",
   },
   {
     title: "Integrations",
