@@ -5239,8 +5239,8 @@ ${html}
         </div>{/* end Row 1 */}
 
         {/* Row 2: Mobile-only — title + permission + save status */}
-        {isMobile && (title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly" || ct?.permission === "editable"; })()) && (
-          <div className="flex items-center gap-2 px-3 pb-1.5 min-w-0">
+        {(title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly" || ct?.permission === "editable"; })()) && (
+          <div className="flex sm:hidden items-center gap-2 px-3 pb-1.5 min-w-0">
             {title && (
               <span className="text-[11px] truncate flex-1 min-w-0" style={{ color: "var(--text-muted)" }}>
                 {title}
