@@ -4701,9 +4701,11 @@ ${html}
 
       {/* Header */}
       <header
-        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm relative z-[100]"
+        className="backdrop-blur-sm relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
+        {/* Row 1: Logo + View mode + Actions */}
+        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
@@ -4740,7 +4742,8 @@ ${html}
               {title}
             </button>
           )}
-          {/* Save status indicator — compact */}
+          {/* Save status indicator — desktop only in row 1 */}
+          <span className="hidden sm:inline">
           {autoSave.isSaving && (
             <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
           )}
@@ -4750,11 +4753,14 @@ ${html}
           {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
             <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
           )}
+          </span>
+          {/* Permission badge — desktop only in row 1 */}
+          <span className="hidden sm:inline">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
             if (perm === "readonly") return (
-              <div className="relative">
+              <div className="relative inline-block">
                 <button
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
                   className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
@@ -4838,6 +4844,7 @@ ${html}
             );
             return null;
           })()}
+          </span>
         </div>
 
         {/* Center: Layout mode switcher */}
@@ -5229,6 +5236,108 @@ ${html}
 
           {/* Engine badge moved to footer */}
         </div>
+        </div>{/* end Row 1 */}
+
+        {/* Row 2: Mobile-only — title + permission + save status */}
+        {isMobile && (title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly" || ct?.permission === "editable"; })()) && (
+          <div className="flex items-center gap-2 px-3 pb-1.5 min-w-0">
+            {title && (
+              <span className="text-[11px] truncate flex-1 min-w-0" style={{ color: "var(--text-muted)" }}>
+                {title}
+              </span>
+            )}
+            {autoSave.isSaving && (
+              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
+            )}
+            {autoSave.error && !autoSave.isSaving && (
+              <span className="text-[9px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
+            )}
+            {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
+              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
+            )}
+            {(() => {
+              const ct = tabs.find(t => t.id === activeTabId);
+              const perm = ct?.permission;
+              if (perm === "readonly") return (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPermDropdown(!showPermDropdown)}
+                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
+                    style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
+                  >
+                    VIEW&nbsp;ONLY
+                    <ChevronDown width={7} height={7} />
+                  </button>
+                  {showPermDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-44 rounded-lg shadow-xl py-1 z-[9999]"
+                        style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                        {docId && user?.email && (
+                          <button
+                            onClick={async () => {
+                              setShowPermDropdown(false);
+                              try {
+                                await fetch("/api/notifications", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ recipientEmail: "__owner__", type: "edit_request", documentId: docId, fromUserId: user.id, fromUserName: user.email?.split("@")[0], message: `requested edit access to "${title || "Untitled"}"` }),
+                                });
+                                showToast("Edit request sent to document owner", "success");
+                              } catch { showToast("Failed to send request", "error"); }
+                            }}
+                            className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <Pencil width={12} height={12} />
+                            Request to edit
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setShowPermDropdown(false);
+                            const id = `tab-${Date.now()}`;
+                            const origMd = markdownRef.current;
+                            const t2 = title ? `${title} (copy)` : "Untitled (copy)";
+                            const md = origMd.replace(/^(#\s+.+)$/m, `# ${t2}`);
+                            const newTab: Tab = { id, title: t2, markdown: md, permission: "mine", shared: false, isDraft: true };
+                            setTabs(prev => [...prev, newTab]);
+                            setIsSharedDoc(false);
+                            setIsOwner(true);
+                            setDocEditMode("owner");
+                            loadTab(newTab);
+                            autoSave.createDocument({
+                              markdown: md, title: t2, userId: user?.id,
+                              anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                            }).then(result => {
+                              if (result) {
+                                setTabs(prev => {
+                                  const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
+                                  return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
+                                });
+                                setDocId(result.id);
+                                window.history.replaceState(null, "", `/?doc=${result.id}`);
+                              }
+                            });
+                          }}
+                          className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <Copy width={12} height={12} />
+                          Duplicate to edit
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+              if (perm === "editable") return (
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>EDITABLE</span>
+              );
+              return null;
+            })()}
+          </div>
+        )}
       </header>
 
       {/* AI conversation banner */}
