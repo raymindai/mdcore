@@ -334,7 +334,7 @@ export default function AboutPage() {
               <li><span style={{ color: "var(--accent)" }}>+</span> Edit in browser — no install, no login to view</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Works with every AI — ChatGPT, Claude, Gemini</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Edit from Mac, VS Code, Chrome, or mobile</li>
-              <li><span style={{ color: "var(--accent)" }}>+</span> Version history, collaboration, permissions</li>
+              <li><span style={{ color: "var(--accent)" }}>+</span> Version history, sharing permissions, access control</li>
               <li><span style={{ color: "var(--accent)" }}>+</span> Import anything — PDF, DOCX, PPTX, paste</li>
             </ul>
           </div>
@@ -456,7 +456,7 @@ export default function AboutPage() {
             </h3>
             <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.7 }}>
               Documents are living. Edit inline with WYSIWYG or switch to source mode.
-              Every change is tracked. Revert to any previous version. Collaborate without fear of losing work.
+              Every change is tracked. Revert to any previous version. Share with view or edit access.
             </p>
             <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0, lineHeight: 1.6 }}>
               Same URL, always up to date. Recipients always see the latest version.
