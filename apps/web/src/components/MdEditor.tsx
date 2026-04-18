@@ -6776,10 +6776,10 @@ ${html}
                 <div className="relative group">
                   <button
                     onClick={toggleDiagramMode}
-                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
-                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)" }}
+                    className="flex items-center justify-center h-6 px-1.5 rounded-md transition-colors"
+                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", fontFamily: "var(--font-geist-mono, monospace)", fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}
                   >
-                    <Sparkles width={11} height={11} />
+                    ASCII
                   </button>
                   <div className="absolute top-full right-0 mt-1.5 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
@@ -6809,13 +6809,13 @@ ${html}
                 {canEdit && <div className="relative group">
                   <button
                     onClick={() => { if (!aiProcessing) { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setAiChatInput(""); setShowExportMenu(false); } }}
-                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors gap-1"
-                    style={{ background: showAIMenu || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIMenu || aiProcessing ? "var(--accent)" : "var(--text-muted)" }}
+                    className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
+                    style={{ background: showAIMenu || aiProcessing ? "var(--accent)" : "var(--accent-dim)", color: showAIMenu || aiProcessing ? "#000" : "var(--accent)", fontWeight: 700, fontSize: 11 }}
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
-                    {aiProcessing && <span className="text-[9px] hidden sm:inline" style={{ color: "var(--accent)" }}>
+                    {aiProcessing ? <span className="text-[9px] hidden sm:inline">
                       {{ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" }[aiProcessing] || "Processing"}...
-                    </span>}
+                    </span> : <span className="hidden sm:inline text-[10px]">AI</span>}
                   </button>
                   {!showAIMenu && !aiProcessing && (
                     <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
