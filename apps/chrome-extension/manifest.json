@@ -30,6 +30,14 @@
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": ["github.js"],
+      "css": ["github.css"],
+      "run_at": "document_idle"
     }
   ],
   "background": {

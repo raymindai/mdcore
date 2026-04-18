@@ -158,6 +158,17 @@ async function detectPlatform() {
       return null;
     }
 
+    // Check if on GitHub .md file
+    if (url.includes("github.com") && /\/blob\/.*\.(md|markdown|mdx)$/i.test(url)) {
+      platformDot.classList.remove("inactive");
+      platformDot.classList.add("active");
+      platformNameEl.classList.add("active");
+      platformNameEl.textContent = "GitHub Markdown detected";
+      btnCapture.disabled = true;
+      setStatus("Use the 'Open in mdfy.cc' button on the page", "");
+      return null;
+    }
+
     if (platform) {
       platformDot.classList.remove("inactive");
       platformDot.classList.add("active");

@@ -1,0 +1,94 @@
+/* mdfy.cc GitHub Integration Styles */
+
+.mdfy-github-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: 6px;
+  background: rgba(251, 146, 60, 0.08);
+  color: #fb923c;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 20px;
+}
+
+.mdfy-github-btn:hover {
+  background: rgba(251, 146, 60, 0.15);
+  border-color: rgba(251, 146, 60, 0.5);
+}
+
+.mdfy-github-btn:active {
+  background: rgba(251, 146, 60, 0.2);
+}
+
+.mdfy-gh-logo {
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: -0.5px;
+}
+
+.mdfy-gh-md {
+  color: #fb923c;
+}
+
+.mdfy-gh-fy {
+  color: #d4d4d8;
+}
+
+.mdfy-gh-label {
+  font-weight: 500;
+}
+
+/* Loading state */
+.mdfy-github-btn.mdfy-gh-loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mdfy-github-btn.mdfy-gh-loading .mdfy-gh-label {
+  animation: mdfy-gh-pulse 1.5s infinite;
+}
+
+@keyframes mdfy-gh-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Success state */
+.mdfy-github-btn.mdfy-gh-done {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.mdfy-github-btn.mdfy-gh-done .mdfy-gh-label {
+  color: #4ade80;
+}
+
+/* Error state */
+.mdfy-github-btn.mdfy-gh-error {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.mdfy-github-btn.mdfy-gh-error .mdfy-gh-label {
+  color: #ef4444;
+}
+
+/* Dark mode support (GitHub dark themes) */
+@media (prefers-color-scheme: dark) {
+  .mdfy-gh-fy {
+    color: #a1a1aa;
+  }
+}
+
+/* GitHub's dark theme class */
+[data-color-mode="dark"] .mdfy-gh-fy,
+[data-dark-theme] .mdfy-gh-fy {
+  color: #a1a1aa;
+}
