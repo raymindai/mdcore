@@ -49,14 +49,12 @@ export async function POST(req: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
   // Rate limit: max 10 notifications per minute per IP
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rateLimitKey = `notif:${ip}`;
-  const { data: rlData } = await supabase
+  const { count: rlCount } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .eq("from_user_id", req.headers.get("x-user-id") || ip)
+    .eq("from_user_id", req.headers.get("x-user-id") || "unknown")
     .gte("created_at", new Date(Date.now() - 60000).toISOString());
-  if ((rlData as unknown as number) > 10) {
+  if ((rlCount || 0) > 10) {
     return NextResponse.json({ error: "Too many notifications. Try again later." }, { status: 429 });
   }
 

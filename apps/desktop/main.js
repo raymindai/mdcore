@@ -593,6 +593,7 @@ const SyncEngine = {
 
     this._offlineQueue.push({
       filePath,
+      markdown,
       title: extractTitle(markdown) || path.basename(filePath, ".md"),
       retryCount,
       queuedAt: new Date().toISOString(),
@@ -886,7 +887,16 @@ function handleMdfyUrl(url) {
     // Open file: mdfy://open?file=/path/to/file.md
     if (parsed.hostname === "open" || parsed.pathname.startsWith("/open")) {
       const filePath = parsed.searchParams.get("file");
-      if (filePath && fs.existsSync(filePath)) openFileInApp(filePath);
+      if (filePath && fs.existsSync(filePath)) {
+        // Validate path is within user's home directory or workspace
+        const resolved = path.resolve(filePath);
+        const homeDir = app.getPath("home");
+        if (!resolved.startsWith(homeDir + path.sep) && resolved !== homeDir) {
+          console.warn("[open] Blocked path outside home directory:", resolved);
+          return;
+        }
+        openFileInApp(resolved);
+      }
       return;
     }
 
@@ -1372,8 +1382,9 @@ ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => 
   try {
     const buffer = Buffer.from(base64Data, "base64");
     const boundary = "----mdfyUpload" + Date.now();
+    const safeFileName = fileName.replace(/["\r\n\\]/g, "_");
     const body = Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`),
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${safeFileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`),
       buffer,
       Buffer.from(`\r\n--${boundary}--\r\n`),
     ]);

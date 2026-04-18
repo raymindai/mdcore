@@ -1016,7 +1016,14 @@
         });
 
         if (res.ok) {
-          const { id, editToken } = JSON.parse(res.body);
+          let parsed;
+          try {
+            parsed = JSON.parse(res.body);
+          } catch (parseErr) {
+            console.warn("[mdfy] Failed to parse response:", parseErr);
+            throw parseErr;
+          }
+          const { id, editToken } = parsed;
           const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
           window.open(MDFY_URL + "/?doc=" + id + tokenParam, "mdfy_" + Date.now());
           return;

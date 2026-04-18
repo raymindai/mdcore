@@ -3314,6 +3314,7 @@ export default function MdEditor() {
       const newMd = lines.join("\n");
       setMarkdown(newMd);
       doRender(newMd);
+      cmSetDocRef.current?.(newMd);
       e.preventDefault();
     };
 
@@ -3418,6 +3419,7 @@ export default function MdEditor() {
           const newMd = lines.join("\n");
           setMarkdown(newMd);
           doRender(newMd);
+          cmSetDocRef.current?.(newMd);
         }
       };
 
