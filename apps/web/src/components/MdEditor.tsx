@@ -577,7 +577,7 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
-  } else if (tab.source && ["vscode", "desktop", "cli"].includes(tab.source)) {
+  } else if (tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source)) {
     Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
   } else {
     Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private";
@@ -1993,9 +1993,9 @@ export default function MdEditor() {
   const visibleMyDocIds = useMemo(() => {
     const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
     const myTabs = docFilter === "all" ? allMyTabs
-      : docFilter === "private" ? allMyTabs.filter(t => t.isDraft !== false)
+      : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
       : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
-      : docFilter === "synced" ? allMyTabs.filter(t => t.source === "vscode")
+      : docFilter === "synced" ? allMyTabs.filter(t => t.source && ["vscode", "desktop", "cli", "mcp"].includes(t.source))
       : allMyTabs;
     const sortFn = (a: Tab, b: Tab) => {
       if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
@@ -5656,11 +5656,11 @@ ${html}
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Not shared with anyone (includes synced)</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared with others</span></div>
-              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Chrome, or MCP</span></div>
+              <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Desktop, CLI, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Icons</div>
               <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private document</span></div>
-              <div className="flex items-center gap-2"><Cloud width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Synced from external source</span></div>
+              <div className="flex items-center gap-2"><CircleCheck width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Synced (VS Code, Desktop, CLI, MCP)</span></div>
               <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared publicly</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
               <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
@@ -5680,7 +5680,7 @@ ${html}
               const myTabs = docFilter === "all" ? allMyTabs
                 : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
                 : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
-                : docFilter === "synced" ? allMyTabs.filter(t => !!t.source)
+                : docFilter === "synced" ? allMyTabs.filter(t => t.source && ["vscode", "desktop", "cli", "mcp"].includes(t.source))
                 : allMyTabs;
               const myTabCount = allMyTabs.length;
               const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
@@ -5960,8 +5960,8 @@ ${html}
                           {docFilter === "all" ? "No documents yet. Create one with the + button above." :
                            docFilter === "synced" ? (
                              !isAuthenticated
-                               ? "Sign in to see synced documents. Files synced from VS Code or mdfy for Mac will appear here."
-                               : "No synced documents. Publish from VS Code or mdfy for Mac to see them here."
+                               ? "Sign in to see synced documents."
+                               : "No synced documents. Sync from VS Code, Desktop app, CLI, or MCP to see them here."
                            ) :
                            docFilter === "private" ? "No private documents." :
                            docFilter === "shared" ? (!isAuthenticated ? "Sign in to share documents." : "No shared documents.") :
