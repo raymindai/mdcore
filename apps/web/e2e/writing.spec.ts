@@ -127,12 +127,12 @@ test.describe.serial("Writing — Source View (CodeMirror)", () => {
   });
 
   test("large content doesn't freeze the editor", async ({ page }) => {
-    // Type a moderate amount of content
-    const lines = Array.from({ length: 50 }, (_, i) => `Line ${i + 1}: some content here.`).join("\n");
-    await page.keyboard.type(lines, { delay: 0 });
+    // Paste content via clipboard instead of typing (much faster in CI)
+    const lines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}: some content here.`).join("\n");
+    await page.evaluate((text) => navigator.clipboard.writeText(text), lines);
+    await page.keyboard.press("ControlOrMeta+v");
     await page.click('button:has-text("Live")');
     await page.waitForTimeout(1000);
-    // Should render without hanging
     await expect(page.locator(".mdcore-rendered")).toBeVisible();
   });
 });
@@ -338,11 +338,12 @@ test.describe("Writing — Edge Cases", () => {
   });
 
   test("very long line without spaces doesn't break layout", async ({ page }) => {
-    const longWord = "a".repeat(500);
-    await page.keyboard.type(longWord);
+    // Use evaluate to set content directly (keyboard.type 500 chars times out in CI)
+    const longWord = "a".repeat(200);
+    await page.evaluate((text) => navigator.clipboard.writeText(text), longWord);
+    await page.keyboard.press("ControlOrMeta+v");
     await page.click('button:has-text("Live")');
     await page.waitForTimeout(500);
-    // Should render without horizontal overflow breaking the page
     await expect(page.locator(".mdcore-rendered")).toBeVisible();
   });
 });

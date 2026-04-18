@@ -131,15 +131,19 @@ test.describe("Editor — AI Tools", () => {
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
 
-  test("AI menu opens with all options", async ({ page }) => {
-    // Find AI button (Sparkles icon with "AI" text)
+  test("AI panel opens with all options", async ({ page }) => {
+    // Find AI button (Sparkles icon with "AI" text) in LIVE panel header
     const aiBtn = page.locator('button:has(svg.lucide-sparkles)').first();
     if (await aiBtn.isVisible()) {
       await aiBtn.click();
-      await expect(page.locator('text=Polish')).toBeVisible({ timeout: 3000 });
-      await expect(page.locator('text=Summary')).toBeVisible();
-      await expect(page.locator('text=TL;DR')).toBeVisible();
-      await expect(page.locator('text=Translate')).toBeVisible();
+      // AI side panel should open with quick action buttons
+      await expect(page.locator('text=AI Tools')).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('button:has-text("Polish")').first()).toBeVisible();
+      await expect(page.locator('button:has-text("Summary")').first()).toBeVisible();
+      await expect(page.locator('button:has-text("TL;DR")').first()).toBeVisible();
+      await expect(page.locator('button:has-text("Translate")').first()).toBeVisible();
+      // Chat input should be visible
+      await expect(page.locator('input[placeholder="Ask AI to edit..."]')).toBeVisible();
     }
   });
 });
