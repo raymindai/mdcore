@@ -1970,6 +1970,20 @@ export default function MdEditor() {
   const isPopstateRef = useRef(false);
 
   const switchTab = useCallback((tabId: string) => {
+    // Flush any pending WYSIWYG edits before switching
+    if (wysiwygDebounce.current) {
+      clearTimeout(wysiwygDebounce.current);
+      wysiwygDebounce.current = undefined;
+      const article = previewRef.current?.querySelector("article");
+      if (article) {
+        const clone = article.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+        clone.querySelectorAll(".table-wrapper").forEach(w => { const t = w.querySelector("table"); if (t) w.replaceWith(t); });
+        const flushedMd = htmlToMarkdown(clone.innerHTML);
+        setMarkdownRaw(flushedMd);
+        markdownRef.current = flushedMd;
+      }
+    }
     // Use refs to get current values (avoid stale closures)
     const currentMd = markdownRef.current;
     const currentTabId = activeTabIdRef.current;
