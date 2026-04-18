@@ -2541,7 +2541,7 @@ export default function MdEditor() {
           setActiveTabId(tabId);
           setMarkdown(shared);
           setIsSharedDoc(false);
-          if (!isMobile) setViewMode("split");
+          /* viewMode preserved — user controls it */
           await doRender(shared);
           cmSetDocRef.current?.(shared);
           // Clear hash to prevent reload issues
@@ -2632,12 +2632,12 @@ export default function MdEditor() {
               perm = "mine";
               setIsOwner(true);
               setIsSharedDoc(false);
-              if (!isMobile) setViewMode("split");
+              /* viewMode preserved — user controls it */
             } else if (isPublicDoc || doc.isEditor) {
               perm = "editable";
               setIsSharedDoc(true);
               setIsEditor(!!doc.isEditor);
-              if (!isMobile) setViewMode("split");
+              /* viewMode preserved — user controls it */
             } else {
               perm = "readonly";
               setIsSharedDoc(true);
@@ -3954,7 +3954,7 @@ export default function MdEditor() {
           const tabId = `tab-${tabIdCounter++}`;
           setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md, isDraft: true, permission: "mine" }]);
           setTimeout(() => switchTab(tabId), 50);
-          if (!isMobile) setViewMode("split");
+          /* viewMode preserved — user controls it */
           if (isPlainFormat && md.length > 50) {
             setMdfyPrompt({ text: md, filename: file.name, tabId });
           }
@@ -5721,7 +5721,7 @@ ${html}
                   const tabId = `tab-${tabIdCounter++}`;
                   setTabs((prev) => [...prev, { id: tabId, title: name, markdown: md, isDraft: true, permission: "mine" }]);
                   setTimeout(() => switchTab(tabId), 50);
-                  if (!isMobile) setViewMode("split");
+                  /* viewMode preserved — user controls it */
                   if (isPlainFormat && md.length > 50) {
                     setMdfyPrompt({ text: md, filename: file.name, tabId });
                   }
@@ -7180,7 +7180,7 @@ ${html}
                             {item.icon}
                             {item.label}
                           </button>
-                          <div className="absolute bottom-full left-0 mb-1 w-48 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover/ai:opacity-100 transition-opacity z-[200]"
+                          <div className="absolute top-full left-0 mt-1 w-48 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover/ai:opacity-100 transition-opacity z-[9999]"
                             style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                             <p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 3 }}>{item.label}</p>
                             <p>{item.desc}</p>
