@@ -7045,6 +7045,7 @@ ${html}
                 onRedo={redo}
               />
             )}
+            <div className="flex-1 flex min-h-0">
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
               clearHighlight();
@@ -7113,15 +7114,15 @@ ${html}
                   dangerouslySetInnerHTML={{ __html: "" }}
                 />
               )}
-              {/* ─── AI Panel (slide-out sidebar) ─── */}
+              </div>{/* end scrollable preview */}
+              {/* ─── AI Panel (side-by-side) ─── */}
               {showAIPanel && canEdit && (
                 <div
-                  className="absolute top-0 right-0 h-full flex flex-col z-[100]"
+                  className="flex flex-col shrink-0"
                   style={{
-                    width: "min(360px, 100%)",
+                    width: "min(340px, 50%)",
                     background: "var(--surface)",
                     borderLeft: "1px solid var(--border)",
-                    boxShadow: "-4px 0 24px rgba(0,0,0,0.2)",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -7277,15 +7278,14 @@ ${html}
                   </div>
                 </div>
               )}
-              {/* ─── Version History Panel (slide-out overlay) ─── */}
+              {/* ─── Version History Panel (side-by-side) ─── */}
               {showHistory && docId && (
                 <div
-                  className="absolute top-0 right-0 h-full flex flex-col z-[100]"
+                  className="flex flex-col shrink-0"
                   style={{
-                    width: "min(320px, 100%)",
+                    width: "min(320px, 50%)",
                     background: "var(--surface)",
                     borderLeft: "1px solid var(--border)",
-                    boxShadow: "-4px 0 24px rgba(0,0,0,0.2)",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
