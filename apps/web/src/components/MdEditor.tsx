@@ -7659,6 +7659,7 @@ ${html}
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">About</a>
           <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">Plugins</a>
+          <a href="/discover" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">Discover</a>
           <a href="/docs" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">API</a>
           <a href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">VS Code</a>
           <a href="https://chrome.google.com/webstore" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">Chrome</a>
