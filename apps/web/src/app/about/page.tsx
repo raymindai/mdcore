@@ -155,7 +155,7 @@ export default function AboutPage() {
           </h2>
           <div className="about-grid-3">
             {[
-              { icon: "WRITE", color: "#fb923c", title: "Create from anywhere", items: ["Browser editor at mdfy.cc", "VS Code extension", "Mac desktop app", "CLI: mdfy publish", "Paste, drag & drop, import"] },
+              { icon: "WRITE", color: "#fb923c", title: "Create from anywhere", items: ["Browser editor at mdfy.cc", "VS Code extension", "Mac desktop app", "Chrome extension — AI chats + GitHub .md", "CLI: mdfy publish"] },
               { icon: "SHARE", color: "#4ade80", title: "One URL, works everywhere", items: ["Send to anyone — no app needed", "Paste URL in Slack, email, docs", "Embed in websites (iframe)", "QR code for mobile", "Password protect or set expiry"] },
               { icon: "READ", color: "#60a5fa", title: "Consume in any context", items: ["Browser — full rendered view", "AI — paste URL as context", "Terminal: mdfy read <id>", "Finder — Space to preview", "API — programmatic access"] },
             ].map((col) => (

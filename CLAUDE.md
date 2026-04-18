@@ -107,7 +107,7 @@ mdcore/
 │   │   │       └── wasm/           # WASM 바인딩 (빌드 산출물)
 │   │   └── package.json
 │   ├── vscode-extension/    # VS Code 익스텐션
-│   └── chrome-extension/    # 크롬 익스텐션 (ChatGPT/Claude → mdfy.cc)
+│   └── chrome-extension/    # 크롬 익스텐션 (ChatGPT/Claude/Gemini/GitHub → mdfy.cc)
 ├── docs/
 │   ├── PACKAGES.md          # 패키지 아키텍처 가이드
 │   ├── MANIFESTO.md         # 프로젝트 매니페스토
@@ -236,7 +236,7 @@ ai: AI 호출 (독립)
 - Embed 코드 (iframe, /embed/[id])
 - 목적지별 최적화 복사 (Docs/Email용 rich text, Slack용 mrkdwn)
 - HTML → MD 변환 (Turndown, 붙여넣기 자동 감지)
-- 크롬 익스텐션 기본 구조 (apps/chrome-extension/)
+- 크롬 익스텐션 (apps/chrome-extension/) — AI 캡처 + GitHub .md 연동
 - 체크박스 토글 (렌더링 위에서 클릭 → MD 소스 sync)
 - 테이블 셀 편집 (더블클릭 → 인라인 편집 → MD 소스 sync)
 - AI 대화 모드 (ChatGPT/Claude 출력 자동 감지 + 정리)

@@ -224,8 +224,8 @@ export default function PluginsPage() {
                 </div>
               </div>
               <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                One-click capture from ChatGPT, Claude, and Gemini. Turn any AI conversation into a beautiful, shareable document.
-                The captured URL works as context in other AI conversations — move knowledge between AIs effortlessly.
+                One-click capture from ChatGPT, Claude, and Gemini. Open any GitHub .md file in mdfy.cc for beautiful rendering.
+                Turn AI conversations into shareable documents. The captured URL works as context in other AI conversations.
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -267,12 +267,12 @@ export default function PluginsPage() {
           >
             {[
               {
-                title: "AI Platform Support",
-                items: ["ChatGPT (chat.openai.com)", "Claude (claude.ai)", "Gemini (gemini.google.com)"],
+                title: "Platform Support",
+                items: ["ChatGPT (chat.openai.com)", "Claude (claude.ai)", "Gemini (gemini.google.com)", "GitHub \u2014 any .md file"],
               },
               {
                 title: "Capture Methods",
-                items: ["Floating button \u2014 full conversation", "Hover button \u2014 single response", "Right-click \u2014 any selected text", "Popup \u2014 capture or selection"],
+                items: ["Hover button \u2014 single AI response", "Popup \u2014 full conversation or selection", "GitHub \u2014 Open in mdfy.cc button", "Right-click \u2014 any selected text"],
               },
               {
                 title: "Smart Conversion",
