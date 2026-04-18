@@ -1546,6 +1546,11 @@ export default function MdEditor() {
   const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showAIMenu, setShowAIMenu] = useState(false);
+  const [aiProcessing, setAiProcessing] = useState<string | null>(null); // action name while processing
+  const [showTranslatePicker, setShowTranslatePicker] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [aiChatInput, setAiChatInput] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -4012,6 +4017,56 @@ export default function MdEditor() {
   }, [docId, doRender, loadVersions]);
 
   // Share — open modal for owners, quick copy for non-owners
+  // ─── AI Actions ───
+  const handleAIAction = useCallback(async (action: string, options?: { language?: string; instruction?: string }) => {
+    const md = markdownRef.current;
+    if (!md.trim()) { showToast("Write something first", "info"); return; }
+    setAiProcessing(action);
+    setShowAIMenu(false);
+    setShowTranslatePicker(false);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, markdown: md, ...options }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "AI failed" }));
+        throw new Error(err.error || "AI processing failed");
+      }
+      const data = await res.json();
+      const result = data.result;
+      if (!result) throw new Error("Empty result from AI");
+
+      if (action === "summary") {
+        // Insert summary at top as blockquote
+        const newMd = `> **Summary:** ${result.trim()}\n\n${md}`;
+        setMarkdown(newMd);
+        doRender(newMd);
+        showToast("Summary added to document", "success");
+      } else if (action === "tldr") {
+        // Insert TL;DR section at top
+        const newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${md}`;
+        setMarkdown(newMd);
+        doRender(newMd);
+        showToast("TL;DR added to document", "success");
+      } else {
+        // Polish, translate, chat — replace entire document
+        setMarkdown(result);
+        doRender(result);
+        const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated", chat: "Document updated" };
+        showToast(labels[action] || "Done", "success");
+      }
+      if (data.finishReason === "MAX_TOKENS") {
+        showToast("AI hit output limit — result may be incomplete", "info");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI processing failed";
+      showToast(message, "error");
+    }
+    setAiProcessing(null);
+  }, [doRender, setMarkdown]);
+
   const handleShare = useCallback(async () => {
     setShowPermDropdown(false);
     if (!markdown.trim()) { showToast("Write something first", "info"); return; }
@@ -6734,6 +6789,85 @@ ${html}
                     </div>
                   </div>
                 )}
+                {/* AI Actions dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setShowAIChat(false); }}
+                    disabled={!!aiProcessing}
+                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors gap-1"
+                    style={{ background: showAIMenu || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIMenu || aiProcessing ? "var(--accent)" : "var(--text-muted)" }}
+                  >
+                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Zap width={11} height={11} />}
+                  </button>
+                  {showAIMenu && !aiProcessing && (
+                    <>
+                      <div className="fixed inset-0 z-[9998]" onClick={() => { setShowAIMenu(false); setShowTranslatePicker(false); setShowAIChat(false); }} />
+                      <div className="absolute top-full right-0 mt-1 w-52 rounded-lg shadow-xl py-1 z-[9999]"
+                        style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                        <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>AI Tools</div>
+                        <button onClick={() => handleAIAction("polish")} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          <Sparkles width={12} height={12} style={{ color: "var(--accent)" }} />
+                          <span className="flex-1">Polish</span>
+                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Grammar & style</span>
+                        </button>
+                        <button onClick={() => handleAIAction("summary")} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          <AlignLeft width={12} height={12} style={{ color: "#60a5fa" }} />
+                          <span className="flex-1">Summary</span>
+                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Add to top</span>
+                        </button>
+                        <button onClick={() => handleAIAction("tldr")} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          <Zap width={12} height={12} style={{ color: "#fbbf24" }} />
+                          <span className="flex-1">TL;DR</span>
+                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Key takeaways</span>
+                        </button>
+                        <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                        <button onClick={() => setShowTranslatePicker(true)} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 3h7M5.5 3v9M3 6c1 3 3.5 5 5.5 6M8 6c-1 3-3.5 5-5.5 6"/><path d="M10 8l2 5 2-5M10.5 11.5h3"/></svg>
+                          <span className="flex-1">Translate</span>
+                          <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)" }} />
+                        </button>
+                        {showTranslatePicker && (
+                          <div className="px-1 pb-1">
+                            <div className="grid grid-cols-2 gap-0.5 mt-0.5">
+                              {[
+                                ["English", "English"], ["한국어", "Korean"], ["日本語", "Japanese"], ["中文", "Chinese"],
+                                ["Español", "Spanish"], ["Français", "French"], ["Deutsch", "German"], ["Português", "Portuguese"],
+                              ].map(([label, lang]) => (
+                                <button key={lang} onClick={() => handleAIAction("translate", { language: lang })}
+                                  className="px-2 py-1 text-[10px] rounded transition-colors hover:bg-[var(--menu-hover)]"
+                                  style={{ color: "var(--text-muted)" }}>
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                        <div className="px-1 pb-1">
+                          <div className="flex items-center gap-1 px-2">
+                            <input
+                              type="text"
+                              value={aiChatInput}
+                              onChange={(e) => setAiChatInput(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter" && aiChatInput.trim()) { handleAIAction("chat", { instruction: aiChatInput.trim() }); setAiChatInput(""); } }}
+                              placeholder="Ask AI to edit..."
+                              className="flex-1 text-[11px] py-1.5 bg-transparent"
+                              style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
+                            />
+                            <button
+                              onClick={() => { if (aiChatInput.trim()) { handleAIAction("chat", { instruction: aiChatInput.trim() }); setAiChatInput(""); } }}
+                              disabled={!aiChatInput.trim()}
+                              className="shrink-0 p-1 rounded transition-colors"
+                              style={{ color: aiChatInput.trim() ? "var(--accent)" : "var(--text-faint)" }}
+                            >
+                              <Zap width={10} height={10} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
                 {/* Export dropdown */}
                 <div className="relative group">
                   <button
