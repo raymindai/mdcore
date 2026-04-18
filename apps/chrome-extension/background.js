@@ -233,7 +233,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         if (uploadRes.ok) {
           const { url } = await uploadRes.json();
-          sendResponse({ url });
+          if (!url) {
+            sendResponse({ error: "Upload succeeded but no URL returned" });
+          } else {
+            sendResponse({ url });
+          }
         } else {
           sendResponse({ error: "Upload failed: " + uploadRes.status });
         }

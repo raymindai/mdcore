@@ -77,7 +77,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // Check password
+  // Check password (supports both salted "salt:hash" and legacy unsalted formats)
   const hasPassword = !!data.password_hash;
   if (hasPassword) {
     const providedPassword = _req.headers.get("x-document-password") || "";
@@ -85,9 +85,18 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Password required", passwordRequired: true }, { status: 401 });
     }
     const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(providedPassword));
-    const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-    if (hash !== data.password_hash) {
+    let passwordMatch = false;
+    if (data.password_hash.includes(":")) {
+      const [salt, storedHash] = data.password_hash.split(":", 2);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(salt + providedPassword));
+      const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      passwordMatch = hash === storedHash;
+    } else {
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(providedPassword));
+      const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      passwordMatch = hash === data.password_hash;
+    }
+    if (!passwordMatch) {
       return NextResponse.json({ error: "Wrong password", passwordRequired: true }, { status: 403 });
     }
   }

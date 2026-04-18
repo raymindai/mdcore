@@ -117,12 +117,14 @@ export class AuthManager {
               body: JSON.stringify({ refresh_token: refreshToken }),
             });
             if (response.ok) {
-              const data = await response.json() as { access_token: string; refresh_token?: string };
-              await this.storeToken(data.access_token);
-              if (data.refresh_token) {
-                await this.context.secrets.store("mdfy.refreshToken", data.refresh_token);
+              const data = await response.json() as { access_token?: string; refresh_token?: string };
+              if (data.access_token) {
+                await this.storeToken(data.access_token);
+                if (data.refresh_token) {
+                  await this.context.secrets.store("mdfy.refreshToken", data.refresh_token);
+                }
+                return data.access_token;
               }
-              return data.access_token;
             }
           } catch { /* refresh failed, logout */ }
         }

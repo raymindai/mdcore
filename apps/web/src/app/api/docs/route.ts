@@ -5,8 +5,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 
 export async function POST(req: NextRequest) {
-  // Rate limit by IP
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  // Rate limit by IP (x-real-ip and x-forwarded-for are set by Vercel's proxy in production)
+  const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const { allowed } = rateLimit(ip);
   if (!allowed) {
     return NextResponse.json(
@@ -79,13 +79,15 @@ export async function POST(req: NextRequest) {
   const id = nanoid(8);
   const editToken = nanoid(32);
 
-  // Simple password hash (base64 of SHA-256)
+  // Salted password hash (salt:base64-SHA-256)
   let passwordHash: string | null = null;
   if (password) {
+    const salt = crypto.randomUUID();
     const encoder = new TextEncoder();
-    const data = encoder.encode(password);
+    const data = encoder.encode(salt + password);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    passwordHash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+    const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+    passwordHash = `${salt}:${hash}`;
   }
 
   // Expiration: expiresIn is in hours (user-specified only)

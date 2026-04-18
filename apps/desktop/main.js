@@ -1403,6 +1403,7 @@ ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => 
     });
     if (!resp.ok) return { error: `Upload failed: ${resp.status}` };
     const result = await resp.json();
+    if (!result || !result.url) return { error: "Upload succeeded but no URL returned" };
     return { url: result.url };
   } catch (err) {
     return { error: err.message };

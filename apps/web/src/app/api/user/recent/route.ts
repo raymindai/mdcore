@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 export async function GET(req: NextRequest) {
-  const userId = req.headers.get("x-user-id");
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const userId = verified?.userId || req.headers.get("x-user-id");
   if (!userId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }

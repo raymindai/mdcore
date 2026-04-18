@@ -62,16 +62,25 @@ export async function GET(
     }
   }
 
-  // Password check
+  // Password check (supports both salted "salt:hash" and legacy unsalted formats)
   if (doc.password_hash) {
     const providedPassword = req.headers.get("x-document-password") || "";
     if (!providedPassword) {
       return NextResponse.json({ error: "Password required", passwordRequired: true }, { status: 401 });
     }
     const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(providedPassword));
-    const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-    if (hash !== doc.password_hash) {
+    let passwordMatch = false;
+    if (doc.password_hash.includes(":")) {
+      const [salt, storedHash] = doc.password_hash.split(":", 2);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(salt + providedPassword));
+      const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      passwordMatch = hash === storedHash;
+    } else {
+      const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(providedPassword));
+      const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+      passwordMatch = hash === doc.password_hash;
+    }
+    if (!passwordMatch) {
       return NextResponse.json({ error: "Wrong password", passwordRequired: true }, { status: 403 });
     }
   }

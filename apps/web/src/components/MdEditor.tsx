@@ -838,7 +838,7 @@ type ViewMode = "split" | "preview" | "editor";
 type Theme = "dark" | "light";
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -849,19 +849,19 @@ function useIsMobile() {
 }
 
 function useTheme() {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("mdfy-theme") as Theme) || "dark";
+  });
 
   useEffect(() => {
-    const saved = localStorage.getItem("mdfy-theme") as Theme | null;
-    const initial = saved || "dark";
-    setThemeState(initial);
-    document.documentElement.setAttribute("data-theme", initial);
-  }, []);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     document.documentElement.setAttribute("data-theme", t);
-    localStorage.setItem("mdfy-theme", t);
+    try { localStorage.setItem("mdfy-theme", t); } catch { /* L7: quota exceeded */ }
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -1716,13 +1716,15 @@ export default function MdEditor() {
     cmSetDocRef.current?.(withPlaceholder);
     const url = await uploadImage(file);
     const current = markdownForImageRef.current;
-    if (url) {
-      const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
+    const imageTag = url ? `![${file.name}](${url})\n` : "";
+    if (current.includes(placeholder)) {
+      const updated = current.replace(placeholder, imageTag);
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
-    } else {
-      const updated = current.replace(placeholder, "");
+    } else if (url) {
+      // Placeholder was lost (e.g. user edited) — append image at end
+      const updated = current + "\n" + imageTag;
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
@@ -2544,11 +2546,13 @@ export default function MdEditor() {
         try {
           const headers: Record<string, string> = { ...authHeaders };
           // Check for password from viewer (stored in sessionStorage)
-          const savedPw = sessionStorage.getItem(`mdfy-pw-${fromId}`);
-          if (savedPw) {
-            headers["x-document-password"] = savedPw;
-            sessionStorage.removeItem(`mdfy-pw-${fromId}`); // One-time use
-          }
+          try {
+            const savedPw = sessionStorage.getItem(`mdfy-pw-${fromId}`);
+            if (savedPw) {
+              headers["x-document-password"] = savedPw;
+              sessionStorage.removeItem(`mdfy-pw-${fromId}`); // One-time use
+            }
+          } catch { /* sessionStorage unavailable */ }
           const res = await fetch(`/api/docs/${fromId}`, { headers });
           if (!res.ok) {
             const errorBody = await res.json().catch(() => ({}));
@@ -3296,21 +3300,28 @@ export default function MdEditor() {
       if (checkboxIndex === -1) return;
 
       // Find the nth task list item in markdown source
+      const isCheckedInDom = target.checked;
       const lines = markdownRef.current.split("\n");
       let found = 0;
+      let matched = false;
       for (let i = 0; i < lines.length; i++) {
         if (/^\s*- \[([ xX])\]/.test(lines[i])) {
           if (found === checkboxIndex) {
-            if (/- \[x\]/i.test(lines[i])) {
+            // Safety: verify the line's checkbox state is opposite of DOM target
+            const lineIsChecked = /- \[x\]/i.test(lines[i]);
+            if (lineIsChecked === isCheckedInDom) break; // state mismatch, abort
+            if (lineIsChecked) {
               lines[i] = lines[i].replace(/- \[x\]/i, "- [ ]");
             } else {
               lines[i] = lines[i].replace(/- \[ \]/, "- [x]");
             }
+            matched = true;
             break;
           }
           found++;
         }
       }
+      if (!matched) { e.preventDefault(); return; }
       const newMd = lines.join("\n");
       setMarkdown(newMd);
       doRender(newMd);
@@ -3408,13 +3419,10 @@ export default function MdEditor() {
               lines[mdRowLine] = "|" + tableCells.join("|") + "|";
             }
           } else {
-            // Fallback: find table line containing the cell text (less precise)
-            for (let i = 0; i < lines.length; i++) {
-              if (lines[i].includes("|") && lines[i].includes(currentText)) {
-                lines[i] = lines[i].replace(currentText, newText);
-                break;
-              }
-            }
+            // Cannot reliably identify the cell without sourcepos — abort edit
+            cell.setAttribute("style", originalStyle);
+            cell.innerHTML = originalContent;
+            return;
           }
           const newMd = lines.join("\n");
           setMarkdown(newMd);

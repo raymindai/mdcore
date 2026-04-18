@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 // GET — fetch notifications for logged-in user
 export async function GET(req: NextRequest) {
-  const email = req.headers.get("x-user-email");
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const email = verified?.email || req.headers.get("x-user-email");
   if (!email) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const supabase = getSupabaseClient();
@@ -48,11 +50,15 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseClient();
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
-  // Rate limit: max 10 notifications per minute per IP
+  // Verify JWT for POST
+  const verifiedPost = await verifyAuthToken(req.headers.get("authorization"));
+
+  // Rate limit: max 10 notifications per minute per user
+  const rateLimitUserId = verifiedPost?.userId || req.headers.get("x-user-id") || "unknown";
   const { count: rlCount } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .eq("from_user_id", req.headers.get("x-user-id") || "unknown")
+    .eq("from_user_id", rateLimitUserId)
     .gte("created_at", new Date(Date.now() - 60000).toISOString());
   if ((rlCount || 0) > 10) {
     return NextResponse.json({ error: "Too many notifications. Try again later." }, { status: 429 });
@@ -119,7 +125,8 @@ export async function POST(req: NextRequest) {
 
 // PATCH — mark notifications as read
 export async function PATCH(req: NextRequest) {
-  const email = req.headers.get("x-user-email");
+  const verifiedPatch = await verifyAuthToken(req.headers.get("authorization"));
+  const email = verifiedPatch?.email || req.headers.get("x-user-email");
   if (!email) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const supabase = getSupabaseClient();

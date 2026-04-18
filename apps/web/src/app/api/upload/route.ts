@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
+import { verifyAuthToken } from "@/lib/verify-auth";
 import crypto from "crypto";
 
 export const runtime = "nodejs";
@@ -24,13 +25,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
   }
 
-  // Auth: allow userId, anonymousId, or fully anonymous (IP-limited)
-  const userId = req.headers.get("x-user-id");
+  // Auth: verify JWT first, then fall back to headers
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const userId = verified?.userId || req.headers.get("x-user-id");
   const anonymousId = req.headers.get("x-anonymous-id");
 
   // For fully anonymous uploads: rate limit by IP
   if (!userId && !anonymousId) {
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    // x-real-ip and x-forwarded-for are set by Vercel's proxy in production
+    const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed } = rateLimit(ip);
     if (!allowed) {
       return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 });
