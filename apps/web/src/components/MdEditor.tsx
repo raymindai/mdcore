@@ -6928,7 +6928,7 @@ ${html}
                   <button
                     onClick={() => { if (!aiProcessing) { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setAiChatInput(""); setShowExportMenu(false); } }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
-                    style={{ background: showAIMenu || aiProcessing ? "var(--accent)" : "var(--accent-dim)", color: showAIMenu || aiProcessing ? "#000" : "var(--accent)", fontWeight: 700, fontSize: 11 }}
+                    style={{ background: showAIMenu || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIMenu || aiProcessing ? "var(--accent)" : "var(--text-muted)", fontWeight: 600, fontSize: 11 }}
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     {aiProcessing ? <span className="text-[9px] hidden sm:inline">
