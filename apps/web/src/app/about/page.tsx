@@ -386,43 +386,93 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ───────── COMPARISON ───────── */}
+      {/* ───────── COMPARISON: MARKDOWN PUBLISHING ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
-          How mdfy compares
+          mdfy vs Markdown publishing tools
         </h2>
         <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 32, lineHeight: 1.6 }}>
-          mdfy is the only tool that combines WYSIWYG editing, instant publishing, cross-platform sync, and AI integration in one workflow.
+          Publish Markdown to the web. How does mdfy stack up against the alternatives?
         </p>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["", "mdfy.cc", "Notion", "HackMD", "GitHub Gist", "Google Docs"].map((h) => (
+                {["", "mdfy.cc", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"].map((h) => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: h === "mdfy.cc" ? 800 : 600, color: h === "mdfy.cc" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {[
-                { feature: "No signup to publish", mdfy: true, notion: false, hackmd: false, gist: false, gdocs: false },
-                { feature: "WYSIWYG editing", mdfy: true, notion: true, hackmd: false, gist: false, gdocs: true },
-                { feature: "Markdown source stays local", mdfy: true, notion: false, hackmd: false, gist: false, gdocs: false },
-                { feature: "KaTeX math rendering", mdfy: true, notion: true, hackmd: true, gist: false, gdocs: false },
-                { feature: "Mermaid diagrams", mdfy: true, notion: false, hackmd: true, gist: false, gdocs: false },
-                { feature: "VS Code extension", mdfy: true, notion: false, hackmd: false, gist: true, gdocs: false },
-                { feature: "Mac desktop app", mdfy: true, notion: true, hackmd: false, gist: false, gdocs: true },
-                { feature: "CLI publish from terminal", mdfy: true, notion: false, hackmd: false, gist: true, gdocs: false },
-                { feature: "AI integration (MCP)", mdfy: true, notion: false, hackmd: false, gist: false, gdocs: false },
-                { feature: "Chrome extension", mdfy: true, notion: true, hackmd: false, gist: false, gdocs: false },
-                { feature: "QuickLook preview", mdfy: true, notion: false, hackmd: false, gist: false, gdocs: false },
-                { feature: "Pipe from stdin", mdfy: true, notion: false, hackmd: false, gist: true, gdocs: false },
-                { feature: "Custom rendering engine", mdfy: true, notion: true, hackmd: true, gist: false, gdocs: true },
-                { feature: "Free forever (core)", mdfy: true, notion: true, hackmd: true, gist: true, gdocs: true },
+                { feature: "No signup to publish", vals: [true, false, false, false, false] },
+                { feature: "Instant shareable URL", vals: [true, true, false, true, true] },
+                { feature: "WYSIWYG editing", vals: [true, false, false, true, false] },
+                { feature: "Source .md stays on your machine", vals: [true, false, false, true, false] },
+                { feature: "KaTeX math", vals: [true, true, false, true, false] },
+                { feature: "Mermaid diagrams", vals: [true, true, false, true, false] },
+                { feature: "Publish from CLI / pipe", vals: [true, false, false, false, true] },
+                { feature: "AI integration (MCP)", vals: [true, false, false, false, false] },
+                { feature: "VS Code extension", vals: [true, false, false, false, true] },
+                { feature: "Mac desktop app", vals: [true, false, false, true, false] },
+                { feature: "Chrome extension", vals: [true, false, false, false, false] },
+                { feature: "Bidirectional sync", vals: [true, true, true, true, false] },
+                { feature: "Custom rendering engine", vals: [true, true, false, true, false] },
+                { feature: "Free to start", vals: [true, true, true, false, true] },
               ].map((row) => (
                 <tr key={row.feature} style={{ borderBottom: "1px solid var(--border-dim)" }}>
                   <td style={{ padding: "10px 16px", color: "var(--text-secondary)", fontSize: 12 }}>{row.feature}</td>
-                  {[row.mdfy, row.notion, row.hackmd, row.gist, row.gdocs].map((v, i) => (
+                  {row.vals.map((v, i) => (
+                    <td key={i} style={{ padding: "10px 16px", textAlign: "center", fontSize: 14 }}>
+                      {v
+                        ? <span style={{ color: i === 0 ? "var(--accent)" : "#4ade80" }}>{"\u2713"}</span>
+                        : <span style={{ color: "var(--text-faint)", opacity: 0.3 }}>{"\u2014"}</span>
+                      }
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ───────── COMPARISON: VS CODE EXTENSIONS ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
+          mdfy vs VS Code Markdown extensions
+        </h2>
+        <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 32, lineHeight: 1.6 }}>
+          VS Code has great Markdown extensions. None of them publish.
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "var(--font-geist-mono), monospace" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["", "mdfy", "MD All in One", "MD Preview Enhanced", "Markdown Editor", "Built-in Preview"].map((h) => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: h === "mdfy" ? 800 : 600, color: h === "mdfy" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { feature: "WYSIWYG editing", vals: [true, false, false, true, false] },
+                { feature: "One-click publish to URL", vals: [true, false, false, false, false] },
+                { feature: "Cloud sync (push/pull)", vals: [true, false, false, false, false] },
+                { feature: "KaTeX math", vals: [true, true, true, false, false] },
+                { feature: "Mermaid diagrams", vals: [true, false, true, false, false] },
+                { feature: "Syntax highlighting", vals: [true, false, true, false, true] },
+                { feature: "Toolbar (bold, italic, etc.)", vals: [true, true, false, true, false] },
+                { feature: "Table of contents", vals: [true, true, true, false, false] },
+                { feature: "Export to HTML / PDF", vals: [true, false, true, false, false] },
+                { feature: "Document sidebar", vals: [true, false, false, false, false] },
+                { feature: "Conflict resolution", vals: [true, false, false, false, false] },
+                { feature: "Offline queue", vals: [true, false, false, false, false] },
+                { feature: "Custom rendering engine", vals: [true, false, true, false, false] },
+              ].map((row) => (
+                <tr key={row.feature} style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                  <td style={{ padding: "10px 16px", color: "var(--text-secondary)", fontSize: 12 }}>{row.feature}</td>
+                  {row.vals.map((v, i) => (
                     <td key={i} style={{ padding: "10px 16px", textAlign: "center", fontSize: 14 }}>
                       {v
                         ? <span style={{ color: i === 0 ? "var(--accent)" : "#4ade80" }}>{"\u2713"}</span>
