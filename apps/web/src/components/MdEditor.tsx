@@ -7118,7 +7118,7 @@ ${html}
                 <div
                   className="absolute top-0 right-0 h-full flex flex-col z-[100]"
                   style={{
-                    width: "min(340px, 100%)",
+                    width: "min(360px, 100%)",
                     background: "var(--surface)",
                     borderLeft: "1px solid var(--border)",
                     boxShadow: "-4px 0 24px rgba(0,0,0,0.2)",
@@ -7131,46 +7131,65 @@ ${html}
                       <Sparkles width={12} height={12} style={{ color: "var(--accent)" }} />
                       <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>AI Tools</span>
                     </div>
-                    <button
-                      onClick={() => setShowAIPanel(false)}
-                      className="flex items-center justify-center w-5 h-5 rounded transition-colors"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      <X width={10} height={10} />
-                    </button>
-                  </div>
-                  {/* Quick actions */}
-                  <div className="px-2 py-2 space-y-0.5 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                    <div className="grid grid-cols-2 gap-1">
-                      <button onClick={() => handleAIAction("polish")} disabled={!!aiProcessing}
-                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
-                        <Sparkles width={11} height={11} style={{ color: "var(--accent)" }} />
-                        Polish
-                      </button>
-                      <button onClick={() => handleAIAction("summary")} disabled={!!aiProcessing}
-                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
-                        <AlignLeft width={11} height={11} style={{ color: "#60a5fa" }} />
-                        Summary
-                      </button>
-                      <button onClick={() => handleAIAction("tldr")} disabled={!!aiProcessing}
-                        className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
-                        <List width={11} height={11} style={{ color: "#fbbf24" }} />
-                        TL;DR
-                      </button>
-                      <div className="relative">
-                        <button onClick={() => setShowTranslatePicker(prev => !prev)} disabled={!!aiProcessing}
-                          className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                          style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
-                          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 3h7M5.5 3v9M3 6c1 3 3.5 5 5.5 6M8 6c-1 3-3.5 5-5.5 6"/><path d="M10 8l2 5 2-5M10.5 11.5h3"/></svg>
-                          Translate
+                    <div className="flex items-center gap-1">
+                      {aiChatHistory.length > 0 && (
+                        <button
+                          onClick={() => setAiChatHistory([])}
+                          className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Clear chat history"
+                        >
+                          <RotateCcw width={9} height={9} />
                         </button>
-                      </div>
+                      )}
+                      {undoStack.current.length > 1 && (
+                        <button
+                          onClick={() => { undo(); setAiChatHistory(prev => [...prev, { role: "ai", text: "Reverted to previous version." }]); }}
+                          className="flex items-center gap-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                          style={{ color: "var(--text-muted)" }}
+                          title="Undo last AI change"
+                        >
+                          <Undo2 width={9} height={9} />
+                          Undo
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowAIPanel(false)}
+                        className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        <X width={10} height={10} />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Quick actions with tooltips */}
+                  <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([
+                        { action: "polish", icon: <Sparkles width={11} height={11} style={{ color: "var(--accent)" }} />, label: "Polish", desc: "Fix grammar, spelling, and improve clarity. Preserves meaning." },
+                        { action: "summary", icon: <AlignLeft width={11} height={11} style={{ color: "#60a5fa" }} />, label: "Summary", desc: "Generate a 2-4 sentence summary and add it to the top of the document." },
+                        { action: "tldr", icon: <List width={11} height={11} style={{ color: "#fbbf24" }} />, label: "TL;DR", desc: "Create 2-5 bullet points of key takeaways and add to the top." },
+                        { action: "translate", icon: <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 3h7M5.5 3v9M3 6c1 3 3.5 5 5.5 6M8 6c-1 3-3.5 5-5.5 6"/><path d="M10 8l2 5 2-5M10.5 11.5h3"/></svg>, label: "Translate", desc: "Translate the entire document to another language. Code blocks stay unchanged." },
+                      ] as const).map((item) => (
+                        <div key={item.action} className="relative group/ai">
+                          <button
+                            onClick={() => item.action === "translate" ? setShowTranslatePicker(prev => !prev) : handleAIAction(item.action)}
+                            disabled={!!aiProcessing}
+                            className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                            style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
+                            {item.icon}
+                            {item.label}
+                          </button>
+                          <div className="absolute bottom-full left-0 mb-1 w-48 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover/ai:opacity-100 transition-opacity z-[200]"
+                            style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                            <p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 3 }}>{item.label}</p>
+                            <p>{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                     {showTranslatePicker && (
-                      <div className="grid grid-cols-3 gap-0.5 pt-1">
+                      <div className="grid grid-cols-3 gap-0.5 pt-1.5">
                         {[
                           ["English", "English"], ["한국어", "Korean"], ["日本語", "Japanese"], ["中文", "Chinese"],
                           ["Español", "Spanish"], ["Français", "French"], ["Deutsch", "German"], ["Português", "Portuguese"],
@@ -7186,20 +7205,22 @@ ${html}
                     )}
                   </div>
                   {/* Chat history */}
-                  <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+                  <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
                     {aiChatHistory.length === 0 && !aiProcessing && (
                       <div className="text-center py-8">
                         <Sparkles width={24} height={24} className="mx-auto mb-3" style={{ color: "var(--border)", opacity: 0.5 }} />
-                        <p className="text-[11px]" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
-                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo; or &ldquo;Add a conclusion&rdquo;</p>
+                        <p className="text-[11px] mb-1" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo;</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Add a conclusion&rdquo;</p>
+                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Rewrite in a formal tone&rdquo;</p>
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
                       <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className="max-w-[85%] px-3 py-2 rounded-lg text-[11px] leading-relaxed"
+                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
                           style={{
                             background: msg.role === "user" ? "var(--accent-dim)" : "var(--toggle-bg)",
-                            color: msg.role === "user" ? "var(--accent)" : "var(--text-secondary)",
+                            color: msg.role === "user" ? "var(--accent)" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
                           }}>
                           {msg.text}
                         </div>
@@ -7210,7 +7231,7 @@ ${html}
                         <div className="px-3 py-2 rounded-lg text-[11px] flex items-center gap-2"
                           style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
                           <Loader2 width={10} height={10} className="animate-spin" />
-                          {{ polish: "Polishing...", summary: "Summarizing...", tldr: "Generating...", translate: "Translating...", chat: "Thinking..." }[aiProcessing] || "Processing..."}
+                          {{ polish: "Polishing document...", summary: "Writing summary...", tldr: "Extracting key points...", translate: "Translating...", chat: "Thinking..." }[aiProcessing] || "Processing..."}
                         </div>
                       </div>
                     )}
