@@ -141,11 +141,11 @@ export function SubLabel({ children }: { children: string }) {
 }
 
 /* ─── DocsNav ─── */
-export function DocsNav({ active = "api" }: { active?: "about" | "plugins" | "api" } = {}) {
+export function DocsNav({ active = "docs" }: { active?: "about" | "plugins" | "docs" } = {}) {
   const navItems = [
     { label: "About", href: "/about", key: "about" },
     { label: "Plugins", href: "/plugins", key: "plugins" },
-    { label: "API", href: "/docs", key: "api" },
+    { label: "Docs", href: "/docs", key: "docs" },
   ];
   return (
     <nav
@@ -172,51 +172,50 @@ export function DocsNav({ active = "api" }: { active?: "about" | "plugins" | "ap
           <Link href="/" style={{ textDecoration: "none" }}>
             <MdfyLogo size={22} />
           </Link>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div className="site-nav-links">
             {navItems.map((item) => (
               <Link
                 key={item.key}
                 href={item.href}
-                style={{
-                  color: active === item.key ? "var(--accent)" : "var(--text-muted)",
-                  fontSize: 13,
-                  fontWeight: active === item.key ? 600 : 400,
-                  textDecoration: "none",
-                }}
+                className="site-nav-link"
+                data-active={active === item.key}
               >
                 {item.label}
               </Link>
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div className="site-nav-right">
           <a
             href="https://github.com/raymindai/mdcore"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              color: "var(--text-muted)",
-              fontSize: 13,
-              textDecoration: "none",
-            }}
+            className="site-nav-right-link"
           >
             GitHub
           </a>
-          <Link
-            href="/"
-            style={{
-              background: "var(--accent-dim)",
-              color: "var(--accent)",
-              padding: "6px 16px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
+          <Link href="/" className="site-nav-cta">
             Open Editor
           </Link>
         </div>
+        <details className="site-nav-hamburger-wrapper">
+          <summary className="site-nav-hamburger" aria-label="Toggle menu">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="2" y1="4" x2="14" y2="4" />
+              <line x1="2" y1="8" x2="14" y2="8" />
+              <line x1="2" y1="12" x2="14" y2="12" />
+            </svg>
+          </summary>
+          <div className="site-nav-mobile-menu">
+            {navItems.map((item) => (
+              <Link key={item.key} href={item.href} data-active={active === item.key}>
+                {item.label}
+              </Link>
+            ))}
+            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <Link href="/">Open Editor</Link>
+          </div>
+        </details>
       </div>
     </nav>
   );

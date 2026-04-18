@@ -1197,3 +1197,80 @@ textarea::selection {
     gap: 4px !important;
   }
 }
+
+/* ========================================
+   Site Nav
+   ======================================== */
+.site-nav-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.site-nav-link:hover {
+  color: var(--text-primary);
+}
+.site-nav-link[data-active="true"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.site-nav-right-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.site-nav-right-link:hover {
+  color: var(--text-primary);
+}
+.site-nav-cta {
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.site-nav-cta:hover {
+  background: rgba(251, 146, 60, 0.25);
+}
+
+/* Mobile nav */
+.site-nav-links { display: flex; gap: 16px; }
+.site-nav-right { display: flex; gap: 16px; align-items: center; }
+.site-nav-hamburger-wrapper { display: none; }
+.site-nav-hamburger {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+}
+.site-nav-hamburger::-webkit-details-marker { display: none; }
+.site-nav-mobile-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-dim);
+}
+.site-nav-mobile-menu a {
+  padding: 10px 24px;
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+.site-nav-mobile-menu a:hover,
+.site-nav-mobile-menu a[data-active="true"] {
+  color: var(--accent);
+  background: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .site-nav-links { display: none; }
+  .site-nav-right { display: none; }
+  .site-nav-hamburger-wrapper { display: block; }
+}
