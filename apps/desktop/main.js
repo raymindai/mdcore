@@ -742,6 +742,7 @@ function startFileWatcher(filePath) {
 
 function stopFileWatcher() {
   if (fileWatcher) {
+    if (fileWatcher._debounce) clearTimeout(fileWatcher._debounce);
     fileWatcher.close();
     fileWatcher = null;
   }
@@ -951,12 +952,20 @@ function createWindow() {
   });
 
   // Save before close — auto-save current markdown
+  let closeHandled = false;
   mainWindow.on("close", (e) => {
-    if (currentFilePath) {
+    if (currentFilePath && !closeHandled) {
+      e.preventDefault();
+      closeHandled = true;
       try {
-        // Trigger one last auto-save synchronously
         mainWindow.webContents.send("trigger-save");
-      } catch {}
+        // Wait briefly for save to complete, then close
+        setTimeout(() => {
+          mainWindow.destroy();
+        }, 500);
+      } catch {
+        mainWindow.destroy();
+      }
     }
   });
 

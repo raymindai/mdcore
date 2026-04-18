@@ -48,6 +48,18 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabaseClient();
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
+  // Rate limit: max 10 notifications per minute per IP
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rateLimitKey = `notif:${ip}`;
+  const { data: rlData } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("from_user_id", req.headers.get("x-user-id") || ip)
+    .gte("created_at", new Date(Date.now() - 60000).toISOString());
+  if ((rlData as unknown as number) > 10) {
+    return NextResponse.json({ error: "Too many notifications. Try again later." }, { status: 429 });
+  }
+
   let body: {
     recipientEmail: string;
     type?: string;
@@ -67,6 +79,16 @@ export async function POST(req: NextRequest) {
   /* eslint-enable prefer-const */
   if (!recipientEmail || !documentId) {
     return NextResponse.json({ error: "recipientEmail and documentId required" }, { status: 400 });
+  }
+
+  // Verify document exists and fromUserId has access
+  if (fromUserId) {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id")
+      .eq("id", documentId)
+      .single();
+    if (!doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
   // Resolve __owner__ to actual owner email

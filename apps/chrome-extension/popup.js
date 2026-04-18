@@ -87,11 +87,12 @@ async function openInMdfy(markdown) {
       const res = await proxyFetch(MDFY_URL + "/api/docs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown, userId, title, editMode: "account", source: "chrome", isDraft: false }),
+        body: JSON.stringify({ markdown, userId, title, editMode: "account", source: "chrome", isDraft: true }),
       });
 
       if (res.ok) {
-        const { id, editToken } = JSON.parse(res.body);
+        let parsed; try { parsed = JSON.parse(res.body); } catch { throw new Error("Invalid response"); }
+        const { id, editToken } = parsed;
         const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
         chrome.tabs.create({ url: MDFY_URL + "/?doc=" + id + tokenParam });
         setStatus("Published to mdfy.cc", "success");

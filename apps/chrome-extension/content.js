@@ -1385,4 +1385,10 @@
     childList: true,
     subtree: true,
   });
+
+  // Disconnect observer on page unload to prevent memory leaks
+  window.addEventListener("beforeunload", () => {
+    observer.disconnect();
+    if (observerTimer) clearTimeout(observerTimer);
+  });
 })();

@@ -2117,16 +2117,17 @@ export default function MdEditor() {
     const waitForMermaid = (): Promise<typeof import("mermaid").default> => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((window as any).mermaid) return Promise.resolve((window as any).mermaid);
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const check = setInterval(() => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if ((window as any).mermaid) { clearInterval(check); resolve((window as any).mermaid); }
         }, 50);
-        setTimeout(() => clearInterval(check), 10000); // timeout after 10s
+        setTimeout(() => { clearInterval(check); reject(new Error("Mermaid load timeout")); }, 10000);
       });
     };
 
-    waitForMermaid().then(async (mermaid) => {
+    waitForMermaid().catch(() => { console.warn("[mdfy] Mermaid failed to load"); return null; }).then(async (mermaid) => {
+      if (!mermaid) return;
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
