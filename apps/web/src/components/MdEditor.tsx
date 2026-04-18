@@ -1549,7 +1549,6 @@ export default function MdEditor() {
   const [showAIMenu, setShowAIMenu] = useState(false);
   const [aiProcessing, setAiProcessing] = useState<string | null>(null); // action name while processing
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
-  const [showAIChat, setShowAIChat] = useState(false);
   const [aiChatInput, setAiChatInput] = useState("");
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
@@ -4021,6 +4020,9 @@ export default function MdEditor() {
   const handleAIAction = useCallback(async (action: string, options?: { language?: string; instruction?: string }) => {
     const md = markdownRef.current;
     if (!md.trim()) { showToast("Write something first", "info"); return; }
+    // Block on readonly/example docs
+    const ct = tabs.find(t => t.id === activeTabIdRef.current);
+    if (ct?.readonly || ct?.permission === "readonly") { showToast("Cannot edit a read-only document", "info"); return; }
     setAiProcessing(action);
     setShowAIMenu(false);
     setShowTranslatePicker(false);
@@ -4038,25 +4040,31 @@ export default function MdEditor() {
       const result = data.result;
       if (!result) throw new Error("Empty result from AI");
 
+      let newMd: string;
       if (action === "summary") {
-        // Insert summary at top as blockquote
-        const newMd = `> **Summary:** ${result.trim()}\n\n${md}`;
-        setMarkdown(newMd);
-        doRender(newMd);
+        // Remove existing summary blockquote if present, then insert new one
+        const stripped = md.replace(/^> \*\*Summary:\*\*.*\n\n/m, "");
+        newMd = `> **Summary:** ${result.trim()}\n\n${stripped}`;
         showToast("Summary added to document", "success");
       } else if (action === "tldr") {
-        // Insert TL;DR section at top
-        const newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${md}`;
-        setMarkdown(newMd);
-        doRender(newMd);
+        // Remove existing TL;DR section if present, then insert new one
+        const stripped = md.replace(/^## TL;DR\n\n[\s\S]*?\n\n---\n\n/m, "");
+        newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${stripped}`;
         showToast("TL;DR added to document", "success");
       } else {
         // Polish, translate, chat — replace entire document
-        setMarkdown(result);
-        doRender(result);
+        newMd = result;
         const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated", chat: "Document updated" };
         showToast(labels[action] || "Done", "success");
       }
+      // Push current state to undo stack before replacing
+      undoStack.current.push(md);
+      if (undoStack.current.length > 100) undoStack.current.shift();
+      redoStack.current = [];
+      // Update markdown + tab
+      setMarkdown(newMd);
+      doRender(newMd);
+      setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
       if (data.finishReason === "MAX_TOKENS") {
         showToast("AI hit output limit — result may be incomplete", "info");
       }
@@ -4065,7 +4073,7 @@ export default function MdEditor() {
       showToast(message, "error");
     }
     setAiProcessing(null);
-  }, [doRender, setMarkdown]);
+  }, [doRender, setMarkdown, tabs]);
 
   const handleShare = useCallback(async () => {
     setShowPermDropdown(false);
@@ -6789,10 +6797,10 @@ ${html}
                     </div>
                   </div>
                 )}
-                {/* AI Actions dropdown */}
-                <div className="relative">
+                {/* AI Actions dropdown — only for editable docs */}
+                {canEdit && <div className="relative">
                   <button
-                    onClick={() => { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setShowAIChat(false); }}
+                    onClick={() => { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setAiChatInput(""); setShowExportMenu(false); }}
                     disabled={!!aiProcessing}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors gap-1"
                     style={{ background: showAIMenu || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIMenu || aiProcessing ? "var(--accent)" : "var(--text-muted)" }}
@@ -6801,7 +6809,7 @@ ${html}
                   </button>
                   {showAIMenu && !aiProcessing && (
                     <>
-                      <div className="fixed inset-0 z-[9998]" onClick={() => { setShowAIMenu(false); setShowTranslatePicker(false); setShowAIChat(false); }} />
+                      <div className="fixed inset-0 z-[9998]" onClick={() => { setShowAIMenu(false); setShowTranslatePicker(false); setAiChatInput(""); }} />
                       <div className="absolute top-full right-0 mt-1 w-52 rounded-lg shadow-xl py-1 z-[9999]"
                         style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                         <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>AI Tools</div>
@@ -6867,11 +6875,11 @@ ${html}
                       </div>
                     </>
                   )}
-                </div>
+                </div>}
                 {/* Export dropdown */}
                 <div className="relative group">
                   <button
-                    onClick={() => setShowExportMenu(prev => !prev)}
+                    onClick={() => { setShowExportMenu(prev => !prev); setShowAIMenu(false); }}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
