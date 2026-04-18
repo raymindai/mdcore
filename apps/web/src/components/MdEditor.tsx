@@ -1523,7 +1523,7 @@ export default function MdEditor() {
   const [shareState, setShareState] = useState<
     "idle" | "sharing" | "copied" | "error"
   >("idle");
-  const [viewMode, setViewMode] = useState<ViewMode>("split");
+  const [viewMode, setViewMode] = useState<ViewMode>("preview");
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1589,7 +1589,7 @@ export default function MdEditor() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
   });
-  const [examplesCollapsed, setExamplesCollapsed] = useState(false);
+  const [examplesCollapsed, setExamplesCollapsed] = useState(true);
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
