@@ -4846,6 +4846,18 @@ ${html}
     return tabs.filter(t => !t.deleted && canonicalIds.has(t.id) && !hiddenExampleIds.has(t.id));
   }, [tabs, hiddenExampleIds]);
 
+  const memoMyTabs = useMemo(() => {
+    const allMyTabs = memoAllMyTabs;
+    return docFilter === "all" ? allMyTabs
+      : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
+      : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
+      : docFilter === "synced" ? allMyTabs.filter(t => t.source && ["vscode", "desktop", "cli", "mcp"].includes(t.source))
+      : allMyTabs;
+  }, [memoAllMyTabs, docFilter]);
+
+  const memoPrivateCount = useMemo(() => memoAllMyTabs.filter(t => t.isDraft !== false).length, [memoAllMyTabs]);
+  const memoSharedCount = useMemo(() => memoAllMyTabs.filter(t => t.isDraft === false).length, [memoAllMyTabs]);
+
   return (
     <div
       className="flex flex-col overflow-hidden"
@@ -5789,14 +5801,10 @@ ${html}
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
               const allMyTabs = memoAllMyTabs;
-              const myTabs = docFilter === "all" ? allMyTabs
-                : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
-                : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
-                : docFilter === "synced" ? allMyTabs.filter(t => t.source && ["vscode", "desktop", "cli", "mcp"].includes(t.source))
-                : allMyTabs;
+              const myTabs = memoMyTabs;
               const myTabCount = allMyTabs.length;
-              const privateCount = allMyTabs.filter(t => t.isDraft !== false).length;
-              const sharedCount = allMyTabs.filter(t => t.isDraft === false).length;
+              const privateCount = memoPrivateCount;
+              const sharedCount = memoSharedCount;
               return (
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
                   <div

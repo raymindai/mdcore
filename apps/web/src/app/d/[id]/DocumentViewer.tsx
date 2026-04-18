@@ -200,6 +200,33 @@ export default function DocumentViewer({
     })();
   }, [html, isLoading, theme]);
 
+  // Poll for updates every 30s (shared doc live refresh)
+  const lastUpdatedRef = useRef<string>("");
+  useEffect(() => {
+    if (!unlocked || isProtected || isExpired) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/docs/${id}`, { method: "HEAD" });
+        const updatedAt = res.headers.get("x-updated-at") || "";
+        if (lastUpdatedRef.current && updatedAt && updatedAt !== lastUpdatedRef.current) {
+          // Content changed — fetch full doc
+          const full = await fetch(`/api/docs/${id}`);
+          if (full.ok) {
+            const doc = await full.json();
+            if (doc.markdown !== markdown) {
+              setMarkdown(doc.markdown);
+              if (doc.title) setTitle(doc.title);
+            }
+          }
+        }
+        lastUpdatedRef.current = updatedAt;
+      } catch { /* offline, ignore */ }
+    };
+    poll(); // initial check
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  }, [id, unlocked, isProtected, isExpired, markdown]);
+
   const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1";
 
   return (

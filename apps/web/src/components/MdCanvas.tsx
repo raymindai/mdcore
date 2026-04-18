@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from "react";
 import {
   type CanvasNode,
   type CanvasEdge,
@@ -501,7 +501,7 @@ function FlowchartLayout({
   );
 }
 
-export default function MdCanvas({
+function MdCanvas({
   onGenerate,
   onCancel,
   initialMermaid,
@@ -1432,3 +1432,5 @@ export default function MdCanvas({
     </div>
   );
 }
+
+export default memo(MdCanvas);

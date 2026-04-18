@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from "react";
 import katex from "katex";
 
 // ═══════════════════════════════════════════════════════════════
@@ -442,7 +442,7 @@ function MathGridLayout({
 // Main Component
 // ═══════════════════════════════════════════════════════════════
 
-export default function MathEditor({
+function MathEditor({
   onGenerate,
   onCancel,
   initialMath,
@@ -618,3 +618,5 @@ export default function MathEditor({
     </div>
   );
 }
+
+export default memo(MathEditor);

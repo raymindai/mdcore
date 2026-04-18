@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, memo } from "react";
 
 interface ToastItem {
   id: number;
@@ -15,7 +15,7 @@ export function showToast(message: string, type: "success" | "error" | "info" = 
   globalShow?.(message, type);
 }
 
-export default function ToastContainer() {
+function ToastContainer() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
 
@@ -53,3 +53,5 @@ export default function ToastContainer() {
     </div>
   );
 }
+
+export default memo(ToastContainer);

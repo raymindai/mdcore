@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, memo } from "react";
 import {
   Undo2, Redo2, List, ListOrdered, IndentIncrease, IndentDecrease,
   Quote, Minus, Link2, ImageIcon, RemoveFormatting,
@@ -10,7 +10,7 @@ interface FloatingToolbarProps {
   containerRef: React.RefObject<HTMLElement | null>;
 }
 
-export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
+function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
@@ -194,3 +194,5 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
     </div>
   );
 }
+
+export default memo(FloatingToolbar);

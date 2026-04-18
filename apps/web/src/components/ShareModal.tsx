@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, memo } from "react";
 import { setAllowedEmails, changeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
 import { Lock, Link2, Unlock, X, Trash2, Lock as LockIcon, Link as LinkIcon } from "lucide-react";
@@ -20,7 +20,7 @@ interface ShareModalProps {
   onMakePrivate?: () => void;
 }
 
-export default function ShareModal({
+function ShareModal({
   docId,
   title,
   userId,
@@ -371,3 +371,5 @@ export default function ShareModal({
     </div>
   );
 }
+
+export default memo(ShareModal);
