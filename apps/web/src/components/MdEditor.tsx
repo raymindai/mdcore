@@ -1564,6 +1564,7 @@ export default function MdEditor() {
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
   const mermaidIsNewRef = useRef(false); // true = inserting new, false = editing existing
   const mermaidSourceIndexRef = useRef<number>(-1); // character offset of mermaid block in markdown
+  const prevMermaidCodesRef = useRef<string[]>([]); // track mermaid codes to skip redundant re-renders
   const [showMermaidModal, setShowMermaidModal] = useState(false);
   // History panel state
   const [showHistory, setShowHistory] = useState(false);
@@ -1907,6 +1908,7 @@ export default function MdEditor() {
       }
     } catch (e) {
       console.error("Render error:", e);
+      setIsLoading(false);
     }
   }, []);
 
@@ -2111,7 +2113,16 @@ export default function MdEditor() {
 
     // Find all <pre> with lang="mermaid" that haven't been rendered yet
     const mermaidPres = previewRef.current.querySelectorAll('pre[lang="mermaid"]');
-    if (mermaidPres.length === 0) return;
+    if (mermaidPres.length === 0) { prevMermaidCodesRef.current = []; return; }
+
+    // Extract current mermaid codes and skip re-render if unchanged
+    const currentCodes = Array.from(mermaidPres).map(pre => {
+      const codeEl = pre.querySelector("code");
+      return (codeEl?.textContent || pre.textContent || "").trim();
+    });
+    const prev = prevMermaidCodesRef.current;
+    if (prev.length === currentCodes.length && prev.every((c, i) => c === currentCodes[i])) return;
+    prevMermaidCodesRef.current = currentCodes;
 
     const isDark = theme === "dark";
 
@@ -3663,6 +3674,7 @@ export default function MdEditor() {
       // Save cursor position BEFORE async upload so we insert at the right place
       saveInsertPosition();
       (async () => {
+        const originTabId = activeTabIdRef.current;
         for (const imageItem of imageItems) {
           const file = imageItem.getAsFile();
           if (!file) continue;
@@ -3672,13 +3684,19 @@ export default function MdEditor() {
           const withPh = insertBlockAtCursor(placeholder);
           setMarkdown(withPh); doRender(withPh); cmSetDoc(withPh);
           const url = await uploadImage(file);
-          const current = markdownForImageRef.current;
-          if (url) {
-            const updated = current.replace(placeholder, `![${file.name || "image"}](${url})\n`);
+          const imgMd = url ? `![${file.name || "image"}](${url})\n` : "";
+          if (activeTabIdRef.current === originTabId) {
+            // Still on the same tab — replace placeholder in current markdown
+            const current = markdownForImageRef.current;
+            const updated = current.replace(placeholder, imgMd);
             setMarkdown(updated); doRender(updated); cmSetDoc(updated);
           } else {
-            const updated = current.replace(placeholder, "");
-            setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+            // Tab changed — update the original tab's markdown via setTabs
+            setTabs(prev => prev.map(t => {
+              if (t.id !== originTabId) return t;
+              const updated = (t.markdown || "").replace(placeholder, imgMd);
+              return { ...t, markdown: updated };
+            }));
           }
         }
       })();
@@ -6887,6 +6905,7 @@ ${html}
                               onChange={(e) => setAiChatInput(e.target.value)}
                               onKeyDown={(e) => { if (e.key === "Enter" && aiChatInput.trim()) { handleAIAction("chat", { instruction: aiChatInput.trim() }); setAiChatInput(""); } }}
                               placeholder="Ask AI to edit..."
+                              maxLength={500}
                               autoFocus
                               className="flex-1 text-[11px] py-1.5 bg-transparent"
                               style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
@@ -7807,7 +7826,7 @@ ${html}
       {sidebarContextMenu && (
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setSidebarContextMenu(null)} />
-          <div className="fixed rounded-lg shadow-xl py-1" style={{ left: sidebarContextMenu.x, top: sidebarContextMenu.y, zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", width: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+          <div className="fixed rounded-lg shadow-xl py-1" style={{ left: Math.min(sidebarContextMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 200), top: Math.min(sidebarContextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 300), zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", width: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
             <button onClick={() => { addTab(); setSidebarContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Document</button>
             <button onClick={() => {
               const id = `folder-${Date.now()}`;
@@ -7843,8 +7862,8 @@ ${html}
           <div
             className="fixed rounded-lg shadow-xl py-1"
             style={{
-              left: folderContextMenu.x,
-              top: folderContextMenu.y,
+              left: Math.min(folderContextMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 200),
+              top: Math.min(folderContextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 300),
               zIndex: 9999,
               background: "var(--menu-bg)",
               border: "1px solid var(--border)",

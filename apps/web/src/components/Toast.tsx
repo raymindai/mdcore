@@ -44,7 +44,7 @@ export default function ToastContainer() {
         <div
           key={t.id}
           className="px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg"
-          style={{ background: colors[t.type].bg, border: `1px solid ${colors[t.type].border}`, color: colors[t.type].text, animation: "fadeInUp 0.2s ease-out" }}
+          style={{ background: colors[t.type].bg, border: `1px solid ${colors[t.type].border}`, color: colors[t.type].text, animation: "fadeInUp 0.2s ease-out", overflowWrap: "break-word", wordBreak: "break-word" }}
         >
           {t.message}
         </div>

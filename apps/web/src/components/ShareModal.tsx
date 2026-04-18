@@ -100,7 +100,15 @@ export default function ShareModal({
     setEmails(updatedEmails);
     setEditors(updatedEditors);
     await saveAccess(updatedEmails, updatedEditors);
-  }, [emails, editors, saveAccess]);
+    // If all emails removed and access was not already restricted, reset to restricted
+    if (updatedEmails.length === 0 && generalAccess !== "restricted") {
+      setGeneralAccess("restricted");
+      try {
+        await changeEditMode(docId, userId, "owner");
+        onEditModeChange("owner");
+      } catch {}
+    }
+  }, [emails, editors, saveAccess, generalAccess, docId, userId, onEditModeChange]);
 
   const toggleRole = useCallback(async (email: string) => {
     const isEditor = editors.includes(email);
