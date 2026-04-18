@@ -25,7 +25,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, Cloud, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal, BookOpen,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal, BookOpen, CircleCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -578,7 +578,7 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
   } else if (tab.source && ["vscode", "desktop", "cli"].includes(tab.source)) {
-    Icon = Cloud; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
+    Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
   } else {
     Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private";
   }

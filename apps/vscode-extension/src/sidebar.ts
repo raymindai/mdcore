@@ -1004,7 +1004,7 @@ body {
     }
 
     function renderLocalDoc(doc) {
-      var ic = '<div class="doc-icon local">' + icon('circle', 14) + '</div>';
+      var ic = '<div class="doc-icon local">' + icon('file', 14) + '</div>';
       var meta = doc.relativePath;
       var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'

@@ -542,6 +542,7 @@
     download: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11v2.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V11"/><path d="M8 2v8"/><path d="M5 7.5L8 10.5l3-3"/></svg>',
     unsync: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M4 4l8 8"/></svg>',
     trash: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5 4V2.5A1.5 1.5 0 016.5 1h3A1.5 1.5 0 0111 2.5V4"/><path d="M12.5 4v9a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 13V4"/></svg>',
+    file: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
   };
 
   function renderSyncedItem(f) {
@@ -564,7 +565,7 @@
   function renderLocalItem(f) {
     var active = f.filePath === currentFilePath ? " active" : "";
     return '<div class="file-item' + active + '" data-path="' + esc(f.filePath) + '">' +
-      '<div class="file-icon local" title="Local only">' + SBI.circle + '</div>' +
+      '<div class="file-icon local" title="Local only">' + SBI.file + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(f.fileName) + '</div><div class="file-meta">' + esc(f.relativePath) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="publish" data-path="' + esc(f.filePath) + '" title="Sync to mdfy.cc">' + SBI.upload + '</button>' +
