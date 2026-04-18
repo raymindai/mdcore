@@ -74,7 +74,7 @@ export default function ShareModal({
       if (input.trim()) showToast("Invalid or duplicate email", "error");
       return;
     }
-    const updated = [...emails, ...newEmails];
+    const updated = [...new Set([...emails, ...newEmails])];
     setEmails(updated);
     setEmailInput("");
     await saveAccess(updated, editors);

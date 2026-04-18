@@ -988,6 +988,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
   onUndo: () => void;
   onRedo: () => void;
 }) {
+  const mod = typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl";
   const [active, setActive] = useState<Record<string, boolean>>({});
   const [blockType, setBlockType] = useState("p");
   const [showTableGrid, setShowTableGrid] = useState(false);
@@ -1106,10 +1107,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
     >
       {/* Undo/Redo */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Undo (Cmd+Z)" onClick={() => exec("undo")}>
+        <TBtn tip={`Undo (${mod}+Z)`} onClick={() => exec("undo")}>
           <Undo2 size={I} />
         </TBtn>
-        <TBtn tip="Redo (Cmd+Shift+Z)" onClick={() => exec("redo")}>
+        <TBtn tip={`Redo (${mod}+Shift+Z)`} onClick={() => exec("redo")}>
           <Redo2 size={I} />
         </TBtn>
       </div>
@@ -1141,10 +1142,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {sep}
       {/* Text style */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Bold (Cmd+B) → **text**" active={active.bold} onClick={() => exec("bold")}
+        <TBtn tip={`Bold (${mod}+B) → **text**`} active={active.bold} onClick={() => exec("bold")}
           preview={<span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>Bold text</span>}>
           <span className="font-bold text-[12px]">B</span></TBtn>
-        <TBtn tip="Italic (Cmd+I) → *text*" active={active.italic} onClick={() => exec("italic")}
+        <TBtn tip={`Italic (${mod}+I) → *text*`} active={active.italic} onClick={() => exec("italic")}
           preview={<span style={{ fontStyle: "italic", color: "var(--text-secondary)", fontSize: 13 }}>Italic text</span>}>
           <span className="italic text-[12px]">I</span></TBtn>
         <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}
@@ -1190,7 +1191,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       {sep}
       {/* Insert */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <TBtn tip="Link (Cmd+K) → [text](url)" onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
+        <TBtn tip={`Link (${mod}+K) → [text](url)`} onClick={() => onInputPopup({ label: "URL", onSubmit: (u) => exec("createLink", u) })}>
           <Link size={I} />
         </TBtn>
         <TBtn tip="Upload image" onClick={() => onImageUpload()}>
@@ -1256,6 +1257,8 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 
 export default function MdEditor() {
   const isMobile = useIsMobile();
+  const isMac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+  const mod = isMac ? "Cmd" : "Ctrl";
   const { theme, toggleTheme } = useTheme();
   const { user, profile, loading: authLoading, accessToken, isAuthenticated, signInWithGoogle, signInWithGitHub, signInWithEmail, signOut } = useAuth();
   // Only use anonymousId when not logged in
@@ -2554,6 +2557,7 @@ export default function MdEditor() {
           setIsSharedDoc(false);
           if (!isMobile) setViewMode("split");
           await doRender(shared);
+          cmSetDocRef.current?.(shared);
           // Clear hash to prevent reload issues
           window.history.replaceState(null, "", "/");
           return;
@@ -3152,6 +3156,7 @@ export default function MdEditor() {
             const newMd = newLines.join("\n");
             setMarkdown(newMd);
             doRender(newMd);
+            cmSetDocRef.current?.(newMd);
           }
           document.body.removeChild(overlay);
         };
@@ -3629,6 +3634,7 @@ export default function MdEditor() {
         const newMd = freshLines.join("\n");
         setMarkdown(newMd);
         doRender(newMd);
+        cmSetDocRef.current?.(newMd);
         closeMenu();
       });
     };
@@ -4067,11 +4073,20 @@ export default function MdEditor() {
     if (!token) return;
     setRestoringVersion(versionId);
     try {
+      // Save current state as version before restoring
+      if (docId && user?.id) {
+        await fetch(`/api/docs/${docId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "snapshot", userId: user.id, changeSummary: "Before restore" }),
+        }).catch(() => {});
+      }
       const data = await fetchVersion(docId, versionId);
       if (data.version?.markdown) {
         await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { userId: user?.id, anonymousId: !user?.id ? getAnonymousId() : undefined, changeSummary: `Restored to version ${data.version.version_number}` });
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
+        cmSetDocRef.current?.(data.version.markdown);
         if (data.version.title) setTitle(data.version.title);
         setPreviewVersion(null);
         await loadVersions();
@@ -4080,7 +4095,7 @@ export default function MdEditor() {
       showToast("Failed to restore version", "error");
     }
     setRestoringVersion(null);
-  }, [docId, doRender, loadVersions]);
+  }, [docId, user, doRender, loadVersions]);
 
   // Share — open modal for owners, quick copy for non-owners
   // ─── AI Actions ───
@@ -4146,6 +4161,7 @@ export default function MdEditor() {
       // Update markdown + tab
       setMarkdown(newMd);
       doRender(newMd);
+      cmSetDocRef.current?.(newMd);
       setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
       if (data.finishReason === "MAX_TOKENS") {
         showToast("AI hit output limit — result may be incomplete", "info");
@@ -4491,6 +4507,7 @@ ${html}
     w.__MDFY_SET_MARKDOWN__ = (md: string) => {
       setMarkdown(md);
       doRender(md);
+      cmSetDocRef.current?.(md);
     };
 
     // Listen for Cmd+S from desktop (save to local file)
@@ -4535,6 +4552,7 @@ ${html}
       const formatted = formatConversation(messages);
       setMarkdown(formatted);
       doRender(formatted);
+      cmSetDocRef.current?.(formatted);
     }
     setShowAiBanner(false);
   }, [markdown, doRender]);
@@ -4886,6 +4904,7 @@ ${html}
                     const newMd = lines.join("\n");
                     setMarkdown(newMd);
                     doRender(newMd);
+                    cmSetDocRef.current?.(newMd);
                     setInlineInput(null);
                   },
                 });
@@ -5188,7 +5207,7 @@ ${html}
                   return (
                     <>
                       <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Share</p>
-                      <p>Publish and create a share link for this document. Changes auto-save automatically. <span style={{ color: "var(--text-faint)" }}>Cmd+S</span></p>
+                      <p>Publish and create a share link for this document. Changes auto-save automatically. <span style={{ color: "var(--text-faint)" }}>{mod}+S</span></p>
                     </>
                   );
                 })()}
@@ -5214,7 +5233,7 @@ ${html}
                       style={{ color: "var(--text-tertiary)" }}
                     >
                       Copy HTML
-                      <span className="float-right hidden sm:inline" style={{ color: "var(--text-muted)" }}>⌘⇧C</span>
+                      <span className="float-right hidden sm:inline" style={{ color: "var(--text-muted)" }}>{isMac ? "⌘⇧C" : "Ctrl+Shift+C"}</span>
                     </button>
                     <button
                       onClick={handleCopyRichText}
@@ -7447,14 +7466,14 @@ ${html}
               <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
               <div className="space-y-1 text-[10px]">
                 {[
-                  ["Cmd+B", "Bold"],
-                  ["Cmd+I", "Italic"],
-                  ["Cmd+K", "Insert link"],
-                  ["Cmd+S", "Share / copy URL"],
-                  ["Cmd+Shift+C", "Copy as HTML"],
-                  ["Cmd+Z", "Undo"],
-                  ["Cmd+Shift+Z", "Redo"],
-                  ["Cmd+\\", "Toggle view mode"],
+                  [`${mod}+B`, "Bold"],
+                  [`${mod}+I`, "Italic"],
+                  [`${mod}+K`, "Insert link"],
+                  [`${mod}+S`, "Share / copy URL"],
+                  [`${mod}+Shift+C`, "Copy as HTML"],
+                  [`${mod}+Z`, "Undo"],
+                  [`${mod}+Shift+Z`, "Redo"],
+                  [`${mod}+\\`, "Toggle view mode"],
                   ["Escape", "Focus markdown editor"],
                   ["Dbl-click code", "Edit code block"],
                   ["Dbl-click math", "Edit equation"],
@@ -7602,6 +7621,7 @@ ${html}
                       const newMd = lines.join("\n");
                       setMarkdown(newMd);
                       doRender(newMd);
+                      cmSetDocRef.current?.(newMd);
                       setTitle(trimmed);
                     }
                     setInlineInput(null);
@@ -7852,6 +7872,7 @@ ${html}
                     if (mdfyPrompt.tabId === activeTabId) {
                       setMarkdown(result.markdown);
                       doRender(result.markdown);
+                      cmSetDocRef.current?.(result.markdown);
                     }
                     if (result.truncated) {
                       showToast("Document was very large — only the first 3 MB was processed", "info");

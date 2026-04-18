@@ -139,6 +139,8 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
         if (sel && !sel.isCollapsed && sel.rangeCount) {
           try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
         }
+        updateToolbar();
+        containerRef.current?.focus();
       }}><span className="font-mono text-[10px]">{`</>`}</span></button>
       {sep}
 
@@ -185,7 +187,7 @@ export default function FloatingToolbar({ containerRef }: FloatingToolbarProps) 
           <div className="absolute rounded-lg shadow-xl p-3 flex flex-col gap-2" style={{ left: Math.max(140, Math.min(pos.x, typeof window !== "undefined" ? window.innerWidth - 140 : pos.x)), top: Math.max(8, pos.y - 80), transform: "translate(-50%, -100%)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 260 }} onClick={(e) => e.stopPropagation()}>
             <label className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{inputPopup.label}</label>
             <input autoFocus className="px-3 py-1.5 rounded-md text-sm outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder={inputPopup.label}
-              onKeyDown={(e) => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) inputPopup.onSubmit(v); } if (e.key === "Escape") setInputPopup(null); }} />
+              onKeyDown={(e) => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) inputPopup.onSubmit(v); } if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setInputPopup(null); } }} />
           </div>
         </div>
       )}
