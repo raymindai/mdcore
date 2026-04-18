@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import MdfyLogo from "@/components/MdfyLogo";
+import { DocsNav, SiteFooter } from "@/components/docs";
 
 export const metadata: Metadata = {
   title: "Plugins — mdfy.cc",
@@ -24,24 +24,7 @@ export default function PluginsPage() {
       }}
     >
       {/* ───────── NAV ───────── */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid var(--border-dim)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <MdfyLogo size={22} />
-            </Link>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
-              <Link href="/plugins" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Plugins</Link>
-              <Link href="/docs" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>API</Link>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>GitHub</a>
-            <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
-          </div>
-        </div>
-      </nav>
+      <DocsNav active="plugins" />
 
       {/* ───────── HERO ───────── */}
       <section
@@ -104,39 +87,39 @@ export default function PluginsPage() {
           {[
             {
               scenario: "Research across AIs",
-              steps: "ChatGPT researches → Extension captures → mdfy.cc/abc123 → Paste URL in Claude → Claude refines",
+              steps: "ChatGPT researches \u2192 Extension captures \u2192 mdfy.cc/abc123 \u2192 Paste URL in Claude \u2192 Claude refines",
               why: "Move knowledge between AIs without copy-paste formatting nightmares. The document is the bridge.",
-              color: "#fb923c",
+              color: "var(--accent)",
             },
             {
-              scenario: "Capture → Publish → Share in 3 seconds",
-              steps: "See a great AI response → Click mdfy button → Beautiful URL auto-generated → Send to anyone",
+              scenario: "Capture \u2192 Publish \u2192 Share in 3 seconds",
+              steps: "See a great AI response \u2192 Click mdfy button \u2192 Beautiful URL auto-generated \u2192 Send to anyone",
               why: "Recipient sees a polished document, not a raw chat screenshot. No app needed to view it.",
-              color: "#4ade80",
+              color: "var(--text-success, #4ade80)",
             },
             {
               scenario: "AI-readable document references",
-              steps: "Publish to mdfy.cc/abc123 → Tell any AI \"read mdfy.cc/abc123\" → AI fetches and understands",
+              steps: "Publish to mdfy.cc/abc123 \u2192 Tell any AI \"read mdfy.cc/abc123\" \u2192 AI fetches and understands",
               why: "mdfy.cc URLs work as context for any AI. Your documents become reusable knowledge across conversations.",
-              color: "#c4b5fd",
+              color: "var(--text-muted)",
             },
             {
               scenario: "Preview any .md file in Finder",
-              steps: "Select file → Press Space → Full rendering with code, math, diagrams → Click \"Open in mdfy.cc\" to edit",
+              steps: "Select file \u2192 Press Space \u2192 Full rendering with code, math, diagrams \u2192 Click \"Open in mdfy.cc\" to edit",
               why: "macOS QuickLook shows raw Markdown by default. mdfy QuickLook shows it beautifully rendered.",
-              color: "#60a5fa",
+              color: "var(--text-secondary)",
             },
             {
               scenario: "Publish from your editor",
-              steps: "Write in VS Code → Cmd+Shift+M preview → One command to publish → Share URL with team",
+              steps: "Write in VS Code \u2192 Cmd+Shift+M preview \u2192 One command to publish \u2192 Share URL with team",
               why: "Never leave your editor. Write, preview, publish. The URL updates when you push changes.",
-              color: "#fbbf24",
+              color: "var(--accent)",
             },
             {
               scenario: "Build reports from multiple AI sessions",
-              steps: "Capture ChatGPT analysis → Capture Claude code review → Capture Gemini summary → Combine in mdfy.cc → Single URL",
+              steps: "Capture ChatGPT analysis \u2192 Capture Claude code review \u2192 Capture Gemini summary \u2192 Combine in mdfy.cc \u2192 Single URL",
               why: "Each AI has strengths. Combine outputs from multiple AIs into one professional document.",
-              color: "#f472b6",
+              color: "var(--text-muted)",
             },
           ].map((uc) => (
             <div key={uc.scenario} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px" }}>
@@ -150,7 +133,7 @@ export default function PluginsPage() {
 
       {/* ───────── SHORT URL AS AI REFERENCE ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, padding: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+        <div className="about-grid-2" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, padding: "32px", gap: 32 }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
               Short URLs that AIs can read
@@ -219,11 +202,11 @@ export default function PluginsPage() {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: "#18181b",
+                    background: "var(--surface)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #27272a",
+                    border: "1px solid var(--border-dim)",
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -289,15 +272,15 @@ export default function PluginsPage() {
               },
               {
                 title: "Capture Methods",
-                items: ["Floating button — full conversation", "Hover button — single response", "Right-click — any selected text", "Popup — capture or selection"],
+                items: ["Floating button \u2014 full conversation", "Hover button \u2014 single response", "Right-click \u2014 any selected text", "Popup \u2014 capture or selection"],
               },
               {
                 title: "Smart Conversion",
-                items: ["HTML → clean Markdown", "Code blocks preserved", "Tables, lists, headings", "User/Assistant formatting"],
+                items: ["HTML \u2192 clean Markdown", "Code blocks preserved", "Tables, lists, headings", "User/Assistant formatting"],
               },
               {
                 title: "Seamless Transfer",
-                items: ["Small content → URL hash (instant)", "Large content → clipboard + toast", "Gzip compression (same as mdfy.cc)", "Opens in mdfy.cc editor"],
+                items: ["Small content \u2192 URL hash (instant)", "Large content \u2192 clipboard + toast", "Gzip compression (same as mdfy.cc)", "Opens in mdfy.cc editor"],
               },
             ].map((section) => (
               <div key={section.title} style={{ background: "var(--surface)", padding: "24px 28px" }}>
@@ -336,7 +319,7 @@ export default function PluginsPage() {
                 { step: "1", text: "Clone the repo or download the extension folder" },
                 { step: "2", text: "Open chrome://extensions and enable Developer Mode" },
                 { step: "3", text: "Click \"Load unpacked\" and select the apps/chrome-extension/ folder" },
-                { step: "4", text: "Visit ChatGPT, Claude, or Gemini — the mdfy button appears" },
+                { step: "4", text: "Visit ChatGPT, Claude, or Gemini \u2014 the mdfy button appears" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span
@@ -402,11 +385,11 @@ export default function PluginsPage() {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: "#18181b",
+                    background: "var(--surface)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #27272a",
+                    border: "1px solid var(--border-dim)",
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -435,8 +418,8 @@ export default function PluginsPage() {
                   borderRadius: 8,
                   fontSize: 12,
                   fontWeight: 600,
-                  background: "#4ade8015",
-                  color: "#4ade80",
+                  background: "var(--accent-dim)",
+                  color: "var(--accent)",
                 }}
               >
                 Available on npm
@@ -521,7 +504,7 @@ export default function PluginsPage() {
               Create{" "}
               <code
                 style={{
-                  background: "#18181b",
+                  background: "var(--surface)",
                   padding: "2px 6px",
                   borderRadius: 4,
                   fontSize: 13,
@@ -535,7 +518,7 @@ export default function PluginsPage() {
             </p>
             <pre
               style={{
-                background: "#18181b",
+                background: "var(--background)",
                 borderRadius: 10,
                 padding: "18px 20px",
                 overflow: "auto",
@@ -544,7 +527,7 @@ export default function PluginsPage() {
                 fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
                 color: "var(--text-secondary)",
                 margin: 0,
-                border: "none",
+                border: "1px solid var(--border-dim)",
               }}
             >
               <code>{`{
@@ -567,7 +550,7 @@ export default function PluginsPage() {
                 style={{
                   display: "inline-block",
                   background: "var(--accent)",
-                  color: "#000",
+                  color: "var(--background)",
                   padding: "10px 24px",
                   borderRadius: 8,
                   fontSize: 14,
@@ -631,14 +614,14 @@ export default function PluginsPage() {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: "#18181b",
+                    background: "var(--surface)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #27272a",
+                    border: "1px solid var(--border-dim)",
                   }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007ACC" strokeWidth="1.5" strokeLinecap="round">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M4 4l8 4v8l-8 4V4z"/><path d="M12 8l8-4v16l-8-4"/>
                   </svg>
                 </div>
@@ -760,14 +743,14 @@ export default function PluginsPage() {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: "#18181b",
+                    background: "var(--surface)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #27272a",
+                    border: "1px solid var(--border-dim)",
                   }}
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2"/>
                     <path d="M8 21h8M12 17v4"/>
                   </svg>
@@ -854,6 +837,48 @@ export default function PluginsPage() {
         </div>
       </section>
 
+      {/* ───────── CLI TOOL ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ padding: "36px 32px 28px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-dim)" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>CLI Tool</h2>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>mdfy — npm package</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
+                Publish Markdown from your terminal. Pipe from any command — tmux, AI assistants, git log, clipboard. Every output becomes a shareable URL.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>npm install -g mdfy</span>
+            </div>
+          </div>
+          <div style={{ padding: "24px 32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              {[
+                { cmd: "mdfy publish README.md", desc: "Publish a file and get a URL" },
+                { cmd: 'echo "# Hello" | mdfy publish', desc: "Publish from stdin (pipe)" },
+                { cmd: "tmux capture-pane -p | mdfy publish", desc: "Capture tmux pane" },
+                { cmd: "pbpaste | mdfy publish", desc: "Publish clipboard contents" },
+                { cmd: "mdfy pull abc123 -o doc.md", desc: "Download a document" },
+                { cmd: "mdfy list", desc: "List your published documents" },
+              ].map((ex) => (
+                <div key={ex.cmd} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-dim)", background: "var(--background)" }}>
+                  <code style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--font-geist-mono), monospace", display: "block", marginBottom: 4 }}>{ex.cmd}</code>
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>{ex.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── MACOS QUICKLOOK ───────── */}
       <section
         style={{
@@ -888,11 +913,11 @@ export default function PluginsPage() {
                     width: 40,
                     height: 40,
                     borderRadius: 10,
-                    background: "#18181b",
+                    background: "var(--surface)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: "1px solid #27272a",
+                    border: "1px solid var(--border-dim)",
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round">
@@ -1015,7 +1040,7 @@ export default function PluginsPage() {
           {[
             { name: "Obsidian Plugin", desc: "Publish Obsidian notes to mdfy.cc with one command", status: "Planned" },
             { name: "Raycast Extension", desc: "Quick capture and publish from Raycast", status: "Planned" },
-            { name: "CLI Tool", desc: "mdfy render file.md — terminal Markdown rendering", status: "Planned" },
+            { name: "CLI Tool", desc: "mdfy render file.md \u2014 terminal Markdown rendering", status: "Planned" },
             { name: "Alfred Workflow", desc: "Capture clipboard and publish instantly", status: "Planned" },
             { name: "iOS / Android", desc: "Share sheet integration for mobile publishing", status: "Planned" },
           ].map((p) => (
@@ -1080,7 +1105,7 @@ export default function PluginsPage() {
             style={{
               display: "inline-block",
               background: "var(--accent)",
-              color: "#000",
+              color: "var(--background)",
               padding: "12px 28px",
               borderRadius: 10,
               fontSize: 14,
@@ -1093,149 +1118,8 @@ export default function PluginsPage() {
         </div>
       </section>
 
-      {/* ───────── CLI TOOL ───────── */}
-      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "36px 32px 28px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #27272a" }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
-                </div>
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>CLI Tool</h2>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>mdfy — npm package</p>
-                </div>
-              </div>
-              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                Publish Markdown from your terminal. Pipe from any command — tmux, AI assistants, git log, clipboard. Every output becomes a shareable URL.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>npm install -g mdfy</span>
-            </div>
-          </div>
-          <div style={{ padding: "24px 32px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-              {[
-                { cmd: "mdfy publish README.md", desc: "Publish a file and get a URL" },
-                { cmd: 'echo "# Hello" | mdfy publish', desc: "Publish from stdin (pipe)" },
-                { cmd: "tmux capture-pane -p | mdfy publish", desc: "Capture tmux pane" },
-                { cmd: "pbpaste | mdfy publish", desc: "Publish clipboard contents" },
-                { cmd: "mdfy pull abc123 -o doc.md", desc: "Download a document" },
-                { cmd: "mdfy list", desc: "List your published documents" },
-              ].map((ex) => (
-                <div key={ex.cmd} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid var(--border-dim)", background: "var(--background)" }}>
-                  <code style={{ fontSize: 12, color: "var(--accent)", fontFamily: "var(--font-geist-mono), monospace", display: "block", marginBottom: 4 }}>{ex.cmd}</code>
-                  <p style={{ fontSize: 11, color: "var(--text-faint)", margin: 0 }}>{ex.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ───────── MDFY FOR MAC ───────── */}
-      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "36px 32px 28px", borderBottom: "1px solid var(--border-dim)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #27272a" }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-                </div>
-                <div>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>mdfy for Mac</h2>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>Native desktop app</p>
-                </div>
-              </div>
-              <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 480, lineHeight: 1.7, margin: 0 }}>
-                Full WYSIWYG Markdown editor with local WASM rendering, sidebar file management, cloud sync, and split view. Includes QuickLook for Finder preview.
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-              <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>macOS</span>
-            </div>
-          </div>
-          <div style={{ padding: "24px 32px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {[
-                { title: "WYSIWYG Editor", desc: "Live preview with formatting toolbar, split view, and source mode" },
-                { title: "Sidebar", desc: "File tree, recent files, cloud docs, search, sort, folder management" },
-                { title: "Cloud Sync", desc: "Publish, push, pull, conflict resolution with diff view" },
-                { title: "QuickLook", desc: "Press Space in Finder to preview any .md file with full rendering" },
-                { title: "Offline First", desc: "Local WASM rendering, auto-save, offline queue with retry" },
-                { title: "Export", desc: "MD, HTML, TXT files + clipboard copy for Slack, Docs, Email" },
-              ].map((f) => (
-                <div key={f.title} style={{ padding: "14px 16px", borderRadius: 8, border: "1px solid var(--border-dim)" }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 4px" }}>{f.title}</h4>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>{f.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ───────── FOOTER ───────── */}
-      <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "48px 24px 32px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 48, marginBottom: 40 }}>
-            <div>
-              <div style={{ marginBottom: 12 }}>
-                <MdfyLogo size={18} />
-              </div>
-              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
-                Your Markdown, Beautifully Published.
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Product</p>
-              {[
-                { label: "Editor", href: "/" },
-                { label: "About", href: "/about" },
-                { label: "Plugins", href: "/plugins" },
-                { label: "API", href: "/docs" },
-                { label: "Pricing", href: "/about#pricing" },
-              ].map((l) => (
-                <Link key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</Link>
-              ))}
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Resources</p>
-              {[
-                { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
-                { label: "Chrome Extension", href: "/plugins" },
-                { label: "VS Code Extension", href: "/plugins" },
-                { label: "Desktop App", href: "/plugins" },
-                { label: "QuickLook", href: "/plugins" },
-              ].map((l) => (
-                <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
-              ))}
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Company</p>
-              {[
-                { label: "Contact", href: "mailto:hi@raymind.ai" },
-                { label: "Twitter / X", href: "#" },
-                { label: "Terms of Service", href: "#" },
-                { label: "Privacy Policy", href: "/privacy" },
-              ].map((l) => (
-                <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>
-              ))}
-            </div>
-          </div>
-          <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace", margin: 0 }}>
-              A product of{" "}
-              <a href="https://raymind.ai" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Raymind.AI</a>
-            </p>
-            <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace", margin: 0 }}>
-              &copy; 2026 mdfy.cc. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

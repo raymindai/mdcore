@@ -291,6 +291,190 @@ export function DocsFooter({
   );
 }
 
+/* ─── SiteFooter ─── */
+export function SiteFooter() {
+  return (
+    <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px 32px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
+            gap: "32px 48px",
+            marginBottom: 40,
+          }}
+        >
+          <div>
+            <div style={{ marginBottom: 12 }}>
+              <MdfyLogo size={18} />
+            </div>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text-muted)",
+                lineHeight: 1.6,
+                margin: 0,
+                maxWidth: 260,
+              }}
+            >
+              Your Markdown, Beautifully Published.
+            </p>
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text-muted)",
+                marginBottom: 14,
+                marginTop: 0,
+                fontFamily: mono,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Product
+            </p>
+            {[
+              { label: "Editor", href: "/" },
+              { label: "About", href: "/about" },
+              { label: "Plugins", href: "/plugins" },
+            ].map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  color: "var(--text-faint)",
+                  textDecoration: "none",
+                  padding: "3px 0",
+                }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text-muted)",
+                marginBottom: 14,
+                marginTop: 0,
+                fontFamily: mono,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Developers
+            </p>
+            {[
+              { label: "REST API", href: "/docs/api" },
+              { label: "CLI", href: "/docs/cli" },
+              { label: "SDK", href: "/docs/sdk" },
+              { label: "MCP Server", href: "/docs/mcp" },
+            ].map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  color: "var(--text-faint)",
+                  textDecoration: "none",
+                  padding: "3px 0",
+                }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text-muted)",
+                marginBottom: 14,
+                marginTop: 0,
+                fontFamily: mono,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Company
+            </p>
+            {[
+              { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
+              { label: "Contact", href: "mailto:hi@raymind.ai" },
+              { label: "Privacy Policy", href: "/privacy" },
+            ].map((l) => (
+              <a
+                key={l.label}
+                href={l.href}
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  color: "var(--text-faint)",
+                  textDecoration: "none",
+                  padding: "3px 0",
+                }}
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
+        </div>
+        <div
+          style={{
+            borderTop: "1px solid var(--border-dim)",
+            paddingTop: 20,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--text-faint)",
+              fontFamily: mono,
+              margin: 0,
+            }}
+          >
+            A product of{" "}
+            <a
+              href="https://raymind.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "var(--text-muted)",
+                textDecoration: "none",
+              }}
+            >
+              Raymind.AI
+            </a>
+          </p>
+          <p
+            style={{
+              fontSize: 11,
+              color: "var(--text-faint)",
+              fontFamily: mono,
+              margin: 0,
+            }}
+          >
+            &copy; 2026 mdfy.cc. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
 /* ─── DocsSidebar ─── */
 export function DocsSidebar({
   items,
