@@ -4144,9 +4144,16 @@ export default function MdEditor() {
         const stripped = md.replace(/^## TL;DR\n\n[\s\S]*?\n---\n\n/m, "");
         newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${stripped}`;
         showToast("TL;DR added", "success");
+      } else if (action === "chat" && result.trim().startsWith("ANSWER:")) {
+        // AI answered a question — show in chat, don't modify document
+        const answer = result.trim().replace(/^ANSWER:\s*/, "");
+        setAiChatHistory(prev => [...prev, { role: "ai", text: answer }]);
+        setAiProcessing(null);
+        return; // skip document update
       } else {
-        // Polish, translate, chat — replace entire document
-        newMd = result;
+        // Polish, translate, chat edit — replace entire document
+        const cleanResult = action === "chat" ? result.trim().replace(/^EDIT:\s*/, "") : result;
+        newMd = cleanResult;
         const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated", chat: "Document updated" };
         showToast(labels[action] || "Done", "success");
       }
