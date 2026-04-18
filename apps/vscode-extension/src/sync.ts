@@ -20,6 +20,7 @@ export class SyncEngine {
   private statusBar: StatusBarManager;
   private pollingTimer: NodeJS.Timeout | undefined;
   private pushDebounceTimers = new Map<string, NodeJS.Timeout>();
+  private isPulling = false;
   private offlineQueue: Array<{
     filePath: string;
     markdown: string;
@@ -61,6 +62,7 @@ export class SyncEngine {
    * Handle file save event with debounced push.
    */
   onFileSaved(document: vscode.TextDocument): void {
+    if (this.isPulling) { return; }
     const filePath = document.fileName;
 
     // Clear existing debounce
@@ -205,7 +207,8 @@ export class SyncEngine {
       );
       edit.replace(document.uri, fullRange, remote.markdown);
       await vscode.workspace.applyEdit(edit);
-      await document.save();
+      this.isPulling = true;
+      try { await document.save(); } finally { this.isPulling = false; }
 
       config.lastSyncedAt = new Date().toISOString();
       config.lastServerUpdatedAt = remote.updated_at;

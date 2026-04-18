@@ -16,6 +16,7 @@ interface ShareModalProps {
   onClose: () => void;
   onEditModeChange: (mode: "owner" | "view" | "public") => void;
   onAllowedEmailsChange: (emails: string[]) => void;
+  onAllowedEditorsChange?: (editors: string[]) => void;
   onMakePrivate?: () => void;
 }
 
@@ -30,6 +31,7 @@ export default function ShareModal({
   onClose,
   onEditModeChange,
   onAllowedEmailsChange,
+  onAllowedEditorsChange,
   onMakePrivate,
 }: ShareModalProps) {
   const [emailInput, setEmailInput] = useState("");
@@ -57,9 +59,10 @@ export default function ShareModal({
       setEmails(result.allowedEmails);
       setEditors(result.allowedEditors);
       onAllowedEmailsChange(result.allowedEmails);
+      onAllowedEditorsChange?.(result.allowedEditors);
     } catch { showToast("Failed to update access", "error"); }
     setSaving(false);
-  }, [docId, userId, onAllowedEmailsChange]);
+  }, [docId, userId, onAllowedEmailsChange, onAllowedEditorsChange]);
 
   const addEmail = useCallback(async (input: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

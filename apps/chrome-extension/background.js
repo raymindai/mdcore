@@ -302,6 +302,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     Promise.race([cookiePromise, timeoutPromise]).then((result) => {
       sendResponse(result);
+    }).catch(() => {
+      sendResponse({ userId: null });
     });
     return true;
   }

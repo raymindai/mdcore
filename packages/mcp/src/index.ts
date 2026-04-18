@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -61,7 +61,9 @@ function saveToken(docId: string, editToken: string): void {
   if (!existsSync(MDFY_DIR)) mkdirSync(MDFY_DIR, { recursive: true });
   const tokens = loadTokens();
   tokens[docId] = editToken;
-  writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  const tmpFile = TOKEN_FILE + `.tmp.${process.pid}`;
+  writeFileSync(tmpFile, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  renameSync(tmpFile, TOKEN_FILE);
 }
 
 function getToken(docId: string): string | undefined {

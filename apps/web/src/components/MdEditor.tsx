@@ -2618,12 +2618,12 @@ export default function MdEditor() {
             };
 
             // Render content immediately (don't depend on setTabs callback timing)
+            const prevActiveId = activeTabIdRef.current; // Save before overwriting
             activeTabIdRef.current = "";
             await doRender(doc.markdown);
 
             // Update tabs state (functional updater for latest state)
             const newTabId = `tab-${Date.now()}`;
-            const prevActiveId = activeTabIdRef.current; // Save before overwriting
             setTabs(prev => {
               const existing = prev.find(t => t.cloudId === fromId);
               if (existing) {
@@ -3243,7 +3243,7 @@ export default function MdEditor() {
       document.body.appendChild(menu);
       const dismiss = (ev: MouseEvent) => { if (!menu.contains(ev.target as Node)) { menu.remove(); document.removeEventListener("click", dismiss); document.removeEventListener("keydown", escDismiss); } };
       const escDismiss = (ev: KeyboardEvent) => { if (ev.key === "Escape") { menu.remove(); document.removeEventListener("click", dismiss); document.removeEventListener("keydown", escDismiss); } };
-      setTimeout(() => { document.addEventListener("click", dismiss); document.addEventListener("keydown", escDismiss); }, 0);
+      requestAnimationFrame(() => { document.addEventListener("click", dismiss); document.addEventListener("keydown", escDismiss); });
     };
 
     preview.addEventListener("click", handleClick);
@@ -3510,7 +3510,7 @@ export default function MdEditor() {
       }
 
       const closeMenu = () => { menu.remove(); document.removeEventListener("click", closeMenu); };
-      setTimeout(() => document.addEventListener("click", closeMenu), 0);
+      requestAnimationFrame(() => document.addEventListener("click", closeMenu));
 
       menu.addEventListener("click", (ev) => {
         const btn = (ev.target as HTMLElement).closest("[data-action]");
@@ -7345,7 +7345,7 @@ ${html}
               tooltip.style.pointerEvents = showing ? "none" : "auto";
               if (!showing) {
                 const dismiss = (ev: MouseEvent) => { if (!tooltip.contains(ev.target as Node)) { tooltip.style.opacity = "0"; tooltip.style.pointerEvents = "none"; document.removeEventListener("click", dismiss); } };
-                setTimeout(() => document.addEventListener("click", dismiss), 0);
+                requestAnimationFrame(() => document.addEventListener("click", dismiss));
               }
             }}
           >
@@ -7425,7 +7425,7 @@ ${html}
               el.style.display = showing ? "none" : "flex";
               if (!showing) {
                 const dismiss = () => { el.style.display = "none"; document.removeEventListener("click", dismiss); };
-                setTimeout(() => document.addEventListener("click", dismiss), 0);
+                requestAnimationFrame(() => document.addEventListener("click", dismiss));
               }
             }}
           >
@@ -7935,6 +7935,9 @@ ${html}
             if (cid && user) {
               fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
             }
+          }}
+          onAllowedEditorsChange={(editors) => {
+            setAllowedEditorsState(editors);
           }}
           onMakePrivate={async () => {
             const cid = docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId;
