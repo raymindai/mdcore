@@ -130,7 +130,7 @@ const italicDeco = Decoration.mark({ class: "cm-md-italic" });
 const strikeDeco = Decoration.mark({ class: "cm-md-strike" });
 const inlineCodeDeco = Decoration.mark({ class: "cm-md-inline-code" });
 const linkTextDeco = Decoration.mark({ class: "cm-md-link-text" });
-const blockquoteDeco = Decoration.mark({ class: "cm-md-blockquote" });
+const _blockquoteDeco = Decoration.mark({ class: "cm-md-blockquote" });
 const hiddenDeco = Decoration.replace({});
 
 // ─── Build decorations from syntax tree ───

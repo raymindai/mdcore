@@ -60,7 +60,7 @@ function ShapeIcon({ shape, size = 14 }: { shape: CanvasNode["shape"]; size?: nu
 
 import { DiagramFormEditor, detectDiagramType, DIAGRAM_TYPES, type DiagramTypeId } from "./MermaidEditors";
 
-const PIE_COLORS = ["#fb923c", "#60a5fa", "#4ade80", "#c4b5fd", "#f472b6", "#fbbf24", "#f87171", "#38bdf8", "#a3e635", "#e879f9"];
+const _PIE_COLORS = ["#fb923c", "#60a5fa", "#4ade80", "#c4b5fd", "#f472b6", "#fbbf24", "#f87171", "#38bdf8", "#a3e635", "#e879f9"];
 
 // ─── Diagram-type-specific Help ───
 
@@ -521,18 +521,18 @@ function MdCanvas({
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const justSelectedRef = useRef(false);
-  const [canvasSplit, setCanvasSplit] = useState(65); // editor % vs code+preview
-  const [codeSplit, setCodeSplit] = useState(50); // code % vs preview (vertical)
-  const isDraggingCanvasSplit = useRef(false);
-  const isDraggingCodeSplit = useRef(false);
-  const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  const codePanelRef = useRef<HTMLDivElement>(null);
-  const [expandedPanel, setExpandedPanel] = useState<"editor" | "code" | "preview" | null>(null);
+  const [_canvasSplit, _setCanvasSplit] = useState(65); // editor % vs code+preview
+  const [_codeSplit, _setCodeSplit] = useState(50); // code % vs preview (vertical)
+  const _isDraggingCanvasSplit = useRef(false);
+  const _isDraggingCodeSplit = useRef(false);
+  const _canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const _codePanelRef = useRef<HTMLDivElement>(null);
+  const [_expandedPanel, _setExpandedPanel] = useState<"editor" | "code" | "preview" | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [rawCodeMode, setRawCodeMode] = useState(false);
   const [rawCode, setRawCode] = useState("");
   const [importCode, setImportCode] = useState("");
-  const [showCode, setShowCode] = useState(true);
+  const [showCode, _setShowCode] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
   const [rawLayout, setRawLayout] = useState<RawLayout>("A"); // default: Editor left, stacked right
   const canvasRef = useRef<HTMLDivElement>(null);

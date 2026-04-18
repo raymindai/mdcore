@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo, memo } from "react";
+import { useState, useCallback, useRef, useEffect, memo } from "react";
 import katex from "katex";
 
 // ═══════════════════════════════════════════════════════════════

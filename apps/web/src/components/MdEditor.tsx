@@ -23,11 +23,11 @@ import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-impor
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import {
   Undo2, Redo2, List, ListOrdered, Indent, Outdent, Quote, Minus, Link,
-  Image as ImageIcon, RemoveFormatting, Table, Code, Code2, ChevronDown, Pencil, Copy, Eye,
+  Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
-  User, Users, Search, Cloud, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, SlidersHorizontal, BookOpen, CircleCheck,
+  User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -1263,7 +1263,7 @@ export default function MdEditor() {
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
-  const [serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
+  const [_serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
   const [showPermDropdown, setShowPermDropdown] = useState(false);
@@ -1336,7 +1336,7 @@ export default function MdEditor() {
               if (t.ownerEmail === EXAMPLE_OWNER && !canonicalExampleIds.has(t.id)) return false;
               return true;
             }).map((t: Tab) => {
-              if (canonicalExampleIds.has(t.id)) { const { folderId: _, ...rest } = t; return rest; }
+              if (canonicalExampleIds.has(t.id)) { const { folderId: __, ...rest } = t; return rest; }
               return t;
             });
             return cleaned;
@@ -1447,6 +1447,7 @@ export default function MdEditor() {
       }
     }, 500);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, activeTabId, markdown, folders]);
 
   // Trigger auto-save without undo tracking (used by undo/redo)
@@ -1464,6 +1465,7 @@ export default function MdEditor() {
         editToken: currentTab.editToken,
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, user?.id, user?.email, anonymousId, autoSave]);
 
   // Wrapper that tracks undo history + triggers auto-save
@@ -1495,6 +1497,7 @@ export default function MdEditor() {
     setMarkdownRaw(prev);
     doRender(prev);
     triggerAutoSave(prev);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
 
   const redo = useCallback(() => {
@@ -1504,6 +1507,7 @@ export default function MdEditor() {
     setMarkdownRaw(next);
     doRender(next);
     triggerAutoSave(next);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
 
   // Tab functions use doRenderRef to avoid circular dependency
@@ -1532,7 +1536,7 @@ export default function MdEditor() {
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
-  const [showAIMenu, setShowAIMenu] = useState(false);
+
   const [aiProcessing, setAiProcessing] = useState<string | null>(null);
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
   const [aiChatInput, setAiChatInput] = useState("");
@@ -1599,9 +1603,9 @@ export default function MdEditor() {
   });
   const lastClickedTabIdRef = useRef<string | null>(null);
   const [confirmTrash, setConfirmTrash] = useState(false);
-  const [renderPaneNarrow, setRenderPaneNarrow] = useState(false);
+  const [_renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
-  const [editorPaneNarrow, setEditorPaneNarrow] = useState(false);
+  const [_editorPaneNarrow, setEditorPaneNarrow] = useState(false);
   const [editorPaneUnderNarrowWidth, setEditorPaneUnderNarrowWidth] = useState(false);
   const splitPercentRef = useRef(60);
   const isDraggingSplit = useRef(false);
@@ -1673,6 +1677,7 @@ export default function MdEditor() {
       showToast(e instanceof DOMException && e.name === "AbortError" ? "Upload timed out" : "Upload failed", "error");
       return null;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, compressImage]);
 
   // CodeMirror 6 editor — replaces plain textarea
@@ -2106,13 +2111,14 @@ export default function MdEditor() {
         });
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadTab, autoSave, user?.id, user?.email, anonymousId]);
 
   const addTab = useCallback(() => {
     setShowTemplatePicker(true);
   }, []);
 
-  const closeTab = useCallback((tabId: string) => {
+  const _closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
     const idx = tabs.findIndex((t) => t.id === tabId);
     const newTabs = tabs.filter((t) => t.id !== tabId);
@@ -2729,6 +2735,7 @@ export default function MdEditor() {
 
     // Track: "" means anonymous, user.id means logged in, undefined means not yet initialized
     prevUserRef.current = currentId || "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, authLoading, anonymousId]);
 
   // Auto-create cloud IDs for tabs that don't have one (one-time migration, after auth resolves)
@@ -2824,6 +2831,7 @@ export default function MdEditor() {
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, user?.id]);
 
   // Session-based version snapshots:
@@ -2960,6 +2968,7 @@ export default function MdEditor() {
         }
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, authLoading]);
 
   // Notification polling (every 30s for logged-in users)
@@ -3294,6 +3303,7 @@ export default function MdEditor() {
       preview.removeEventListener("contextmenu", handleImgContext);
       preview.removeEventListener("dblclick", handleDblClick);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, markdown, doRender]);
 
   // Mermaid edit button click handler (re-attach on html/viewMode change)
@@ -3638,6 +3648,7 @@ export default function MdEditor() {
       preview.removeEventListener("dblclick", handleTableDblClick);
       preview.removeEventListener("contextmenu", handleTableContextMenu);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html, isLoading, markdown, doRender]);
 
   // Close menus on outside click
@@ -4078,6 +4089,7 @@ export default function MdEditor() {
       showToast("Failed to restore version", "error");
     }
     setRestoringVersion(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, user, doRender, loadVersions]);
 
   // Share — open modal for owners, quick copy for non-owners
@@ -4089,7 +4101,7 @@ export default function MdEditor() {
     const ct = tabs.find(t => t.id === activeTabIdRef.current);
     if (ct?.readonly || ct?.permission === "readonly") { showToast("Cannot edit a read-only document", "info"); return; }
     setAiProcessing(action);
-    setShowAIMenu(false);
+    setShowMenu(false);
     setShowTranslatePicker(false);
     try {
       const res = await fetch("/api/ai", {
@@ -4265,6 +4277,7 @@ export default function MdEditor() {
       showToast("Failed to share. Check your connection.", "error");
       setTimeout(() => setShareState("idle"), 3000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, title, docId, tabs, isOwner, isAuthenticated, user, editMode]);
 
   // Copy HTML
@@ -4383,8 +4396,8 @@ ${html}
   }, [markdown]);
 
   // Update existing document
-  const [updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
-  const handleUpdate = useCallback(async () => {
+  const [_updateState, setUpdateState] = useState<"idle" | "updating" | "done" | "error">("idle");
+  const _handleUpdate = useCallback(async () => {
     if (!docId || !markdown.trim()) return;
     const token = getEditToken(docId);
     // Can update if: has token, or is owner by account, or doc is public
@@ -4403,10 +4416,11 @@ ${html}
       showToast("Failed to update document. Check your connection.", "error");
       setTimeout(() => setUpdateState("idle"), 3000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, markdown, title, user]);
 
   // Document settings (owner only)
-  const [showDocSettings, setShowDocSettings] = useState(false);
+  const [_showDocSettings, _setShowDocSettings] = useState(false);
   const [showDocEditModeMenu, setShowDocEditModeMenu] = useState(false);
   const [confirmRotateToken, setConfirmRotateToken] = useState(false);
   const [rotatingToken, setRotatingToken] = useState(false);
@@ -4470,6 +4484,7 @@ ${html}
     }
     setConfirmDeleteDoc(false);
     setShowMenu(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId]);
 
   // Clear
@@ -4546,6 +4561,7 @@ ${html}
       cmSetDocRef.current?.(formatted);
     }
     setShowAiBanner(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, doRender]);
 
   // Export PDF
@@ -4561,7 +4577,7 @@ ${html}
   }, [viewMode]);
 
   // Edit shared doc
-  const handleEditShared = useCallback(() => {
+  const _handleEditShared = useCallback(() => {
     setIsSharedDoc(false);
     setViewMode(isMobile ? "editor" : "split");
   }, [isMobile]);
@@ -4621,6 +4637,7 @@ ${html}
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleShare, handleCopyHtml, undo, redo]);
 
   // ── Cursor-aware insertion ──
@@ -4688,6 +4705,7 @@ ${html}
     } else {
       insertPosRef.current = md.length;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const insertBlockAtCursor = useCallback((content: string): string => {
@@ -5794,8 +5812,8 @@ ${html}
               const allMyTabs = memoAllMyTabs;
               const myTabs = memoMyTabs;
               const myTabCount = allMyTabs.length;
-              const privateCount = memoPrivateCount;
-              const sharedCount = memoSharedCount;
+              const _privateCount = memoPrivateCount;
+              const _sharedCount = memoSharedCount;
               return (
                 <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
                   <div
@@ -6953,7 +6971,7 @@ ${html}
                 {/* Export dropdown */}
                 <div className="relative group">
                   <button
-                    onClick={() => { setShowExportMenu(prev => !prev); setShowAIMenu(false); }}
+                    onClick={() => { setShowExportMenu(prev => !prev); setShowMenu(false); }}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                   >
@@ -7173,7 +7191,7 @@ ${html}
                       <div className="text-center py-8">
                         <Sparkles width={24} height={24} className="mx-auto mb-3" style={{ color: "var(--border)", opacity: 0.5 }} />
                         <p className="text-[11px]" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
-                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. "Make the intro shorter" or "Add a conclusion"</p>
+                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo; or &ldquo;Add a conclusion&rdquo;</p>
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
@@ -8008,7 +8026,7 @@ ${html}
             }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
             <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
             <button onClick={() => {
-              const t = Date.now();
+              const _t = Date.now();
               const existingExampleIds = new Set(tabs.filter(tab => tab.ownerEmail === EXAMPLE_OWNER).map(tab => tab.id));
               // Only restore examples that were deleted — never create duplicates
               const missingExamples = EXAMPLE_TABS.filter(ex => !existingExampleIds.has(ex.id));
@@ -8309,7 +8327,6 @@ ${html}
             <p className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>
               mdfy.cc/{docId}
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
               alt="QR Code"

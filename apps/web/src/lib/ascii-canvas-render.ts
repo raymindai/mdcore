@@ -20,7 +20,7 @@ export function renderAsciiToCanvas(
   ctx.font = font;
 
   // Measure the baseline character width (ASCII "0")
-  const charW = ctx.measureText("0").width;
+  const _charW = ctx.measureText("0").width;
 
   // Colors
   const colors = isDark

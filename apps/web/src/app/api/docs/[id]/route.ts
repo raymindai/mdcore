@@ -122,7 +122,6 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
 
   // Don't expose sensitive fields
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, edit_token: _et, deleted_at: _da, ...safeData } = data;
 
   // Check if requester is an allowed editor (for non-owner edit access)

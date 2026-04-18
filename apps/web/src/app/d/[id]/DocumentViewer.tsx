@@ -230,7 +230,6 @@ export default function DocumentViewer({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- markdown used in callback comparison, not as trigger
   }, [id, unlocked, isProtected, isExpired]);
 
   // Fallback polling if Supabase Realtime is not available
@@ -260,7 +259,6 @@ export default function DocumentViewer({
     poll();
     const interval = setInterval(poll, 60000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- markdown compared via ref
   }, [id, unlocked, isProtected, isExpired]);
 
   const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1";
@@ -312,6 +310,7 @@ export default function DocumentViewer({
             onClick={copyLink}
             className={btnClass}
             style={{ background: "var(--toggle-bg)", color: copied ? "#4ade80" : "var(--text-muted)" }}
+            aria-label="Copy link"
           >
             {copied ? (
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="4 8 7 11 12 5"/></svg>
@@ -326,6 +325,7 @@ export default function DocumentViewer({
             className="h-6 px-2 rounded-md transition-colors hidden sm:flex items-center gap-1"
             style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
             title={narrowView ? "Wide view" : "Narrow view"}
+            aria-label="Toggle narrow view"
           >
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
             <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
@@ -338,6 +338,7 @@ export default function DocumentViewer({
             onClick={toggleTheme}
             className="h-6 px-2 rounded-md transition-colors flex items-center"
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+            aria-label="Toggle theme"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               {theme === "dark"
@@ -352,6 +353,7 @@ export default function DocumentViewer({
             className={`${btnClass} hidden sm:flex`}
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             title="Print / Save as PDF"
+            aria-label="Print / Save as PDF"
           >
             PDF
           </button>

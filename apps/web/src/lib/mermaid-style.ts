@@ -277,7 +277,6 @@ export async function renderMermaidElements(
   // Get mermaid instance
   const mermaid =
     options.mermaid ??
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (typeof window !== "undefined" ? (window as unknown as Record<string, unknown>).mermaid : null);
   if (!mermaid) return;
 

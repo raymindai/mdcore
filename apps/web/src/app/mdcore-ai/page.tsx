@@ -603,7 +603,7 @@ $$`}
         <h2 style={heading}>Real problems. One API call to fix each.</h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {useCases.map((uc, i) => (
+          {useCases.map((uc, _i) => (
             <div key={uc.title} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 0 }}>
                 {/* Left: problem + solution */}
