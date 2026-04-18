@@ -4042,20 +4042,28 @@ export default function MdEditor() {
 
       let newMd: string;
       if (action === "summary") {
-        // Remove existing summary blockquote if present, then insert new one
-        const stripped = md.replace(/^> \*\*Summary:\*\*.*\n\n/m, "");
-        newMd = `> **Summary:** ${result.trim()}\n\n${stripped}`;
-        showToast("Summary added to document", "success");
+        // Remove existing summary blockquote if present (single or multiline), then insert new one
+        const stripped = md.replace(/^(?:> \*\*Summary:\*\*.*\n(?:> .*\n)*)\n/m, "");
+        // Wrap each line in blockquote for multiline summaries
+        const summaryLines = result.trim().split("\n").map((l: string) => `> ${l}`).join("\n");
+        newMd = `> **Summary:**\n${summaryLines}\n\n${stripped}`;
+        showToast("Summary added", "success");
       } else if (action === "tldr") {
         // Remove existing TL;DR section if present, then insert new one
-        const stripped = md.replace(/^## TL;DR\n\n[\s\S]*?\n\n---\n\n/m, "");
+        const stripped = md.replace(/^## TL;DR\n\n[\s\S]*?\n---\n\n/m, "");
         newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${stripped}`;
-        showToast("TL;DR added to document", "success");
+        showToast("TL;DR added", "success");
       } else {
         // Polish, translate, chat — replace entire document
         newMd = result;
         const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated", chat: "Document updated" };
         showToast(labels[action] || "Done", "success");
+      }
+      // Update title from new content
+      const newTitle = extractTitleFromMd(newMd);
+      if (newTitle && newTitle !== "Untitled") {
+        setTitle(newTitle);
+        setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, title: newTitle } : t));
       }
       // Push current state to undo stack before replacing
       undoStack.current.push(md);
@@ -6798,15 +6806,23 @@ ${html}
                   </div>
                 )}
                 {/* AI Actions dropdown — only for editable docs */}
-                {canEdit && <div className="relative">
+                {canEdit && <div className="relative group">
                   <button
-                    onClick={() => { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setAiChatInput(""); setShowExportMenu(false); }}
-                    disabled={!!aiProcessing}
+                    onClick={() => { if (!aiProcessing) { setShowAIMenu(prev => !prev); setShowTranslatePicker(false); setAiChatInput(""); setShowExportMenu(false); } }}
                     className="flex items-center justify-center h-6 px-2 rounded-md transition-colors gap-1"
                     style={{ background: showAIMenu || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIMenu || aiProcessing ? "var(--accent)" : "var(--text-muted)" }}
                   >
-                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Zap width={11} height={11} />}
+                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
+                    {aiProcessing && <span className="text-[9px] hidden sm:inline" style={{ color: "var(--accent)" }}>
+                      {{ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" }[aiProcessing] || "Processing"}...
+                    </span>}
                   </button>
+                  {!showAIMenu && !aiProcessing && (
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      AI Tools
+                    </div>
+                  )}
                   {showAIMenu && !aiProcessing && (
                     <>
                       <div className="fixed inset-0 z-[9998]" onClick={() => { setShowAIMenu(false); setShowTranslatePicker(false); setAiChatInput(""); }} />
@@ -6824,15 +6840,15 @@ ${html}
                           <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Add to top</span>
                         </button>
                         <button onClick={() => handleAIAction("tldr")} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
-                          <Zap width={12} height={12} style={{ color: "#fbbf24" }} />
+                          <List width={12} height={12} style={{ color: "#fbbf24" }} />
                           <span className="flex-1">TL;DR</span>
                           <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Key takeaways</span>
                         </button>
                         <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                        <button onClick={() => setShowTranslatePicker(true)} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                        <button onClick={() => setShowTranslatePicker(prev => !prev)} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 3h7M5.5 3v9M3 6c1 3 3.5 5 5.5 6M8 6c-1 3-3.5 5-5.5 6"/><path d="M10 8l2 5 2-5M10.5 11.5h3"/></svg>
                           <span className="flex-1">Translate</span>
-                          <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)" }} />
+                          <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)", transform: showTranslatePicker ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }} />
                         </button>
                         {showTranslatePicker && (
                           <div className="px-1 pb-1">
@@ -6840,9 +6856,10 @@ ${html}
                               {[
                                 ["English", "English"], ["한국어", "Korean"], ["日本語", "Japanese"], ["中文", "Chinese"],
                                 ["Español", "Spanish"], ["Français", "French"], ["Deutsch", "German"], ["Português", "Portuguese"],
+                                ["Русский", "Russian"], ["العربية", "Arabic"], ["हिन्दी", "Hindi"], ["Tiếng Việt", "Vietnamese"],
                               ].map(([label, lang]) => (
                                 <button key={lang} onClick={() => handleAIAction("translate", { language: lang })}
-                                  className="px-2 py-1 text-[10px] rounded transition-colors hover:bg-[var(--menu-hover)]"
+                                  className="px-2 py-1.5 text-[10px] rounded transition-colors hover:bg-[var(--menu-hover)]"
                                   style={{ color: "var(--text-muted)" }}>
                                   {label}
                                 </button>
@@ -6852,13 +6869,14 @@ ${html}
                         )}
                         <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
                         <div className="px-1 pb-1">
-                          <div className="flex items-center gap-1 px-2">
+                          <div className="flex items-center gap-1 px-2 rounded" style={{ background: "var(--toggle-bg)" }}>
                             <input
                               type="text"
                               value={aiChatInput}
                               onChange={(e) => setAiChatInput(e.target.value)}
                               onKeyDown={(e) => { if (e.key === "Enter" && aiChatInput.trim()) { handleAIAction("chat", { instruction: aiChatInput.trim() }); setAiChatInput(""); } }}
                               placeholder="Ask AI to edit..."
+                              autoFocus
                               className="flex-1 text-[11px] py-1.5 bg-transparent"
                               style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
                             />
@@ -6868,7 +6886,7 @@ ${html}
                               className="shrink-0 p-1 rounded transition-colors"
                               style={{ color: aiChatInput.trim() ? "var(--accent)" : "var(--text-faint)" }}
                             >
-                              <Zap width={10} height={10} />
+                              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2L2 8.5l5 2L9.5 16z"/><path d="M14 2L7 10.5"/></svg>
                             </button>
                           </div>
                         </div>
