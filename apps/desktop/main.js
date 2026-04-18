@@ -1050,7 +1050,13 @@ ipcMain.handle("new-document", async () => {
 ipcMain.handle("save-file", async (event, markdown) => {
   if (currentFilePath) {
     lastAutoSaveTime = Date.now();
-    fs.writeFileSync(currentFilePath, markdown, "utf8");
+    try {
+      fs.writeFileSync(currentFilePath, markdown, "utf8");
+    } catch (err) {
+      console.error("[save-file] Failed to write:", currentFilePath, err.message);
+      mainWindow?.webContents.send("save-error", { path: currentFilePath, message: err.message });
+      return null;
+    }
 
     // Push to cloud if published
     const config = loadMdfyConfig(currentFilePath);
@@ -1067,7 +1073,13 @@ ipcMain.handle("save-file", async (event, markdown) => {
     if (!result.canceled && result.filePath) {
       currentFilePath = result.filePath;
       lastAutoSaveTime = Date.now();
-      fs.writeFileSync(result.filePath, markdown, "utf8");
+      try {
+        fs.writeFileSync(result.filePath, markdown, "utf8");
+      } catch (err) {
+        console.error("[save-file] Failed to write:", result.filePath, err.message);
+        mainWindow?.webContents.send("save-error", { path: result.filePath, message: err.message });
+        return null;
+      }
       mainWindow.setTitle(`${path.basename(result.filePath)} — mdfy`);
       addToRecentFiles(result.filePath);
       startFileWatcher(result.filePath);
@@ -1082,7 +1094,11 @@ ipcMain.handle("auto-save", (event, markdown) => {
     lastAutoSaveTime = Date.now();
     try {
       fs.writeFileSync(currentFilePath, markdown, "utf8");
-    } catch {}
+    } catch (err) {
+      console.warn("[auto-save] Failed to write:", currentFilePath, err.message);
+      mainWindow?.webContents.send("save-error", { path: currentFilePath, message: err.message });
+      return;
+    }
 
     const config = loadMdfyConfig(currentFilePath);
     if (config && config.docId) {

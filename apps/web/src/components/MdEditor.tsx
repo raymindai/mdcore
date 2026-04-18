@@ -1978,10 +1978,15 @@ export default function MdEditor() {
     }
   }, []);
 
+  // Track whether current navigation is from popstate (back/forward) to avoid pushing duplicate history entries
+  const isPopstateRef = useRef(false);
+
   const switchTab = useCallback((tabId: string) => {
     // Use refs to get current values (avoid stale closures)
     const currentMd = markdownRef.current;
     const currentTabId = activeTabIdRef.current;
+    const fromPopstate = isPopstateRef.current;
+    isPopstateRef.current = false;
 
     setTabs((prev) => {
       // Save current tab's markdown only (don't overwrite title — user may have set it explicitly)
@@ -1992,11 +1997,35 @@ export default function MdEditor() {
       // Load target tab
       const target = saved.find((t) => t.id === tabId);
       if (target) {
-        queueMicrotask(() => loadTab(target));
+        queueMicrotask(() => {
+          loadTab(target);
+          // Push history entry for user-initiated tab switches (not back/forward)
+          if (!fromPopstate) {
+            const url = target.cloudId ? `/?doc=${target.cloudId}` : "/";
+            window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null }, "", url);
+          }
+        });
       }
       return saved;
     });
   }, [loadTab]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const docParam = params.get("doc");
+      if (docParam) {
+        const existing = tabs.find(t => t.cloudId === docParam && !t.deleted);
+        if (existing) {
+          isPopstateRef.current = true;
+          switchTab(existing.id);
+        }
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [tabs, switchTab]);
 
   // Multi-select: compute visible doc order for shift-range
   const visibleMyDocIds = useMemo(() => {

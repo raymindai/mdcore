@@ -9,6 +9,7 @@ export default function EmbedPage() {
   const { id } = useParams<{ id: string }>();
   const [html, setHtml] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -17,6 +18,16 @@ export default function EmbedPage() {
       try {
         const res = await fetch(`/api/docs/${id}`);
         if (!res.ok) {
+          if (res.status === 401) {
+            try {
+              const body = await res.json();
+              if (body.passwordRequired) {
+                setIsPasswordProtected(true);
+                setIsLoading(false);
+                return;
+              }
+            } catch { /* fall through to not found */ }
+          }
           setHtml("<p>Document not found</p>");
           setIsLoading(false);
           return;
@@ -67,6 +78,20 @@ export default function EmbedPage() {
       <div ref={previewRef}>
         {isLoading ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "#71717a" }}>Loading...</div>
+        ) : isPasswordProtected ? (
+          <div style={{ padding: "3rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.25rem", marginBottom: "0.75rem", color: "#fafafa" }}>
+              This document is password-protected.
+            </div>
+            <a
+              href={`https://mdfy.cc/${id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#fb923c", textDecoration: "underline", fontSize: "0.95rem" }}
+            >
+              View it at mdfy.cc/{id}
+            </a>
+          </div>
         ) : (
           <article
             className="mdcore-rendered p-4 sm:p-6"

@@ -338,8 +338,10 @@ document.querySelectorAll('input[name="range"]').forEach((radio) => {
 // ─── Settings ───
 
 const chkFloat = document.getElementById("chk-float");
+chkFloat.disabled = true;
 chrome.storage.sync.get({ showFloatingButton: false }, (data) => {
   chkFloat.checked = data.showFloatingButton;
+  chkFloat.disabled = false;
 });
 chkFloat.addEventListener("change", () => {
   const val = chkFloat.checked;
