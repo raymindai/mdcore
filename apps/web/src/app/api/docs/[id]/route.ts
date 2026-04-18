@@ -513,9 +513,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     .limit(1)
     .single();
 
-  const nextVersion = (latestVersion?.version_number || 0) + 1;
+  let nextVersion = (latestVersion?.version_number || 0) + 1;
 
-  await supabase.from("document_versions").insert({
+  const { error: versionError } = await supabase.from("document_versions").insert({
     document_id: id,
     markdown: doc.markdown,
     title: doc.title,
@@ -523,6 +523,26 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     created_by: userId || null,
     change_summary: changeSummary || null,
   });
+
+  // Handle unique constraint violation (race condition) — retry once
+  if (versionError?.code === "23505") {
+    const { data: retryVersion } = await supabase
+      .from("document_versions")
+      .select("version_number")
+      .eq("document_id", id)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .single();
+    nextVersion = (retryVersion?.version_number || nextVersion) + 1;
+    await supabase.from("document_versions").insert({
+      document_id: id,
+      markdown: doc.markdown,
+      title: doc.title,
+      version_number: nextVersion,
+      created_by: userId || null,
+      change_summary: changeSummary || null,
+    });
+  }
 
   // Update
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
