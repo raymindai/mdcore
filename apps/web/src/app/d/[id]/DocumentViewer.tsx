@@ -5,6 +5,7 @@ import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type Theme = "dark" | "light";
 
@@ -200,16 +201,47 @@ export default function DocumentViewer({
     })();
   }, [html, isLoading, theme]);
 
-  // Poll for updates every 30s (shared doc live refresh)
+  // Supabase Realtime: subscribe to document changes
+  useEffect(() => {
+    if (!unlocked || isProtected || isExpired) return;
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return; // fallback polling handles it below
+
+    const channel = supabase
+      .channel(`doc-${id}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'documents', filter: `id=eq.${id}` },
+        async () => {
+          // Document was updated — fetch fresh content
+          try {
+            const res = await fetch(`/api/docs/${id}`);
+            if (res.ok) {
+              const doc = await res.json();
+              if (doc.markdown !== markdown) {
+                setMarkdown(doc.markdown);
+                if (doc.title) setTitle(doc.title);
+              }
+            }
+          } catch { /* offline */ }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id, unlocked, isProtected, isExpired, markdown]);
+
+  // Fallback polling if Supabase Realtime is not available
   const lastUpdatedRef = useRef<string>("");
   useEffect(() => {
     if (!unlocked || isProtected || isExpired) return;
+    const supabase = getSupabaseBrowserClient();
+    if (supabase) return; // Realtime handles it
+
     const poll = async () => {
       try {
         const res = await fetch(`/api/docs/${id}`, { method: "HEAD" });
         const updatedAt = res.headers.get("x-updated-at") || "";
         if (lastUpdatedRef.current && updatedAt && updatedAt !== lastUpdatedRef.current) {
-          // Content changed — fetch full doc
           const full = await fetch(`/api/docs/${id}`);
           if (full.ok) {
             const doc = await full.json();
@@ -222,8 +254,8 @@ export default function DocumentViewer({
         lastUpdatedRef.current = updatedAt;
       } catch { /* offline, ignore */ }
     };
-    poll(); // initial check
-    const interval = setInterval(poll, 30000);
+    poll();
+    const interval = setInterval(poll, 60000);
     return () => clearInterval(interval);
   }, [id, unlocked, isProtected, isExpired, markdown]);
 

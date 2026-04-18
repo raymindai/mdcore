@@ -13,6 +13,8 @@ import {
 import MdCanvas from "@/components/MdCanvas";
 import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
+import DocStatusIcon from "@/components/DocStatusIcon";
+import { extractTitleFromMd } from "@/lib/extract-title";
 import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import ShareModal from "@/components/ShareModal";
@@ -563,42 +565,8 @@ function resolveAvatar(profile: { avatar_url?: string | null } | null, user: { e
   return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
 }
 
-/** Document status icon with hover tooltip */
-function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string; permission?: string }; isActive: boolean }) {
-  let Icon: typeof Cloud;
-  let color: string;
-  let tip: string;
-
-  if (tab.permission === "readonly") {
-    Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
-  } else if (tab.permission === "editable") {
-    Icon = Pencil; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Editable";
-  } else if (tab.isDraft === false && tab.isRestricted) {
-    Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
-  } else if (tab.isDraft === false && tab.isSharedByMe) {
-    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
-  } else if (tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source)) {
-    Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
-  } else {
-    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private";
-  }
-
-  return (
-    <div className="relative shrink-0 flex items-center group/icon">
-      <Icon width={14} height={14} style={{ color }} />
-      <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/icon:opacity-100 transition-opacity z-[9998]"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-        {tip}
-      </div>
-    </div>
-  );
-}
-
-/** Extract title from markdown (first # heading, or first line) */
-function extractTitleFromMd(md: string): string {
-  const match = md.match(/^#\s+(.+)/m);
-  return match ? match[1].trim() : "Untitled";
-}
+// DocStatusIcon → @/components/DocStatusIcon
+// extractTitleFromMd → @/lib/extract-title
 
 // ─── Document Templates ───
 
@@ -1601,6 +1569,7 @@ export default function MdEditor() {
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
+  const [showAllDocs, setShowAllDocs] = useState(false);
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
@@ -5909,12 +5878,17 @@ ${html}
                     {/* Document list — scrollable */}
                     <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
-                      {myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
-                        if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
-                        if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                        const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
-                        return sortMode === "oldest" ? ai - bi : bi - ai;
-                      }).map((tab) => (
+                      {(() => {
+                        const MAX_VISIBLE_DOCS = 100;
+                        const allRootTabs = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
+                          if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+                          if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+                          const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
+                          return sortMode === "oldest" ? ai - bi : bi - ai;
+                        });
+                        const visibleRootTabs = showAllDocs || allRootTabs.length <= MAX_VISIBLE_DOCS ? allRootTabs : allRootTabs.slice(0, MAX_VISIBLE_DOCS);
+                        return (<>
+                      {visibleRootTabs.map((tab) => (
                         <div
                           key={tab.id}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
@@ -5939,6 +5913,17 @@ ${html}
                           </button>
                         </div>
                       ))}
+                      {allRootTabs.length > MAX_VISIBLE_DOCS && !showAllDocs && (
+                        <button
+                          onClick={() => setShowAllDocs(true)}
+                          className="w-full text-center py-1.5 text-[10px] font-mono rounded-md transition-colors hover:bg-[var(--accent-dim)]"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          Show {allRootTabs.length - MAX_VISIBLE_DOCS} more...
+                        </button>
+                      )}
+                      </>);
+                      })()}
 
                       {/* Folders */}
                       {[...folders].filter(f => !f.section || f.section === "my").filter(f => {
