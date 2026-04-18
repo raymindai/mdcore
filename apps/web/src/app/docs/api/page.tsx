@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import MdfyLogo from "@/components/MdfyLogo";
+import {
+  CodeBlock,
+  InlineCode,
+  SectionHeading,
+  SubLabel,
+  DocsNav,
+  DocsFooter,
+  DocsSidebar,
+  mono,
+} from "@/components/docs";
 
 export const metadata: Metadata = {
   title: "REST API Reference — mdfy.cc",
@@ -13,67 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-const mono =
-  "var(--font-geist-mono), 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace";
-
-/* ─── Shared Components ─── */
-
-function CodeBlock({ children, lang }: { children: string; lang?: string }) {
-  return (
-    <div style={{ position: "relative" }}>
-      {lang && (
-        <span
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 12,
-            fontSize: 10,
-            fontWeight: 600,
-            color: "var(--text-faint)",
-            fontFamily: mono,
-            textTransform: "uppercase",
-            letterSpacing: 1,
-          }}
-        >
-          {lang}
-        </span>
-      )}
-      <pre
-        style={{
-          background: "#18181b",
-          borderRadius: 10,
-          padding: "18px 20px",
-          overflow: "auto",
-          fontSize: 13,
-          lineHeight: 1.7,
-          fontFamily: mono,
-          color: "var(--text-secondary)",
-          margin: 0,
-          border: "none",
-        }}
-      >
-        <code>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
-function InlineCode({ children }: { children: string }) {
-  return (
-    <code
-      style={{
-        background: "#18181b",
-        padding: "2px 6px",
-        borderRadius: 4,
-        fontSize: 13,
-        fontFamily: mono,
-        color: "var(--accent)",
-      }}
-    >
-      {children}
-    </code>
-  );
-}
+/* ─── Page-specific Components ─── */
 
 function MethodBadge({ method }: { method: string }) {
   const colors: Record<string, { fg: string; bg: string }> = {
@@ -118,6 +66,7 @@ function ParamRow({
 }) {
   return (
     <div
+      className="param-row"
       style={{
         display: "grid",
         gridTemplateColumns: "160px 80px 1fr",
@@ -169,31 +118,6 @@ function ParamRow({
         {children}
       </span>
     </div>
-  );
-}
-
-function SectionHeading({
-  id,
-  children,
-}: {
-  id: string;
-  children: string;
-}) {
-  return (
-    <h2
-      id={id}
-      style={{
-        fontSize: 22,
-        fontWeight: 800,
-        color: "var(--text-primary)",
-        marginTop: 64,
-        marginBottom: 12,
-        letterSpacing: "-0.02em",
-        scrollMarginTop: 80,
-      }}
-    >
-      {children}
-    </h2>
   );
 }
 
@@ -258,25 +182,6 @@ function EndpointBlock({
   );
 }
 
-function SubLabel({ children }: { children: string }) {
-  return (
-    <p
-      style={{
-        fontSize: 10,
-        fontWeight: 600,
-        color: "var(--text-faint)",
-        fontFamily: mono,
-        letterSpacing: 1,
-        textTransform: "uppercase",
-        marginBottom: 8,
-        marginTop: 24,
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
 /* ─── Sidebar Items ─── */
 const sidebarItems = [
   { id: "overview", label: "Overview" },
@@ -301,141 +206,17 @@ export default function ApiDocsPage() {
         minHeight: "100vh",
       }}
     >
-      {/* NAV */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          borderBottom: "1px solid var(--border-dim)",
-          background: "var(--header-bg)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-            padding: "14px 24px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <MdfyLogo size={22} />
-            </Link>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
-              <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>Plugins</Link>
-              <Link href="/docs" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>API</Link>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>GitHub</a>
-            <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
-          </div>
-        </div>
-      </nav>
+      <DocsNav />
 
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 24px",
-          display: "grid",
-          gridTemplateColumns: "200px 1fr",
-          gap: 48,
-        }}
-      >
-        {/* SIDEBAR */}
-        <aside
-          style={{
-            position: "sticky",
-            top: 72,
-            height: "fit-content",
-            maxHeight: "calc(100vh - 72px)",
-            overflowY: "auto",
-            paddingTop: 40,
-            paddingBottom: 40,
-          }}
-        >
-          <p
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              color: "var(--text-faint)",
-              fontFamily: mono,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              marginBottom: 16,
-              marginTop: 0,
-            }}
-          >
-            On This Page
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {sidebarItems.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                style={{
-                  fontSize: 13,
-                  color: "var(--text-muted)",
-                  textDecoration: "none",
-                  padding: "5px 12px",
-                  borderRadius: 6,
-                  display: "block",
-                }}
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-
-          <div
-            style={{
-              borderTop: "1px solid var(--border-dim)",
-              marginTop: 24,
-              paddingTop: 16,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "var(--text-faint)",
-                fontFamily: mono,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 12,
-                marginTop: 0,
-              }}
-            >
-              Also See
-            </p>
-            {[
-              { label: "CLI", href: "/docs/cli" },
-              { label: "SDK", href: "/docs/sdk" },
-              { label: "MCP Server", href: "/docs/mcp" },
-            ].map((l) => (
-              <Link
-                key={l.label}
-                href={l.href}
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  color: "var(--text-faint)",
-                  textDecoration: "none",
-                  padding: "4px 12px",
-                }}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </div>
-        </aside>
+      <div className="docs-layout">
+        <DocsSidebar
+          items={sidebarItems}
+          alsoSee={[
+            { label: "CLI", href: "/docs/cli" },
+            { label: "SDK", href: "/docs/sdk" },
+            { label: "MCP Server", href: "/docs/mcp" },
+          ]}
+        />
 
         {/* MAIN CONTENT */}
         <main style={{ paddingTop: 40, paddingBottom: 80, minWidth: 0 }}>
@@ -932,29 +713,7 @@ url = res.json()["url"]`}</CodeBlock>
         </main>
       </div>
 
-      {/* FOOTER */}
-      <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-            padding: "32px 24px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <p style={{ fontSize: 12, color: "var(--text-faint)", fontFamily: mono, margin: 0 }}>
-            <Link href="/docs" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Documentation</Link>
-            {" / "}REST API
-          </p>
-          <p style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: mono, margin: 0 }}>
-            &copy; 2026 mdfy.cc
-          </p>
-        </div>
-      </footer>
+      <DocsFooter breadcrumb="REST API" />
     </div>
   );
 }

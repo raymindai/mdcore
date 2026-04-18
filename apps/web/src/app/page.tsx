@@ -8,7 +8,7 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   loading: () => (
     <div
       className="flex flex-col items-center justify-center h-screen gap-6"
-      style={{ background: "#09090b" }}
+      style={{ background: "var(--background)" }}
     >
       {/* Logo */}
       <MdfyLogo size={30} />

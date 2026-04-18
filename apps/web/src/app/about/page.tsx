@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
+import { DocsNav } from "@/components/docs";
 
 export const metadata: Metadata = {
   title: "About — mdfy.cc",
@@ -28,7 +29,7 @@ const features = [
   {
     label: "AI mdfy",
     desc: "AI-powered structuring turns raw text into clean Markdown with headings, tables, lists, and code blocks.",
-    color: "#c4b5fd",
+    color: "#fbbf24",
   },
   {
     label: "Full Export",
@@ -38,7 +39,7 @@ const features = [
   {
     label: "GFM + KaTeX + Mermaid",
     desc: "Tables, task lists, math equations, diagrams — every Markdown flavor rendered beautifully.",
-    color: "#f472b6",
+    color: "#f97316",
   },
   {
     label: "Flavor Conversion",
@@ -58,7 +59,7 @@ const features = [
   {
     label: "Folders + Trash",
     desc: "Organize documents in folders. Drag and drop to move. Soft delete with restore from trash.",
-    color: "#a78bfa",
+    color: "#fbbf24",
   },
   {
     label: "Cloud Sync",
@@ -83,7 +84,7 @@ const features = [
   {
     label: "Multi-Select",
     desc: "Cmd+Click to toggle, Shift+Click for range. Batch move to folders or trash.",
-    color: "#a78bfa",
+    color: "#f59e0b",
   },
   {
     label: "MCP Server",
@@ -93,7 +94,7 @@ const features = [
   {
     label: "VS Code Extension",
     desc: "WYSIWYG preview, sidebar with local/synced/cloud bridge, one-click publish, bidirectional sync.",
-    color: "#f472b6",
+    color: "#f97316",
   },
   {
     label: "Chrome Extension",
@@ -121,24 +122,7 @@ export default function AboutPage() {
       }}
     >
       {/* ───────── NAV ───────── */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid var(--border-dim)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <MdfyLogo size={22} />
-            </Link>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Link href="/about" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>About</Link>
-              <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>Plugins</Link>
-              <Link href="/docs" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>API</Link>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>GitHub</a>
-            <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
-          </div>
-        </div>
-      </nav>
+      <DocsNav active="about" />
 
       {/* ───────── HERO ───────── */}
       <section
@@ -215,7 +199,7 @@ export default function AboutPage() {
           <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 32px", textAlign: "center" }}>
             Write anywhere. Read everywhere.
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+          <div className="about-grid-3">
             {[
               { icon: "WRITE", color: "#fb923c", title: "Create from anywhere", items: ["Browser editor at mdfy.cc", "VS Code extension", "Mac desktop app", "CLI: mdfy publish", "Paste, drag & drop, import"] },
               { icon: "SHARE", color: "#4ade80", title: "One URL, works everywhere", items: ["Send to anyone — no app needed", "Paste URL in Slack, email, docs", "Embed in websites (iframe)", "QR code for mobile", "Password protect or set expiry"] },
@@ -240,7 +224,7 @@ export default function AboutPage() {
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 32, fontFamily: "var(--font-geist-mono), monospace" }}>
           How people use mdfy
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div className="about-grid-2">
           {[
             {
               title: "AI output → shareable doc in 3 seconds",
@@ -264,7 +248,7 @@ export default function AboutPage() {
               title: "Document → terminal",
               desc: "Read any mdfy document right in your terminal. Rendered with colors, headings, code blocks. Pipe to less, grep, or other tools.",
               code: "mdfy read abc123\nmdfy read abc123 | grep \"API\"\ncurl mdfy.cc/d/abc123.md",
-              color: "#c4b5fd",
+              color: "#38bdf8",
             },
             {
               title: "Cross-AI workflow",
@@ -276,7 +260,7 @@ export default function AboutPage() {
               title: "Write in editor, share instantly",
               desc: "Write in VS Code or mdfy Mac app. One command to publish. The URL auto-updates when you save. Your team always sees the latest version.",
               code: "VS Code: Cmd+Alt+P → Published!\nMac app: Publish button → URL copied",
-              color: "#f472b6",
+              color: "#f97316",
             },
           ].map((uc) => (
             <div key={uc.title} style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -293,7 +277,7 @@ export default function AboutPage() {
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>
           Publish from any AI
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div className="about-grid-3" style={{ gap: 16 }}>
           {[
             {
               ai: "Claude",
@@ -338,7 +322,7 @@ export default function AboutPage() {
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 24, fontFamily: "var(--font-geist-mono), monospace" }}>
           Available everywhere
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div className="about-grid-4">
           {[
             { name: "Web Editor", desc: "mdfy.cc", icon: "BROWSER" },
             { name: "VS Code", desc: "Extension", icon: "VSCODE" },
@@ -360,7 +344,7 @@ export default function AboutPage() {
 
       {/* ───────── FIGMA COMPARISON ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="about-grid-2" style={{ gap: 16 }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-faint)", marginTop: 0, marginBottom: 16, textDecoration: "line-through" }}>Before mdfy</h3>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 14, color: "var(--text-faint)" }}>
@@ -610,7 +594,7 @@ export default function AboutPage() {
           </div>
 
           {/* Cross-AI / Cross-Platform */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px", borderTop: "2px solid #c4b5fd" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px", borderTop: "2px solid #38bdf8" }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
               Shared across every AI and platform
             </h3>
@@ -963,7 +947,7 @@ export default function AboutPage() {
               title: "AI-to-AI document handoff",
               flow: "Agent A writes report → mdfy.cc/abc123 → Agent B reads via URL → continues work",
               desc: "Your AI agent generates a report and publishes to mdfy.cc. Another agent fetches the URL to continue the work. mdfy.cc becomes the shared memory between AI systems.",
-              color: "#c4b5fd",
+              color: "#fbbf24",
             },
             {
               title: "Meeting notes → action items → tracking",
@@ -1230,8 +1214,6 @@ export default function AboutPage() {
               <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 14, marginTop: 0, fontFamily: "var(--font-geist-mono), monospace", letterSpacing: 1, textTransform: "uppercase" }}>Company</p>
               {[
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
-                { label: "Twitter / X", href: "#" },
-                { label: "Terms of Service", href: "#" },
                 { label: "Privacy Policy", href: "/privacy" },
               ].map((l) => (
                 <a key={l.label} href={l.href} style={{ display: "block", fontSize: 13, color: "var(--text-faint)", textDecoration: "none", padding: "3px 0" }}>{l.label}</a>

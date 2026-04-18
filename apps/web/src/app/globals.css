@@ -900,6 +900,19 @@ textarea::selection {
 }
 
 /* ========================================
+   About page responsive grids
+   ======================================== */
+.about-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.about-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.about-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+@media (max-width: 768px) {
+  .about-grid-3 { grid-template-columns: 1fr; }
+  .about-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .about-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ========================================
    Print styles (PDF export)
    ======================================== */
 @media print {
@@ -1157,5 +1170,30 @@ textarea::selection {
   .mdcore-lightbox img {
     max-width: 98vw;
     max-height: 85vh;
+  }
+}
+
+/* ========================================
+   Docs layout responsive
+   ======================================== */
+.docs-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+@media (max-width: 768px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .docs-sidebar {
+    display: none;
+  }
+  .docs-layout .param-row {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
   }
 }

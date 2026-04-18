@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
+import { CodeBlock, InlineCode, DocsNav, mono } from "@/components/docs";
 
 export const metadata: Metadata = {
   title: "Documentation — mdfy.cc",
@@ -13,66 +14,6 @@ export const metadata: Metadata = {
     url: "https://mdfy.cc/docs",
   },
 };
-
-const mono =
-  "var(--font-geist-mono), 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace";
-
-function CodeBlock({ children, lang }: { children: string; lang?: string }) {
-  return (
-    <div style={{ position: "relative" }}>
-      {lang && (
-        <span
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 12,
-            fontSize: 10,
-            fontWeight: 600,
-            color: "var(--text-faint)",
-            fontFamily: mono,
-            textTransform: "uppercase",
-            letterSpacing: 1,
-          }}
-        >
-          {lang}
-        </span>
-      )}
-      <pre
-        style={{
-          background: "#18181b",
-          borderRadius: 10,
-          padding: "18px 20px",
-          overflow: "auto",
-          fontSize: 13,
-          lineHeight: 1.7,
-          fontFamily: mono,
-          color: "var(--text-secondary)",
-          margin: 0,
-          border: "none",
-        }}
-      >
-        <code>{children}</code>
-      </pre>
-    </div>
-  );
-}
-
-function InlineCode({ children }: { children: string }) {
-  return (
-    <code
-      style={{
-        background: "#18181b",
-        padding: "2px 6px",
-        borderRadius: 4,
-        fontSize: 13,
-        fontFamily: mono,
-        color: "var(--accent)",
-      }}
-    >
-      {children}
-    </code>
-  );
-}
 
 /* ────────────────────────────────────────────────────────────
    Data
@@ -166,101 +107,13 @@ export default function DocsPage() {
         overflowX: "hidden",
       }}
     >
-      {/* ───────── NAV ───────── */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          borderBottom: "1px solid var(--border-dim)",
-          background: "var(--header-bg)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1080,
-            margin: "0 auto",
-            padding: "14px 24px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <MdfyLogo size={22} />
-            </Link>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Link
-                href="/about"
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: 13,
-                  textDecoration: "none",
-                }}
-              >
-                About
-              </Link>
-              <Link
-                href="/plugins"
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: 13,
-                  textDecoration: "none",
-                }}
-              >
-                Plugins
-              </Link>
-              <Link
-                href="/docs"
-                style={{
-                  color: "var(--accent)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                }}
-              >
-                API
-              </Link>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a
-              href="https://github.com/raymindai/mdcore"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: "var(--text-muted)",
-                fontSize: 13,
-                textDecoration: "none",
-              }}
-            >
-              GitHub
-            </a>
-            <Link
-              href="/"
-              style={{
-                background: "var(--accent-dim)",
-                color: "var(--accent)",
-                padding: "6px 16px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              Open Editor
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <DocsNav />
 
       {/* ───────── HERO ───────── */}
       <section
         style={{
           position: "relative",
-          maxWidth: 1080,
+          maxWidth: 1200,
           margin: "0 auto",
           padding: "100px 24px 80px",
         }}
@@ -334,7 +187,7 @@ export default function DocsPage() {
 
       {/* ───────── QUICK START ───────── */}
       <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
       >
         <h2
           style={{
@@ -450,7 +303,7 @@ export default function DocsPage() {
 
       {/* ───────── TRY IT ───────── */}
       <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
       >
         <h2
           style={{
@@ -498,7 +351,7 @@ export default function DocsPage() {
 
       {/* ───────── EXPLORE ───────── */}
       <section
-        style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
       >
         <h2
           style={{
@@ -584,7 +437,7 @@ export default function DocsPage() {
       <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
         <div
           style={{
-            maxWidth: 1080,
+            maxWidth: 1200,
             margin: "0 auto",
             padding: "48px 24px 32px",
           }}

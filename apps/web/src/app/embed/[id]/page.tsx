@@ -54,7 +54,30 @@ export default function EmbedPage() {
     const mermaid = (window as any).mermaid;
     if (!mermaid) return;
 
-    mermaid.initialize({ startOnLoad: false, theme: "dark", fontFamily: "system-ui, sans-serif", fontSize: 14 });
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: isDark ? "dark" : "default",
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      fontSize: 14,
+      themeVariables: isDark ? {
+        background: "transparent",
+        primaryColor: "#222230",
+        primaryTextColor: "#ededf0",
+        primaryBorderColor: "#3a3a48",
+        lineColor: "#50505e",
+        secondaryColor: "#1a1a24",
+        tertiaryColor: "#1a1a24",
+      } : {
+        background: "transparent",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#1a1a2e",
+        primaryBorderColor: "#e0e0e8",
+        lineColor: "#b0b0c0",
+        secondaryColor: "#f7f7fa",
+        tertiaryColor: "#f7f7fa",
+      },
+    });
 
     (async () => {
       for (let i = 0; i < mermaidPres.length; i++) {
@@ -74,20 +97,20 @@ export default function EmbedPage() {
   }, [html, isLoading]);
 
   return (
-    <div style={{ background: "#09090b", color: "#fafafa", minHeight: "100vh" }}>
+    <div style={{ background: "var(--background)", color: "var(--foreground)", minHeight: "100vh" }}>
       <div ref={previewRef}>
         {isLoading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "#71717a" }}>Loading...</div>
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-faint)" }}>Loading...</div>
         ) : isPasswordProtected ? (
           <div style={{ padding: "3rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.25rem", marginBottom: "0.75rem", color: "#fafafa" }}>
+            <div style={{ fontSize: "1.25rem", marginBottom: "0.75rem", color: "var(--foreground)" }}>
               This document is password-protected.
             </div>
             <a
               href={`https://mdfy.cc/${id}`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#fb923c", textDecoration: "underline", fontSize: "0.95rem" }}
+              style={{ color: "var(--accent)", textDecoration: "underline", fontSize: "0.95rem" }}
             >
               View it at mdfy.cc/{id}
             </a>
@@ -103,7 +126,7 @@ export default function EmbedPage() {
       <div
         style={{
           padding: "8px 16px",
-          borderTop: "1px solid #27272a",
+          borderTop: "1px solid var(--border)",
           textAlign: "right",
           fontSize: "11px",
         }}
@@ -112,7 +135,7 @@ export default function EmbedPage() {
           href={`https://mdfy.cc/${id}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#fb923c", textDecoration: "none" }}
+          style={{ color: "var(--accent)", textDecoration: "none" }}
         >
           mdfy.cc
         </a>
