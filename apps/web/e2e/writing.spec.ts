@@ -127,10 +127,9 @@ test.describe.serial("Writing — Source View (CodeMirror)", () => {
   });
 
   test("large content doesn't freeze the editor", async ({ page }) => {
-    // Paste content via clipboard instead of typing (much faster in CI)
-    const lines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}: some content here.`).join("\n");
-    await page.evaluate((text) => navigator.clipboard.writeText(text), lines);
-    await page.keyboard.press("ControlOrMeta+v");
+    // Set content directly via CM6 to avoid slow keyboard.type in CI
+    const lines = Array.from({ length: 20 }, (_, i) => `Line ${i + 1}: content.`).join("\n");
+    await page.locator(".cm-editor .cm-content").fill(lines);
     await page.click('button:has-text("Live")');
     await page.waitForTimeout(1000);
     await expect(page.locator(".mdcore-rendered")).toBeVisible();
@@ -338,10 +337,8 @@ test.describe("Writing — Edge Cases", () => {
   });
 
   test("very long line without spaces doesn't break layout", async ({ page }) => {
-    // Use evaluate to set content directly (keyboard.type 500 chars times out in CI)
     const longWord = "a".repeat(200);
-    await page.evaluate((text) => navigator.clipboard.writeText(text), longWord);
-    await page.keyboard.press("ControlOrMeta+v");
+    await page.locator(".cm-editor .cm-content").fill(longWord);
     await page.click('button:has-text("Live")');
     await page.waitForTimeout(500);
     await expect(page.locator(".mdcore-rendered")).toBeVisible();
