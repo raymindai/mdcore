@@ -39,6 +39,8 @@ export default function DocumentViewer({
   const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  const markdownRef = useRef(initialMarkdown);
+  markdownRef.current = markdown;
 
   // For restricted docs: try client-side fetch with user credentials
   useEffect(() => {
@@ -217,7 +219,7 @@ export default function DocumentViewer({
             const res = await fetch(`/api/docs/${id}`);
             if (res.ok) {
               const doc = await res.json();
-              if (doc.markdown !== markdown) {
+              if (doc.markdown !== markdownRef.current) {
                 setMarkdown(doc.markdown);
                 if (doc.title) setTitle(doc.title);
               }
@@ -228,7 +230,8 @@ export default function DocumentViewer({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [id, unlocked, isProtected, isExpired, markdown]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- markdown used in callback comparison, not as trigger
+  }, [id, unlocked, isProtected, isExpired]);
 
   // Fallback polling if Supabase Realtime is not available
   const lastUpdatedRef = useRef<string>("");
@@ -245,7 +248,7 @@ export default function DocumentViewer({
           const full = await fetch(`/api/docs/${id}`);
           if (full.ok) {
             const doc = await full.json();
-            if (doc.markdown !== markdown) {
+            if (doc.markdown !== markdownRef.current) {
               setMarkdown(doc.markdown);
               if (doc.title) setTitle(doc.title);
             }
@@ -257,7 +260,8 @@ export default function DocumentViewer({
     poll();
     const interval = setInterval(poll, 60000);
     return () => clearInterval(interval);
-  }, [id, unlocked, isProtected, isExpired, markdown]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- markdown compared via ref
+  }, [id, unlocked, isProtected, isExpired]);
 
   const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1";
 
