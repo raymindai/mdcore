@@ -40,6 +40,7 @@ async function decompress(encoded: string): Promise<string> {
     try {
       return decodeURIComponent(escape(atob(encoded)));
     } catch {
+      console.warn("Failed to decompress shared content — invalid or corrupted data");
       return "";
     }
   }

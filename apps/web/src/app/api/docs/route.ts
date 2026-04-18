@@ -76,7 +76,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Document too large (max 500KB)" }, { status: 413 });
   }
 
-  const id = nanoid(8);
   const editToken = nanoid(32);
 
   // Salted password hash (salt:base64-SHA-256)
@@ -100,23 +99,32 @@ export async function POST(req: NextRequest) {
   // - anonymous → "token" (edit_token = ownership proof)
   const resolvedEditMode = editMode || (userId ? "account" : "token");
 
-  const { error } = await supabase.from("documents").insert({
-    id,
-    markdown,
-    title: title || null,
-    edit_token: editToken,
-    password_hash: passwordHash,
-    expires_at: expiresAt,
-    user_id: userId || null,
-    anonymous_id: (!userId && anonymousId) ? anonymousId : null,
-    edit_mode: resolvedEditMode,
-    is_draft: isDraft ?? true,
-    source: source || null,
-    folder_id: folderId || null,
-  });
+  // Retry nanoid generation on unique constraint violation (up to 3 attempts)
+  let id: string = "";
+  let insertError: { code?: string; message?: string } | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    id = nanoid(8);
+    const { error } = await supabase.from("documents").insert({
+      id,
+      markdown,
+      title: title || null,
+      edit_token: editToken,
+      password_hash: passwordHash,
+      expires_at: expiresAt,
+      user_id: userId || null,
+      anonymous_id: (!userId && anonymousId) ? anonymousId : null,
+      edit_mode: resolvedEditMode,
+      is_draft: isDraft ?? true,
+      source: source || null,
+      folder_id: folderId || null,
+    });
+    if (!error) { insertError = null; break; }
+    if (error.code === "23505") { insertError = error; continue; } // unique violation, retry
+    insertError = error; break; // other error, don't retry
+  }
 
-  if (error) {
-    console.error("Supabase insert error:", error);
+  if (insertError) {
+    console.error("Supabase insert error:", insertError);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   }
 

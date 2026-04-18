@@ -27,7 +27,13 @@ export async function renderMarkdown(markdown: string): Promise<{
   toc: TocEntry[];
   flavor: FlavorInfo;
 }> {
-  const result: WasmRenderResult = render(markdown);
+  let result: WasmRenderResult;
+  try {
+    result = render(markdown);
+  } catch (err) {
+    console.error("WASM render failed:", err);
+    throw new Error("Failed to render markdown. The engine encountered an error.");
+  }
 
   const flavor: FlavorInfo = {
     primary: result.flavor.primary as FlavorInfo["primary"],

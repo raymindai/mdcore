@@ -5,8 +5,16 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+// Validate document ID: only alphanumeric, hyphen, underscore (nanoid charset)
+function isValidDocId(id: string): boolean {
+  return /^[\w-]+$/.test(id);
+}
+
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  if (!isValidDocId(id)) {
+    return NextResponse.json({ error: "Invalid document ID" }, { status: 400 });
+  }
   const supabase = getSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
@@ -143,6 +151,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  if (!isValidDocId(id)) {
+    return NextResponse.json({ error: "Invalid document ID" }, { status: 400 });
+  }
   const supabase = getSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
@@ -526,6 +537,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  if (!isValidDocId(id)) {
+    return NextResponse.json({ error: "Invalid document ID" }, { status: 400 });
+  }
   const supabase = getSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
@@ -582,6 +596,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
 export async function HEAD(_req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
+  if (!isValidDocId(id)) {
+    return new Response(null, { status: 400 });
+  }
   const supabase = getSupabaseClient();
   if (!supabase) {
     return new Response(null, { status: 503 });

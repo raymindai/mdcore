@@ -556,6 +556,18 @@ Toggle **NARROW** in the panel header to constrain content width for comfortable
 - **Sort** by newest, oldest, A→Z, Z→A
 `;
 
+/** Truncate title respecting grapheme clusters (emoji-safe) */
+function truncateTitle(title: string, max: number): string {
+  if (title.length <= max) return title;
+  if (typeof Intl !== "undefined" && Intl.Segmenter) {
+    const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+    const segments = [...segmenter.segment(title)];
+    if (segments.length <= max) return title;
+    return segments.slice(0, max).map(s => s.segment).join("") + "...";
+  }
+  return title.slice(0, max) + "...";
+}
+
 /** DiceBear identicon avatar URL — fallback when no profile/OAuth avatar */
 function dicebearUrl(seed: string, size = 40): string {
   return `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
@@ -2551,7 +2563,9 @@ export default function MdEditor() {
 
       // Check ?from= or ?doc= parameter
       const params = new URLSearchParams(window.location.search);
-      const fromId = params.get("from") || params.get("doc");
+      const docParam = params.get("from") || params.get("doc");
+      // Validate doc ID: only allow alphanumeric, hyphen, underscore (nanoid charset)
+      const fromId = docParam && /^[\w-]+$/.test(docParam) ? docParam : null;
       // Save editToken from URL if provided (from Chrome extension)
       const urlToken = params.get("token");
       if (fromId && urlToken) {
@@ -8088,7 +8102,7 @@ ${html}
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-                Share{title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}
+                Share{title ? ` "${truncateTitle(title, 30)}"` : ""}
               </h2>
               <button
                 onClick={() => setShowViewerShareModal(false)}
