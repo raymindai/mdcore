@@ -182,7 +182,8 @@ const AuthManager = {
         body: JSON.stringify({ refreshToken: data.refreshToken }),
       });
       if (!resp.ok) return false;
-      const result = await resp.json();
+      let result;
+      try { result = await resp.json(); } catch { this.save(null); return false; }
       if (result.token) {
         data.token = result.token;
         if (result.refreshToken) data.refreshToken = result.refreshToken;

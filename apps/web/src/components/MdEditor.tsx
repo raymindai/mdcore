@@ -2298,6 +2298,7 @@ export default function MdEditor() {
               if (idx === -1) { searchFrom = -1; break; }
               searchFrom = n < occurrenceIndex ? idx + block.length : idx;
             }
+            if (searchFrom === -1) return;
             mermaidSourceIndexRef.current = searchFrom;
             setCanvasMermaid(code);
             setShowMermaidModal(true);
@@ -2949,8 +2950,9 @@ export default function MdEditor() {
   // Notification polling (every 30s for logged-in users)
   useEffect(() => {
     if (!user?.email) { setNotifications([]); setUnreadCount(0); return; }
+    const controller = new AbortController();
     const fetchNotifs = () => {
-      fetch("/api/notifications", { headers: authHeaders })
+      fetch("/api/notifications", { headers: authHeadersRef.current, signal: controller.signal })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data) {
@@ -2962,7 +2964,7 @@ export default function MdEditor() {
     };
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 30000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); controller.abort(); };
   }, [user?.email]);
 
   // Preview: click to scroll to source + double-click to inline edit
@@ -3695,6 +3697,7 @@ export default function MdEditor() {
             // Still on the same tab — replace placeholder in current markdown
             const current = markdownForImageRef.current;
             const updated = current.replace(placeholder, imgMd);
+            markdownForImageRef.current = updated;
             setMarkdown(updated); doRender(updated); cmSetDoc(updated);
           } else {
             // Tab changed — update the original tab's markdown via setTabs
@@ -4555,6 +4558,9 @@ ${html}
         );
       }
       if (e.key === "Escape") {
+        // If a modal/dialog is handling Escape, don't also focus editor
+        const target = e.target as HTMLElement;
+        if (target.closest("[role='dialog'], [data-modal]")) return;
         cmFocus();
       }
       // WYSIWYG shortcuts — only when editing in preview (contentEditable)
