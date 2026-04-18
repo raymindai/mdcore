@@ -251,6 +251,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Proxy fetch requests from content script (bypasses CORS)
   if (request.action === "proxy-fetch") {
     const { url, options } = request;
+    try {
+      const parsed = new URL(url);
+      if (parsed.origin !== "https://mdfy.cc") {
+        sendResponse({ ok: false, error: "Only requests to mdfy.cc are allowed" });
+        return true;
+      }
+    } catch {
+      sendResponse({ ok: false, error: "Invalid URL" });
+      return true;
+    }
     fetch(url, options)
       .then(async (res) => {
         const text = await res.text();

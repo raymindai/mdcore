@@ -36,6 +36,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("PDF parse error:", msg);
-    return NextResponse.json({ error: `PDF parse failed: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: "PDF parse failed. The file may be corrupted or unsupported." }, { status: 500 });
   }
 }

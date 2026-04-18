@@ -131,7 +131,7 @@ export class MdfyClient {
     markdown: string,
     options?: UpdateOptions
   ): Promise<void> {
-    await this.request(`/api/docs/${id}`, {
+    await this.request(`/api/docs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         markdown,
@@ -151,7 +151,7 @@ export class MdfyClient {
    * @returns Document data
    */
   async pull(id: string): Promise<Document> {
-    return this.request<Document>(`/api/docs/${id}`);
+    return this.request<Document>(`/api/docs/${encodeURIComponent(id)}`);
   }
 
   /**
@@ -161,7 +161,7 @@ export class MdfyClient {
    * @param editToken - Edit token
    */
   async delete(id: string, editToken: string): Promise<void> {
-    await this.request(`/api/docs/${id}`, {
+    await this.request(`/api/docs/${encodeURIComponent(id)}`, {
       method: "DELETE",
       body: JSON.stringify({
         editToken,
@@ -192,7 +192,7 @@ export class MdfyClient {
    * @param id - Document ID
    */
   async setPublished(id: string): Promise<void> {
-    await this.request(`/api/docs/${id}`, {
+    await this.request(`/api/docs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         action: "publish",
@@ -208,7 +208,7 @@ export class MdfyClient {
    * @param id - Document ID
    */
   async setDraft(id: string): Promise<void> {
-    await this.request(`/api/docs/${id}`, {
+    await this.request(`/api/docs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         action: "unpublish",
@@ -228,7 +228,7 @@ export class MdfyClient {
    */
   async versions(id: string): Promise<VersionSummary[]> {
     const data = await this.request<{ versions: VersionSummary[] }>(
-      `/api/docs/${id}/versions`
+      `/api/docs/${encodeURIComponent(id)}/versions`
     );
     return data.versions;
   }
@@ -242,7 +242,7 @@ export class MdfyClient {
    */
   async version(docId: string, versionId: number): Promise<Version> {
     const data = await this.request<{ version: Version }>(
-      `/api/docs/${docId}/versions/${versionId}`
+      `/api/docs/${encodeURIComponent(docId)}/versions/${encodeURIComponent(String(versionId))}`
     );
     return data.version;
   }
@@ -302,7 +302,7 @@ export class MdfyClient {
       throw new MdfyApiError("userId required to rotate token", 400);
     }
     const data = await this.request<{ editToken: string }>(
-      `/api/docs/${id}`,
+      `/api/docs/${encodeURIComponent(id)}`,
       {
         method: "PATCH",
         body: JSON.stringify({
@@ -324,7 +324,7 @@ export class MdfyClient {
     if (!this.userId) {
       throw new MdfyApiError("userId required to change edit mode", 400);
     }
-    await this.request(`/api/docs/${id}`, {
+    await this.request(`/api/docs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         action: "change-edit-mode",
@@ -353,7 +353,7 @@ export class MdfyClient {
     const data = await this.request<{
       allowedEmails: string[];
       allowedEditors: string[];
-    }>(`/api/docs/${id}`, {
+    }>(`/api/docs/${encodeURIComponent(id)}`, {
       method: "PATCH",
       body: JSON.stringify({
         action: "set-allowed-emails",

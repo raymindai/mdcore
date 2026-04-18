@@ -33,6 +33,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Office parse error:", msg);
-    return NextResponse.json({ error: `Office parse failed: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: "Office file parse failed. The file may be corrupted or unsupported." }, { status: 500 });
   }
 }

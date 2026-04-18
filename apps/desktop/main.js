@@ -1124,11 +1124,25 @@ ipcMain.handle("get-workspace-tree", () => {
 ipcMain.handle("create-folder", async (event, parentPath) => {
   const target = parentPath || currentWorkspaceFolder;
   if (!target) return { error: "No workspace" };
+  if (currentWorkspaceFolder) {
+    const resolvedTarget = path.resolve(target);
+    const resolvedWorkspace = path.resolve(currentWorkspaceFolder);
+    if (!resolvedTarget.startsWith(resolvedWorkspace + path.sep) && resolvedTarget !== resolvedWorkspace) {
+      return { error: "Path must be within the workspace directory" };
+    }
+  }
   const result = await dialog.showSaveDialog(mainWindow, {
     defaultPath: path.join(target, "New Folder"),
     buttonLabel: "Create Folder",
   });
   if (result.canceled || !result.filePath) return { error: "Cancelled" };
+  if (currentWorkspaceFolder) {
+    const resolvedResult = path.resolve(result.filePath);
+    const resolvedWorkspace = path.resolve(currentWorkspaceFolder);
+    if (!resolvedResult.startsWith(resolvedWorkspace + path.sep) && resolvedResult !== resolvedWorkspace) {
+      return { error: "Folder must be created within the workspace directory" };
+    }
+  }
   try {
     fs.mkdirSync(result.filePath, { recursive: true });
     return { ok: true, path: result.filePath };
@@ -1139,6 +1153,13 @@ ipcMain.handle("create-folder", async (event, parentPath) => {
 
 ipcMain.handle("move-file", async (event, fromPath, toFolder) => {
   try {
+    if (!currentWorkspaceFolder) return { error: "No workspace" };
+    const resolvedFrom = path.resolve(fromPath);
+    const resolvedTo = path.resolve(toFolder);
+    const resolvedWorkspace = path.resolve(currentWorkspaceFolder);
+    if (!resolvedFrom.startsWith(resolvedWorkspace + path.sep) || !resolvedTo.startsWith(resolvedWorkspace + path.sep)) {
+      return { error: "Path must be within the workspace directory" };
+    }
     const fileName = path.basename(fromPath);
     const destPath = path.join(toFolder, fileName);
     if (fs.existsSync(destPath)) return { error: "File already exists in destination" };
@@ -1176,9 +1197,8 @@ ipcMain.handle("login", () => {
   const callbackUrl = encodeURIComponent("mdfy://auth");
   const url = `${MDFY_URL}/auth/desktop?redirect=${callbackUrl}`;
   console.log("[login] Opening:", url);
-  require("child_process").exec(`open "${url}"`, (err) => {
-    if (err) console.error("[login] exec error:", err);
-    else console.log("[login] Browser opened successfully");
+  shell.openExternal(url).catch((err) => {
+    console.error("[login] openExternal error:", err);
   });
 });
 
@@ -1381,6 +1401,7 @@ ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => 
   if (!net.isOnline()) return { error: "Offline" };
   try {
     const buffer = Buffer.from(base64Data, "base64");
+    if (buffer.length > 10 * 1024 * 1024) return { error: "File too large (max 10MB)" };
     const boundary = "----mdfyUpload" + Date.now();
     const safeFileName = fileName.replace(/["\r\n\\]/g, "_");
     const body = Buffer.concat([
@@ -1421,7 +1442,7 @@ ipcMain.handle("open-in-browser", (event, url) => {
 });
 
 ipcMain.handle("open-quicklook-settings", () => {
-  require("child_process").exec('open "x-apple.systempreferences:com.apple.ExtensionsPreferences"');
+  shell.openExternal("x-apple.systempreferences:com.apple.ExtensionsPreferences");
   // Mark as installed after user opens settings
   const marker = path.join(USER_DATA_DIR, ".quicklook-installed");
   fs.writeFileSync(marker, new Date().toISOString());

@@ -160,7 +160,7 @@ server.tool(
   async ({ id }) => {
     try {
       const doc = await api<{ markdown: string; title: string | null; updated_at: string; is_draft: boolean }>(
-        `/api/docs/${id}`
+        `/api/docs/${encodeURIComponent(id)}`
       );
       return {
         content: [{
@@ -184,7 +184,7 @@ server.tool(
   async ({ id, markdown, title }) => {
     try {
       const editToken = getToken(id) || "";
-      await api(`/api/docs/${id}`, {
+      await api(`/api/docs/${encodeURIComponent(id)}`, {
         method: "PATCH",
         body: JSON.stringify({
           markdown, title, editToken,
@@ -231,12 +231,12 @@ server.tool(
     try {
       const editToken = getToken(id) || "";
       if (permanent) {
-        await api(`/api/docs/${id}`, {
+        await api(`/api/docs/${encodeURIComponent(id)}`, {
           method: "DELETE",
           body: JSON.stringify({ editToken }),
         });
       } else {
-        await api(`/api/docs/${id}`, {
+        await api(`/api/docs/${encodeURIComponent(id)}`, {
           method: "PATCH",
           body: JSON.stringify({ action: "soft-delete", editToken }),
         });
@@ -263,7 +263,7 @@ server.tool(
   async ({ id, published }) => {
     try {
       const editToken = getToken(id) || "";
-      await api(`/api/docs/${id}`, {
+      await api(`/api/docs/${encodeURIComponent(id)}`, {
         method: "PATCH",
         body: JSON.stringify({
           action: published ? "publish" : "unpublish",

@@ -234,9 +234,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
     const updates: Record<string, unknown> = {};
     if (Array.isArray(allowedEmails)) {
+      if (allowedEmails.length > 50) return NextResponse.json({ error: "Too many allowed emails (max 50)" }, { status: 400 });
       updates.allowed_emails = allowedEmails.map((e: string) => e.trim().toLowerCase()).filter((e: string) => e.includes("@"));
     }
     if (Array.isArray(allowedEditors)) {
+      if (allowedEditors.length > 50) return NextResponse.json({ error: "Too many allowed editors (max 50)" }, { status: 400 });
       updates.allowed_editors = allowedEditors.map((e: string) => e.trim().toLowerCase()).filter((e: string) => e.includes("@"));
     }
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
@@ -282,7 +284,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       title: doc.title,
       version_number: nextVersion,
       created_by: userId || null,
-      change_summary: changeSummary || "Session snapshot",
+      change_summary: changeSummary ? changeSummary.slice(0, 500) : "Session snapshot",
     });
 
     return NextResponse.json({ ok: true, version: nextVersion });
@@ -458,7 +460,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   // ─── Default: update with version history ───
-  const { editToken, markdown, title, userId, anonymousId, changeSummary } = body;
+  const { editToken, markdown, title, userId, anonymousId, changeSummary: rawChangeSummary } = body;
+  const changeSummary = rawChangeSummary ? rawChangeSummary.slice(0, 500) : null;
 
   const { data: doc } = await supabase
     .from("documents")
