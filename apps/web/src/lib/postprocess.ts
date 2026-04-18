@@ -1,6 +1,11 @@
 import katex from "katex";
 import hljs from "highlight.js";
 
+// Simple result cache — avoids redundant highlight.js/KaTeX processing
+// when the same HTML is re-rendered (e.g., theme change, view mode switch)
+let _prevInput = "";
+let _prevOutput = "";
+
 /**
  * Post-process HTML rendered by the Rust engine.
  * Handles client-side rendering of:
@@ -15,6 +20,8 @@ export function postProcessHtml(
   html: string,
   options?: { highlight?: boolean; math?: boolean; asciiDiagrams?: boolean }
 ): string {
+  if (html === _prevInput) return _prevOutput;
+
   const opts = { highlight: true, math: true, asciiDiagrams: true, ...options };
   let result = html;
 
@@ -54,6 +61,8 @@ export function postProcessHtml(
   // NOTE: Mermaid is handled via DOM in useEffect (consumer's responsibility),
   // not here. This avoids fragile regex matching on HTML strings.
 
+  _prevInput = html;
+  _prevOutput = result;
   return result;
 }
 

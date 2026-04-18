@@ -1492,7 +1492,12 @@ export default function MdEditor() {
       const last = undoStack.current[undoStack.current.length - 1];
       if (val !== last) {
         undoStack.current.push(val);
-        if (undoStack.current.length > 100) undoStack.current.shift();
+        // Trim stack: max 50 entries, max ~5MB total
+        while (undoStack.current.length > 50) undoStack.current.shift();
+        let totalSize = undoStack.current.reduce((sum, s) => sum + s.length, 0);
+        while (totalSize > 5 * 1024 * 1024 && undoStack.current.length > 1) {
+          totalSize -= undoStack.current.shift()!.length;
+        }
         redoStack.current = [];
       }
     }, 500);
@@ -3643,7 +3648,8 @@ export default function MdEditor() {
       setMarkdown(value);
       if (debounceRef.current) clearTimeout(debounceRef.current);
       // Increase debounce for large documents to avoid lag
-      const debounceTime = value.length > 50000 ? 500 : 150;
+      const len = value.length;
+      const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
       debounceRef.current = setTimeout(() => doRender(value), debounceTime);
     },
     [doRender, setMarkdown]
@@ -4096,7 +4102,14 @@ export default function MdEditor() {
       }
       // Push current state to undo stack before replacing
       undoStack.current.push(md);
-      if (undoStack.current.length > 100) undoStack.current.shift();
+      // Trim stack: max 50 entries, max ~5MB total
+      while (undoStack.current.length > 50) undoStack.current.shift();
+      {
+        let totalSize = undoStack.current.reduce((sum, s) => sum + s.length, 0);
+        while (totalSize > 5 * 1024 * 1024 && undoStack.current.length > 1) {
+          totalSize -= undoStack.current.shift()!.length;
+        }
+      }
       redoStack.current = [];
       // Update markdown + tab
       setMarkdown(newMd);
@@ -4763,6 +4776,22 @@ ${html}
     copied: "COPIED!",
     error: "RETRY",
   }[shareState];
+
+  // Memoize sidebar filter computations to avoid re-filtering on every render
+  const memoAllMyTabs = useMemo(() =>
+    tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable"),
+    [tabs]
+  );
+
+  const memoTrashTabs = useMemo(() =>
+    isAuthenticated ? tabs.filter(t => t.deleted) : [],
+    [tabs, isAuthenticated]
+  );
+
+  const memoExampleTabs = useMemo(() => {
+    const canonicalIds = new Set(EXAMPLE_TABS.map(e => e.id));
+    return tabs.filter(t => !t.deleted && canonicalIds.has(t.id) && !hiddenExampleIds.has(t.id));
+  }, [tabs, hiddenExampleIds]);
 
   return (
     <div
@@ -5705,7 +5734,7 @@ ${html}
           }}>
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
-              const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
+              const allMyTabs = memoAllMyTabs;
               const myTabs = docFilter === "all" ? allMyTabs
                 : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
                 : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
@@ -6249,8 +6278,7 @@ ${html}
 
             {/* ── Section: EXAMPLES (hidden entirely when toggle is OFF) ── */}
             {showExamples && (() => {
-              const canonicalIds = new Set(EXAMPLE_TABS.map(e => e.id));
-              const exampleTabs = tabs.filter(t => !t.deleted && canonicalIds.has(t.id) && !hiddenExampleIds.has(t.id));
+              const exampleTabs = memoExampleTabs;
               return (
                 <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
@@ -6285,7 +6313,7 @@ ${html}
             {/* ── Section 3: TRASH ── */}
             {(() => {
               // Trash: all deleted documents (mine + shared I removed from list)
-              const trashTabs = isAuthenticated ? tabs.filter(t => t.deleted) : [];
+              const trashTabs = memoTrashTabs;
               return (<>
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
