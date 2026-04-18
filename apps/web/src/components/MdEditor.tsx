@@ -577,8 +577,10 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
     Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
+  } else if (tab.cloudId) {
+    Icon = Cloud; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Synced";
   } else {
-    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = tab.cloudId ? "Saved to cloud" : "Local document";
+    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Local";
   }
 
   return (
