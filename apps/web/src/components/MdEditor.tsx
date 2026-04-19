@@ -7030,8 +7030,6 @@ ${html}
             /* ─── Start Screen (Mac style — centered, simple) ─── */
             <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
               <div className="w-full max-w-md mx-4 text-center py-12">
-                <div className="mb-5"><MdfyLogo size={28} /></div>
-                <p className="text-[13px] mb-8" style={{ color: "var(--text-muted)" }}>The Markdown Hub</p>
                 <div className="space-y-1.5 mb-7">
                   {[
                     { label: "New Document", kbd: isMobile ? "" : mod + "N", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
