@@ -7171,6 +7171,46 @@ ${html}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
             <div className="flex-1 flex min-h-0">
+            {showOnboarding ? (
+              <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
+                <div className="w-full max-w-sm mx-4 text-center py-12">
+                  <div className="mb-5"><MdfyLogo size={28} /></div>
+                  <p className="text-[13px] mb-8" style={{ color: "var(--text-muted)" }}>The Markdown Hub</p>
+                  <div className="space-y-1.5 mb-7">
+                    {[
+                      { label: "New Document", kbd: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318N" : "Ctrl+N"), fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
+                      { label: "Paste from Clipboard", kbd: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318V" : "Ctrl+V"), fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                      { label: "Import File", kbd: "", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
+                    ].map((item) => (
+                      <button key={item.label} onClick={item.fn}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-all hover:bg-[var(--surface)]"
+                        style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "transparent" }}>
+                        <span className="flex-1 text-left">{item.label}</span>
+                        {item.kbd && <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mb-7 py-5 rounded-lg"
+                    style={{ border: "1px dashed var(--border)", color: "var(--text-faint)" }}
+                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+                    onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; }}
+                    onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}>
+                    <p className="text-[12px]">Drop files here</p>
+                    <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
+                  </div>
+                  <div className="mb-5">
+                    <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {["Chrome", "VS Code", "Mac", "CLI", "MCP", "GitHub"].map((ch) => (
+                        <span key={ch} className="px-1.5 py-0.5 rounded text-[9px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+                    className="text-[11px]" style={{ color: "var(--text-faint)" }}>Skip</button>
+                </div>
+              </div>
+            ) : (
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
               clearHighlight();
@@ -7239,7 +7279,7 @@ ${html}
                   dangerouslySetInnerHTML={{ __html: "" }}
                 />
               )}
-              </div>{/* end scrollable preview */}
+              </div>)}{/* end scrollable preview / start screen */}
               {/* ─── AI Panel (side-by-side) ─── */}
               {showAIPanel && canEdit && (
                 <div
@@ -8718,10 +8758,10 @@ ${html}
       )}
 
       {/* ── Command Palette (Cmd+K) ── */}
-      {/* Start screen — Mac-style welcome */}
-      {showOnboarding && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center" style={{ background: "var(--background)" }}>
-          <div className="w-full max-w-sm mx-4 text-center">
+      {/* Old start screen removed — now inline in Live content area */}
+      {false && (
+        <div className="hidden">
+          <div className="hidden">
             {/* Logo */}
             <div className="mb-6">
               <MdfyLogo size={32} />
