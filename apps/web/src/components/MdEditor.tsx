@@ -4929,7 +4929,7 @@ ${html}
           {title && (
             <button
               className="text-xs pl-2 sm:pl-3 truncate hover:text-[var(--accent)] transition-colors hidden sm:block"
-              style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)" }}
+              style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)", maxWidth: "clamp(120px, 25vw, 300px)" }}
               title="Click to rename"
               onClick={() => {
                 setInlineInput({
