@@ -3,6 +3,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import crypto from "crypto";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,8 @@ const ALLOWED_TYPES = new Set([
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-const QUOTA_FREE = 100 * 1024 * 1024;  // 100MB
-const QUOTA_PRO = 10 * 1024 * 1024 * 1024; // 10GB
+const QUOTA_FREE = 20 * 1024 * 1024;   // 20MB
+const QUOTA_PRO = 1024 * 1024 * 1024;  // 1GB
 
 export async function POST(req: NextRequest) {
   const supabase = getSupabaseClient();
@@ -90,33 +91,53 @@ export async function POST(req: NextRequest) {
     const quotaMB = Math.round(quota / 1024 / 1024);
     return NextResponse.json(
       {
-        error: `Storage limit reached (${usedMB}MB / ${quotaMB}MB). ${!userId ? "Sign in for 100MB free storage." : quota < QUOTA_PRO ? "Upgrade to Pro for 10GB." : ""}`,
+        error: `Storage limit reached (${usedMB}MB / ${quotaMB}MB). ${!userId ? "Sign in for 20MB free storage." : quota < QUOTA_PRO ? "Upgrade to Pro for 1GB." : ""}`,
         quotaExceeded: true,
       },
       { status: 413 }
     );
   }
 
-  // Read file buffer and compute content hash
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const hash = crypto.createHash("sha256").update(buffer).digest("hex").slice(0, 16);
+  // Read file buffer
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
 
-  // Determine extension
-  const extMap: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/gif": "gif",
-    "image/webp": "webp",
-    "image/svg+xml": "svg",
-  };
-  const ext = extMap[file.type] || "png";
+  // Convert to WebP (except SVG and GIF which should stay as-is)
+  let uploadBuffer: Buffer;
+  let uploadContentType: string;
+  let ext: string;
+
+  if (file.type === "image/svg+xml") {
+    // SVG: keep as-is (vector format, no conversion needed)
+    uploadBuffer = rawBuffer;
+    uploadContentType = "image/svg+xml";
+    ext = "svg";
+  } else if (file.type === "image/gif") {
+    // GIF: keep as-is (may be animated)
+    uploadBuffer = rawBuffer;
+    uploadContentType = "image/gif";
+    ext = "gif";
+  } else {
+    // JPEG, PNG, WebP → convert to WebP (smaller file size)
+    try {
+      uploadBuffer = await sharp(rawBuffer).webp({ quality: 85 }).toBuffer();
+      uploadContentType = "image/webp";
+      ext = "webp";
+    } catch {
+      // Fallback: upload original if conversion fails
+      uploadBuffer = rawBuffer;
+      uploadContentType = file.type;
+      ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
+    }
+  }
+
+  const hash = crypto.createHash("sha256").update(uploadBuffer).digest("hex").slice(0, 16);
   const storagePath = `${ownerId}/${hash}.${ext}`;
 
   // Upload to Supabase Storage (upsert — dedup by hash)
   const { error: uploadError } = await supabase.storage
     .from("document-images")
-    .upload(storagePath, buffer, {
-      contentType: file.type,
+    .upload(storagePath, uploadBuffer, {
+      contentType: uploadContentType,
       upsert: true,
     });
 
@@ -134,13 +155,15 @@ export async function POST(req: NextRequest) {
   if (userId) {
     await supabase
       .from("profiles")
-      .update({ storage_used_bytes: currentUsage + file.size })
+      .update({ storage_used_bytes: currentUsage + uploadBuffer.length })
       .eq("id", userId);
   }
 
   return NextResponse.json({
     url: urlData.publicUrl,
-    size: file.size,
+    size: uploadBuffer.length,
+    originalSize: rawBuffer.length,
+    format: ext,
     hash,
   });
 }

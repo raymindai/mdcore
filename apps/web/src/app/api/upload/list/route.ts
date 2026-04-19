@@ -4,8 +4,8 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 export const runtime = "nodejs";
 
-const QUOTA_FREE = 100 * 1024 * 1024;  // 100MB
-const QUOTA_PRO = 10 * 1024 * 1024 * 1024; // 10GB
+const QUOTA_FREE = 20 * 1024 * 1024;   // 20MB
+const QUOTA_PRO = 1024 * 1024 * 1024;  // 1GB
 
 export async function GET(req: NextRequest) {
   const supabase = getSupabaseClient();
