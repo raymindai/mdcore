@@ -7155,42 +7155,16 @@ ${html}
               />
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
+            {/* Toolbar hint — speech bubble style on the toolbar toggle button */}
             {!showToolbar && canEdit && !editorPlaceholder && !toolbarHintDismissed && viewMode === "preview" && (
-              <div className="flex items-center justify-center gap-2 py-1.5 text-[10px]"
-                style={{ color: "var(--text-muted)", background: "var(--toggle-bg)" }}>
-                <span>Formatting toolbar is hidden.</span>
-                <button onClick={() => setShowToolbar(true)} style={{ color: "var(--accent)" }}>Show</button>
-                <span style={{ color: "var(--border)" }}>|</span>
-                <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} style={{ color: "var(--text-faint)" }}>Dismiss</button>
-              </div>
-            )}
-            {/* Onboarding banner — first visit only */}
-            {showOnboarding && (
-              <div
-                className="mx-3 sm:mx-4 mt-2 mb-1 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
-                style={{
-                  background: "var(--toggle-bg)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold mb-1" style={{ color: "var(--text-primary)", fontSize: 12 }}>
-                      Welcome to mdfy.cc — paste anything, get a beautiful shareable URL.
-                    </div>
-                    <div className="space-y-0.5" style={{ color: "var(--text-faint)" }}>
-                      <div>1. Type or paste Markdown</div>
-                      <div>2. Click Share to publish</div>
-                      <div>3. Send the URL to anyone</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
-                    className="shrink-0 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors"
-                    style={{ background: "var(--accent)", color: "#000" }}
-                  >
-                    Got it
-                  </button>
+              <div className="relative flex justify-end px-3 sm:px-4">
+                <div className="relative mt-1 px-3 py-1.5 rounded-md text-[10px]"
+                  style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                  <span>Formatting tools available </span>
+                  <button onClick={() => setShowToolbar(true)} className="font-semibold underline">Enable</button>
+                  <span> or </span>
+                  <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} style={{ color: "var(--text-muted)" }}>hide this</button>
+                  <div className="absolute -top-1 right-4 w-2 h-2 rotate-45" style={{ background: "var(--accent-dim)" }} />
                 </div>
               </div>
             )}
@@ -8742,6 +8716,61 @@ ${html}
       )}
 
       {/* ── Command Palette (Cmd+K) ── */}
+      {/* Welcome overlay — first visit */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+          <div className="w-full max-w-md mx-4 rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            {/* Header */}
+            <div className="px-8 pt-8 pb-4 text-center">
+              <MdfyLogo size={28} />
+              <h2 className="mt-4 text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                Welcome to mdfy.cc
+              </h2>
+              <p className="mt-1 text-[13px]" style={{ color: "var(--text-muted)" }}>
+                The Markdown Hub. Collect, edit, publish.
+              </p>
+            </div>
+            {/* Steps */}
+            <div className="px-8 pb-6">
+              <div className="space-y-3">
+                {[
+                  { step: "1", title: "Paste or type anything", desc: "Markdown, plain text, AI output, or drop a file" },
+                  { step: "2", title: "Edit with AI", desc: "Polish, translate, summarize, or ask AI to edit" },
+                  { step: "3", title: "Share with one click", desc: "Get a permanent URL anyone can view" },
+                ].map((s) => (
+                  <div key={s.step} className="flex items-start gap-3">
+                    <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                      {s.step}
+                    </span>
+                    <div>
+                      <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{s.title}</div>
+                      <div className="text-[11px]" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Shortcuts hint */}
+            <div className="px-8 pb-4">
+              <div className="flex items-center justify-center gap-4 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 9 }}>{typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"}+K</kbd> commands</span>
+                <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 9 }}>{typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"}+S</kbd> share</span>
+              </div>
+            </div>
+            {/* CTA */}
+            <div className="px-8 pb-8">
+              <button
+                onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+                className="w-full py-2.5 rounded-lg text-[13px] font-semibold transition-colors"
+                style={{ background: "var(--accent)", color: "#000" }}
+              >
+                Start writing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCommandPalette && (() => {
         const commands = [
           { label: "New Document", action: () => addTab() },
