@@ -7296,7 +7296,7 @@ ${html}
                               className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
                               style={{ color: "var(--text-faint)", background: "var(--background)" }}
                             >
-                              ↩ Undo
+                              Undo
                             </button>
                           )}
                         </div>
