@@ -186,6 +186,10 @@ export default function AboutPage() {
 
       {/* ───────── 3. BEFORE / WITH MDFY ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        {/* Before/After visual — raw md vs rendered */}
+        <div style={{ margin: "0 auto 32px", maxWidth: 960, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <img src="/images/before-after.png" alt="Raw Markdown on the left, beautifully rendered mdfy output on the right" style={{ width: "100%", display: "block" }} />
+        </div>
         <div className="about-grid-2" style={{ gap: 16 }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-faint)", marginTop: 0, marginBottom: 16, textDecoration: "line-through" }}>Before mdfy</h3>
@@ -370,6 +374,33 @@ export default function AboutPage() {
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ───────── FEATURE DETAIL IMAGES ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <div className="about-grid-3">
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <img src="/images/feature-math.png" alt="KaTeX math rendering — inline and display equations" style={{ width: "100%", display: "block" }} />
+            <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>KaTeX Math</p>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Publication-quality equations</p>
+            </div>
+          </div>
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <img src="/images/feature-mermaid.png" alt="Mermaid diagram — flowchart rendered from Markdown" style={{ width: "100%", display: "block" }} />
+            <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Mermaid Diagrams</p>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Flowcharts, sequences, Gantt</p>
+            </div>
+          </div>
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <img src="/images/feature-code.png" alt="Syntax-highlighted code block with copy button" style={{ width: "100%", display: "block" }} />
+            <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Code Highlighting</p>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>190+ languages, copy button</p>
+            </div>
+          </div>
         </div>
       </section>
 
