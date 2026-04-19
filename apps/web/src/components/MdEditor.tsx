@@ -7029,7 +7029,7 @@ ${html}
           {showOnboarding ? (
             /* ─── Start Screen (Mac style — centered, simple) ─── */
             <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
-              <div className="w-full max-w-sm mx-4 text-center py-12">
+              <div className="w-full max-w-md mx-4 text-center py-12">
                 <div className="mb-5"><MdfyLogo size={28} /></div>
                 <p className="text-[13px] mb-8" style={{ color: "var(--text-muted)" }}>The Markdown Hub</p>
                 <div className="space-y-1.5 mb-7">
@@ -7087,7 +7087,7 @@ ${html}
                       { label: "GitHub", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5A7.5 7.5 0 005.7 15c.4.1.5-.2.5-.4V13c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4 0-.9.3-1.6.8-2.2-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.4 7.4 0 014 0c1.5-1 2.2-.8 2.2-.8.5 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.2 0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.6v2.4c0 .2.1.5.6.4A7.5 7.5 0 008 .5z"/></svg>, url: "/plugins#chrome" },
                     ]).map((ch) => (
                       <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] cursor-pointer"
+                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] cursor-pointer"
                         style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
@@ -7107,7 +7107,7 @@ ${html}
                       { label: "Trending", icon: <Zap width={12} height={12} />, url: "/discover" },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] cursor-pointer"
+                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] cursor-pointer"
                         style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
