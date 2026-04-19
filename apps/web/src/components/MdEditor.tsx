@@ -7024,8 +7024,6 @@ ${html}
                     ))}
                   </div>
                 </div>
-                <button onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
-                  className="text-[11px]" style={{ color: "var(--text-faint)" }}>Skip</button>
               </div>
             </div>
           ) : (<>
