@@ -7030,6 +7030,31 @@ ${html}
             /* ─── Start Screen (Mac style — centered, simple) ─── */
             <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
               <div className="w-full max-w-md mx-4 text-center py-12">
+                {/* Recent files — top, card style */}
+                {(() => {
+                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER).slice(0, 5);
+                  if (recent.length === 0) return null;
+                  return (
+                    <div className="mb-8">
+                      <p className="text-[10px] mb-3 text-left" style={{ color: "var(--text-faint)" }}>Recent</p>
+                      <div className="space-y-1.5">
+                        {recent.map((t) => (
+                          <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] text-left cursor-pointer"
+                            style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "var(--surface)", transition: "all 0.15s" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+                            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.98)"; }}
+                            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}>
+                            <FileIcon width={14} height={14} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                            <span className="flex-1 truncate">{t.title || "Untitled"}</span>
+                            {t.cloudId && <CircleCheck width={10} height={10} style={{ color: "var(--text-faint)", flexShrink: 0 }} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="space-y-1.5 mb-7">
                   {[
                     { label: "New Document", kbd: isMobile ? "" : mod + "N", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
@@ -7059,27 +7084,7 @@ ${html}
                   <p className="text-[12px]">Drop files here to open</p>
                   <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
                 </div>
-                {/* Recent files */}
-                {(() => {
-                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER).slice(0, 5);
-                  if (recent.length === 0) return null;
-                  return (
-                    <div className="mb-7">
-                      <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Recent</p>
-                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        {recent.map((t) => (
-                          <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
-                            className="px-2 py-1 rounded text-[10px] cursor-pointer"
-                            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", transition: "all 0.15s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
-                            {t.title || "Untitled"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
+                {/* Recent files moved to top — see below */}
                 <div className="mb-7">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Examples</p>
                   <div className="flex items-center justify-center gap-1.5 flex-wrap">
