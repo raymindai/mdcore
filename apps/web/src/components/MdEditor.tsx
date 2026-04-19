@@ -5150,7 +5150,8 @@ ${html}
             )},
           ]).map(({ mode, label, icon }) => {
             const active = !showOnboarding && viewMode === mode;
-            const disabled = showOnboarding;
+            const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
+            const disabled = showOnboarding && !hasActiveDoc;
             return (
               <button
                 key={mode}
