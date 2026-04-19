@@ -7039,17 +7039,23 @@ ${html}
                     { label: "Import File", kbd: "", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
                   ].map((item) => (
                     <button key={item.label} onClick={item.fn}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-colors cursor-pointer hover:bg-[var(--surface)]"
-                      style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "transparent" }}>
+                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] cursor-pointer"
+                      style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "transparent", transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+                      onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.98)"; }}
+                      onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}>
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.kbd && <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
                     </button>
                   ))}
                 </div>
                 <div className="mb-7 py-5 rounded-lg cursor-pointer"
-                  style={{ border: "1px dashed var(--border)", color: "var(--text-faint)" }}
-                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                  onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; }}
+                  style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
+                  onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}
                   onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
                   onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); }}>
                   <p className="text-[12px]">Drop files here to open</p>
@@ -7060,14 +7066,18 @@ ${html}
                   <div className="flex items-center justify-center gap-1.5 flex-wrap">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="px-2 py-1 rounded text-[10px] transition-colors cursor-pointer hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
-                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ex.title}</button>
+                        className="px-2 py-1 rounded text-[10px] cursor-pointer"
+                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", transition: "all 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        {ex.title}
+                      </button>
                     ))}
                   </div>
                 </div>
                 <div className="mb-5">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
-                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     {([
                       { label: "Chrome", url: "/plugins#chrome" },
                       { label: "VS Code", url: "/plugins#vscode" },
@@ -7077,10 +7087,10 @@ ${html}
                       { label: "GitHub", url: "/plugins#chrome" },
                     ]).map((ch) => (
                       <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
-                        className="text-[11px] transition-all duration-150 cursor-pointer"
-                        style={{ color: "var(--text-faint)", textDecoration: "none" }}
-                        onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "var(--text-faint)"; }}>
+                        className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer"
+                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
+                        onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "var(--accent-dim)"; (e.target as HTMLElement).style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "var(--toggle-bg)"; (e.target as HTMLElement).style.color = "var(--text-muted)"; }}>
                         {ch.label}
                       </a>
                     ))}
