@@ -1536,6 +1536,10 @@ export default function MdEditor() {
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showImagePanel, setShowImagePanel] = useState(false);
+  const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
+  const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   const [aiProcessing, setAiProcessing] = useState<string | null>(null);
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
@@ -7167,7 +7171,7 @@ ${html}
                 {/* AI Actions dropdown — only for editable docs */}
                 {canEdit && <div className="relative group">
                   <button
-                    onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); }}
+                    onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
                     style={{ background: showAIPanel || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-muted)", fontWeight: 600, fontSize: 11 }}
                   >
@@ -7180,6 +7184,35 @@ ${html}
                     <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       AI Tools
+                    </div>
+                  )}
+                </div>}
+                {/* Images panel toggle */}
+                {isAuthenticated && <div className="relative group">
+                  <button
+                    onClick={() => {
+                      setShowImagePanel(prev => {
+                        if (!prev && userImages.length === 0 && !imagesLoading) {
+                          setImagesLoading(true);
+                          fetch("/api/upload/list", { headers: authHeaders })
+                            .then(r => r.ok ? r.json() : null)
+                            .then(data => { if (data) { setUserImages(data.images || []); setImageQuota(data.quota); } })
+                            .catch(() => {})
+                            .finally(() => setImagesLoading(false));
+                        }
+                        return !prev;
+                      });
+                      setShowAIPanel(false); setShowHistory(false); setShowExportMenu(false);
+                    }}
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
+                    style={{ background: showImagePanel ? "var(--accent-dim)" : "transparent", color: showImagePanel ? "var(--accent)" : "var(--text-faint)" }}
+                  >
+                    <ImageIcon width={11} height={11} />
+                  </button>
+                  {!showImagePanel && (
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      My Images
                     </div>
                   )}
                 </div>}
@@ -7504,6 +7537,75 @@ ${html}
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2L2 8.5l5 2L9.5 16z"/><path d="M14 2L7 10.5"/></svg>
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+              {/* ─── Images Panel (side-by-side) ─── */}
+              {showImagePanel && isAuthenticated && (
+                <div className="flex flex-col shrink-0" style={{ width: "min(300px, 50%)", background: "var(--surface)", borderLeft: "1px solid var(--border)" }}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                    <div className="flex items-center gap-1.5">
+                      <ImageIcon width={12} height={12} style={{ color: "var(--accent)" }} />
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>My Images</span>
+                      {userImages.length > 0 && <span className="text-[9px] px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{userImages.length}</span>}
+                    </div>
+                    <button onClick={() => setShowImagePanel(false)} className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>
+                      <X width={10} height={10} />
+                    </button>
+                  </div>
+                  {/* Quota bar */}
+                  {imageQuota && (
+                    <div className="px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                      <div className="flex items-center justify-between text-[9px] mb-1" style={{ color: "var(--text-faint)" }}>
+                        <span>{Math.round(imageQuota.used / 1024 / 1024)}MB used</span>
+                        <span>{Math.round(imageQuota.total / 1024 / 1024)}MB total</span>
+                      </div>
+                      <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (imageQuota.used / imageQuota.total) * 100)}%`, background: imageQuota.used / imageQuota.total > 0.9 ? "#ef4444" : "var(--accent)" }} />
+                      </div>
+                    </div>
+                  )}
+                  {/* Image grid */}
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {imagesLoading ? (
+                      <div className="text-center py-8">
+                        <Loader2 width={16} height={16} className="mx-auto animate-spin" style={{ color: "var(--text-faint)" }} />
+                        <p className="text-[10px] mt-2" style={{ color: "var(--text-faint)" }}>Loading images...</p>
+                      </div>
+                    ) : userImages.length === 0 ? (
+                      <div className="text-center py-8">
+                        <ImageIcon width={24} height={24} className="mx-auto mb-2" style={{ color: "var(--border)", opacity: 0.5 }} />
+                        <p className="text-[11px]" style={{ color: "var(--text-faint)" }}>No images yet</p>
+                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>Paste or drag images into your document</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {userImages.map((img) => (
+                          <div key={img.name} className="group relative rounded-md overflow-hidden cursor-pointer" style={{ border: "1px solid var(--border-dim)" }}
+                            onClick={() => {
+                              const md = `![${img.name}](${img.url})`;
+                              const current = markdownRef.current;
+                              const newMd = current + "\n" + md + "\n";
+                              setMarkdown(newMd);
+                              doRender(newMd);
+                              cmSetDocRef.current?.(newMd);
+                              showToast("Image inserted", "success");
+                            }}>
+                            <img src={img.url} alt={img.name} loading="lazy" className="w-full aspect-square object-cover" style={{ background: "var(--toggle-bg)" }} />
+                            <div className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(transparent 40%, rgba(0,0,0,0.7))" }}>
+                              <div className="w-full px-1.5 py-1 flex items-center gap-1">
+                                <span className="text-[8px] truncate flex-1" style={{ color: "#fff" }}>{img.name}</span>
+                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
+                                  className="shrink-0 p-0.5 rounded" style={{ color: "#fff" }} title="Copy URL">
+                                  <Copy width={9} height={9} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
