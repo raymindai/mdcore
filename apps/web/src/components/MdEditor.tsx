@@ -7155,17 +7155,13 @@ ${html}
               />
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
-            {/* Toolbar hint — speech bubble style on the toolbar toggle button */}
+            {/* Toolbar hint */}
             {!showToolbar && canEdit && !editorPlaceholder && !toolbarHintDismissed && viewMode === "preview" && (
-              <div className="relative flex justify-end px-3 sm:px-4">
-                <div className="relative mt-1 px-3 py-1.5 rounded-md text-[10px]"
-                  style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                  <span>Formatting tools available </span>
-                  <button onClick={() => setShowToolbar(true)} className="font-semibold underline">Enable</button>
-                  <span> or </span>
-                  <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} style={{ color: "var(--text-muted)" }}>hide this</button>
-                  <div className="absolute -top-1 right-4 w-2 h-2 rotate-45" style={{ background: "var(--accent-dim)" }} />
-                </div>
+              <div className="flex items-center justify-center gap-3 py-1.5 text-[10px]"
+                style={{ background: "var(--toggle-bg)", borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}>
+                <span>Formatting tools available</span>
+                <button onClick={() => setShowToolbar(true)} className="px-2 py-0.5 rounded text-[9px] font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Enable</button>
+                <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} className="text-[9px]" style={{ color: "var(--text-faint)" }}>Dismiss</button>
               </div>
             )}
             <div className="flex-1 flex min-h-0">
