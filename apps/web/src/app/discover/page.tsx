@@ -123,7 +123,7 @@ export default function DiscoverPage() {
             <div style={{ display: "flex", gap: 16 }}>
               <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
               <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>Plugins</Link>
-              <Link href="/discover" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Discover</Link>
+              <Link href="/discover" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Trending</Link>
             </div>
           </div>
           <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
@@ -133,14 +133,14 @@ export default function DiscoverPage() {
       {/* Hero */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px" }}>
         <p style={{ color: "var(--accent)", fontSize: 12, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", marginBottom: 16, fontFamily: "var(--font-geist-mono), monospace" }}>
-          Discover
+          Discover Trending Projects
         </p>
         <h1 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", color: "var(--text-primary)", maxWidth: 600, margin: "0 0 16px" }}>
-          Trending on GitHub,<br />
-          <span style={{ color: "var(--accent)" }}>beautiful on mdfy.cc</span>
+          Trending Project Docs,<br />
+          <span style={{ color: "var(--accent)" }}>beautifully rendered.</span>
         </h1>
         <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 500, lineHeight: 1.7 }}>
-          The hottest repos on GitHub — README files rendered beautifully. Click any to open in mdfy.cc.
+          Explore documentation from the hottest GitHub projects. Every .md file rendered with mdfy.cc.
         </p>
       </div>
 
