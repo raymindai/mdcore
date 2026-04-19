@@ -6995,20 +6995,34 @@ ${html}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
-                {/* Toolbar toggle — icon only with rich tooltip */}
+                {/* Toolbar toggle — icon with hint popover for new users */}
                 {canEdit && <div className="relative group">
                   <button
-                    onClick={() => setShowToolbar(!showToolbar)}
-                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
+                    onClick={() => { setShowToolbar(!showToolbar); if (!showToolbar && !toolbarHintDismissed) { setToolbarHintDismissed(true); try { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); } catch {} } }}
+                    className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${!showToolbar && !toolbarHintDismissed ? "ring-1 ring-[var(--accent)]" : ""}`}
                     style={{ background: showToolbar ? "var(--accent-dim)" : "transparent", color: showToolbar ? "var(--accent)" : "var(--text-faint)" }}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    <p style={{ color: showToolbar ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Formatting Toolbar {showToolbar ? "ON" : "OFF"}</p>
-                    <p>Bold, italic, headings, lists, links, and more.</p>
-                  </div>
+                  {/* Hint for new users — subtle ring + expanded tooltip */}
+                  {!showToolbar && !toolbarHintDismissed && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-40 p-2 rounded-lg text-[10px] leading-relaxed z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                      <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 3 }}>Formatting Tools</p>
+                      <p style={{ color: "var(--text-muted)", marginBottom: 6 }}>Click to enable bold, headings, lists, and more.</p>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setToolbarHintDismissed(true); try { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); } catch {} }}
+                        className="text-[9px]" style={{ color: "var(--text-faint)" }}>Dismiss</button>
+                    </div>
+                  )}
+                  {/* Regular hover tooltip (when hint is dismissed) */}
+                  {toolbarHintDismissed && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                      <p style={{ color: showToolbar ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Formatting Toolbar {showToolbar ? "ON" : "OFF"}</p>
+                      <p>Bold, italic, headings, lists, links, and more.</p>
+                    </div>
+                  )}
                 </div>}
                 {/* Narrow view toggle */}
                 <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
@@ -7155,15 +7169,7 @@ ${html}
               />
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
-            {/* Toolbar hint */}
-            {!showToolbar && canEdit && !editorPlaceholder && !toolbarHintDismissed && viewMode === "preview" && (
-              <div className="flex items-center justify-center gap-3 py-1.5 text-[10px]"
-                style={{ background: "var(--toggle-bg)", borderBottom: "1px solid var(--border-dim)", color: "var(--text-muted)" }}>
-                <span>Formatting tools available</span>
-                <button onClick={() => setShowToolbar(true)} className="px-2 py-0.5 rounded text-[9px] font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Enable</button>
-                <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} className="text-[9px]" style={{ color: "var(--text-faint)" }}>Dismiss</button>
-              </div>
-            )}
+            {/* Toolbar hint removed — now integrated into toolbar toggle button */}
             <div className="flex-1 flex min-h-0">
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
