@@ -1540,7 +1540,7 @@ export default function MdEditor() {
   const [aiProcessing, setAiProcessing] = useState<string | null>(null);
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
   const [aiChatInput, setAiChatInput] = useState("");
-  const [aiChatHistory, setAiChatHistory] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [aiChatHistory, setAiChatHistory] = useState<{ role: "user" | "ai"; text: string; canUndo?: boolean }[]>([]);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
@@ -4165,10 +4165,10 @@ export default function MdEditor() {
       }
       // Add AI response to chat history
       if (action === "chat") {
-        setAiChatHistory(prev => [...prev, { role: "ai", text: "Done — document updated." }]);
+        setAiChatHistory(prev => [...prev, { role: "ai", text: "Done — document updated.", canUndo: true }]);
       } else {
         const actionLabels: Record<string, string> = { polish: "Polished", summary: "Summary added", tldr: "TL;DR added", translate: "Translated" };
-        setAiChatHistory(prev => [...prev, { role: "ai", text: actionLabels[action] || "Done" }]);
+        setAiChatHistory(prev => [...prev, { role: "ai", text: actionLabels[action] || "Done", canUndo: true }]);
       }
       // Update title from new content
       const newTitle = extractTitleFromMd(newMd);
@@ -7286,7 +7286,19 @@ ${html}
                             background: msg.role === "user" ? "var(--accent-dim)" : "var(--toggle-bg)",
                             color: msg.role === "user" ? "var(--accent)" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
                           }}>
-                          {msg.text}
+                          <span>{msg.text}</span>
+                          {msg.canUndo && undoStack.current.length > 1 && (
+                            <button
+                              onClick={() => {
+                                undo();
+                                setAiChatHistory(prev => prev.map((m, j) => j === i ? { ...m, canUndo: false, text: m.text + " (undone)" } : m));
+                              }}
+                              className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                              style={{ color: "var(--text-faint)", background: "var(--background)" }}
+                            >
+                              ↩ Undo
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
