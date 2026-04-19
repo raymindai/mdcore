@@ -7639,20 +7639,33 @@ ${html}
                             </div>
                             {/* Image — click to preview in lightbox */}
                             <div className="cursor-pointer" onClick={() => setLightboxImage(img.url)}>
-                              <img src={img.url} alt={img.name} loading="lazy" className="w-full aspect-square object-cover" style={{ background: "var(--background)" }} />
+                              <img src={img.url} alt={img.name} loading="lazy" className="w-full object-contain" style={{ background: "var(--background)", maxHeight: 120 }} />
                             </div>
                             {/* Bottom bar: Insert + Copy */}
                             <div className="flex items-center gap-1 px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
                               <button onClick={() => {
                                 const imgMd = `\n![${img.name.replace(/\.\w+$/, "")}](${img.url})\n`;
+                                // Try CM6 cursor first (Source/Split view), then use insertBlockAtCursor for Live view
                                 const cursorPos = cmGetCursorPos();
-                                const current = markdownRef.current;
-                                const newMd = cursorPos > 0
-                                  ? current.slice(0, cursorPos) + imgMd + current.slice(cursorPos)
-                                  : current + imgMd;
-                                setMarkdown(newMd);
-                                doRender(newMd);
-                                cmSetDocRef.current?.(newMd);
+                                if (cursorPos > 0) {
+                                  const current = markdownRef.current;
+                                  const newMd = current.slice(0, cursorPos) + imgMd + current.slice(cursorPos);
+                                  setMarkdown(newMd);
+                                  doRender(newMd);
+                                  cmSetDocRef.current?.(newMd);
+                                } else if (viewMode === "preview") {
+                                  // Live view — insert at end of current content
+                                  // (contentEditable cursor position can't be reliably mapped to markdown offset)
+                                  const newMd = markdownRef.current.trimEnd() + "\n" + imgMd;
+                                  setMarkdown(newMd);
+                                  doRender(newMd);
+                                  cmSetDocRef.current?.(newMd);
+                                } else {
+                                  const newMd = markdownRef.current + imgMd;
+                                  setMarkdown(newMd);
+                                  doRender(newMd);
+                                  cmSetDocRef.current?.(newMd);
+                                }
                                 showToast("Image inserted", "success");
                               }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }}>
                                 Insert
