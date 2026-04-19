@@ -7589,12 +7589,21 @@ ${html}
                               {/* Insert button top-right */}
                               <button onClick={(e) => {
                                 e.stopPropagation();
-                                const md = `![${img.name}](${img.url})`;
-                                const current = markdownRef.current;
-                                const newMd = current + "\n" + md + "\n";
-                                setMarkdown(newMd);
-                                doRender(newMd);
-                                cmSetDocRef.current?.(newMd);
+                                const imgMd = `\n![${img.name.replace(/\.\w+$/, "")}](${img.url})\n`;
+                                // Insert at cursor position if available, otherwise append
+                                const cursorPos = cmGetCursorPos();
+                                if (cursorPos > 0) {
+                                  const current = markdownRef.current;
+                                  const newMd = current.slice(0, cursorPos) + imgMd + current.slice(cursorPos);
+                                  setMarkdown(newMd);
+                                  doRender(newMd);
+                                  cmSetDocRef.current?.(newMd);
+                                } else {
+                                  const newMd = markdownRef.current + imgMd;
+                                  setMarkdown(newMd);
+                                  doRender(newMd);
+                                  cmSetDocRef.current?.(newMd);
+                                }
                                 showToast("Image inserted", "success");
                               }} className="m-1 px-1.5 py-0.5 rounded text-[8px] font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
                                 Insert
