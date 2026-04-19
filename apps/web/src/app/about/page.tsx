@@ -5,11 +5,11 @@ import { DocsNav, SiteFooter } from "@/components/docs";
 export const metadata: Metadata = {
   title: "About — mdfy.cc",
   description:
-    "mdfy.cc — Your Markdown, Beautifully Published. Import anything, render beautifully, share instantly. Powered by Rust + WASM.",
+    "mdfy.cc — The Markdown Hub. Collect from anywhere, edit with AI, publish with a permanent URL. Powered by Rust + WASM.",
   openGraph: {
     title: "About — mdfy.cc",
     description:
-      "Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.",
+      "Collect from anywhere. Edit with AI. Publish with a permanent URL. Powered by Rust + WASM.",
     url: "https://mdfy.cc/about",
   },
 };
@@ -112,7 +112,7 @@ export default function AboutPage() {
             fontFamily: "var(--font-geist-mono), monospace",
           }}
         >
-          About mdfy.cc
+          The Markdown Hub
         </p>
 
         <h1
@@ -126,9 +126,9 @@ export default function AboutPage() {
             margin: 0,
           }}
         >
-          Your Markdown, Beautifully Published.
+          Collect. Edit. Publish.
           <br />
-          <span style={{ color: "var(--accent)" }}>View. Edit. Share. Instantly.</span>
+          <span style={{ color: "var(--accent)" }}>All your Markdown in one place.</span>
         </h1>
 
         <p
@@ -140,9 +140,9 @@ export default function AboutPage() {
             marginTop: 28,
           }}
         >
-          Figma changed design by making it shareable via URL. mdfy does the same for documents.
-          Drop any file — PDF, Word, PowerPoint — or just paste. Get a beautiful, editable document
-          with a permanent URL. No install needed to view. Edit from anywhere — browser, VS Code, Mac, or mobile.
+          Markdown lives everywhere — AI chats, GitHub repos, terminals, editors.
+          mdfy.cc brings it all together. Capture from any source, edit with AI-powered tools,
+          and publish with a permanent URL. No install to view. No login to start.
         </p>
       </section>
 
@@ -162,13 +162,13 @@ export default function AboutPage() {
         <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 20, padding: "48px 40px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,146,60,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
           <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 32px", textAlign: "center" }}>
-            Write anywhere. Read everywhere.
+            Collect anywhere. Publish everywhere.
           </h2>
           <div className="about-grid-3">
             {[
-              { icon: "WRITE", color: "#fb923c", title: "Create from anywhere", items: ["Browser editor at mdfy.cc", "VS Code extension", "Mac desktop app", "Chrome extension — AI chats + GitHub .md", "CLI: mdfy publish"] },
-              { icon: "SHARE", color: "#4ade80", title: "One URL, works everywhere", items: ["Send to anyone — no app needed", "Paste URL in Slack, email, docs", "Embed in websites (iframe)", "QR code for mobile", "Password protect or set expiry"] },
-              { icon: "READ", color: "#60a5fa", title: "Consume in any context", items: ["Browser — full rendered view", "AI — paste URL as context", "Terminal: mdfy read <id>", "Finder — Space to preview", "API — programmatic access"] },
+              { icon: "COLLECT", color: "#fb923c", title: "Capture from every source", items: ["AI chats — ChatGPT, Claude, Gemini", "GitHub — any .md file in any repo", "Files — PDF, Word, PowerPoint, Excel", "Editors — VS Code, Mac desktop app", "Terminal — CLI pipe, tmux capture"] },
+              { icon: "EDIT", color: "#4ade80", title: "Edit with AI-powered tools", items: ["WYSIWYG — click and type like a doc", "AI Polish — fix grammar and style", "AI Translate — 12 languages", "AI Chat — ask questions or edit by instruction", "Version history — revert to any point"] },
+              { icon: "PUBLISH", color: "#60a5fa", title: "Share with a permanent URL", items: ["One URL — anyone can view, no login", "Embed in websites (iframe)", "Paste URL in AI chats as context", "Password protect or restrict by email", "QR code for mobile sharing"] },
             ].map((col) => (
               <div key={col.title}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: col.color, letterSpacing: 2, marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>{col.icon}</div>
@@ -574,9 +574,9 @@ export default function AboutPage() {
               margin: 0,
             }}
           >
-            A document should be a permanent URL — editable, versioned,
-            readable by humans and AIs alike, shared across every platform.
-            That&apos;s what we&apos;re building.
+            Markdown is everywhere — AI outputs, GitHub repos, dev tools, notes.
+            But it&apos;s scattered across dozens of apps and formats.
+            mdfy.cc is the hub that collects it all, makes it beautiful, and gives it a permanent URL.
           </p>
           <p
             style={{
@@ -586,7 +586,7 @@ export default function AboutPage() {
               marginBottom: 0,
             }}
           >
-            One Rust codebase. Every surface. Every format.
+            Collect from anywhere. Edit with AI. Publish with one click.
           </p>
         </div>
       </section>
