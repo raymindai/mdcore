@@ -1795,8 +1795,12 @@ export default function MdEditor() {
     }
   }, []);
 
+  const lastCursorPosRef = useRef(0);
   const onCursorActivityRef = useRef<((line: number) => void) | null>(null);
   onCursorActivityRef.current = (line: number) => {
+    // Save cursor position for image insert etc.
+    const pos = cmGetCursorPos();
+    if (pos > 0) lastCursorPosRef.current = pos;
     // Debounce to avoid scroll jank during selection drag
     if (cursorSyncTimer.current) clearTimeout(cursorSyncTimer.current);
     cursorSyncTimer.current = setTimeout(() => {
@@ -7655,27 +7659,14 @@ ${html}
                             <div className="flex items-center gap-1 px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
                               <button onClick={() => {
                                 const imgMd = `\n![${img.name.replace(/\.\w+$/, "")}](${img.url})\n`;
-                                // Try CM6 cursor first (Source/Split view), then use insertBlockAtCursor for Live view
-                                const cursorPos = cmGetCursorPos();
-                                if (cursorPos > 0) {
-                                  const current = markdownRef.current;
-                                  const newMd = current.slice(0, cursorPos) + imgMd + current.slice(cursorPos);
-                                  setMarkdown(newMd);
-                                  doRender(newMd);
-                                  cmSetDocRef.current?.(newMd);
-                                } else if (viewMode === "preview") {
-                                  // Live view — insert at end of current content
-                                  // (contentEditable cursor position can't be reliably mapped to markdown offset)
-                                  const newMd = markdownRef.current.trimEnd() + "\n" + imgMd;
-                                  setMarkdown(newMd);
-                                  doRender(newMd);
-                                  cmSetDocRef.current?.(newMd);
-                                } else {
-                                  const newMd = markdownRef.current + imgMd;
-                                  setMarkdown(newMd);
-                                  doRender(newMd);
-                                  cmSetDocRef.current?.(newMd);
-                                }
+                                const current = markdownRef.current;
+                                // Use saved cursor position (persists after focus leaves editor)
+                                const pos = lastCursorPosRef.current || cmGetCursorPos();
+                                const insertAt = pos > 0 && pos <= current.length ? pos : current.length;
+                                const newMd = current.slice(0, insertAt) + imgMd + current.slice(insertAt);
+                                setMarkdown(newMd);
+                                doRender(newMd);
+                                cmSetDocRef.current?.(newMd);
                                 showToast("Image inserted", "success");
                               }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }}>
                                 Insert
