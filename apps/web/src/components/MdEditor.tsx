@@ -1571,6 +1571,15 @@ export default function MdEditor() {
   const mathSourceIndexRef = useRef<number>(-1); // character offset of the math block in markdown
   const [showMathModal, setShowMathModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
+  const [sidebarClosing, setSidebarClosing] = useState(false);
+  const closeSidebar = useCallback(() => {
+    if (isMobile) {
+      setSidebarClosing(true);
+      setTimeout(() => { setShowSidebar(false); setSidebarClosing(false); }, 250);
+    } else {
+      setShowSidebar(false);
+    }
+  }, [isMobile]);
   const [editorPlaceholder, setEditorPlaceholder] = useState<"sign-in" | "restricted" | "not-found" | "deleted" | null>(null);
   const [deletedDocId, setDeletedDocId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -1590,6 +1599,7 @@ export default function MdEditor() {
   const [showSharedOwner, setShowSharedOwner] = useState(false);
   // Onboarding banner — first visit only
   const [showOnboarding, setShowOnboarding] = useState(() => typeof window !== "undefined" ? !localStorage.getItem("mdfy-onboarded") : false);
+  const [toolbarHintDismissed, setToolbarHintDismissed] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("mdfy-toolbar-hint-dismissed") : true);
   // Document view count (owner only)
   const [viewCount, setViewCount] = useState(0);
   // Command palette (Cmd+K)
@@ -5673,8 +5683,8 @@ ${html}
         {isMobile && showSidebar && (
           <div
             className="fixed inset-0 z-[200]"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px) brightness(0.7)", WebkitBackdropFilter: "blur(8px) brightness(0.7)", transition: "backdrop-filter 0.3s ease" }}
-            onClick={() => setShowSidebar(false)}
+            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", WebkitBackdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", transition: "background 0.25s ease, backdrop-filter 0.25s ease" }}
+            onClick={() => closeSidebar()}
           />
         )}
         <div
@@ -5684,20 +5694,20 @@ ${html}
             width: isMobile ? 260 : sidebarWidth,
             minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
-            transition: isMobile ? undefined : "width 0.15s ease",
-            ...(isMobile ? { animation: "sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1)" } : {}),
+            transition: isMobile ? "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : "width 0.15s ease",
+            ...(isMobile ? { transform: sidebarClosing ? "translateX(-100%)" : "translateX(0)" } : {}),
           }}
         >
           {/* Header — toggle button + MD FILES + New */}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-            onDoubleClick={() => setShowSidebar(false)}
+            onDoubleClick={() => closeSidebar()}
           >
             <div className="flex items-center gap-1.5">
               <div className="relative group">
                 <button
-                  onClick={() => setShowSidebar(false)}
+                  onClick={() => closeSidebar()}
                   className="p-1 rounded transition-colors"
                   style={{ color: "var(--accent)" }}
                 >
@@ -7143,6 +7153,16 @@ ${html}
                 onUndo={undo}
                 onRedo={redo}
               />
+            )}
+            {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
+            {!showToolbar && canEdit && !editorPlaceholder && !toolbarHintDismissed && viewMode === "preview" && (
+              <div className="flex items-center justify-center gap-2 py-1 text-[10px]"
+                style={{ color: "var(--text-faint)", borderBottom: "1px solid var(--border-dim)" }}>
+                <span>Formatting toolbar is hidden.</span>
+                <button onClick={() => setShowToolbar(true)} style={{ color: "var(--accent)" }}>Show</button>
+                <span style={{ color: "var(--border)" }}>|</span>
+                <button onClick={() => { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); setToolbarHintDismissed(true); }} style={{ color: "var(--text-faint)" }}>Dismiss</button>
+              </div>
             )}
             {/* Onboarding banner — first visit only */}
             {showOnboarding && (
