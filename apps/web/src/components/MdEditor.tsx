@@ -7583,22 +7583,42 @@ ${html}
                       <div className="grid grid-cols-2 gap-1.5">
                         {userImages.map((img) => (
                           <div key={img.name} className="group relative rounded-md overflow-hidden cursor-pointer" style={{ border: "1px solid var(--border-dim)" }}
-                            onClick={() => {
-                              const md = `![${img.name}](${img.url})`;
-                              const current = markdownRef.current;
-                              const newMd = current + "\n" + md + "\n";
-                              setMarkdown(newMd);
-                              doRender(newMd);
-                              cmSetDocRef.current?.(newMd);
-                              showToast("Image inserted", "success");
-                            }}>
+                            onClick={() => window.open(img.url, "_blank")}>
                             <img src={img.url} alt={img.name} loading="lazy" className="w-full aspect-square object-cover" style={{ background: "var(--toggle-bg)" }} />
-                            <div className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(transparent 40%, rgba(0,0,0,0.7))" }}>
+                            <div className="absolute inset-0 flex flex-col items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(transparent 30%, rgba(0,0,0,0.7))" }}>
+                              {/* Insert button top-right */}
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                const md = `![${img.name}](${img.url})`;
+                                const current = markdownRef.current;
+                                const newMd = current + "\n" + md + "\n";
+                                setMarkdown(newMd);
+                                doRender(newMd);
+                                cmSetDocRef.current?.(newMd);
+                                showToast("Image inserted", "success");
+                              }} className="m-1 px-1.5 py-0.5 rounded text-[8px] font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
+                                Insert
+                              </button>
                               <div className="w-full px-1.5 py-1 flex items-center gap-1">
                                 <span className="text-[8px] truncate flex-1" style={{ color: "#fff" }}>{img.name}</span>
                                 <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
-                                  className="shrink-0 p-0.5 rounded" style={{ color: "#fff" }} title="Copy URL">
+                                  className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "#fff" }} title="Copy URL">
                                   <Copy width={9} height={9} />
+                                </button>
+                                <button onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const res = await fetch(`/api/upload/delete?name=${encodeURIComponent(img.name)}`, { method: "DELETE", headers: authHeaders });
+                                    if (res.ok) {
+                                      setUserImages(prev => prev.filter(i => i.name !== img.name));
+                                      const data = await res.json();
+                                      if (data.quota) setImageQuota(data.quota);
+                                      showToast("Image deleted", "success");
+                                    } else { showToast("Failed to delete", "error"); }
+                                  } catch { showToast("Failed to delete", "error"); }
+                                }}
+                                  className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "#f87171" }} title="Delete">
+                                  <Trash2 width={9} height={9} />
                                 </button>
                               </div>
                             </div>
