@@ -1588,6 +1588,13 @@ export default function MdEditor() {
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
+  // Onboarding banner — first visit only
+  const [showOnboarding, setShowOnboarding] = useState(() => typeof window !== "undefined" ? !localStorage.getItem("mdfy-onboarded") : false);
+  // Document view count (owner only)
+  const [viewCount, setViewCount] = useState(0);
+  // Command palette (Cmd+K)
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [cmdSearch, setCmdSearch] = useState("");
   const [showExamples, setShowExamples] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
@@ -2043,9 +2050,9 @@ export default function MdEditor() {
       const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
       return sortMode === "oldest" ? ai - bi : bi - ai;
     };
-    const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
+    const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
     const myFolderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
-      tabs.filter(t => !t.deleted && t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id)
+      tabs.filter(t => !t.deleted && t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id)
     );
     // Shared tabs (for shift-select across sections)
     const sharedRootIds = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id)).map(t => t.id);
@@ -2634,6 +2641,7 @@ export default function MdEditor() {
             setDocEditMode(doc.editMode || "token");
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
             if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
+            if (typeof doc.view_count === "number") setViewCount(doc.view_count);
 
             const token = getEditToken(fromId);
             const ownerByToken = !!token;
@@ -4639,13 +4647,21 @@ ${html}
         );
       }
       if (e.key === "Escape") {
+        if (showCommandPalette) { setShowCommandPalette(false); setCmdSearch(""); return; }
         // If a modal/dialog is handling Escape, don't also focus editor
         const target = e.target as HTMLElement;
         if (target.closest("[role='dialog'], [data-modal]")) return;
         cmFocus();
       }
-      // WYSIWYG shortcuts — only when editing in preview (contentEditable)
+      // Command palette — Cmd+K (when NOT in contentEditable preview)
       const inPreview = document.activeElement?.closest("article.mdcore-rendered");
+      if (mod && e.key === "k" && !inPreview) {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+        setCmdSearch("");
+        return;
+      }
+      // WYSIWYG shortcuts — only when editing in preview (contentEditable)
       if (inPreview && mod) {
         if (e.key === "b") {
           e.preventDefault();
@@ -4665,7 +4681,7 @@ ${html}
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleShare, handleCopyHtml, undo, redo]);
+  }, [handleShare, handleCopyHtml, undo, redo, showCommandPalette]);
 
   // ── Cursor-aware insertion ──
   // Saves WYSIWYG cursor position so inserts go where the user expects
@@ -4993,6 +5009,11 @@ ${html}
           )}
           {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
             <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
+          )}
+          {docId && isOwner && viewCount > 0 && (
+            <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+              {viewCount} {viewCount === 1 ? "view" : "views"}
+            </span>
           )}
           </span>
           {/* Permission badge — desktop only in row 1 */}
@@ -5510,6 +5531,11 @@ ${html}
             {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
               <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
             )}
+            {docId && isOwner && viewCount > 0 && (
+              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                {viewCount} {viewCount === 1 ? "view" : "views"}
+              </span>
+            )}
             {(() => {
               const ct = tabs.find(t => t.id === activeTabId);
               const perm = ct?.permission;
@@ -5658,6 +5684,7 @@ ${html}
             width: isMobile ? 260 : sidebarWidth,
             minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
+            transition: isMobile ? undefined : "width 0.15s ease",
             ...(isMobile ? { animation: "sidebarSlideIn 0.28s cubic-bezier(0.32, 0.72, 0, 1)" } : {}),
           }}
         >
@@ -5983,7 +6010,7 @@ ${html}
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
-                        const allRootTabs = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
+                        const allRootTabs = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
                           if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                           if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
                           const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
@@ -6031,7 +6058,7 @@ ${html}
                       {/* Folders */}
                       {[...folders].filter(f => !f.section || f.section === "my").filter(f => {
                         // Hide empty folders when search or filter is active
-                        const hasDocs = myTabs.some(t => t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+                        const hasDocs = myTabs.some(t => t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
                         if (sidebarSearch && !hasDocs) return false;
                         if (docFilter !== "all" && !hasDocs) return false;
                         return true;
@@ -6041,7 +6068,7 @@ ${html}
                         const ai = folders.indexOf(a), bi = folders.indexOf(b);
                         return sortMode === "oldest" ? ai - bi : bi - ai;
                       }).map(folder => {
-                        const folderTabs = myTabs.filter(t => t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+                        const folderTabs = myTabs.filter(t => t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -6192,7 +6219,7 @@ ${html}
                 if (t.deleted || t.folderId) return false;
                 if (t.ownerEmail === EXAMPLE_OWNER) return false;
                 if (t.permission !== "readonly" && t.permission !== "editable") return false;
-                if (sidebarSearch && !(t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase())) return false;
+                if (sidebarSearch && !(t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) && !(t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())) return false;
                 if (!isAuthenticated) return false;
                 return true;
               });
@@ -6667,6 +6694,15 @@ ${html}
                             {showExamples ? "ON" : "OFF"}
                           </span>
                         </button>
+                        <a
+                          href="/settings"
+                          onClick={() => setShowAuthMenu(false)}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)", textDecoration: "none" }}
+                        >
+                          <User width={12} height={12} />
+                          Account Settings
+                        </a>
                       </div>
                       {/* Actions */}
                       <div className="py-1">
@@ -7107,6 +7143,37 @@ ${html}
                 onUndo={undo}
                 onRedo={redo}
               />
+            )}
+            {/* Onboarding banner — first visit only */}
+            {showOnboarding && (
+              <div
+                className="mx-3 sm:mx-4 mt-2 mb-1 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
+                style={{
+                  background: "var(--surface)",
+                  borderLeft: "3px solid var(--accent)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold mb-1" style={{ color: "var(--text-primary)", fontSize: 12 }}>
+                      Welcome to mdfy.cc — paste anything, get a beautiful shareable URL.
+                    </div>
+                    <div className="space-y-0.5" style={{ color: "var(--text-faint)" }}>
+                      <div>1. Type or paste Markdown</div>
+                      <div>2. Click Share to publish</div>
+                      <div>3. Send the URL to anyone</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+                    className="shrink-0 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors"
+                    style={{ background: "var(--accent)", color: "#000" }}
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
             )}
             <div className="flex-1 flex min-h-0">
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
@@ -8654,6 +8721,77 @@ ${html}
           </div>
         </div>
       )}
+
+      {/* ── Command Palette (Cmd+K) ── */}
+      {showCommandPalette && (() => {
+        const commands = [
+          { label: "New Document", action: () => addTab() },
+          { label: "Polish with AI", action: () => handleAIAction("polish") },
+          { label: "AI Summary", action: () => handleAIAction("summary") },
+          { label: "AI TL;DR", action: () => handleAIAction("tldr") },
+          { label: "AI Translate", action: () => setShowAIPanel(true) },
+          { label: "Toggle Theme", action: () => toggleTheme() },
+          { label: "Toggle Sidebar", action: () => setShowSidebar(prev => !prev) },
+          { label: "Toggle Toolbar", action: () => setShowToolbar(prev => !prev) },
+          { label: "Share Document", action: () => handleShare() },
+          { label: "Export as Markdown", action: () => handleDownloadMd() },
+          { label: "Export as PDF", action: () => handleExportPdf() },
+          { label: "Version History", action: () => handleToggleHistory() },
+          { label: "Open AI Panel", action: () => setShowAIPanel(true) },
+        ];
+        const q = cmdSearch.toLowerCase();
+        const filtered = q ? commands.filter(c => c.label.toLowerCase().includes(q)) : commands;
+        return (
+          <div
+            className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh]"
+            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+            onClick={() => { setShowCommandPalette(false); setCmdSearch(""); }}
+          >
+            <div
+              className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,0.4)" }}
+              onClick={e => e.stopPropagation()}
+              onKeyDown={e => { if (e.key === "Escape") { setShowCommandPalette(false); setCmdSearch(""); } }}
+            >
+              <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Type a command..."
+                  className="w-full bg-transparent outline-none text-sm"
+                  style={{ color: "var(--text-primary)" }}
+                  value={cmdSearch}
+                  onChange={e => setCmdSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && filtered.length > 0) {
+                      filtered[0].action();
+                      setShowCommandPalette(false);
+                      setCmdSearch("");
+                    }
+                  }}
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto py-1">
+                {filtered.length === 0 ? (
+                  <div className="px-4 py-3 text-[12px]" style={{ color: "var(--text-faint)" }}>No matching commands</div>
+                ) : filtered.map((cmd, i) => (
+                  <button
+                    key={cmd.label}
+                    className={`w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 ? "bg-[var(--menu-hover)]" : ""}`}
+                    style={{ color: "var(--text-primary)" }}
+                    onClick={() => { cmd.action(); setShowCommandPalette(false); setCmdSearch(""); }}
+                  >
+                    {cmd.label}
+                  </button>
+                ))}
+              </div>
+              <div className="px-4 py-2 text-[10px]" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
+                Press Enter to run, Esc to dismiss
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
