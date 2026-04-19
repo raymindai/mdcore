@@ -7156,8 +7156,8 @@ ${html}
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {!showToolbar && canEdit && !editorPlaceholder && !toolbarHintDismissed && viewMode === "preview" && (
-              <div className="flex items-center justify-center gap-2 py-1 text-[10px]"
-                style={{ color: "var(--text-faint)", borderBottom: "1px solid var(--border-dim)" }}>
+              <div className="flex items-center justify-center gap-2 py-1.5 text-[10px]"
+                style={{ color: "var(--text-muted)", background: "var(--toggle-bg)" }}>
                 <span>Formatting toolbar is hidden.</span>
                 <button onClick={() => setShowToolbar(true)} style={{ color: "var(--accent)" }}>Show</button>
                 <span style={{ color: "var(--border)" }}>|</span>
@@ -7169,8 +7169,7 @@ ${html}
               <div
                 className="mx-3 sm:mx-4 mt-2 mb-1 px-3 py-2.5 rounded-lg text-[11px] leading-relaxed"
                 style={{
-                  background: "var(--surface)",
-                  borderLeft: "3px solid var(--accent)",
+                  background: "var(--toggle-bg)",
                   color: "var(--text-secondary)",
                 }}
               >
