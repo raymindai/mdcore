@@ -450,6 +450,13 @@ export default function PluginsPage() {
             </div>
           </div>
 
+          {/* MCP screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img src="/images/plugin-mcp.png" alt="mdfy MCP server — Claude creating a document via mdfy_create" style={{ width: "100%", display: "block" }} />
+            </div>
+          </div>
+
           {/* Features grid */}
           <div
             style={{

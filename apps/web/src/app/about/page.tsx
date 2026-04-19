@@ -307,6 +307,10 @@ export default function AboutPage() {
           padding: "0 24px 80px",
         }}
       >
+        {/* Feature showcase image — math + mermaid + code in one */}
+        <div style={{ margin: "0 auto 48px", maxWidth: 960, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <img src="/images/feature-showcase.png" alt="mdfy.cc rendering — KaTeX math, Mermaid diagrams, and syntax-highlighted code" style={{ width: "100%", display: "block" }} />
+        </div>
         <h2
           style={{
             fontSize: 13,
