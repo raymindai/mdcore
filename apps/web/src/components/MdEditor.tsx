@@ -4955,6 +4955,28 @@ ${html}
               {title}
             </button>
           )}
+          {/* Permanent URL badge — click to copy */}
+          {(() => {
+            const ct = tabs.find(t => t.id === activeTabId);
+            const cid = ct?.cloudId || docId;
+            if (!cid) return null;
+            const shortUrl = `mdfy.cc/${cid}`;
+            return (
+              <button
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden sm:inline-block"
+                style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                title="Click to copy document URL"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`https://${shortUrl}`);
+                    showToast("URL copied", "success");
+                  } catch { /* ignore */ }
+                }}
+              >
+                {shortUrl}
+              </button>
+            );
+          })()}
           {/* Save status indicator — desktop only in row 1 */}
           <span className="hidden sm:inline">
           {autoSave.isSaving && (
@@ -5459,6 +5481,20 @@ ${html}
                 {title}
               </span>
             )}
+            {(() => {
+              const ct = tabs.find(t => t.id === activeTabId);
+              const cid = ct?.cloudId || docId;
+              if (!cid) return null;
+              return (
+                <button
+                  className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
+                  style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
+                >
+                  /{cid}
+                </button>
+              );
+            })()}
             {autoSave.isSaving && (
               <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
             )}
