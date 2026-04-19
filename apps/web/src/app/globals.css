@@ -523,7 +523,7 @@ body {
 .mdcore-rendered img {
   max-width: 100%;
   border-radius: 8px;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
   border: 1px solid var(--border);
   cursor: zoom-in;
   transition: opacity 0.15s;
@@ -543,7 +543,7 @@ body {
 
 /* Captions — images wrapped in <figure> */
 .mdcore-rendered figure {
-  margin: 1.5rem 0;
+  margin: 0.5rem 0;
   text-align: center;
 }
 .mdcore-rendered figure img {
