@@ -7293,8 +7293,8 @@ ${html}
                                 undo();
                                 setAiChatHistory(prev => prev.map((m, j) => j === i ? { ...m, canUndo: false, text: m.text + " (undone)" } : m));
                               }}
-                              className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
-                              style={{ color: "var(--text-faint)", background: "var(--background)" }}
+                              className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:opacity-80"
+                              style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
                             >
                               Undo
                             </button>
