@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe.serial("Writing — Source View (CodeMirror)", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
     await page.click('button:has-text("Source")');
@@ -138,6 +139,7 @@ test.describe.serial("Writing — Source View (CodeMirror)", () => {
 
 test.describe("Writing — Live View (WYSIWYG)", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
     // Ensure we're in Live view
@@ -217,6 +219,7 @@ test.describe("Writing — Live View (WYSIWYG)", () => {
 
 test.describe("Writing — Split View", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
     await page.click('button:has-text("Split")');
@@ -249,6 +252,7 @@ test.describe("Writing — Split View", () => {
 
 test.describe("Writing — View Mode Transitions", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
@@ -288,6 +292,7 @@ test.describe("Writing — View Mode Transitions", () => {
 
 test.describe("Writing — Edge Cases", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
     await page.click('button:has-text("Source")');

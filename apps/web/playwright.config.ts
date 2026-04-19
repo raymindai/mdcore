@@ -8,6 +8,10 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     headless: true,
     screenshot: "only-on-failure",
+    // Skip onboarding start screen in all tests
+    contextOptions: {
+      storageState: undefined,
+    },
   },
   webServer: {
     command: "npm run dev",

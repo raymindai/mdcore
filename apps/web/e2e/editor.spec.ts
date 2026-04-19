@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Editor — Core Writing Experience", () => {
   test.beforeEach(async ({ page }) => {
+    // Skip onboarding start screen
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     // Wait for WASM engine to load
     await page.waitForSelector("[data-testid='engine-badge'], .mdcore-rendered", { timeout: 15000 });
@@ -62,6 +64,7 @@ test.describe("Editor — Core Writing Experience", () => {
 
 test.describe("Editor — Formatting", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
@@ -82,6 +85,7 @@ test.describe("Editor — Formatting", () => {
 
 test.describe("Editor — Document Management", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
@@ -111,6 +115,7 @@ test.describe("Editor — Document Management", () => {
 
 test.describe("Editor — Export", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
@@ -127,6 +132,7 @@ test.describe("Editor — Export", () => {
 
 test.describe("Editor — AI Tools", () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => { localStorage.setItem("mdfy-onboarded", "1"); });
     await page.goto("/");
     await page.waitForSelector(".mdcore-rendered", { timeout: 15000 });
   });
