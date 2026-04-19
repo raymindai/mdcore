@@ -7096,6 +7096,28 @@ ${html}
                     ))}
                   </div>
                 </div>
+                {/* Portal links */}
+                <div className="mt-8 pt-6" style={{ borderTop: "1px solid var(--border-dim)" }}>
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    {([
+                      { label: "About", url: "/about", desc: "How mdfy works" },
+                      { label: "Docs", url: "/docs", desc: "API reference" },
+                      { label: "Trending", url: "/discover", desc: "Popular projects" },
+                      { label: "Plugins", url: "/plugins", desc: "All integrations" },
+                    ]).map((link) => (
+                      <a key={link.label} href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="text-center cursor-pointer group"
+                        style={{ textDecoration: "none", transition: "all 0.15s" }}>
+                        <div className="text-[12px] font-medium" style={{ color: "var(--text-muted)", transition: "color 0.15s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}>
+                          {link.label}
+                        </div>
+                        <div className="text-[9px] mt-0.5" style={{ color: "var(--text-faint)" }}>{link.desc}</div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (<>
