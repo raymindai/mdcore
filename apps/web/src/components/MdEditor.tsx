@@ -1540,6 +1540,7 @@ export default function MdEditor() {
   const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
   const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
   const [imagesLoading, setImagesLoading] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const [aiProcessing, setAiProcessing] = useState<string | null>(null);
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
@@ -7581,55 +7582,50 @@ ${html}
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-1.5">
-                        {userImages.map((img) => (
-                          <div key={img.name} className="group relative rounded-md overflow-hidden cursor-pointer" style={{ border: "1px solid var(--border-dim)" }}
-                            onClick={() => window.open(img.url, "_blank")}>
-                            <img src={img.url} alt={img.name} loading="lazy" className="w-full aspect-square object-cover" style={{ background: "var(--toggle-bg)" }} />
-                            <div className="absolute inset-0 flex flex-col items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(transparent 30%, rgba(0,0,0,0.7))" }}>
-                              {/* Insert button top-right */}
-                              <button onClick={(e) => {
-                                e.stopPropagation();
+                        {userImages.map((img, idx) => (
+                          <div key={img.name} className="group relative rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                            {/* Top bar: name + delete */}
+                            <div className="flex items-center gap-1 px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
+                              <span className="text-[8px] truncate flex-1" style={{ color: "var(--text-muted)" }}>{img.name}</span>
+                              <button onClick={async () => {
+                                if (!confirm("Delete this image?")) return;
+                                try {
+                                  const res = await fetch(`/api/upload/delete?name=${encodeURIComponent(img.name)}`, { method: "DELETE", headers: authHeaders });
+                                  if (res.ok) {
+                                    setUserImages(prev => prev.filter(i => i.name !== img.name));
+                                    const data = await res.json();
+                                    if (data.quota) setImageQuota(data.quota);
+                                    showToast("Image deleted", "success");
+                                  } else { showToast("Failed to delete", "error"); }
+                                } catch { showToast("Failed to delete", "error"); }
+                              }} className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "var(--text-faint)" }} title="Delete">
+                                <X width={8} height={8} />
+                              </button>
+                            </div>
+                            {/* Image — click to preview in lightbox */}
+                            <div className="cursor-pointer" onClick={() => setLightboxImage(img.url)}>
+                              <img src={img.url} alt={img.name} loading="lazy" className="w-full aspect-square object-cover" style={{ background: "var(--background)" }} />
+                            </div>
+                            {/* Bottom bar: Insert + Copy */}
+                            <div className="flex items-center gap-1 px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
+                              <button onClick={() => {
                                 const imgMd = `\n![${img.name.replace(/\.\w+$/, "")}](${img.url})\n`;
-                                // Insert at cursor position if available, otherwise append
                                 const cursorPos = cmGetCursorPos();
-                                if (cursorPos > 0) {
-                                  const current = markdownRef.current;
-                                  const newMd = current.slice(0, cursorPos) + imgMd + current.slice(cursorPos);
-                                  setMarkdown(newMd);
-                                  doRender(newMd);
-                                  cmSetDocRef.current?.(newMd);
-                                } else {
-                                  const newMd = markdownRef.current + imgMd;
-                                  setMarkdown(newMd);
-                                  doRender(newMd);
-                                  cmSetDocRef.current?.(newMd);
-                                }
+                                const current = markdownRef.current;
+                                const newMd = cursorPos > 0
+                                  ? current.slice(0, cursorPos) + imgMd + current.slice(cursorPos)
+                                  : current + imgMd;
+                                setMarkdown(newMd);
+                                doRender(newMd);
+                                cmSetDocRef.current?.(newMd);
                                 showToast("Image inserted", "success");
-                              }} className="m-1 px-1.5 py-0.5 rounded text-[8px] font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
+                              }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }}>
                                 Insert
                               </button>
-                              <div className="w-full px-1.5 py-1 flex items-center gap-1">
-                                <span className="text-[8px] truncate flex-1" style={{ color: "#fff" }}>{img.name}</span>
-                                <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
-                                  className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "#fff" }} title="Copy URL">
-                                  <Copy width={9} height={9} />
-                                </button>
-                                <button onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    const res = await fetch(`/api/upload/delete?name=${encodeURIComponent(img.name)}`, { method: "DELETE", headers: authHeaders });
-                                    if (res.ok) {
-                                      setUserImages(prev => prev.filter(i => i.name !== img.name));
-                                      const data = await res.json();
-                                      if (data.quota) setImageQuota(data.quota);
-                                      showToast("Image deleted", "success");
-                                    } else { showToast("Failed to delete", "error"); }
-                                  } catch { showToast("Failed to delete", "error"); }
-                                }}
-                                  className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "#f87171" }} title="Delete">
-                                  <Trash2 width={9} height={9} />
-                                </button>
-                              </div>
+                              <button onClick={() => { navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
+                                className="px-1.5 py-1 rounded text-[9px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>
+                                <Copy width={10} height={10} />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -9007,6 +9003,48 @@ ${html}
             >
               Skip
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {lightboxImage && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center cursor-pointer"
+          style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
+          onClick={() => setLightboxImage(null)}>
+          <button className="absolute top-4 right-4 p-2 rounded-lg transition-colors hover:bg-white/10"
+            style={{ color: "#fff" }} onClick={() => setLightboxImage(null)}>
+            <X width={20} height={20} />
+          </button>
+          {/* Navigate prev/next */}
+          {userImages.length > 1 && (() => {
+            const idx = userImages.findIndex(i => i.url === lightboxImage);
+            return (<>
+              {idx > 0 && (
+                <button className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors hover:bg-white/10"
+                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx - 1].url); }}>
+                  <ChevronDown width={24} height={24} style={{ transform: "rotate(90deg)" }} />
+                </button>
+              )}
+              {idx < userImages.length - 1 && (
+                <button className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors hover:bg-white/10"
+                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx + 1].url); }}>
+                  <ChevronDown width={24} height={24} style={{ transform: "rotate(-90deg)" }} />
+                </button>
+              )}
+            </>);
+          })()}
+          <img src={lightboxImage} alt="" onClick={(e) => e.stopPropagation()}
+            className="max-w-[90vw] max-h-[85vh] rounded-lg cursor-default"
+            style={{ objectFit: "contain", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
+          {/* Image info bar */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-[11px]"
+            style={{ background: "rgba(0,0,0,0.6)", color: "#ccc" }}
+            onClick={(e) => e.stopPropagation()}>
+            {userImages.find(i => i.url === lightboxImage)?.name || ""}
+            <span className="ml-3" style={{ color: "var(--text-faint)" }}>
+              {(() => { const idx = userImages.findIndex(i => i.url === lightboxImage); return idx >= 0 ? `${idx + 1} / ${userImages.length}` : ""; })()}
+            </span>
           </div>
         </div>
       )}
