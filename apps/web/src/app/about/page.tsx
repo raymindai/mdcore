@@ -146,6 +146,17 @@ export default function AboutPage() {
         </p>
       </section>
 
+      {/* ───────── HERO EDITOR SCREENSHOT ───────── */}
+      <section style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 60px" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <img
+            src="/images/hero-editor.png"
+            alt="mdfy.cc editor — write Markdown, see it beautifully rendered"
+            style={{ width: "100%", display: "block", borderRadius: 12, aspectRatio: "16/9", objectFit: "cover" }}
+          />
+        </div>
+      </section>
+
       {/* ───────── 2. WRITE ANYWHERE. READ EVERYWHERE. ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 20, padding: "48px 40px", position: "relative", overflow: "hidden" }}>

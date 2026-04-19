@@ -256,6 +256,17 @@ export default function PluginsPage() {
             </div>
           </div>
 
+          {/* Screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img
+                src="/images/plugin-chrome.png"
+                alt="mdfy Chrome extension capturing a ChatGPT conversation"
+                style={{ width: "100%", display: "block", borderRadius: 12 }}
+              />
+            </div>
+          </div>
+
           {/* Features grid */}
           <div
             style={{
@@ -644,6 +655,17 @@ export default function PluginsPage() {
             </div>
           </div>
 
+          {/* Screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img
+                src="/images/plugin-vscode.png"
+                alt="mdfy VS Code extension — WYSIWYG preview with cloud sync"
+                style={{ width: "100%", display: "block", borderRadius: 12 }}
+              />
+            </div>
+          </div>
+
           <div
             style={{
               display: "grid",
@@ -774,6 +796,17 @@ export default function PluginsPage() {
             </div>
           </div>
 
+          {/* Screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img
+                src="/images/plugin-desktop.png"
+                alt="mdfy for Mac — native desktop app with sidebar"
+                style={{ width: "100%", display: "block", borderRadius: 12 }}
+              />
+            </div>
+          </div>
+
           <div
             style={{
               display: "grid",
@@ -859,6 +892,17 @@ export default function PluginsPage() {
               <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>npm install -g mdfy</span>
             </div>
           </div>
+          {/* Screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img
+                src="/images/plugin-cli.png"
+                alt="mdfy CLI — publish Markdown from the terminal"
+                style={{ width: "100%", display: "block", borderRadius: 12 }}
+              />
+            </div>
+          </div>
+
           <div style={{ padding: "24px 32px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
               {[
@@ -941,6 +985,17 @@ export default function PluginsPage() {
             <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
               <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent-dim)", color: "var(--accent)" }}>Free</span>
               <span style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--toggle-bg)", color: "var(--text-faint)" }}>Swift</span>
+            </div>
+          </div>
+
+          {/* Screenshot */}
+          <div style={{ padding: "0 32px 24px" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+              <img
+                src="/images/plugin-quicklook.png"
+                alt="mdfy QuickLook — press Space in Finder to preview Markdown"
+                style={{ width: "100%", display: "block", borderRadius: 12 }}
+              />
             </div>
           </div>
 
