@@ -7075,23 +7075,44 @@ ${html}
                     ))}
                   </div>
                 </div>
-                <div className="mb-5">
+                <div className="mb-7">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     {([
-                      { label: "Chrome", url: "/plugins#chrome" },
-                      { label: "VS Code", url: "/plugins#vscode" },
-                      { label: "Mac", url: "/plugins#desktop" },
-                      { label: "CLI", url: "/plugins#cli" },
-                      { label: "MCP", url: "/plugins#mcp" },
-                      { label: "GitHub", url: "/plugins#chrome" },
+                      { label: "Chrome", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v4M2.5 11l3.5-2M13.5 11l-3.5-2"/></svg>, url: "/plugins#chrome" },
+                      { label: "VS Code", icon: <Code width={12} height={12} />, url: "/plugins#vscode" },
+                      { label: "Mac", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="1.5"/><path d="M2 9.5h12"/><path d="M6.5 12v1.5M9.5 12v1.5M5 13.5h6"/></svg>, url: "/plugins#desktop" },
+                      { label: "CLI", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 5l3 3-3 3M8.5 11H12"/></svg>, url: "/plugins#cli" },
+                      { label: "MCP", icon: <Sparkles width={12} height={12} />, url: "/plugins#mcp" },
+                      { label: "GitHub", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5A7.5 7.5 0 005.7 15c.4.1.5-.2.5-.4V13c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4 0-.9.3-1.6.8-2.2-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.4 7.4 0 014 0c1.5-1 2.2-.8 2.2-.8.5 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.2 0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.6v2.4c0 .2.1.5.6.4A7.5 7.5 0 008 .5z"/></svg>, url: "/plugins#chrome" },
                     ]).map((ch) => (
                       <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
-                        className="px-1.5 py-0.5 rounded text-[9px] cursor-pointer"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] cursor-pointer"
                         style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
-                        onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "var(--accent-dim)"; (e.target as HTMLElement).style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "var(--toggle-bg)"; (e.target as HTMLElement).style.color = "var(--text-muted)"; }}>
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        {ch.icon}
                         {ch.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                {/* Explore links */}
+                <div>
+                  <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Explore</p>
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    {([
+                      { label: "About", icon: <HelpCircle width={12} height={12} />, url: "/about" },
+                      { label: "Documentation", icon: <FileText width={12} height={12} />, url: "/docs" },
+                      { label: "Trending", icon: <Zap width={12} height={12} />, url: "/discover" },
+                    ]).map((item) => (
+                      <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] cursor-pointer"
+                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        {item.icon}
+                        {item.label}
                       </a>
                     ))}
                   </div>
