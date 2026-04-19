@@ -4144,17 +4144,23 @@ export default function MdEditor() {
         const stripped = md.replace(/^## TL;DR\n\n[\s\S]*?\n---\n\n/m, "");
         newMd = `## TL;DR\n\n${result.trim()}\n\n---\n\n${stripped}`;
         showToast("TL;DR added", "success");
-      } else if (action === "chat" && result.trim().startsWith("ANSWER:")) {
-        // AI answered a question — show in chat, don't modify document
-        const answer = result.trim().replace(/^ANSWER:\s*/, "");
-        setAiChatHistory(prev => [...prev, { role: "ai", text: answer }]);
-        setAiProcessing(null);
-        return; // skip document update
+      } else if (action === "chat") {
+        const trimmed = result.trim();
+        // Check if AI answered (ANSWER:) or if response doesn't start with EDIT:
+        if (trimmed.startsWith("ANSWER:") || !trimmed.startsWith("EDIT:")) {
+          // AI answered a question or casual message — show in chat, don't modify document
+          const answer = trimmed.replace(/^ANSWER:\s*/, "");
+          setAiChatHistory(prev => [...prev, { role: "ai", text: answer }]);
+          setAiProcessing(null);
+          return; // skip document update
+        }
+        // AI wants to edit the document
+        newMd = trimmed.replace(/^EDIT:\s*/, "");
+        showToast("Document updated", "success");
       } else {
-        // Polish, translate, chat edit — replace entire document
-        const cleanResult = action === "chat" ? result.trim().replace(/^EDIT:\s*/, "") : result;
-        newMd = cleanResult;
-        const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated", chat: "Document updated" };
+        // Polish, translate — replace entire document
+        newMd = result;
+        const labels: Record<string, string> = { polish: "Document polished", translate: "Document translated" };
         showToast(labels[action] || "Done", "success");
       }
       // Add AI response to chat history
