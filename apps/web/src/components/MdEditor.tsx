@@ -7028,67 +7028,47 @@ ${html}
           >
           {showOnboarding ? (
             /* ─── Start Screen ─── */
-            <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
-              <div className="w-full max-w-md mx-6 py-10">
-                {/* Hero */}
-                <div className="text-center mb-10">
-                  <MdfyLogo size={36} />
-                  <p className="mt-3 text-[15px] font-medium tracking-tight" style={{ color: "var(--text-primary)" }}>
-                    The Markdown Hub
-                  </p>
-                  <p className="mt-1 text-[12px]" style={{ color: "var(--text-faint)" }}>
-                    Collect. Edit. Publish.
-                  </p>
+            <div className="flex-1 overflow-auto" style={{ background: "var(--background)" }}>
+              <div className="max-w-lg mx-auto px-6 pt-16 pb-10">
+                {/* Primary action — large drop zone that doubles as the main CTA */}
+                <div
+                  className="rounded-xl p-8 mb-4 text-center transition-all duration-150 cursor-pointer"
+                  style={{ border: "2px dashed var(--border)", background: "var(--surface)" }}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
+                  onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--surface)"; }}
+                  onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+                  onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); }}
+                >
+                  <p className="text-[14px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Drop a file or click to import</p>
+                  <p className="text-[11px] font-mono" style={{ color: "var(--text-faint)" }}>MD, PDF, Word, PowerPoint, Excel, HTML, CSV</p>
                 </div>
 
-                {/* Two-column: Actions + Drop zone */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                  {/* Actions column */}
-                  <div className="space-y-2">
-                    {[
-                      { label: "New Document", icon: <Plus width={14} height={14} />, kbd: isMobile ? "" : mod + "N", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                      { label: "Paste", icon: <FileText width={14} height={14} />, kbd: isMobile ? "" : mod + "V", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
-                      { label: "Import File", icon: <Upload width={14} height={14} />, kbd: "", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
-                    ].map((item) => (
-                      <button key={item.label} onClick={item.fn}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[13px] font-medium transition-all duration-150 cursor-pointer"
-                        style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "var(--surface)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
-                        <span style={{ color: "var(--text-faint)" }}>{item.icon}</span>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {item.kbd && <kbd className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Drop zone */}
-                  <div
-                    className="flex flex-col items-center justify-center rounded-lg transition-all duration-150 cursor-pointer min-h-[140px]"
-                    style={{ border: "2px dashed var(--border)", color: "var(--text-faint)", background: "var(--surface)" }}
-                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
-                    onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "var(--surface)"; }}
-                    onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
-                    onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); }}
-                  >
-                    <Download width={20} height={20} className="mb-2" style={{ opacity: 0.4 }} />
-                    <p className="text-[12px] font-medium">Drop files here</p>
-                    <p className="text-[9px] mt-1 font-mono" style={{ opacity: 0.4 }}>
-                      MD PDF DOCX PPTX XLSX HTML CSV
-                    </p>
-                  </div>
+                {/* Quick actions row */}
+                <div className="flex gap-2 mb-8">
+                  <button onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); }}
+                    className="flex-1 py-2.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer"
+                    style={{ background: "var(--accent)", color: "#000" }}>
+                    New Document
+                  </button>
+                  <button onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+                    className="flex-1 py-2.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer"
+                    style={{ background: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; }}>
+                    Paste
+                  </button>
                 </div>
 
                 {/* Examples */}
                 <div className="mb-6">
-                  <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Examples</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="text-[9px] uppercase tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>Try an example</p>
+                  <div className="space-y-1">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="px-2.5 py-1.5 rounded-md text-[11px] transition-all duration-150 cursor-pointer"
-                        style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        className="w-full text-left px-3 py-2 rounded-md text-[12px] transition-all duration-150 cursor-pointer"
+                        style={{ color: "var(--text-muted)" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-muted)"; }}>
                         {ex.title}
                       </button>
                     ))}
@@ -7096,9 +7076,9 @@ ${html}
                 </div>
 
                 {/* Integrations */}
-                <div className="mb-4">
-                  <p className="text-[10px] font-medium uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Integrations</p>
-                  <div className="flex flex-wrap gap-1.5">
+                <div>
+                  <p className="text-[9px] uppercase tracking-widest mb-3" style={{ color: "var(--text-faint)" }}>Works with</p>
+                  <div className="flex flex-wrap gap-3">
                     {([
                       { label: "Chrome", url: "/plugins#chrome" },
                       { label: "VS Code", url: "/plugins#vscode" },
@@ -7108,21 +7088,14 @@ ${html}
                       { label: "GitHub", url: "/plugins#chrome" },
                     ]).map((ch) => (
                       <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
-                        className="px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-all duration-150 cursor-pointer"
-                        style={{ background: "var(--toggle-bg)", color: "var(--text-faint)", textDecoration: "none" }}
+                        className="text-[11px] transition-all duration-150 cursor-pointer"
+                        style={{ color: "var(--text-faint)", textDecoration: "none" }}
                         onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "var(--accent)"; }}
                         onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "var(--text-faint)"; }}>
                         {ch.label}
                       </a>
                     ))}
                   </div>
-                </div>
-
-                {/* Keyboard shortcut hint */}
-                <div className="text-center mt-6">
-                  <p className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>
-                    {mod}K commands
-                  </p>
                 </div>
               </div>
             </div>
