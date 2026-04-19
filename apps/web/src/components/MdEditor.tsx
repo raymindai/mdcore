@@ -2073,6 +2073,7 @@ export default function MdEditor() {
   }, [tabs, docFilter, sortMode, sidebarSearch, folders, hiddenExampleIds]);
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
+    setShowOnboarding(false);
     if (e.metaKey || e.ctrlKey) {
       setSelectedTabIds(prev => { const next = new Set(prev); if (next.has(tabId)) next.delete(tabId); else next.add(tabId); return next; });
       lastClickedTabIdRef.current = tabId;
@@ -5119,28 +5120,24 @@ ${html}
           </span>
         </div>
 
-        {/* Center: Home + Layout mode switcher */}
+        {/* Center: Home + Layout mode switcher (single group) */}
         <div
           className="flex items-center rounded-lg overflow-hidden shrink-0 mx-3"
           style={{ border: "1px solid var(--border-dim)" }}
         >
+          {/* Home */}
           <button
-            onClick={() => setShowOnboarding(true)}
+            onClick={() => { setShowOnboarding(true); }}
             className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
             style={{
-              background: showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
+              background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
               color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
-              borderRight: "1px solid var(--border-dim)",
             }}
             title="Start screen"
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
           </button>
-        </div>
-        <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0 -ml-1"
-          style={{ border: "1px solid var(--border-dim)" }}
-        >
+          {/* Live / Split / Source */}
           {([
             { mode: "preview" as ViewMode, label: "Live", icon: (
               <Eye width={13} height={13} />
@@ -5152,15 +5149,19 @@ ${html}
               <Code width={13} height={13} />
             )},
           ]).map(({ mode, label, icon }) => {
-            const active = viewMode === mode;
+            const active = !showOnboarding && viewMode === mode;
+            const disabled = showOnboarding;
             return (
               <button
                 key={mode}
-                onClick={() => setViewMode(mode)}
+                onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); } }}
+                disabled={disabled}
                 className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
                 style={{
                   background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
                   color: active ? "var(--accent)" : "var(--text-muted)",
+                  opacity: disabled ? 0.35 : 1,
+                  cursor: disabled ? "default" : "pointer",
                 }}
               >
                 {icon}
