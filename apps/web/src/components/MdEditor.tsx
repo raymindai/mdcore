@@ -5119,9 +5119,26 @@ ${html}
           </span>
         </div>
 
-        {/* Center: Layout mode switcher */}
+        {/* Center: Home + Layout mode switcher */}
         <div
           className="flex items-center rounded-lg overflow-hidden shrink-0 mx-3"
+          style={{ border: "1px solid var(--border-dim)" }}
+        >
+          <button
+            onClick={() => setShowOnboarding(true)}
+            className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
+            style={{
+              background: showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
+              color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
+              borderRight: "1px solid var(--border-dim)",
+            }}
+            title="Start screen"
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
+          </button>
+        </div>
+        <div
+          className="flex items-center rounded-lg overflow-hidden shrink-0 -ml-1"
           style={{ border: "1px solid var(--border-dim)" }}
         >
           {([
@@ -7015,6 +7032,17 @@ ${html}
                   onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}>
                   <p className="text-[12px]">Drop files here</p>
                   <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
+                </div>
+                {/* Example documents */}
+                <div className="mb-7">
+                  <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Examples</p>
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    {EXAMPLE_TABS.map((ex) => (
+                      <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
+                        className="px-2 py-1 rounded text-[10px] transition-colors hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
+                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ex.title}</button>
+                    ))}
+                  </div>
                 </div>
                 <div className="mb-5">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
