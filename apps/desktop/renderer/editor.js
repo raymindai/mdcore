@@ -176,6 +176,13 @@
   function renderSidebar() {
     renderFileList();
     renderUserBar();
+    if (sidebarState.authState.loggedIn) {
+      if (cachedImages) {
+        renderImageSection(cachedImages.images, cachedImages.quota);
+      } else {
+        loadImages();
+      }
+    }
   }
 
   function renderFileList() {
@@ -517,6 +524,7 @@
       synced: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg>',
       local: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
       cloud: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>',
+      images: '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.5"/><path d="M14.5 10.5l-3.5-3.5-6 6"/></svg>',
     };
     var countStr = (count === "" || count === undefined) ? "" : ' <span class="section-count">' + count + '</span>';
     // For "Files" section, add sort + new doc buttons (like VS Code)
@@ -587,6 +595,60 @@
       '</div>' +
       '<span class="file-time">' + timeAgo(cd.updated_at) + '</span>' +
     '</div>';
+  }
+
+  // ─── Image Gallery ───
+
+  var cachedImages = null;
+
+  async function loadImages() {
+    if (!sidebarState.authState.loggedIn) return;
+    if (!window.mdfyDesktop) return;
+    try {
+      var data = await window.mdfyDesktop.getImages();
+      if (data && !data.error && data.images) {
+        cachedImages = data;
+        renderImageSection(data.images, data.quota);
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  function renderImageSection(images, quota) {
+    var container = document.getElementById("image-section");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "image-section";
+      var fileList = document.getElementById("file-list");
+      if (fileList) fileList.after(container);
+      else return;
+    }
+
+    if (!images || images.length === 0) {
+      container.innerHTML = "";
+      return;
+    }
+
+    var usedMB = Math.round((quota.used || 0) / 1024 / 1024);
+    var totalMB = Math.round((quota.total || 1) / 1024 / 1024);
+
+    var html = secHeader("images", "Images", images.length);
+    html += '<div class="image-quota"><span>' + usedMB + 'MB / ' + totalMB + 'MB</span><div class="quota-bar"><div class="quota-fill" style="width:' + Math.min(100, (quota.used / quota.total) * 100) + '%"></div></div></div>';
+    html += '<div class="image-grid">';
+    images.forEach(function(img) {
+      html += '<div class="image-thumb" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '">';
+      html += '<img src="' + esc(img.url) + '" loading="lazy">';
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+
+    container.querySelectorAll(".image-thumb").forEach(function(el) {
+      el.addEventListener("click", function() {
+        var url = el.dataset.url;
+        var name = (el.dataset.name || "image").replace(/\.\w+$/, "");
+        insertImageElement(url, name);
+      });
+    });
   }
 
   function renderUserBar() {
@@ -754,9 +816,13 @@
         window.mdfyDesktop.getCloudDocuments().then(function(docs) {
           sidebarState.cloudDocs = docs || [];
           renderSidebar();
+          loadImages();
         });
       } else {
         sidebarState.cloudDocs = [];
+        cachedImages = null;
+        var imgSection = document.getElementById("image-section");
+        if (imgSection) imgSection.innerHTML = "";
         renderSidebar();
       }
     });

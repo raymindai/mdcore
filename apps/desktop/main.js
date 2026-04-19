@@ -1439,6 +1439,23 @@ ipcMain.handle("ai-action", async (event, action, markdown, language) => {
   }
 });
 
+// --- Image Gallery ---
+
+ipcMain.handle("get-images", async () => {
+  if (!net.isOnline()) return { error: "Offline" };
+  const userId = AuthManager.getUserId();
+  if (!userId) return { error: "Not logged in" };
+  try {
+    const headers = AuthManager.getHeaders();
+    const resp = await net.fetch(`${MDFY_URL}/api/upload/list`, { headers });
+    if (!resp.ok) return { error: `Failed: ${resp.status}` };
+    const data = await resp.json();
+    return data;
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
 // --- Misc ---
 
 ipcMain.handle("upload-image", async (event, base64Data, mimeType, fileName) => {

@@ -106,6 +106,14 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
             await this.previewCloudDocument(msg.docId, msg.title);
           }
           break;
+        case "insert-image": {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            const pos = editor.selection.active;
+            editor.edit(b => b.insert(pos, `\n![${msg.name}](${msg.url})\n`));
+          }
+          break;
+        }
         case "login":
           vscode.commands.executeCommand("mdfy.login");
           break;
@@ -300,13 +308,15 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       lastSynced: d.config?.lastSyncedAt,
     }));
 
-    // Fetch cloud documents + folders if logged in
+    // Fetch cloud documents + folders + images if logged in
     const isLoggedIn = await this._authManager.isLoggedIn();
     let cloudDocs: CloudDoc[] = [];
     let cloudFolders: CloudFolder[] = [];
+    let imageData: { images: Array<{ url: string; name: string }>; quota: { used: number; total: number } } | null = null;
     if (isLoggedIn) {
       cloudDocs = await this.fetchCloudDocuments();
       cloudFolders = await this.fetchCloudFolders();
+      imageData = await this.fetchImages();
       // Exclude documents already linked locally
       const linkedIds = new Set(items.filter((i) => i.docId).map((i) => i.docId));
       cloudDocs = cloudDocs.filter((c) => !linkedIds.has(c.id));
@@ -332,6 +342,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         section: f.section || "my",
         collapsed: f.collapsed || false,
       })),
+      imageData: imageData || null,
       isLoggedIn,
       userEmail: userEmail || null,
     });
@@ -356,6 +367,25 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       return data.documents || [];
     } catch {
       return [];
+    }
+  }
+
+  private async fetchImages(): Promise<{ images: Array<{ url: string; name: string }>; quota: { used: number; total: number } } | null> {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const token = await this._authManager.getToken();
+      const userId = await this._authManager.getUserId();
+      if (!userId) { return null; }
+
+      const headers: Record<string, string> = { "x-user-id": userId };
+      if (token) { headers["Authorization"] = `Bearer ${token}`; }
+
+      const res = await fetch(`${baseUrl}/api/upload/list`, { headers });
+      if (!res.ok) { return null; }
+
+      return (await res.json()) as { images: Array<{ url: string; name: string }>; quota: { used: number; total: number } };
+    } catch {
+      return null;
     }
   }
 
@@ -801,6 +831,7 @@ body {
     var allDocs = [];
     var cloudDocs = [];
     var cloudFolders = [];
+    var imageData = null;
     var isLoggedIn = false;
     var currentFilter = 'all';
     var searchQuery = '';
@@ -838,6 +869,7 @@ body {
         allDocs = e.data.items || [];
         cloudDocs = e.data.cloudDocs || [];
         cloudFolders = e.data.cloudFolders || [];
+        imageData = e.data.imageData || null;
         isLoggedIn = e.data.isLoggedIn || false;
         currentUserId = e.data.userEmail || null;
         render();
@@ -975,6 +1007,21 @@ body {
         }
       }
 
+      // Images section
+      if (isLoggedIn && imageData && imageData.images && imageData.images.length > 0) {
+        var usedMB = Math.round((imageData.quota.used || 0) / 1024 / 1024);
+        var totalMB = Math.round((imageData.quota.total || 1) / 1024 / 1024);
+        html += secHeader('image', 'Images', imageData.images.length);
+        html += '<div style="padding:4px 14px;font-size:10px;color:var(--vscode-descriptionForeground)">' + usedMB + 'MB / ' + totalMB + 'MB</div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 14px 8px">';
+        imageData.images.forEach(function(img) {
+          html += '<div data-action="insert-image" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '" style="border-radius:4px;overflow:hidden;cursor:pointer;border:1px solid var(--vscode-panel-border);aspect-ratio:1">';
+          html += '<img src="' + esc(img.url) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover">';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
       if (!html) {
         html = '<div class="empty">No documents found</div>';
       }
@@ -984,9 +1031,10 @@ body {
     }
 
     function secHeader(type, label, count) {
-      var colors = { sync: '#22c55e', file: 'currentColor', globe: '#60a5fa' };
-      var names = { sync: 'sync', file: 'file', globe: 'cloud' };
+      var colors = { sync: '#22c55e', file: 'currentColor', globe: '#60a5fa', image: '#a78bfa' };
+      var names = { sync: 'sync', file: 'file', globe: 'cloud', image: 'file' };
       var ic = icon(names[type] || type, 12).replace('stroke="currentColor"', 'stroke="' + (colors[type]||'currentColor') + '"');
+      if (type === 'image') ic = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.5"/><path d="M14.5 10.5l-3.5-3.5-6 6"/></svg>';
       return '<div class="section-header">' + ic + ' ' + label + ' <span class="section-count">' + (count === '' ? '' : count) + '</span></div>';
     }
 
@@ -1069,6 +1117,13 @@ body {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
           vscode.postMessage({ type: 'deleteCloud', docId: btn.dataset.docid });
+        });
+      });
+      container.querySelectorAll('[data-action="insert-image"]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var url = el.dataset.url;
+          var name = (el.dataset.name || 'image').replace(/\\.\\w+$/, '');
+          vscode.postMessage({ type: 'insert-image', url: url, name: name });
         });
       });
       var loginBtn = document.getElementById('login-btn');

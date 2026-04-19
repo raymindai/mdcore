@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   // ─── AI Tools ───
   aiAction: (action, markdown, language) => ipcRenderer.invoke("ai-action", action, markdown, language),
 
+  // ─── Images ───
+  getImages: () => ipcRenderer.invoke("get-images"),
+
   // ─── Misc ───
   uploadImage: (base64, mime, name) => ipcRenderer.invoke("upload-image", base64, mime, name),
   getVersion: () => ipcRenderer.invoke("get-version"),
