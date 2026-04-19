@@ -815,6 +815,7 @@
     var oldBanner = document.getElementById("cloud-banner");
     if (oldBanner) oldBanner.remove();
     content.setAttribute("contenteditable", "true");
+    updateViewCount(null);
 
     window.mdfyDesktop.renderMarkdown(currentMarkdown).then(function(result) {
       if (result && result.html !== undefined) {
@@ -912,6 +913,16 @@
       updateSyncStatusUI(currentConfig && currentConfig.docId ? "synced" : "ready");
       updatePublishedUrl();
       isDirty = false;
+
+      // Update view count if available
+      if (data.viewCount !== undefined && data.viewCount !== null) {
+        updateViewCount(data.viewCount);
+      } else if (currentConfig && currentConfig.docId) {
+        // Synced doc — view count may come from the cloud
+        updateViewCount(null); // Will be shown if/when we fetch it
+      } else {
+        updateViewCount(null);
+      }
 
       // Refresh sidebar to update active highlight
       refreshSidebarData().then(renderSidebar);
@@ -1270,6 +1281,7 @@
     if (!button) return;
     var action = button.getAttribute("data-action");
     if (!action) return;
+    if (action === "ai-tools") return; // Handled by its own click listener
     e.preventDefault();
     content.focus();
 
@@ -2742,6 +2754,150 @@
         });
       }, 0);
     });
+  }
+
+  // ─── AI Tools ───
+
+  function showAIMenu(anchorBtn) {
+    var existing = document.getElementById("ai-dropdown");
+    if (existing) { existing.remove(); return; }
+
+    var rect = anchorBtn.getBoundingClientRect();
+    var menu = document.createElement("div");
+    menu.id = "ai-dropdown";
+    menu.className = "export-dropdown";
+    menu.style.position = "fixed";
+    menu.style.top = (rect.bottom + 4) + "px";
+    menu.style.left = rect.left + "px";
+    menu.innerHTML =
+      '<div class="export-section">AI TOOLS</div>' +
+      '<div class="export-item" data-ai="polish"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/></svg> Polish</div>' +
+      '<div class="export-item" data-ai="summary"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg> Summary</div>' +
+      '<div class="export-item" data-ai="tldr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h8"/></svg> TL;DR</div>' +
+      '<div class="export-divider"></div>' +
+      '<div class="export-item" data-ai="translate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2v3M11 21l5-10 5 10M14.5 18h5"/></svg> Translate...</div>';
+    document.body.appendChild(menu);
+
+    menu.addEventListener("click", function(ev) {
+      var item = ev.target.closest("[data-ai]");
+      if (!item) return;
+      var action = item.getAttribute("data-ai");
+      menu.remove();
+
+      if (action === "translate") {
+        showTranslateMenu();
+      } else {
+        runAIAction(action);
+      }
+    });
+
+    setTimeout(function() {
+      document.addEventListener("click", function dismiss() {
+        var m = document.getElementById("ai-dropdown");
+        if (m) m.remove();
+        document.removeEventListener("click", dismiss);
+      });
+    }, 0);
+  }
+
+  function showTranslateMenu() {
+    var languages = [
+      { code: "en", label: "English" },
+      { code: "ko", label: "Korean" },
+      { code: "ja", label: "Japanese" },
+      { code: "zh", label: "Chinese" },
+      { code: "es", label: "Spanish" },
+      { code: "fr", label: "French" },
+      { code: "de", label: "German" },
+      { code: "pt", label: "Portuguese" },
+    ];
+
+    var menu = document.createElement("div");
+    menu.id = "ai-dropdown";
+    menu.className = "export-dropdown";
+    menu.style.position = "fixed";
+    menu.style.top = "50%";
+    menu.style.left = "50%";
+    menu.style.transform = "translate(-50%, -50%)";
+    menu.innerHTML = '<div class="export-section">TRANSLATE TO</div>' +
+      languages.map(function(l) {
+        return '<div class="export-item" data-lang="' + l.code + '">' + l.label + '</div>';
+      }).join("");
+    document.body.appendChild(menu);
+
+    menu.addEventListener("click", function(ev) {
+      var item = ev.target.closest("[data-lang]");
+      if (!item) return;
+      var lang = item.getAttribute("data-lang");
+      menu.remove();
+      runAIAction("translate", lang);
+    });
+
+    setTimeout(function() {
+      document.addEventListener("click", function dismiss() {
+        var m = document.getElementById("ai-dropdown");
+        if (m) m.remove();
+        document.removeEventListener("click", dismiss);
+      });
+    }, 0);
+  }
+
+  async function runAIAction(action, language) {
+    if (!window.mdfyDesktop) return;
+    // Get latest markdown from the editor
+    var md = htmlToMarkdown(content);
+    if (!md || !md.trim()) { showToast("No content to process"); return; }
+
+    showToast("AI processing...");
+
+    try {
+      var result = await window.mdfyDesktop.aiAction(action, md, language || undefined);
+      if (result.error) {
+        showToast("AI failed: " + result.error);
+        return;
+      }
+      if (result.result) {
+        // For chat-style responses that are answers, just show toast
+        var text = result.result;
+        if (action === "chat" && !text.trim().startsWith("EDIT:")) {
+          showToast(text.replace(/^ANSWER:\s*/, ""));
+          return;
+        }
+        text = text.replace(/^EDIT:\s*/, "");
+        loadDocumentContent(text, currentFilePath);
+        showToast(action.charAt(0).toUpperCase() + action.slice(1) + " complete");
+      }
+    } catch (e) {
+      showToast("AI failed: " + e.message);
+    }
+  }
+
+  // Handle AI Tools button in toolbar
+  var aiToolsBtn = document.getElementById("btn-ai-tools");
+  if (aiToolsBtn) {
+    aiToolsBtn.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      showAIMenu(aiToolsBtn);
+    });
+  }
+
+  // ─── View Count ───
+
+  function updateViewCount(viewCount) {
+    var el = document.getElementById("stat-views");
+    var sep = document.getElementById("stat-views-sep");
+    var countEl = document.getElementById("stat-views-count");
+    if (!el || !countEl) return;
+
+    if (viewCount !== null && viewCount !== undefined && viewCount >= 0) {
+      countEl.textContent = viewCount.toLocaleString();
+      el.style.display = "";
+      if (sep) sep.style.display = "";
+    } else {
+      el.style.display = "none";
+      if (sep) sep.style.display = "none";
+    }
   }
 
   // ─── Init ───

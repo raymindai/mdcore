@@ -100,6 +100,26 @@
         "command": "mdfy.sidebar.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "mdfy.aiPolish",
+        "title": "mdfy: AI Polish",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "mdfy.aiSummary",
+        "title": "mdfy: AI Summary",
+        "icon": "$(output)"
+      },
+      {
+        "command": "mdfy.aiTldr",
+        "title": "mdfy: AI TL;DR",
+        "icon": "$(note)"
+      },
+      {
+        "command": "mdfy.aiTranslate",
+        "title": "mdfy: AI Translate",
+        "icon": "$(globe)"
       }
     ],
     "menus": {
@@ -130,6 +150,26 @@
           "command": "mdfy.export",
           "when": "editorLangId == markdown",
           "group": "mdfy@4"
+        },
+        {
+          "command": "mdfy.aiPolish",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@5"
+        },
+        {
+          "command": "mdfy.aiSummary",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@6"
+        },
+        {
+          "command": "mdfy.aiTldr",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@7"
+        },
+        {
+          "command": "mdfy.aiTranslate",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@8"
         }
       ]
     },

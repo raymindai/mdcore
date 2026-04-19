@@ -19,6 +19,7 @@ interface CloudDoc {
   updated_at: string;
   is_draft: boolean;
   folder_id?: string | null;
+  view_count?: number;
 }
 
 interface CloudFolder {
@@ -323,6 +324,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         isDraft: c.is_draft,
         folderId: c.folder_id || null,
         url: `${baseUrl}/d/${c.id}`,
+        viewCount: c.view_count || 0,
       })),
       cloudFolders: cloudFolders.map((f) => ({
         id: f.id,
@@ -1015,7 +1017,8 @@ body {
 
     function renderCloudDoc(doc) {
       var ic = '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>';
-      var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '');
+      var viewStr = doc.viewCount > 0 ? ' · ' + doc.viewCount + ' views' : '';
+      var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '') + viewStr;
       var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Sync to local">' + icon('download', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
         + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('trash', 14) + '</button>';

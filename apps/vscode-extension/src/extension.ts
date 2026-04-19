@@ -312,6 +312,109 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  // --- AI Tool Commands ---
+
+  async function runAiAction(action: string, language?: string): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== "markdown") {
+      vscode.window.showWarningMessage("Open a Markdown file first.");
+      return;
+    }
+
+    const markdown = editor.document.getText();
+    if (!markdown.trim()) {
+      vscode.window.showWarningMessage("Document is empty.");
+      return;
+    }
+
+    const baseUrl = getApiBaseUrl();
+    const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+
+    await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `AI ${actionLabel}...`, cancellable: false },
+      async () => {
+        try {
+          const body: Record<string, string> = { action, markdown };
+          if (language) { body.language = language; }
+
+          const token = await authManager?.getToken();
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (token) { headers["Authorization"] = `Bearer ${token}`; }
+
+          const res = await fetch(`${baseUrl}/api/ai`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({})) as { error?: string };
+            throw new Error(errData.error || `HTTP ${res.status}`);
+          }
+
+          const data = await res.json() as { result?: string; error?: string };
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          if (data.result) {
+            let result = data.result;
+            // Strip EDIT:/ANSWER: prefixes if present
+            if (action === "chat" && !result.trim().startsWith("EDIT:")) {
+              vscode.window.showInformationMessage(result.replace(/^ANSWER:\s*/, ""));
+              return;
+            }
+            result = result.replace(/^EDIT:\s*/, "");
+
+            const edit = new vscode.WorkspaceEdit();
+            const fullRange = new vscode.Range(
+              editor.document.positionAt(0),
+              editor.document.positionAt(markdown.length)
+            );
+            edit.replace(editor.document.uri, fullRange, result);
+            await vscode.workspace.applyEdit(edit);
+            vscode.window.showInformationMessage(`AI ${actionLabel} complete.`);
+          }
+        } catch (err) {
+          vscode.window.showErrorMessage(
+            `AI ${actionLabel} failed: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
+      }
+    );
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.aiPolish", () => runAiAction("polish"))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.aiSummary", () => runAiAction("summary"))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.aiTldr", () => runAiAction("tldr"))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.aiTranslate", async () => {
+      const languages = [
+        { label: "English", code: "en" },
+        { label: "Korean", code: "ko" },
+        { label: "Japanese", code: "ja" },
+        { label: "Chinese", code: "zh" },
+        { label: "Spanish", code: "es" },
+        { label: "French", code: "fr" },
+        { label: "German", code: "de" },
+        { label: "Portuguese", code: "pt" },
+      ];
+      const selected = await vscode.window.showQuickPick(
+        languages.map((l) => ({ label: l.label, description: l.code })),
+        { placeHolder: "Translate to..." }
+      );
+      if (selected) {
+        await runAiAction("translate", selected.description);
+      }
+    })
+  );
+
   // Command: Sync Status
   context.subscriptions.push(
     vscode.commands.registerCommand("mdfy.sync", async () => {

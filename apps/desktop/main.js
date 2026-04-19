@@ -1401,6 +1401,7 @@ ipcMain.handle("preview-cloud-doc", async (event, docId, title) => {
       config: isOwner && editToken ? { docId, editToken } : null,
       cloudDoc: { docId, title: title || docId, isOwner },
       readOnly: !isOwner,
+      viewCount: data.view_count || 0,
     });
     return { ok: true };
   } catch (err) {
@@ -1410,6 +1411,32 @@ ipcMain.handle("preview-cloud-doc", async (event, docId, title) => {
 
 ipcMain.handle("get-cloud-documents", async () => {
   return apiGetCloudDocuments();
+});
+
+// --- AI Tools ---
+
+ipcMain.handle("ai-action", async (event, action, markdown, language) => {
+  if (!markdown || !markdown.trim()) return { error: "No content" };
+  if (!net.isOnline()) return { error: "Offline" };
+
+  try {
+    const body = { action, markdown };
+    if (language) body.language = language;
+
+    const resp = await net.fetch(`${MDFY_URL}/api/ai`, {
+      method: "POST",
+      headers: AuthManager.getHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      return { error: errData.error || `AI request failed: ${resp.status}` };
+    }
+    const data = await resp.json();
+    return data;
+  } catch (err) {
+    return { error: err.message };
+  }
 });
 
 // --- Misc ---

@@ -120,6 +120,8 @@
           <span class="toolbar-divider"></span>
           <button data-action="table" title="Table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="2" y1="6" x2="14" y2="6"/><line x1="2" y1="10" x2="14" y2="10"/><line x1="6" y1="2" x2="6" y2="14"/><line x1="10" y1="2" x2="10" y2="14"/></svg></button>
           <button data-action="codeblock" title="Code Block"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2l-2 12"/></svg></button>
+          <span class="toolbar-divider"></span>
+          <button data-action="ai-tools" title="AI Tools" id="btn-ai-tools"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/></svg></button>
         </div>
         <!-- Rendered content -->
         <div class="pane-content">
@@ -192,6 +194,8 @@
         <span class="bar-link" onclick="window.mdfyDesktop.openInBrowser('https://mdfy.cc/plugins')">Plugins</span>
       </div>
       <div class="bar-right">
+        <span class="bar-stat" id="stat-views" style="display:none"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5S1 8 1 8z"/><circle cx="8" cy="8" r="2"/></svg><span id="stat-views-count">0</span> views</span>
+        <span class="bar-sep" id="stat-views-sep" style="display:none">·</span>
         <span class="bar-stat" id="stat-words">0 words</span>
         <span class="bar-sep">·</span>
         <span class="bar-stat" id="stat-chars">0 chars</span>
