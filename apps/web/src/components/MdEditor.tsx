@@ -7643,23 +7643,9 @@ ${html}
                       <div className="grid grid-cols-2 gap-1.5">
                         {userImages.map((img, idx) => (
                           <div key={img.name} className="group relative rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                            {/* Top bar: name + delete */}
-                            <div className="flex items-center gap-1 px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
-                              <span className="text-[8px] truncate flex-1" style={{ color: "var(--text-muted)" }}>{img.name}</span>
-                              <button onClick={async () => {
-                                if (!confirm("Delete this image?")) return;
-                                try {
-                                  const res = await fetch(`/api/upload/delete?name=${encodeURIComponent(img.name)}`, { method: "DELETE", headers: authHeaders });
-                                  if (res.ok) {
-                                    setUserImages(prev => prev.filter(i => i.name !== img.name));
-                                    const data = await res.json();
-                                    if (data.quota) setImageQuota(data.quota);
-                                    showToast("Image deleted", "success");
-                                  } else { showToast("Failed to delete", "error"); }
-                                } catch { showToast("Failed to delete", "error"); }
-                              }} className="shrink-0 p-0.5 rounded hover:opacity-80" style={{ color: "var(--text-faint)" }} title="Delete">
-                                <X width={8} height={8} />
-                              </button>
+                            {/* Top bar: name */}
+                            <div className="flex items-center px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
+                              <span className="text-[8px] truncate" style={{ color: "var(--text-muted)" }}>{img.name}</span>
                             </div>
                             {/* Image — click to preview in lightbox */}
                             <div className="cursor-pointer" onClick={() => setLightboxImage(img.url)}>
@@ -7695,8 +7681,22 @@ ${html}
                                 Insert
                               </button>
                               <button onClick={() => { navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
-                                className="px-1.5 py-1 rounded text-[9px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>
-                                <Copy width={10} height={10} />
+                                className="px-2 py-1 rounded text-[9px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }} title="Copy URL">
+                                <Copy width={12} height={12} />
+                              </button>
+                              <button onClick={async () => {
+                                if (!confirm("Delete this image?")) return;
+                                try {
+                                  const res = await fetch(`/api/upload/delete?name=${encodeURIComponent(img.name)}`, { method: "DELETE", headers: authHeaders });
+                                  if (res.ok) {
+                                    setUserImages(prev => prev.filter(i => i.name !== img.name));
+                                    const data = await res.json();
+                                    if (data.quota) setImageQuota(data.quota);
+                                    showToast("Image deleted", "success");
+                                  } else { showToast("Failed to delete", "error"); }
+                                } catch { showToast("Failed to delete", "error"); }
+                              }} className="px-2 py-1 rounded text-[9px] transition-colors hover:bg-[rgba(239,68,68,0.1)]" style={{ color: "var(--text-faint)" }} title="Delete">
+                                <Trash2 width={12} height={12} />
                               </button>
                             </div>
                           </div>
