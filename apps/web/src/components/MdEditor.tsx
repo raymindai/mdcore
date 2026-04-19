@@ -7019,8 +7019,17 @@ ${html}
                 <div className="mb-5">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
                   <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                    {["Chrome", "VS Code", "Mac", "CLI", "MCP", "GitHub"].map((ch) => (
-                      <span key={ch} className="px-1.5 py-0.5 rounded text-[9px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
+                    {([
+                      { label: "Chrome", url: "/plugins#chrome" },
+                      { label: "VS Code", url: "/plugins#vscode" },
+                      { label: "Mac", url: "/plugins#desktop" },
+                      { label: "CLI", url: "/plugins#cli" },
+                      { label: "MCP", url: "/plugins#mcp" },
+                      { label: "GitHub", url: "/plugins#chrome" },
+                    ]).map((ch) => (
+                      <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
+                        className="px-1.5 py-0.5 rounded text-[9px] transition-colors hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
+                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none" }}>{ch.label}</a>
                     ))}
                   </div>
                 </div>
