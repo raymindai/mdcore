@@ -8718,66 +8718,71 @@ ${html}
       )}
 
       {/* ── Command Palette (Cmd+K) ── */}
-      {/* Welcome overlay — first visit */}
+      {/* Start screen — Mac-style welcome */}
       {showOnboarding && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
-          <div className="w-full max-w-md mx-4 rounded-2xl overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            {/* Header */}
-            <div className="px-8 pt-8 pb-4 text-center">
-              <MdfyLogo size={28} />
-              <h2 className="mt-4 text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                Welcome to mdfy.cc
-              </h2>
-              <p className="mt-1 text-[13px]" style={{ color: "var(--text-muted)" }}>
-                The Markdown Hub. Collect, edit, publish.
-              </p>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center" style={{ background: "var(--background)" }}>
+          <div className="w-full max-w-sm mx-4 text-center">
+            {/* Logo */}
+            <div className="mb-6">
+              <MdfyLogo size={32} />
             </div>
-            {/* Steps */}
-            <div className="px-8 pb-6">
-              <div className="space-y-3">
-                {[
-                  { step: "1", title: "Collect from anywhere", desc: "Paste, type, import PDF/Word/PPT, or capture from AI chats" },
-                  { step: "2", title: "Edit with AI tools", desc: "Polish, translate, summarize, or chat with AI to edit" },
-                  { step: "3", title: "Publish and share", desc: "One click for a permanent URL anyone can view" },
-                ].map((s) => (
-                  <div key={s.step} className="flex items-start gap-3">
-                    <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                      {s.step}
-                    </span>
-                    <div>
-                      <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{s.title}</div>
-                      <div className="text-[11px]" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <p className="text-[13px] mb-8" style={{ color: "var(--text-muted)" }}>
+              The Markdown Hub
+            </p>
+
+            {/* Quick actions */}
+            <div className="space-y-1.5 mb-8">
+              {[
+                { label: "New Document", shortcut: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318N" : "Ctrl+N"), action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
+                { label: "Paste from Clipboard", shortcut: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318V" : "Ctrl+V"), action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                { label: "Import File", shortcut: "", action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: "var(--text-secondary)", background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                >
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.shortcut && <kbd className="text-[10px] font-mono" style={{ color: "var(--text-faint)" }}>{item.shortcut}</kbd>}
+                </button>
+              ))}
             </div>
-            {/* Available everywhere */}
-            <div className="px-8 pb-4">
-              <div className="text-[10px] text-center mb-2" style={{ color: "var(--text-faint)" }}>Available everywhere</div>
+
+            {/* Drop zone */}
+            <div
+              className="mb-8 py-6 rounded-lg text-center"
+              style={{ border: "1px dashed var(--border)", color: "var(--text-faint)" }}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+              onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {}
+                // Let the main drop handler in MdEditor handle the file
+              }}
+            >
+              <p className="text-[12px]">Drop files here to open</p>
+              <p className="text-[10px] mt-1" style={{ opacity: 0.6 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, TXT</p>
+            </div>
+
+            {/* Plugins */}
+            <div className="mb-6">
+              <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
-                {["Chrome Extension", "VS Code", "Mac App", "CLI", "MCP", "GitHub"].map((ch) => (
-                  <span key={ch} className="px-2 py-1 rounded text-[9px] font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
+                {["Chrome", "VS Code", "Mac", "CLI", "MCP", "GitHub"].map((ch) => (
+                  <span key={ch} className="px-2 py-1 rounded text-[9px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
                 ))}
               </div>
             </div>
-            {/* Shortcuts hint */}
-            <div className="px-8 pb-4">
-              <div className="flex items-center justify-center gap-4 text-[10px]" style={{ color: "var(--text-faint)" }}>
-                <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 9 }}>{typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"}+K</kbd> commands</span>
-                <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 9 }}>{typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl"}+S</kbd> share</span>
-              </div>
-            </div>
-            {/* CTA */}
-            <div className="px-8 pb-8">
-              <button
-                onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
-                className="w-full py-2.5 rounded-lg text-[13px] font-semibold transition-colors"
-                style={{ background: "var(--accent)", color: "#000" }}
-              >
-                Start writing
-              </button>
-            </div>
+
+            {/* Skip */}
+            <button
+              onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
+              className="text-[11px] transition-colors"
+              style={{ color: "var(--text-faint)" }}
+            >
+              Skip
+            </button>
           </div>
         </div>
       )}
