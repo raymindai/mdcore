@@ -1598,7 +1598,21 @@ export default function MdEditor() {
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
   // Onboarding banner — first visit only
-  const [showOnboarding, setShowOnboarding] = useState(() => typeof window !== "undefined" ? !localStorage.getItem("mdfy-onboarded") : false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === "undefined") return false;
+    // First visit — always show
+    if (!localStorage.getItem("mdfy-onboarded")) return true;
+    // Return visit — show if user has no own documents (only examples)
+    try {
+      const saved = localStorage.getItem("mdfy-tabs");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const hasOwnDocs = Array.isArray(parsed) && parsed.some((t: { ownerEmail?: string; deleted?: boolean }) => !t.deleted && t.ownerEmail !== "master@mdfy.cc");
+        if (!hasOwnDocs) return true;
+      }
+    } catch {}
+    return false;
+  });
   const [toolbarHintDismissed, setToolbarHintDismissed] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("mdfy-toolbar-hint-dismissed") : true);
   // Document view count (owner only)
   const [viewCount, setViewCount] = useState(0);
