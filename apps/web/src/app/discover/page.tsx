@@ -97,6 +97,13 @@ export default function DiscoverPage() {
         if (res.ok) { markdown = await res.text(); break; }
       }
       if (!markdown.trim()) throw new Error("Empty");
+      // Add title from filename if markdown has no H1
+      if (!/^#\s+/m.test(markdown)) {
+        const title = filePath.split("/").pop()?.replace(/\.(md|markdown|mdx)$/i, "") || "Untitled";
+        markdown = `# ${title}\n\n${markdown}`;
+      }
+      // Add source attribution
+      markdown = markdown.trimEnd() + `\n\n---\n\n> Source: [${repoFullName}/${filePath}](https://github.com/${repoFullName}/blob/main/${filePath})\n`;
       const compressed = await compress(markdown);
       const url = `/#md=${compressed}`;
       window.open(url.length <= 8000 ? url : "/", "_blank");
