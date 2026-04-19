@@ -7059,6 +7059,27 @@ ${html}
                   <p className="text-[12px]">Drop files here to open</p>
                   <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
                 </div>
+                {/* Recent files */}
+                {(() => {
+                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER).slice(0, 5);
+                  if (recent.length === 0) return null;
+                  return (
+                    <div className="mb-7">
+                      <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Recent</p>
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        {recent.map((t) => (
+                          <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
+                            className="px-2 py-1 rounded text-[10px] cursor-pointer"
+                            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", transition: "all 0.15s" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                            {t.title || "Untitled"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="mb-7">
                   <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Examples</p>
                   <div className="flex items-center justify-center gap-1.5 flex-wrap">
