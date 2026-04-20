@@ -719,13 +719,15 @@ body {
 .cloud-folder-list { padding-left: 8px; }
 
 /* Local folder grouping */
-.local-folder { margin-bottom: 2px; }
+.local-folder { margin-bottom: 4px; }
 .local-folder-header {
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; font-size: 12px; font-weight: 600;
+  padding: 6px 10px; font-size: 12px; font-weight: 600;
   color: var(--vscode-descriptionForeground);
   cursor: pointer; user-select: none;
-  transition: color 0.12s;
+  transition: color 0.12s, background 0.12s;
+  border-radius: 4px;
+  margin: 0 6px;
 }
 .local-folder-header:hover { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
 .local-folder-chevron {
@@ -736,7 +738,8 @@ body {
 }
 .local-folder-chevron.collapsed { transform: rotate(0deg); }
 .local-folder-count { font-size: 10px; opacity: 0.5; margin-left: auto; }
-.local-folder-list { padding-left: 12px; }
+.local-folder-list { margin-left: 20px; border-left: 1px solid var(--vscode-panel-border); }
+.local-folder-list .doc-item { padding-left: 16px; }
 .local-folder-list.collapsed { display: none; }
 
 /* Auth prompt for images */
