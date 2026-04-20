@@ -64,6 +64,73 @@
         vscode.postMessage({ type: 'export' });
       });
     }
+    // Image panel toggle
+    var imgToggle = document.getElementById('btn-toggle-images');
+    var imgPanel = document.getElementById('image-panel');
+    var imgClose = document.getElementById('btn-close-images');
+    var imgContent = document.getElementById('image-panel-content');
+    var imgLoaded = false;
+    function toggleImagePanel() {
+      if (!imgPanel) return;
+      var showing = imgPanel.style.display !== 'none';
+      imgPanel.style.display = showing ? 'none' : 'block';
+      if (imgToggle) imgToggle.classList.toggle('active', !showing);
+      if (!showing && !imgLoaded) {
+        imgLoaded = true;
+        vscode.postMessage({ type: 'load-images' });
+      }
+    }
+    if (imgToggle) imgToggle.addEventListener('click', toggleImagePanel);
+    if (imgClose) imgClose.addEventListener('click', toggleImagePanel);
+    // Handle image data from extension
+    window.addEventListener('message', function(e) {
+      var msg = e.data;
+      if (msg.type === 'image-data' && imgContent) {
+        var images = msg.images || [];
+        var quota = msg.quota;
+        if (!msg.authenticated) {
+          imgContent.innerHTML = '<div style="text-align:center;padding:24px 8px"><p style="font-size:11px;color:var(--fg-muted);margin-bottom:12px">Sign in to manage images</p><button onclick="vscode.postMessage({type:\'login\'})" style="padding:6px 16px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:600;background:var(--accent-dim);color:var(--accent)">Sign in</button></div>';
+          return;
+        }
+        var html = '';
+        if (quota) {
+          var usedMB = Math.round(quota.used / 1024 / 1024);
+          var totalMB = Math.round(quota.total / 1024 / 1024);
+          var pct = Math.min(100, (quota.used / quota.total) * 100);
+          html += '<div style="font-size:9px;color:var(--fg-muted);margin-bottom:4px;display:flex;justify-content:space-between"><span>' + usedMB + 'MB</span><span>' + totalMB + 'MB</span></div>';
+          html += '<div style="height:3px;background:var(--surface-hover);border-radius:2px;margin-bottom:8px"><div style="height:100%;border-radius:2px;background:var(--accent);width:' + pct + '%"></div></div>';
+        }
+        if (images.length === 0) {
+          html += '<div style="text-align:center;padding:20px 8px;font-size:11px;color:var(--fg-muted)">No images yet</div>';
+        } else {
+          html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">';
+          images.forEach(function(img) {
+            html += '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:pointer" data-img-url="' + img.url + '" data-img-name="' + (img.name || '').replace(/"/g, '') + '">';
+            html += '<img src="' + img.url + '" loading="lazy" style="width:100%;max-height:80px;object-fit:contain;background:var(--bg)">';
+            html += '<div style="padding:4px 6px;background:var(--surface);display:flex;gap:4px;align-items:center">';
+            html += '<button class="img-insert-btn" style="flex:1;padding:3px;border-radius:4px;border:none;cursor:pointer;font-size:9px;font-weight:600;background:var(--accent);color:#000">Insert</button>';
+            html += '<button class="img-copy-btn" style="padding:3px 5px;border-radius:4px;border:none;cursor:pointer;font-size:9px;color:var(--fg-muted);background:var(--surface-hover)">URL</button>';
+            html += '</div></div>';
+          });
+          html += '</div>';
+        }
+        imgContent.innerHTML = html;
+        // Bind insert/copy
+        imgContent.querySelectorAll('[data-img-url]').forEach(function(el) {
+          var url = el.getAttribute('data-img-url');
+          var name = (el.getAttribute('data-img-name') || 'image').replace(/\.\w+$/, '');
+          el.querySelector('.img-insert-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            vscode.postMessage({ type: 'insert-image', url: url, name: name });
+          });
+          el.querySelector('.img-copy-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            navigator.clipboard.writeText(url);
+          });
+        });
+      }
+    });
+
     var copyMdBtn = document.getElementById('btn-copy-md');
     if (copyMdBtn) {
       copyMdBtn.addEventListener('click', function() {

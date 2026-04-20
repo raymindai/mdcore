@@ -289,6 +289,35 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
             }
             break;
           }
+          case "load-images": {
+            try {
+              const { getApiBaseUrl } = await import("./extension");
+              const baseUrl = getApiBaseUrl();
+              const res = await fetch(`${baseUrl}/api/upload/list`);
+              if (res.ok) {
+                const data = (await res.json()) as { images?: unknown[]; quota?: unknown };
+                this.panel.webview.postMessage({ type: "image-data", authenticated: true, images: data.images || [], quota: data.quota });
+              } else {
+                this.panel.webview.postMessage({ type: "image-data", authenticated: false, images: [], quota: null });
+              }
+            } catch {
+              this.panel.webview.postMessage({ type: "image-data", authenticated: false, images: [], quota: null });
+            }
+            break;
+          }
+          case "insert-image": {
+            const editor = vscode.window.activeTextEditor;
+            if (editor && message.name) {
+              const url = (message as { url?: string }).url || "";
+              const pos = editor.selection.active;
+              editor.edit(b => b.insert(pos, `\n![${message.name}](${url})\n`));
+            }
+            break;
+          }
+          case "login": {
+            vscode.commands.executeCommand("mdfy.login");
+            break;
+          }
           case "uploadImage": {
             await this.handleImageUpload(message.data, message.name);
             break;
@@ -876,6 +905,10 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button id="btn-toggle-narrow" class="pane-icon-btn active" title="Narrow view">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" stroke-linecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" stroke-linecap="round"/></svg>
         </button>
+        <span style="width:1px;height:14px;background:var(--border);margin:0 2px;opacity:0.3"></span>
+        <button class="pane-icon-btn" id="btn-toggle-images" title="My images">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><circle cx="5.5" cy="6.5" r="1.5"/><path d="M1.5 11l3-3 2 2 3-3 5 4"/></svg>
+        </button>
         <button class="pane-icon-btn" id="btn-export" title="Export">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
         </button>
@@ -916,9 +949,22 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="math" title="Math"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" font-size="11" font-family="serif" font-style="italic">fx</text></svg></button>
         <button data-action="mermaid" title="Mermaid"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="1" width="5" height="4" rx="1"/><rect x="9" y="1" width="5" height="4" rx="1"/><rect x="5.5" y="11" width="5" height="4" rx="1"/><path d="M4.5 5v2.5a2 2 0 002 2h3a2 2 0 002-2V5"/><path d="M8 9.5V11"/></svg></button>
       </div>
-      <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}">
-        ${renderedHtml}
-      </article>
+      <div style="display:flex;flex:1;min-height:0">
+        <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}" style="flex:1;overflow:auto">
+          ${renderedHtml}
+        </article>
+        <div id="image-panel" style="display:none;width:260px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;background:var(--bg)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border)">
+            <span style="font-size:11px;font-weight:600;color:var(--fg)">My Images</span>
+            <button id="btn-close-images" style="background:none;border:none;cursor:pointer;color:var(--fg-muted);padding:2px" title="Close">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+            </button>
+          </div>
+          <div id="image-panel-content" style="padding:8px">
+            <div style="text-align:center;padding:24px 8px;color:var(--fg-muted);font-size:11px">Loading...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Draggable divider for split view -->
