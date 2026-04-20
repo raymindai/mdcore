@@ -162,14 +162,28 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     );
     if (confirm !== "Unsync") { return; }
 
-    // Delete .mdfy.json sidecar
+    // Read config to get docId before deleting
     const ext = path.extname(filePath);
     const base = path.basename(filePath, ext);
     const configPath = path.join(path.dirname(filePath), `${base}.mdfy.json`);
     try {
+      // Clear source on server so mdfy.cc no longer shows it as synced
+      const configBytes = await vscode.workspace.fs.readFile(vscode.Uri.file(configPath));
+      const config = JSON.parse(Buffer.from(configBytes).toString("utf-8"));
+      if (config.docId && this._authManager) {
+        const token = await this._authManager.getToken();
+        const baseUrl = (await import("./extension")).getApiBaseUrl();
+        fetch(`${baseUrl}/api/docs/${config.docId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ action: "clear-source", userId: config.userId }),
+        }).catch(() => {}); // fire-and-forget
+      }
       await vscode.workspace.fs.delete(vscode.Uri.file(configPath));
       this.refresh();
-      vscode.window.showInformationMessage(`"${fileName}" unsynced from mdfy.cc.`);
+      vscode.window.showInformationMessage(
+        `"${fileName}" unsynced. The document remains on mdfy.cc but is no longer linked to this file.`
+      );
     } catch {
       vscode.window.showErrorMessage("Failed to remove sync file.");
     }
@@ -1090,7 +1104,7 @@ body {
       var actions = ''
         + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
-        + '<button class="doc-action" data-action="unsync" data-path="' + esc(doc.filePath) + '" title="Unsync">' + icon('unsync', 14) + '</button>'
+        + '<button class="doc-action" data-action="unsync" data-path="' + esc(doc.filePath) + '" title="Remove sync link (cloud copy remains)">' + icon('unsync', 14) + '</button>'
         + '<button class="doc-action" data-action="deleteSynced" data-path="' + esc(doc.filePath) + '" title="Delete from cloud" style="color:#ef4444">' + icon('trash', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic

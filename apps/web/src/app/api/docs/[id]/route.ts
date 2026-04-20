@@ -450,6 +450,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   // ─── Action: publish (flip is_draft to false) ───
+  if (body.action === "clear-source") {
+    const { userId } = body;
+    if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+    const { error } = await supabase.from("documents").update({ source: null }).eq("id", id).eq("user_id", userId);
+    if (error) return NextResponse.json({ error: "Failed" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   if (body.action === "publish") {
     const { userId, anonymousId, editToken } = body;
 
