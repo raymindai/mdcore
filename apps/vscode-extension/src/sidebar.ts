@@ -1102,7 +1102,7 @@ body {
       var ic = '<div class="doc-icon local">' + icon('file', 14) + '</div>';
       var meta = doc.relativePath || doc.fileName;
       var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
-      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
+      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '" title="' + esc(doc.filePath) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
         + '<div class="doc-actions">' + actions + '</div></li>';
