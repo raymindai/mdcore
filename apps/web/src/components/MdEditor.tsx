@@ -7236,7 +7236,7 @@ ${html}
                   <button
                     onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
-                    style={{ background: showAIPanel || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)", color: showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-muted)", fontWeight: 600, fontSize: 11 }}
+                    style={{ background: showAIPanel || aiProcessing ? "var(--accent-dim)" : "transparent", color: showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-faint)", fontWeight: 600, fontSize: 11 }}
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     {aiProcessing ? <span className="text-[9px] hidden sm:inline">
@@ -7283,8 +7283,8 @@ ${html}
                 <div className="relative group">
                   <button
                     onClick={() => { setShowExportMenu(prev => !prev); setShowMenu(false); }}
-                    className="flex items-center justify-center h-6 px-2 rounded-md transition-colors"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                    className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
+                    style={{ background: showExportMenu ? "var(--accent-dim)" : "transparent", color: showExportMenu ? "var(--accent)" : "var(--text-faint)" }}
                   >
                     <Upload width={11} height={11} />
                   </button>
