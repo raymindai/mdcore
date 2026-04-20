@@ -151,18 +151,18 @@ export async function updateDocument(
   if (!res.ok) throw new Error("Failed to update document");
 }
 
-export async function fetchVersions(id: string): Promise<{
+export async function fetchVersions(id: string, headers?: Record<string, string>): Promise<{
   versions: { id: number; version_number: number; title: string | null; created_at: string; change_summary: string | null }[];
 }> {
-  const res = await fetch(`/api/docs/${id}/versions`);
+  const res = await fetch(`/api/docs/${id}/versions`, { headers });
   if (!res.ok) throw new Error("Failed to fetch versions");
   return res.json();
 }
 
-export async function fetchVersion(docId: string, versionId: number): Promise<{
+export async function fetchVersion(docId: string, versionId: number, headers?: Record<string, string>): Promise<{
   version: { id: number; markdown: string; title: string | null; version_number: number; created_at: string };
 }> {
-  const res = await fetch(`/api/docs/${docId}/versions/${versionId}`);
+  const res = await fetch(`/api/docs/${docId}/versions/${versionId}`, { headers });
   if (!res.ok) throw new Error("Failed to fetch version");
   return res.json();
 }

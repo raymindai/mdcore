@@ -4087,7 +4087,7 @@ export default function MdEditor() {
     if (!docId) return;
     setHistoryLoading(true);
     try {
-      const data = await fetchVersions(docId);
+      const data = await fetchVersions(docId, authHeaders);
       setVersions(data.versions || []);
     } catch {
       setVersions([]);
@@ -4115,7 +4115,7 @@ export default function MdEditor() {
     }
     setPreviewVersion(versionId);
     try {
-      const data = await fetchVersion(docId, versionId);
+      const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
         const result = await renderMarkdown(data.version.markdown);
         const processed = postProcessHtml(result.html);
@@ -4140,7 +4140,7 @@ export default function MdEditor() {
           body: JSON.stringify({ action: "snapshot", userId: user.id, changeSummary: "Before restore" }),
         }).catch(() => {});
       }
-      const data = await fetchVersion(docId, versionId);
+      const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
         await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { userId: user?.id, anonymousId: !user?.id ? getAnonymousId() : undefined, changeSummary: `Restored to version ${data.version.version_number}` });
         setMarkdown(data.version.markdown);
@@ -5043,7 +5043,7 @@ ${html}
                   } catch { /* ignore */ }
                 }}
               >
-                {shortUrl}{viewCount > 0 ? ` \u00b7 ${viewCount} views` : ""}
+                {shortUrl}{viewCount > 0 && <span className="ml-1.5 px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 8 }}>{viewCount} views</span>}
               </button>
             );
           })()}
