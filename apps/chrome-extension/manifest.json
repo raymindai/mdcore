@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "mdfy.cc — Publish AI Output",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "One-click capture from ChatGPT, Claude, and Gemini. Publish as a beautiful document on mdfy.cc",
   "permissions": ["activeTab", "tabs", "contextMenus", "storage", "scripting", "cookies"],
   "host_permissions": [
