@@ -4167,6 +4167,7 @@ export default function MdEditor() {
   // Share — open modal for owners, quick copy for non-owners
   // ─── AI Actions ───
   const handleAIAction = useCallback(async (action: string, options?: { language?: string; instruction?: string }) => {
+    if (aiProcessing) return; // Already processing, ignore
     const md = markdownRef.current;
     if (!md.trim()) { showToast("Write something first", "info"); return; }
     // Block on readonly/example docs

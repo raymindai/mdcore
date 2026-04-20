@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -91,6 +92,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     const providedPassword = _req.headers.get("x-document-password") || "";
     if (!providedPassword) {
       return NextResponse.json({ error: "Password required", passwordRequired: true }, { status: 401 });
+    }
+    // Rate limit password attempts
+    const ip = _req.headers.get("x-real-ip") || _req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed } = rateLimit(`pwd:${ip}:${id}`);
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
     }
     const encoder = new TextEncoder();
     let passwordMatch = false;
