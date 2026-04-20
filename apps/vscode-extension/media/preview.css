@@ -710,7 +710,7 @@ pre.ascii-original.hidden {
   color: var(--fg-muted);
 }
 
-/* Live pane */
+/* Live pane — header+toolbar fixed, content scrolls */
 #live-pane {
   display: flex;
   flex-direction: column;
@@ -718,11 +718,15 @@ pre.ascii-original.hidden {
   height: 100%;
   overflow: hidden;
 }
-#live-pane {
-  overflow: auto;
+#live-pane .pane-header {
+  flex-shrink: 0;
+}
+#live-pane #formatting-toolbar {
+  flex-shrink: 0;
 }
 #live-pane #content {
   flex: 1;
+  overflow: auto;
 }
 
 /* Source pane */
