@@ -936,7 +936,6 @@ function TBtn({ tip, preview, active, onClick, children }: {
             : "hover:bg-[var(--accent-dim)] hover:text-[var(--accent)]"
           }`}
         onClick={onClick}
-        title={tip}
       >
         {children}
       </button>
@@ -5071,7 +5070,7 @@ ${html}
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
                   className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
                   style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                  title="View Only — click for options"
+                  title="View only — request edit access or duplicate to edit"
                 >
                   VIEW&nbsp;ONLY
                   <ChevronDown width={8} height={8} />
@@ -5330,8 +5329,8 @@ ${html}
               <button
                 onClick={handleShare}
                 disabled={shareState === "sharing"}
-                title={`Share (${mod}+S)`}
                 className="px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1.5"
+                title={`Share (${mod}+S)`}
                 style={{
                   background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
                   color: shareState === "copied" ? "#4ade80" : "var(--accent)",
@@ -5374,8 +5373,8 @@ ${html}
               <button
                 onClick={() => setShowMenu(!showMenu)}
                 className="px-1.5 h-6 rounded-md transition-colors flex items-center"
-                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                 title="Menu"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
                 <Menu width={16} height={16} />
               </button>
@@ -5583,8 +5582,8 @@ ${html}
                 <button
                   className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
                   style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
-                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
                   title="Click to copy document URL"
+                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
                 >
                   /{cid}
                 </button>
@@ -5613,7 +5612,7 @@ ${html}
                     onClick={() => setShowPermDropdown(!showPermDropdown)}
                     className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
                     style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                    title="View Only — click for options"
+                    title="View only — request edit access or duplicate to edit"
                   >
                     VIEW&nbsp;ONLY
                     <ChevronDown width={7} height={7} />
@@ -5712,7 +5711,7 @@ ${html}
               onClick={() => setShowAiBanner(false)}
               className="px-2 py-1 rounded font-mono text-[11px]"
               style={{ color: "var(--text-muted)" }}
-              title="Dismiss this banner"
+              title="Dismiss this suggestion"
             >
               Dismiss
             </button>
@@ -6072,7 +6071,6 @@ ${html}
                               onClick={() => { setSidebarSearch(""); setShowSidebarSearch(false); }}
                               className="shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-[var(--border-dim)]"
                               style={{ color: "var(--text-faint)" }}
-                              title="Clear search"
                             >
                               <X width={10} height={10} />
                             </button>
@@ -6113,7 +6111,7 @@ ${html}
                           <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                           <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -6205,6 +6203,7 @@ ${html}
                                 }}
                                 className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-4"
                                 style={{ color: "var(--text-muted)", padding: "2px", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                title="Folder options"
                               >
                                 <MoreHorizontal width={14} height={14} />
                               </button>
@@ -6236,7 +6235,7 @@ ${html}
                                     <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                                     <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                                       <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
@@ -6393,7 +6392,7 @@ ${html}
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }}>
+                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -6588,7 +6587,8 @@ ${html}
                             }
                             setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t));
                           }}
-                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }} title="Restore this document">
+                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}
+                            title="Restore this document">
                             Restore
                           </button>
                           <button onClick={() => {
@@ -6596,7 +6596,8 @@ ${html}
                             if (!tab.permission || tab.permission === "mine") hardDeleteOnServer(tab);
                             setTabs(prev => prev.filter(t => t.id !== tab.id));
                           }}
-                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }} title={(!tab.permission || tab.permission === "mine") ? "Permanently delete" : "Remove from list"}>
+                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}
+                            title={(!tab.permission || tab.permission === "mine") ? "Delete permanently" : "Remove from list"}>
                             {(!tab.permission || tab.permission === "mine") ? "Delete" : "Remove"}
                           </button>
                         </div>
@@ -6620,6 +6621,7 @@ ${html}
                           }}
                           className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
                           style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
+                          title="Permanently delete all trashed documents"
                         >
                           Empty Trash
                         </button>
@@ -6698,7 +6700,7 @@ ${html}
                 <button
                   onClick={() => setShowAuthMenu(!showAuthMenu)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
-                  title="Account menu"
+                  title="Account settings"
                 >
                   <img src={resolveAvatar(profile, user, 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0 text-left">
@@ -6815,7 +6817,6 @@ ${html}
                 onClick={() => setShowAuthMenu(true)}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
                 style={{ color: "var(--text-muted)" }}
-                title="Sign In / Sign Up"
               >
                 <User width={14} height={14} className="shrink-0" />
                 {sidebarWidth >= 180 ? "Sign In / Sign Up" : "Sign In"}
@@ -7180,7 +7181,7 @@ ${html}
                     onClick={() => { setShowToolbar(!showToolbar); if (!showToolbar && !toolbarHintDismissed) { setToolbarHintDismissed(true); try { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); } catch {} } }}
                     className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${!showToolbar && !toolbarHintDismissed ? "ring-1 ring-[var(--accent)]" : ""}`}
                     style={{ background: showToolbar ? "var(--accent-dim)" : "transparent", color: showToolbar ? "var(--accent)" : "var(--text-faint)" }}
-                    title={`Formatting Toolbar ${showToolbar ? "ON" : "OFF"}`}
+                    title={`Formatting toolbar ${showToolbar ? "ON" : "OFF"}`}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M1 4h14M1 8h14M1 12h14"/><circle cx="5" cy="4" r="1.5" fill="currentColor"/><circle cx="10" cy="8" r="1.5" fill="currentColor"/><circle cx="7" cy="12" r="1.5" fill="currentColor"/></svg>
                   </button>
@@ -7210,7 +7211,7 @@ ${html}
                     onClick={() => setNarrowView(!narrowView)}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: narrowView ? "var(--accent-dim)" : "transparent", color: narrowView ? "var(--accent)" : "var(--text-faint)" }}
-                    title={`Narrow View ${narrowView ? "ON" : "OFF"}`}
+                    title={`Narrow view ${narrowView ? "ON" : "OFF"}`}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
                   </button>
@@ -7226,7 +7227,7 @@ ${html}
                     onClick={toggleDiagramMode}
                     className="flex items-center justify-center h-6 px-1.5 rounded-md transition-colors"
                     style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", fontFamily: "var(--font-geist-mono, monospace)", fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}
-                    title={`AI ASCII Render ${diagramMode === "ai" ? "ON" : "OFF"}`}
+                    title={`AI ASCII render ${diagramMode === "ai" ? "ON" : "OFF"}`}
                   >
                     ASCII
                   </button>
@@ -7244,7 +7245,7 @@ ${html}
                       onClick={handleToggleHistory}
                       className="flex items-center justify-center h-6 w-6 rounded-md transition-colors relative"
                       style={{ background: showHistory ? "var(--accent-dim)" : "transparent", color: showHistory ? "var(--accent)" : "var(--text-faint)" }}
-                      title="Version History"
+                      title="Version history"
                     >
                       <Clock width={11} height={11} />
                       {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-[7px] flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
@@ -7262,7 +7263,7 @@ ${html}
                     onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
                     style={{ background: showAIPanel || aiProcessing ? "var(--accent-dim)" : "transparent", color: showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-faint)", fontWeight: 600, fontSize: 11 }}
-                    title="AI Tools"
+                    title="AI tools"
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     {aiProcessing ? <span className="text-[9px] hidden sm:inline">
@@ -7295,7 +7296,7 @@ ${html}
                     }}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: showImagePanel ? "var(--accent-dim)" : "transparent", color: showImagePanel ? "var(--accent)" : "var(--text-faint)" }}
-                    title="My Images"
+                    title="My images"
                   >
                     <ImageIcon width={11} height={11} />
                   </button>
@@ -7520,8 +7521,7 @@ ${html}
                             onClick={() => item.action === "translate" ? setShowTranslatePicker(prev => !prev) : handleAIAction(item.action)}
                             disabled={!!aiProcessing}
                             className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                            style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}
-                            title={item.label}>
+                            style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
                             {item.icon}
                             {item.label}
                           </button>
@@ -7627,6 +7627,7 @@ ${html}
                         disabled={!aiChatInput.trim() || !!aiProcessing}
                         className="shrink-0 p-1.5 rounded-md transition-colors"
                         style={{ background: aiChatInput.trim() ? "var(--accent)" : "transparent", color: aiChatInput.trim() ? "#000" : "var(--text-faint)" }}
+                        title="Send"
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2L2 8.5l5 2L9.5 16z"/><path d="M14 2L7 10.5"/></svg>
                       </button>
@@ -7751,7 +7752,6 @@ ${html}
                       onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) doRender(markdown); }}
                       className="flex items-center justify-center w-5 h-5 rounded transition-colors"
                       style={{ color: "var(--text-muted)" }}
-                      title="Close history panel"
                     >
                       <X width={10} height={10} />
                     </button>
@@ -7866,7 +7866,6 @@ ${html}
                     onClick={() => setShowFlavorMenu(!showFlavorMenu)}
                     className="px-1.5 py-0.5 rounded font-mono cursor-pointer transition-colors hover:brightness-110"
                     style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-                    title="Markdown flavor — click to convert"
                   >
                     {flavor.toUpperCase()} ▾
                   </button>
@@ -8090,7 +8089,7 @@ ${html}
           </div>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.cc">About</a>
           <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
-          <a href="/discover" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending documents">Trending</a>
+          <a href="/discover" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
           <a href="/docs" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="API documentation">API</a>
           <a href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="mdfy VS Code extension">VS Code</a>
           <a href="https://chrome.google.com/webstore" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="mdfy Chrome extension">Chrome</a>
@@ -9109,7 +9108,7 @@ ${html}
           style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
           onClick={() => setLightboxImage(null)}>
           <button className="absolute top-4 right-4 p-2 rounded-lg transition-colors hover:bg-white/10"
-            style={{ color: "#fff" }} onClick={() => setLightboxImage(null)} title="Close">
+            style={{ color: "#fff" }} onClick={() => setLightboxImage(null)}>
             <X width={20} height={20} />
           </button>
           {/* Navigate prev/next */}
@@ -9118,13 +9117,13 @@ ${html}
             return (<>
               {idx > 0 && (
                 <button className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors hover:bg-white/10"
-                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx - 1].url); }} title="Previous image">
+                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx - 1].url); }}>
                   <ChevronDown width={24} height={24} style={{ transform: "rotate(90deg)" }} />
                 </button>
               )}
               {idx < userImages.length - 1 && (
                 <button className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors hover:bg-white/10"
-                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx + 1].url); }} title="Next image">
+                  style={{ color: "#fff" }} onClick={(e) => { e.stopPropagation(); setLightboxImage(userImages[idx + 1].url); }}>
                   <ChevronDown width={24} height={24} style={{ transform: "rotate(-90deg)" }} />
                 </button>
               )}

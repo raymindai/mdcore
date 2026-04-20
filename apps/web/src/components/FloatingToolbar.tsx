@@ -112,29 +112,29 @@ function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
       onMouseDown={(e) => e.preventDefault()}
     >
       {/* Undo / Redo */}
-      <button className={b} onClick={() => exec("undo")}>
+      <button className={b} onClick={() => exec("undo")} title="Undo">
         <Undo2 size={I} strokeWidth={1.5} />
       </button>
-      <button className={b} onClick={() => exec("redo")}>
+      <button className={b} onClick={() => exec("redo")} title="Redo">
         <Redo2 size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
       {/* Headings */}
-      <button className={`${b} ${blockType === "h1" ? on : ""}`} onClick={() => fmtBlock("h1")}><span className="text-[10px] font-bold">H1</span></button>
-      <button className={`${b} ${blockType === "h2" ? on : ""}`} onClick={() => fmtBlock("h2")}><span className="text-[10px] font-bold">H2</span></button>
-      <button className={`${b} ${blockType === "h3" ? on : ""}`} onClick={() => fmtBlock("h3")}><span className="text-[10px] font-semibold">H3</span></button>
-      <button className={`${b} ${blockType === "h4" ? on : ""}`} onClick={() => fmtBlock("h4")}><span className="text-[10px]">H4</span></button>
-      <button className={`${b} ${blockType === "h5" ? on : ""}`} onClick={() => fmtBlock("h5")}><span className="text-[10px]">H5</span></button>
-      <button className={`${b} ${blockType === "h6" ? on : ""}`} onClick={() => fmtBlock("h6")}><span className="text-[10px]">H6</span></button>
-      <button className={`${b} ${blockType === "p" ? on : ""}`} onClick={() => fmtBlock("p")}><span className="text-[10px]">P</span></button>
+      <button className={`${b} ${blockType === "h1" ? on : ""}`} onClick={() => fmtBlock("h1")} title="Heading 1"><span className="text-[10px] font-bold">H1</span></button>
+      <button className={`${b} ${blockType === "h2" ? on : ""}`} onClick={() => fmtBlock("h2")} title="Heading 2"><span className="text-[10px] font-bold">H2</span></button>
+      <button className={`${b} ${blockType === "h3" ? on : ""}`} onClick={() => fmtBlock("h3")} title="Heading 3"><span className="text-[10px] font-semibold">H3</span></button>
+      <button className={`${b} ${blockType === "h4" ? on : ""}`} onClick={() => fmtBlock("h4")} title="Heading 4"><span className="text-[10px]">H4</span></button>
+      <button className={`${b} ${blockType === "h5" ? on : ""}`} onClick={() => fmtBlock("h5")} title="Heading 5"><span className="text-[10px]">H5</span></button>
+      <button className={`${b} ${blockType === "h6" ? on : ""}`} onClick={() => fmtBlock("h6")} title="Heading 6"><span className="text-[10px]">H6</span></button>
+      <button className={`${b} ${blockType === "p" ? on : ""}`} onClick={() => fmtBlock("p")} title="Paragraph"><span className="text-[10px]">P</span></button>
       {sep}
 
       {/* Inline */}
-      <button className={`${b} ${active.bold ? on : ""}`} onClick={() => exec("bold")}><span className="font-bold text-[12px]">B</span></button>
-      <button className={`${b} ${active.italic ? on : ""}`} onClick={() => exec("italic")}><span className="italic text-[12px]">I</span></button>
-      <button className={`${b} ${active.strikethrough ? on : ""}`} onClick={() => exec("strikeThrough")}><span className="line-through text-[12px]">S</span></button>
-      <button className={`${b} ${active.code ? on : ""}`} onClick={() => {
+      <button className={`${b} ${active.bold ? on : ""}`} onClick={() => exec("bold")} title="Bold"><span className="font-bold text-[12px]">B</span></button>
+      <button className={`${b} ${active.italic ? on : ""}`} onClick={() => exec("italic")} title="Italic"><span className="italic text-[12px]">I</span></button>
+      <button className={`${b} ${active.strikethrough ? on : ""}`} onClick={() => exec("strikeThrough")} title="Strikethrough"><span className="line-through text-[12px]">S</span></button>
+      <button className={`${b} ${active.code ? on : ""}`} title="Inline code" onClick={() => {
         const sel = window.getSelection();
         if (sel && !sel.isCollapsed && sel.rangeCount) {
           try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
@@ -145,40 +145,40 @@ function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
       {sep}
 
       {/* Lists */}
-      <button className={`${b} ${active.ul ? on : ""}`} onClick={() => exec("insertUnorderedList")}>
+      <button className={`${b} ${active.ul ? on : ""}`} onClick={() => exec("insertUnorderedList")} title="Bullet list">
         <List size={I} strokeWidth={1.5} />
       </button>
-      <button className={`${b} ${active.ol ? on : ""}`} onClick={() => exec("insertOrderedList")}>
+      <button className={`${b} ${active.ol ? on : ""}`} onClick={() => exec("insertOrderedList")} title="Numbered list">
         <ListOrdered size={I} strokeWidth={1.5} />
       </button>
-      <button className={b} onClick={() => exec("indent")}>
+      <button className={b} onClick={() => exec("indent")} title="Increase indent">
         <IndentIncrease size={I} strokeWidth={1.5} />
       </button>
-      <button className={b} onClick={() => exec("outdent")}>
+      <button className={b} onClick={() => exec("outdent")} title="Decrease indent">
         <IndentDecrease size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
       {/* Block */}
-      <button className={`${b} ${blockType === "blockquote" ? on : ""}`} onClick={() => fmtBlock("blockquote")}>
+      <button className={`${b} ${blockType === "blockquote" ? on : ""}`} onClick={() => fmtBlock("blockquote")} title="Blockquote">
         <Quote size={I} strokeWidth={1.5} />
       </button>
-      <button className={b} onClick={() => exec("insertHorizontalRule")}>
+      <button className={b} onClick={() => exec("insertHorizontalRule")} title="Horizontal rule">
         <Minus size={I} strokeWidth={2} />
       </button>
       {sep}
 
       {/* Link, Image */}
-      <button className={b} onClick={() => setInputPopup({ label: "URL", onSubmit: (u) => { exec("createLink", u); setInputPopup(null); } })}>
+      <button className={b} onClick={() => setInputPopup({ label: "URL", onSubmit: (u) => { exec("createLink", u); setInputPopup(null); } })} title="Insert link">
         <Link2 size={I} strokeWidth={1.5} />
       </button>
-      <button className={b} onClick={() => setInputPopup({ label: "Image URL", onSubmit: (u) => { exec("insertImage", u); setInputPopup(null); } })}>
+      <button className={b} onClick={() => setInputPopup({ label: "Image URL", onSubmit: (u) => { exec("insertImage", u); setInputPopup(null); } })} title="Insert image">
         <ImageIcon size={I} strokeWidth={1.5} />
       </button>
       {sep}
 
       {/* Clear */}
-      <button className={b} onClick={() => exec("removeFormat")}>
+      <button className={b} onClick={() => exec("removeFormat")} title="Remove formatting">
         <RemoveFormatting size={I} strokeWidth={1.5} />
       </button>
       {/* Inline input popup */}
