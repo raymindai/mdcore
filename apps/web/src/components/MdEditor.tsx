@@ -7031,25 +7031,24 @@ ${html}
             }}
           >
           {showOnboarding ? (
-            /* ─── Start Screen (Mac style — centered, simple) ─── */
-            <div className="flex-1 flex items-center justify-center overflow-auto" style={{ background: "var(--background)" }}>
-              <div className="w-full max-w-md mx-4 text-center py-12">
-                {/* Recent files — top, card style */}
+            /* ─── Start Screen ─── */
+            <div className="flex-1 overflow-auto" style={{ background: "var(--background)" }}>
+              <div className="max-w-xl mx-auto px-5 py-8">
+
+                {/* Recent files */}
                 {(() => {
                   const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER).slice(0, 5);
                   if (recent.length === 0) return null;
                   return (
-                    <div className="mb-8">
-                      <p className="text-[10px] mb-3 text-left" style={{ color: "var(--text-faint)" }}>Recent</p>
-                      <div className="space-y-1.5">
-                        {recent.map((t) => (
+                    <div className="mb-6">
+                      <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Recent</div>
+                      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                        {recent.map((t, i) => (
                           <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] text-left cursor-pointer"
-                            style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "var(--surface)", transition: "all 0.15s" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-                            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.98)"; }}
-                            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}>
+                            className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-left cursor-pointer"
+                            style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
                             <FileIcon width={14} height={14} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
                             <span className="flex-1 truncate">{t.title || "Untitled"}</span>
                             {t.cloudId && <CircleCheck width={10} height={10} style={{ color: "var(--text-faint)", flexShrink: 0 }} />}
@@ -7059,88 +7058,74 @@ ${html}
                     </div>
                   );
                 })()}
-                <div className="space-y-1.5 mb-7">
-                  {[
-                    { label: "New Document", kbd: isMobile ? "" : mod + "N", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                    { label: "Paste from Clipboard", kbd: isMobile ? "" : mod + "V", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
-                    { label: "Import File", kbd: "", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
-                  ].map((item) => (
-                    <button key={item.label} onClick={item.fn}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] cursor-pointer"
-                      style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", background: "transparent", transition: "all 0.15s" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)"; }}
-                      onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.98)"; }}
-                      onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}>
-                      <span className="flex-1 text-left">{item.label}</span>
-                      {item.kbd && <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
-                    </button>
-                  ))}
+
+                {/* Create — 3 column grid like About page */}
+                <div className="mb-6">
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Create</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "New Document", desc: "Blank page", kbd: isMobile ? "" : mod + "N", color: "#fb923c", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
+                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                      { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
+                    ].map((item) => (
+                      <button key={item.label} onClick={item.fn}
+                        className="flex flex-col items-start px-4 py-3 rounded-xl text-left cursor-pointer"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; }}>
+                        <div className="text-[12px] font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                        <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                        {item.kbd && <kbd className="text-[9px] font-mono mt-1.5 px-1 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="mb-7 py-5 rounded-lg cursor-pointer"
-                  style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", transition: "all 0.15s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}
+
+                {/* Drop zone */}
+                <div className="mb-6 py-6 rounded-xl cursor-pointer text-center"
+                  style={{ border: "2px dashed var(--border)", color: "var(--text-faint)", background: "var(--surface)", transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; }}
                   onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-dim)"; }}
-                  onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "transparent"; }}
+                  onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "var(--surface)"; }}
                   onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
                   onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); }}>
-                  <p className="text-[12px]">Drop files here to open</p>
+                  <p className="text-[13px] font-medium">Drop files here to open</p>
                   <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
                 </div>
-                {/* Recent files moved to top — see below */}
-                <div className="mb-7">
-                  <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Examples</p>
-                  <div className="flex items-center justify-center gap-1.5 flex-wrap">
+
+                {/* Examples — 2 column grid */}
+                <div className="mb-6">
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Examples</div>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="px-2 py-1 rounded text-[10px] cursor-pointer"
-                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", transition: "all 0.15s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        className="px-3 py-2 rounded-lg text-[12px] text-left cursor-pointer"
+                        style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
                         {ex.title}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="mb-7">
-                  <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                {/* Explore + Plugins — 2 column grid */}
+                <div className="mb-6">
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Explore</div>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {([
-                      { label: "Chrome", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v4M2.5 11l3.5-2M13.5 11l-3.5-2"/></svg>, url: "/plugins#chrome" },
-                      { label: "VS Code", icon: <Code width={12} height={12} />, url: "/plugins#vscode" },
-                      { label: "Mac", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="2" width="12" height="10" rx="1.5"/><path d="M2 9.5h12"/><path d="M6.5 12v1.5M9.5 12v1.5M5 13.5h6"/></svg>, url: "/plugins#desktop" },
-                      { label: "CLI", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M4 5l3 3-3 3M8.5 11H12"/></svg>, url: "/plugins#cli" },
-                      { label: "MCP", icon: <Sparkles width={12} height={12} />, url: "/plugins#mcp" },
-                      { label: "GitHub", icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5A7.5 7.5 0 005.7 15c.4.1.5-.2.5-.4V13c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.3.7.1-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4 0-.9.3-1.6.8-2.2-.1-.2-.4-1 .1-2.1 0 0 .7-.2 2.2.8a7.4 7.4 0 014 0c1.5-1 2.2-.8 2.2-.8.5 1.1.2 1.9.1 2.1.5.6.8 1.3.8 2.2 0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.6v2.4c0 .2.1.5.6.4A7.5 7.5 0 008 .5z"/></svg>, url: "/plugins#chrome" },
-                    ]).map((ch) => (
-                      <a key={ch.label} href={ch.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] cursor-pointer"
-                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
-                        {ch.icon}
-                        {ch.label}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-                {/* Explore links */}
-                <div>
-                  <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Explore</p>
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    {([
-                      { label: "About", icon: <HelpCircle width={12} height={12} />, url: "/about" },
-                      { label: "Documentation", icon: <FileText width={12} height={12} />, url: "/docs" },
-                      { label: "Trending", icon: <Zap width={12} height={12} />, url: "/discover" },
+                      { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c" },
+                      { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa" },
+                      { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80" },
+                      { label: "About", desc: "How mdfy.cc works", url: "/about", color: "#c4b5fd" },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] cursor-pointer"
-                        style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", textDecoration: "none", transition: "all 0.15s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-dim)"; e.currentTarget.style.color = "var(--accent)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--toggle-bg)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
-                        {item.icon}
-                        {item.label}
+                        className="px-3 py-2 rounded-lg text-left cursor-pointer block"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", textDecoration: "none", transition: "all 0.12s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; }}>
+                        <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
                       </a>
                     ))}
                   </div>
