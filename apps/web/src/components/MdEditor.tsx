@@ -875,6 +875,7 @@ interface Tab {
   isRestricted?: boolean;  // shared with specific people (allowed_emails)
   ownerEmail?: string;     // owner's email (for shared docs)
   source?: string;         // origin: "vscode" | "chrome" | null
+  lastOpenedAt?: number;   // timestamp of last open
 }
 
 let tabIdCounter = Date.now();
@@ -2031,8 +2032,9 @@ export default function MdEditor() {
     isPopstateRef.current = false;
 
     setTabs((prev) => {
-      // Save current tab's markdown only (don't overwrite title — user may have set it explicitly)
+      // Save current tab's markdown + stamp lastOpenedAt on target tab
       const saved = prev.map((t) => {
+        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
         if (t.id !== currentTabId || t.readonly) return t;
         return { ...t, markdown: currentMd };
       });
@@ -7037,7 +7039,8 @@ ${html}
 
                 {/* Recent files */}
                 {(() => {
-                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER).slice(0, 5);
+                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER)
+                    .sort((a, b) => (b.lastOpenedAt || 0) - (a.lastOpenedAt || 0)).slice(0, 5);
                   if (recent.length === 0) return null;
                   return (
                     <div className="mb-6">
@@ -7051,6 +7054,7 @@ ${html}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
                             <DocStatusIcon tab={t} isActive={false} />
                             <span className="flex-1 truncate">{t.title || "Untitled"}</span>
+                            {t.lastOpenedAt && <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>{relativeTime(new Date(t.lastOpenedAt).toISOString())}</span>}
                           </button>
                         ))}
                       </div>
