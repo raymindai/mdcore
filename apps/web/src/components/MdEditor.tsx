@@ -4682,6 +4682,11 @@ ${html}
           prev === "split" ? "preview" : prev === "preview" ? "editor" : "split"
         );
       }
+      // View mode shortcuts: Alt+H Home, Alt+1 Live, Alt+2 Split, Alt+3 Source
+      if (e.altKey && !mod && e.key === "h") { e.preventDefault(); setShowOnboarding(true); }
+      if (e.altKey && !mod && e.key === "1") { e.preventDefault(); setShowOnboarding(false); setViewMode("preview"); }
+      if (e.altKey && !mod && e.key === "2") { e.preventDefault(); setShowOnboarding(false); setViewMode("split"); }
+      if (e.altKey && !mod && e.key === "3") { e.preventDefault(); setShowOnboarding(false); setViewMode("editor"); }
       if (e.key === "Escape") {
         if (showCommandPalette) { setShowCommandPalette(false); setCmdSearch(""); return; }
         // If a modal/dialog is handling Escape, don't also focus editor
@@ -5158,22 +5163,22 @@ ${html}
               background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
               color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
             }}
-            title="Start screen"
+            title="Home (Alt+H)"
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
           </button>
           {/* Live / Split / Source */}
           {([
-            { mode: "preview" as ViewMode, label: "Live", icon: (
+            { mode: "preview" as ViewMode, label: "Live", shortcut: "1", icon: (
               <Eye width={13} height={13} />
             )},
-            { mode: "split" as ViewMode, label: "Split", icon: (
+            { mode: "split" as ViewMode, label: "Split", shortcut: "2", icon: (
               <Columns2 width={13} height={13} />
             )},
-            { mode: "editor" as ViewMode, label: "Source", icon: (
+            { mode: "editor" as ViewMode, label: "Source", shortcut: "3", icon: (
               <Code width={13} height={13} />
             )},
-          ]).map(({ mode, label, icon }) => {
+          ]).map(({ mode, label, shortcut, icon }) => {
             const active = !showOnboarding && viewMode === mode;
             const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
             const disabled = showOnboarding && !hasActiveDoc;
@@ -5182,6 +5187,7 @@ ${html}
                 key={mode}
                 onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); } }}
                 disabled={disabled}
+                title={`${label} (Alt+${shortcut})`}
                 className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
                 style={{
                   background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
