@@ -718,9 +718,11 @@ pre.ascii-original.hidden {
   height: 100%;
   overflow: hidden;
 }
+#live-pane {
+  overflow: auto;
+}
 #live-pane #content {
   flex: 1;
-  overflow: auto;
 }
 
 /* Source pane */
