@@ -317,6 +317,8 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
               const url = (message as { url?: string }).url || "";
               const pos = editor.selection.active;
               editor.edit(b => b.insert(pos, `\n![${message.name}](${url})\n`));
+            } else {
+              vscode.window.showWarningMessage("Open a document to insert the image.");
             }
             break;
           }

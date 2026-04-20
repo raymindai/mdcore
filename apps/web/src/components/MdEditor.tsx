@@ -1709,13 +1709,20 @@ export default function MdEditor() {
       }
       const data = await res.json();
       if (!data.url) { showToast("Upload failed — no URL returned", "error"); return null; }
+      // Refresh image panel if it's open
+      if (showImagePanel) {
+        fetch("/api/upload/list", { headers: authHeaders })
+          .then(r => r.ok ? r.json() : null)
+          .then(d => { if (d) { setUserImages(d.images || []); setImageQuota(d.quota); } })
+          .catch(() => {});
+      }
       return data.url;
     } catch (e) {
       showToast(e instanceof DOMException && e.name === "AbortError" ? "Upload timed out" : "Upload failed", "error");
       return null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, compressImage]);
+  }, [user, compressImage, showImagePanel, authHeaders]);
 
   // CodeMirror 6 editor — replaces plain textarea
   const handleChangeRef = useRef<(value: string) => void>(() => {});
@@ -7282,7 +7289,7 @@ ${html}
                   <button
                     onClick={() => {
                       setShowImagePanel(prev => {
-                        if (!prev && userImages.length === 0 && !imagesLoading) {
+                        if (!prev && !imagesLoading) {
                           setImagesLoading(true);
                           fetch("/api/upload/list", { headers: authHeaders })
                             .then(r => r.ok ? r.json() : null)
@@ -9106,7 +9113,17 @@ ${html}
       {lightboxImage && (
         <div className="fixed inset-0 z-[10001] flex items-center justify-center cursor-pointer"
           style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
-          onClick={() => setLightboxImage(null)}>
+          onClick={() => setLightboxImage(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") { setLightboxImage(null); return; }
+            if (userImages.length <= 1) return;
+            const idx = userImages.findIndex(i => i.url === lightboxImage);
+            if (idx < 0) return;
+            if (e.key === "ArrowLeft" && idx > 0) { e.stopPropagation(); setLightboxImage(userImages[idx - 1].url); }
+            if (e.key === "ArrowRight" && idx < userImages.length - 1) { e.stopPropagation(); setLightboxImage(userImages[idx + 1].url); }
+          }}
+          tabIndex={0}
+          ref={(el) => el?.focus()}>
           <button className="absolute top-4 right-4 p-2 rounded-lg transition-colors hover:bg-white/10"
             style={{ color: "#fff" }} onClick={() => setLightboxImage(null)}>
             <X width={20} height={20} />

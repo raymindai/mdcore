@@ -111,6 +111,8 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
           if (editor) {
             const pos = editor.selection.active;
             editor.edit(b => b.insert(pos, `\n![${msg.name}](${msg.url})\n`));
+          } else {
+            vscode.window.showWarningMessage("Open a document to insert the image.");
           }
           break;
         }

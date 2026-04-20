@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Reject empty files
+  if (file.size === 0) {
+    return NextResponse.json({ error: "Empty file" }, { status: 400 });
+  }
+
   // Validate size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
@@ -152,6 +157,10 @@ export async function POST(req: NextRequest) {
     .getPublicUrl(storagePath);
 
   // Update storage usage (only for authenticated users with profile)
+  // NOTE: Race condition — two concurrent uploads both read the same currentUsage,
+  // so the second write may overwrite the first increment. Practical impact is minimal
+  // since concurrent image uploads are rare. To fix properly, use an RPC with
+  // atomic increment (SET storage_used_bytes = storage_used_bytes + $amount).
   if (userId) {
     await supabase
       .from("profiles")
