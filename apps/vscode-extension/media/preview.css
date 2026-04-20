@@ -724,8 +724,18 @@ pre.ascii-original.hidden {
 #live-pane #formatting-toolbar {
   flex-shrink: 0;
 }
-#live-pane #content {
+#content-wrapper {
   flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+#content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+#live-pane #content {
 }
 
 /* Source pane */

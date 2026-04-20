@@ -888,6 +888,14 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <title>mdfy Preview</title>
 </head>
 <body${this.isCloudPreview ? ' class="live-mode"' : ""}>
+  <!-- Loading state -->
+  <div id="loading-overlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:1000;transition:opacity 0.3s">
+    <div style="text-align:center">
+      <div style="font-size:16px;font-weight:700;margin-bottom:8px"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span></div>
+      <div style="width:40px;height:2px;background:var(--border);border-radius:1px;margin:0 auto;overflow:hidden"><div style="width:50%;height:100%;background:var(--accent);border-radius:1px;animation:loadbar 1s ease-in-out infinite"></div></div>
+    </div>
+  </div>
+  <style>@keyframes loadbar{0%{transform:translateX(-100%)}50%{transform:translateX(100%)}100%{transform:translateX(-100%)}}</style>
   <!-- Global toolbar: logo + view mode only -->
   <div id="toolbar">
     <a class="toolbar-logo" href="https://mdfy.cc" target="_blank" style="text-decoration:none;cursor:pointer"><span style="color:var(--accent)">md</span><span style="color:var(--fg)">fy</span><span style="color:#737373">.cc</span></a>
@@ -955,8 +963,8 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="math" title="Math"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" font-size="11" font-family="serif" font-style="italic">fx</text></svg></button>
         <button data-action="mermaid" title="Mermaid"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="1" width="5" height="4" rx="1"/><rect x="9" y="1" width="5" height="4" rx="1"/><rect x="5.5" y="11" width="5" height="4" rx="1"/><path d="M4.5 5v2.5a2 2 0 002 2h3a2 2 0 002-2V5"/><path d="M8 9.5V11"/></svg></button>
       </div>
-      <div id="content-wrapper" style="display:flex;flex:1;min-height:0;overflow:hidden">
-        <div id="content-scroll" style="flex:1;overflow:auto">
+      <div id="content-wrapper">
+        <div id="content-scroll">
         <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}"
           ${renderedHtml}
         </article>
@@ -1094,6 +1102,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
       mermaid.run();
       // Mermaid edit buttons are added by preview.js after it initializes
     }
+    // Dismiss loading overlay
+    var loadingEl = document.getElementById('loading-overlay');
+    if (loadingEl) { loadingEl.style.opacity = '0'; setTimeout(function() { loadingEl.remove(); }, 300); }
   </script>
   <script nonce="${nonce}" src="${jsUri}"></script>
 </body>
