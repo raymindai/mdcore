@@ -721,21 +721,22 @@ body {
 /* Local folder grouping */
 .local-folder { margin-bottom: 2px; }
 .local-folder-header {
-  display: flex; align-items: center; gap: 4px;
-  padding: 4px 14px; font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; font-size: 12px; font-weight: 600;
   color: var(--vscode-descriptionForeground);
   cursor: pointer; user-select: none;
   transition: color 0.12s;
 }
-.local-folder-header:hover { color: var(--vscode-foreground); }
+.local-folder-header:hover { color: var(--vscode-foreground); background: var(--vscode-list-hoverBackground); }
 .local-folder-chevron {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 12px; height: 12px; flex-shrink: 0;
+  width: 14px; height: 14px; flex-shrink: 0;
   transition: transform 0.15s ease;
+  transform: rotate(90deg);
 }
-.local-folder-chevron.collapsed { transform: rotate(-90deg); }
-.local-folder-count { font-size: 9px; opacity: 0.5; margin-left: auto; }
-.local-folder-list { padding-left: 8px; }
+.local-folder-chevron.collapsed { transform: rotate(0deg); }
+.local-folder-count { font-size: 10px; opacity: 0.5; margin-left: auto; }
+.local-folder-list { padding-left: 12px; }
 .local-folder-list.collapsed { display: none; }
 
 /* Auth prompt for images */
