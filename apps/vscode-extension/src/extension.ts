@@ -535,6 +535,10 @@ function extractTitle(markdown: string): string | undefined {
   return match?.[1]?.trim();
 }
 
+export function getAuthManager(): AuthManager | undefined {
+  return authManager;
+}
+
 export function getApiBaseUrl(): string {
   const config = vscode.workspace.getConfiguration("mdfy");
   return config.get<string>("apiBaseUrl") ?? "https://mdfy.cc";

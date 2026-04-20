@@ -293,12 +293,18 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
             try {
               const { getApiBaseUrl } = await import("./extension");
               const baseUrl = getApiBaseUrl();
-              const res = await fetch(`${baseUrl}/api/upload/list`);
+              const token = PreviewPanel.authManagerRef ? await PreviewPanel.authManagerRef.getToken() : undefined;
+              if (!token) {
+                this.panel.webview.postMessage({ type: "image-data", authenticated: false, images: [], quota: null });
+                break;
+              }
+              const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+              const res = await fetch(`${baseUrl}/api/upload/list`, { headers });
               if (res.ok) {
                 const data = (await res.json()) as { images?: unknown[]; quota?: unknown };
                 this.panel.webview.postMessage({ type: "image-data", authenticated: true, images: data.images || [], quota: data.quota });
               } else {
-                this.panel.webview.postMessage({ type: "image-data", authenticated: false, images: [], quota: null });
+                this.panel.webview.postMessage({ type: "image-data", authenticated: true, images: [], quota: null });
               }
             } catch {
               this.panel.webview.postMessage({ type: "image-data", authenticated: false, images: [], quota: null });
@@ -949,10 +955,12 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button data-action="math" title="Math"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><text x="2" y="12" font-size="11" font-family="serif" font-style="italic">fx</text></svg></button>
         <button data-action="mermaid" title="Mermaid"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="1" width="5" height="4" rx="1"/><rect x="9" y="1" width="5" height="4" rx="1"/><rect x="5.5" y="11" width="5" height="4" rx="1"/><path d="M4.5 5v2.5a2 2 0 002 2h3a2 2 0 002-2V5"/><path d="M8 9.5V11"/></svg></button>
       </div>
-      <div style="display:flex;flex:1;min-height:0">
-        <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}" style="flex:1;overflow:auto">
+      <div id="content-wrapper" style="display:flex;flex:1;min-height:0;overflow:hidden">
+        <div id="content-scroll" style="flex:1;overflow:auto">
+        <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}"
           ${renderedHtml}
         </article>
+        </div><!-- end content-scroll -->
         <div id="image-panel" style="display:none;width:260px;flex-shrink:0;border-left:1px solid var(--border);overflow-y:auto;background:var(--bg)">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border)">
             <span style="font-size:11px;font-weight:600;color:var(--fg)">My Images</span>

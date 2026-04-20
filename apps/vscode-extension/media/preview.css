@@ -726,7 +726,6 @@ pre.ascii-original.hidden {
 }
 #live-pane #content {
   flex: 1;
-  overflow: auto;
 }
 
 /* Source pane */

@@ -1063,30 +1063,7 @@ body {
         }
       }
 
-      // Images section
-      if (currentFilter === 'all' || currentFilter === 'cloud') {
-        if (!isLoggedIn) {
-          html += secHeader('image', 'Images', '');
-          html += '<div class="auth-prompt"><p>Sign in to manage images</p><button class="auth-prompt-btn" data-action="sign-in">Sign in to mdfy.cc</button></div>';
-        } else if (imageData && imageData.images && imageData.images.length > 0) {
-          var usedMB = Math.round((imageData.quota.used || 0) / 1024 / 1024);
-          var totalMB = Math.round((imageData.quota.total || 1) / 1024 / 1024);
-          var pct = totalMB > 0 ? Math.min(100, Math.round(usedMB / totalMB * 100)) : 0;
-          html += secHeader('image', 'Images', imageData.images.length);
-          html += '<div style="padding:4px 14px 2px;font-size:10px;color:var(--vscode-descriptionForeground)">' + usedMB + 'MB / ' + totalMB + 'MB</div>';
-          html += '<div style="margin:2px 14px 6px;height:3px;border-radius:2px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#a78bfa;border-radius:2px"></div></div>';
-          html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 14px 8px">';
-          imageData.images.forEach(function(img) {
-            html += '<div data-action="insert-image" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '" style="border-radius:4px;overflow:hidden;cursor:pointer;border:1px solid var(--vscode-panel-border);aspect-ratio:1">';
-            html += '<img src="' + esc(img.url) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover">';
-            html += '</div>';
-          });
-          html += '</div>';
-        } else if (isLoggedIn) {
-          html += secHeader('image', 'Images', 0);
-          html += '<div class="empty" style="padding:12px 14px">No images uploaded yet</div>';
-        }
-      }
+      // Images section removed from sidebar — now in LIVE header panel
 
       if (!html) {
         html = '<div class="empty">No documents found</div>';
