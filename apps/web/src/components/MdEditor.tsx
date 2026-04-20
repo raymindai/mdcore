@@ -1964,9 +1964,16 @@ export default function MdEditor() {
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
     setIsOwner(tab.permission === "mine" || !tab.permission);
     setIsEditor(tab.permission === "editable");
-    // Reset share modal state for the new tab (will be loaded when modal opens)
+    // Reset share modal state + view count for the new tab
+    setViewCount(0);
     setAllowedEmailsState([]);
     setAllowedEditorsState([]);
+    // Fetch view count for cloud docs
+    if (tab.cloudId && (tab.permission === "mine" || !tab.permission)) {
+      fetch(`/api/docs/${tab.cloudId}`, { method: "HEAD" })
+        .then(r => { const vc = r.headers.get("x-view-count"); if (vc) setViewCount(parseInt(vc) || 0); })
+        .catch(() => {});
+    }
     setShowPermDropdown(false);
     setShowViewerShareModal(false);
     // Update browser URL to reflect current document
@@ -7153,7 +7160,7 @@ ${html}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
-              <div className="flex items-center gap-2 normal-case shrink-0 flex-nowrap">
+              <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
                 {/* Toolbar toggle — icon with hint popover for new users */}
                 {canEdit && <div className="relative group">
                   <button
@@ -7213,6 +7220,7 @@ ${html}
                     <p>{diagramMode === "ai" ? "ASCII art diagrams are automatically converted to styled visuals using AI (Gemini)." : "ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams."}</p>
                   </div>
                 </div>
+                <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* History — icon only */}
                 {docId && (
                   <div className="relative group">
@@ -7279,6 +7287,7 @@ ${html}
                     </div>
                   )}
                 </div>}
+                <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* Export dropdown */}
                 <div className="relative group">
                   <button

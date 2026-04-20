@@ -625,7 +625,7 @@ export async function HEAD(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("updated_at, expires_at, deleted_at")
+    .select("updated_at, expires_at, deleted_at, view_count")
     .eq("id", id)
     .single();
 
@@ -643,6 +643,6 @@ export async function HEAD(_req: NextRequest, { params }: RouteParams) {
 
   return new Response(null, {
     status: 200,
-    headers: { "x-updated-at": data.updated_at || "" },
+    headers: { "x-updated-at": data.updated_at || "", "x-view-count": String(data.view_count || 0) },
   });
 }
