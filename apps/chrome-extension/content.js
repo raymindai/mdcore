@@ -1028,6 +1028,10 @@
           window.open(MDFY_URL + "/?doc=" + id + tokenParam, "mdfy_" + Date.now());
           return;
         }
+        // Check for auth failure
+        if (res.status === 401 || res.status === 403) {
+          showToast("Session expired. Log in at mdfy.cc to sync.", 5000);
+        }
       } catch (err) {
         console.warn("[mdfy] Authenticated share failed, falling back to hash URL:", err);
       }

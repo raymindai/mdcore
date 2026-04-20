@@ -62,12 +62,24 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
-      (_event: string, session: { user: User; access_token?: string } | null) => {
+      (event: string, session: { user: User; access_token?: string } | null) => {
         if (session?.user) {
           setState((prev) => ({ ...prev, user: session.user, accessToken: session.access_token || null, loading: false }));
           fetchProfile(supabase, session.user.id, setState);
         } else {
           setState({ user: null, profile: null, loading: false, accessToken: null });
+        }
+
+        // Detect session expiry: SIGNED_OUT event or TOKEN_REFRESHED failure
+        if (event === "SIGNED_OUT" && !session) {
+          const wasLoggedIn = typeof window !== "undefined" && localStorage.getItem("mdfy-was-logged-in");
+          if (wasLoggedIn) {
+            // Dispatch a custom event so components can show a notification
+            window.dispatchEvent(new CustomEvent("mdfy-session-expired"));
+          }
+        }
+        if (event === "TOKEN_REFRESHED" && !session) {
+          window.dispatchEvent(new CustomEvent("mdfy-session-expired"));
         }
       }
     );

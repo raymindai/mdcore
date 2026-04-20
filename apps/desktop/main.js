@@ -153,7 +153,19 @@ const AuthManager = {
     // Token expired — try refresh
     const refreshed = await this.refreshToken();
     if (refreshed) return this.getToken();
+    // Refresh failed — notify the user
+    this.notifySessionExpired();
     return null;
+  },
+
+  notifySessionExpired() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("auth-expired");
+      mainWindow.webContents.send("auth-changed", {
+        loggedIn: false,
+        reason: "session-expired",
+      });
+    }
   },
 
   getHeaders() {
@@ -174,16 +186,22 @@ const AuthManager = {
 
   async refreshToken() {
     const data = this.load();
-    if (!data?.refreshToken) return false;
+    if (!data?.refreshToken) {
+      this.notifySessionExpired();
+      return false;
+    }
     try {
       const resp = await net.fetch(`${MDFY_URL}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: data.refreshToken }),
       });
-      if (!resp.ok) return false;
+      if (!resp.ok) {
+        this.notifySessionExpired();
+        return false;
+      }
       let result;
-      try { result = await resp.json(); } catch { this.save(null); return false; }
+      try { result = await resp.json(); } catch { this.save(null); this.notifySessionExpired(); return false; }
       if (result.token) {
         data.token = result.token;
         if (result.refreshToken) data.refreshToken = result.refreshToken;
@@ -191,6 +209,7 @@ const AuthManager = {
         return true;
       }
     } catch {}
+    this.notifySessionExpired();
     return false;
   },
 
@@ -254,6 +273,12 @@ function deleteMdfyConfig(filePath) {
 
 // ─── API Functions (mirrors publish.ts) ───
 
+function handleApiAuthError(status) {
+  if (status === 401 || status === 403) {
+    AuthManager.notifySessionExpired();
+  }
+}
+
 async function apiPublish(markdown, title) {
   const body = {
     markdown,
@@ -271,7 +296,10 @@ async function apiPublish(markdown, title) {
     headers: AuthManager.getHeaders(),
     body: JSON.stringify(body),
   });
-  if (!resp.ok) throw new Error(`Publish failed: ${resp.status}`);
+  if (!resp.ok) {
+    handleApiAuthError(resp.status);
+    throw new Error(`Publish failed: ${resp.status}`);
+  }
   return resp.json();
 }
 
@@ -292,7 +320,10 @@ async function apiUpdate(docId, editToken, markdown, title) {
     headers: AuthManager.getHeaders(),
     body: JSON.stringify(body),
   });
-  if (!resp.ok) throw new Error(`Update failed: ${resp.status}`);
+  if (!resp.ok) {
+    handleApiAuthError(resp.status);
+    throw new Error(`Update failed: ${resp.status}`);
+  }
   return resp.json();
 }
 
@@ -301,7 +332,10 @@ async function apiPull(docId) {
     method: "GET",
     headers: AuthManager.getHeaders(),
   });
-  if (!resp.ok) throw new Error(`Pull failed: ${resp.status}`);
+  if (!resp.ok) {
+    handleApiAuthError(resp.status);
+    throw new Error(`Pull failed: ${resp.status}`);
+  }
   return resp.json();
 }
 
@@ -327,7 +361,10 @@ async function apiGetCloudDocuments() {
     const resp = await net.fetch(`${MDFY_URL}/api/user/documents`, {
       headers: AuthManager.getHeaders(),
     });
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      handleApiAuthError(resp.status);
+      return [];
+    }
     const data = await resp.json();
     return data.documents || [];
   } catch { return []; }

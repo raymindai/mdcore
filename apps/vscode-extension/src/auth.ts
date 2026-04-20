@@ -126,14 +126,26 @@ export class AuthManager {
                 return data.access_token;
               }
             }
-          } catch { /* refresh failed, logout */ }
+          } catch { /* refresh failed, fall through to logout */ }
         }
         await this.logout();
+        vscode.window.showWarningMessage(
+          "mdfy: Session expired. Sign in again to continue syncing.",
+          "Sign In"
+        ).then(choice => {
+          if (choice === "Sign In") {vscode.commands.executeCommand("mdfy.login");}
+        });
         return undefined;
       }
     } catch {
       // Invalid token format — clear it
       await this.logout();
+      vscode.window.showWarningMessage(
+        "mdfy: Session expired. Sign in again to continue syncing.",
+        "Sign In"
+      ).then(choice => {
+        if (choice === "Sign In") {vscode.commands.executeCommand("mdfy.login");}
+      });
       return undefined;
     }
 

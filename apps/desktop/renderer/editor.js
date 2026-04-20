@@ -972,7 +972,15 @@
         var imgSection = document.getElementById("image-section");
         if (imgSection) imgSection.innerHTML = "";
         renderSidebar();
+        // Notify user if this was an unexpected session expiry
+        if (data.reason === "session-expired") {
+          showToast("Session expired. Sign in again to sync.");
+        }
       }
+    });
+
+    window.mdfyDesktop.onAuthExpired(function() {
+      showToast("Session expired. Sign in again to continue syncing.");
     });
 
     window.mdfyDesktop.onWorkspaceChanged(function() {

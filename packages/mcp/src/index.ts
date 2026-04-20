@@ -82,6 +82,11 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        "Authentication expired. Run 'mdfy login' in your terminal to re-authenticate."
+      );
+    }
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }

@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   onLoadDocument: (cb) => ipcRenderer.on("load-document", (_, d) => cb(d)),
   onFileChanged: (cb) => ipcRenderer.on("file-changed", (_, d) => cb(d)),
   onAuthChanged: (cb) => ipcRenderer.on("auth-changed", (_, d) => cb(d)),
+  onAuthExpired: (cb) => ipcRenderer.on("auth-expired", () => cb()),
   onSyncStatus: (cb) => ipcRenderer.on("sync-status", (_, d) => cb(d)),
   onSyncConflict: (cb) => ipcRenderer.on("sync-conflict", (_, d) => cb(d)),
   onWorkspaceChanged: (cb) => ipcRenderer.on("workspace-changed", () => cb()),

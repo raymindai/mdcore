@@ -2593,6 +2593,30 @@ export default function MdEditor() {
     });
   }, [html, isLoading]);
 
+  // Track auth state changes: notify user when session expires silently
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && user === null) {
+      // User was previously logged in but is now logged out
+      const wasLoggedIn = localStorage.getItem("mdfy-was-logged-in");
+      if (wasLoggedIn) {
+        showToast("You've been signed out. Sign in again to sync.", "info");
+        localStorage.removeItem("mdfy-was-logged-in");
+      }
+    }
+    if (isAuthenticated && user) {
+      localStorage.setItem("mdfy-was-logged-in", "1");
+    }
+  }, [isAuthenticated, user, authLoading]);
+
+  // Listen for session expiry events from useAuth
+  useEffect(() => {
+    const handler = () => {
+      showToast("Session expired. Please sign in again.", "info");
+    };
+    window.addEventListener("mdfy-session-expired", handler);
+    return () => window.removeEventListener("mdfy-session-expired", handler);
+  }, []);
+
   // Load shared content from URL — wait for auth to resolve first
   useEffect(() => {
     if (authLoading) return; // Wait until auth state is known
