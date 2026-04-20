@@ -1013,46 +1013,12 @@ body {
         }
       }
 
-      // Local-only section — grouped by parent folder
+      // Local-only section — flat list
       if (showLocal && local.length > 0) {
         html += secHeader('file', 'Local', local.length);
-        // Group docs by parent directory
-        var folderGroups = {};
-        var rootDocs = [];
-        local.forEach(function(doc) {
-          var rel = doc.relativePath || doc.fileName;
-          var sep = rel.lastIndexOf('/');
-          if (sep > 0) {
-            var folder = rel.substring(0, sep);
-            if (!folderGroups[folder]) folderGroups[folder] = [];
-            folderGroups[folder].push(doc);
-          } else {
-            rootDocs.push(doc);
-          }
-        });
-        // Sort folder names
-        var folderNames = Object.keys(folderGroups).sort();
-        // Render each folder group
-        folderNames.forEach(function(folderName) {
-          var fid = 'lf-' + folderName.replace(/[^a-zA-Z0-9]/g, '-');
-          var collapsed = localFolderState[folderName] === true;
-          html += '<div class="local-folder">';
-          html += '<div class="local-folder-header" data-action="toggle-local-folder" data-folder="' + esc(folderName) + '">';
-          html += '<span class="local-folder-chevron' + (collapsed ? ' collapsed' : '') + '">' + icon('chevron', 10) + '</span>';
-          html += icon('folder', 12);
-          html += ' <span>' + esc(folderName) + '</span>';
-          html += '<span class="local-folder-count">' + folderGroups[folderName].length + '</span>';
-          html += '</div>';
-          html += '<ul class="doc-list local-folder-list' + (collapsed ? ' collapsed' : '') + '">';
-          folderGroups[folderName].forEach(function(doc) { html += renderLocalDoc(doc); });
-          html += '</ul></div>';
-        });
-        // Root-level docs (no folder)
-        if (rootDocs.length > 0) {
-          html += '<ul class="doc-list">';
-          rootDocs.forEach(function(doc) { html += renderLocalDoc(doc); });
-          html += '</ul>';
-        }
+        html += '<ul class="doc-list">';
+        local.forEach(function(doc) { html += renderLocalDoc(doc); });
+        html += '</ul>';
       }
 
       // Cloud — grouped by folder
@@ -1070,11 +1036,17 @@ body {
             var docs = cloudFiltered.filter(function(d) { return d.folderId === f.id; });
             if (docs.length > 0) folderIds.push({ folder: f, docs: docs });
           });
-          // Render folders first
+          // Render folders first — with fold/unfold
           folderIds.forEach(function(group) {
-            html += '<div class="cloud-folder">'
-              + '<div class="cloud-folder-header">' + icon('file', 12) + ' <span>' + esc(group.folder.name) + '</span> <span class="cloud-folder-count">' + group.docs.length + '</span></div>'
-              + '<ul class="doc-list cloud-folder-list">';
+            var collapsed = localFolderState[group.folder.id] === true;
+            html += '<div class="local-folder">'
+              + '<div class="local-folder-header" data-action="toggle-local-folder" data-folder="' + esc(group.folder.id) + '">'
+              + '<span class="local-folder-chevron' + (collapsed ? ' collapsed' : '') + '">' + icon('chevron', 10) + '</span>'
+              + icon('folder', 12)
+              + ' <span>' + esc(group.folder.name) + '</span>'
+              + '<span class="local-folder-count">' + group.docs.length + '</span>'
+              + '</div>'
+              + '<ul class="doc-list local-folder-list' + (collapsed ? ' collapsed' : '') + '">';
             group.docs.forEach(function(doc) { html += renderCloudDoc(doc); });
             html += '</ul></div>';
           });
