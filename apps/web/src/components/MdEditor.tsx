@@ -7061,21 +7061,22 @@ ${html}
 
                 {/* Create — 3 column grid like About page */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Create</div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Create</div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "New Document", desc: "Blank page", kbd: isMobile ? "" : mod + "N", color: "#fb923c", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
-                      { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
+                      { label: "New Document", desc: "Blank page", kbd: isMobile ? "" : mod + "N", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
+                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                      { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", icon: <Upload width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
                     ].map((item) => (
                       <button key={item.label} onClick={item.fn}
-                        className="flex flex-col items-start px-4 py-3 rounded-xl text-left cursor-pointer"
+                        className="flex flex-col items-start px-4 py-3.5 rounded-xl text-left cursor-pointer overflow-hidden relative"
                         style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; }}>
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
+                        <div className="mb-2" style={{ color: item.color }}>{item.icon}</div>
                         <div className="text-[12px] font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{item.label}</div>
                         <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
-                        {item.kbd && <kbd className="text-[9px] font-mono mt-1.5 px-1 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
+                        {item.kbd && <kbd className="text-[9px] font-mono mt-2 px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
                       </button>
                     ))}
                   </div>
@@ -7114,18 +7115,21 @@ ${html}
                   <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Explore</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {([
-                      { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c" },
-                      { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa" },
-                      { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80" },
-                      { label: "About", desc: "How mdfy.cc works", url: "/about", color: "#c4b5fd" },
+                      { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c", icon: <Zap width={14} height={14} /> },
+                      { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa", icon: <FileText width={14} height={14} /> },
+                      { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80", icon: <Download width={14} height={14} /> },
+                      { label: "About", desc: "How mdfy.cc works", url: "/about", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
-                        className="px-3 py-2 rounded-lg text-left cursor-pointer block"
+                        className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
                         style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", textDecoration: "none", transition: "all 0.12s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; }}>
-                        <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
-                        <div className="text-[10px] mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
+                        <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
+                        <div>
+                          <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                          <div className="text-[10px] mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                        </div>
                       </a>
                     ))}
                   </div>
