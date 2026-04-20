@@ -717,6 +717,49 @@ body {
 }
 .cloud-folder-count { font-size: 9px; opacity: 0.5; margin-left: auto; }
 .cloud-folder-list { padding-left: 8px; }
+
+/* Local folder grouping */
+.local-folder { margin-bottom: 2px; }
+.local-folder-header {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 14px; font-size: 11px; font-weight: 600;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer; user-select: none;
+  transition: color 0.12s;
+}
+.local-folder-header:hover { color: var(--vscode-foreground); }
+.local-folder-chevron {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 12px; height: 12px; flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.local-folder-chevron.collapsed { transform: rotate(-90deg); }
+.local-folder-count { font-size: 9px; opacity: 0.5; margin-left: auto; }
+.local-folder-list { padding-left: 8px; }
+.local-folder-list.collapsed { display: none; }
+
+/* Auth prompt for images */
+.auth-prompt {
+  margin: 8px 14px;
+  padding: 14px 12px;
+  border-radius: 6px;
+  background: rgba(167,139,250,0.06);
+  border: 1px solid rgba(167,139,250,0.15);
+  text-align: center;
+}
+.auth-prompt p {
+  font-size: 11px; color: var(--vscode-descriptionForeground);
+  margin-bottom: 8px;
+}
+.auth-prompt-btn {
+  padding: 5px 16px;
+  font-size: 11px; font-weight: 600;
+  border: none; border-radius: 4px;
+  background: #a78bfa; color: #000;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.auth-prompt-btn:hover { background: #8b5cf6; }
 .user-bar-loggedin {
   display: flex; align-items: center; gap: 8px;
 }
@@ -835,6 +878,7 @@ body {
     var isLoggedIn = false;
     var currentFilter = 'all';
     var searchQuery = '';
+    var localFolderState = {}; // folderName -> true (collapsed)
 
     // Icons — 16x16 viewBox, optimized for small sizes, Lucide-compatible style
     var I = {
@@ -850,6 +894,8 @@ body {
       file:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
       sync:         '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 2v4h4"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M14 14v-4h-4"/></svg>',
       trash:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12"/><path d="M5.5 4V2.5A1 1 0 016.5 1.5h3a1 1 0 011 1V4"/><path d="M12.5 4v9a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 13V4"/></svg>',
+      folder:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5A1.5 1.5 0 013.5 2h3l2 2h4A1.5 1.5 0 0114 5.5v7a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/></svg>',
+      chevron:      '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>',
     };
     function icon(name, size) {
       size = size || 14;
@@ -967,12 +1013,46 @@ body {
         }
       }
 
-      // Local-only section
+      // Local-only section — grouped by parent folder
       if (showLocal && local.length > 0) {
         html += secHeader('file', 'Local', local.length);
-        html += '<ul class="doc-list">';
-        local.forEach(function(doc) { html += renderLocalDoc(doc); });
-        html += '</ul>';
+        // Group docs by parent directory
+        var folderGroups = {};
+        var rootDocs = [];
+        local.forEach(function(doc) {
+          var rel = doc.relativePath || doc.fileName;
+          var sep = rel.lastIndexOf('/');
+          if (sep > 0) {
+            var folder = rel.substring(0, sep);
+            if (!folderGroups[folder]) folderGroups[folder] = [];
+            folderGroups[folder].push(doc);
+          } else {
+            rootDocs.push(doc);
+          }
+        });
+        // Sort folder names
+        var folderNames = Object.keys(folderGroups).sort();
+        // Render each folder group
+        folderNames.forEach(function(folderName) {
+          var fid = 'lf-' + folderName.replace(/[^a-zA-Z0-9]/g, '-');
+          var collapsed = localFolderState[folderName] === true;
+          html += '<div class="local-folder">';
+          html += '<div class="local-folder-header" data-action="toggle-local-folder" data-folder="' + esc(folderName) + '">';
+          html += '<span class="local-folder-chevron' + (collapsed ? ' collapsed' : '') + '">' + icon('chevron', 10) + '</span>';
+          html += icon('folder', 12);
+          html += ' <span>' + esc(folderName) + '</span>';
+          html += '<span class="local-folder-count">' + folderGroups[folderName].length + '</span>';
+          html += '</div>';
+          html += '<ul class="doc-list local-folder-list' + (collapsed ? ' collapsed' : '') + '">';
+          folderGroups[folderName].forEach(function(doc) { html += renderLocalDoc(doc); });
+          html += '</ul></div>';
+        });
+        // Root-level docs (no folder)
+        if (rootDocs.length > 0) {
+          html += '<ul class="doc-list">';
+          rootDocs.forEach(function(doc) { html += renderLocalDoc(doc); });
+          html += '</ul>';
+        }
       }
 
       // Cloud — grouped by folder
@@ -1008,18 +1088,28 @@ body {
       }
 
       // Images section
-      if (isLoggedIn && imageData && imageData.images && imageData.images.length > 0) {
-        var usedMB = Math.round((imageData.quota.used || 0) / 1024 / 1024);
-        var totalMB = Math.round((imageData.quota.total || 1) / 1024 / 1024);
-        html += secHeader('image', 'Images', imageData.images.length);
-        html += '<div style="padding:4px 14px;font-size:10px;color:var(--vscode-descriptionForeground)">' + usedMB + 'MB / ' + totalMB + 'MB</div>';
-        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 14px 8px">';
-        imageData.images.forEach(function(img) {
-          html += '<div data-action="insert-image" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '" style="border-radius:4px;overflow:hidden;cursor:pointer;border:1px solid var(--vscode-panel-border);aspect-ratio:1">';
-          html += '<img src="' + esc(img.url) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover">';
+      if (currentFilter === 'all' || currentFilter === 'cloud') {
+        if (!isLoggedIn) {
+          html += secHeader('image', 'Images', '');
+          html += '<div class="auth-prompt"><p>Sign in to manage images</p><button class="auth-prompt-btn" data-action="sign-in">Sign in to mdfy.cc</button></div>';
+        } else if (imageData && imageData.images && imageData.images.length > 0) {
+          var usedMB = Math.round((imageData.quota.used || 0) / 1024 / 1024);
+          var totalMB = Math.round((imageData.quota.total || 1) / 1024 / 1024);
+          var pct = totalMB > 0 ? Math.min(100, Math.round(usedMB / totalMB * 100)) : 0;
+          html += secHeader('image', 'Images', imageData.images.length);
+          html += '<div style="padding:4px 14px 2px;font-size:10px;color:var(--vscode-descriptionForeground)">' + usedMB + 'MB / ' + totalMB + 'MB</div>';
+          html += '<div style="margin:2px 14px 6px;height:3px;border-radius:2px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:' + pct + '%;background:#a78bfa;border-radius:2px"></div></div>';
+          html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 14px 8px">';
+          imageData.images.forEach(function(img) {
+            html += '<div data-action="insert-image" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '" style="border-radius:4px;overflow:hidden;cursor:pointer;border:1px solid var(--vscode-panel-border);aspect-ratio:1">';
+            html += '<img src="' + esc(img.url) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover">';
+            html += '</div>';
+          });
           html += '</div>';
-        });
-        html += '</div>';
+        } else if (isLoggedIn) {
+          html += secHeader('image', 'Images', 0);
+          html += '<div class="empty" style="padding:12px 14px">No images uploaded yet</div>';
+        }
       }
 
       if (!html) {
@@ -1055,7 +1145,10 @@ body {
 
     function renderLocalDoc(doc) {
       var ic = '<div class="doc-icon local">' + icon('file', 14) + '</div>';
-      var meta = doc.relativePath;
+      // When grouped in a folder, show just the filename in meta; otherwise show relativePath
+      var rel = doc.relativePath || doc.fileName;
+      var sep = rel.lastIndexOf('/');
+      var meta = sep > 0 ? rel.substring(sep + 1) : rel;
       var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic
@@ -1125,6 +1218,21 @@ body {
           var name = (el.dataset.name || 'image').replace(/\\.\\w+$/, '');
           vscode.postMessage({ type: 'insert-image', url: url, name: name });
         });
+      });
+      // Local folder toggle
+      container.querySelectorAll('[data-action="toggle-local-folder"]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var folder = el.dataset.folder;
+          localFolderState[folder] = !localFolderState[folder];
+          var chevron = el.querySelector('.local-folder-chevron');
+          var list = el.nextElementSibling;
+          if (chevron) chevron.classList.toggle('collapsed', localFolderState[folder]);
+          if (list) list.classList.toggle('collapsed', localFolderState[folder]);
+        });
+      });
+      // Images auth prompt sign-in
+      container.querySelectorAll('[data-action="sign-in"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { vscode.postMessage({ type: 'login' }); });
       });
       var loginBtn = document.getElementById('login-btn');
       if (loginBtn) {
