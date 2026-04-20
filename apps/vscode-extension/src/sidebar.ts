@@ -1121,10 +1121,7 @@ body {
 
     function renderLocalDoc(doc) {
       var ic = '<div class="doc-icon local">' + icon('file', 14) + '</div>';
-      // When grouped in a folder, show just the filename in meta; otherwise show relativePath
-      var rel = doc.relativePath || doc.fileName;
-      var sep = rel.lastIndexOf('/');
-      var meta = sep > 0 ? rel.substring(sep + 1) : rel;
+      var meta = doc.relativePath || doc.fileName;
       var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
       return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '">'
         + ic
