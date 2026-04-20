@@ -2771,6 +2771,16 @@ body {
 .tb-bold { font-weight: 700; }
 .tb-semi { font-weight: 600; }
 
+/* ─── Content Wrapper (split + image panel) ─── */
+
+#content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ─── Split Container ─── */
 
 #split-container {
@@ -3207,6 +3217,24 @@ body {
    IMAGE GALLERY
    ========================================================= */
 
+/* ─── Cloud Folder Groups ─── */
+.cloud-folder-item { margin-bottom: 2px; }
+.cloud-folder-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 12px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+.cloud-folder-header:hover { color: var(--fg); background: var(--sidebar-hover); }
+.cloud-folder-item .folder-children { padding-left: 8px; }
+.cloud-folder-item .folder-children .file-item { padding-left: 24px; }
+
 .image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px; }
 .image-thumb { border-radius: 6px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); aspect-ratio: 1; }
 .image-thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -3214,3 +3242,184 @@ body {
 .image-quota { padding: 4px 12px; font-size: 10px; color: var(--text-faint); }
 .quota-bar { height: 3px; background: var(--surface); border-radius: 2px; margin-top: 4px; }
 .quota-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+/* =========================================================
+   IMAGE SIDE PANEL
+   ========================================================= */
+
+.image-panel {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.image-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px 0 10px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border-dim, var(--border));
+  flex-shrink: 0;
+}
+
+.image-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.image-panel-loading {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.image-panel-signin {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.image-panel-signin button {
+  margin-top: 12px;
+  padding: 6px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.image-panel-signin button:hover {
+  background: var(--accent);
+  color: #000;
+}
+
+.image-panel-quota {
+  padding: 8px 12px;
+  font-size: 10px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border-dim, var(--border));
+}
+
+.image-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+}
+
+.image-panel-thumb {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  aspect-ratio: 1;
+  transition: border-color 0.12s;
+}
+.image-panel-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.image-panel-thumb:hover {
+  border-color: var(--accent);
+}
+.image-panel-thumb .img-insert-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.image-panel-thumb:hover .img-insert-btn {
+  display: flex;
+}
+
+.image-panel-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* =========================================================
+   LOADING OVERLAY
+   ========================================================= */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+.loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-logo {
+  opacity: 0.8;
+}
+
+.loading-bar {
+  width: 120px;
+  height: 2px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loading-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: loading-progress 1.2s ease-in-out forwards;
+}
+
+@keyframes loading-progress {
+  0% { width: 0%; }
+  30% { width: 40%; }
+  60% { width: 70%; }
+  100% { width: 95%; }
+}

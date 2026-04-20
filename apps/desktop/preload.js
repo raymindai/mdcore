@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   getServerVersion: (filePath) => ipcRenderer.invoke("get-server-version", filePath),
   previewCloudDoc: (docId, title) => ipcRenderer.invoke("preview-cloud-doc", docId, title),
   getCloudDocuments: () => ipcRenderer.invoke("get-cloud-documents"),
+  getCloudFolders: () => ipcRenderer.invoke("get-cloud-folders"),
 
   // ─── AI Tools ───
   aiAction: (action, markdown, language) => ipcRenderer.invoke("ai-action", action, markdown, language),

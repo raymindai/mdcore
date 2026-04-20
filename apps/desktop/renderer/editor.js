@@ -71,9 +71,11 @@
     workspaceFolders: [],
     recentFiles: [],
     cloudDocs: [],
+    cloudFolders: [],
     authState: { loggedIn: false, email: null },
   };
   var collapsedFolders = {}; // { relativePath: true/false }
+  var collapsedCloudFolders = {}; // { folderId: true/false }
 
   // ─── Sidebar: Init ───
 
@@ -165,9 +167,15 @@
     sidebarState.authState = results[2] || { loggedIn: false };
 
     if (sidebarState.authState.loggedIn) {
-      sidebarState.cloudDocs = await window.mdfyDesktop.getCloudDocuments().catch(function() { return []; });
+      var cloudResults = await Promise.all([
+        window.mdfyDesktop.getCloudDocuments().catch(function() { return []; }),
+        window.mdfyDesktop.getCloudFolders().catch(function() { return []; }),
+      ]);
+      sidebarState.cloudDocs = cloudResults[0] || [];
+      sidebarState.cloudFolders = cloudResults[1] || [];
     } else {
       sidebarState.cloudDocs = [];
+      sidebarState.cloudFolders = [];
     }
   }
 
@@ -297,10 +305,10 @@
         for (var rci = 0; rci < recentOnly.length; rci++) html += renderFileItem(recentOnly[rci]);
       }
 
-      // Cloud docs
+      // Cloud docs — grouped by folder
       if (cloud.length > 0 && sidebarState.authState.loggedIn) {
         html += secHeader("cloud", "Cloud", cloud.length);
-        for (var ci = 0; ci < cloud.length; ci++) html += renderCloudItem(cloud[ci]);
+        html += renderCloudDocsGrouped(cloud);
       }
     } else if (currentFilter === "synced") {
       if (!sidebarState.authState.loggedIn) {
@@ -337,7 +345,7 @@
         }
         if (cloud.length > 0) {
           html += secHeader("cloud", "Cloud", cloud.length);
-          for (var c2 = 0; c2 < cloud.length; c2++) html += renderCloudItem(cloud[c2]);
+          html += renderCloudDocsGrouped(cloud);
         }
         if (synced.length === 0 && cloud.length === 0) {
           html += '<div class="sidebar-empty"><p>No cloud documents</p></div>';
@@ -461,6 +469,16 @@
             else if (result.error) { showToast("Move failed: " + result.error); }
           });
         });
+      });
+    });
+
+    // Cloud folder toggle
+    container.querySelectorAll("[data-toggle-cloud-folder]").forEach(function(el) {
+      el.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var folderId = el.getAttribute("data-toggle-cloud-folder");
+        collapsedCloudFolders[folderId] = !collapsedCloudFolders[folderId];
+        renderFileList();
       });
     });
 
@@ -597,6 +615,37 @@
     '</div>';
   }
 
+  // ─── Cloud Folder Grouping ───
+
+  function renderCloudDocsGrouped(cloudList) {
+    var folders = sidebarState.cloudFolders || [];
+    var html = "";
+    // Docs in folders
+    for (var fi = 0; fi < folders.length; fi++) {
+      var f = folders[fi];
+      var docsInFolder = cloudList.filter(function(cd) { return cd.folder_id === f.id; });
+      if (docsInFolder.length === 0) continue;
+      var isCollapsed = collapsedCloudFolders[f.id] || false;
+      html += '<div class="cloud-folder-item" data-cloud-folder="' + esc(f.id) + '">' +
+        '<div class="cloud-folder-header" data-toggle-cloud-folder="' + esc(f.id) + '">' +
+          '<svg class="folder-chevron' + (isCollapsed ? " collapsed" : "") + '" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6l4 4 4-4"/></svg>' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>' +
+          '<span class="folder-name">' + esc(f.name) + '</span>' +
+          '<span class="folder-count">' + docsInFolder.length + '</span>' +
+        '</div>';
+      if (!isCollapsed) {
+        html += '<div class="folder-children">';
+        for (var di = 0; di < docsInFolder.length; di++) html += renderCloudItem(docsInFolder[di]);
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    // Root docs (no folder)
+    var rootDocs = cloudList.filter(function(cd) { return !cd.folder_id; });
+    for (var ri = 0; ri < rootDocs.length; ri++) html += renderCloudItem(rootDocs[ri]);
+    return html;
+  }
+
   // ─── Image Gallery ───
 
   var cachedImages = null;
@@ -672,6 +721,7 @@
         window.mdfyDesktop.logout();
         sidebarState.authState = { loggedIn: false };
         sidebarState.cloudDocs = [];
+        sidebarState.cloudFolders = [];
         renderSidebar();
       });
     } else {
@@ -807,19 +857,117 @@
     });
   });
 
+  // ─── Image Side Panel ───
+
+  var imagePanelOpen = false;
+
+  var imagesToggle = document.getElementById("images-toggle");
+  if (imagesToggle) {
+    imagesToggle.addEventListener("click", function() {
+      imagePanelOpen = !imagePanelOpen;
+      var panel = document.getElementById("image-panel");
+      if (panel) {
+        panel.style.display = imagePanelOpen ? "" : "none";
+        imagesToggle.setAttribute("data-active", imagePanelOpen ? "true" : "false");
+      }
+      if (imagePanelOpen) {
+        populateImagePanel();
+      }
+    });
+  }
+
+  var imagePanelClose = document.getElementById("image-panel-close");
+  if (imagePanelClose) {
+    imagePanelClose.addEventListener("click", function() {
+      imagePanelOpen = false;
+      var panel = document.getElementById("image-panel");
+      if (panel) panel.style.display = "none";
+      if (imagesToggle) imagesToggle.setAttribute("data-active", "false");
+    });
+  }
+
+  function populateImagePanel() {
+    var body = document.getElementById("image-panel-body");
+    if (!body) return;
+
+    if (!sidebarState.authState.loggedIn) {
+      body.innerHTML = '<div class="image-panel-signin"><p>Sign in to manage images</p>' +
+        '<button onclick="window.mdfyDesktop.login()">Sign in</button></div>';
+      return;
+    }
+
+    body.innerHTML = '<div class="image-panel-loading">Loading images...</div>';
+
+    if (cachedImages && cachedImages.images) {
+      renderImagePanel(cachedImages.images, cachedImages.quota);
+      return;
+    }
+
+    window.mdfyDesktop.getImages().then(function(data) {
+      if (data && !data.error && data.images) {
+        cachedImages = data;
+        renderImagePanel(data.images, data.quota);
+      } else {
+        body.innerHTML = '<div class="image-panel-empty">No images uploaded yet</div>';
+      }
+    }).catch(function() {
+      body.innerHTML = '<div class="image-panel-empty">Failed to load images</div>';
+    });
+  }
+
+  function renderImagePanel(images, quota) {
+    var body = document.getElementById("image-panel-body");
+    if (!body) return;
+
+    if (!images || images.length === 0) {
+      body.innerHTML = '<div class="image-panel-empty">No images uploaded yet</div>';
+      return;
+    }
+
+    var usedMB = Math.round((quota.used || 0) / 1024 / 1024);
+    var totalMB = Math.round((quota.total || 1) / 1024 / 1024);
+    var pct = Math.min(100, ((quota.used || 0) / (quota.total || 1)) * 100);
+
+    var html = '<div class="image-panel-quota"><span>' + usedMB + 'MB / ' + totalMB + 'MB</span>' +
+      '<div class="quota-bar"><div class="quota-fill" style="width:' + pct + '%"></div></div></div>';
+    html += '<div class="image-panel-grid">';
+    for (var i = 0; i < images.length; i++) {
+      var img = images[i];
+      html += '<div class="image-panel-thumb" data-url="' + esc(img.url) + '" data-name="' + esc(img.name) + '">';
+      html += '<img src="' + esc(img.url) + '" loading="lazy">';
+      html += '<button class="img-insert-btn" title="Insert">+</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+    body.innerHTML = html;
+
+    body.querySelectorAll(".image-panel-thumb").forEach(function(el) {
+      el.addEventListener("click", function() {
+        var url = el.dataset.url;
+        var name = (el.dataset.name || "image").replace(/\.\w+$/, "");
+        insertImageElement(url, name);
+      });
+    });
+  }
+
   // ─── Sidebar: Events from main ───
 
   if (window.mdfyDesktop) {
     window.mdfyDesktop.onAuthChanged(function(data) {
       sidebarState.authState = data;
       if (data.loggedIn) {
-        window.mdfyDesktop.getCloudDocuments().then(function(docs) {
-          sidebarState.cloudDocs = docs || [];
+        Promise.all([
+          window.mdfyDesktop.getCloudDocuments().catch(function() { return []; }),
+          window.mdfyDesktop.getCloudFolders().catch(function() { return []; }),
+        ]).then(function(results) {
+          sidebarState.cloudDocs = results[0] || [];
+          sidebarState.cloudFolders = results[1] || [];
           renderSidebar();
           loadImages();
         });
       } else {
         sidebarState.cloudDocs = [];
+        sidebarState.cloudFolders = [];
         cachedImages = null;
         var imgSection = document.getElementById("image-section");
         if (imgSection) imgSection.innerHTML = "";
@@ -857,6 +1005,8 @@
 
     if (welcome) welcome.style.display = "none";
     if (splitContainer) splitContainer.style.display = "";
+    var cw = document.getElementById("content-wrapper");
+    if (cw) cw.style.display = "";
     document.getElementById("app-header").style.display = "";
     document.getElementById("bottom-bar").style.display = "";
     setViewMode(currentViewMode || "live");
@@ -866,6 +1016,8 @@
     hasDocument = false;
     if (welcome) welcome.style.display = "";
     if (splitContainer) splitContainer.style.display = "none";
+    var cw = document.getElementById("content-wrapper");
+    if (cw) cw.style.display = "none";
     document.getElementById("app-header").style.display = "none";
     document.getElementById("bottom-bar").style.display = "none";
   }
@@ -2966,8 +3118,28 @@
     }
   }
 
+  // ─── Loading Overlay ───
+
+  function dismissLoadingOverlay() {
+    var overlay = document.getElementById("loading-overlay");
+    if (!overlay) return;
+    // Complete the progress bar
+    var fill = overlay.querySelector(".loading-bar-fill");
+    if (fill) fill.style.width = "100%";
+    setTimeout(function() {
+      overlay.classList.add("fade-out");
+      setTimeout(function() {
+        overlay.remove();
+      }, 400);
+    }, 200);
+  }
+
   // ─── Init ───
 
-  initSidebar();
+  initSidebar().then(function() {
+    dismissLoadingOverlay();
+  }).catch(function() {
+    dismissLoadingOverlay();
+  });
 
 })();

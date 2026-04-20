@@ -1413,6 +1413,19 @@ ipcMain.handle("get-cloud-documents", async () => {
   return apiGetCloudDocuments();
 });
 
+ipcMain.handle("get-cloud-folders", async () => {
+  if (!net.isOnline()) return [];
+  const userId = AuthManager.getUserId();
+  if (!userId) return [];
+  try {
+    const headers = AuthManager.getHeaders();
+    const resp = await net.fetch(`${MDFY_URL}/api/user/folders`, { headers });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.folders || [];
+  } catch { return []; }
+});
+
 // --- AI Tools ---
 
 ipcMain.handle("ai-action", async (event, action, markdown, language) => {
