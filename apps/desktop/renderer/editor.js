@@ -3001,7 +3001,9 @@
       '<div class="export-item" data-ai="summary"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg> Summary</div>' +
       '<div class="export-item" data-ai="tldr"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h8"/></svg> TL;DR</div>' +
       '<div class="export-divider"></div>' +
-      '<div class="export-item" data-ai="translate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2v3M11 21l5-10 5 10M14.5 18h5"/></svg> Translate...</div>';
+      '<div class="export-item" data-ai="translate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2v3M11 21l5-10 5 10M14.5 18h5"/></svg> Translate...</div>' +
+      '<div class="export-divider"></div>' +
+      '<div class="export-item" data-ai="chat"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Ask AI...</div>';
     document.body.appendChild(menu);
 
     menu.addEventListener("click", function(ev) {
@@ -3012,6 +3014,11 @@
 
       if (action === "translate") {
         showTranslateMenu();
+      } else if (action === "chat") {
+        var instruction = prompt("Ask AI to edit your document:");
+        if (instruction && instruction.trim()) {
+          runAIAction("chat", instruction.trim());
+        }
       } else {
         runAIAction(action);
       }
@@ -3068,8 +3075,15 @@
     }, 0);
   }
 
-  async function runAIAction(action, language) {
+  async function runAIAction(action, languageOrInstruction) {
     if (!window.mdfyDesktop) return;
+
+    // Check auth state
+    if (!sidebarState.authState.loggedIn) {
+      showToast("Sign in to use AI features");
+      return;
+    }
+
     // Get latest markdown from the editor
     var md = htmlToMarkdown(content);
     if (!md || !md.trim()) { showToast("No content to process"); return; }
@@ -3077,7 +3091,7 @@
     showToast("AI processing...");
 
     try {
-      var result = await window.mdfyDesktop.aiAction(action, md, language || undefined);
+      var result = await window.mdfyDesktop.aiAction(action, md, languageOrInstruction || undefined);
       if (result.error) {
         showToast("AI failed: " + result.error);
         return;

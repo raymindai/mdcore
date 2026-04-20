@@ -120,6 +120,11 @@
         "command": "mdfy.aiTranslate",
         "title": "mdfy: AI Translate",
         "icon": "$(globe)"
+      },
+      {
+        "command": "mdfy.aiChat",
+        "title": "mdfy: Ask AI to Edit",
+        "icon": "$(comment-discussion)"
       }
     ],
     "menus": {
@@ -170,6 +175,11 @@
           "command": "mdfy.aiTranslate",
           "when": "editorLangId == markdown",
           "group": "mdfy@8"
+        },
+        {
+          "command": "mdfy.aiChat",
+          "when": "editorLangId == markdown",
+          "group": "mdfy@9"
         }
       ]
     },

@@ -1465,13 +1465,18 @@ ipcMain.handle("get-cloud-folders", async () => {
 
 // --- AI Tools ---
 
-ipcMain.handle("ai-action", async (event, action, markdown, language) => {
+ipcMain.handle("ai-action", async (event, action, markdown, extra) => {
   if (!markdown || !markdown.trim()) return { error: "No content" };
   if (!net.isOnline()) return { error: "Offline" };
+  if (!AuthManager.isLoggedIn()) return { error: "Sign in to use AI features" };
 
   try {
     const body = { action, markdown };
-    if (language) body.language = language;
+    if (action === "chat" && extra) {
+      body.instruction = extra;
+    } else if (extra) {
+      body.language = extra;
+    }
 
     const resp = await net.fetch(`${MDFY_URL}/api/ai`, {
       method: "POST",

@@ -314,10 +314,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // --- AI Tool Commands ---
 
-  async function runAiAction(action: string, language?: string): Promise<void> {
+  async function runAiAction(action: string, language?: string, instruction?: string): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "markdown") {
       vscode.window.showWarningMessage("Open a Markdown file first.");
+      return;
+    }
+
+    // Require login for AI features
+    if (!await authManager?.isLoggedIn()) {
+      const choice = await vscode.window.showWarningMessage(
+        "Sign in to use AI features.",
+        "Sign In"
+      );
+      if (choice === "Sign In") { vscode.commands.executeCommand("mdfy.login"); }
       return;
     }
 
@@ -328,14 +338,15 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     const baseUrl = getApiBaseUrl();
-    const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+    const actionLabel = action === "chat" ? "AI Chat" : action.charAt(0).toUpperCase() + action.slice(1);
 
     await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: `AI ${actionLabel}...`, cancellable: false },
+      { location: vscode.ProgressLocation.Notification, title: `${actionLabel}...`, cancellable: false },
       async () => {
         try {
           const body: Record<string, string> = { action, markdown };
           if (language) { body.language = language; }
+          if (instruction) { body.instruction = instruction; }
 
           const token = await authManager?.getToken();
           const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -412,6 +423,17 @@ export function activate(context: vscode.ExtensionContext): void {
       if (selected) {
         await runAiAction("translate", selected.description);
       }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mdfy.aiChat", async () => {
+      const instruction = await vscode.window.showInputBox({
+        prompt: "Ask AI to edit your document...",
+        placeHolder: "e.g. Make the intro shorter",
+      });
+      if (!instruction) { return; }
+      await runAiAction("chat", undefined, instruction);
     })
   );
 
