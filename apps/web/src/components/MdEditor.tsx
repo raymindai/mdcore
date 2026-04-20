@@ -5043,7 +5043,7 @@ ${html}
                   } catch { /* ignore */ }
                 }}
               >
-                {shortUrl}
+                {shortUrl}{viewCount > 0 ? ` \u00b7 ${viewCount} views` : ""}
               </button>
             );
           })()}
@@ -5057,11 +5057,6 @@ ${html}
           )}
           {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
             <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
-          )}
-          {docId && isOwner && viewCount > 0 && (
-            <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
-              {viewCount} {viewCount === 1 ? "view" : "views"}
-            </span>
           )}
           </span>
           {/* Permission badge — desktop only in row 1 */}
