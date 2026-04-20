@@ -8196,14 +8196,15 @@ ${html}
         >
           {(() => {
             const isExample = tabs.find(t => t.id === docContextMenu.tabId)?.ownerEmail === EXAMPLE_OWNER;
+            const targetTab = tabs.find(t => t.id === docContextMenu.tabId);
+            const isSharedWithMe = targetTab?.permission === "readonly" || targetTab?.permission === "editable";
             return isExample ? [
               { label: "Download .md", action: () => {
-                const tab = tabs.find(t => t.id === docContextMenu.tabId);
-                if (tab) {
-                  const blob = new Blob([tab.markdown], { type: "text/markdown" });
+                if (targetTab) {
+                  const blob = new Blob([targetTab.markdown], { type: "text/markdown" });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
-                  a.href = url; a.download = `${tab.title || "document"}.md`; a.click();
+                  a.href = url; a.download = `${targetTab.title || "document"}.md`; a.click();
                   URL.revokeObjectURL(url);
                 }
               }},
@@ -8214,6 +8215,33 @@ ${html}
                   if (remaining.length) switchTab(remaining[0].id);
                 }
               }},
+            ] : isSharedWithMe ? [
+              { label: "Duplicate", action: () => {
+                if (targetTab) {
+                  const id = `tab-${tabIdCounter++}`;
+                  const t = targetTab.title + " (copy)";
+                  setTabs(prev => [...prev, { id, title: t, markdown: targetTab.markdown, permission: "mine", shared: false, isDraft: true }]);
+                  autoSave.createDocument({ markdown: targetTab.markdown, title: t, userId: user?.id, anonymousId: !user?.id ? ensureAnonymousId() : undefined }).then(result => {
+                    if (result) setTabs(prev => prev.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x));
+                  });
+                }
+              }},
+              { label: "Download .md", action: () => {
+                if (targetTab) {
+                  const blob = new Blob([targetTab.markdown], { type: "text/markdown" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `${targetTab.title || "document"}.md`; a.click();
+                  URL.revokeObjectURL(url);
+                }
+              }},
+              { label: "Remove from list", action: () => {
+                setTabs(prev => prev.filter(t => t.id !== docContextMenu.tabId));
+                if (docContextMenu.tabId === activeTabId) {
+                  const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
+                  if (remaining.length) switchTab(remaining[0].id);
+                }
+              }, danger: true },
             ] : [
               { label: "Rename", action: () => {
                 const tab = tabs.find(t => t.id === docContextMenu.tabId);
