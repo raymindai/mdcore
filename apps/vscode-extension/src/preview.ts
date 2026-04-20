@@ -848,7 +848,13 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
 
     const nonce = getNonce();
     const result = renderMarkdownWithFlavor(markdown);
-    const renderedHtml = result.html;
+    const cloudBanner = this.isCloudPreview
+      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
+          <span>Cloud document (read-only). <strong>Sync to local</strong> to edit.</span>
+        </div>`
+      : "";
+    const renderedHtml = cloudBanner + result.html;
 
     const themeSetting = vscode.workspace
       .getConfiguration("mdfy")
