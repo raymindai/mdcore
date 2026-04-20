@@ -7049,9 +7049,8 @@ ${html}
                             style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
-                            <FileIcon width={14} height={14} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+                            <DocStatusIcon tab={t} isActive={false} />
                             <span className="flex-1 truncate">{t.title || "Untitled"}</span>
-                            {t.cloudId && <CircleCheck width={10} height={10} style={{ color: "var(--text-faint)", flexShrink: 0 }} />}
                           </button>
                         ))}
                       </div>
@@ -7101,10 +7100,11 @@ ${html}
                   <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="px-3 py-2 rounded-lg text-[12px] text-left cursor-pointer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-left cursor-pointer"
                         style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
+                        <DocStatusIcon tab={ex} isActive={false} />
                         {ex.title}
                       </button>
                     ))}
