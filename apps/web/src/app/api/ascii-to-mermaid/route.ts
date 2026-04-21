@@ -22,41 +22,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  const prompt = `Convert this diagram into clean, styled HTML.
-The input may be: ASCII box-drawing art, Mermaid code, or Mermaid code with node style annotations.
-Read the mermaid code carefully to understand the EXACT connection structure — which nodes connect to which, and how the graph branches.
+  const prompt = `Convert this diagram into clean, styled HTML that EXACTLY preserves the original structure and relationships.
+
+CRITICAL: Analyze the input carefully BEFORE generating HTML.
+- Count every node, every connection, every label.
+- Map out the EXACT hierarchy: which node is parent of which, how many children each node has.
+- Your output MUST have the same number of nodes, same connections, same labels as the input.
+- If the input shows A connecting to B, C, and D — your output must show A connecting to exactly B, C, and D (not "B / C / D" merged into one box).
+
+The input may be: ASCII box-drawing tree, ASCII flowchart, Mermaid code, or any text-based diagram.
+
+Structure rules:
+- ASCII trees with box-drawing characters (│├└─) represent hierarchical parent-child relationships. Preserve EVERY level of nesting exactly.
+- If a parent has 3 children, show 3 separate child nodes — never merge them.
+- If children have sub-children, show those as a separate nested level.
+- Mermaid flowcharts: follow the exact edge definitions. A-->B and A-->C means A splits to B AND C.
+- Sequence diagrams: participants in a row, then vertical message rows.
 
 Design rules:
-- Dark theme ONLY — no blue tones, no gradients, no background images
-- Root background: transparent (parent container handles it)
+- Dark theme ONLY — no blue, no gradients, no background images
+- Root background: transparent
 - Box/node background: #1c1c24
 - Nested/secondary boxes: #222230
 - Borders: 1px solid #2e2e3a — subtle, no glow, no shadow
-- Accent color: #fb923c (use ONLY for key highlights, arrows, or important labels)
+- Accent color: #fb923c (ONLY for key highlights or important labels — use sparingly)
 - Text colors: #ededf0 (primary labels), #b8b8c4 (body/descriptions), #888899 (annotations)
-- Boxes: styled divs, border-radius:8px, padding:12px 16px
-- Headers inside boxes: font-size:15px, font-weight:600, color:#ededf0
-- Body text: font-size:13px, color:#b8b8c4
-- Arrows/connections between boxes: use a connector div like this:
-  Vertical arrow: <div style="display:flex;flex-direction:column;align-items:center;gap:0;color:#50505e"><div style="width:1.5px;height:20px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▼</div></div>
-  Horizontal arrow: <div style="display:flex;align-items:center;gap:0;color:#50505e"><div style="height:1.5px;width:24px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▶</div></div>
-  If an edge has a label, place a <span style="font-size:11px;color:#888899;padding:0 4px">label</span> next to the arrow line
-- Side-by-side items: flexbox row, align-items:center, gap:8px
-- Vertical flow: flexbox column, align-items:center, gap:0 (arrows handle spacing)
-- Sequence diagrams: participants as boxes in a row at top, then vertical message rows with sender→receiver horizontal arrows
-- Flowcharts: preserve the EXACT branching structure from the mermaid code.
-  If A connects to B and C, show A on the left, then an arrow that SPLITS into two paths going to B (top) and C (bottom).
-  Use CSS grid or nested flexbox to represent branching — NOT a flat linear list.
-  Example branching: <div style="display:flex;align-items:center;gap:0"><div>[A box]</div><div>[arrow]</div><div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:0"><div>[arrow]</div><div>[B box]</div></div><div style="display:flex;align-items:center;gap:0"><div>[arrow]</div><div>[C box]</div></div></div></div>
-- If a node has a non-default fill color in NODE STYLES section, apply that color as its background
-- Gantt: horizontal bar chart with labeled time bars, use colored divs for bars
-- Pie charts: convert to a styled HTML table with columns [Label, Value, Bar]. The Bar column uses a colored inline div (width proportional to value, background:#fb923c, height:8px, border-radius:4px)
-- Tables: clean dark-themed table with th background:#222230, td background:transparent, border:1px solid #2e2e3a
-- Preserve ALL text content exactly as in the input
+- Boxes: styled divs, border-radius:8px, padding:10px 14px
+- Headers: font-size:14px, font-weight:600, color:#ededf0
+- Body text: font-size:12px, color:#b8b8c4
+- Vertical arrow: <div style="display:flex;flex-direction:column;align-items:center;color:#50505e"><div style="width:1.5px;height:20px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▼</div></div>
+- Horizontal arrow: <div style="display:flex;align-items:center;color:#50505e"><div style="height:1.5px;width:24px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▶</div></div>
+- Side-by-side nodes: flexbox row, gap:12px
+- Vertical flow: flexbox column, align-items:center
+- For tree structures: root at top, children below with arrows, grandchildren below children
 - Use system-ui font
 - Output ONLY the HTML — no explanation, no markdown, no code fences
-- Do NOT include <html>, <head>, <body> tags — just the inner content div
+- Do NOT include <html>, <head>, <body> tags
 - Wrap everything in a single <div style="..."> root element
+- Preserve ALL text content exactly as in the input — do not paraphrase, merge, or omit any labels
 
 Diagram:
 ${ascii}`;

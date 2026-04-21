@@ -2429,7 +2429,7 @@ export default function MdEditor() {
     asciiDiagrams.forEach((el) => {
       // Skip if already has toolbar or already rendered
       if (el.querySelector(".ascii-toolbar")) return;
-      if (el.dataset.asciiRendered) return;
+      if ((el as HTMLElement).dataset.asciiRendered) return;
 
       // Toolbar at top — always visible
       const toolbar = document.createElement("div");
