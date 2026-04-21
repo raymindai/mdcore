@@ -1,6 +1,6 @@
 {
   "name": "mdfy-mcp",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "MCP server for mdfy.cc — let AI tools create and manage Markdown documents",
   "type": "module",
   "main": "dist/index.js",

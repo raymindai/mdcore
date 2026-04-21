@@ -128,16 +128,17 @@ server.tool(
   {
     markdown: z.string().describe("Markdown content for the document"),
     title: z.string().optional().describe("Document title (extracted from H1 if omitted)"),
-    draft: z.boolean().optional().describe("If true, document is private (default: false = publicly accessible)"),
+    draft: z.boolean().optional().describe("If true, document is private. If false, publicly accessible. Default: true (private)"),
   },
   async ({ markdown, title, draft }) => {
+    const isDraft = draft ?? true;
     try {
       const result = await api<{ id: string; editToken: string }>("/api/docs", {
         method: "POST",
         body: JSON.stringify({
           markdown,
           title,
-          isDraft: draft ?? false,
+          isDraft,
           source: "mcp",
         }),
       });
@@ -148,7 +149,7 @@ server.tool(
       return {
         content: [{
           type: "text" as const,
-          text: `Document created:\n- URL: ${url}\n- ID: ${result.id}\n- Status: ${draft ? "private draft" : "publicly accessible"}`,
+          text: `Document created:\n- URL: ${url}\n- ID: ${result.id}\n- Status: ${isDraft ? "private draft" : "publicly accessible"}`,
         }],
       };
     } catch (err) { return errorResult(err); }
