@@ -2505,10 +2505,12 @@ export default function MdEditor() {
             }
           } catch { /* fallback to text-only */ }
 
+          // Send document markdown as context for better understanding
+          const docContext = markdown?.substring(0, 2000) || "";
           const res = await fetch("/api/ascii-to-mermaid", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ascii: asciiText, image: imageBase64 }),
+            body: JSON.stringify({ ascii: asciiText, image: imageBase64, context: docContext }),
           });
 
           if (!res.ok) throw new Error("API error");
