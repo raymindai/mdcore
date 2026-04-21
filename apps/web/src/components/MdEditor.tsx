@@ -8297,19 +8297,35 @@ ${html}
                   URL.revokeObjectURL(url);
                 }
               }},
+              ...(() => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (!tab?.cloudId || !tab.source) return [];
+                return [{ label: "Unsync", action: async () => {
+                  try {
+                    const headers: Record<string, string> = { "Content-Type": "application/json" };
+                    if (tab.editToken) headers["x-edit-token"] = tab.editToken;
+                    if (user?.id) headers["x-user-id"] = user.id;
+                    await fetch(`/api/docs/${tab.cloudId}`, {
+                      method: "PATCH",
+                      headers,
+                      body: JSON.stringify({ action: "clear-source", editToken: tab.editToken }),
+                    });
+                    setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, source: undefined } : t));
+                  } catch {}
+                }}];
+              })(),
               ...(folders.filter(f => !f.section || f.section === "my").length > 0 || tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [
                 { label: "---", action: () => {} },
-                { label: "MOVE TO", action: () => {}, header: true },
-                ...folders.filter(f => !f.section || f.section === "my").map(f => ({
-                  label: f.name,
-                  action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
-                  indent: true,
-                })),
-                ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
-                  label: "Root (no folder)",
-                  action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
-                  indent: true,
-                }] : []),
+                { label: "Move to", action: () => {}, submenu: [
+                  ...folders.filter(f => !f.section || f.section === "my").map(f => ({
+                    label: f.name,
+                    action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
+                  })),
+                  ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
+                    label: "Root (no folder)",
+                    action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
+                  }] : []),
+                ]},
               ] : []),
               ...(tabs.filter(t => !t.deleted).length > 1 ? [
                 { label: "---", action: () => {} },
@@ -8325,19 +8341,44 @@ ${html}
               ] : []),
             ];
           })().map((item, i) => {
-            const it = item as { label: string; action: () => void; danger?: boolean; header?: boolean; indent?: boolean };
+            const it = item as { label: string; action: () => void; danger?: boolean; submenu?: { label: string; action: () => void }[] };
             if (it.label === "---") {
               return <div key={`sep-${i}`} className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />;
             }
-            if (it.header) {
-              return <div key={it.label} className="px-3 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>{it.label}</div>;
+            if (it.submenu) {
+              return (
+                <div key={it.label} className="relative group/sub">
+                  <button
+                    className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {it.label}
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
+                  </button>
+                  <div
+                    className="absolute left-full top-0 ml-1 min-w-[140px] rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover/sub:opacity-100 group-hover/sub:pointer-events-auto transition-opacity z-[10001]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                  >
+                    {it.submenu.map(sub => (
+                      <button
+                        key={sub.label}
+                        onClick={() => { sub.action(); setDocContextMenu(null); }}
+                        className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
             }
             return (
               <button
                 key={it.label}
                 onClick={() => { it.action(); setDocContextMenu(null); }}
-                className="w-full text-left py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
-                style={{ color: it.danger ? "#ef4444" : "var(--text-secondary)", paddingLeft: it.indent ? 20 : 12, paddingRight: 12 }}
+                className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
+                style={{ color: it.danger ? "#ef4444" : "var(--text-secondary)" }}
               >
                 {it.label}
               </button>
