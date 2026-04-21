@@ -404,13 +404,15 @@
   background: transparent !important;
   border: none !important;
   padding: 1.5rem 2rem !important;
-  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', ui-monospace, monospace !important;
-  font-size: 0.8125rem !important;
-  line-height: 1.45 !important;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
   letter-spacing: 0 !important;
   color: var(--text-secondary) !important;
   white-space: pre !important;
   -webkit-font-smoothing: antialiased;
+  font-variant-ligatures: none !important;
+  font-feature-settings: normal !important;
 }
 
 /* Images */

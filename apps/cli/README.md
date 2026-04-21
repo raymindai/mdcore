@@ -34,6 +34,8 @@ cat ~/.claude/conversations/latest.md | mdfy publish
 |---------|-------------|
 | `mdfy publish <file>` | Publish a .md file and get a URL |
 | `mdfy publish` | Publish from stdin (pipe) |
+| `mdfy read <id>` | Read a document in the terminal (formatted) |
+| `mdfy capture [source]` | Capture terminal/AI output and publish |
 | `mdfy update <id> <file>` | Update an existing document |
 | `mdfy pull <id>` | Download a document to stdout |
 | `mdfy pull <id> -o <file>` | Download and save to file |
@@ -112,11 +114,41 @@ mdfy list
 
 Credentials stored in `~/.mdfy/config.json`. Edit tokens for published documents stored in `~/.mdfy/tokens.json`.
 
+## Capture
+
+Capture terminal output and AI conversations, auto-detect format, and publish:
+
+```bash
+# Auto-detect: stdin, then clipboard
+mdfy capture
+
+# Capture tmux pane
+mdfy capture tmux
+
+# Capture clipboard
+mdfy capture clipboard
+
+# Pipe last command output
+some-command 2>&1 | mdfy capture last
+```
+
+## Read
+
+Read a published document directly in the terminal with formatting:
+
+```bash
+mdfy read abc123
+mdfy read https://mdfy.cc/d/abc123
+```
+
 ## Short Aliases
 
 | Short | Full |
 |-------|------|
 | `mdfy p` | `mdfy publish` |
+| `mdfy pub` | `mdfy publish` |
 | `mdfy up` | `mdfy update` |
 | `mdfy ls` | `mdfy list` |
 | `mdfy rm` | `mdfy delete` |
+| `mdfy cat` | `mdfy read` |
+| `mdfy c` | `mdfy capture` |

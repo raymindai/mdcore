@@ -233,7 +233,7 @@ function wrapAsciiDiagram(content: string, sourcepos: string): string {
     return `<div ${sourcepos}>${htmlTable}</div>`;
   }
 
-  return `<div class="ascii-diagram ascii-rendered" data-original-code="${encodeURIComponent(decodeHtmlEntities(content))}" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:0.8125rem;line-height:1.5;color:var(--text-secondary);white-space:pre">${content}</code></pre></div>`;
+  return `<div class="ascii-diagram ascii-rendered" data-original-code="${encodeURIComponent(decodeHtmlEntities(content))}" ${sourcepos}><pre style="margin:0;border:none;background:transparent;overflow-x:auto"><code style="display:block;padding:1.5rem;font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;font-size:0.875rem;line-height:1.5;color:var(--text-secondary);white-space:pre;letter-spacing:0;font-variant-ligatures:none">${content}</code></pre></div>`;
 }
 
 /**

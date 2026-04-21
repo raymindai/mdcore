@@ -34,12 +34,14 @@
   }
 
   function createButton() {
-    if (document.getElementById("mdfy-github-btn")) return;
+    // Prevent duplicates — remove ALL existing mdfy buttons first
+    document.querySelectorAll("#mdfy-github-btn, .mdfy-github-btn").forEach(el => el.remove());
+    if (!isMarkdownPage()) return;
 
     const btn = document.createElement("button");
     btn.id = "mdfy-github-btn";
     btn.className = "mdfy-github-btn";
-    btn.innerHTML = '<span class="mdfy-gh-logo"><span class="mdfy-gh-md">md</span><span class="mdfy-gh-fy">fy</span></span><span class="mdfy-gh-label">Open in mdfy.cc</span>';
+    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.cc</span>';
     btn.title = "Open this Markdown file in mdfy.cc for beautiful rendering and editing";
 
     btn.addEventListener("click", async (e) => {
@@ -131,29 +133,89 @@
     });
 
     // Insert into GitHub's file header actions
-    const actionBar = document.querySelector(
-      '[class*="react-blob-header-edit-and-raw-actions"], .Box-header .d-flex, [data-testid="raw-button"]?.parentElement, .file-actions'
-    );
+    // GitHub's DOM changes frequently — try multiple strategies
+    const inserted = tryInsertButton(btn);
+    if (!inserted) {
+      // Ultimate fallback: fixed-position floating button
+      btn.style.position = "fixed";
+      btn.style.top = "70px";
+      btn.style.right = "24px";
+      btn.style.zIndex = "9999";
+      btn.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+      document.body.appendChild(btn);
+    }
+  }
 
-    if (actionBar) {
-      actionBar.prepend(btn);
-    } else {
-      // Fallback: float in top-right of file content
-      const fileContent = document.querySelector('[data-testid="blob-code-content"], .Box-body, #read-only-cursor-text-area')?.closest('.Box, [class*="react-blob"]');
-      if (fileContent) {
-        fileContent.style.position = "relative";
+  function tryInsertButton(btn) {
+    // Strategy 1: Find the "Raw" button and insert next to it
+    const rawBtn = document.querySelector('[data-testid="raw-button"], a[href*="/raw/"], button[aria-label*="raw" i]');
+    if (rawBtn) {
+      const parent = rawBtn.closest('[class*="actions"], [class*="header"], .d-flex, div') || rawBtn.parentElement;
+      if (parent) {
+        parent.insertBefore(btn, parent.firstChild);
+        return true;
+      }
+    }
+
+    // Strategy 2: React blob header area (new GitHub UI)
+    const selectors = [
+      '[class*="react-blob-header"] [class*="actions"]',
+      '[class*="react-blob-header"] .d-flex',
+      '[class*="BlobToolbar"]',
+      '[class*="blob-header"]',
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) { el.prepend(btn); return true; }
+    }
+
+    // Strategy 3: Find by text content — locate "Raw" or "Copy" button text
+    const allButtons = document.querySelectorAll('button, a[role="button"]');
+    for (const b of allButtons) {
+      const text = (b.textContent || '').trim().toLowerCase();
+      const label = (b.getAttribute('aria-label') || '').toLowerCase();
+      if (text === 'raw' || label.includes('raw') || label.includes('copy raw')) {
+        const parent = b.closest('.d-flex, [class*="actions"], [class*="header"]') || b.parentElement;
+        if (parent && !parent.querySelector('#mdfy-github-btn')) {
+          parent.insertBefore(btn, parent.firstChild);
+          return true;
+        }
+      }
+    }
+
+    // Strategy 4: File info bar (contains filename + size)
+    const fileInfo = document.querySelector('[class*="file-info"], [class*="blob-num"], .Box-header');
+    if (fileInfo) {
+      const container = fileInfo.closest('.Box-header, [class*="header"]') || fileInfo.parentElement;
+      if (container) {
+        btn.style.float = "right";
+        btn.style.marginLeft = "8px";
+        container.appendChild(btn);
+        return true;
+      }
+    }
+
+    // Strategy 5: Look for the rendered markdown container and place above it
+    const readme = document.querySelector('[data-testid="readme"], article.markdown-body, #readme, .Box-body .markdown-body');
+    if (readme) {
+      const wrapper = readme.closest('.Box, [class*="react-blob"]') || readme.parentElement;
+      if (wrapper) {
+        wrapper.style.position = "relative";
         btn.style.position = "absolute";
         btn.style.top = "8px";
         btn.style.right = "8px";
         btn.style.zIndex = "10";
-        fileContent.prepend(btn);
+        wrapper.prepend(btn);
+        return true;
       }
     }
+
+    return false;
   }
 
   function resetButton(btn) {
     btn.classList.remove("mdfy-gh-loading", "mdfy-gh-done", "mdfy-gh-error");
-    btn.innerHTML = '<span class="mdfy-gh-logo"><span class="mdfy-gh-md">md</span><span class="mdfy-gh-fy">fy</span></span><span class="mdfy-gh-label">Open in mdfy.cc</span>';
+    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.cc</span>';
   }
 
   // Compression (same as content.js)
@@ -183,8 +245,10 @@
   // Run on page load and on navigation (GitHub SPA)
   function init() {
     if (isMarkdownPage()) {
-      // Delay to let GitHub's React finish rendering
-      setTimeout(createButton, 500);
+      // Try multiple times — GitHub React renders progressively
+      setTimeout(createButton, 300);
+      setTimeout(createButton, 1000);
+      setTimeout(createButton, 2500);
     }
   }
 

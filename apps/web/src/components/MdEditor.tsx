@@ -2427,6 +2427,9 @@ export default function MdEditor() {
     });
 
     asciiDiagrams.forEach((el) => {
+      // Skip if already has toolbar or already rendered
+      if (el.querySelector(".ascii-toolbar")) return;
+      if (el.dataset.asciiRendered) return;
 
       // Toolbar at top — always visible
       const toolbar = document.createElement("div");
@@ -2487,11 +2490,14 @@ export default function MdEditor() {
           const originalHtml = el.innerHTML;
           const srcText = el.querySelector("code")?.textContent || "";
 
+          // Mark as rendered to prevent duplicate toolbars
+          (el as HTMLElement).dataset.asciiRendered = "1";
           // Clear and rebuild via DOM
           (el as HTMLElement).innerHTML = "";
 
           // Toolbar row at top (flow layout, not overlapping)
           const postToolbar = document.createElement("div");
+          postToolbar.className = "ascii-toolbar";
           postToolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
 
           // "Rendered" label
