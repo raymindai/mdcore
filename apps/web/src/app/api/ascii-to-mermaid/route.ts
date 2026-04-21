@@ -4,6 +4,225 @@ import https from "https";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// ─── Deterministic ASCII Tree Parser ───
+
+interface TreeNode {
+  label: string;
+  subLabels: string[];
+  children: TreeNode[];
+}
+
+function tryParseAsciiTree(text: string): TreeNode | null {
+  const lines = text.split("\n");
+  if (lines.length < 3) return null;
+
+  // Must have box-drawing characters
+  const boxChars = /[┌┐└┘│─├┤┬┴┼╌]/;
+  const boxLineCount = lines.filter(l => boxChars.test(l)).length;
+  if (boxLineCount < 2) return null;
+
+  // Find all text labels and their column positions
+  // A "label" is a word or phrase NOT made of box-drawing chars
+  type Label = { text: string; col: number; line: number; midCol: number };
+  const labels: Label[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Find text segments (non-box-drawing, non-whitespace)
+    const regex = /[^\s┌┐└┘│─├┤┬┴┼╌]+(\s+[^\s┌┐└┘│─├┤┬┴┼╌]+)*/g;
+    let match;
+    while ((match = regex.exec(line)) !== null) {
+      const txt = match[0].trim();
+      if (!txt) continue;
+      // Skip if it's just box chars
+      if (/^[┌┐└┘│─├┤┬┴┼╌\s]+$/.test(txt)) continue;
+      const col = match.index;
+      labels.push({ text: txt, col, line: i, midCol: col + Math.floor(txt.length / 2) });
+    }
+  }
+
+  if (labels.length === 0) return null;
+
+  // Find vertical connector positions (columns where │ appears)
+  function hasVerticalConnector(col: number, fromLine: number, toLine: number): boolean {
+    for (let i = fromLine; i <= toLine; i++) {
+      if (i >= lines.length) return false;
+      const ch = lines[i]?.[col];
+      if (ch === "│" || ch === "┼" || ch === "┬" || ch === "┴" || ch === "├" || ch === "┤") return true;
+    }
+    return false;
+  }
+
+  // Find horizontal branch lines and their connected columns
+  function findBranchChildren(parentMidCol: number, parentLine: number): number[] {
+    // Look for a horizontal branch line below the parent
+    for (let i = parentLine + 1; i < Math.min(parentLine + 4, lines.length); i++) {
+      const line = lines[i];
+      if (!line) continue;
+      if (/[┌┐┬┼├┤─┴└┘]/.test(line)) {
+        // This is a branch line — find all vertical connector positions
+        const connectorCols: number[] = [];
+        for (let c = 0; c < line.length; c++) {
+          const ch = line[c];
+          if (ch === "│" || ch === "┼" || ch === "┬" || ch === "├" || ch === "┤" || ch === "┌" || ch === "└") {
+            // Check if there's a vertical line below this position
+            if (i + 1 < lines.length) {
+              const below = lines[i + 1]?.[c];
+              if (below === "│" || below === " " || !below) {
+                // Check if text is near this column on lines below
+                connectorCols.push(c);
+              }
+            }
+            connectorCols.push(c);
+          }
+        }
+        if (connectorCols.length > 0) return [...new Set(connectorCols)];
+      }
+    }
+    return [];
+  }
+
+  // Group labels by line
+  const labelsByLine = new Map<number, Label[]>();
+  for (const l of labels) {
+    if (!labelsByLine.has(l.line)) labelsByLine.set(l.line, []);
+    labelsByLine.get(l.line)!.push(l);
+  }
+
+  // Find label groups at the same hierarchy level (same line, or connected by branch)
+  // Strategy: find the first label (root), then find its children via vertical/branch connections
+
+  function findChildrenLabels(parentLabel: Label): Label[] {
+    // Look for labels on lines below that are connected via vertical lines and branches
+    const children: Label[] = [];
+
+    // Find the next set of labels that are at the same hierarchy level
+    // Look for labels that are connected to the parent via │ and branch lines
+    for (let i = parentLabel.line + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+
+      // Skip pure branch lines
+      if (/^[\s┌┐└┘│─├┤┬┴┼╌]+$/.test(line)) continue;
+
+      // Found a line with text — these are the children
+      const lineLabels = labelsByLine.get(i);
+      if (lineLabels && lineLabels.length > 0) {
+        return lineLabels;
+      }
+    }
+    return children;
+  }
+
+  // Build tree by finding connected labels at each level
+  function buildLevel(levelLabels: Label[]): TreeNode[] {
+    const nodes: TreeNode[] = [];
+
+    for (const label of levelLabels) {
+      const node: TreeNode = { label: label.text, subLabels: [], children: [] };
+
+      // Find sub-labels: text on lines below at same column position (within 3 chars)
+      // that are NOT connected to a branch line
+      for (let i = label.line + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+
+        // If this line has box-drawing chars, it might be a branch — check if it connects to children
+        if (/[┌┐└┘├┤┬┴┼]/.test(line)) {
+          // Find children below this branch
+          const childLabels: Label[] = [];
+          for (let j = i + 1; j < lines.length; j++) {
+            const jLine = lines[j];
+            if (!jLine) continue;
+            if (/^[\s┌┐└┘│─├┤┬┴┼╌]+$/.test(jLine)) continue;
+            const jLabels = labelsByLine.get(j);
+            if (jLabels) {
+              // Filter to labels that are within the column range of this parent
+              const parentRange = { left: label.col - 5, right: label.col + label.text.length + 5 };
+              // Find labels connected via the branch
+              for (const jl of jLabels) {
+                // Check if this label is connected to the parent's branch
+                if (jl.midCol >= parentRange.left && jl.midCol <= parentRange.right) {
+                  childLabels.push(jl);
+                } else {
+                  // Check if there's a horizontal branch connecting them
+                  for (let c = Math.min(label.midCol, jl.midCol); c <= Math.max(label.midCol, jl.midCol); c++) {
+                    if (line[c] === "─" || line[c] === "┴" || line[c] === "┬" || line[c] === "┼") {
+                      childLabels.push(jl);
+                      break;
+                    }
+                  }
+                }
+              }
+              if (childLabels.length > 0) {
+                node.children = buildLevel(childLabels);
+                break;
+              }
+            }
+          }
+          break;
+        }
+
+        // Check for sub-labels at same column position
+        const lineLabels = labelsByLine.get(i);
+        if (lineLabels) {
+          for (const ll of lineLabels) {
+            // Sub-label if it's roughly aligned with parent column (within 4 chars)
+            if (Math.abs(ll.midCol - label.midCol) <= 4) {
+              node.subLabels.push(ll.text);
+            }
+          }
+          // If we found sub-labels, also check if there are more labels that aren't sub-labels
+          if (node.subLabels.length > 0) continue;
+        }
+
+        break; // No more sub-labels
+      }
+
+      nodes.push(node);
+    }
+    return nodes;
+  }
+
+  // Start with root: first label
+  const root = labels[0];
+  const rootNode: TreeNode = { label: root.text, subLabels: [], children: [] };
+
+  // Find first level children
+  const firstChildren = findChildrenLabels(root);
+  rootNode.children = buildLevel(firstChildren);
+
+  return rootNode.children.length > 0 ? rootNode : null;
+}
+
+function treeToHtml(node: TreeNode, isRoot = true): string {
+  const bg = isRoot ? "#1c1c24" : "#222230";
+  const subLabelsHtml = node.subLabels.map(s =>
+    `<div style="font-size:11px;color:#888899;margin-top:2px">${s}</div>`
+  ).join("");
+
+  const nodeHtml = `<div style="display:flex;flex-direction:column;align-items:center">
+    <div style="background:${bg};border:1px solid #2e2e3a;border-radius:8px;padding:10px 18px;text-align:center">
+      <div style="font-size:14px;font-weight:600;color:#ededf0">${node.label}</div>
+    </div>
+    ${subLabelsHtml ? `<div style="text-align:center;margin-top:4px">${subLabelsHtml}</div>` : ""}
+  </div>`;
+
+  if (node.children.length === 0) return nodeHtml;
+
+  const arrow = `<div style="display:flex;flex-direction:column;align-items:center;color:#50505e"><div style="width:1.5px;height:18px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">\u25BC</div></div>`;
+
+  const childrenHtml = node.children.map(c => treeToHtml(c, false)).join("");
+
+  return `<div style="display:flex;flex-direction:column;align-items:center">
+    ${nodeHtml}
+    ${arrow}
+    <div style="display:flex;gap:16px;align-items:flex-start;justify-content:center;flex-wrap:wrap">
+      ${childrenHtml}
+    </div>
+  </div>`;
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -22,6 +241,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
+  // Try deterministic parser first (works for box-drawing trees)
+  const parsedTree = tryParseAsciiTree(ascii);
+  if (parsedTree) {
+    const html = `<div style="display:flex;justify-content:center;padding:20px;font-family:system-ui,sans-serif">${treeToHtml(parsedTree)}</div>`;
+    return NextResponse.json({ html });
+  }
+
+  // Fall back to AI for Mermaid, flowcharts, and other formats
   const prompt = `Convert this diagram into clean, styled HTML that EXACTLY preserves the original structure and relationships.
 
 STEP 1 — PARSE THE STRUCTURE FIRST:

@@ -2409,7 +2409,7 @@ export default function MdEditor() {
         }
       }
     });
-  }, [html, isLoading, theme, viewMode, diagramMode]);
+  }, [html, isLoading, theme, viewMode]);
 
   // ASCII diagram — add "Render" button (user-controlled, not auto)
   useEffect(() => {
@@ -2578,12 +2578,9 @@ export default function MdEditor() {
           }, 2000);
         }
       });
-      // Auto-trigger AI render if diagram mode is "ai"
-      if (diagramModeRef.current === "ai") {
-        btn.click();
-      }
+      // User clicks Render button manually per diagram
     });
-  }, [html, isLoading, theme, diagramMode]);
+  }, [html, isLoading, theme]);
 
   // Math: double-click to edit in MathEditor
   useEffect(() => {
@@ -7290,22 +7287,7 @@ ${html}
                     <p>Limit content width for comfortable reading, like a book layout.</p>
                   </div>
                 </div>
-                {/* AI ASCII RENDER — icon only with rich tooltip */}
-                <div className="relative group">
-                  <button
-                    onClick={toggleDiagramMode}
-                    className="flex items-center justify-center h-6 px-1.5 rounded-md transition-colors"
-                    style={{ background: diagramMode === "ai" ? "var(--accent-dim)" : "transparent", color: diagramMode === "ai" ? "var(--accent)" : "var(--text-faint)", fontFamily: "var(--font-geist-mono, monospace)", fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}
-                    title={`AI ASCII render ${diagramMode === "ai" ? "ON" : "OFF"}`}
-                  >
-                    ASCII
-                  </button>
-                  <div className="absolute top-full right-0 mt-1.5 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    <p style={{ color: diagramMode === "ai" ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>AI ASCII Render {diagramMode === "ai" ? "ON" : "OFF"}</p>
-                    <p>{diagramMode === "ai" ? "ASCII art diagrams are automatically converted to styled visuals using AI (Gemini)." : "ASCII art shows as monospace text. Turn on to auto-convert box-drawing diagrams."}</p>
-                  </div>
-                </div>
+                {/* ASCII toggle removed — render button on each diagram instead */}
                 <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* History — icon only */}
                 {docId && (
