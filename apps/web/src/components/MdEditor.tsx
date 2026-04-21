@@ -8297,34 +8297,52 @@ ${html}
                   URL.revokeObjectURL(url);
                 }
               }},
-              ...folders.filter(f => !f.section || f.section === "my").map(f => ({
-                label: `Move to ${f.name}`,
-                action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
-              })),
-              ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
-                label: "Move to root",
-                action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
-              }] : []),
-              ...(tabs.filter(t => !t.deleted).length > 1 ? [{ label: "Move to Trash", action: () => {
-                const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
-                if (trashTab) softDeleteOnServer(trashTab);
-                setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
-                if (docContextMenu.tabId === activeTabId) {
-                  const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
-                  if (remaining.length) switchTab(remaining[0].id);
-                }
-              }, danger: true }] : []),
+              ...(folders.filter(f => !f.section || f.section === "my").length > 0 || tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [
+                { label: "---", action: () => {} },
+                { label: "MOVE TO", action: () => {}, header: true },
+                ...folders.filter(f => !f.section || f.section === "my").map(f => ({
+                  label: f.name,
+                  action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
+                  indent: true,
+                })),
+                ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
+                  label: "Root (no folder)",
+                  action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
+                  indent: true,
+                }] : []),
+              ] : []),
+              ...(tabs.filter(t => !t.deleted).length > 1 ? [
+                { label: "---", action: () => {} },
+                { label: "Move to Trash", action: () => {
+                  const trashTab = tabs.find(t => t.id === docContextMenu.tabId);
+                  if (trashTab) softDeleteOnServer(trashTab);
+                  setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                  if (docContextMenu.tabId === activeTabId) {
+                    const remaining = tabs.filter(t => !t.deleted && t.id !== docContextMenu.tabId);
+                    if (remaining.length) switchTab(remaining[0].id);
+                  }
+                }, danger: true },
+              ] : []),
             ];
-          })().map((item) => (
-            <button
-              key={item.label}
-              onClick={() => { item.action(); setDocContextMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
-              style={{ color: (item as { danger?: boolean }).danger ? "#ef4444" : "var(--text-secondary)" }}
-            >
-              {item.label}
-            </button>
-          ))}
+          })().map((item, i) => {
+            const it = item as { label: string; action: () => void; danger?: boolean; header?: boolean; indent?: boolean };
+            if (it.label === "---") {
+              return <div key={`sep-${i}`} className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />;
+            }
+            if (it.header) {
+              return <div key={it.label} className="px-3 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>{it.label}</div>;
+            }
+            return (
+              <button
+                key={it.label}
+                onClick={() => { it.action(); setDocContextMenu(null); }}
+                className="w-full text-left py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
+                style={{ color: it.danger ? "#ef4444" : "var(--text-secondary)", paddingLeft: it.indent ? 20 : 12, paddingRight: 12 }}
+              >
+                {it.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
