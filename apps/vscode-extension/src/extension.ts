@@ -28,7 +28,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // Refresh sidebar on login/logout
   context.subscriptions.push(
     authManager.onDidLogin(() => {
-      sidebarProvider?.refresh();
+      vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "mdfy: Signing in...", cancellable: false },
+        async (progress) => {
+          progress.report({ message: "Loading your documents..." });
+          await sidebarProvider?.refresh();
+          progress.report({ message: "Done" });
+        }
+      );
     })
   );
 
@@ -257,7 +264,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // Command: Login
   context.subscriptions.push(
     vscode.commands.registerCommand("mdfy.login", async () => {
-      await authManager?.login();
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: "mdfy: Opening browser for login...", cancellable: false },
+        async () => {
+          await authManager?.login();
+        }
+      );
     })
   );
 
