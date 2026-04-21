@@ -323,14 +323,15 @@ export default function PluginsPage() {
           {/* How to install */}
           <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
-              Install (Developer Mode)
+              Install
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { step: "1", text: "Clone the repo or download the extension folder" },
-                { step: "2", text: "Open chrome://extensions and enable Developer Mode" },
-                { step: "3", text: "Click \"Load unpacked\" and select the apps/chrome-extension/ folder" },
-                { step: "4", text: "Visit ChatGPT, Claude, or Gemini \u2014 the mdfy button appears" },
+                { step: "1", text: "Download the extension package below" },
+                { step: "2", text: "Unzip the downloaded file" },
+                { step: "3", text: "Open chrome://extensions and enable Developer Mode (top right toggle)" },
+                { step: "4", text: "Click \"Load unpacked\" and select the unzipped folder" },
+                { step: "5", text: "Visit ChatGPT, Claude, or Gemini \u2014 the mdfy button appears" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span
@@ -354,8 +355,30 @@ export default function PluginsPage() {
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
-              Chrome Web Store submission coming soon.
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <a
+                href="/downloads/mdfy-chrome-extension-v2.0.0.zip"
+                download
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download v2.0.0
+              </a>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>42 KB</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              Chrome Web Store listing coming soon.
             </p>
           </div>
         </div>
@@ -715,24 +738,45 @@ export default function PluginsPage() {
 
           <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
-              Install (Development)
+              Install
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { step: "1", text: "cd apps/vscode-extension && npm install" },
-                { step: "2", text: "npm run compile" },
-                { step: "3", text: "Press F5 in VS Code to launch Extension Development Host" },
-                { step: "4", text: "Open any .md file \u2192 Cmd+Shift+M to preview" },
-                { step: "5", text: "Run \"mdfy: Login\" to connect your account" },
+                { step: "1", text: "Download the .vsix file below" },
+                { step: "2", text: "Open VS Code, go to Extensions (Cmd+Shift+X)" },
+                { step: "3", text: "Click \u2022\u2022\u2022 menu > Install from VSIX... > select the downloaded file" },
+                { step: "4", text: "Open any .md file > Cmd+Shift+M to preview" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
-                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>{s.text}</span>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
-              VS Code Marketplace submission coming soon.
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <a
+                href="/downloads/mdfy-vscode-1.0.0.vsix"
+                download
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download v1.0.0
+              </a>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>298 KB (.vsix)</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              VS Code Marketplace listing coming soon.
             </p>
           </div>
         </div>
@@ -1102,7 +1146,7 @@ export default function PluginsPage() {
           {[
             { name: "Obsidian Plugin", desc: "Publish Obsidian notes to mdfy.cc with one command", status: "Planned" },
             { name: "Raycast Extension", desc: "Quick capture and publish from Raycast", status: "Planned" },
-            { name: "CLI Tool", desc: "mdfy render file.md \u2014 terminal Markdown rendering", status: "Planned" },
+            { name: "Slack Bot", desc: "Share documents directly in Slack channels", status: "Planned" },
             { name: "Alfred Workflow", desc: "Capture clipboard and publish instantly", status: "Planned" },
             { name: "iOS / Android", desc: "Share sheet integration for mobile publishing", status: "Planned" },
           ].map((p) => (
