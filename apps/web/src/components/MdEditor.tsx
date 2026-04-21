@@ -5102,12 +5102,12 @@ ${html}
           )}
           </span>
           {/* Permission badge — desktop only in row 1 */}
-          <span className="hidden sm:inline">
+          <span className="hidden sm:inline-flex items-center">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
             if (perm === "readonly") return (
-              <div className="relative inline-block">
+              <div className="relative inline-flex items-center">
                 <button
                   onClick={() => setShowPermDropdown(!showPermDropdown)}
                   className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"

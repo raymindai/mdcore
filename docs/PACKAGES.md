@@ -138,7 +138,7 @@ AI provider abstraction layer. BYOK (Bring Your Own Key). Zero AI SDK dependenci
 **Responsibilities:**
 - Unified `callAI()` interface across Gemini, OpenAI, Anthropic
 - `mdfyText()` -- raw text to structured Markdown
-- `asciiRender()` -- ASCII/Mermaid diagrams to styled HTML
+- `asciiToMermaid()` -- ASCII diagrams to Mermaid code (rendered by mermaid.js)
 - AI conversation detection and parsing
 - Provider-specific raw calls (`callGemini`, `callOpenAI`, `callAnthropic`)
 
@@ -160,7 +160,7 @@ The main web app uses all packages:
 | `@mdcore/engine` (npm) | `mdcore.render()` + `postProcessHtml()` + file import + conversation detection |
 | `@mdcore/styles` | Extracted from `globals.css` (styles originated here, now shared as a package) |
 | `@mdcore/api` | Server-side API routes under `app/api/docs/` |
-| `@mdcore/ai` | Server-side AI routes (`/api/import/mdfy`, `/api/ascii-to-mermaid`) |
+| `@mdcore/ai` | Server-side AI routes (`/api/import/mdfy`, `/api/ascii-to-mermaid` — converts ASCII to Mermaid code) |
 
 ### apps/vscode-extension
 

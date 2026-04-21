@@ -164,21 +164,14 @@ The AI will:
 - Preserve all original content (no summarization)
 - Preserve the original language for non-English text
 
-### asciiRender(ascii, config)
+### asciiToMermaid(ascii, config)
 
-Convert ASCII art, box-drawing diagrams, or Mermaid code into styled HTML.
+Convert ASCII art or box-drawing diagrams into Mermaid code. The returned Mermaid code is then rendered by mermaid.js through the standard pipeline.
 
 ```ts
-import { asciiRender } from "@mdcore/ai";
+import { asciiToMermaid } from "@mdcore/ai";
 
-// From Mermaid code
-const html = await asciiRender("graph LR; A-->B-->C", {
-  provider: "gemini",
-  apiKey: process.env.GEMINI_API_KEY!,
-});
-
-// From ASCII art
-const html2 = await asciiRender(`
+const mermaidCode = await asciiToMermaid(`
   +--------+     +--------+
   | Client | --> | Server |
   +--------+     +--------+
@@ -186,16 +179,16 @@ const html2 = await asciiRender(`
   provider: "gemini",
   apiKey: process.env.GEMINI_API_KEY!,
 });
+// Returns: "graph LR\n    Client --> Server"
 ```
 
-**Returns:** `string` -- a self-contained HTML `<div>` with dark-theme inline styles.
+**Returns:** `string` -- valid Mermaid code (graph TD, sequenceDiagram, etc.)
 
-Output characteristics:
-- Dark theme only (transparent background, `#1c1c24` boxes)
-- Accent color: `#fb923c` (orange, matching mdfy.cc)
-- No external dependencies (all styles are inline)
-- Flowcharts preserve branching structure
-- Supports: flowcharts, sequence diagrams, gantt charts, pie charts, tables
+How it works:
+- AI extracts relationships from ASCII art and outputs Mermaid syntax
+- Optionally accepts a canvas image (base64) for vision-based spatial analysis
+- Optionally accepts document context for better label understanding
+- Mermaid.js handles the rendering (deterministic, themed)
 
 ### isAiConversation(text)
 

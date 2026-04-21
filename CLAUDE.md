@@ -185,7 +185,7 @@ Cargo.toml에 `[package.metadata.wasm-pack.profile.release] wasm-opt = false` �
 | packages/mdcore | @mdcore/engine | WASM 래퍼 + postprocess (highlight.js, KaTeX) + 파일 임포트 | highlight.js, katex, turndown |
 | packages/styles | @mdcore/styles | CSS 전용 — 다크/라이트 테마, 렌더링 스타일, 인쇄 | 없음 (순수 CSS) |
 | packages/api | @mdcore/api | mdfy.cc HTTP 클라이언트 (publish, pull, update, delete, versions) | 없음 (native fetch) |
-| packages/ai | @mdcore/ai | AI 프로바이더 (Gemini, OpenAI, Anthropic) + mdfyText + asciiRender | 없음 (native fetch) |
+| packages/ai | @mdcore/ai | AI 프로바이더 (Gemini, OpenAI, Anthropic) + mdfyText + asciiToMermaid | 없음 (native fetch) |
 
 ### 패키지 간 관계
 
@@ -204,7 +204,7 @@ ai: AI 호출 (독립)
 - `@mdcore/engine`: `mdcore.init()`, `mdcore.render()`, `postProcessHtml()`, `htmlToMarkdown()`, `isCliOutput()`, `cliToMarkdown()`, `convertToMarkdown()`
 - `@mdcore/styles`: CSS 임포트 (`@import "@mdcore/styles"`)
 - `@mdcore/api`: `MdfyClient`, `publish()`, `pull()`, `update()`, `deleteDocument()`, `upload()`
-- `@mdcore/ai`: `callAI()`, `mdfyText()`, `asciiRender()`, `isAiConversation()`, `parseConversation()`, `formatConversation()`
+- `@mdcore/ai`: `callAI()`, `mdfyText()`, `asciiToMermaid()`, `isAiConversation()`, `parseConversation()`, `formatConversation()`
 
 ---
 
