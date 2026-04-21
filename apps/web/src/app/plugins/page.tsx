@@ -900,22 +900,43 @@ export default function PluginsPage() {
 
           <div style={{ padding: "28px 32px", borderTop: "1px solid var(--border-dim)" }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
-              Install (Development)
+              Install
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { step: "1", text: "cd apps/desktop && npm install" },
-                { step: "2", text: "npm start" },
-                { step: "3", text: "Or build: npm run build (creates .dmg)" },
+                { step: "1", text: "Download the DMG file below" },
+                { step: "2", text: "Open the DMG and drag mdfy to Applications" },
+                { step: "3", text: "Launch mdfy from Applications" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
-                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>{s.text}</span>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
-              Distributable .dmg coming soon.
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <a
+                href="https://github.com/raymindai/mdcore/releases/download/v2.0.0/mdfy-2.0.0-universal.dmg"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download v2.0.0 for Mac
+              </a>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>174 MB (Universal — Intel + Apple Silicon)</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              macOS 13 (Ventura) or later required.
             </p>
           </div>
         </div>
