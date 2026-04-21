@@ -2559,7 +2559,10 @@ export default function MdEditor() {
           el.appendChild(mermaidContainer);
 
           try {
-            const mermaid = (await import("mermaid")).default;
+            // Use the already-initialized window.mermaid (same theme/config as regular diagrams)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mermaid = (window as any).mermaid;
+            if (!mermaid) throw new Error("Mermaid not loaded");
             const { svg } = await mermaid.render("ascii-mermaid-" + Date.now(), mermaidCode);
             mermaidContainer.innerHTML = svg;
           } catch (mermaidErr) {
