@@ -2880,15 +2880,37 @@
         window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + docId);
         showToast("URL copied");
       }},
-      { divider: true },
-      { label: "Delete from Cloud", danger: true, action: async function() {
-        if (confirm("Delete from mdfy.cc?")) {
-          await window.mdfyDesktop.deleteCloudDoc(docId);
-          await refreshSidebarData(); renderSidebar();
-          showToast("Deleted");
-        }
-      }},
     ];
+
+    // Move to folder submenu
+    if (sidebarState.cloudFolders && sidebarState.cloudFolders.length > 0) {
+      var folderItems = sidebarState.cloudFolders.map(function(f) {
+        return { label: f.name, action: async function() {
+          try {
+            await window.mdfyDesktop.moveToFolder(docId, f.id);
+            await refreshSidebarData(); renderSidebar();
+          } catch(e) { console.error(e); }
+        }};
+      });
+      folderItems.push({ label: "Root (no folder)", action: async function() {
+        try {
+          await window.mdfyDesktop.moveToFolder(docId, null);
+          await refreshSidebarData(); renderSidebar();
+        } catch(e) { console.error(e); }
+      }});
+      items.push({ label: "Move to", submenu: folderItems });
+    }
+
+    items.push({ divider: true });
+    items.push({ label: "Delete from Cloud", danger: true, action: async function() {
+      if (confirm("Delete from mdfy.cc?")) {
+        await window.mdfyDesktop.deleteCloudDoc(docId);
+        await refreshSidebarData(); renderSidebar();
+        showToast("Deleted");
+      }
+    }});
+
+    items = items;
 
     renderContextMenu(menu, items, x, y);
   }
@@ -2899,6 +2921,32 @@
         var sep = document.createElement("div");
         sep.className = "file-ctx-sep";
         menu.appendChild(sep);
+      } else if (items[i].submenu) {
+        var subWrap = document.createElement("div");
+        subWrap.className = "file-ctx-sub";
+        subWrap.style.position = "relative";
+        var subBtn = document.createElement("button");
+        subBtn.className = "file-ctx-item";
+        subBtn.innerHTML = items[i].label + ' <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-left:auto"><path d="M6 4l4 4-4 4"/></svg>';
+        subBtn.style.display = "flex";
+        subBtn.style.alignItems = "center";
+        subWrap.appendChild(subBtn);
+        var subMenu = document.createElement("div");
+        subMenu.className = "file-ctx-menu file-ctx-submenu";
+        subMenu.style.cssText = "position:absolute;left:100%;top:0;margin-left:2px;min-width:130px;display:none";
+        for (var j = 0; j < items[i].submenu.length; j++) {
+          var subItem = document.createElement("button");
+          subItem.className = "file-ctx-item";
+          subItem.textContent = items[i].submenu[j].label;
+          subItem.addEventListener("click", (function(action) {
+            return function(e) { e.stopPropagation(); hideFileContextMenu(); action(); };
+          })(items[i].submenu[j].action));
+          subMenu.appendChild(subItem);
+        }
+        subWrap.appendChild(subMenu);
+        subWrap.addEventListener("mouseenter", function() { subMenu.style.display = "block"; });
+        subWrap.addEventListener("mouseleave", function() { subMenu.style.display = "none"; });
+        menu.appendChild(subWrap);
       } else {
         var btn = document.createElement("button");
         btn.className = "file-ctx-item" + (items[i].danger ? " danger" : "");

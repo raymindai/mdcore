@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   previewCloudDoc: (docId, title) => ipcRenderer.invoke("preview-cloud-doc", docId, title),
   getCloudDocuments: () => ipcRenderer.invoke("get-cloud-documents"),
   getCloudFolders: () => ipcRenderer.invoke("get-cloud-folders"),
+  moveToFolder: (docId, folderId) => ipcRenderer.invoke("move-to-folder", docId, folderId),
 
   // ─── AI Tools ───
   aiAction: (action, markdown, extra) => ipcRenderer.invoke("ai-action", action, markdown, extra),

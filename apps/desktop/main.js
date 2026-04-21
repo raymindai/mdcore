@@ -1382,6 +1382,23 @@ ipcMain.handle("delete-cloud-doc", async (event, docId) => {
   }
 });
 
+ipcMain.handle("move-to-folder", async (event, docId, folderId) => {
+  try {
+    const token = authManager?.getToken();
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${BASE_URL}/api/docs/${docId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ action: "move", folderId: folderId || null }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
 ipcMain.handle("resolve-conflict", async (event, action, filePath) => {
   const target = filePath || currentFilePath;
   if (!target) return;
