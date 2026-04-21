@@ -1,6 +1,8 @@
 # mdfy CLI
 
-Publish Markdown from anywhere — terminal, scripts, CI/CD, tmux.
+Publish Markdown from anywhere — terminal, scripts, CI/CD, tmux. Every output becomes a permanent, shareable URL.
+
+Part of the [mdfy.cc](https://mdfy.cc) ecosystem.
 
 ## Install
 
@@ -11,21 +13,18 @@ npm install -g mdfy-cli
 ## Quick Start
 
 ```bash
-# Publish a file
+# Publish a file → get a URL
 mdfy publish README.md
-# → https://mdfy.cc/d/abc123
+# → https://mdfy.cc/d/abc123 (copied to clipboard)
 
-# Publish from pipe (stdin)
+# Publish from pipe
 echo "# Hello World" | mdfy publish
 
-# Publish from clipboard (macOS)
+# Publish clipboard
 pbpaste | mdfy publish
 
-# Capture tmux pane and publish
-tmux capture-pane -p | mdfy publish
-
-# Capture AI conversation
-cat ~/.claude/conversations/latest.md | mdfy publish
+# Read a document in terminal
+mdfy read abc123
 ```
 
 ## Commands
@@ -34,11 +33,10 @@ cat ~/.claude/conversations/latest.md | mdfy publish
 |---------|-------------|
 | `mdfy publish <file>` | Publish a .md file and get a URL |
 | `mdfy publish` | Publish from stdin (pipe) |
-| `mdfy read <id>` | Read a document in the terminal (formatted) |
+| `mdfy read <id>` | Read a document in the terminal with formatting |
 | `mdfy capture [source]` | Capture terminal/AI output and publish |
 | `mdfy update <id> <file>` | Update an existing document |
-| `mdfy pull <id>` | Download a document to stdout |
-| `mdfy pull <id> -o <file>` | Download and save to file |
+| `mdfy pull <id> [-o file]` | Download a document |
 | `mdfy delete <id>` | Delete a document |
 | `mdfy list` | List your documents |
 | `mdfy open <id>` | Open document in browser |
@@ -46,15 +44,26 @@ cat ~/.claude/conversations/latest.md | mdfy publish
 | `mdfy logout` | Clear stored credentials |
 | `mdfy whoami` | Show current user |
 
-## Pipe Support
+### Short Aliases
 
-Works with any command that outputs text:
+| Short | Full |
+|-------|------|
+| `mdfy p` | `mdfy publish` |
+| `mdfy up` | `mdfy update` |
+| `mdfy ls` | `mdfy list` |
+| `mdfy rm` | `mdfy delete` |
+| `mdfy cat` | `mdfy read` |
+| `mdfy c` | `mdfy capture` |
+
+## Use Cases
+
+### Pipe anything to a URL
 
 ```bash
-# AI assistants
+# AI assistant output
 claude "explain React hooks" | mdfy publish
 
-# Git
+# Git log
 git log --oneline -20 | mdfy publish
 
 # System info
@@ -63,46 +72,84 @@ system_profiler SPHardwareDataType | mdfy publish
 # Man pages
 man grep | mdfy publish
 
-# Capture terminal output
-script -q /dev/null some-command | mdfy publish
+# Command output
+curl -s https://api.example.com/status | mdfy publish
 ```
 
-## tmux Integration
+### Capture terminal sessions
+
+```bash
+# Auto-detect: tmux pane if in tmux, clipboard otherwise
+mdfy capture
+
+# Explicit sources
+mdfy capture tmux        # Current tmux pane
+mdfy capture clipboard   # System clipboard
+mdfy capture last        # Pipe: some-cmd | mdfy capture last
+```
+
+AI conversations (Claude Code, ChatGPT CLI, Ollama) are auto-detected and formatted with User/Assistant roles.
+
+### Read documents in terminal
+
+```bash
+# By ID
+mdfy read abc123
+
+# By URL
+mdfy read https://mdfy.cc/d/abc123
+
+# Output includes: color-coded headings, bold, code, blockquotes, lists
+```
+
+### tmux integration
 
 Add to `~/.tmux.conf`:
 
 ```bash
-# Cmd+M: publish current pane to mdfy.cc
 bind-key M run-shell "tmux capture-pane -p -S -1000 | mdfy publish"
 ```
 
-## Shell Aliases
+Press `prefix + M` to publish the current pane.
+
+### Shell aliases
 
 Add to `~/.zshrc` or `~/.bashrc`:
 
 ```bash
-# Quick publish
 alias mp="mdfy publish"
-
-# Publish clipboard
 alias mpc="pbpaste | mdfy publish"
-
-# Publish last command output
-alias mpl="fc -e - | mdfy publish"
 ```
 
 ## Authentication
 
 ```bash
-mdfy login
-# Opens browser for OAuth → paste token
-
-mdfy whoami
-# → user@example.com
-
-mdfy list
-# → List of your published documents
+mdfy login     # Opens browser for OAuth → paste token
+mdfy whoami    # Show current user
+mdfy list      # List your published documents
+mdfy logout    # Clear credentials
 ```
+
+Credentials stored in `~/.mdfy/config.json`. Edit tokens in `~/.mdfy/tokens.json`.
+
+## How It Works
+
+1. `mdfy publish` sends Markdown to mdfy.cc API
+2. Returns a permanent short URL (`mdfy.cc/d/...`)
+3. URL is copied to clipboard (macOS)
+4. Edit token is saved locally for future updates
+5. Documents render with syntax highlighting, math (KaTeX), and Mermaid diagrams
+
+## Other Channels
+
+| Channel | Install |
+|---------|---------|
+| [Web Editor](https://mdfy.cc) | Just open the URL |
+| [MCP Server](https://www.npmjs.com/package/mdfy-mcp) | `npx mdfy-mcp` |
+| [VS Code Extension](https://mdfy.cc/plugins) | Download from Plugins page |
+| [Chrome Extension](https://mdfy.cc/plugins) | Download from Plugins page |
+| [Mac Desktop App](https://mdfy.cc/plugins) | Download from Plugins page |
+| [tmux Plugin](https://github.com/raymindai/mdcore/tree/main/apps/tmux) | Manual install |
 
 ## Environment Variables
 
@@ -110,45 +157,6 @@ mdfy list
 |----------|---------|-------------|
 | `MDFY_URL` | `https://mdfy.cc` | API base URL |
 
-## Config
+## License
 
-Credentials stored in `~/.mdfy/config.json`. Edit tokens for published documents stored in `~/.mdfy/tokens.json`.
-
-## Capture
-
-Capture terminal output and AI conversations, auto-detect format, and publish:
-
-```bash
-# Auto-detect: stdin, then clipboard
-mdfy capture
-
-# Capture tmux pane
-mdfy capture tmux
-
-# Capture clipboard
-mdfy capture clipboard
-
-# Pipe last command output
-some-command 2>&1 | mdfy capture last
-```
-
-## Read
-
-Read a published document directly in the terminal with formatting:
-
-```bash
-mdfy read abc123
-mdfy read https://mdfy.cc/d/abc123
-```
-
-## Short Aliases
-
-| Short | Full |
-|-------|------|
-| `mdfy p` | `mdfy publish` |
-| `mdfy pub` | `mdfy publish` |
-| `mdfy up` | `mdfy update` |
-| `mdfy ls` | `mdfy list` |
-| `mdfy rm` | `mdfy delete` |
-| `mdfy cat` | `mdfy read` |
-| `mdfy c` | `mdfy capture` |
+MIT
