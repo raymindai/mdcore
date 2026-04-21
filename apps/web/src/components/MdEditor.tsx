@@ -1913,6 +1913,8 @@ export default function MdEditor() {
       const processed = postProcessHtml(result.html);
 
       setHtml(processed);
+      // Reset mermaid cache so diagrams re-render after full HTML replacement
+      prevMermaidCodesRef.current = [];
       setFlavor(result.flavor.primary);
       setFlavorDetails({
         math: result.flavor.math,

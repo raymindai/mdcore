@@ -26,7 +26,9 @@ const PROMPTS: Record<Exclude<AIAction, "chat" | "translate">, string> = {
 - Each bullet should be one clear, actionable sentence
 - Written in the same language as the original
 - Format as a Markdown list with - prefix
-- Output ONLY the bullet list — no headings, no "TL;DR:" prefix, no wrapping, no explanations`,
+- Output ONLY the bullet list — no headings, no "TL;DR:" prefix, no wrapping, no explanations
+- Do NOT include any part of the original document in your output
+- Do NOT include code blocks, diagrams, or any content from the source — only the bullet points`,
 };
 
 function buildTranslatePrompt(targetLang: string): string {
