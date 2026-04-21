@@ -27,19 +27,28 @@ export async function POST(req: NextRequest) {
   const prompt = `Convert this diagram into clean, styled HTML that EXACTLY preserves the original structure and relationships.
 
 STEP 1 — PARSE THE STRUCTURE FIRST:
-Before generating ANY HTML, write out the hierarchy as a nested list in your head.
+Before generating ANY HTML, write out the hierarchy as a nested list.
 
 How to parse ASCII box-drawing trees:
 - Vertical lines (│) connect a parent above to children below.
 - Horizontal branches (┌──┼──┐ or ├──┤ or └──┘) show which nodes share the same parent.
 - Text labels DIRECTLY BELOW a branch belong to that branch.
-- Text on subsequent lines at the SAME COLUMN POSITION as a label are sub-labels of that label (not separate nodes).
-- Example: if "Browser" is at column 6, and "mdfy.cc" is also at column 6 on the next line, then "mdfy.cc" is a sub-label under "Browser".
+
+CRITICAL — SUB-LABEL ASSIGNMENT BY COLUMN:
+- After the bottom-most branch row, there are leaf-node labels (e.g. "Browser", "Edge", "CLI", "Mobile").
+- Lines BELOW those leaf labels are sub-labels. Each sub-label belongs to the leaf label whose COLUMN POSITION it aligns with.
+- Measure the starting column of each leaf label and each sub-label. A sub-label belongs to the leaf whose start column is closest.
+- Example:
+  col 6: "Browser"  col 15: "Edge"   col 40: "CLI"   col 45: "Mobile"
+  col 6: "mdfy.cc"  col 15: "CF"     col 41: "brew"  col 47: "iOS"
+  col 15: "Workers"                   col 40: "install" col 45: "Android"
+  → "mdfy.cc" is under Browser, "CF"+"Workers" under Edge, "brew"+"install" under CLI, "iOS"+"Android" under Mobile
+- NEVER merge sub-labels from different columns into one node.
 
 STEP 2 — VERIFY:
-- Count total nodes. Your HTML must have the EXACT same count.
-- Each node must connect to its correct parent.
-- Sub-labels below a node are part of that node (show them as smaller text underneath).
+- Count total leaf nodes. Your HTML must have the EXACT same count.
+- Each sub-label must appear under the correct leaf node based on column alignment.
+- If the image is provided, use the IMAGE to visually confirm which text sits under which node.
 
 The input may be: ASCII box-drawing tree, ASCII flowchart, Mermaid code, or any text-based diagram.
 
