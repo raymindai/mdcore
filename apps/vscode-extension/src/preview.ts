@@ -371,6 +371,37 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
             await this.handleFlavorConversion(message.target);
             break;
           }
+          case "syncToLocal": {
+            // Cloud preview → trigger pull to local
+            if (this.isCloudPreview) {
+              const match = [...PreviewPanel.panels.entries()].find(([, p]) => p === this);
+              const docId = match?.[0]?.replace("cloud:", "") || "";
+              if (docId) {
+                vscode.commands.executeCommand("mdfy.sidebar.refresh");
+                // Pull via sidebar handler — post a message to sidebar
+                vscode.window.showInformationMessage(
+                  `To sync "${this.cloudTitle}" to local, click the download icon next to it in the sidebar.`,
+                  "Open Sidebar"
+                ).then(choice => {
+                  if (choice === "Open Sidebar") {
+                    vscode.commands.executeCommand("workbench.view.extension.mdfy");
+                  }
+                });
+              }
+            }
+            break;
+          }
+          case "openInBrowser": {
+            if (this.isCloudPreview) {
+              const match = [...PreviewPanel.panels.entries()].find(([, p]) => p === this);
+              const docId = match?.[0]?.replace("cloud:", "") || "";
+              if (docId) {
+                const baseUrl = vscode.workspace.getConfiguration("mdfy").get<string>("apiBaseUrl", "https://mdfy.cc");
+                vscode.env.openExternal(vscode.Uri.parse(`${baseUrl}/d/${docId}`));
+              }
+            }
+            break;
+          }
         }
       },
       null,
@@ -413,9 +444,15 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   private updateContent(markdown: string, cloudTitle?: string, isCloud?: boolean): void {
     const result = renderMarkdownWithFlavor(markdown);
     const cloudBanner = (isCloud || this.isCloudPreview)
-      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8;">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
-          <span>Cloud document (read-only). <strong>Sync to local</strong> to edit.</span>
+      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#94a3b8;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
+            <span>This is a cloud document. View only — to edit, sync to local or open in mdfy.cc.</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button onclick="vscode.postMessage({type:'syncToLocal'})" style="background:#fb923c;color:#0a0a0c;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Sync to Local</button>
+            <button onclick="vscode.postMessage({type:'openInBrowser'})" style="background:transparent;color:#60a5fa;border:1px solid #334155;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer">Open in mdfy.cc</button>
+          </div>
         </div>`
       : "";
     this.panel.webview.postMessage({
@@ -867,9 +904,15 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     const nonce = getNonce();
     const result = renderMarkdownWithFlavor(markdown);
     const cloudBanner = this.isCloudPreview
-      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;gap:10px;font-size:12px;color:#94a3b8;">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
-          <span>Cloud document (read-only). <strong>Sync to local</strong> to edit.</span>
+      ? `<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin:0 0 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:#94a3b8;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 13h7.1a3.2 3.2 0 00.6-6.35 4.5 4.5 0 00-8.7 1.1A2.8 2.8 0 004.5 13z"/></svg>
+            <span>This is a cloud document. View only — to edit, sync to local or open in mdfy.cc.</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button onclick="vscode.postMessage({type:'syncToLocal'})" style="background:#fb923c;color:#0a0a0c;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Sync to Local</button>
+            <button onclick="vscode.postMessage({type:'openInBrowser'})" style="background:transparent;color:#60a5fa;border:1px solid #334155;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer">Open in mdfy.cc</button>
+          </div>
         </div>`
       : "";
     const renderedHtml = cloudBanner + result.html;
