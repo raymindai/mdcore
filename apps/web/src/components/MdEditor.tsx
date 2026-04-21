@@ -2476,10 +2476,39 @@ export default function MdEditor() {
         btn.style.justifyContent = "center";
 
         try {
+          // Render ASCII text to canvas image for vision AI
+          let imageBase64: string | undefined;
+          try {
+            const lines = asciiText.split("\n");
+            const fontSize = 14;
+            const lineHeight = fontSize * 1.5;
+            const charWidth = fontSize * 0.6;
+            const padding = 24;
+            const maxLineLen = Math.max(...lines.map(l => l.length));
+            const canvasW = Math.ceil(maxLineLen * charWidth + padding * 2);
+            const canvasH = Math.ceil(lines.length * lineHeight + padding * 2);
+            const canvas = document.createElement("canvas");
+            canvas.width = canvasW * 2; // 2x for retina
+            canvas.height = canvasH * 2;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.scale(2, 2);
+              ctx.fillStyle = "#0a0a0c";
+              ctx.fillRect(0, 0, canvasW, canvasH);
+              ctx.font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+              ctx.fillStyle = "#e4e4e7";
+              ctx.textBaseline = "top";
+              lines.forEach((line, i) => {
+                ctx.fillText(line, padding, padding + i * lineHeight);
+              });
+              imageBase64 = canvas.toDataURL("image/png");
+            }
+          } catch { /* fallback to text-only */ }
+
           const res = await fetch("/api/ascii-to-mermaid", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ascii: asciiText }),
+            body: JSON.stringify({ ascii: asciiText, image: imageBase64 }),
           });
 
           if (!res.ok) throw new Error("API error");
@@ -2487,7 +2516,9 @@ export default function MdEditor() {
           const { html: renderedHtml } = await res.json();
           if (!renderedHtml) throw new Error("No output");
 
-          const originalHtml = el.innerHTML;
+          // Save just the pre/code content (without toolbar) for source view
+          const preEl = el.querySelector("pre");
+          const originalHtml = preEl ? preEl.outerHTML : el.querySelector("code")?.outerHTML || "";
           const srcText = el.querySelector("code")?.textContent || "";
 
           // Mark as rendered to prevent duplicate toolbars

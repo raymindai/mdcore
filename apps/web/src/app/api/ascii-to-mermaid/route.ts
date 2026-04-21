@@ -10,34 +10,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Gemini API key not configured" }, { status: 503 });
   }
 
-  let body: { ascii: string };
+  let body: { ascii: string; image?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { ascii } = body;
+  const { ascii, image } = body;
   if (!ascii || typeof ascii !== "string") {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
   const prompt = `Convert this diagram into clean, styled HTML that EXACTLY preserves the original structure and relationships.
 
-CRITICAL: Analyze the input carefully BEFORE generating HTML.
-- Count every node, every connection, every label.
-- Map out the EXACT hierarchy: which node is parent of which, how many children each node has.
-- Your output MUST have the same number of nodes, same connections, same labels as the input.
-- If the input shows A connecting to B, C, and D — your output must show A connecting to exactly B, C, and D (not "B / C / D" merged into one box).
+STEP 1 — PARSE THE STRUCTURE FIRST:
+Before generating ANY HTML, write out the hierarchy as a nested list in your head.
+
+How to parse ASCII box-drawing trees:
+- Vertical lines (│) connect a parent above to children below.
+- Horizontal branches (┌──┼──┐ or ├──┤ or └──┘) show which nodes share the same parent.
+- Text labels DIRECTLY BELOW a branch belong to that branch.
+- Text on subsequent lines at the SAME COLUMN POSITION as a label are sub-labels of that label (not separate nodes).
+- Example: if "Browser" is at column 6, and "mdfy.cc" is also at column 6 on the next line, then "mdfy.cc" is a sub-label under "Browser".
+
+STEP 2 — VERIFY:
+- Count total nodes. Your HTML must have the EXACT same count.
+- Each node must connect to its correct parent.
+- Sub-labels below a node are part of that node (show them as smaller text underneath).
 
 The input may be: ASCII box-drawing tree, ASCII flowchart, Mermaid code, or any text-based diagram.
-
-Structure rules:
-- ASCII trees with box-drawing characters (│├└─) represent hierarchical parent-child relationships. Preserve EVERY level of nesting exactly.
-- If a parent has 3 children, show 3 separate child nodes — never merge them.
-- If children have sub-children, show those as a separate nested level.
-- Mermaid flowcharts: follow the exact edge definitions. A-->B and A-->C means A splits to B AND C.
-- Sequence diagrams: participants in a row, then vertical message rows.
 
 Design rules:
 - Dark theme ONLY — no blue, no gradients, no background images
@@ -65,16 +67,36 @@ Diagram:
 ${ascii}`;
 
   try {
+    // Build parts: text prompt + optional image for multimodal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parts: any[] = [];
+
+    if (image) {
+      // Image provided — use vision for better spatial understanding
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+      parts.push({
+        inlineData: {
+          mimeType: "image/png",
+          data: base64Data,
+        },
+      });
+      parts.push({ text: prompt + "\n\nIMPORTANT: The image above shows the EXACT visual layout of the diagram. Use the IMAGE to understand the spatial relationships (which nodes are connected, parent-child hierarchy, column alignment). The text below is the raw source — use it for exact label text.\n\nRaw text:\n" + ascii });
+    } else {
+      parts.push({ text: prompt });
+    }
+
     // Use https module instead of fetch — Node.js undici has connect timeout issues
     const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      // Use gemini-2.0-flash for vision (flash-lite doesn't support images well)
+      const modelName = image ? "gemini-2.0-flash" : "gemini-3.1-flash-lite-preview";
       const body = JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
       });
 
       const options: https.RequestOptions = {
         hostname: "generativelanguage.googleapis.com",
-        path: `/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+        path: `/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
         method: "POST",
         headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
         family: 4, // Force IPv4 — IPv6 times out on some networks
