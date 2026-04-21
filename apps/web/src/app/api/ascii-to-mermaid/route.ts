@@ -4,8 +4,6 @@ import https from "https";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// No deterministic parser — use vision AI for all ASCII rendering
-
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -24,195 +22,176 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "ascii text required" }, { status: 400 });
   }
 
-  const prompt = `Convert this diagram into clean, styled HTML that EXACTLY preserves the original structure and relationships.
+  const prompt = `Convert this diagram into Mermaid code.
 
-STEP 1 — PARSE THE STRUCTURE FIRST:
-Before generating ANY HTML, write out the hierarchy as a nested list.
+RULES:
+- Output ONLY valid Mermaid code. No explanation, no markdown fences, no comments.
+- Preserve ALL labels exactly as they appear in the input.
+- For tree/hierarchy diagrams, use "graph TD" (top-down).
+- For flowcharts with decisions, use "graph TD" with diamond nodes for conditions.
+- For sequence diagrams, use "sequenceDiagram".
+- For each node, include ALL text associated with it. If a node has sub-labels below it (like "Browser" with "mdfy.cc" below), combine them: A["Browser<br/>mdfy.cc"]
+- Use descriptive node IDs (e.g., A, B, C or short names).
+- Preserve the exact connection structure — which nodes connect to which.
+- If the diagram has colored or highlighted text, ignore the styling — just preserve the text.
 
-How to parse ASCII box-drawing trees:
-- Vertical lines (│) connect a parent above to children below.
-- Horizontal branches (┌──┼──┐ or ├──┤ or └──┘) show which nodes share the same parent.
-- Text labels DIRECTLY BELOW a branch belong to that branch.
+EXAMPLE INPUT:
+    Root
+     │
+  ┌──┴──┐
+  A     B
+  x     y
 
-CRITICAL — SUB-LABEL ASSIGNMENT BY COLUMN:
-- After the bottom-most branch row, there are leaf-node labels (e.g. "Browser", "Edge", "CLI", "Mobile").
-- Lines BELOW those leaf labels are sub-labels. Each sub-label belongs to the leaf label whose COLUMN POSITION it aligns with.
-- Measure the starting column of each leaf label and each sub-label. A sub-label belongs to the leaf whose start column is closest.
-- Example:
-  col 6: "Browser"  col 15: "Edge"   col 40: "CLI"   col 45: "Mobile"
-  col 6: "mdfy.cc"  col 15: "CF"     col 41: "brew"  col 47: "iOS"
-  col 15: "Workers"                   col 40: "install" col 45: "Android"
-  → "mdfy.cc" is under Browser, "CF"+"Workers" under Edge, "brew"+"install" under CLI, "iOS"+"Android" under Mobile
-- NEVER merge sub-labels from different columns into one node.
+EXAMPLE OUTPUT:
+graph TD
+    Root --> A["A<br/>x"]
+    Root --> B["B<br/>y"]
 
-STEP 2 — VERIFY:
-- Count total leaf nodes. Your HTML must have the EXACT same count.
-- Each sub-label must appear under the correct leaf node based on column alignment.
-- If the image is provided, use the IMAGE to visually confirm which text sits under which node.
-
-The input may be: ASCII box-drawing tree, ASCII flowchart, Mermaid code, or any text-based diagram.
-
-Design rules:
-- Dark theme ONLY — no blue, no gradients, no background images
-- Root background: transparent
-- Box/node background: #1c1c24
-- Nested/secondary boxes: #222230
-- Borders: 1px solid #2e2e3a — subtle, no glow, no shadow
-- Accent color: #fb923c (ONLY for key highlights or important labels — use sparingly)
-- Text colors: #ededf0 (primary labels), #b8b8c4 (body/descriptions), #888899 (annotations)
-- Boxes: styled divs, border-radius:8px, padding:10px 14px
-- Headers: font-size:14px, font-weight:600, color:#ededf0
-- Body text: font-size:12px, color:#b8b8c4
-- Vertical arrow: <div style="display:flex;flex-direction:column;align-items:center;color:#50505e"><div style="width:1.5px;height:20px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▼</div></div>
-- Horizontal arrow: <div style="display:flex;align-items:center;color:#50505e"><div style="height:1.5px;width:24px;background:#3a3a48"></div><div style="font-size:10px;line-height:1">▶</div></div>
-- Side-by-side nodes: flexbox row, gap:12px
-- Vertical flow: flexbox column, align-items:center
-- For tree structures: root at top, children below with arrows, grandchildren below children
-- Use system-ui font
-- Output ONLY the HTML — no explanation, no markdown, no code fences
-- Do NOT include <html>, <head>, <body> tags
-- Wrap everything in a single <div style="..."> root element
-- Preserve ALL text content exactly as in the input — do not paraphrase, merge, or omit any labels
-
-Diagram:
-${ascii}${context ? `\n\nDOCUMENT CONTEXT (use this to understand the diagram's meaning and labels):\n${context.substring(0, 2000)}` : ""}`;
+Diagram to convert:
+${ascii}${context ? `\n\nDocument context (for understanding meaning):\n${context.substring(0, 1500)}` : ""}`;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts: any[] = [];
-    const modelName = "gemini-3.1-flash-lite-preview";
 
     if (image) {
-      // Upload image to Gemini File API first, then reference by URI
+      // Upload image for vision understanding
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
       const imgBuffer = Buffer.from(base64Data, "base64");
 
-      const fileUri = await new Promise<string>((resolve, reject) => {
-        // Step 1: Start resumable upload
-        const startBody = JSON.stringify({ file: { displayName: "ascii-diagram.png" } });
-        const startReq = https.request({
-          hostname: "generativelanguage.googleapis.com",
-          path: `/upload/v1beta/files?key=${apiKey}`,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Upload-Protocol": "resumable",
-            "X-Goog-Upload-Command": "start",
-            "X-Goog-Upload-Header-Content-Length": String(imgBuffer.length),
-            "X-Goog-Upload-Header-Content-Type": "image/png",
-          },
-          family: 4,
-        }, (res) => {
-          const uploadUrl = res.headers["x-goog-upload-url"] as string;
-          if (!uploadUrl) { reject(new Error("No upload URL")); return; }
-          res.resume();
-          res.on("end", () => {
-            // Step 2: Upload the bytes
-            const parsed = new URL(uploadUrl);
-            const uploadReq = https.request({
-              hostname: parsed.hostname,
-              path: parsed.pathname + parsed.search,
-              method: "PUT",
-              headers: {
-                "Content-Length": String(imgBuffer.length),
-                "X-Goog-Upload-Offset": "0",
-                "X-Goog-Upload-Command": "upload, finalize",
-              },
-              family: 4,
-            }, (uploadRes) => {
-              let body = "";
-              uploadRes.on("data", (d: Buffer) => body += d.toString());
-              uploadRes.on("end", () => {
-                try {
-                  const result = JSON.parse(body);
-                  resolve(result.file?.uri || "");
-                } catch { reject(new Error("Upload parse failed")); }
-              });
-            });
-            uploadReq.on("error", reject);
-            uploadReq.setTimeout(15000, () => { uploadReq.destroy(); reject(new Error("Upload timeout")); });
-            uploadReq.write(imgBuffer);
-            uploadReq.end();
-          });
-        });
-        startReq.on("error", reject);
-        startReq.setTimeout(10000, () => { startReq.destroy(); reject(new Error("Start timeout")); });
-        startReq.write(startBody);
-        startReq.end();
-      });
+      let fileUri = "";
+      try {
+        fileUri = await uploadToGemini(apiKey, imgBuffer);
+      } catch { /* fallback to inline */ }
 
       if (fileUri) {
         parts.push({ fileData: { mimeType: "image/png", fileUri } });
-        parts.push({ text: prompt + "\n\nIMPORTANT: The image above shows the EXACT visual layout of the diagram. Use the IMAGE to understand the spatial relationships (which nodes are connected, parent-child hierarchy, column alignment). The text below is the raw source — use it for exact label text.\n\nRaw text:\n" + ascii });
       } else {
-        // File upload failed — fall back to inline
-        const base64Clean = image.replace(/^data:image\/\w+;base64,/, "");
-        parts.push({ inlineData: { mimeType: "image/png", data: base64Clean } });
-        parts.push({ text: prompt + "\n\nRaw text:\n" + ascii });
+        parts.push({ inlineData: { mimeType: "image/png", data: base64Data } });
       }
+      parts.push({ text: prompt + "\n\nThe image shows the visual layout. Use it to understand spatial relationships. The text above is the raw source for exact labels." });
     } else {
       parts.push({ text: prompt });
     }
 
-    // Generate content
-    const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
-      const reqBody = JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-      });
-
-      const options: https.RequestOptions = {
-        hostname: "generativelanguage.googleapis.com",
-        path: `/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(reqBody) },
-        family: 4,
-      };
-
-      const req = https.request(options, (res) => {
-        let responseBody = "";
-        res.on("data", (d: Buffer) => responseBody += d.toString());
-        res.on("end", () => {
-          try {
-            if (res.statusCode !== 200) {
-              console.error("Gemini API error:", res.statusCode, responseBody.substring(0, 200));
-              reject(new Error(`Gemini API ${res.statusCode}`));
-              return;
-            }
-            resolve(JSON.parse(responseBody));
-          } catch (e) {
-            reject(e);
-          }
-        });
-      });
-
-      req.on("error", reject);
-      req.setTimeout(30000, () => { req.destroy(); reject(new Error("Timeout")); });
-      req.write(reqBody);
-      req.end();
-    });
+    const data = await geminiGenerate(apiKey, parts);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rawText = (data as any).candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Extract HTML from response (remove code fences if present)
-    const htmlOutput = rawText
-      .replace(/^```html\n?/gm, "")
+    // Clean up: remove code fences if present
+    let mermaidCode = rawText
+      .replace(/^```mermaid\n?/gm, "")
       .replace(/^```\n?/gm, "")
       .replace(/Here is.*:\n?/gi, "")
       .trim();
 
-    // Must contain at least one div tag
-    if (!htmlOutput || !htmlOutput.includes("<div")) {
-      console.error("Invalid HTML output:", htmlOutput?.substring(0, 200));
-      return NextResponse.json({ error: "No valid HTML output" }, { status: 500 });
+    // Validate it looks like Mermaid code
+    if (!mermaidCode || (!mermaidCode.startsWith("graph") && !mermaidCode.startsWith("flowchart") && !mermaidCode.startsWith("sequenceDiagram") && !mermaidCode.startsWith("gantt") && !mermaidCode.startsWith("pie") && !mermaidCode.startsWith("classDiagram") && !mermaidCode.startsWith("stateDiagram"))) {
+      // Try to extract mermaid from the response
+      const match = rawText.match(/(graph\s+(?:TD|LR|TB|BT|RL)[\s\S]+?)(?:```|$)/);
+      if (match) {
+        mermaidCode = match[1].trim();
+      } else {
+        console.error("Invalid Mermaid output:", rawText?.substring(0, 300));
+        return NextResponse.json({ error: "Failed to generate valid Mermaid code" }, { status: 500 });
+      }
     }
 
-    return NextResponse.json({ html: htmlOutput });
+    // Return mermaid code — client will render with mermaid.js
+    return NextResponse.json({ mermaid: mermaidCode });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Gemini request failed:", msg);
-    // Truncate ascii for logging
-    console.error("Input length:", ascii.length, "chars");
     return NextResponse.json({ error: `AI request failed: ${msg}` }, { status: 500 });
   }
+}
+
+// ─── Helpers ───
+
+async function uploadToGemini(apiKey: string, imgBuffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const startBody = JSON.stringify({ file: { displayName: "ascii-diagram.png" } });
+    const startReq = https.request({
+      hostname: "generativelanguage.googleapis.com",
+      path: `/upload/v1beta/files?key=${apiKey}`,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(imgBuffer.length),
+        "X-Goog-Upload-Header-Content-Type": "image/png",
+      },
+      family: 4,
+    }, (res) => {
+      const uploadUrl = res.headers["x-goog-upload-url"] as string;
+      if (!uploadUrl) { reject(new Error("No upload URL")); return; }
+      res.resume();
+      res.on("end", () => {
+        const parsed = new URL(uploadUrl);
+        const uploadReq = https.request({
+          hostname: parsed.hostname,
+          path: parsed.pathname + parsed.search,
+          method: "PUT",
+          headers: {
+            "Content-Length": String(imgBuffer.length),
+            "X-Goog-Upload-Offset": "0",
+            "X-Goog-Upload-Command": "upload, finalize",
+          },
+          family: 4,
+        }, (uploadRes) => {
+          let body = "";
+          uploadRes.on("data", (d: Buffer) => body += d.toString());
+          uploadRes.on("end", () => {
+            try {
+              const result = JSON.parse(body);
+              resolve(result.file?.uri || "");
+            } catch { reject(new Error("Upload parse failed")); }
+          });
+        });
+        uploadReq.on("error", reject);
+        uploadReq.setTimeout(15000, () => { uploadReq.destroy(); reject(new Error("Upload timeout")); });
+        uploadReq.write(imgBuffer);
+        uploadReq.end();
+      });
+    });
+    startReq.on("error", reject);
+    startReq.setTimeout(10000, () => { startReq.destroy(); reject(new Error("Start timeout")); });
+    startReq.write(startBody);
+    startReq.end();
+  });
+}
+
+async function geminiGenerate(apiKey: string, parts: unknown[]): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const reqBody = JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+    });
+
+    const req = https.request({
+      hostname: "generativelanguage.googleapis.com",
+      path: `/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(reqBody) },
+      family: 4,
+    }, (res) => {
+      let body = "";
+      res.on("data", (d: Buffer) => body += d.toString());
+      res.on("end", () => {
+        try {
+          if (res.statusCode !== 200) {
+            console.error("Gemini API error:", res.statusCode, body.substring(0, 200));
+            reject(new Error(`Gemini API ${res.statusCode}`));
+            return;
+          }
+          resolve(JSON.parse(body));
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on("error", reject);
+    req.setTimeout(30000, () => { req.destroy(); reject(new Error("Timeout")); });
+    req.write(reqBody);
+    req.end();
+  });
 }

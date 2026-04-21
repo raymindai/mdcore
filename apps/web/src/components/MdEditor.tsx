@@ -2515,31 +2515,29 @@ export default function MdEditor() {
 
           if (!res.ok) throw new Error("API error");
 
-          const { html: renderedHtml } = await res.json();
-          if (!renderedHtml) throw new Error("No output");
+          const data = await res.json();
+          const mermaidCode = data.mermaid;
+          if (!mermaidCode) throw new Error("No mermaid output");
 
-          // Save just the pre/code content (without toolbar) for source view
+          // Save source for details view
           const preEl = el.querySelector("pre");
           const originalHtml = preEl ? preEl.outerHTML : el.querySelector("code")?.outerHTML || "";
           const srcText = el.querySelector("code")?.textContent || "";
 
-          // Mark as rendered to prevent duplicate toolbars
+          // Mark as rendered
           (el as HTMLElement).dataset.asciiRendered = "1";
-          // Clear and rebuild via DOM
           (el as HTMLElement).innerHTML = "";
 
-          // Toolbar row at top (flow layout, not overlapping)
+          // Toolbar
           const postToolbar = document.createElement("div");
           postToolbar.className = "ascii-toolbar";
           postToolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
 
-          // "Rendered" label
           const label = document.createElement("span");
           label.textContent = "Rendered";
           label.style.cssText = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text-faint);border:1px solid var(--border-dim);border-radius:4px;line-height:14px";
           postToolbar.appendChild(label);
 
-          // Copy source button — matches code block copy style
           const postCopyBtn = document.createElement("button");
           postCopyBtn.title = "Copy ASCII source";
           postCopyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg><span style="margin-left:4px">Copy</span>';
@@ -2554,11 +2552,21 @@ export default function MdEditor() {
           postToolbar.appendChild(postCopyBtn);
           el.appendChild(postToolbar);
 
-          // Rendered content
-          const content = document.createElement("div");
-          content.style.cssText = "padding:1rem;overflow-x:auto";
-          content.innerHTML = renderedHtml;
-          el.appendChild(content);
+          // Render Mermaid code with mermaid.js
+          const mermaidContainer = document.createElement("div");
+          mermaidContainer.className = "mermaid-rendered";
+          mermaidContainer.style.cssText = "padding:1.5rem;text-align:center;overflow-x:auto";
+          el.appendChild(mermaidContainer);
+
+          try {
+            const mermaid = (await import("mermaid")).default;
+            const { svg } = await mermaid.render("ascii-mermaid-" + Date.now(), mermaidCode);
+            mermaidContainer.innerHTML = svg;
+          } catch (mermaidErr) {
+            // Mermaid render failed — show code as fallback
+            console.error("Mermaid render failed:", mermaidErr);
+            mermaidContainer.innerHTML = `<pre style="text-align:left;font-size:12px;color:var(--text-muted);white-space:pre-wrap">${mermaidCode.replace(/</g, "&lt;")}</pre>`;
+          }
 
           // Source details
           const details = document.createElement("details");
