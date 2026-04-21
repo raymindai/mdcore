@@ -2438,8 +2438,8 @@ export default function MdEditor() {
 
       const btn = document.createElement("button");
       btn.className = "ascii-render-btn";
-      btn.textContent = "Render";
-      btn.title = "Convert to visual diagram using AI (Gemini). Enable AI ASCII RENDER toggle in the header to auto-convert all ASCII diagrams.";
+      btn.textContent = "Convert to Mermaid";
+      btn.title = "Convert this ASCII diagram to Mermaid code using AI";
       btn.style.cssText = `
         padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;
         background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);
@@ -2447,7 +2447,7 @@ export default function MdEditor() {
       `;
       toolbar.appendChild(btn);
 
-      // Copy button — matches code block copy style
+      // Copy button
       const srcText = el.querySelector("code")?.textContent || el.textContent || "";
       const copyBtn = document.createElement("button");
       copyBtn.title = "Copy ASCII source";
@@ -2469,14 +2469,12 @@ export default function MdEditor() {
         const asciiText = codeEl?.textContent || el.textContent || "";
         if (!asciiText.trim()) return;
 
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><circle cx="8" cy="8" r="6" stroke-dasharray="28" stroke-dashoffset="8" stroke-linecap="round"/></svg>';
-        btn.style.opacity = "1";
-        btn.style.display = "flex";
-        btn.style.alignItems = "center";
-        btn.style.justifyContent = "center";
+        btn.textContent = "Converting...";
+        btn.style.opacity = "0.7";
+        btn.style.pointerEvents = "none";
 
         try {
-          // Render ASCII text to canvas image for vision AI
+          // Render ASCII to canvas image for vision AI
           let imageBase64: string | undefined;
           try {
             const lines = asciiText.split("\n");
@@ -2488,7 +2486,7 @@ export default function MdEditor() {
             const canvasW = Math.ceil(maxLineLen * charWidth + padding * 2);
             const canvasH = Math.ceil(lines.length * lineHeight + padding * 2);
             const canvas = document.createElement("canvas");
-            canvas.width = canvasW * 2; // 2x for retina
+            canvas.width = canvasW * 2;
             canvas.height = canvasH * 2;
             const ctx = canvas.getContext("2d");
             if (ctx) {
@@ -2505,7 +2503,6 @@ export default function MdEditor() {
             }
           } catch { /* fallback to text-only */ }
 
-          // Send document markdown as context for better understanding
           const docContext = markdown?.substring(0, 2000) || "";
           const res = await fetch("/api/ascii-to-mermaid", {
             method: "POST",
@@ -2514,80 +2511,46 @@ export default function MdEditor() {
           });
 
           if (!res.ok) throw new Error("API error");
-
           const data = await res.json();
           const mermaidCode = data.mermaid;
           if (!mermaidCode) throw new Error("No mermaid output");
 
-          // Save source for details view
-          const preEl = el.querySelector("pre");
-          const originalHtml = preEl ? preEl.outerHTML : el.querySelector("code")?.outerHTML || "";
-          const srcText = el.querySelector("code")?.textContent || "";
-
-          // Mark as rendered
-          (el as HTMLElement).dataset.asciiRendered = "1";
-          (el as HTMLElement).innerHTML = "";
-
-          // Toolbar
-          const postToolbar = document.createElement("div");
-          postToolbar.className = "ascii-toolbar";
-          postToolbar.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px 0;flex-wrap:nowrap";
-
-          const label = document.createElement("span");
-          label.textContent = "Rendered";
-          label.style.cssText = "padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text-faint);border:1px solid var(--border-dim);border-radius:4px;line-height:14px";
-          postToolbar.appendChild(label);
-
-          const postCopyBtn = document.createElement("button");
-          postCopyBtn.title = "Copy ASCII source";
-          postCopyBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg><span style="margin-left:4px">Copy</span>';
-          postCopyBtn.style.cssText = "display:flex;align-items:center;padding:4px 10px;font-size:11px;font-family:ui-monospace,monospace;background:var(--code-copy-bg);color:var(--code-copy-color);border:1px solid var(--code-copy-border);border-radius:4px;cursor:pointer;line-height:14px";
-          postCopyBtn.addEventListener("click", () => {
-            navigator.clipboard.writeText(srcText).then(() => {
-              const orig = postCopyBtn.innerHTML;
-              postCopyBtn.textContent = "Copied!";
-              setTimeout(() => { postCopyBtn.innerHTML = orig; }, 1500);
-            });
-          });
-          postToolbar.appendChild(postCopyBtn);
-          el.appendChild(postToolbar);
-
-          // Render Mermaid code with mermaid.js
-          const mermaidContainer = document.createElement("div");
-          mermaidContainer.className = "mermaid-rendered";
-          mermaidContainer.style.cssText = "padding:1.5rem;text-align:center;overflow-x:auto";
-          el.appendChild(mermaidContainer);
-
-          try {
-            // Use the already-initialized window.mermaid (same theme/config as regular diagrams)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mermaid = (window as any).mermaid;
-            if (!mermaid) throw new Error("Mermaid not loaded");
-            const { svg } = await mermaid.render("ascii-mermaid-" + Date.now(), mermaidCode);
-            mermaidContainer.innerHTML = svg;
-          } catch (mermaidErr) {
-            // Mermaid render failed — show code as fallback
-            console.error("Mermaid render failed:", mermaidErr);
-            mermaidContainer.innerHTML = `<pre style="text-align:left;font-size:12px;color:var(--text-muted);white-space:pre-wrap">${mermaidCode.replace(/</g, "&lt;")}</pre>`;
+          // Replace ASCII block with ```mermaid block in markdown source
+          // Find the ASCII text in markdown and replace with mermaid code block
+          const currentMd = markdown || "";
+          // The ASCII is inside a ```text or ``` block — find and replace
+          const escaped = asciiText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          // Try matching with any language tag or no tag
+          const blockRegex = new RegExp("```[a-z]*\\n" + escaped.replace(/\n/g, "\\n") + "\\n```", "s");
+          let newMd = currentMd;
+          if (blockRegex.test(currentMd)) {
+            newMd = currentMd.replace(blockRegex, "```mermaid\n" + mermaidCode + "\n```");
+          } else {
+            // Fallback: try to find the raw ASCII text and wrap it
+            const idx = currentMd.indexOf(asciiText);
+            if (idx !== -1) {
+              // Find the enclosing ``` block
+              const before = currentMd.lastIndexOf("```", idx);
+              const after = currentMd.indexOf("```", idx + asciiText.length);
+              if (before !== -1 && after !== -1) {
+                newMd = currentMd.substring(0, before) + "```mermaid\n" + mermaidCode + "\n" + currentMd.substring(after);
+              }
+            }
           }
 
-          // Source details
-          const details = document.createElement("details");
-          details.style.cssText = "margin:0;border-top:1px solid var(--border-dim)";
-          const summary = document.createElement("summary");
-          summary.textContent = "Show source";
-          summary.style.cssText = "padding:6px 12px;font-size:10px;font-family:ui-monospace,monospace;color:var(--text-faint);cursor:pointer;user-select:none";
-          details.appendChild(summary);
-          const srcDiv = document.createElement("div");
-          srcDiv.style.cssText = "overflow-x:auto";
-          srcDiv.innerHTML = originalHtml;
-          details.appendChild(srcDiv);
-          el.appendChild(details);
+          if (newMd !== currentMd) {
+            setMarkdown(newMd);
+            cmSetDoc(newMd);
+            doRender(newMd);
+          }
         } catch {
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#ef4444" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+          btn.textContent = "Failed";
+          btn.style.color = "#ef4444";
           setTimeout(() => {
-            btn.textContent = "Render";
-            btn.style.display = "";
+            btn.textContent = "Convert to Mermaid";
+            btn.style.opacity = "1";
+            btn.style.pointerEvents = "";
+            btn.style.color = "var(--accent)";
           }, 2000);
         }
       });
