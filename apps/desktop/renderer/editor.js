@@ -1365,7 +1365,72 @@
 
     postProcessCodeBlocks(root);
     postProcessMermaid();
+    postProcessAsciiDiagrams(root);
     setupNonEditableIslands(root);
+  }
+
+  function postProcessAsciiDiagrams(root) {
+    var boxCharsRegex = /[┌┐└┘│─├┤┬┴┼╌═║]/g;
+    root.querySelectorAll("pre[lang] code, pre:not([lang]) code").forEach(function(code) {
+      var pre = code.closest("pre");
+      if (!pre) return;
+      var lang = pre.getAttribute("lang");
+      if (lang === "mermaid") return;
+      if (pre.querySelector(".ascii-convert-btn")) return;
+
+      var text = code.textContent || "";
+      var matches = text.match(boxCharsRegex);
+      if (!matches || matches.length < 5) return;
+
+      var btn = document.createElement("button");
+      btn.className = "ascii-convert-btn";
+      btn.textContent = "Convert to Mermaid";
+      btn.title = "Convert this ASCII diagram to Mermaid using AI";
+      btn.style.cssText = "position:absolute;top:6px;right:6px;padding:3px 10px;font-size:10px;font-family:ui-monospace,monospace;background:var(--accent-dim,rgba(251,146,60,0.15));color:var(--accent,#fb923c);border:1px solid var(--accent,#fb923c);border-radius:4px;cursor:pointer;z-index:5;line-height:14px";
+      pre.style.position = "relative";
+      pre.appendChild(btn);
+
+      btn.addEventListener("click", async function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        btn.textContent = "Converting...";
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+
+        try {
+          var res = await fetch("https://mdfy.cc/api/ascii-to-mermaid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ascii: text, context: (currentMarkdown || "").substring(0, 2000) }),
+          });
+          if (!res.ok) throw new Error("API error");
+          var data = await res.json();
+          if (!data.mermaid) throw new Error("No mermaid code");
+
+          // Replace in markdown source
+          var idx = currentMarkdown.indexOf(text);
+          if (idx !== -1) {
+            var before = currentMarkdown.lastIndexOf("```", idx);
+            var after = currentMarkdown.indexOf("```", idx + text.length);
+            if (before !== -1 && after !== -1) {
+              var newMd = currentMarkdown.substring(0, before) + "```mermaid\n" + data.mermaid + "\n" + currentMarkdown.substring(after);
+              currentMarkdown = newMd;
+              if (typeof cm !== "undefined" && cm) cm.dispatch({ changes: { from: 0, to: cm.state.doc.length, insert: newMd } });
+              reRenderMarkdown(newMd);
+            }
+          }
+        } catch (err) {
+          btn.textContent = "Failed";
+          btn.style.color = "#ef4444";
+          setTimeout(function() {
+            btn.textContent = "Convert to Mermaid";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            btn.style.color = "var(--accent,#fb923c)";
+          }, 2000);
+        }
+      });
+    });
   }
 
   async function reRenderMarkdown(markdown) {

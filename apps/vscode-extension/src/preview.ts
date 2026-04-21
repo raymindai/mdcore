@@ -500,13 +500,13 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   }
 
   private async handleAsciiRender(code: string | undefined): Promise<void> {
-    if (!code) { return; }
+    if (!code || !this.trackedDocument) { return; }
 
     const auth = PreviewPanel.authManagerRef;
     const userId = await auth?.getUserId();
     if (!auth || !userId) {
       const action = await vscode.window.showInformationMessage(
-        "Sign in to mdfy.cc to use AI ASCII Render.",
+        "Sign in to mdfy.cc to use ASCII to Mermaid conversion.",
         "Sign in"
       );
       if (action === "Sign in") {
@@ -524,13 +524,14 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     this.panel.webview.postMessage({ type: "asciiRenderStart" });
 
     try {
+      const docText = this.trackedDocument.getText();
       const response = await fetch(`${apiBaseUrl}/api/ascii-to-mermaid`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ ascii: code }),
+        body: JSON.stringify({ ascii: code, context: docText.substring(0, 2000) }),
       });
 
       if (!response.ok) {
@@ -538,15 +539,30 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         throw new Error((err as { error?: string }).error || `HTTP ${response.status}`);
       }
 
-      const data = (await response.json()) as { html: string };
-      this.panel.webview.postMessage({
-        type: "asciiRenderResult",
-        html: data.html,
-        originalCode: code,
-      });
+      const data = (await response.json()) as { mermaid?: string; html?: string };
+      const mermaidCode = data.mermaid;
+      if (!mermaidCode) { throw new Error("No mermaid code returned"); }
+
+      // Replace ASCII block with ```mermaid block in the document
+      const fullText = this.trackedDocument.getText();
+      const idx = fullText.indexOf(code);
+      if (idx !== -1) {
+        // Find enclosing ``` block
+        const before = fullText.lastIndexOf("```", idx);
+        const after = fullText.indexOf("```", idx + code.length);
+        if (before !== -1 && after !== -1) {
+          const edit = new vscode.WorkspaceEdit();
+          const startPos = this.trackedDocument.positionAt(before);
+          const endPos = this.trackedDocument.positionAt(after + 3);
+          edit.replace(this.trackedDocument.uri, new vscode.Range(startPos, endPos), "```mermaid\n" + mermaidCode + "\n```");
+          await vscode.workspace.applyEdit(edit);
+        }
+      }
+
+      this.panel.webview.postMessage({ type: "asciiRenderComplete" });
     } catch (err) {
       vscode.window.showErrorMessage(
-        `AI Render failed: ${err instanceof Error ? err.message : String(err)}`
+        `Convert to Mermaid failed: ${err instanceof Error ? err.message : String(err)}`
       );
       this.panel.webview.postMessage({ type: "asciiRenderFailed" });
     }
