@@ -67,29 +67,85 @@ Diagram:
 ${ascii}`;
 
   try {
-    // Build parts: text prompt + optional image for multimodal
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts: any[] = [];
+    const modelName = "gemini-3.1-flash-lite-preview";
 
     if (image) {
-      // Image provided — use vision for better spatial understanding
+      // Upload image to Gemini File API first, then reference by URI
       const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-      parts.push({
-        inlineData: {
-          mimeType: "image/png",
-          data: base64Data,
-        },
+      const imgBuffer = Buffer.from(base64Data, "base64");
+
+      const fileUri = await new Promise<string>((resolve, reject) => {
+        // Step 1: Start resumable upload
+        const startBody = JSON.stringify({ file: { displayName: "ascii-diagram.png" } });
+        const startReq = https.request({
+          hostname: "generativelanguage.googleapis.com",
+          path: `/upload/v1beta/files?key=${apiKey}`,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+            "X-Goog-Upload-Header-Content-Length": String(imgBuffer.length),
+            "X-Goog-Upload-Header-Content-Type": "image/png",
+          },
+          family: 4,
+        }, (res) => {
+          const uploadUrl = res.headers["x-goog-upload-url"] as string;
+          if (!uploadUrl) { reject(new Error("No upload URL")); return; }
+          res.resume();
+          res.on("end", () => {
+            // Step 2: Upload the bytes
+            const parsed = new URL(uploadUrl);
+            const uploadReq = https.request({
+              hostname: parsed.hostname,
+              path: parsed.pathname + parsed.search,
+              method: "PUT",
+              headers: {
+                "Content-Length": String(imgBuffer.length),
+                "X-Goog-Upload-Offset": "0",
+                "X-Goog-Upload-Command": "upload, finalize",
+              },
+              family: 4,
+            }, (uploadRes) => {
+              let body = "";
+              uploadRes.on("data", (d: Buffer) => body += d.toString());
+              uploadRes.on("end", () => {
+                try {
+                  const result = JSON.parse(body);
+                  resolve(result.file?.uri || "");
+                } catch { reject(new Error("Upload parse failed")); }
+              });
+            });
+            uploadReq.on("error", reject);
+            uploadReq.setTimeout(15000, () => { uploadReq.destroy(); reject(new Error("Upload timeout")); });
+            uploadReq.write(imgBuffer);
+            uploadReq.end();
+          });
+        });
+        startReq.on("error", reject);
+        startReq.setTimeout(10000, () => { startReq.destroy(); reject(new Error("Start timeout")); });
+        startReq.write(startBody);
+        startReq.end();
       });
-      parts.push({ text: prompt + "\n\nIMPORTANT: The image above shows the EXACT visual layout of the diagram. Use the IMAGE to understand the spatial relationships (which nodes are connected, parent-child hierarchy, column alignment). The text below is the raw source — use it for exact label text.\n\nRaw text:\n" + ascii });
+
+      if (fileUri) {
+        parts.push({ fileData: { mimeType: "image/png", fileUri } });
+        parts.push({ text: prompt + "\n\nIMPORTANT: The image above shows the EXACT visual layout of the diagram. Use the IMAGE to understand the spatial relationships (which nodes are connected, parent-child hierarchy, column alignment). The text below is the raw source — use it for exact label text.\n\nRaw text:\n" + ascii });
+      } else {
+        // File upload failed — fall back to inline
+        const base64Clean = image.replace(/^data:image\/\w+;base64,/, "");
+        parts.push({ inlineData: { mimeType: "image/png", data: base64Clean } });
+        parts.push({ text: prompt + "\n\nRaw text:\n" + ascii });
+      }
     } else {
       parts.push({ text: prompt });
     }
 
-    // Use https module instead of fetch — Node.js undici has connect timeout issues
+    // Generate content
     const data = await new Promise<Record<string, unknown>>((resolve, reject) => {
-      // Use gemini-2.0-flash for vision (flash-lite doesn't support images well)
-      const modelName = image ? "gemini-2.0-flash" : "gemini-3.1-flash-lite-preview";
-      const body = JSON.stringify({
+      const reqBody = JSON.stringify({
         contents: [{ parts }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
       });
@@ -98,8 +154,8 @@ ${ascii}`;
         hostname: "generativelanguage.googleapis.com",
         path: `/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
         method: "POST",
-        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
-        family: 4, // Force IPv4 — IPv6 times out on some networks
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(reqBody) },
+        family: 4,
       };
 
       const req = https.request(options, (res) => {
@@ -121,7 +177,7 @@ ${ascii}`;
 
       req.on("error", reject);
       req.setTimeout(30000, () => { req.destroy(); reject(new Error("Timeout")); });
-      req.write(body);
+      req.write(reqBody);
       req.end();
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
