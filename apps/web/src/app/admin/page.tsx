@@ -57,7 +57,7 @@ export default function AdminPage() {
     const sb = getSupabaseBrowserClient();
     if (!sb) { setAuthed(false); return; }
 
-    sb.auth.getSession().then(({ data }) => {
+    sb.auth.getSession().then(({ data }: { data: { session: { user: { email?: string } } | null } }) => {
       const userEmail = data.session?.user?.email?.toLowerCase();
       if (userEmail === ADMIN_EMAIL) {
         setAuthed(true);
