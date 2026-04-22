@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const ADMIN_EMAIL = "hi@raymind.ai";
 
@@ -54,11 +54,9 @@ export default function AdminPage() {
 
   // Auth check
   useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseAnonKey) { setAuthed(false); return; }
+    const sb = getSupabaseBrowserClient();
+    if (!sb) { setAuthed(false); return; }
 
-    const sb = createClient(supabaseUrl, supabaseAnonKey);
     sb.auth.getSession().then(({ data }) => {
       const userEmail = data.session?.user?.email?.toLowerCase();
       if (userEmail === ADMIN_EMAIL) {
@@ -73,8 +71,15 @@ export default function AdminPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const sb = getSupabaseBrowserClient();
+      const { data: sessionData } = await sb!.auth.getSession();
+      const token = sessionData.session?.access_token;
+
       const res = await fetch("/api/admin", {
-        headers: { "x-user-email": email },
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          "x-user-email": email,
+        },
       });
       if (!res.ok) throw new Error("Unauthorized");
       const data = await res.json();
