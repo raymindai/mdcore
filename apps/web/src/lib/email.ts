@@ -168,6 +168,79 @@ export async function sendWeeklyDigestEmail(
   await sendEmail(to, subject, html);
 }
 
+// ─── Template Previews (for admin dashboard) ───
+
+export function getTemplatePreviews(): { name: string; subject: string; html: string }[] {
+  const to = "user@example.com";
+  return [
+    {
+      name: "Welcome",
+      subject: "Welcome to mdfy.cc",
+      html: wrapEmail(card(`
+        <p style="margin:0 0 20px;font-size:18px;font-weight:700;color:#fafafa">Welcome to mdfy.cc</p>
+        <p style="margin:0 0 24px;font-size:14px;color:#a1a1aa;line-height:1.6">
+          The fastest way from thought to shared document. Here is what you can do:
+        </p>
+        <div style="margin-bottom:16px">
+          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#fafafa">Publish instantly</p>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.5">Paste or write Markdown and get a shareable URL in seconds.</p>
+        </div>
+        <div style="margin-bottom:16px">
+          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#fafafa">Share anywhere</p>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.5">Short URLs, QR codes, embed codes, password protection.</p>
+        </div>
+        <div style="margin-bottom:16px">
+          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#fafafa">AI-powered tools</p>
+          <p style="margin:0;font-size:13px;color:#a1a1aa;line-height:1.5">Polish, summarize, translate, and chat with your documents.</p>
+        </div>
+        <div style="margin-top:24px">${ctaButton("Open mdfy.cc", "https://mdfy.cc")}</div>
+      `), to),
+    },
+    {
+      name: "Document Shared",
+      subject: "Alex shared a document with you on mdfy.cc",
+      html: wrapEmail(card(`
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#fafafa">Alex shared a document with you</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.5">
+          Document: <span style="color:#e4e4e7;font-weight:600">System Design: Real-Time Notification Service</span>
+        </p>
+        ${ctaButton("Open Document", "https://mdfy.cc/d/abc123")}
+      `), to),
+    },
+    {
+      name: "Edit Request",
+      subject: "Alex requested edit access on mdfy.cc",
+      html: wrapEmail(card(`
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#fafafa">Alex requested edit access</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.5">
+          Document: <span style="color:#e4e4e7;font-weight:600">Q2 2026 Revenue Analysis</span>
+        </p>
+        ${ctaButton("Open Document", "https://mdfy.cc/d/def456")}
+      `), to),
+    },
+    {
+      name: "Weekly Digest",
+      subject: "Your mdfy.cc weekly summary",
+      html: wrapEmail(card(`
+        <p style="margin:0 0 20px;font-size:16px;font-weight:700;color:#fafafa">Your week on mdfy.cc</p>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #27272a">
+          <span style="font-size:13px;color:#a1a1aa">Documents created</span>
+          <span style="font-size:14px;font-weight:700;color:#fafafa">5</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #27272a">
+          <span style="font-size:13px;color:#a1a1aa">Total views</span>
+          <span style="font-size:14px;font-weight:700;color:#fafafa">142</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #27272a">
+          <span style="font-size:13px;color:#a1a1aa">New shares</span>
+          <span style="font-size:14px;font-weight:700;color:#fafafa">3</span>
+        </div>
+        <div style="margin-top:24px">${ctaButton("Open mdfy.cc", "https://mdfy.cc")}</div>
+      `), to),
+    },
+  ];
+}
+
 // ─── Utility ───
 
 function escapeHtml(str: string): string {

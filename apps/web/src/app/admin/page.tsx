@@ -58,7 +58,9 @@ export default function AdminPage() {
   const [recent, setRecent] = useState<RecentActivity[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
   const [sourceBreakdown, setSourceBreakdown] = useState<Record<string, number>>({});
-  const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "activity">("overview");
+  const [emailTemplates, setEmailTemplates] = useState<{ name: string; subject: string; html: string }[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<number>(0);
+  const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "emails" | "activity">("overview");
   const [loading, setLoading] = useState(true);
 
   // Auth check
@@ -98,6 +100,7 @@ export default function AdminPage() {
       setRecent(data.recent || []);
       setDailyStats(data.dailyStats || []);
       setSourceBreakdown(data.sourceBreakdown || {});
+      setEmailTemplates(data.emailTemplates || []);
     } catch {
       setAuthed(false);
     }
@@ -198,6 +201,47 @@ export default function AdminPage() {
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fafafa", margin: "0 0 16px" }}>Documents by source</h3>
                 <BarChart data={Object.entries(sourceBreakdown).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} />
               </div>
+            </div>
+          )}
+
+          {/* Emails */}
+          {tab === "emails" && (
+            <div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                {emailTemplates.map((t, i) => (
+                  <button
+                    key={t.name}
+                    onClick={() => setSelectedEmail(i)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: selectedEmail === i ? "#fb923c" : "#1c1c24",
+                      color: selectedEmail === i ? "#0a0a0c" : "#a1a1aa",
+                      border: selectedEmail === i ? "none" : "1px solid #27272a",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+              {emailTemplates[selectedEmail] && (
+                <div>
+                  <div style={{ marginBottom: 12, padding: "10px 14px", background: "#1c1c24", borderRadius: 8, border: "1px solid #27272a" }}>
+                    <p style={{ margin: 0, fontSize: 11, color: "#52525b" }}>Subject</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 14, color: "#fafafa", fontWeight: 600 }}>{emailTemplates[selectedEmail].subject}</p>
+                  </div>
+                  <div style={{ border: "1px solid #27272a", borderRadius: 10, overflow: "hidden" }}>
+                    <iframe
+                      srcDoc={emailTemplates[selectedEmail].html}
+                      style={{ width: "100%", height: 600, border: "none", background: "#09090b" }}
+                      title={`Email preview: ${emailTemplates[selectedEmail].name}`}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

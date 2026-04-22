@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { getTemplatePreviews } from "@/lib/email";
 
 const ADMIN_EMAIL = "hi@raymind.ai";
 
@@ -156,6 +157,7 @@ export async function GET(req: NextRequest) {
       recent,
       dailyStats,
       sourceBreakdown: sourceCount,
+      emailTemplates: getTemplatePreviews(),
     });
   } catch (err) {
     console.error("Admin API error:", err);
