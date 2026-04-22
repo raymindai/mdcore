@@ -165,7 +165,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     // Read config to get docId before deleting
     const ext = path.extname(filePath);
     const base = path.basename(filePath, ext);
-    const configPath = path.join(path.dirname(filePath), `${base}.mdfy.json`);
+    const configPath = path.join(path.dirname(filePath), `.${base}.mdfy.json`);
     try {
       // Clear source on server so mdfy.cc no longer shows it as synced
       const configBytes = await vscode.workspace.fs.readFile(vscode.Uri.file(configPath));
@@ -216,7 +216,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       // Remove sidecar
       const ext = path.extname(filePath);
       const base = path.basename(filePath, ext);
-      const configPath = path.join(path.dirname(filePath), `${base}.mdfy.json`);
+      const configPath = path.join(path.dirname(filePath), `.${base}.mdfy.json`);
       try { await vscode.workspace.fs.delete(vscode.Uri.file(configPath)); } catch {}
     }
     this.refresh();

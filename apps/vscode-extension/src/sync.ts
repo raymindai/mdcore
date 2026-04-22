@@ -234,17 +234,20 @@ export class SyncEngine {
   private async pollAllTrackedFiles(): Promise<void> {
     await this.flushOfflineQueue();
 
-    // Scan workspace for .mdfy.json sidecar files (not just open docs)
+    // Scan workspace for hidden .mdfy.json sidecar files
     const sidecarFiles = await vscode.workspace.findFiles(
-      "**/*.mdfy.json",
+      "**/.*mdfy.json",
       "{**/node_modules/**,**/dist/**,**/.git/**}",
       50 // limit to prevent overload
     );
 
     for (const sidecarUri of sidecarFiles) {
       const sidecarPath = sidecarUri.fsPath;
-      // Derive the .md file path: foo.mdfy.json → foo.md
-      const mdPath = sidecarPath.replace(/\.mdfy\.json$/, ".md");
+      // Derive the .md file path: .foo.mdfy.json → foo.md
+      const dir = sidecarPath.substring(0, sidecarPath.lastIndexOf("/") + 1);
+      const sidecarName = sidecarPath.substring(sidecarPath.lastIndexOf("/") + 1);
+      const mdName = sidecarName.replace(/^\./, "").replace(/\.mdfy\.json$/, ".md");
+      const mdPath = dir + mdName;
 
       const config = await loadMdfyConfig(mdPath);
       if (!config) continue;

@@ -652,7 +652,16 @@ function markdownToSlack(md: string): string {
 
 export function getMdfyConfigPath(mdFilePath: string): string {
   const path = require("path");
+  const fs = require("fs");
   const dir = path.dirname(mdFilePath);
   const base = path.basename(mdFilePath, path.extname(mdFilePath));
-  return path.join(dir, `${base}.mdfy.json`);
+  const newPath = path.join(dir, `.${base}.mdfy.json`);
+  // Migrate old visible sidecar to hidden
+  const oldPath = path.join(dir, `${base}.mdfy.json`);
+  try {
+    if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+      fs.renameSync(oldPath, newPath);
+    }
+  } catch {}
+  return newPath;
 }

@@ -251,10 +251,25 @@ const AuthManager = {
 function getMdfyConfigPath(filePath) {
   const dir = path.dirname(filePath);
   const base = path.basename(filePath, path.extname(filePath));
-  return path.join(dir, base + ".mdfy.json");
+  // Hidden file (dot prefix) to keep workspace clean
+  return path.join(dir, "." + base + ".mdfy.json");
+}
+
+// Migration: rename old visible sidecar to hidden
+function migrateOldSidecar(filePath) {
+  const dir = path.dirname(filePath);
+  const base = path.basename(filePath, path.extname(filePath));
+  const oldPath = path.join(dir, base + ".mdfy.json");
+  const newPath = path.join(dir, "." + base + ".mdfy.json");
+  try {
+    if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+      fs.renameSync(oldPath, newPath);
+    }
+  } catch {}
 }
 
 function loadMdfyConfig(filePath) {
+  migrateOldSidecar(filePath);
   try {
     return JSON.parse(fs.readFileSync(getMdfyConfigPath(filePath), "utf8"));
   } catch { return null; }
