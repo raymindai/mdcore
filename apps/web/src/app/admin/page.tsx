@@ -42,6 +42,13 @@ interface RecentActivity {
   time: string;
 }
 
+interface DailyStat {
+  date: string;
+  docs: number;
+  users: number;
+  views: number;
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
@@ -49,7 +56,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [recent, setRecent] = useState<RecentActivity[]>([]);
-  const [tab, setTab] = useState<"overview" | "users" | "documents" | "activity">("overview");
+  const [dailyStats, setDailyStats] = useState<DailyStat[]>([]);
+  const [sourceBreakdown, setSourceBreakdown] = useState<Record<string, number>>({});
+  const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "activity">("overview");
   const [loading, setLoading] = useState(true);
 
   // Auth check
@@ -87,6 +96,8 @@ export default function AdminPage() {
       setUsers(data.users || []);
       setDocs(data.documents || []);
       setRecent(data.recent || []);
+      setDailyStats(data.dailyStats || []);
+      setSourceBreakdown(data.sourceBreakdown || {});
     } catch {
       setAuthed(false);
     }
@@ -123,7 +134,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: "1px solid #27272a" }}>
-        {(["overview", "users", "documents", "activity"] as const).map(t => (
+        {(["overview", "charts", "users", "documents", "activity"] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -164,6 +175,28 @@ export default function AdminPage() {
                     <p style={{ fontSize: 24, fontWeight: 800, color: "#fafafa", margin: 0 }}>{s.value}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Charts */}
+          {tab === "charts" && (
+            <div>
+              <div style={{ marginBottom: 40 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fafafa", margin: "0 0 16px" }}>Documents per day</h3>
+                <LineChart data={dailyStats.map(d => ({ label: d.date, value: d.docs }))} color="#fb923c" />
+              </div>
+              <div style={{ marginBottom: 40 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fafafa", margin: "0 0 16px" }}>Views per day</h3>
+                <LineChart data={dailyStats.map(d => ({ label: d.date, value: d.views }))} color="#38bdf8" />
+              </div>
+              <div style={{ marginBottom: 40 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fafafa", margin: "0 0 16px" }}>Users per day</h3>
+                <LineChart data={dailyStats.map(d => ({ label: d.date, value: d.users }))} color="#4ade80" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fafafa", margin: "0 0 16px" }}>Documents by source</h3>
+                <BarChart data={Object.entries(sourceBreakdown).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)} />
               </div>
             </div>
           )}
@@ -253,6 +286,167 @@ export default function AdminPage() {
     </div>
   );
 }
+
+// ─── SVG Chart Components ───
+
+interface ChartPoint {
+  label: string;
+  value: number;
+}
+
+function LineChart({ data, color = "#fb923c" }: { data: ChartPoint[]; color?: string }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  if (!data.length) return <p style={{ color: "#52525b", fontSize: 13 }}>No data</p>;
+
+  const width = 800;
+  const height = 200;
+  const padL = 48;
+  const padR = 16;
+  const padT = 16;
+  const padB = 40;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const yTicks = 4;
+
+  const points = data.map((d, i) => ({
+    x: padL + (i / Math.max(data.length - 1, 1)) * chartW,
+    y: padT + chartH - (d.value / maxVal) * chartH,
+  }));
+
+  const polyline = points.map(p => `${p.x},${p.y}`).join(" ");
+
+  // Area fill
+  const areaPath = `M ${points[0].x},${padT + chartH} ` +
+    points.map(p => `L ${p.x},${p.y}`).join(" ") +
+    ` L ${points[points.length - 1].x},${padT + chartH} Z`;
+
+  return (
+    <div style={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 10, padding: "16px 12px", overflowX: "auto" }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", minWidth: 500 }}>
+        {/* Grid lines */}
+        {Array.from({ length: yTicks + 1 }).map((_, i) => {
+          const y = padT + (i / yTicks) * chartH;
+          const val = Math.round(maxVal * (1 - i / yTicks));
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={padL + chartW} y2={y} stroke="#27272a" strokeWidth={1} />
+              <text x={padL - 8} y={y + 4} textAnchor="end" fill="#52525b" fontSize={10}>{val}</text>
+            </g>
+          );
+        })}
+
+        {/* Area */}
+        <path d={areaPath} fill={color} opacity={0.08} />
+
+        {/* Line */}
+        <polyline points={polyline} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+
+        {/* X-axis labels (every 5 days) */}
+        {data.map((d, i) => {
+          if (i % 5 !== 0 && i !== data.length - 1) return null;
+          const x = padL + (i / Math.max(data.length - 1, 1)) * chartW;
+          return (
+            <text key={i} x={x} y={height - 8} textAnchor="middle" fill="#52525b" fontSize={9}>
+              {d.label.slice(5)}
+            </text>
+          );
+        })}
+
+        {/* Hover targets */}
+        {points.map((p, i) => (
+          <g key={i}>
+            <rect
+              x={p.x - chartW / data.length / 2}
+              y={padT}
+              width={chartW / data.length}
+              height={chartH}
+              fill="transparent"
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{ cursor: "crosshair" }}
+            />
+            {hoveredIndex === i && (
+              <>
+                <line x1={p.x} y1={padT} x2={p.x} y2={padT + chartH} stroke="#3f3f46" strokeWidth={1} strokeDasharray="4,4" />
+                <circle cx={p.x} cy={p.y} r={4} fill={color} />
+                <rect x={p.x - 36} y={p.y - 28} width={72} height={22} rx={4} fill="#27272a" />
+                <text x={p.x} y={p.y - 14} textAnchor="middle" fill="#fafafa" fontSize={11} fontWeight={700}>
+                  {data[i].value}
+                </text>
+              </>
+            )}
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function BarChart({ data }: { data: ChartPoint[] }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  if (!data.length) return <p style={{ color: "#52525b", fontSize: 13 }}>No data</p>;
+
+  const width = 800;
+  const height = 220;
+  const padL = 48;
+  const padR = 16;
+  const padT = 16;
+  const padB = 60;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const barWidth = Math.min(60, (chartW / data.length) * 0.6);
+  const gap = (chartW - barWidth * data.length) / (data.length + 1);
+
+  return (
+    <div style={{ background: "#18181b", border: "1px solid #27272a", borderRadius: 10, padding: "16px 12px", overflowX: "auto" }}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: "auto", minWidth: 400 }}>
+        {/* Grid lines */}
+        {Array.from({ length: 5 }).map((_, i) => {
+          const y = padT + (i / 4) * chartH;
+          const val = Math.round(maxVal * (1 - i / 4));
+          return (
+            <g key={i}>
+              <line x1={padL} y1={y} x2={padL + chartW} y2={y} stroke="#27272a" strokeWidth={1} />
+              <text x={padL - 8} y={y + 4} textAnchor="end" fill="#52525b" fontSize={10}>{val}</text>
+            </g>
+          );
+        })}
+
+        {/* Bars */}
+        {data.map((d, i) => {
+          const barH = (d.value / maxVal) * chartH;
+          const x = padL + gap + i * (barWidth + gap);
+          const y = padT + chartH - barH;
+          const isHovered = hoveredIndex === i;
+          return (
+            <g key={i}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{ cursor: "pointer" }}
+            >
+              <rect x={x} y={y} width={barWidth} height={barH} rx={4} fill={isHovered ? "#fdba74" : "#fb923c"} opacity={isHovered ? 1 : 0.85} />
+              <text x={x + barWidth / 2} y={padT + chartH + 16} textAnchor="middle" fill="#71717a" fontSize={10}>{d.label}</text>
+              {isHovered && (
+                <>
+                  <rect x={x + barWidth / 2 - 24} y={y - 26} width={48} height={20} rx={4} fill="#27272a" />
+                  <text x={x + barWidth / 2} y={y - 12} textAnchor="middle" fill="#fafafa" fontSize={11} fontWeight={700}>{d.value}</text>
+                </>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ─── Styles ───
 
 const page: React.CSSProperties = {
   background: "#09090b",

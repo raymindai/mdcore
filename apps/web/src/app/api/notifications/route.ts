@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { sendShareEmail, sendEditRequestEmail } from "@/lib/email";
 
 // GET — fetch notifications for logged-in user
 export async function GET(req: NextRequest) {
@@ -121,7 +122,25 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: "Failed to create" }, { status: 500 });
 
   // Send email notification via Resend (non-blocking)
-  sendNotificationEmail(recipientEmail.toLowerCase(), type, documentId, fromUserName || "Someone", message || "").catch(() => {});
+  const emailTo = recipientEmail.toLowerCase();
+  const senderName = fromUserName || "Someone";
+  (async () => {
+    try {
+      const { data: docData } = await supabase
+        .from("documents")
+        .select("title")
+        .eq("id", documentId)
+        .single();
+      const docTitle = docData?.title || "Untitled";
+      if (type === "edit_request") {
+        await sendEditRequestEmail(emailTo, senderName, docTitle, documentId);
+      } else {
+        await sendShareEmail(emailTo, senderName, docTitle, documentId);
+      }
+    } catch {
+      // Non-critical
+    }
+  })();
 
   return NextResponse.json({ ok: true });
 }
@@ -159,59 +178,3 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// ─── Email Notification via Resend ───
-
-async function sendNotificationEmail(
-  to: string,
-  type: string,
-  documentId: string,
-  fromName: string,
-  message: string
-): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return;
-
-  const docUrl = `https://mdfy.cc/d/${documentId}`;
-
-  const subjects: Record<string, string> = {
-    share: `${fromName} shared a document with you on mdfy.cc`,
-    edit_request: `${fromName} requested edit access on mdfy.cc`,
-    mention: `${fromName} mentioned you on mdfy.cc`,
-  };
-
-  const subject = subjects[type] || `Notification from mdfy.cc`;
-
-  const html = `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:32px 0">
-  <div style="margin-bottom:24px">
-    <span style="font-weight:800;font-size:18px;letter-spacing:-0.5px"><span style="color:#fb923c">md</span><span style="color:#a1a1aa">fy</span></span>
-  </div>
-  <div style="background:#18181b;border:1px solid #27272a;border-radius:12px;padding:24px;color:#e4e4e7">
-    <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:#fafafa">${subject}</p>
-    ${message ? `<p style="margin:0 0 16px;font-size:14px;color:#a1a1aa">${message}</p>` : ""}
-    <a href="${docUrl}" style="display:inline-block;background:#fb923c;color:#0a0a0c;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none">Open Document</a>
-  </div>
-  <p style="margin:16px 0 0;font-size:11px;color:#52525b">
-    This email was sent by <a href="https://mdfy.cc" style="color:#fb923c;text-decoration:none">mdfy.cc</a>.
-    You received this because someone shared a document with ${to}.
-  </p>
-</div>`;
-
-  try {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "mdfy.cc <notifications@mdfy.cc>",
-        to,
-        subject,
-        html,
-      }),
-    });
-  } catch {
-    // Non-critical — don't fail the notification creation
-  }
-}

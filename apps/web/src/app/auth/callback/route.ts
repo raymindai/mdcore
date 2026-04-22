@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -25,7 +26,16 @@ export async function GET(request: Request) {
       }
     );
 
-    await supabase.auth.exchangeCodeForSession(code);
+    const { data } = await supabase.auth.exchangeCodeForSession(code);
+
+    // Send welcome email for new users (created within the last 60 seconds)
+    if (data?.user?.email && data.user.created_at) {
+      const createdAt = new Date(data.user.created_at).getTime();
+      const now = Date.now();
+      if (now - createdAt < 60_000) {
+        sendWelcomeEmail(data.user.email).catch(() => {});
+      }
+    }
   }
 
   return NextResponse.redirect(origin);

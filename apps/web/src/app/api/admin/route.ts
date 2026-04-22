@@ -93,6 +93,54 @@ export async function GET(req: NextRequest) {
       time: d.updated_at,
     }));
 
+    // ─── Daily Stats (last 30 days) ───
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Fetch all docs created in last 30 days (including deleted, for accurate history)
+    const { data: recentDocs } = await supabase
+      .from("documents")
+      .select("created_at, view_count, source")
+      .gte("created_at", thirtyDaysAgo.toISOString());
+
+    // Build day buckets
+    const dailyStats: { date: string; docs: number; users: number; views: number }[] = [];
+    const docsByDay: Record<string, number> = {};
+    const viewsByDay: Record<string, number> = {};
+    const sourceCount: Record<string, number> = {};
+
+    for (const d of recentDocs || []) {
+      const day = d.created_at?.slice(0, 10);
+      if (day) {
+        docsByDay[day] = (docsByDay[day] || 0) + 1;
+        viewsByDay[day] = (viewsByDay[day] || 0) + (d.view_count || 0);
+      }
+      const src = d.source || "web";
+      sourceCount[src] = (sourceCount[src] || 0) + 1;
+    }
+
+    // Users by day
+    const usersByDay: Record<string, number> = {};
+    for (const u of authUsers) {
+      if (u.created_at) {
+        const day = u.created_at.slice(0, 10);
+        if (new Date(day) >= thirtyDaysAgo) {
+          usersByDay[day] = (usersByDay[day] || 0) + 1;
+        }
+      }
+    }
+
+    // Fill all 30 days
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(now.getTime() - (29 - i) * 24 * 60 * 60 * 1000);
+      const day = d.toISOString().slice(0, 10);
+      dailyStats.push({
+        date: day,
+        docs: docsByDay[day] || 0,
+        users: usersByDay[day] || 0,
+        views: viewsByDay[day] || 0,
+      });
+    }
+
     return NextResponse.json({
       stats: {
         totalDocs: totalDocs || 0,
@@ -106,6 +154,8 @@ export async function GET(req: NextRequest) {
       users,
       documents,
       recent,
+      dailyStats,
+      sourceBreakdown: sourceCount,
     });
   } catch (err) {
     console.error("Admin API error:", err);
