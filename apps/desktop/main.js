@@ -772,6 +772,11 @@ function startFileWatcher(filePath) {
               html: result.html,
               flavor: result.flavor.primary,
             });
+            // Auto-push to cloud if published
+            const config = loadMdfyConfig(filePath);
+            if (config && config.docId) {
+              SyncEngine.onFileSaved(filePath, content);
+            }
           } catch {}
         }, 1000);
       }

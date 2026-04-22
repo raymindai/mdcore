@@ -525,7 +525,23 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Start sync engine if autoSync enabled
+  // Watch for external file changes on published .md files
+  const mdWatcher = vscode.workspace.createFileSystemWatcher("**/*.md");
+  context.subscriptions.push(
+    mdWatcher.onDidChange(async (uri) => {
+      // External change detected — push if published
+      const cfg = await loadMdfyConfig(uri.fsPath);
+      if (cfg) {
+        const doc = vscode.workspace.textDocuments.find(d => d.uri.fsPath === uri.fsPath);
+        if (doc) {
+          syncEngine?.onFileSaved(doc);
+        }
+      }
+    })
+  );
+  context.subscriptions.push(mdWatcher);
+
+  // Start sync polling if autoSync enabled
   const config = vscode.workspace.getConfiguration("mdfy");
   if (config.get<boolean>("autoSync")) {
     const interval = config.get<number>("syncInterval") ?? 30;
