@@ -117,7 +117,7 @@ export function useAuth() {
 
   const signOut = useCallback(async () => {
     if (!supabase) return;
-    await supabase.auth.signOut({ scope: "global" });
+    await supabase.auth.signOut({ scope: "local" });
     // Clear all Supabase-related storage to prevent auto-login on next sign-in
     Object.keys(localStorage).forEach(key => {
       if (key.includes("supabase") || key.includes("sb-")) {
