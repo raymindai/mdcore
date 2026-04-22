@@ -236,7 +236,7 @@ export class SyncEngine {
 
     // Scan workspace for hidden .mdfy.json sidecar files
     const sidecarFiles = await vscode.workspace.findFiles(
-      "**/.*mdfy.json",
+      "**/.*.mdfy.json",
       "{**/node_modules/**,**/dist/**,**/.git/**}",
       50 // limit to prevent overload
     );
