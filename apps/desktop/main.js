@@ -194,7 +194,7 @@ const AuthManager = {
       const resp = await net.fetch(`${MDFY_URL}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: data.refreshToken }),
+        body: JSON.stringify({ refresh_token: data.refreshToken }),
       });
       if (!resp.ok) {
         this.notifySessionExpired();
@@ -202,9 +202,10 @@ const AuthManager = {
       }
       let result;
       try { result = await resp.json(); } catch { this.save(null); this.notifySessionExpired(); return false; }
-      if (result.token) {
-        data.token = result.token;
-        if (result.refreshToken) data.refreshToken = result.refreshToken;
+      // API returns access_token and refresh_token (snake_case)
+      if (result.access_token) {
+        data.token = result.access_token;
+        if (result.refresh_token) data.refreshToken = result.refresh_token;
         this.save(data);
         return true;
       }
