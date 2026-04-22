@@ -476,12 +476,13 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Auto-sync on save
+  // Auto-sync on save — always sync published files (has .mdfy.json)
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument((doc) => {
-      if (doc.languageId !== "markdown") {return;}
-      const config = vscode.workspace.getConfiguration("mdfy");
-      if (config.get<boolean>("autoSync")) {
+    vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      if (doc.languageId !== "markdown") { return; }
+      // Always push on save if the file is published (has .mdfy.json sidecar)
+      const config = await loadMdfyConfig(doc.uri.fsPath);
+      if (config) {
         syncEngine?.onFileSaved(doc);
       }
     })
