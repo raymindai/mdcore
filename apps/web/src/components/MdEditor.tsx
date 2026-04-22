@@ -1291,21 +1291,7 @@ export default function MdEditor() {
     return () => clearInterval(interval);
   }, [mdfyLoading]);
 
-  // Diagram rendering mode: "default" (mermaid.js/ASCII) or "ai" (Gemini HTML)
-  type DiagramMode = "default" | "ai";
-  const [diagramMode, setDiagramMode] = useState<DiagramMode>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("mdfy-diagram-mode") as DiagramMode) || "default";
-    }
-    return "default";
-  });
-  const diagramModeRef = useRef(diagramMode);
-  diagramModeRef.current = diagramMode;
-  const toggleDiagramMode = useCallback(() => {
-    const next: DiagramMode = diagramMode === "default" ? "ai" : "default";
-    setDiagramMode(next);
-    localStorage.setItem("mdfy-diagram-mode", next);
-  }, [diagramMode]);
+  // Diagram rendering mode removed — ASCII diagrams use "Convert to Mermaid" button per diagram
 
   // Tab system — persist to localStorage (version check to refresh samples)
   const TABS_VERSION = "6";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 
 const ADMIN_EMAIL = "hi@raymind.ai";
@@ -111,7 +112,7 @@ export default function AdminPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={fetchData} style={btnStyle}>Refresh</button>
-          <a href="/" style={{ ...btnStyle, textDecoration: "none" }}>Back to Editor</a>
+          <Link href="/" style={{ ...btnStyle, textDecoration: "none" }}>Back to Editor</Link>
         </div>
       </div>
 
