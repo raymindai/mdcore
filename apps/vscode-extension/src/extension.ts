@@ -541,9 +541,9 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(mdWatcher);
 
-  // Start sync polling if autoSync enabled
-  const config = vscode.workspace.getConfiguration("mdfy");
-  if (config.get<boolean>("autoSync")) {
+  // Always start sync polling — published files need cloud change detection
+  {
+    const config = vscode.workspace.getConfiguration("mdfy");
     const interval = config.get<number>("syncInterval") ?? 30;
     syncEngine.startPolling(interval);
   }
@@ -560,7 +560,7 @@ export function activate(context: vscode.ExtensionContext): void {
         statusBar?.setPublished(`${base}/d/${cfg.docId}`);
       }
     });
-    const autoPreview = config.get<boolean>("autoPreview", true);
+    const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
     if (autoPreview) {
       PreviewPanel.createIfNotExists(context.extensionUri, vscode.window.activeTextEditor.document);
     }
