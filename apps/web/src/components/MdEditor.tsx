@@ -4270,10 +4270,36 @@ export default function MdEditor() {
       }
       redoStack.current = [];
       // Update markdown + tab
+      const oldMd = md;
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDocRef.current?.(newMd);
       setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
+
+      // Highlight changes in preview after render
+      setTimeout(() => {
+        if (!previewRef.current) return;
+        const oldLines = new Set(oldMd.split("\n").map(l => l.trim()).filter(Boolean));
+        const newLines = newMd.split("\n");
+        // Find which block elements contain new/changed content
+        const blocks = previewRef.current.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, .math-rendered");
+        blocks.forEach(el => {
+          const text = (el as HTMLElement).textContent?.trim() || "";
+          // Check if this text existed in the old version
+          const words = text.split(/\s+/).slice(0, 8).join(" ");
+          const isNew = words.length > 3 && !oldLines.has(text) && !newLines.some(l => oldMd.includes(l.trim()) && l.trim() === text);
+          // Simpler check: was this line's content in the old markdown?
+          const existedBefore = oldMd.includes(text.substring(0, Math.min(text.length, 60)));
+          if (!existedBefore && text.length > 5) {
+            (el as HTMLElement).style.transition = "background 1.5s ease-out";
+            (el as HTMLElement).style.background = "rgba(251, 146, 60, 0.12)";
+            (el as HTMLElement).style.borderRadius = "4px";
+            setTimeout(() => {
+              (el as HTMLElement).style.background = "";
+            }, 3000);
+          }
+        });
+      }, 300);
       if (data.finishReason === "MAX_TOKENS") {
         showToast("AI hit output limit — result may be incomplete", "info");
       }
