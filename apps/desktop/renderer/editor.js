@@ -184,13 +184,7 @@
   function renderSidebar() {
     renderFileList();
     renderUserBar();
-    if (sidebarState.authState.loggedIn) {
-      if (cachedImages) {
-        renderImageSection(cachedImages.images, cachedImages.quota);
-      } else {
-        loadImages();
-      }
-    }
+    // Images moved to right-side panel — no longer in sidebar
   }
 
   function renderFileList() {
@@ -1091,7 +1085,7 @@
         sidebarState.cloudFolders = [];
         cachedImages = null;
         var imgSection = document.getElementById("image-section");
-        if (imgSection) imgSection.innerHTML = "";
+        if (imgSection) imgSection.remove();
         renderSidebar();
         // Notify user if this was an unexpected session expiry
         if (data.reason === "session-expired") {
