@@ -7325,7 +7325,7 @@ ${html}
                         }
                         return !prev;
                       });
-                      setShowAIPanel(false); setShowHistory(false); setShowExportMenu(false);
+                      setShowAIPanel(false); setShowHistory(false); setShowExportMenu(false); setShowOutlinePanel(false);
                     }}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
                     style={{ background: showImagePanel ? "var(--accent-dim)" : "transparent", color: showImagePanel ? "var(--accent)" : "var(--text-faint)" }}
@@ -9356,7 +9356,7 @@ ${html}
           { label: "Export as Markdown", action: () => handleDownloadMd() },
           { label: "Export as PDF", action: () => handleExportPdf() },
           { label: "Version History", action: () => handleToggleHistory() },
-          { label: "Open AI Panel", action: () => setShowAIPanel(true) },
+          { label: "Open AI Panel", action: () => { setShowAIPanel(true); setShowOutlinePanel(false); setShowImagePanel(false); } },
         ];
         const q = cmdSearch.toLowerCase();
         const filtered = q ? commands.filter(c => c.label.toLowerCase().includes(q)) : commands;

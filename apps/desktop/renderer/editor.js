@@ -872,6 +872,12 @@
       }
       if (imagePanelOpen) {
         populateImagePanel();
+        // Close outline panel
+        if (outlinePanelOpen && outlinePanelEl) {
+          outlinePanelOpen = false;
+          outlinePanelEl.classList.add("hidden");
+          if (outlineToggle) { outlineToggle.setAttribute("data-active", "false"); outlineToggle.classList.remove("active"); }
+        }
       }
     });
   }
@@ -966,6 +972,13 @@
     if (outlineToggle) {
       outlineToggle.setAttribute("data-active", outlinePanelOpen ? "true" : "false");
       outlineToggle.classList.toggle("active", outlinePanelOpen);
+    }
+    // Close image panel when opening outline
+    if (outlinePanelOpen && imagePanelOpen) {
+      imagePanelOpen = false;
+      var imgP = document.getElementById("image-panel");
+      if (imgP) imgP.style.display = "none";
+      if (imagesToggle) imagesToggle.setAttribute("data-active", "false");
     }
     if (outlinePanelOpen) {
       updateOutlinePanel();

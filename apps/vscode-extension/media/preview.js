@@ -79,6 +79,12 @@
         imgLoaded = true;
         vscode.postMessage({ type: 'load-images' });
       }
+      // Close outline when opening images
+      if (!showing && outlinePanel && outlinePanelOpen) {
+        outlinePanelOpen = false;
+        outlinePanel.classList.add('hidden');
+        if (outlineToggle) outlineToggle.classList.remove('active');
+      }
     }
     if (imgToggle) imgToggle.addEventListener('click', toggleImagePanel);
     if (imgClose) imgClose.addEventListener('click', toggleImagePanel);
@@ -2232,6 +2238,11 @@
     }
     if (outlineToggle) {
       outlineToggle.classList.toggle('active', outlinePanelOpen);
+    }
+    // Close image panel when opening outline
+    if (outlinePanelOpen && imgPanel && imgPanel.style.display !== 'none') {
+      imgPanel.style.display = 'none';
+      if (imgToggle) imgToggle.classList.remove('active');
     }
     if (outlinePanelOpen) {
       updateOutlinePanel();
