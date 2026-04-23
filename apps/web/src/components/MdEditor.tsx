@@ -4172,10 +4172,12 @@ export default function MdEditor() {
       }
       const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
+        const prevMd = markdownRef.current;
         await updateDocument(docId, token, data.version.markdown, data.version.title || undefined, { userId: user?.id, anonymousId: !user?.id ? getAnonymousId() : undefined, changeSummary: `Restored to version ${data.version.version_number}` });
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
         cmSetDocRef.current?.(data.version.markdown);
+        highlightDiff(prevMd, data.version.markdown);
         if (data.version.title) setTitle(data.version.title);
         setPreviewVersion(null);
         await loadVersions();
@@ -4277,28 +4279,7 @@ export default function MdEditor() {
       setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
 
       // Highlight changes in preview after render
-      setTimeout(() => {
-        if (!previewRef.current) return;
-        const oldLines = new Set(oldMd.split("\n").map(l => l.trim()).filter(Boolean));
-        const newLines = newMd.split("\n");
-        // Find which block elements contain new/changed content
-        const blocks = previewRef.current.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, .math-rendered");
-        blocks.forEach(el => {
-          const text = (el as HTMLElement).textContent?.trim() || "";
-          // Check if this text existed in the old version
-          const words = text.split(/\s+/).slice(0, 8).join(" ");
-          const isNew = words.length > 3 && !oldLines.has(text) && !newLines.some(l => oldMd.includes(l.trim()) && l.trim() === text);
-          // Simpler check: was this line's content in the old markdown?
-          const existedBefore = oldMd.includes(text.substring(0, Math.min(text.length, 60)));
-          if (!existedBefore && text.length > 5) {
-            (el as HTMLElement).style.transition = "background 1.5s ease-out";
-            (el as HTMLElement).style.background = "rgba(251, 146, 60, 0.12)";
-            (el as HTMLElement).style.borderRadius = "4px";
-            setTimeout(() => {
-              (el as HTMLElement).style.background = "";
-            }, 3000);
-          }
-        });
+      highlightDiff(oldMd, newMd);
       }, 300);
       if (data.finishReason === "MAX_TOKENS") {
         showToast("AI hit output limit — result may be incomplete", "info");
@@ -4310,6 +4291,26 @@ export default function MdEditor() {
     }
     setAiProcessing(null);
   }, [doRender, setMarkdown, tabs]);
+
+  // ─── Diff Highlight ───
+  const highlightDiff = useCallback((oldMd: string, newMd: string) => {
+    if (oldMd === newMd) return;
+    setTimeout(() => {
+      if (!previewRef.current) return;
+      const blocks = previewRef.current.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, .math-rendered, .mermaid-container");
+      blocks.forEach(el => {
+        const text = (el as HTMLElement).textContent?.trim() || "";
+        if (text.length < 5) return;
+        const snippet = text.substring(0, Math.min(text.length, 60));
+        if (!oldMd.includes(snippet)) {
+          (el as HTMLElement).style.transition = "background 1.5s ease-out";
+          (el as HTMLElement).style.background = "rgba(251, 146, 60, 0.12)";
+          (el as HTMLElement).style.borderRadius = "4px";
+          setTimeout(() => { (el as HTMLElement).style.background = ""; }, 3000);
+        }
+      });
+    }, 300);
+  }, []);
 
   const handleShare = useCallback(async () => {
     setShowPermDropdown(false);
