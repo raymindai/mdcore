@@ -4280,7 +4280,6 @@ export default function MdEditor() {
 
       // Highlight changes in preview after render
       highlightDiff(oldMd, newMd);
-      }, 300);
       if (data.finishReason === "MAX_TOKENS") {
         showToast("AI hit output limit — result may be incomplete", "info");
       }
