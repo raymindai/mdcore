@@ -1523,7 +1523,7 @@ export default function MdEditor() {
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
-  const [showOutlinePanel, setShowOutlinePanel] = useState(false);
+  const [showOutlinePanel, setShowOutlinePanel] = useState(true);
   const [showImagePanel, setShowImagePanel] = useState(false);
   const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
   const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
