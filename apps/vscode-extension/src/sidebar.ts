@@ -1100,7 +1100,7 @@ body {
     function renderSyncedDoc(doc) {
       var ic = '<div class="doc-icon published">' + icon('check', 14) + '</div>';
       var synced = doc.lastSynced ? relTime(doc.lastSynced) : '';
-      var meta = synced ? 'synced' + synced : doc.docId;
+      var meta = synced ? 'synced ' + synced : doc.docId;
       var actions = ''
         + '<button class="doc-action" data-action="copy" data-url="' + esc(doc.url) + '" title="Copy URL">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
@@ -1116,7 +1116,7 @@ body {
       var ic = '<div class="doc-icon local">' + icon('file', 14) + '</div>';
       var meta = doc.relativePath || doc.fileName;
       var actions = '<button class="doc-action" data-action="publish" data-path="' + esc(doc.filePath) + '" title="Sync to mdfy.cc">' + icon('upload', 14) + '</button>';
-      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '" title="' + esc(doc.filePath) + '">'
+      return '<li class="doc-item" data-action="open" data-path="' + esc(doc.filePath) + '" title="' + esc(doc.relativePath || doc.fileName) + '">'
         + ic
         + '<div class="doc-info"><div class="doc-name">' + esc(doc.fileName) + '</div><div class="doc-meta">' + esc(meta) + '</div></div>'
         + '<div class="doc-actions">' + actions + '</div></li>';
