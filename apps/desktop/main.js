@@ -1405,10 +1405,8 @@ ipcMain.handle("delete-cloud-doc", async (event, docId) => {
 
 ipcMain.handle("move-to-folder", async (event, docId, folderId) => {
   try {
-    const token = authManager?.getToken();
-    const headers = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${BASE_URL}/api/docs/${docId}`, {
+    const headers = AuthManager.getHeaders();
+    const res = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
       method: "PATCH",
       headers,
       body: JSON.stringify({ action: "move", folderId: folderId || null }),

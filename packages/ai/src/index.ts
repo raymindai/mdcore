@@ -12,7 +12,7 @@ export {
 
 // High-level functions
 export { mdfyText } from "./mdfy-text.js";
-export { asciiRender } from "./ascii-render.js";
+export { asciiRender, asciiRender as asciiToMermaid } from "./ascii-render.js";
 export {
   isAiConversation,
   parseConversation,

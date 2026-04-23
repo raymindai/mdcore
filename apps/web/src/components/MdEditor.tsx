@@ -7713,7 +7713,7 @@ ${html}
                   </div>
                   <div className="flex-1 overflow-y-auto py-2" style={{ fontSize: 12 }}>
                     {(() => {
-                      const md = markdownRef.current || "";
+                      const md = markdown || "";
                       const headings = md.split("\n")
                         .map((line, idx) => {
                           const match = line.match(/^(#{1,6})\s+(.+)$/);
@@ -8457,7 +8457,9 @@ ${html}
                     <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 4l4 4-4 4"/></svg>
                   </button>
                   <div
-                    className="absolute left-full top-0 ml-1 min-w-[140px] rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover/sub:opacity-100 group-hover/sub:pointer-events-auto transition-opacity z-[10001]"
+                    className="absolute top-0 ml-1 min-w-[140px] rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover/sub:opacity-100 group-hover/sub:pointer-events-auto transition-opacity z-[10001]"
+                    style={{ left: "100%", ...(docContextMenu && docContextMenu.x > window.innerWidth - 400 ? { left: "auto", right: "100%", marginLeft: 0, marginRight: 4 } : {}) }}
+                    ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.right > window.innerWidth) { el.style.left = "auto"; el.style.right = "100%"; el.style.marginLeft = "0"; el.style.marginRight = "4px"; } } }}
                     style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
                   >
                     {it.submenu.map(sub => (

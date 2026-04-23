@@ -245,6 +245,12 @@ ai: AI 호출 (독립)
   - 엣지 라벨, 방향 전환 (LR/TD)
   - Import: 기존 Mermaid 코드 → 캔버스 로드
   - Generate: 캔버스 → ```mermaid 코드블록
+- AI side panel (VS Code + Desktop) — 2x2 그리드 액션 + 채팅 인터페이스
+- Document outline panel (all channels) — 헤딩 기반 문서 구조 탐색
+- Diff highlight on AI/sync changes — 변경된 블록 오렌지 하이라이트
+- Hidden .mdfy.json sidecar files — dot prefix로 워크스페이스 정리, 자동 마이그레이션
+- Email notifications (Resend)
+- Admin dashboard (/admin)
 
 ### 다음 작업 (Updated Direction v5.0)
 

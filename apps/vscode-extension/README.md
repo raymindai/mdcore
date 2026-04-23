@@ -83,6 +83,10 @@ Every Markdown feature you need, rendered correctly:
 - Copy button on each code block
 - Line numbers for long blocks
 
+### Document Outline
+
+Click the **Outline** button in the preview toolbar to open a document structure panel. It lists all headings (H1-H6) with indentation matching their hierarchy. Click any heading to scroll directly to it in the preview, with a brief highlight animation. The outline updates automatically as you edit.
+
 ### One-Click Publish
 
 Turn any `.md` file into a shareable URL in one click.
@@ -203,7 +207,18 @@ Configure via VS Code Settings (Cmd+,) under "mdfy.cc":
 
 ## AI Tools
 
-Five AI-powered commands to enhance your documents. Requires login.
+Five AI-powered tools to enhance your documents, available both as commands and in a dedicated side panel. Requires login.
+
+### AI Side Panel
+
+Click the **AI** button in the preview toolbar to open the AI panel alongside your document. The panel provides:
+
+- **Quick actions** -- Polish, Summary, TL;DR, and Translate in a 2x2 grid
+- **Chat input** -- describe changes in natural language, AI edits your document directly
+- **Undo** -- revert the last AI change with one click
+- **Diff highlighting** -- changed blocks are briefly highlighted in orange after AI edits
+
+The AI panel, Outline panel, and Image panel are mutually exclusive -- opening one closes the others.
 
 ### AI Polish
 
