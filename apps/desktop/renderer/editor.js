@@ -950,6 +950,79 @@
     });
   }
 
+  // ─── Outline Side Panel ───
+
+  var outlinePanelOpen = true; // open by default
+  var outlineToggle = document.getElementById("outline-toggle");
+  var outlinePanelEl = document.getElementById("outline-panel");
+  var outlinePanelBody = document.getElementById("outline-panel-body");
+  var outlinePanelClose = document.getElementById("outline-panel-close");
+
+  function toggleOutlinePanel() {
+    outlinePanelOpen = !outlinePanelOpen;
+    if (outlinePanelEl) {
+      outlinePanelEl.classList.toggle("hidden", !outlinePanelOpen);
+    }
+    if (outlineToggle) {
+      outlineToggle.setAttribute("data-active", outlinePanelOpen ? "true" : "false");
+      outlineToggle.classList.toggle("active", outlinePanelOpen);
+    }
+    if (outlinePanelOpen) {
+      updateOutlinePanel();
+    }
+  }
+
+  if (outlineToggle) {
+    outlineToggle.addEventListener("click", toggleOutlinePanel);
+  }
+  if (outlinePanelClose) {
+    outlinePanelClose.addEventListener("click", toggleOutlinePanel);
+  }
+
+  function updateOutlinePanel() {
+    if (!outlinePanelBody || !outlinePanelOpen) return;
+
+    var headings = content.querySelectorAll("h1, h2, h3, h4, h5, h6");
+    if (headings.length === 0) {
+      outlinePanelBody.innerHTML = '<div class="outline-empty">No headings</div>';
+      return;
+    }
+
+    var html = "";
+    headings.forEach(function(heading, idx) {
+      var level = parseInt(heading.tagName.charAt(1));
+      var text = heading.textContent || "";
+      if (!heading.id) {
+        heading.id = "outline-heading-" + idx;
+      }
+      html += '<button class="outline-item" data-level="' + level + '" data-target="' + heading.id + '" title="' + text.replace(/"/g, '&quot;') + '">' + text + '</button>';
+    });
+
+    outlinePanelBody.innerHTML = html;
+
+    outlinePanelBody.querySelectorAll(".outline-item").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var targetId = btn.getAttribute("data-target");
+        var target = document.getElementById(targetId);
+        if (target) {
+          var scrollContainer = content.closest(".pane-content");
+          if (scrollContainer) {
+            var containerRect = scrollContainer.getBoundingClientRect();
+            var targetRect = target.getBoundingClientRect();
+            var scrollTop = scrollContainer.scrollTop + targetRect.top - containerRect.top - 20;
+            scrollContainer.scrollTo({ top: scrollTop, behavior: "smooth" });
+          } else {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          target.classList.remove("outline-heading-highlight");
+          void target.offsetWidth;
+          target.classList.add("outline-heading-highlight");
+          setTimeout(function() { target.classList.remove("outline-heading-highlight"); }, 1500);
+        }
+      });
+    });
+  }
+
   // ─── Sidebar: Events from main ───
 
   if (window.mdfyDesktop) {
@@ -1367,6 +1440,9 @@
     postProcessMermaid();
     postProcessAsciiDiagrams(root);
     setupNonEditableIslands(root);
+
+    // Update outline panel after content changes
+    setTimeout(updateOutlinePanel, 50);
   }
 
   function postProcessAsciiDiagrams(root) {

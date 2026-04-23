@@ -2217,6 +2217,93 @@
     hideTooltip();
   });
 
+  // ─── Outline Panel ───
+
+  var outlinePanel = document.getElementById('outline-panel');
+  var outlinePanelBody = document.getElementById('outline-panel-body');
+  var outlineToggle = document.getElementById('btn-toggle-outline');
+  var outlineClose = document.getElementById('btn-close-outline');
+  var outlinePanelOpen = true; // open by default
+
+  function toggleOutlinePanel() {
+    outlinePanelOpen = !outlinePanelOpen;
+    if (outlinePanel) {
+      outlinePanel.classList.toggle('hidden', !outlinePanelOpen);
+    }
+    if (outlineToggle) {
+      outlineToggle.classList.toggle('active', outlinePanelOpen);
+    }
+    if (outlinePanelOpen) {
+      updateOutlinePanel();
+    }
+  }
+
+  if (outlineToggle) {
+    outlineToggle.addEventListener('click', toggleOutlinePanel);
+  }
+  if (outlineClose) {
+    outlineClose.addEventListener('click', toggleOutlinePanel);
+  }
+
+  function updateOutlinePanel() {
+    if (!outlinePanelBody || !outlinePanelOpen) return;
+
+    var headings = content.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) {
+      outlinePanelBody.innerHTML = '<div class="outline-empty">No headings</div>';
+      return;
+    }
+
+    var html = '';
+    headings.forEach(function(heading, idx) {
+      var level = parseInt(heading.tagName.charAt(1));
+      var text = heading.textContent || '';
+      // Assign an id for scrolling
+      if (!heading.id) {
+        heading.id = 'outline-heading-' + idx;
+      }
+      html += '<button class="outline-item" data-level="' + level + '" data-target="' + heading.id + '" title="' + text.replace(/"/g, '&quot;') + '">' + text + '</button>';
+    });
+
+    outlinePanelBody.innerHTML = html;
+
+    // Click handlers
+    outlinePanelBody.querySelectorAll('.outline-item').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var targetId = btn.getAttribute('data-target');
+        var target = document.getElementById(targetId);
+        if (target) {
+          var scrollContainer = document.getElementById('content-scroll');
+          if (scrollContainer) {
+            var containerRect = scrollContainer.getBoundingClientRect();
+            var targetRect = target.getBoundingClientRect();
+            var scrollTop = scrollContainer.scrollTop + targetRect.top - containerRect.top - 20;
+            scrollContainer.scrollTo({ top: scrollTop, behavior: 'smooth' });
+          } else {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Highlight animation
+          target.classList.remove('outline-heading-highlight');
+          void target.offsetWidth; // force reflow
+          target.classList.add('outline-heading-highlight');
+          setTimeout(function() { target.classList.remove('outline-heading-highlight'); }, 1500);
+        }
+      });
+    });
+  }
+
+  // Update outline when content is updated
+  var origMessageHandler = null;
+  window.addEventListener('message', function(event) {
+    if (event.data.type === 'update') {
+      // Defer outline update to after content is rendered
+      setTimeout(updateOutlinePanel, 50);
+    }
+  });
+
+  // Initial outline render
+  setTimeout(updateOutlinePanel, 200);
+
   // ─── Initialize ───
 
   // Preserve VS Code state

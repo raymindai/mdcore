@@ -990,6 +990,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button class="pane-icon-btn" id="btn-toggle-images" title="My images">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><circle cx="5.5" cy="6.5" r="1.5"/><path d="M1.5 11l3-3 2 2 3-3 5 4"/></svg>
         </button>
+        <button class="pane-icon-btn active" id="btn-toggle-outline" title="Document outline">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 3h12M4 6.5h10M4 10h10M2 13.5h12"/></svg>
+        </button>
         <button class="pane-icon-btn" id="btn-export" title="Export">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
         </button>
@@ -1046,6 +1049,15 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
           <div id="image-panel-content" style="padding:8px">
             <div style="text-align:center;padding:24px 8px;color:var(--fg-muted);font-size:11px">Loading...</div>
           </div>
+        </div>
+        <div id="outline-panel" class="outline-panel">
+          <div class="outline-panel-header">
+            <span class="pane-label">OUTLINE</span>
+            <button class="pane-icon-btn" id="btn-close-outline" title="Close">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+            </button>
+          </div>
+          <div class="outline-panel-body" id="outline-panel-body"></div>
         </div>
       </div>
     </div>
