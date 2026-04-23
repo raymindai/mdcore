@@ -1523,6 +1523,7 @@ export default function MdEditor() {
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
+  const [showOutlinePanel, setShowOutlinePanel] = useState(false);
   const [showImagePanel, setShowImagePanel] = useState(false);
   const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
   const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
@@ -7272,10 +7273,27 @@ ${html}
                     </div>
                   </div>
                 )}
+                {/* Outline toggle */}
+                <div className="relative group">
+                  <button
+                    onClick={() => { setShowOutlinePanel(prev => !prev); setShowAIPanel(false); setShowImagePanel(false); }}
+                    className="flex items-center justify-center h-6 px-1.5 rounded-md transition-colors"
+                    style={{ background: showOutlinePanel ? "var(--accent-dim)" : "transparent", color: showOutlinePanel ? "var(--accent)" : "var(--text-faint)" }}
+                    title="Document outline"
+                  >
+                    <List width={13} height={13} />
+                  </button>
+                  {!showOutlinePanel && (
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      Outline
+                    </div>
+                  )}
+                </div>
                 {/* AI Actions dropdown — only for editable docs */}
                 {canEdit && <div className="relative group">
                   <button
-                    onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); }}
+                    onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); setShowOutlinePanel(false); }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
                     style={{ background: showAIPanel || aiProcessing ? "var(--accent-dim)" : "transparent", color: showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-faint)", fontWeight: 600, fontSize: 11 }}
                     title="AI tools"
@@ -7647,6 +7665,74 @@ ${html}
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2L2 8.5l5 2L9.5 16z"/><path d="M14 2L7 10.5"/></svg>
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+              {/* ─── Outline Panel (side-by-side) ─── */}
+              {showOutlinePanel && (
+                <div
+                  className="flex flex-col shrink-0"
+                  style={{ width: "min(260px, 40%)", background: "var(--surface)", borderLeft: "1px solid var(--border)" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                    <div className="flex items-center gap-1.5">
+                      <List width={12} height={12} style={{ color: "var(--accent)" }} />
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>Outline</span>
+                    </div>
+                    <button onClick={() => setShowOutlinePanel(false)} className="p-0.5 rounded hover:bg-[var(--menu-hover)] transition-colors" title="Close outline">
+                      <X width={12} height={12} style={{ color: "var(--text-faint)" }} />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto py-2" style={{ fontSize: 12 }}>
+                    {(() => {
+                      const md = markdownRef.current || "";
+                      const headings = md.split("\n")
+                        .map((line, idx) => {
+                          const match = line.match(/^(#{1,6})\s+(.+)$/);
+                          if (!match) return null;
+                          return { level: match[1].length, text: match[2].replace(/[*_`\[\]]/g, ""), line: idx };
+                        })
+                        .filter(Boolean) as { level: number; text: string; line: number }[];
+
+                      if (headings.length === 0) {
+                        return <p className="px-3 py-4 text-center" style={{ color: "var(--text-faint)", fontSize: 11 }}>No headings found. Add # headings to see the document structure.</p>;
+                      }
+
+                      const minLevel = Math.min(...headings.map(h => h.level));
+
+                      return headings.map((h, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            // Scroll to heading in preview
+                            const allHeadings = previewRef.current?.querySelectorAll("h1, h2, h3, h4, h5, h6");
+                            if (allHeadings) {
+                              // Find matching heading by text content
+                              for (const el of allHeadings) {
+                                if (el.textContent?.trim() === h.text.trim()) {
+                                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  // Brief highlight
+                                  (el as HTMLElement).style.background = "rgba(251,146,60,0.15)";
+                                  setTimeout(() => { (el as HTMLElement).style.background = ""; }, 1500);
+                                  break;
+                                }
+                              }
+                            }
+                          }}
+                          className="w-full text-left px-3 py-1 transition-colors hover:bg-[var(--menu-hover)] truncate"
+                          style={{
+                            paddingLeft: 12 + (h.level - minLevel) * 16,
+                            color: h.level <= 2 ? "var(--text-primary)" : "var(--text-muted)",
+                            fontWeight: h.level === 1 ? 700 : h.level === 2 ? 600 : 400,
+                            fontSize: h.level === 1 ? 13 : h.level === 2 ? 12 : 11,
+                          }}
+                          title={h.text}
+                        >
+                          {h.text}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
               )}
