@@ -259,6 +259,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         lang?: string;
         index?: number;
         target?: string;
+        action?: string;
+        language?: string;
+        instruction?: string;
       }) => {
         switch (message.type) {
           case "edit": {
@@ -369,6 +372,14 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
           }
           case "convertFlavor": {
             await this.handleFlavorConversion(message.target);
+            break;
+          }
+          case "aiAction": {
+            await this.handleAiAction(
+              message.action,
+              message.language,
+              message.instruction
+            );
             break;
           }
           case "syncToLocal": {
@@ -774,6 +785,110 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
     }
   }
 
+  private async handleAiAction(
+    action: string | undefined,
+    language?: string,
+    instruction?: string
+  ): Promise<void> {
+    if (!action) { return; }
+
+    const markdown = this.trackedDocument
+      ? this.trackedDocument.getText()
+      : "";
+    if (!markdown.trim()) {
+      this.panel.webview.postMessage({ type: "aiResult", error: "Document is empty." });
+      return;
+    }
+
+    const auth = PreviewPanel.authManagerRef;
+    const loggedIn = await auth?.isLoggedIn();
+    if (!auth || !loggedIn) {
+      this.panel.webview.postMessage({ type: "aiResult", error: "Sign in to use AI features." });
+      const choice = await vscode.window.showWarningMessage(
+        "Sign in to mdfy.cc to use AI features.",
+        "Sign in"
+      );
+      if (choice === "Sign in") {
+        vscode.commands.executeCommand("mdfy.login");
+      }
+      return;
+    }
+
+    this.panel.webview.postMessage({ type: "aiLoading", loading: true });
+
+    try {
+      const { getApiBaseUrl } = await import("./extension");
+      const baseUrl = getApiBaseUrl();
+      const token = await auth.getToken();
+
+      const body: Record<string, string> = { action, markdown };
+      if (language) { body.language = language; }
+      if (instruction) { body.instruction = instruction; }
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) { headers["Authorization"] = `Bearer ${token}`; }
+
+      const res = await fetch(`${baseUrl}/api/ai`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { result?: string; error?: string };
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (data.result) {
+        let result = data.result;
+        const isAnswer = action === "chat" && !result.trim().startsWith("EDIT:");
+        result = result.replace(/^(EDIT:|ANSWER:)\s*/, "");
+
+        if (isAnswer) {
+          this.panel.webview.postMessage({ type: "aiResult", result, action, isAnswer: true });
+        } else {
+          // Apply changes to document
+          if (this.trackedDocument) {
+            const shouldReplace = (action === "polish" || action === "translate" || action === "chat");
+            let newText: string;
+            if (shouldReplace) {
+              newText = result;
+            } else {
+              newText = result + "\n\n---\n\n" + markdown;
+            }
+
+            this.isUpdatingFromWebview = true;
+            try {
+              const edit = new vscode.WorkspaceEdit();
+              const fullRange = new vscode.Range(
+                this.trackedDocument.positionAt(0),
+                this.trackedDocument.positionAt(markdown.length)
+              );
+              edit.replace(this.trackedDocument.uri, fullRange, newText);
+              await vscode.workspace.applyEdit(edit);
+              this.updateContent(newText);
+            } finally {
+              setTimeout(() => { this.isUpdatingFromWebview = false; }, 500);
+            }
+          }
+          this.panel.webview.postMessage({ type: "aiResult", result, action, isAnswer: false });
+        }
+      }
+    } catch (err) {
+      this.panel.webview.postMessage({
+        type: "aiResult",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      this.panel.webview.postMessage({ type: "aiLoading", loading: false });
+    }
+  }
+
   private async handleImageUpload(
     dataUrl: string | undefined,
     name: string | undefined
@@ -993,6 +1108,9 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
         <button class="pane-icon-btn active" id="btn-toggle-outline" title="Document outline">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 3h12M4 6.5h10M4 10h10M2 13.5h12"/></svg>
         </button>
+        <button class="pane-icon-btn" id="btn-toggle-ai" title="AI Tools">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/></svg>
+        </button>
         <button class="pane-icon-btn" id="btn-export" title="Export">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 10v3h10v-3M8 9V2M5 4.5L8 2l3 2.5"/></svg>
         </button>
@@ -1058,6 +1176,31 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
             </button>
           </div>
           <div class="outline-panel-body" id="outline-panel-body"></div>
+        </div>
+        <div id="ai-panel" class="ai-panel hidden">
+          <div class="ai-panel-header">
+            <span class="pane-label" style="color:var(--accent)">AI TOOLS</span>
+            <span style="flex:1"></span>
+            <button class="pane-icon-btn" id="ai-undo-btn" title="Undo last AI change" style="display:none">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+            </button>
+            <button class="pane-icon-btn" id="ai-panel-close" title="Close">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+            </button>
+          </div>
+          <div class="ai-panel-actions">
+            <button class="ai-action-btn" data-ai-action="polish"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/></svg><span>Polish</span></button>
+            <button class="ai-action-btn" data-ai-action="summary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg><span>Summary</span></button>
+            <button class="ai-action-btn" data-ai-action="tldr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h8"/></svg><span>TL;DR</span></button>
+            <button class="ai-action-btn" data-ai-action="translate"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2v3M11 21l5-10 5 10M14.5 18h5"/></svg><span>Translate</span></button>
+          </div>
+          <div class="ai-panel-chat" id="ai-chat-history"></div>
+          <div class="ai-panel-input-row">
+            <input type="text" id="ai-chat-input" placeholder="Ask AI to edit..." spellcheck="false">
+            <button id="ai-chat-send" title="Send">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

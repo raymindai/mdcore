@@ -79,11 +79,16 @@
         imgLoaded = true;
         vscode.postMessage({ type: 'load-images' });
       }
-      // Close outline when opening images
+      // Close outline and AI panels when opening images
       if (!showing && outlinePanel && outlinePanelOpen) {
         outlinePanelOpen = false;
         outlinePanel.classList.add('hidden');
         if (outlineToggle) outlineToggle.classList.remove('active');
+      }
+      if (!showing && aiPanelOpen) {
+        aiPanelOpen = false;
+        if (aiPanel) aiPanel.classList.add('hidden');
+        if (aiToggle) aiToggle.classList.remove('active');
       }
     }
     if (imgToggle) imgToggle.addEventListener('click', toggleImagePanel);
@@ -2223,6 +2228,217 @@
     hideTooltip();
   });
 
+  // ─── AI Panel ───
+
+  var aiPanel = document.getElementById('ai-panel');
+  var aiToggle = document.getElementById('btn-toggle-ai');
+  var aiPanelClose = document.getElementById('ai-panel-close');
+  var aiChatHistory = document.getElementById('ai-chat-history');
+  var aiChatInput = document.getElementById('ai-chat-input');
+  var aiChatSend = document.getElementById('ai-chat-send');
+  var aiUndoBtn = document.getElementById('ai-undo-btn');
+  var aiPanelOpen = false;
+  var aiPrevMarkdown = null;
+
+  function toggleAiPanel() {
+    if (aiPanelOpen) {
+      aiPanelOpen = false;
+      if (aiPanel) aiPanel.classList.add('hidden');
+      if (aiToggle) aiToggle.classList.remove('active');
+    } else {
+      // Close other panels first
+      if (outlinePanelOpen) {
+        outlinePanelOpen = false;
+        if (outlinePanel) outlinePanel.classList.add('hidden');
+        if (outlineToggle) outlineToggle.classList.remove('active');
+      }
+      var _imgPanel = document.getElementById('image-panel');
+      var _imgToggle = document.getElementById('btn-toggle-images');
+      if (_imgPanel && _imgPanel.style.display !== 'none') {
+        _imgPanel.style.display = 'none';
+        if (_imgToggle) _imgToggle.classList.remove('active');
+      }
+      aiPanelOpen = true;
+      if (aiPanel) aiPanel.classList.remove('hidden');
+      if (aiToggle) aiToggle.classList.add('active');
+    }
+  }
+
+  if (aiToggle) aiToggle.addEventListener('click', toggleAiPanel);
+  if (aiPanelClose) aiPanelClose.addEventListener('click', toggleAiPanel);
+
+  // AI action buttons
+  if (aiPanel) {
+    aiPanel.querySelectorAll('.ai-action-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var action = btn.getAttribute('data-ai-action');
+        if (!action) return;
+
+        if (action === 'translate') {
+          showAiTranslateMenu(btn);
+          return;
+        }
+
+        aiPrevMarkdown = currentMarkdown;
+        if (aiUndoBtn) aiUndoBtn.style.display = '';
+        addAiChatMessage('user', action.charAt(0).toUpperCase() + action.slice(1));
+        vscode.postMessage({ type: 'aiAction', action: action, markdown: currentMarkdown });
+      });
+    });
+  }
+
+  function showAiTranslateMenu(anchorBtn) {
+    var existing = document.getElementById('ai-translate-dropdown');
+    if (existing) { existing.remove(); return; }
+
+    var languages = [
+      { code: 'en', label: 'English' }, { code: 'ko', label: 'Korean' },
+      { code: 'ja', label: 'Japanese' }, { code: 'zh', label: 'Chinese' },
+      { code: 'es', label: 'Spanish' }, { code: 'fr', label: 'French' },
+      { code: 'de', label: 'German' }, { code: 'pt', label: 'Portuguese' }
+    ];
+
+    var rect = anchorBtn.getBoundingClientRect();
+    var menu = document.createElement('div');
+    menu.id = 'ai-translate-dropdown';
+    menu.className = 'ai-translate-dropdown';
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 4) + 'px';
+    menu.style.left = rect.left + 'px';
+
+    languages.forEach(function(lang) {
+      var item = document.createElement('button');
+      item.className = 'ai-translate-item';
+      item.textContent = lang.label;
+      item.addEventListener('click', function() {
+        menu.remove();
+        aiPrevMarkdown = currentMarkdown;
+        if (aiUndoBtn) aiUndoBtn.style.display = '';
+        addAiChatMessage('user', 'Translate to ' + lang.label);
+        vscode.postMessage({ type: 'aiAction', action: 'translate', language: lang.code, markdown: currentMarkdown });
+      });
+      menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+    setTimeout(function() {
+      document.addEventListener('click', function dismiss() {
+        var m = document.getElementById('ai-translate-dropdown');
+        if (m) m.remove();
+        document.removeEventListener('click', dismiss);
+      });
+    }, 0);
+  }
+
+  // AI chat input
+  function sendAiChat() {
+    if (!aiChatInput) return;
+    var instruction = aiChatInput.value.trim();
+    if (!instruction) return;
+    aiChatInput.value = '';
+    aiPrevMarkdown = currentMarkdown;
+    if (aiUndoBtn) aiUndoBtn.style.display = '';
+    addAiChatMessage('user', instruction);
+    vscode.postMessage({ type: 'aiAction', action: 'chat', instruction: instruction, markdown: currentMarkdown });
+  }
+
+  if (aiChatSend) aiChatSend.addEventListener('click', sendAiChat);
+  if (aiChatInput) {
+    aiChatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendAiChat();
+      }
+    });
+  }
+
+  // AI undo
+  if (aiUndoBtn) {
+    aiUndoBtn.addEventListener('click', function() {
+      if (aiPrevMarkdown !== null) {
+        vscode.postMessage({ type: 'edit', markdown: aiPrevMarkdown });
+        currentMarkdown = aiPrevMarkdown;
+        aiPrevMarkdown = null;
+        aiUndoBtn.style.display = 'none';
+        addAiChatMessage('system', 'Reverted to previous version.');
+      }
+    });
+  }
+
+  function addAiChatMessage(role, text) {
+    if (!aiChatHistory) return;
+    var msg = document.createElement('div');
+    msg.className = 'ai-chat-msg ai-chat-' + role;
+    msg.textContent = text;
+    aiChatHistory.appendChild(msg);
+    aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+  }
+
+  // Listen for AI results
+  window.addEventListener('message', function(e) {
+    var msg = e.data;
+    if (msg.type === 'aiLoading') {
+      if (aiPanel) {
+        var spinner = aiPanel.querySelector('.ai-loading-indicator');
+        if (msg.loading) {
+          if (!spinner) {
+            spinner = document.createElement('div');
+            spinner.className = 'ai-loading-indicator';
+            spinner.innerHTML = '<div class="ai-spinner"></div><span>Processing...</span>';
+            aiChatHistory.appendChild(spinner);
+            aiChatHistory.scrollTop = aiChatHistory.scrollHeight;
+          }
+        } else {
+          if (spinner) spinner.remove();
+        }
+      }
+    }
+    if (msg.type === 'aiResult') {
+      // Remove loading indicator
+      if (aiChatHistory) {
+        var sp = aiChatHistory.querySelector('.ai-loading-indicator');
+        if (sp) sp.remove();
+      }
+
+      if (msg.error) {
+        addAiChatMessage('error', msg.error);
+      } else if (msg.result) {
+        if (msg.isAnswer) {
+          addAiChatMessage('ai', msg.result);
+        } else {
+          var label = msg.action ? msg.action.charAt(0).toUpperCase() + msg.action.slice(1) : 'AI';
+          addAiChatMessage('ai', label + ' applied successfully.');
+          // Trigger diff highlight after content updates
+          setTimeout(function() {
+            highlightChangedBlocks(prevMarkdownForDiff, currentMarkdown);
+            prevMarkdownForDiff = currentMarkdown;
+          }, 500);
+        }
+      }
+    }
+  });
+
+  // ─── Diff Highlight ───
+  var prevMarkdownForDiff = currentMarkdown;
+
+  function highlightChangedBlocks(oldMd, newMd) {
+    if (oldMd === newMd || !content) return;
+    setTimeout(function() {
+      var blocks = content.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table');
+      blocks.forEach(function(el) {
+        var text = (el.textContent || '').trim();
+        if (text.length < 5) return;
+        var snippet = text.substring(0, Math.min(text.length, 60));
+        if (!oldMd.includes(snippet)) {
+          el.style.transition = 'background 1.5s ease-out';
+          el.style.background = 'rgba(251, 146, 60, 0.12)';
+          el.style.borderRadius = '4px';
+          setTimeout(function() { el.style.background = ''; }, 3000);
+        }
+      });
+    }, 300);
+  }
+
   // ─── Outline Panel ───
 
   var outlinePanel = document.getElementById('outline-panel');
@@ -2239,10 +2455,19 @@
     if (outlineToggle) {
       outlineToggle.classList.toggle('active', outlinePanelOpen);
     }
-    // Close image panel when opening outline
-    if (outlinePanelOpen && imgPanel && imgPanel.style.display !== 'none') {
-      imgPanel.style.display = 'none';
-      if (imgToggle) imgToggle.classList.remove('active');
+    // Close image panel and AI panel when opening outline
+    if (outlinePanelOpen) {
+      var _ip = document.getElementById('image-panel');
+      var _it = document.getElementById('btn-toggle-images');
+      if (_ip && _ip.style.display !== 'none') {
+        _ip.style.display = 'none';
+        if (_it) _it.classList.remove('active');
+      }
+      if (aiPanelOpen) {
+        aiPanelOpen = false;
+        if (aiPanel) aiPanel.classList.add('hidden');
+        if (aiToggle) aiToggle.classList.remove('active');
+      }
     }
     if (outlinePanelOpen) {
       updateOutlinePanel();

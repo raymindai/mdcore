@@ -98,6 +98,7 @@
             <button class="pane-toggle" id="narrow-toggle" data-active="true" title="Narrow View"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 2v12M12 2v12M1 8h3M12 8h3"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5"/></svg></button>
             <button class="pane-toggle active" id="outline-toggle" data-active="true" title="Document Outline"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 3h12M4 6.5h10M4 10h10M2 13.5h12"/></svg></button>
             <button class="pane-toggle" id="images-toggle" title="Images"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.5"/><path d="M14.5 10.5l-3.5-3.5-6 6"/></svg></button>
+            <button class="pane-toggle" id="ai-toggle" title="AI Tools"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/></svg></button>
             <button class="pane-icon-btn" id="btn-export" title="Export"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v8M4.5 7L8 10.5 11.5 7"/><path d="M2 12v2h12v-2"/></svg></button>
           </div>
         </div>
@@ -187,6 +188,31 @@
       </div>
       <div class="image-panel-body" id="image-panel-body">
         <div class="image-panel-loading">Loading images...</div>
+      </div>
+    </div>
+
+    <!-- ──── AI SIDE PANEL ──── -->
+    <div id="ai-panel" class="ai-panel" style="display:none">
+      <div class="ai-panel-header">
+        <span class="pane-label" style="color:var(--accent)">AI TOOLS</span>
+        <span style="flex:1"></span>
+        <button class="pane-icon-btn" id="ai-undo-btn" title="Undo last AI change" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7h7a3 3 0 010 6H8"/><path d="M6 4L3 7l3 3"/></svg>
+        </button>
+        <button class="pane-icon-btn" id="ai-panel-close" title="Close"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="ai-panel-actions">
+        <button class="ai-action-btn" data-ai-action="polish"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/></svg><span>Polish</span></button>
+        <button class="ai-action-btn" data-ai-action="summary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg><span>Summary</span></button>
+        <button class="ai-action-btn" data-ai-action="tldr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h8"/></svg><span>TL;DR</span></button>
+        <button class="ai-action-btn" data-ai-action="translate"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2v3M11 21l5-10 5 10M14.5 18h5"/></svg><span>Translate</span></button>
+      </div>
+      <div class="ai-panel-chat" id="ai-chat-history"></div>
+      <div class="ai-panel-input-row">
+        <input type="text" id="ai-chat-input" placeholder="Ask AI to edit..." spellcheck="false">
+        <button id="ai-chat-send" title="Send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
       </div>
     </div>
 

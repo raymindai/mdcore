@@ -878,6 +878,14 @@
           outlinePanelEl.classList.add("hidden");
           if (outlineToggle) { outlineToggle.setAttribute("data-active", "false"); outlineToggle.classList.remove("active"); }
         }
+        // Close AI panel
+        if (aiSidePanelOpen) {
+          aiSidePanelOpen = false;
+          var aiP = document.getElementById("ai-panel");
+          if (aiP) aiP.style.display = "none";
+          var aiT = document.getElementById("ai-toggle");
+          if (aiT) { aiT.setAttribute("data-active", "false"); aiT.classList.remove("active"); }
+        }
       }
     });
   }
@@ -980,6 +988,14 @@
       if (imgP) imgP.style.display = "none";
       if (imagesToggle) imagesToggle.setAttribute("data-active", "false");
     }
+    // Close AI panel when opening outline
+    if (outlinePanelOpen && aiSidePanelOpen) {
+      aiSidePanelOpen = false;
+      var aiP = document.getElementById("ai-panel");
+      if (aiP) aiP.style.display = "none";
+      var aiT = document.getElementById("ai-toggle");
+      if (aiT) { aiT.setAttribute("data-active", "false"); aiT.classList.remove("active"); }
+    }
     if (outlinePanelOpen) {
       updateOutlinePanel();
     }
@@ -990,6 +1006,25 @@
   }
   if (outlinePanelClose) {
     outlinePanelClose.addEventListener("click", toggleOutlinePanel);
+  }
+
+  // ─── Diff Highlight ───
+  function highlightChangedBlocks(oldMd, newMd) {
+    if (oldMd === newMd || !content) return;
+    setTimeout(function() {
+      var blocks = content.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table");
+      blocks.forEach(function(el) {
+        var text = (el.textContent || "").trim();
+        if (text.length < 5) return;
+        var snippet = text.substring(0, Math.min(text.length, 60));
+        if (!oldMd.includes(snippet)) {
+          el.style.transition = "background 1.5s ease-out";
+          el.style.background = "rgba(251, 146, 60, 0.12)";
+          el.style.borderRadius = "4px";
+          setTimeout(function() { el.style.background = ""; }, 3000);
+        }
+      });
+    }, 300);
   }
 
   function updateOutlinePanel() {
@@ -3185,6 +3220,228 @@
   }
 
   // ─── AI Tools ───
+
+  // ─── AI Side Panel ───
+
+  var aiSidePanelOpen = false;
+  var aiPrevMarkdown = null;
+
+  var aiSideToggle = document.getElementById("ai-toggle");
+  var aiSidePanelEl = document.getElementById("ai-panel");
+  var aiSidePanelClose = document.getElementById("ai-panel-close");
+  var aiSideChatHistory = document.getElementById("ai-chat-history");
+  var aiSideChatInput = document.getElementById("ai-chat-input");
+  var aiSideChatSend = document.getElementById("ai-chat-send");
+  var aiSideUndoBtn = document.getElementById("ai-undo-btn");
+
+  function toggleAiSidePanel() {
+    aiSidePanelOpen = !aiSidePanelOpen;
+    if (aiSidePanelEl) {
+      aiSidePanelEl.style.display = aiSidePanelOpen ? "" : "none";
+    }
+    if (aiSideToggle) {
+      aiSideToggle.setAttribute("data-active", aiSidePanelOpen ? "true" : "false");
+      aiSideToggle.classList.toggle("active", aiSidePanelOpen);
+    }
+    // Close outline and image when opening AI
+    if (aiSidePanelOpen) {
+      if (outlinePanelOpen && outlinePanelEl) {
+        outlinePanelOpen = false;
+        outlinePanelEl.classList.add("hidden");
+        if (outlineToggle) { outlineToggle.setAttribute("data-active", "false"); outlineToggle.classList.remove("active"); }
+      }
+      if (imagePanelOpen) {
+        imagePanelOpen = false;
+        var imgP = document.getElementById("image-panel");
+        if (imgP) imgP.style.display = "none";
+        if (imagesToggle) imagesToggle.setAttribute("data-active", "false");
+      }
+    }
+  }
+
+  if (aiSideToggle) aiSideToggle.addEventListener("click", toggleAiSidePanel);
+  if (aiSidePanelClose) aiSidePanelClose.addEventListener("click", function() {
+    aiSidePanelOpen = false;
+    if (aiSidePanelEl) aiSidePanelEl.style.display = "none";
+    if (aiSideToggle) { aiSideToggle.setAttribute("data-active", "false"); aiSideToggle.classList.remove("active"); }
+  });
+
+  function addAiSideChatMessage(role, text) {
+    if (!aiSideChatHistory) return;
+    var msg = document.createElement("div");
+    msg.className = "ai-chat-msg ai-chat-" + role;
+    msg.textContent = text;
+    aiSideChatHistory.appendChild(msg);
+    aiSideChatHistory.scrollTop = aiSideChatHistory.scrollHeight;
+  }
+
+  function showAiSideLoading(show) {
+    if (!aiSideChatHistory) return;
+    var existing = aiSideChatHistory.querySelector(".ai-loading-indicator");
+    if (show && !existing) {
+      var el = document.createElement("div");
+      el.className = "ai-loading-indicator";
+      el.innerHTML = '<div class="ai-spinner"></div><span>Processing...</span>';
+      aiSideChatHistory.appendChild(el);
+      aiSideChatHistory.scrollTop = aiSideChatHistory.scrollHeight;
+    } else if (!show && existing) {
+      existing.remove();
+    }
+  }
+
+  // AI action buttons in side panel
+  if (aiSidePanelEl) {
+    aiSidePanelEl.querySelectorAll(".ai-action-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var action = btn.getAttribute("data-ai-action");
+        if (!action) return;
+
+        if (action === "translate") {
+          showAiSideTranslateMenu(btn);
+          return;
+        }
+
+        aiPrevMarkdown = currentMarkdown;
+        if (aiSideUndoBtn) aiSideUndoBtn.style.display = "";
+        addAiSideChatMessage("user", action.charAt(0).toUpperCase() + action.slice(1));
+        showAiSideLoading(true);
+        runAISidePanelAction(action);
+      });
+    });
+  }
+
+  function showAiSideTranslateMenu(anchorBtn) {
+    var existing = document.getElementById("ai-side-translate-dropdown");
+    if (existing) { existing.remove(); return; }
+
+    var languages = [
+      { code: "en", label: "English" }, { code: "ko", label: "Korean" },
+      { code: "ja", label: "Japanese" }, { code: "zh", label: "Chinese" },
+      { code: "es", label: "Spanish" }, { code: "fr", label: "French" },
+      { code: "de", label: "German" }, { code: "pt", label: "Portuguese" }
+    ];
+
+    var rect = anchorBtn.getBoundingClientRect();
+    var menu = document.createElement("div");
+    menu.id = "ai-side-translate-dropdown";
+    menu.className = "ai-translate-dropdown";
+    menu.style.position = "fixed";
+    menu.style.top = (rect.bottom + 4) + "px";
+    menu.style.left = rect.left + "px";
+
+    languages.forEach(function(lang) {
+      var item = document.createElement("button");
+      item.className = "ai-translate-item";
+      item.textContent = lang.label;
+      item.addEventListener("click", function() {
+        menu.remove();
+        aiPrevMarkdown = currentMarkdown;
+        if (aiSideUndoBtn) aiSideUndoBtn.style.display = "";
+        addAiSideChatMessage("user", "Translate to " + lang.label);
+        showAiSideLoading(true);
+        runAISidePanelAction("translate", lang.code);
+      });
+      menu.appendChild(item);
+    });
+
+    document.body.appendChild(menu);
+    setTimeout(function() {
+      document.addEventListener("click", function dismiss() {
+        var m = document.getElementById("ai-side-translate-dropdown");
+        if (m) m.remove();
+        document.removeEventListener("click", dismiss);
+      });
+    }, 0);
+  }
+
+  // AI chat input
+  function sendAiSideChat() {
+    if (!aiSideChatInput) return;
+    var instruction = aiSideChatInput.value.trim();
+    if (!instruction) return;
+    aiSideChatInput.value = "";
+    aiPrevMarkdown = currentMarkdown;
+    if (aiSideUndoBtn) aiSideUndoBtn.style.display = "";
+    addAiSideChatMessage("user", instruction);
+    showAiSideLoading(true);
+    runAISidePanelAction("chat", instruction);
+  }
+
+  if (aiSideChatSend) aiSideChatSend.addEventListener("click", sendAiSideChat);
+  if (aiSideChatInput) {
+    aiSideChatInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendAiSideChat();
+      }
+    });
+  }
+
+  // AI undo
+  if (aiSideUndoBtn) {
+    aiSideUndoBtn.addEventListener("click", function() {
+      if (aiPrevMarkdown !== null) {
+        loadDocumentContent(aiPrevMarkdown, currentFilePath);
+        aiPrevMarkdown = null;
+        aiSideUndoBtn.style.display = "none";
+        addAiSideChatMessage("system", "Reverted to previous version.");
+      }
+    });
+  }
+
+  async function runAISidePanelAction(action, languageOrInstruction) {
+    if (!window.mdfyDesktop) { showAiSideLoading(false); return; }
+
+    if (!sidebarState.authState.loggedIn) {
+      showAiSideLoading(false);
+      addAiSideChatMessage("error", "Sign in to use AI features.");
+      return;
+    }
+
+    var md = htmlToMarkdown(content);
+    if (!md || !md.trim()) {
+      showAiSideLoading(false);
+      addAiSideChatMessage("error", "No content to process.");
+      return;
+    }
+
+    var prevMd = currentMarkdown;
+
+    try {
+      var result = await window.mdfyDesktop.aiAction(action, md, languageOrInstruction || undefined);
+      showAiSideLoading(false);
+
+      if (result.error) {
+        addAiSideChatMessage("error", result.error);
+        return;
+      }
+      if (result.result) {
+        var text = result.result;
+        if (action === "chat" && !text.trim().startsWith("EDIT:")) {
+          addAiSideChatMessage("ai", text.replace(/^ANSWER:\s*/, ""));
+          return;
+        }
+        text = text.replace(/^EDIT:\s*/, "");
+
+        // Apply result
+        var shouldReplace = (action === "polish" || action === "translate" || action === "chat");
+        if (shouldReplace) {
+          loadDocumentContent(text, currentFilePath);
+        } else {
+          loadDocumentContent(text + "\n\n---\n\n" + md, currentFilePath);
+        }
+
+        var label = action.charAt(0).toUpperCase() + action.slice(1);
+        addAiSideChatMessage("ai", label + " applied successfully.");
+
+        // Highlight diff
+        highlightChangedBlocks(prevMd, currentMarkdown);
+      }
+    } catch (e) {
+      showAiSideLoading(false);
+      addAiSideChatMessage("error", "AI failed: " + e.message);
+    }
+  }
 
   function showAIMenu(anchorBtn) {
     var existing = document.getElementById("ai-dropdown");
