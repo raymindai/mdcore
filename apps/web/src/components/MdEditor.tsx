@@ -29,6 +29,7 @@ import {
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
   LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck,
 } from "lucide-react";
+import morphdom from "morphdom";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
@@ -1599,20 +1600,11 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: update markdown, render, and sync CM6
-  // Does NOT trigger auto-save — the typing user's auto-save handles persistence
-  // During WYSIWYG editing: defer doRender to avoid destroying contentEditable DOM.
-  // Remote changes are stored in state; re-render happens when user stops typing.
-  const wysiwygEditingRef2 = useRef(false);
-  const collabPendingRenderRef = useRef(false);
+  // Remote change handler: always render immediately.
+  // morphdom patches the DOM selectively, preserving cursor position.
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    if (wysiwygEditingRef2.current) {
-      // Defer render — will fire when wysiwygEditingRef goes false
-      collabPendingRenderRef.current = true;
-    } else {
-      doRenderRef.current(newMarkdown);
-    }
+    doRenderRef.current(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
@@ -4198,7 +4190,7 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // WYSIWYG: contentEditable preview → markdown source sync
-  const wysiwygEditingRef = wysiwygEditingRef2; // shared with collabRemoteHandler
+  const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
@@ -4390,11 +4382,6 @@ export default function MdEditor() {
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       setTimeout(() => {
         wysiwygEditingRef.current = false;
-        // Flush deferred remote render if any
-        if (collabPendingRenderRef.current) {
-          collabPendingRenderRef.current = false;
-          doRenderRef.current(markdownRef.current);
-        }
       }, 500);
 
       // Re-process math elements that may have been damaged by contentEditable
@@ -8045,8 +8032,27 @@ ${clone.innerHTML}
                   ref={(el) => {
                     const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
                     if (el && el.getAttribute("data-html-hash") !== hash) {
-                      if (!wysiwygEditingRef.current) {
+                      if (el.innerHTML === "" || !el.childNodes.length) {
+                        // First render — set innerHTML directly
                         el.innerHTML = html;
+                      } else {
+                        // Subsequent renders — use morphdom to patch only changed nodes
+                        // Preserves cursor position during collaboration
+                        const tmp = document.createElement("article");
+                        tmp.innerHTML = html;
+                        morphdom(el, tmp, {
+                          childrenOnly: true,
+                          onBeforeElUpdated: (fromEl, toEl) => {
+                            // Skip non-editable islands (code blocks, KaTeX, Mermaid)
+                            // if their source content hasn't changed
+                            if (fromEl.getAttribute?.("contenteditable") === "false" &&
+                                fromEl.getAttribute?.("data-sourcepos") === toEl.getAttribute?.("data-sourcepos") &&
+                                fromEl.getAttribute?.("data-sourcepos")) {
+                              return false;
+                            }
+                            return true;
+                          },
+                        });
                       }
                       el.setAttribute("data-html-hash", hash);
                     }
