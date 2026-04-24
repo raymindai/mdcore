@@ -143,7 +143,7 @@ test.describe("Editor — AI Tools", () => {
     if (await aiBtn.isVisible()) {
       await aiBtn.click();
       // AI side panel should open with quick action buttons
-      await expect(page.locator('text=AI Tools')).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('[class*="shrink-0"]:has-text("AI Tools")').first()).toBeVisible({ timeout: 3000 });
       await expect(page.locator('button:has-text("Polish")').first()).toBeVisible();
       await expect(page.locator('button:has-text("Summary")').first()).toBeVisible();
       await expect(page.locator('button:has-text("TL;DR")').first()).toBeVisible();
