@@ -71,8 +71,18 @@ export function useCollaboration(
     ydocRef.current = ydoc;
     ytextRef.current = ytext;
 
-    // Initialize Y.Text with the current editor content
-    ytext.insert(0, markdownRef.current);
+    // Don't insert content yet — wait for sync-response from peers.
+    // If no peers respond within a timeout, initialize with local content.
+    let initialized = false;
+    const initTimer = setTimeout(() => {
+      if (!initialized) {
+        initialized = true;
+        const current = markdownRef.current;
+        if (current && ytext.length === 0) {
+          ytext.insert(0, current);
+        }
+      }
+    }, 1500);
 
     // Listen for local Y.Doc updates and broadcast to peers
     ydoc.on("update", (update: Uint8Array, origin: unknown) => {
@@ -99,11 +109,15 @@ export function useCollaboration(
         isApplyingRemoteRef.current = true;
         Y.applyUpdate(ydoc, update, "remote");
         const merged = ytext.toString();
-        onRemoteChangeRef.current(merged);
+        // Protect against blank: only apply if result has content
+        if (merged.trim() || markdownRef.current.trim().length === 0) {
+          onRemoteChangeRef.current(merged);
+        }
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // Peer just joined — send full state so they can catch up
+        // Peer just joined — only send state if we have content (avoid sending empty state)
+        if (!initialized || ytext.length === 0) return;
         const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
@@ -114,10 +128,35 @@ export function useCollaboration(
       .on("broadcast", { event: "yjs-sync-response" }, ({ payload }: { payload: { state?: string } }) => {
         if (!payload?.state) return;
         const state = base64ToUint8(payload.state);
+
+        // Decode peer content to check if it's empty
+        const freshDoc = new Y.Doc();
+        Y.applyUpdate(freshDoc, state);
+        const peerContent = freshDoc.getText("content").toString();
+        freshDoc.destroy();
+
+        // NEVER replace with empty content — protect against blank document
+        if (!peerContent.trim()) return;
+
         isApplyingRemoteRef.current = true;
+        if (!initialized) {
+          initialized = true;
+          clearTimeout(initTimer);
+          // Replace local with peer content (avoid CRDT merge duplication)
+          if (ytext.length > 0) {
+            ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
+          }
+          ydoc.transact(() => { ytext.insert(0, peerContent); });
+          onRemoteChangeRef.current(ytext.toString());
+          isApplyingRemoteRef.current = false;
+          return;
+        }
+        // After initialization, use normal CRDT merge
         Y.applyUpdate(ydoc, state, "remote");
         const merged = ytext.toString();
-        onRemoteChangeRef.current(merged);
+        if (merged.trim()) { // Only apply non-empty merged content
+          onRemoteChangeRef.current(merged);
+        }
         isApplyingRemoteRef.current = false;
       })
       .on("presence", { event: "sync" }, () => {
@@ -141,6 +180,7 @@ export function useCollaboration(
     channelRef.current = channel;
 
     return () => {
+      clearTimeout(initTimer);
       channel.unsubscribe();
       ydoc.destroy();
       ydocRef.current = null;

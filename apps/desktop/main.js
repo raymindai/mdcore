@@ -746,14 +746,25 @@ const CollaborationManager = {
     if (!cloudId) return;
 
     this._cloudId = cloudId;
+    this._initialMarkdown = initialMarkdown || "";
 
     const ydoc = new Y.Doc();
     const ytext = ydoc.getText("content");
     this._ydoc = ydoc;
     this._ytext = ytext;
 
-    // Initialize Y.Text with current content
-    ytext.insert(0, initialMarkdown || "");
+    // Don't insert content yet — wait for sync-response from peers.
+    // If no peers respond within a timeout, initialize with local content.
+    let initialized = false;
+    this._initTimer = setTimeout(() => {
+      if (!initialized) {
+        initialized = true;
+        const content = this._initialMarkdown;
+        if (content && ytext.length === 0) {
+          ytext.insert(0, content);
+        }
+      }
+    }, 1500);
 
     // Listen for local Y.Doc updates and broadcast to peers
     ydoc.on("update", (update, origin) => {
@@ -785,7 +796,7 @@ const CollaborationManager = {
         this._isApplyingRemote = false;
       })
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // Peer just joined — send full state
+        if (!initialized || ytext.length === 0) return;
         const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
@@ -796,10 +807,26 @@ const CollaborationManager = {
       .on("broadcast", { event: "yjs-sync-response" }, ({ payload }) => {
         if (!payload?.state) return;
         const state = base64ToUint8(payload.state);
+        const freshDoc = new Y.Doc();
+        Y.applyUpdate(freshDoc, state);
+        const peerContent = freshDoc.getText("content").toString();
+        freshDoc.destroy();
+        if (!peerContent.trim()) return; // Never replace with empty
         this._isApplyingRemote = true;
+        if (!initialized) {
+          initialized = true;
+          if (this._initTimer) { clearTimeout(this._initTimer); this._initTimer = null; }
+          if (ytext.length > 0) {
+            ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
+          }
+          ydoc.transact(() => { ytext.insert(0, peerContent); });
+          sendToRenderer("collab-remote-change", { markdown: ytext.toString() });
+          this._isApplyingRemote = false;
+          return;
+        }
         Y.applyUpdate(ydoc, state, "remote");
         const merged = ytext.toString();
-        sendToRenderer("collab-remote-change", { markdown: merged });
+        if (merged.trim()) sendToRenderer("collab-remote-change", { markdown: merged });
         this._isApplyingRemote = false;
       })
       .on("presence", { event: "sync" }, () => {
@@ -829,6 +856,10 @@ const CollaborationManager = {
    * Stop collaborative editing. Cleanup Y.Doc and channel.
    */
   stop() {
+    if (this._initTimer) {
+      clearTimeout(this._initTimer);
+      this._initTimer = null;
+    }
     if (this._channel) {
       this._channel.unsubscribe();
       this._channel = null;
@@ -839,6 +870,7 @@ const CollaborationManager = {
       this._ytext = null;
     }
     this._cloudId = null;
+    this._initialMarkdown = "";
     this._peerCount = 0;
     this._isApplyingRemote = false;
     sendToRenderer("collab-status", { active: false, cloudId: null });

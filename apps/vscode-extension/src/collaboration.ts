@@ -35,6 +35,8 @@ interface CollabSession {
   channel: RealtimeChannel;
   isApplyingRemote: boolean;
   peerCount: number;
+  initialized: boolean;
+  initTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export class CollaborationManager {
@@ -77,9 +79,8 @@ export class CollaborationManager {
     const ydoc = new Y.Doc();
     const ytext = ydoc.getText("content");
 
-    // Initialize Y.Text with current content
-    ytext.insert(0, initialMarkdown);
-
+    // Don't insert content yet — wait for sync-response from peers.
+    // If no peers respond within a timeout, initialize with local content.
     const session: CollabSession = {
       cloudId,
       ydoc,
@@ -87,6 +88,15 @@ export class CollaborationManager {
       channel: null as unknown as RealtimeChannel,
       isApplyingRemote: false,
       peerCount: 0,
+      initialized: false,
+      initTimer: setTimeout(() => {
+        if (!session.initialized) {
+          session.initialized = true;
+          if (initialMarkdown && ytext.length === 0) {
+            ytext.insert(0, initialMarkdown);
+          }
+        }
+      }, 1500),
     };
 
     // Listen for local Y.Doc updates and broadcast to peers
@@ -122,7 +132,7 @@ export class CollaborationManager {
         }
       )
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // Peer just joined — send full state
+        if (!session.initialized || ytext.length === 0) return;
         const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
@@ -136,10 +146,26 @@ export class CollaborationManager {
         ({ payload }: { payload: { state?: string } }) => {
           if (!payload?.state) return;
           const state = base64ToUint8(payload.state);
+          const freshDoc = new Y.Doc();
+          Y.applyUpdate(freshDoc, state);
+          const peerContent = freshDoc.getText("content").toString();
+          freshDoc.destroy();
+          if (!peerContent.trim()) return; // Never replace with empty
           session.isApplyingRemote = true;
+          if (!session.initialized) {
+            session.initialized = true;
+            if (session.initTimer) { clearTimeout(session.initTimer); session.initTimer = null; }
+            if (ytext.length > 0) {
+              ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
+            }
+            ydoc.transact(() => { ytext.insert(0, peerContent); });
+            this._onRemoteChange.fire({ uri: documentUri, markdown: ytext.toString() });
+            session.isApplyingRemote = false;
+            return;
+          }
           Y.applyUpdate(ydoc, state, "remote");
           const merged = ytext.toString();
-          this._onRemoteChange.fire({ uri: documentUri, markdown: merged });
+          if (merged.trim()) this._onRemoteChange.fire({ uri: documentUri, markdown: merged });
           session.isApplyingRemote = false;
         }
       )
@@ -180,6 +206,7 @@ export class CollaborationManager {
     const session = this.sessions.get(key);
     if (!session) return;
 
+    if (session.initTimer) { clearTimeout(session.initTimer); session.initTimer = null; }
     session.channel.unsubscribe();
     session.ydoc.destroy();
     this.sessions.delete(key);
@@ -224,6 +251,7 @@ export class CollaborationManager {
    */
   dispose(): void {
     for (const [, session] of this.sessions) {
+      if (session.initTimer) { clearTimeout(session.initTimer); }
       session.channel.unsubscribe();
       session.ydoc.destroy();
     }
