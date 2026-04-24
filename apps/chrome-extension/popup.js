@@ -388,6 +388,10 @@ chkFloat.addEventListener("change", () => {
 
 // ─── Document Search ───
 
+function escHtml(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 const searchInput = document.getElementById("search-input");
 const searchResultsEl = document.getElementById("search-results");
 let searchTimer = null;
@@ -422,9 +426,9 @@ if (searchInput) {
           return;
         }
         searchResultsEl.innerHTML = results.slice(0, 5).map(r =>
-          `<a href="${MDFY_URL}/?doc=${r.id}" target="_blank" style="display:block;padding:5px 8px;border-radius:4px;text-decoration:none;margin-bottom:2px;transition:background 0.1s" onmouseover="this.style.background='#1c1c24'" onmouseout="this.style.background='none'">
-            <div style="font-size:11px;font-weight:600;color:#e4e4e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</div>
-            <div style="font-size:9px;color:#52525b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.snippet || "").slice(0, 60)}</div>
+          `<a href="${MDFY_URL}/?doc=${escHtml(r.id)}" target="_blank" style="display:block;padding:5px 8px;border-radius:4px;text-decoration:none;margin-bottom:2px;transition:background 0.1s" onmouseover="this.style.background='#1c1c24'" onmouseout="this.style.background='none'">
+            <div style="font-size:11px;font-weight:600;color:#e4e4e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title)}</div>
+            <div style="font-size:9px;color:#52525b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml((r.snippet || "").slice(0, 60))}</div>
           </a>`
         ).join("");
       } catch { searchResultsEl.innerHTML = ""; }

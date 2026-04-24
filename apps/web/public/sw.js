@@ -27,19 +27,9 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (event.request.method !== "GET") return;
 
-  // API calls: network-first, cache fallback for document reads
-  if (url.pathname.startsWith("/api/docs/") && !url.pathname.includes("/versions")) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+  // API calls: network-only (don't cache authenticated responses to avoid
+  // serving stale/private data across sessions or after permission changes)
+  if (url.pathname.startsWith("/api/")) {
     return;
   }
 

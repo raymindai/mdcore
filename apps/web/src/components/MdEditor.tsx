@@ -2180,19 +2180,22 @@ export default function MdEditor() {
       return;
     }
     setIsCloudSearching(true);
+    const controller = new AbortController();
     cloudSearchTimerRef.current = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(sidebarSearch)}`, { headers: authHeadersRef.current })
+      fetch(`/api/search?q=${encodeURIComponent(sidebarSearch)}`, { headers: authHeadersRef.current, signal: controller.signal })
         .then(res => res.ok ? res.json() : { results: [] })
         .then(data => {
           setCloudSearchResults(data.results || []);
           setIsCloudSearching(false);
         })
         .catch(() => {
-          setCloudSearchResults([]);
-          setIsCloudSearching(false);
+          if (!controller.signal.aborted) {
+            setCloudSearchResults([]);
+            setIsCloudSearching(false);
+          }
         });
     }, 400);
-    return () => { if (cloudSearchTimerRef.current) clearTimeout(cloudSearchTimerRef.current); };
+    return () => { if (cloudSearchTimerRef.current) clearTimeout(cloudSearchTimerRef.current); controller.abort(); };
   }, [sidebarSearch]);
 
   // Debounced search for Cmd+K palette (3+ chars, no matching commands)
@@ -2204,19 +2207,22 @@ export default function MdEditor() {
       return;
     }
     setIsCmdSearching(true);
+    const controller = new AbortController();
     cmdSearchTimerRef.current = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(cmdSearch)}`, { headers: authHeadersRef.current })
+      fetch(`/api/search?q=${encodeURIComponent(cmdSearch)}`, { headers: authHeadersRef.current, signal: controller.signal })
         .then(res => res.ok ? res.json() : { results: [] })
         .then(data => {
           setCmdSearchResults(data.results || []);
           setIsCmdSearching(false);
         })
         .catch(() => {
-          setCmdSearchResults([]);
-          setIsCmdSearching(false);
+          if (!controller.signal.aborted) {
+            setCmdSearchResults([]);
+            setIsCmdSearching(false);
+          }
         });
     }, 400);
-    return () => { if (cmdSearchTimerRef.current) clearTimeout(cmdSearchTimerRef.current); };
+    return () => { if (cmdSearchTimerRef.current) clearTimeout(cmdSearchTimerRef.current); controller.abort(); };
   }, [cmdSearch, showCommandPalette]);
 
   const addTabWithContent = useCallback(async (initialMd: string) => {
@@ -2754,6 +2760,25 @@ export default function MdEditor() {
         setIsSharedDoc(true);
         setViewMode("preview");
         // loadTab already triggers doRender — no duplicate call
+        window.history.replaceState(null, "", "/");
+        return;
+      }
+
+      // Handle PWA share_target: ?title=...&text=...&url=...
+      const shareParams = new URLSearchParams(window.location.search);
+      const shareText = shareParams.get("text");
+      const shareUrl = shareParams.get("url");
+      if (shareText || shareUrl) {
+        const shareTitle = shareParams.get("title") || "";
+        const parts: string[] = [];
+        if (shareTitle) parts.push(`# ${shareTitle}\n`);
+        if (shareText) parts.push(shareText);
+        if (shareUrl) parts.push(`\n${shareUrl}`);
+        const shareMd = parts.join("\n");
+        const tabId = `tab-${Date.now()}`;
+        const tab: Tab = { id: tabId, title: shareTitle || "Shared", markdown: shareMd };
+        setTabs(prev => [...prev, tab]);
+        loadTab(tab);
         window.history.replaceState(null, "", "/");
         return;
       }
