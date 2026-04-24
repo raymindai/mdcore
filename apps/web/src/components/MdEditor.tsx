@@ -5456,8 +5456,8 @@ ${html}
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
-        <div className="flex flex-wrap items-center justify-between px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "1 1 300px" }}>
+        <div className="flex flex-wrap items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2" style={{ justifyContent: "space-between" }}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "40%", order: 0 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -5624,8 +5624,8 @@ ${html}
 
         {/* Center: Home + Layout mode switcher (single group) */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0 mx-3"
-          style={{ border: "1px solid var(--border-dim)" }}
+          className="flex items-center rounded-lg overflow-hidden shrink-0"
+          style={{ border: "1px solid var(--border-dim)", order: 1 }}
         >
           {/* Home */}
           <button
@@ -5675,7 +5675,7 @@ ${html}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs flex-1 justify-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ order: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
 
