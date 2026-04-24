@@ -1601,10 +1601,14 @@ export default function MdEditor() {
   // ─── Yjs CRDT Collaboration ───
   // Remote change handler: update markdown, render, and sync CM6
   // Does NOT trigger auto-save — the typing user's auto-save handles persistence
+  // Skip doRender when user is actively editing in LIVE contentEditable
+  // (re-rendering would destroy their DOM editing state)
+  const wysiwygEditingRef2 = useRef(false);
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    doRenderRef.current(newMarkdown);
-    // Apply to CM6 — use cmSetDoc which skips if content is identical
+    if (!wysiwygEditingRef2.current) {
+      doRenderRef.current(newMarkdown);
+    }
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor } = useCollaboration(
@@ -4188,7 +4192,7 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // WYSIWYG: contentEditable preview → markdown source sync
-  const wysiwygEditingRef = useRef(false);
+  const wysiwygEditingRef = wysiwygEditingRef2; // shared with collabRemoteHandler
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
