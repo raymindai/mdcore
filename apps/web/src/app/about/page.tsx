@@ -166,8 +166,8 @@ export default function AboutPage() {
           </h2>
           <div className="about-grid-3">
             {[
-              { icon: "COLLECT", color: "#fb923c", title: "Capture from every source", items: ["AI chats — ChatGPT, Claude, Gemini", "GitHub — any .md file in any repo", "Files — PDF, Word, PowerPoint, Excel", "Editors — VS Code, Mac desktop app", "Terminal — CLI pipe, tmux capture"] },
-              { icon: "EDIT", color: "#4ade80", title: "Edit with AI-powered tools", items: ["WYSIWYG — click and type like a doc", "AI Polish — fix grammar and style", "AI Translate — 12 languages", "AI Chat — ask questions or edit by instruction", "Version history — revert to any point"] },
+              { icon: "COLLECT", color: "#fb923c", title: "Capture from every source", items: ["AI chats — ChatGPT, Claude, Gemini (Chrome extension)", "GitHub — any .md file in any repo", "Files — PDF, Word, PowerPoint, Excel, and 10+ formats", "Editors — VS Code, Mac Desktop, CLI, MCP Server", "Terminal — CLI pipe, tmux capture, QuickLook preview"] },
+              { icon: "EDIT", color: "#4ade80", title: "Edit with AI-powered tools", items: ["WYSIWYG — click and type directly in the rendered view", "AI Tools — Polish, Summary, TL;DR, Translate, Chat (side panel)", "Document Outline — heading hierarchy for navigation", "Image Gallery — upload, manage, and insert images", "Version history — revert to any saved version"] },
               { icon: "PUBLISH", color: "#60a5fa", title: "Share with a permanent URL", items: ["One URL — anyone can view, no login", "Embed in websites (iframe)", "Paste URL in AI chats as context", "Password protect or restrict by email", "QR code for mobile sharing"] },
             ].map((col) => (
               <div key={col.title}>

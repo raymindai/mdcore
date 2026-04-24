@@ -77,7 +77,7 @@ const exploreCards = [
   },
   {
     title: "Integrations",
-    desc: "VS Code, Mac app, Chrome extension, QuickLook, tmux plugin.",
+    desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, QuickLook, tmux — 8 channels.",
     href: "/plugins",
   },
   {
