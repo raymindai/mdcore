@@ -6268,7 +6268,6 @@ ${clone.innerHTML}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-            onDoubleClick={() => closeSidebar()}
           >
             <div className="flex items-center gap-1.5">
               <div className="relative group">
@@ -7760,7 +7759,6 @@ ${clone.innerHTML}
               data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-              onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
@@ -8517,7 +8515,6 @@ ${clone.innerHTML}
             <div
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-              onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <span className="shrink-0" style={{ color: "var(--accent)" }}>SOURCE</span>
