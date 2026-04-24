@@ -8428,6 +8428,9 @@ ${html}
               </div>
             </div>
           </div>
+          <button onClick={() => { setShowCommandPalette(true); setCmdSearch(""); }} className="transition-colors hidden sm:inline-flex items-center gap-1" style={{ color: "var(--text-faint)", background: "none", border: "1px solid var(--border-dim)", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer" }} title="Command palette">
+            <span style={{ fontSize: 10 }}>{navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl+"}K</span>
+          </button>
           <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.cc">About</a>
           <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
           <a href="/discover" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
@@ -9720,14 +9723,26 @@ ${html}
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Type a command..."
+                  placeholder="Search documents or type a command..."
                   className="w-full bg-transparent outline-none text-sm"
                   style={{ color: "var(--text-primary)" }}
                   value={cmdSearch}
                   onChange={e => setCmdSearch(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === "Enter" && filtered.length > 0) {
-                      filtered[0].action();
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                      if (cmdSearchResults.length > 0 && filtered.length === 0) {
+                        // Open first search result
+                        const r = cmdSearchResults[0];
+                        const tabId = `cloud-${r.id}`;
+                        const exists = tabs.find(t => t.id === tabId || t.cloudId === r.id);
+                        if (exists) { switchTab(exists.id); }
+                        else {
+                          setTabs(prev => [...prev, { id: tabId, title: r.title || "Untitled", markdown: "", cloudId: r.id, isDraft: true, permission: "mine" as const }]);
+                          setTimeout(() => switchTab(tabId), 50);
+                        }
+                      } else if (filtered.length > 0) {
+                        filtered[0].action();
+                      }
                       setShowCommandPalette(false);
                       setCmdSearch("");
                     }
