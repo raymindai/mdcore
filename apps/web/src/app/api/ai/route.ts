@@ -1,9 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type AIAction = "polish" | "summary" | "tldr" | "translate" | "chat";
+
+// ─── AI Model Config (cached from site_config table) ───
+const DEFAULT_PRIMARY_MODEL = "gemini-2.5-flash-preview-05-20";
+const DEFAULT_LITE_MODEL = "gemini-3.1-flash-lite-preview";
+
+let cachedModels: { primary: string; lite: string } | null = null;
+let cachedModelsAt = 0;
+const MODEL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getAIModels(): Promise<{ primary: string; lite: string }> {
+  if (cachedModels && Date.now() - cachedModelsAt < MODEL_CACHE_TTL) {
+    return cachedModels;
+  }
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from("site_config")
+        .select("key, value")
+        .in("key", ["ai_model_primary", "ai_model_lite"]);
+      const map: Record<string, string> = {};
+      for (const row of data || []) map[row.key] = row.value;
+      cachedModels = {
+        primary: map["ai_model_primary"] || DEFAULT_PRIMARY_MODEL,
+        lite: map["ai_model_lite"] || DEFAULT_LITE_MODEL,
+      };
+      cachedModelsAt = Date.now();
+      return cachedModels;
+    }
+  } catch {
+    // Fall through to defaults
+  }
+  cachedModels = { primary: DEFAULT_PRIMARY_MODEL, lite: DEFAULT_LITE_MODEL };
+  cachedModelsAt = Date.now();
+  return cachedModels;
+}
 
 const PROMPTS: Record<Exclude<AIAction, "chat" | "translate">, string> = {
   polish: `You are an expert editor. Polish the following Markdown document:
@@ -122,9 +159,13 @@ ${markdown.slice(0, 3 * 1024 * 1024)}
 
 ${action === "chat" ? "Modified document:" : action === "polish" || action === "translate" ? "Result:" : "Output:"}`;
 
+  // Resolve model from site_config (cached 5 min)
+  const models = await getAIModels();
+  const modelName = (action === "chat" || action === "polish" || action === "translate") ? models.primary : models.lite;
+
   const callGemini = async (attempt: number): Promise<Response> => {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${action === "chat" || action === "polish" || action === "translate" ? "gemini-2.5-flash-preview-05-20" : "gemini-3.1-flash-lite-preview"}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

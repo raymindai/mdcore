@@ -60,10 +60,15 @@ export default function AdminPage() {
   const [sourceBreakdown, setSourceBreakdown] = useState<Record<string, number>>({});
   const [emailTemplates, setEmailTemplates] = useState<{ name: string; subject: string; html: string }[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<number>(0);
-  const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "emails" | "activity">("overview");
+  const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "emails" | "activity" | "settings">("overview");
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [secondsAgo, setSecondsAgo] = useState(0);
+  // AI model settings
+  const [aiModelPrimary, setAiModelPrimary] = useState("gemini-2.5-flash-preview-05-20");
+  const [aiModelLite, setAiModelLite] = useState("gemini-3.1-flash-lite-preview");
+  const [savingModels, setSavingModels] = useState(false);
+  const [modelSaveMsg, setModelSaveMsg] = useState("");
 
   // Auth check
   useEffect(() => {
@@ -103,6 +108,10 @@ export default function AdminPage() {
       setDailyStats(data.dailyStats || []);
       setSourceBreakdown(data.sourceBreakdown || {});
       setEmailTemplates(data.emailTemplates || []);
+      if (data.aiModels) {
+        setAiModelPrimary(data.aiModels.primary || "gemini-2.5-flash-preview-05-20");
+        setAiModelLite(data.aiModels.lite || "gemini-3.1-flash-lite-preview");
+      }
     } catch {
       setAuthed(false);
     }
@@ -162,7 +171,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 2, marginBottom: 24, borderBottom: "1px solid #27272a" }}>
-        {(["overview", "charts", "users", "documents", "activity"] as const).map(t => (
+        {(["overview", "charts", "users", "documents", "activity", "settings"] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -348,6 +357,102 @@ export default function AdminPage() {
                 </div>
               ))}
               {recent.length === 0 && <p style={{ color: "#52525b" }}>No recent activity</p>}
+            </div>
+          )}
+
+          {/* Settings */}
+          {tab === "settings" && (
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#fafafa", margin: "0 0 8px" }}>AI Model Configuration</h3>
+              <p style={{ fontSize: 12, color: "#52525b", marginBottom: 24 }}>
+                Configure which Gemini models are used for AI features. Changes take effect within 5 minutes.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 480 }}>
+                {/* Primary model */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#a1a1aa", display: "block", marginBottom: 6 }}>
+                    Primary Model
+                    <span style={{ fontWeight: 400, color: "#52525b", marginLeft: 8 }}>chat, polish, translate</span>
+                  </label>
+                  <select
+                    value={aiModelPrimary}
+                    onChange={e => setAiModelPrimary(e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
+                    <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+                    <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                  </select>
+                </div>
+
+                {/* Lite model */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#a1a1aa", display: "block", marginBottom: 6 }}>
+                    Lite Model
+                    <span style={{ fontWeight: 400, color: "#52525b", marginLeft: 8 }}>summary, tldr</span>
+                  </label>
+                  <select
+                    value={aiModelLite}
+                    onChange={e => setAiModelLite(e.target.value)}
+                    style={selectStyle}
+                  >
+                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
+                    <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+                    <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                  </select>
+                </div>
+
+                {/* Save */}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button
+                    onClick={async () => {
+                      setSavingModels(true);
+                      setModelSaveMsg("");
+                      try {
+                        const sb = getSupabaseBrowserClient();
+                        const { data: sessionData } = await sb!.auth.getSession();
+                        const token = sessionData.session?.access_token;
+                        const res = await fetch("/api/admin", {
+                          method: "PATCH",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+                            "x-user-email": email,
+                          },
+                          body: JSON.stringify({ aiModelPrimary, aiModelLite }),
+                        });
+                        if (!res.ok) {
+                          const err = await res.json();
+                          setModelSaveMsg(err.error || "Failed to save");
+                        } else {
+                          setModelSaveMsg("Saved successfully");
+                        }
+                      } catch {
+                        setModelSaveMsg("Network error");
+                      }
+                      setSavingModels(false);
+                    }}
+                    disabled={savingModels}
+                    style={{
+                      ...btnStyle,
+                      background: savingModels ? "#27272a" : "#fb923c",
+                      color: savingModels ? "#71717a" : "#000",
+                      border: "none",
+                      cursor: savingModels ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {savingModels ? "Saving..." : "Save Models"}
+                  </button>
+                  {modelSaveMsg && (
+                    <span style={{ fontSize: 12, color: modelSaveMsg.includes("success") ? "#4ade80" : "#ef4444" }}>
+                      {modelSaveMsg}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </>
@@ -566,4 +671,17 @@ const tdStyle: React.CSSProperties = {
   padding: "8px 12px",
   borderBottom: "1px solid #1c1c24",
   color: "#a1a1aa",
+};
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 12px",
+  fontSize: 13,
+  fontFamily: "'SF Mono', 'Fira Code', monospace",
+  background: "#1c1c24",
+  color: "#fafafa",
+  border: "1px solid #27272a",
+  borderRadius: 6,
+  cursor: "pointer",
+  outline: "none",
 };

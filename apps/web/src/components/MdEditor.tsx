@@ -4465,10 +4465,10 @@ export default function MdEditor() {
     if (!showHistory) setShowAIPanel(false); // close AI panel when opening history
   }, [showHistory, docId, loadVersions]);
 
-  // Auto-refresh version list while history panel is open
+  // Auto-refresh version list while history panel is open (3s for near-realtime feel)
   useEffect(() => {
     if (!showHistory || !docId) return;
-    const interval = setInterval(() => { loadVersions(); }, 10000);
+    const interval = setInterval(() => { loadVersions(); }, 3000);
     return () => clearInterval(interval);
   }, [showHistory, docId, loadVersions]);
 

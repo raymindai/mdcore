@@ -156,7 +156,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       if (this._view?.visible) {
         this.sendDocuments();
       }
-    }, 60000);
+    }, 15000);
   }
 
   private _stopPeriodicRefresh(): void {

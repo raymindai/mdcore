@@ -5,18 +5,23 @@ import { getTemplatePreviews } from "@/lib/email";
 
 const ADMIN_EMAIL = "hi@raymind.ai";
 
-export async function GET(req: NextRequest) {
-  // Verify admin access
+// ─── Helper: verify admin ───
+async function verifyAdmin(req: NextRequest): Promise<{ supabase: ReturnType<typeof getSupabaseClient>; error?: NextResponse }> {
   const verified = await verifyAuthToken(req.headers.get("authorization"));
   const email = verified?.email || req.headers.get("x-user-email");
   if (!email || email.toLowerCase() !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return { supabase: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 403 }) };
   }
-
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+    return { supabase: null, error: NextResponse.json({ error: "Storage not configured" }, { status: 503 }) };
   }
+  return { supabase };
+}
+
+export async function GET(req: NextRequest) {
+  const { supabase, error } = await verifyAdmin(req);
+  if (error) return error;
 
   try {
     // Stats
@@ -142,6 +147,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Fetch AI model config from site_config
+    let aiModels: { primary: string; lite: string } = { primary: "gemini-2.5-flash-preview-05-20", lite: "gemini-3.1-flash-lite-preview" };
+    try {
+      const { data: configRows } = await supabase!.from("site_config").select("key, value").in("key", ["ai_model_primary", "ai_model_lite"]);
+      const configMap: Record<string, string> = {};
+      for (const row of configRows || []) configMap[row.key] = row.value;
+      if (configMap["ai_model_primary"]) aiModels.primary = configMap["ai_model_primary"];
+      if (configMap["ai_model_lite"]) aiModels.lite = configMap["ai_model_lite"];
+    } catch { /* table may not exist yet */ }
+
     return NextResponse.json({
       stats: {
         totalDocs: totalDocs || 0,
@@ -158,9 +173,61 @@ export async function GET(req: NextRequest) {
       dailyStats,
       sourceBreakdown: sourceCount,
       emailTemplates: getTemplatePreviews(),
+      aiModels,
     });
   } catch (err) {
     console.error("Admin API error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+}
+
+// ─── PATCH: Update AI model settings ───
+export async function PATCH(req: NextRequest) {
+  const { supabase, error } = await verifyAdmin(req);
+  if (error) return error;
+
+  try {
+    const body = await req.json();
+    const { aiModelPrimary, aiModelLite } = body as { aiModelPrimary?: string; aiModelLite?: string };
+
+    const allowedModels = [
+      "gemini-2.5-flash-preview-05-20",
+      "gemini-3-flash-preview",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-2.0-flash",
+    ];
+
+    const updates: { key: string; value: string; updated_at: string }[] = [];
+    const now = new Date().toISOString();
+
+    if (aiModelPrimary) {
+      if (!allowedModels.includes(aiModelPrimary)) {
+        return NextResponse.json({ error: `Invalid primary model: ${aiModelPrimary}` }, { status: 400 });
+      }
+      updates.push({ key: "ai_model_primary", value: aiModelPrimary, updated_at: now });
+    }
+    if (aiModelLite) {
+      if (!allowedModels.includes(aiModelLite)) {
+        return NextResponse.json({ error: `Invalid lite model: ${aiModelLite}` }, { status: 400 });
+      }
+      updates.push({ key: "ai_model_lite", value: aiModelLite, updated_at: now });
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json({ error: "No model values provided" }, { status: 400 });
+    }
+
+    for (const u of updates) {
+      const { error: upsertErr } = await supabase!.from("site_config").upsert(u, { onConflict: "key" });
+      if (upsertErr) {
+        console.error("Failed to update site_config:", upsertErr);
+        return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+      }
+    }
+
+    return NextResponse.json({ ok: true, updated: updates.map(u => u.key) });
+  } catch (err) {
+    console.error("Admin PATCH error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
