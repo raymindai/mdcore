@@ -2049,9 +2049,12 @@
         showHomeScreen();
       } else {
         if (hasDocument) {
+          // If home screen is visible, switch back to editor first
+          if (homeScreen && homeScreen.style.display !== "none") {
+            showEditor();
+          }
           setViewMode(view);
         } else {
-          // No document open — show home instead
           showHomeScreen();
         }
       }
