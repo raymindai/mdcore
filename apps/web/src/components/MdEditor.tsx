@@ -5458,7 +5458,7 @@ ${html}
       >
         {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
         <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%" }}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -5590,8 +5590,8 @@ ${html}
 
         {/* Center: Home + Layout mode switcher — absolute center relative to window */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0"
-          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}
+          className="flex items-center rounded-lg overflow-hidden shrink-0 pointer-events-auto"
+          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
           {/* Home */}
           <button
@@ -5641,7 +5641,7 @@ ${html}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
 
