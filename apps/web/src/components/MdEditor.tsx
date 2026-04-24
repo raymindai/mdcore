@@ -34,6 +34,7 @@ import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { usePresence } from "@/lib/usePresence";
+import { useCollaboration } from "@/lib/useCollaboration";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
 import {
   createShareUrl,
@@ -1495,7 +1496,10 @@ export default function MdEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, user?.id, user?.email, anonymousId, autoSave]);
 
-  // Wrapper that tracks undo history + triggers auto-save
+  // Ref for Yjs collaboration — populated later, used by setMarkdown
+  const collabApplyLocalRef = useRef<((md: string) => void) | null>(null);
+
+  // Wrapper that tracks undo history + triggers auto-save + broadcasts via Yjs
   const setMarkdown = useCallback((val: string) => {
     setMarkdownRaw(val);
     // Debounce undo snapshots (don't save every keystroke)
@@ -1514,6 +1518,8 @@ export default function MdEditor() {
       }
     }, 500);
     triggerAutoSave(val);
+    // Broadcast local change to Yjs peers
+    collabApplyLocalRef.current?.(val);
   }, [triggerAutoSave]);
 
   const undo = useCallback(() => {
@@ -1580,6 +1586,22 @@ export default function MdEditor() {
   // Presence: track other editors on the same document
   const presenceUser = useMemo(() => user ? { id: user.id, email: user.email, displayName: profile?.display_name || user.email, avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url || null } : null, [user, profile]);
   const { otherEditors } = usePresence(docId, presenceUser);
+
+  // ─── Yjs CRDT Collaboration ───
+  // Remote change handler: update markdown, render, and sync CM6
+  const collabRemoteHandler = useCallback((newMarkdown: string) => {
+    setMarkdownRaw(newMarkdown);
+    doRenderRef.current(newMarkdown);
+    cmSetDocRef.current?.(newMarkdown);
+    triggerAutoSave(newMarkdown);
+  }, [triggerAutoSave]);
+  const { applyLocalChange: collabApplyLocal, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
+    docId,
+    markdown,
+    collabRemoteHandler,
+  );
+  collabApplyLocalRef.current = collabApplyLocal;
+
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
   // Can edit: not shared, or owner, or public doc
@@ -3224,6 +3246,10 @@ export default function MdEditor() {
   const markdownRef = useRef(markdown);
   markdownRef.current = markdown;
 
+  // Ref for Yjs collaboration state (avoids stale closures in Realtime handler)
+  const isCollaboratingRef = useRef(isCollaborating);
+  isCollaboratingRef.current = isCollaborating;
+
   // ─── Supabase Realtime: Editor document changes ───
   // Subscribe to document updates when a cloud document is active in the editor.
   // If local is clean → auto-pull; if dirty → show toast with Pull/Ignore.
@@ -3262,6 +3288,10 @@ export default function MdEditor() {
           if (newData.is_draft !== undefined) {
             setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, isDraft: newData.is_draft as boolean } : t));
           }
+
+          // When Yjs collaboration is active, content sync is handled by useCollaboration.
+          // Skip the postgres_changes content fetch to avoid conflicts with CRDT merging.
+          if (isCollaboratingRef.current) return;
 
           // Fetch the latest document content from server
           // (Realtime payload.new may not include all columns depending on REPLICA IDENTITY)

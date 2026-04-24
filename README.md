@@ -1,8 +1,8 @@
 # mdcore
 
-**The fastest way from thought to shared document.**
+## The fastest way from thought to shared document.
 
-Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.
+Import anything. Render **beautifully**. Share ~~instantly~~. Powered by Rust + WASM.
 
 ```text
                     mdcore engine (Rust)
@@ -20,9 +20,11 @@ Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.
 
 ## What is this?
 
-mdcore is a Markdown parsing, rendering, and conversion engine built in Rust. The web product **[mdfy.cc](https://mdfy.cc)** is the first surface built on top of the engine.
+> mdcore is a Markdown parsing, rendering, and conversion engine built in Rust. The web product mdfy.cc is the first surface built on top of the engine.
 
 mdfy.cc is not just a renderer — it’s a full document platform:
+
+---
 
 - **Import** any file format (PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, and more)
 - **Edit** inline with WYSIWYG or source Markdown
@@ -75,7 +77,7 @@ mdfy.cc is not just a renderer — it’s a full document platform:
 ### Auth & Sharing
 
 - **Google / GitHub OAuth** + Email magic link
-- **Beta** — everything unlocked while we're testing, no credit card
+- **Beta** — everything unlocked while we’re testing, no credit card
 - **Pro tier** — kicks in after beta: no badge, custom domain, analytics, password protection (pricing TBD)
 
 ## Packages
@@ -83,11 +85,11 @@ mdfy.cc is not just a renderer — it’s a full document platform:
 mdcore ships five npm packages that can be used independently:
 
 | Package | Description | Install |
-|---------|-------------|---------|
-| [`@mdcore/engine`](packages/mdcore/) | Rust WASM engine + TypeScript postprocessor (highlight.js, KaTeX, Mermaid, file import) | `npm i @mdcore/engine` |
-| [`@mdcore/styles`](packages/styles/) | CSS-only rendering styles -- dark/light themes, document layout, print, diagrams | `npm i @mdcore/styles` |
-| [`@mdcore/api`](packages/api/) | HTTP client for the mdfy.cc document API (publish, update, pull, delete, versions) | `npm i @mdcore/api` |
-| [`@mdcore/ai`](packages/ai/) | AI provider abstraction (Gemini, OpenAI, Anthropic) for text-to-markdown and diagram rendering | `npm i @mdcore/ai` |
+| --- | --- | --- |
+| @mdcore/engine | Rust WASM engine + TypeScript postprocessor (highlight.js, KaTeX, Mermaid, file import) | npm i @mdcore/engine |
+| @mdcore/styles | CSS-only rendering styles – dark/light themes, document layout, print, diagrams | npm i @mdcore/styles |
+| @mdcore/api | HTTP client for the mdfy.cc document API (publish, update, pull, delete, versions) | npm i @mdcore/api |
+| @mdcore/ai | AI provider abstraction (Gemini, OpenAI, Anthropic) for text-to-markdown and diagram rendering | npm i @mdcore/ai |
 
 The Rust engine source lives in [`packages/engine/`](packages/engine/) and is compiled to WASM, then wrapped by the TypeScript package in [`packages/mdcore/`](packages/mdcore/).
 
@@ -251,7 +253,7 @@ GEMINI_API_KEY=your-gemini-key
 - [x] Viral badge (“Published with mdfy.cc”)
 - [x] Flavor conversion (GFM ↔ CommonMark ↔ Obsidian)
 - [ ] Stripe billing (Pro $8/mo)
-- [ ] Custom domains
+- [ ] Custom do
 - [ ] View analytics
 - [ ] Chrome extension (ChatGPT/Claude → mdfy.cc)
 - [ ] `@mdcore/engine` npm package
