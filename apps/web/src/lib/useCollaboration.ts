@@ -235,5 +235,16 @@ export function useCollaboration(
     });
   }, []);
 
-  return { applyLocalChange, peerCount, isCollaborating };
+  // Force reset Y.Doc (use after version restore to prevent CRDT merge reverting)
+  const forceReset = useCallback((newMarkdown: string) => {
+    const ytext = ytextRef.current;
+    const ydoc = ydocRef.current;
+    if (!ytext || !ydoc) return;
+    ydoc.transact(() => {
+      if (ytext.length > 0) ytext.delete(0, ytext.length);
+      ytext.insert(0, newMarkdown);
+    });
+  }, []);
+
+  return { applyLocalChange, forceReset, peerCount, isCollaborating };
 }

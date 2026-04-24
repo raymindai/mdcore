@@ -1603,12 +1603,14 @@ export default function MdEditor() {
     cmSetDocRef.current?.(newMarkdown);
     triggerAutoSave(newMarkdown);
   }, [triggerAutoSave]);
-  const { applyLocalChange: collabApplyLocal, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
   );
   collabApplyLocalRef.current = collabApplyLocal;
+  const collabForceResetRef = useRef(collabForceReset);
+  collabForceResetRef.current = collabForceReset;
   isCollaboratingRef2.current = isCollaborating;
 
   const [isOwner, setIsOwner] = useState(false);
@@ -4574,6 +4576,8 @@ export default function MdEditor() {
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
         cmSetDocRef.current?.(data.version.markdown);
+        // Force reset Y.Doc to prevent CRDT from reverting to old version
+        collabForceResetRef.current?.(data.version.markdown);
         highlightDiff(prevMd, data.version.markdown);
         if (data.version.title) setTitle(data.version.title);
         setPreviewVersion(null);
