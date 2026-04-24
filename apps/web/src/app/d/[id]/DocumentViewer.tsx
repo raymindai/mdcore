@@ -38,6 +38,7 @@ export default function DocumentViewer({
   const [narrowView, setNarrowView] = useState(true);
   const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
   const [copied, setCopied] = useState(false);
+  const [accessRevoked, setAccessRevoked] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const markdownRef = useRef(initialMarkdown);
   markdownRef.current = markdown;
@@ -214,11 +215,21 @@ export default function DocumentViewer({
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'documents', filter: `id=eq.${id}` },
         async () => {
-          // Document was updated — fetch fresh content
+          // Document was updated — fetch fresh content and check permissions
           try {
             const res = await fetch(`/api/docs/${id}`);
+            if (res.status === 403 || res.status === 404) {
+              // Access revoked or document made private/draft
+              setAccessRevoked(true);
+              return;
+            }
             if (res.ok) {
               const doc = await res.json();
+              // Check if document was made draft (no longer available)
+              if (doc.is_draft) {
+                setAccessRevoked(true);
+                return;
+              }
               if (doc.markdown !== markdownRef.current) {
                 setMarkdown(doc.markdown);
                 if (doc.title) setTitle(doc.title);
@@ -376,7 +387,25 @@ export default function DocumentViewer({
 
       {/* Content */}
       <div className="flex-1 overflow-auto" ref={previewRef}>
-        {isRestricted && !unlocked ? (
+        {accessRevoked ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
+              <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/>
+            </svg>
+            <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>This document is no longer available</p>
+            <p className="text-sm text-center" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
+              The owner has changed the permissions or made this document private.
+            </p>
+            <Link
+              href="/"
+              className="mt-2 px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
+              style={{ background: "var(--accent)", color: "#000" }}
+            >
+              Create your own
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
+            </Link>
+          </div>
+        ) : isRestricted && !unlocked ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 px-6" style={{ maxWidth: 440, margin: "0 auto" }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
               <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 118 0v4"/>

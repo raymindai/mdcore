@@ -62,6 +62,8 @@ export default function AdminPage() {
   const [selectedEmail, setSelectedEmail] = useState<number>(0);
   const [tab, setTab] = useState<"overview" | "charts" | "users" | "documents" | "emails" | "activity">("overview");
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [secondsAgo, setSecondsAgo] = useState(0);
 
   // Auth check
   useEffect(() => {
@@ -105,11 +107,29 @@ export default function AdminPage() {
       setAuthed(false);
     }
     setLoading(false);
+    setLastUpdated(Date.now());
   }, [email]);
 
   useEffect(() => {
     if (authed && email) fetchData();
   }, [authed, email, fetchData]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!authed || !email) return;
+    const interval = setInterval(() => { fetchData(); }, 30000);
+    return () => clearInterval(interval);
+  }, [authed, email, fetchData]);
+
+  // "Last updated X seconds ago" ticker
+  useEffect(() => {
+    if (lastUpdated === null) return;
+    setSecondsAgo(0);
+    const tick = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated) / 1000));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [lastUpdated]);
 
   if (authed === null) return <div style={page}><p style={{ color: "#71717a" }}>Checking access...</p></div>;
   if (authed === false) return (
@@ -131,6 +151,11 @@ export default function AdminPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={fetchData} style={btnStyle}>Refresh</button>
+          {lastUpdated !== null && (
+            <span style={{ fontSize: 11, color: "#52525b", alignSelf: "center" }}>
+              Updated {secondsAgo < 5 ? "just now" : `${secondsAgo}s ago`}
+            </span>
+          )}
           <Link href="/" style={{ ...btnStyle, textDecoration: "none" }}>Back to Editor</Link>
         </div>
       </div>

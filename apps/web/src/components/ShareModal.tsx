@@ -90,6 +90,8 @@ function ShareModal({
           fromUserName: ownerEmail.split("@")[0],
           message: `shared "${title || "Untitled"}" with you`,
         }),
+      }).then((res) => {
+        if (res.ok) showToast(`Email sent to ${email}`, "success");
       }).catch(() => {});
     }
   }, [emails, editors, ownerEmail, saveAccess, docId, userId, title]);

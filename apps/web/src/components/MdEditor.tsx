@@ -4465,6 +4465,13 @@ export default function MdEditor() {
     if (!showHistory) setShowAIPanel(false); // close AI panel when opening history
   }, [showHistory, docId, loadVersions]);
 
+  // Auto-refresh version list while history panel is open
+  useEffect(() => {
+    if (!showHistory || !docId) return;
+    const interval = setInterval(() => { loadVersions(); }, 10000);
+    return () => clearInterval(interval);
+  }, [showHistory, docId, loadVersions]);
+
   const handlePreviewVersion = useCallback(async (versionId: number) => {
     if (!docId) return;
     if (previewVersion === versionId) {

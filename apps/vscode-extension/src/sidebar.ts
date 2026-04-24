@@ -34,6 +34,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _extensionUri: vscode.Uri;
   private _authManager: AuthManager;
+  private _refreshInterval?: ReturnType<typeof setInterval>;
 
   constructor(extensionUri: vscode.Uri, authManager: AuthManager) {
     this._extensionUri = extensionUri;
@@ -135,8 +136,34 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this.sendDocuments();
+        this._startPeriodicRefresh();
+      } else {
+        this._stopPeriodicRefresh();
       }
     });
+
+    // Start periodic refresh when sidebar is first shown
+    this._startPeriodicRefresh();
+
+    webviewView.onDidDispose(() => {
+      this._stopPeriodicRefresh();
+    });
+  }
+
+  private _startPeriodicRefresh(): void {
+    this._stopPeriodicRefresh();
+    this._refreshInterval = setInterval(() => {
+      if (this._view?.visible) {
+        this.sendDocuments();
+      }
+    }, 60000);
+  }
+
+  private _stopPeriodicRefresh(): void {
+    if (this._refreshInterval) {
+      clearInterval(this._refreshInterval);
+      this._refreshInterval = undefined;
+    }
   }
 
   refresh(): void {

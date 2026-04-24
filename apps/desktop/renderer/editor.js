@@ -168,6 +168,13 @@
         }
       });
     }
+
+    // Periodic sidebar refresh every 60s — only when app is focused
+    setInterval(function() {
+      if (document.visibilityState === "visible") {
+        refreshSidebarData().then(renderSidebar);
+      }
+    }, 60000);
   }
 
   async function refreshSidebarData() {
