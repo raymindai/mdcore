@@ -1598,17 +1598,54 @@ export default function MdEditor() {
   const presenceUser = useMemo(() => user ? { id: user.id, email: user.email, displayName: profile?.display_name || user.email, avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url || null } : null, [user, profile]);
   const { otherEditors } = usePresence(docId, presenceUser);
 
+  // ─── Selection save/restore for DOM diffing during collaboration ───
+  const saveSelection = useCallback((container: HTMLElement) => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    const range = sel.getRangeAt(0);
+    if (!container.contains(range.startContainer)) return null;
+    // Walk the DOM to compute a text offset from the start of the container
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let offset = 0;
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      if (node === range.startContainer) return { offset: offset + range.startOffset };
+      offset += (node.textContent?.length || 0);
+    }
+    return null;
+  }, []);
+
+  const restoreSelection = useCallback((container: HTMLElement, saved: { offset: number } | null) => {
+    if (!saved) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let remaining = saved.offset;
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const len = node.textContent?.length || 0;
+      if (remaining <= len) {
+        try {
+          const range = document.createRange();
+          range.setStart(node, remaining);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch { /* offset out of bounds — skip */ }
+        return;
+      }
+      remaining -= len;
+    }
+  }, []);
+
   // ─── Yjs CRDT Collaboration ───
   // Remote change handler: update markdown, render, and sync CM6
   // Does NOT trigger auto-save — the typing user's auto-save handles persistence
-  // Skip doRender when user is actively editing in LIVE contentEditable
-  // (re-rendering would destroy their DOM editing state)
   const wysiwygEditingRef2 = useRef(false);
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    if (!wysiwygEditingRef2.current) {
-      doRenderRef.current(newMarkdown);
-    }
+    // Always render — the article ref callback handles DOM diffing
+    doRenderRef.current(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
@@ -4361,9 +4398,7 @@ export default function MdEditor() {
       // --- Fallback: full document conversion ---
       // Used when: no cursor/selection, no data-sourcepos found, block was deleted,
       // blocks were merged/split, or partial update validation failed.
-      // During collaboration, skip full conversion — it would lose remote changes
-      // (the DOM doesn't have them since doRender was skipped).
-      if (!didPartialUpdate && !isCollaboratingRef2.current) {
+      if (!didPartialUpdate) {
         const clone = article.cloneNode(true) as HTMLElement;
         stripUiElements(clone);
         const newMd = htmlToMarkdown(clone.innerHTML);
@@ -8031,11 +8066,34 @@ ${clone.innerHTML}
               ) : html ? (
                 <article
                   ref={(el) => {
-                    // Use a proper hash to detect actual content changes
                     const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
                     if (el && el.getAttribute("data-html-hash") !== hash) {
-                      // Only update if change came from source (not from contentEditable editing)
-                      if (!wysiwygEditingRef.current) {
+                      if (wysiwygEditingRef.current && isCollaboratingRef2.current) {
+                        // During collaboration + WYSIWYG editing: apply DOM diff
+                        // to preserve cursor position while showing remote changes
+                        const saved = saveSelection(el);
+                        const tmp = document.createElement("div");
+                        tmp.innerHTML = html;
+                        // Diff children: replace only changed top-level blocks
+                        const oldChildren = Array.from(el.children);
+                        const newChildren = Array.from(tmp.children);
+                        const maxLen = Math.max(oldChildren.length, newChildren.length);
+                        for (let i = 0; i < maxLen; i++) {
+                          if (i >= newChildren.length) {
+                            // Extra old children — remove
+                            el.removeChild(oldChildren[i]);
+                          } else if (i >= oldChildren.length) {
+                            // Extra new children — append
+                            el.appendChild(newChildren[i].cloneNode(true));
+                          } else if (oldChildren[i].outerHTML !== newChildren[i].outerHTML) {
+                            // Changed block — replace
+                            const replacement = newChildren[i].cloneNode(true);
+                            el.replaceChild(replacement, oldChildren[i]);
+                          }
+                        }
+                        restoreSelection(el, saved);
+                      } else if (!wysiwygEditingRef.current) {
+                        // Normal: full innerHTML replacement
                         el.innerHTML = html;
                       }
                       el.setAttribute("data-html-hash", hash);
