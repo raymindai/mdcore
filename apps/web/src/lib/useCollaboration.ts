@@ -109,7 +109,11 @@ export function useCollaboration(
     // Y.Doc local update → broadcast to peers
     const onYjsUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === "remote") return;
-      if (!subscribedRef.current) return;
+      if (!subscribedRef.current) {
+        console.warn("[collab] send skipped: not subscribed");
+        return;
+      }
+      console.log("[collab] SENDING update, bytes:", update.length);
       channel.send({
         type: "broadcast",
         event: "yjs-update",
@@ -120,8 +124,12 @@ export function useCollaboration(
 
     // Broadcast handlers
     channel
+      .on("broadcast", { event: "yjs-ping" }, ({ payload }: { payload: { ts?: number } }) => {
+        console.log("[collab] PING received from peer, latency:", Date.now() - (payload?.ts || 0), "ms");
+      })
       .on("broadcast", { event: "yjs-update" }, ({ payload }: { payload: { update?: string } }) => {
         if (!payload?.update) return;
+        console.log("[collab] RECEIVED update, b64len:", payload.update.length);
         const update = base64ToUint8(payload.update);
         isApplyingRemoteRef.current = true;
         Y.applyUpdate(ydoc, update, "remote");
@@ -200,6 +208,8 @@ export function useCollaboration(
         if (status === "SUBSCRIBED") {
           subscribedRef.current = true;
           setIsCollaborating(true);
+          // Ping to verify broadcast works
+          channel.send({ type: "broadcast", event: "yjs-ping", payload: { ts: Date.now() } });
           channel.send({
             type: "broadcast",
             event: "yjs-sync-request",

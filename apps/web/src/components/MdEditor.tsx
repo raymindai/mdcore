@@ -1527,7 +1527,10 @@ export default function MdEditor() {
     }, 500);
     triggerAutoSave(val);
     // Broadcast local change to Yjs peers
-    collabApplyLocalRef.current?.(val);
+    if (collabApplyLocalRef.current) {
+      console.log("[collab] setMarkdown → applyLocalChange");
+      collabApplyLocalRef.current(val);
+    }
   }, [triggerAutoSave]);
 
   const undo = useCallback(() => {
