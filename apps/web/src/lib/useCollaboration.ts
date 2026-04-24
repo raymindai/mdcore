@@ -196,7 +196,7 @@ export function useCollaboration(
    * Computes a Y.Doc transaction and broadcasts the update to peers.
    */
   const applyLocalChange = useCallback((newMarkdown: string) => {
-    if (isApplyingRemoteRef.current) return; // Don't loop while processing remote
+    if (isApplyingRemoteRef.current) return;
     const ytext = ytextRef.current;
     const ydoc = ydocRef.current;
     if (!ytext || !ydoc) return;
@@ -204,10 +204,25 @@ export function useCollaboration(
     const currentYText = ytext.toString();
     if (currentYText === newMarkdown) return;
 
-    // Replace Y.Text content. Yjs computes the minimal update internally.
+    // Apply minimal diff to Y.Text (avoid delete-all + insert-all which causes CRDT duplication)
     ydoc.transact(() => {
-      ytext.delete(0, ytext.length);
-      ytext.insert(0, newMarkdown);
+      // Find common prefix
+      let prefixLen = 0;
+      const minLen = Math.min(currentYText.length, newMarkdown.length);
+      while (prefixLen < minLen && currentYText[prefixLen] === newMarkdown[prefixLen]) {
+        prefixLen++;
+      }
+      // Find common suffix (from the end, not overlapping with prefix)
+      let suffixLen = 0;
+      const maxSuffix = Math.min(currentYText.length - prefixLen, newMarkdown.length - prefixLen);
+      while (suffixLen < maxSuffix && currentYText[currentYText.length - 1 - suffixLen] === newMarkdown[newMarkdown.length - 1 - suffixLen]) {
+        suffixLen++;
+      }
+      // Delete changed middle, insert new middle
+      const deleteLen = currentYText.length - prefixLen - suffixLen;
+      const insertStr = newMarkdown.slice(prefixLen, newMarkdown.length - suffixLen);
+      if (deleteLen > 0) ytext.delete(prefixLen, deleteLen);
+      if (insertStr.length > 0) ytext.insert(prefixLen, insertStr);
     });
   }, []);
 

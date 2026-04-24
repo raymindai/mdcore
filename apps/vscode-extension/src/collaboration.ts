@@ -225,9 +225,19 @@ export class CollaborationManager {
     const current = session.ytext.toString();
     if (current === newMarkdown) return;
 
+    // Minimal diff to avoid CRDT duplication
     session.ydoc.transact(() => {
-      session.ytext.delete(0, session.ytext.length);
-      session.ytext.insert(0, newMarkdown);
+      const current = session.ytext.toString();
+      let prefixLen = 0;
+      const minLen = Math.min(current.length, newMarkdown.length);
+      while (prefixLen < minLen && current[prefixLen] === newMarkdown[prefixLen]) prefixLen++;
+      let suffixLen = 0;
+      const maxSuffix = Math.min(current.length - prefixLen, newMarkdown.length - prefixLen);
+      while (suffixLen < maxSuffix && current[current.length - 1 - suffixLen] === newMarkdown[newMarkdown.length - 1 - suffixLen]) suffixLen++;
+      const deleteLen = current.length - prefixLen - suffixLen;
+      const insertStr = newMarkdown.slice(prefixLen, newMarkdown.length - suffixLen);
+      if (deleteLen > 0) session.ytext.delete(prefixLen, deleteLen);
+      if (insertStr.length > 0) session.ytext.insert(prefixLen, insertStr);
     });
   }
 
