@@ -4554,11 +4554,12 @@ export default function MdEditor() {
 
   const handleRestoreVersion = useCallback(async (versionId: number) => {
     if (!docId) return;
-    const token = getEditToken(docId);
-    if (!token) return;
     // Confirmation dialog
     const confirmed = window.confirm("Restore this version? Your current content will be saved as a snapshot before restoring.");
     if (!confirmed) return;
+    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+    const token = currentTab?.editToken || getEditToken(docId);
+    if (!token) { showToast("No edit permission for this document", "error"); return; }
     setRestoringVersion(versionId);
     try {
       // Save current state as version before restoring
