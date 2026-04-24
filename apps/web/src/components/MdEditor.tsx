@@ -4514,11 +4514,19 @@ export default function MdEditor() {
     if (!showHistory) setShowAIPanel(false); // close AI panel when opening history
   }, [showHistory, docId, loadVersions]);
 
-  // Auto-refresh version list while history panel is open (3s for near-realtime feel)
+  // Realtime: refresh version list when new versions are created
   useEffect(() => {
     if (!showHistory || !docId) return;
-    const interval = setInterval(() => { loadVersions(); }, 15000);
-    return () => clearInterval(interval);
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    const channel = supabase
+      .channel(`versions-${docId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'document_versions', filter: `document_id=eq.${docId}` },
+        () => { loadVersions(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [showHistory, docId, loadVersions]);
 
   const handlePreviewVersion = useCallback(async (versionId: number) => {
