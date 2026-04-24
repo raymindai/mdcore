@@ -42,6 +42,9 @@
   var sortMode = "newest"; // newest, oldest, az, za
   var isReadOnly = false;
   var currentCloudDoc = null; // { docId, title } when previewing cloud doc
+  var isCollaborating = false;
+  var collabPeerCount = 0;
+  var isApplyingRemoteCollab = false;
 
   // ─── Theme ───
 
@@ -1477,6 +1480,13 @@
 
       // Refresh sidebar to update active highlight
       refreshSidebarData().then(renderSidebar);
+
+      // Start/stop collaboration based on whether doc is published
+      if (currentConfig && currentConfig.docId && !isReadOnly) {
+        window.mdfyDesktop.collabStart(currentConfig.docId, currentMarkdown);
+      } else {
+        window.mdfyDesktop.collabStop();
+      }
     });
 
     window.mdfyDesktop.onFileChanged(function(data) {
@@ -1514,6 +1524,67 @@
     window.mdfyDesktop.onTriggerPublish(function() {
       doPublish();
     });
+
+    // ─── Collaboration event listeners ───
+
+    window.mdfyDesktop.onCollabRemoteChange(function(data) {
+      if (!data || !data.markdown || isApplyingRemoteCollab) return;
+      isApplyingRemoteCollab = true;
+      currentMarkdown = data.markdown;
+      // Re-render the WYSIWYG content pane
+      window.mdfyDesktop.renderMarkdown(currentMarkdown).then(function(result) {
+        if (result && result.html !== undefined) {
+          // Preserve scroll position
+          var scrollTop = content.scrollTop;
+          content.innerHTML = result.html;
+          postProcessAll(content);
+          content.scrollTop = scrollTop;
+        }
+        if (cmEditor && cmEditor.getValue() !== currentMarkdown) {
+          var scrollInfo = cmEditor.getScrollInfo();
+          cmChanging = true;
+          cmEditor.setValue(currentMarkdown);
+          cmEditor.scrollTo(scrollInfo.left, scrollInfo.top);
+          cmChanging = false;
+        }
+        isApplyingRemoteCollab = false;
+      }).catch(function() {
+        isApplyingRemoteCollab = false;
+      });
+    });
+
+    window.mdfyDesktop.onCollabStatus(function(data) {
+      isCollaborating = data && data.active;
+      updateCollabIndicator();
+    });
+
+    window.mdfyDesktop.onCollabPeers(function(data) {
+      collabPeerCount = data ? data.count : 0;
+      updateCollabIndicator();
+    });
+  }
+
+  function updateCollabIndicator() {
+    var indicator = document.getElementById("collab-indicator");
+    if (!indicator) {
+      // Create collaboration indicator in the header
+      indicator = document.createElement("span");
+      indicator.id = "collab-indicator";
+      indicator.style.cssText = "display:none; align-items:center; gap:4px; font-size:12px; color:var(--text-muted); margin-left:8px;";
+      if (headerSync && headerSync.parentElement) {
+        headerSync.parentElement.insertBefore(indicator, headerSync);
+      }
+    }
+    if (isCollaborating && collabPeerCount > 0) {
+      indicator.style.display = "inline-flex";
+      indicator.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span> ' +
+        collabPeerCount + (collabPeerCount === 1 ? " peer" : " peers");
+    } else if (isCollaborating) {
+      indicator.style.display = "inline-flex";
+      indicator.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Live';
+    } else {
+      indicator.style.display = "none";
+    }
   }
 
   // Show home screen on initial load
@@ -1572,6 +1643,10 @@
       updatePublishedUrl();
       await refreshSidebarData();
       renderSidebar();
+      // Start collaboration for newly published doc
+      if (currentConfig.docId) {
+        window.mdfyDesktop.collabStart(currentConfig.docId, currentMarkdown);
+      }
     }
   }
 
@@ -1837,6 +1912,10 @@
         cmEditor.scrollTo(scrollInfo.left, scrollInfo.top);
         cmChanging = false;
       }
+      // Broadcast to collaboration peers
+      if (isCollaborating && !isApplyingRemoteCollab && window.mdfyDesktop) {
+        window.mdfyDesktop.collabLocalChange(currentMarkdown);
+      }
     }, 400);
   });
 
@@ -2012,6 +2091,10 @@
       sourceDebounce = setTimeout(function() {
         reRenderMarkdown(currentMarkdown);
         updateDocStats(currentMarkdown);
+        // Broadcast to collaboration peers
+        if (isCollaborating && !isApplyingRemoteCollab && window.mdfyDesktop) {
+          window.mdfyDesktop.collabLocalChange(currentMarkdown);
+        }
       }, 250);
     });
   }

@@ -5,12 +5,15 @@ import { SyncEngine } from "./sync";
 import { AuthManager } from "./auth";
 import { StatusBarManager } from "./statusbar";
 import { MdfySidebarProvider } from "./sidebar";
+import { CollaborationManager } from "./collaboration";
 
 let syncEngine: SyncEngine | undefined;
 let statusBar: StatusBarManager | undefined;
 let authManager: AuthManager | undefined;
 let sidebarProvider: MdfySidebarProvider | undefined;
+let collabManager: CollaborationManager | undefined;
 let suppressAutoPreview = false;
+let isApplyingRemoteCollab = false;
 
 export function suppressAutoPreviewFor(ms: number): void {
   suppressAutoPreview = true;
@@ -21,9 +24,48 @@ export function activate(context: vscode.ExtensionContext): void {
   authManager = new AuthManager(context);
   statusBar = new StatusBarManager();
   syncEngine = new SyncEngine(authManager, statusBar, context);
+  collabManager = new CollaborationManager();
 
   // Share AuthManager with preview panels for image upload
   PreviewPanel.setAuthManager(authManager);
+
+  // Handle remote collaboration changes — apply to VS Code editor
+  context.subscriptions.push(
+    collabManager.onRemoteChange(async ({ uri, markdown }) => {
+      if (isApplyingRemoteCollab) return;
+      const doc = vscode.workspace.textDocuments.find(
+        (d) => d.uri.toString() === uri.toString()
+      );
+      if (!doc) return;
+
+      isApplyingRemoteCollab = true;
+      try {
+        const edit = new vscode.WorkspaceEdit();
+        const fullRange = new vscode.Range(
+          doc.positionAt(0),
+          doc.positionAt(doc.getText().length)
+        );
+        edit.replace(doc.uri, fullRange, markdown);
+        await vscode.workspace.applyEdit(edit);
+      } finally {
+        isApplyingRemoteCollab = false;
+      }
+    })
+  );
+
+  // Show peer count in status bar
+  context.subscriptions.push(
+    collabManager.onPeersChanged(({ uri, count }) => {
+      const activeUri = vscode.window.activeTextEditor?.document.uri;
+      if (activeUri && activeUri.toString() === uri.toString()) {
+        if (count > 0) {
+          statusBar?.setCollaborating(count);
+        } else if (collabManager?.isActive(uri)) {
+          statusBar?.setCollaboratingLive();
+        }
+      }
+    })
+  );
 
   // Refresh sidebar on login/logout
   context.subscriptions.push(
@@ -488,28 +530,44 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Update preview on text change
+  // Update preview on text change + broadcast collaboration
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.languageId === "markdown") {
         PreviewPanel.updateIfActive(e.document);
+        // Broadcast local changes to collaboration peers
+        if (!isApplyingRemoteCollab && collabManager?.isActive(e.document.uri)) {
+          collabManager.applyLocalChange(e.document.uri, e.document.getText());
+        }
       }
     })
   );
 
-  // Update status bar on editor change
+  // Update status bar on editor change + start/stop collaboration
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
       if (editor && editor.document.languageId === "markdown") {
         statusBar?.show();
 
-        // Check if published → show URL in status bar
+        // Check if published → show URL in status bar + start collaboration
         const cfg = await loadMdfyConfig(editor.document.fileName);
         if (cfg) {
           const base = getApiBaseUrl();
           statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+          // Start collaboration if not already active
+          if (!collabManager?.isActive(editor.document.uri)) {
+            collabManager?.start(
+              editor.document.uri,
+              cfg.docId,
+              editor.document.getText()
+            );
+          }
         } else {
           statusBar?.setIdle();
+          // Stop collaboration for unpublished docs
+          if (collabManager?.isActive(editor.document.uri)) {
+            collabManager?.stop(editor.document.uri);
+          }
         }
 
         // Auto-open preview if enabled (skip if sidebar just opened it)
@@ -521,6 +579,27 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       } else {
         statusBar?.hide();
+      }
+    })
+  );
+
+  // Stop collaboration when documents are closed
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      if (doc.languageId === "markdown" && collabManager?.isActive(doc.uri)) {
+        collabManager.stop(doc.uri);
+      }
+    })
+  );
+
+  // Start collaboration after publish completes — listen for config creation
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      if (doc.languageId !== "markdown") return;
+      // Check if newly published (has config but no collab session yet)
+      const cfg = await loadMdfyConfig(doc.fileName);
+      if (cfg && !collabManager?.isActive(doc.uri)) {
+        collabManager?.start(doc.uri, cfg.docId, doc.getText());
       }
     })
   );
@@ -553,11 +632,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.activeTextEditor?.document.languageId === "markdown"
   ) {
     statusBar.show();
-    // Check published state for status bar
-    loadMdfyConfig(vscode.window.activeTextEditor.document.fileName).then((cfg) => {
+    const activeEditor = vscode.window.activeTextEditor;
+    // Check published state for status bar + start collaboration
+    loadMdfyConfig(activeEditor.document.fileName).then((cfg) => {
       if (cfg) {
         const base = getApiBaseUrl();
         statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+        // Start collaboration for initially open document
+        collabManager?.start(
+          activeEditor.document.uri,
+          cfg.docId,
+          activeEditor.document.getText()
+        );
       }
     });
     const autoPreview = vscode.workspace.getConfiguration("mdfy").get<boolean>("autoPreview", true);
@@ -570,6 +656,7 @@ export function activate(context: vscode.ExtensionContext): void {
     dispose(): void {
       syncEngine?.dispose();
       statusBar?.dispose();
+      collabManager?.dispose();
     },
   });
 }
@@ -577,6 +664,7 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {
   syncEngine?.dispose();
   statusBar?.dispose();
+  collabManager?.dispose();
 }
 
 // --- Helpers ---

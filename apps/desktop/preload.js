@@ -63,6 +63,12 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   writeClipboardHtml: (html) => ipcRenderer.invoke("write-clipboard-html", html),
   getTheme: () => ipcRenderer.invoke("get-theme"),
 
+  // ─── Collaboration ───
+  collabStart: (cloudId, markdown) => ipcRenderer.invoke("collab-start", cloudId, markdown),
+  collabStop: () => ipcRenderer.invoke("collab-stop"),
+  collabLocalChange: (markdown) => ipcRenderer.invoke("collab-local-change", markdown),
+  collabGetState: () => ipcRenderer.invoke("collab-get-state"),
+
   // ─── Events from main process ───
   onLoadDocument: (cb) => ipcRenderer.on("load-document", (_, d) => cb(d)),
   onFileChanged: (cb) => ipcRenderer.on("file-changed", (_, d) => cb(d)),
@@ -74,4 +80,7 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   onThemeChanged: (cb) => ipcRenderer.on("theme-changed", (_, t) => cb(t)),
   onTriggerSave: (cb) => ipcRenderer.on("trigger-save", () => cb()),
   onTriggerPublish: (cb) => ipcRenderer.on("trigger-publish", () => cb()),
+  onCollabRemoteChange: (cb) => ipcRenderer.on("collab-remote-change", (_, d) => cb(d)),
+  onCollabStatus: (cb) => ipcRenderer.on("collab-status", (_, d) => cb(d)),
+  onCollabPeers: (cb) => ipcRenderer.on("collab-peers", (_, d) => cb(d)),
 });

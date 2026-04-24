@@ -20,6 +20,8 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { mime } = require("./mime-types");
+const Y = require("yjs");
+const { createClient } = require("@supabase/supabase-js");
 
 // ─── Constants ───
 
@@ -701,6 +703,175 @@ const SyncEngine = {
       }
     }
     this.persistQueue();
+  },
+};
+
+// ─── CollaborationManager (Yjs CRDT + Supabase Realtime) ───
+
+const SUPABASE_URL = "https://gxvhvcuoprbqnxkrieyj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4dmh2Y3VvcHJicW54a3JpZXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMDQsImV4cCI6MjA4OTYzMjAwNH0.RyPCS3KrVNwGAybrJ4bAnLVyXhcHMZJ1D4L8THvDwN0";
+
+function uint8ToBase64(bytes) {
+  return Buffer.from(bytes).toString("base64");
+}
+
+function base64ToUint8(b64) {
+  return new Uint8Array(Buffer.from(b64, "base64"));
+}
+
+const CollaborationManager = {
+  _supabase: null,
+  _ydoc: null,
+  _ytext: null,
+  _channel: null,
+  _cloudId: null,
+  _isApplyingRemote: false,
+  _peerCount: 0,
+
+  _getSupabase() {
+    if (!this._supabase) {
+      this._supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    return this._supabase;
+  },
+
+  /**
+   * Start collaborative editing for a document.
+   * Creates Y.Doc, joins Supabase Realtime Broadcast channel.
+   */
+  start(cloudId, initialMarkdown) {
+    // Stop any existing session
+    this.stop();
+
+    if (!cloudId) return;
+
+    this._cloudId = cloudId;
+
+    const ydoc = new Y.Doc();
+    const ytext = ydoc.getText("content");
+    this._ydoc = ydoc;
+    this._ytext = ytext;
+
+    // Initialize Y.Text with current content
+    ytext.insert(0, initialMarkdown || "");
+
+    // Listen for local Y.Doc updates and broadcast to peers
+    ydoc.on("update", (update, origin) => {
+      if (origin === "remote") return;
+      const channel = this._channel;
+      if (channel) {
+        channel.send({
+          type: "broadcast",
+          event: "yjs-update",
+          payload: { update: uint8ToBase64(update) },
+        });
+      }
+    });
+
+    // Set up Supabase Realtime Broadcast channel
+    const supabase = this._getSupabase();
+    const channel = supabase.channel(`yjs-doc-${cloudId}`, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on("broadcast", { event: "yjs-update" }, ({ payload }) => {
+        if (!payload?.update) return;
+        const update = base64ToUint8(payload.update);
+        this._isApplyingRemote = true;
+        Y.applyUpdate(ydoc, update, "remote");
+        const merged = ytext.toString();
+        sendToRenderer("collab-remote-change", { markdown: merged });
+        this._isApplyingRemote = false;
+      })
+      .on("broadcast", { event: "yjs-sync-request" }, () => {
+        // Peer just joined — send full state
+        const state = Y.encodeStateAsUpdate(ydoc);
+        channel.send({
+          type: "broadcast",
+          event: "yjs-sync-response",
+          payload: { state: uint8ToBase64(state) },
+        });
+      })
+      .on("broadcast", { event: "yjs-sync-response" }, ({ payload }) => {
+        if (!payload?.state) return;
+        const state = base64ToUint8(payload.state);
+        this._isApplyingRemote = true;
+        Y.applyUpdate(ydoc, state, "remote");
+        const merged = ytext.toString();
+        sendToRenderer("collab-remote-change", { markdown: merged });
+        this._isApplyingRemote = false;
+      })
+      .on("presence", { event: "sync" }, () => {
+        const presenceState = channel.presenceState();
+        this._peerCount = Math.max(0, Object.keys(presenceState).length - 1);
+        sendToRenderer("collab-peers", { count: this._peerCount });
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          sendToRenderer("collab-status", { active: true, cloudId });
+          // Request full state from any existing peers
+          channel.send({
+            type: "broadcast",
+            event: "yjs-sync-request",
+            payload: {},
+          });
+          // Track presence
+          await channel.track({ joined_at: Date.now() });
+        }
+      });
+
+    this._channel = channel;
+    console.log("[collab] Started for doc:", cloudId);
+  },
+
+  /**
+   * Stop collaborative editing. Cleanup Y.Doc and channel.
+   */
+  stop() {
+    if (this._channel) {
+      this._channel.unsubscribe();
+      this._channel = null;
+    }
+    if (this._ydoc) {
+      this._ydoc.destroy();
+      this._ydoc = null;
+      this._ytext = null;
+    }
+    this._cloudId = null;
+    this._peerCount = 0;
+    this._isApplyingRemote = false;
+    sendToRenderer("collab-status", { active: false, cloudId: null });
+    sendToRenderer("collab-peers", { count: 0 });
+  },
+
+  /**
+   * Apply a local editor change to the Y.Doc and broadcast.
+   */
+  applyLocalChange(newMarkdown) {
+    if (this._isApplyingRemote) return;
+    const ytext = this._ytext;
+    const ydoc = this._ydoc;
+    if (!ytext || !ydoc) return;
+
+    const current = ytext.toString();
+    if (current === newMarkdown) return;
+
+    ydoc.transact(() => {
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, newMarkdown);
+    });
+  },
+
+  /**
+   * Get current collaboration state.
+   */
+  getState() {
+    return {
+      active: !!this._channel,
+      cloudId: this._cloudId,
+      peerCount: this._peerCount,
+    };
   },
 };
 
@@ -1661,6 +1832,27 @@ ipcMain.handle("get-theme", () => {
   return nativeTheme.shouldUseDarkColors ? "dark" : "light";
 });
 
+// --- Collaboration ---
+
+ipcMain.handle("collab-start", (event, cloudId, markdown) => {
+  CollaborationManager.start(cloudId, markdown);
+  return { ok: true };
+});
+
+ipcMain.handle("collab-stop", () => {
+  CollaborationManager.stop();
+  return { ok: true };
+});
+
+ipcMain.handle("collab-local-change", (event, markdown) => {
+  CollaborationManager.applyLocalChange(markdown);
+  return { ok: true };
+});
+
+ipcMain.handle("collab-get-state", () => {
+  return CollaborationManager.getState();
+});
+
 // ─── Menu ───
 
 function buildMenu() {
@@ -1885,5 +2077,6 @@ app.on("window-all-closed", () => {
   stopFileWatcher();
   stopFolderWatcher();
   SyncEngine.stop();
+  CollaborationManager.stop();
   if (process.platform !== "darwin") app.quit();
 });

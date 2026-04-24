@@ -253,5 +253,9 @@
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.22.0",
     "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
+    "yjs": "^13.6.30"
   }
 }

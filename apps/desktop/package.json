@@ -11,7 +11,10 @@
     "build:all": "electron-builder --mac dmg mas",
     "build:universal": "electron-builder --mac --universal"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
+    "yjs": "^13.6.30"
+  },
   "devDependencies": {
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0"
@@ -29,6 +32,7 @@
       "renderer/**/*",
       "wasm/**/*",
       "assets/**/*",
+      "node_modules/**/*",
       "package.json"
     ],
     "extraResources": [
@@ -40,7 +44,9 @@
     "protocols": [
       {
         "name": "mdfy",
-        "schemes": ["mdfy"]
+        "schemes": [
+          "mdfy"
+        ]
       }
     ],
     "mac": {
@@ -50,7 +56,12 @@
       "hardenedRuntime": true,
       "x64ArchFiles": "Contents/Resources/MdfyQuickLook.app/**/*",
       "target": [
-        { "target": "dmg", "arch": ["universal"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
       ],
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
@@ -65,8 +76,16 @@
     "dmg": {
       "title": "mdfy",
       "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "fileAssociations": [

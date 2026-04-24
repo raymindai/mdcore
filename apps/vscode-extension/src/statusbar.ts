@@ -71,6 +71,20 @@ export class StatusBarManager {
     return this.publishedUrl;
   }
 
+  setCollaborating(peerCount: number): void {
+    this.clearResetTimer();
+    this.item.text = `$(radio-tower) mdfy (${peerCount} ${peerCount === 1 ? "peer" : "peers"})`;
+    this.item.tooltip = `mdfy.cc - Live collaboration with ${peerCount} ${peerCount === 1 ? "peer" : "peers"}`;
+    this.item.backgroundColor = undefined;
+  }
+
+  setCollaboratingLive(): void {
+    this.clearResetTimer();
+    this.item.text = "$(radio-tower) mdfy Live";
+    this.item.tooltip = "mdfy.cc - Live collaboration active";
+    this.item.backgroundColor = undefined;
+  }
+
   setError(): void {
     this.clearResetTimer();
     this.item.text = "$(error) mdfy";
