@@ -4558,7 +4558,17 @@ export default function MdEditor() {
     const confirmed = window.confirm("Restore this version? Your current content will be saved as a snapshot before restoring.");
     if (!confirmed) return;
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
-    const token = currentTab?.editToken || getEditToken(docId);
+    let token = currentTab?.editToken || getEditToken(docId);
+    // If no local token, try fetching from server (owner may not have token locally)
+    if (!token && user?.id) {
+      try {
+        const res = await fetch(`/api/docs/${docId}`, { headers: authHeaders });
+        if (res.ok) {
+          const doc = await res.json();
+          if (doc.editToken) token = doc.editToken;
+        }
+      } catch {}
+    }
     if (!token) { showToast("No edit permission for this document", "error"); return; }
     setRestoringVersion(versionId);
     try {
@@ -5446,8 +5456,8 @@ ${html}
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
         {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
-        <div className="flex flex-wrap items-center justify-between px-3 sm:px-5 py-1.5 sm:py-2.5 gap-y-1">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="flex flex-wrap items-center justify-between px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "1 1 300px" }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
