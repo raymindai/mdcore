@@ -1601,11 +1601,18 @@ export default function MdEditor() {
   // ─── Yjs CRDT Collaboration ───
   // Remote change handler: update markdown, render, and sync CM6
   // Does NOT trigger auto-save — the typing user's auto-save handles persistence
+  // During WYSIWYG editing: defer doRender to avoid destroying contentEditable DOM.
+  // Remote changes are stored in state; re-render happens when user stops typing.
   const wysiwygEditingRef2 = useRef(false);
+  const collabPendingRenderRef = useRef(false);
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    // Always render — the article ref callback handles DOM diffing
-    doRenderRef.current(newMarkdown);
+    if (wysiwygEditingRef2.current) {
+      // Defer render — will fire when wysiwygEditingRef goes false
+      collabPendingRenderRef.current = true;
+    } else {
+      doRenderRef.current(newMarkdown);
+    }
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
@@ -4256,12 +4263,6 @@ export default function MdEditor() {
   }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
   const handleWysiwygInput = useCallback(() => {
-    // During collaboration, auto-switch to Split view for reliable editing
-    // contentEditable + remote CRDT changes are structurally incompatible
-    if (isCollaboratingRef2.current) {
-      setViewMode("split");
-      return;
-    }
     wysiwygEditingRef.current = true;
     if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
     wysiwygDebounce.current = setTimeout(() => {
@@ -4367,12 +4368,21 @@ export default function MdEditor() {
       if (!didPartialUpdate) {
         const clone = article.cloneNode(true) as HTMLElement;
         stripUiElements(clone);
-        const newMd = htmlToMarkdown(clone.innerHTML);
-        setMarkdown(newMd);
-        cmSetDoc(newMd);
+        const domMd = htmlToMarkdown(clone.innerHTML);
+
+        if (isCollaboratingRef2.current) {
+          // During collaboration: only update local state, don't call setMarkdown
+          // (which would applyLocalChange and accidentally delete remote content).
+          // Instead, directly set the raw state. The Y.Doc stays authoritative.
+          setMarkdownRaw(domMd);
+          cmSetDoc(domMd);
+        } else {
+          setMarkdown(domMd);
+          cmSetDoc(domMd);
+        }
 
         // Sync title from edited markdown to sidebar
-        const h1Match = newMd.match(/^#\s+(.+)/m);
+        const h1Match = domMd.match(/^#\s+(.+)/m);
         if (h1Match) {
           const newTitle = h1Match[1].trim();
           setTitle(newTitle);
@@ -4384,6 +4394,11 @@ export default function MdEditor() {
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       setTimeout(() => {
         wysiwygEditingRef.current = false;
+        // Flush deferred remote render if any
+        if (collabPendingRenderRef.current) {
+          collabPendingRenderRef.current = false;
+          doRenderRef.current(markdownRef.current);
+        }
       }, 500);
 
       // Re-process math elements that may have been damaged by contentEditable
