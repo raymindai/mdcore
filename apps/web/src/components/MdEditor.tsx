@@ -1626,6 +1626,7 @@ export default function MdEditor() {
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -6421,8 +6422,9 @@ ${html}
                         >
                           <Search width={10} height={10} />
                         </button>
-                        <div className="relative group/sort">
+                        <div className="relative">
                           <button
+                            onClick={(e) => { e.stopPropagation(); setShowSortMenu(prev => !prev); }}
                             className="h-5 px-1.5 rounded flex items-center gap-1 transition-colors hover:bg-[var(--toggle-bg)]"
                             style={{ color: "var(--text-faint)", fontSize: 9 }}
                             title={`Sort: ${sortMode}`}
@@ -6432,19 +6434,22 @@ ${html}
                               {{ newest: "New", oldest: "Old", az: "A-Z", za: "Z-A" }[sortMode]}
                             </span>
                           </button>
-                          <div className="absolute top-full right-0 mt-1 w-28 rounded-lg shadow-xl py-1 opacity-0 pointer-events-none group-hover/sort:opacity-100 group-hover/sort:pointer-events-auto transition-opacity z-[9998]"
-                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
-                            {([["newest", "Newest first"], ["oldest", "Oldest first"], ["az", "A → Z"], ["za", "Z → A"]] as const).map(([key, label]) => (
-                              <button
-                                key={key}
-                                onClick={(e) => { e.stopPropagation(); setSortMode(key); }}
-                                className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                                style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
+                          {showSortMenu && (<>
+                            <div className="fixed inset-0 z-[9997]" onClick={(e) => { e.stopPropagation(); setShowSortMenu(false); }} />
+                            <div className="absolute top-full right-0 mt-1 w-28 rounded-lg shadow-xl py-1 z-[9998]"
+                              style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                              {([["newest", "Newest first"], ["oldest", "Oldest first"], ["az", "A → Z"], ["za", "Z → A"]] as const).map(([key, label]) => (
+                                <button
+                                  key={key}
+                                  onClick={(e) => { e.stopPropagation(); setSortMode(key); setShowSortMenu(false); }}
+                                  className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                                  style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </>)}
                         </div>
                         <button
                           onClick={(e) => {
