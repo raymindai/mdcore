@@ -15,6 +15,7 @@ let collabManager: CollaborationManager | undefined;
 export function getCollabManager(): CollaborationManager | undefined { return collabManager; }
 let suppressAutoPreview = false;
 let isApplyingRemoteCollab = false;
+let remoteCollabQueue: { uri: vscode.Uri; markdown: string }[] = [];
 
 export function suppressAutoPreviewFor(ms: number): void {
   suppressAutoPreview = true;
@@ -31,23 +32,39 @@ export function activate(context: vscode.ExtensionContext): void {
   PreviewPanel.setAuthManager(authManager);
 
   // Handle remote collaboration changes — apply to VS Code editor
-  context.subscriptions.push(
-    collabManager.onRemoteChange(async ({ uri, markdown }) => {
-      if (isApplyingRemoteCollab) return;
-      const doc = vscode.workspace.textDocuments.find(
-        (d) => d.uri.toString() === uri.toString()
-      );
-      if (!doc) return;
+  // Uses a queue to avoid dropping concurrent remote changes during async applyEdit.
+  async function processRemoteCollabQueue(): Promise<void> {
+    while (remoteCollabQueue.length > 0) {
+      // Take the latest entry for each URI (skip stale intermediate states)
+      const latest = remoteCollabQueue[remoteCollabQueue.length - 1];
+      remoteCollabQueue = [];
 
-      isApplyingRemoteCollab = true;
+      const doc = vscode.workspace.textDocuments.find(
+        (d) => d.uri.toString() === latest.uri.toString()
+      );
+      if (!doc) continue;
+
       try {
         const edit = new vscode.WorkspaceEdit();
         const fullRange = new vscode.Range(
           doc.positionAt(0),
           doc.positionAt(doc.getText().length)
         );
-        edit.replace(doc.uri, fullRange, markdown);
+        edit.replace(doc.uri, fullRange, latest.markdown);
         await vscode.workspace.applyEdit(edit);
+      } catch {
+        // Edit failed (e.g., doc closed) — skip
+      }
+    }
+  }
+
+  context.subscriptions.push(
+    collabManager.onRemoteChange(async ({ uri, markdown }) => {
+      remoteCollabQueue.push({ uri, markdown });
+      if (isApplyingRemoteCollab) return; // queue will be drained by current processor
+      isApplyingRemoteCollab = true;
+      try {
+        await processRemoteCollabQueue();
       } finally {
         isApplyingRemoteCollab = false;
       }

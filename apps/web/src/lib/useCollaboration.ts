@@ -116,8 +116,17 @@ export function useCollaboration(
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // Peer just joined — only send state if we have content (avoid sending empty state)
-        if (!initialized || ytext.length === 0) return;
+        // Peer just joined — send state if we have content.
+        // If not initialized yet but have local markdown, init now and respond
+        // (prevents both-users-open-simultaneously leaving both unsynced).
+        if (!initialized && markdownRef.current) {
+          initialized = true;
+          clearTimeout(initTimer);
+          if (ytext.length === 0) {
+            ytext.insert(0, markdownRef.current);
+          }
+        }
+        if (ytext.length === 0) return;
         const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
@@ -146,7 +155,7 @@ export function useCollaboration(
           if (ytext.length > 0) {
             ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
           }
-          ydoc.transact(() => { ytext.insert(0, peerContent); });
+          ydoc.transact(() => { ytext.insert(0, peerContent); }, "remote");
           onRemoteChangeRef.current(ytext.toString());
           isApplyingRemoteRef.current = false;
           return;

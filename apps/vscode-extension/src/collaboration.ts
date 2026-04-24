@@ -132,7 +132,15 @@ export class CollaborationManager {
         }
       )
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        if (!session.initialized || ytext.length === 0) return;
+        // If not initialized yet but have local markdown, init now and respond
+        if (!session.initialized && initialMarkdown) {
+          session.initialized = true;
+          if (session.initTimer) { clearTimeout(session.initTimer); session.initTimer = null; }
+          if (ytext.length === 0) {
+            ytext.insert(0, initialMarkdown);
+          }
+        }
+        if (ytext.length === 0) return;
         const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
@@ -158,7 +166,7 @@ export class CollaborationManager {
             if (ytext.length > 0) {
               ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
             }
-            ydoc.transact(() => { ytext.insert(0, peerContent); });
+            ydoc.transact(() => { ytext.insert(0, peerContent); }, "remote");
             this._onRemoteChange.fire({ uri: documentUri, markdown: ytext.toString() });
             session.isApplyingRemote = false;
             return;

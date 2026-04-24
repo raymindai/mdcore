@@ -1478,6 +1478,9 @@ export default function MdEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, activeTabId, markdown, folders]);
 
+  // Ref for isCollaborating to avoid stale closures in triggerAutoSave
+  const isCollaboratingRef2 = useRef(false);
+
   // Trigger auto-save without undo tracking (used by undo/redo)
   const triggerAutoSave = useCallback((val: string) => {
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
@@ -1485,7 +1488,7 @@ export default function MdEditor() {
       maybeCreateSessionSnapshot(currentTab.cloudId);
       // When Yjs collaboration is active, skip conflict detection
       // (CRDT handles merging, so both users save the same merged content)
-      if (isCollaborating) {
+      if (isCollaboratingRef2.current) {
         autoSave.setLastServerUpdatedAt("");
       }
       autoSave.scheduleSave({
@@ -1606,6 +1609,7 @@ export default function MdEditor() {
     collabRemoteHandler,
   );
   collabApplyLocalRef.current = collabApplyLocal;
+  isCollaboratingRef2.current = isCollaborating;
 
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
@@ -4550,6 +4554,9 @@ export default function MdEditor() {
     if (!docId) return;
     const token = getEditToken(docId);
     if (!token) return;
+    // Confirmation dialog
+    const confirmed = window.confirm("Restore this version? Your current content will be saved as a snapshot before restoring.");
+    if (!confirmed) return;
     setRestoringVersion(versionId);
     try {
       // Save current state as version before restoring
