@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 type AIAction = "polish" | "summary" | "tldr" | "translate" | "chat";
 
 // ─── AI Model Config (cached from site_config table) ───
-const DEFAULT_PRIMARY_MODEL = "gemini-2.5-flash-preview-05-20";
+const DEFAULT_PRIMARY_MODEL = "gemini-3-flash-preview";
 const DEFAULT_LITE_MODEL = "gemini-3.1-flash-lite-preview";
 
 let cachedModels: { primary: string; lite: string } | null = null;

@@ -65,7 +65,7 @@ export default function AdminPage() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [secondsAgo, setSecondsAgo] = useState(0);
   // AI model settings
-  const [aiModelPrimary, setAiModelPrimary] = useState("gemini-2.5-flash-preview-05-20");
+  const [aiModelPrimary, setAiModelPrimary] = useState("gemini-3-flash-preview");
   const [aiModelLite, setAiModelLite] = useState("gemini-3.1-flash-lite-preview");
   const [savingModels, setSavingModels] = useState(false);
   const [modelSaveMsg, setModelSaveMsg] = useState("");
@@ -109,7 +109,7 @@ export default function AdminPage() {
       setSourceBreakdown(data.sourceBreakdown || {});
       setEmailTemplates(data.emailTemplates || []);
       if (data.aiModels) {
-        setAiModelPrimary(data.aiModels.primary || "gemini-2.5-flash-preview-05-20");
+        setAiModelPrimary(data.aiModels.primary || "gemini-3-flash-preview");
         setAiModelLite(data.aiModels.lite || "gemini-3.1-flash-lite-preview");
       }
     } catch {
@@ -380,7 +380,6 @@ export default function AdminPage() {
                     onChange={e => setAiModelPrimary(e.target.value)}
                     style={selectStyle}
                   >
-                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
                     <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
                     <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
                     <option value="gemini-2.0-flash">gemini-2.0-flash</option>
@@ -398,7 +397,6 @@ export default function AdminPage() {
                     onChange={e => setAiModelLite(e.target.value)}
                     style={selectStyle}
                   >
-                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
                     <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
                     <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
                     <option value="gemini-2.0-flash">gemini-2.0-flash</option>

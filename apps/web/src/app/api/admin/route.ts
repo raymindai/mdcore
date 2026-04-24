@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch AI model config from site_config
-    let aiModels: { primary: string; lite: string } = { primary: "gemini-2.5-flash-preview-05-20", lite: "gemini-3.1-flash-lite-preview" };
+    let aiModels: { primary: string; lite: string } = { primary: "gemini-3-flash-preview", lite: "gemini-3.1-flash-lite-preview" };
     try {
       const { data: configRows } = await supabase!.from("site_config").select("key, value").in("key", ["ai_model_primary", "ai_model_lite"]);
       const configMap: Record<string, string> = {};
@@ -191,7 +191,6 @@ export async function PATCH(req: NextRequest) {
     const { aiModelPrimary, aiModelLite } = body as { aiModelPrimary?: string; aiModelLite?: string };
 
     const allowedModels = [
-      "gemini-2.5-flash-preview-05-20",
       "gemini-3-flash-preview",
       "gemini-3.1-flash-lite-preview",
       "gemini-2.0-flash",
