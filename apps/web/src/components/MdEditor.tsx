@@ -3389,6 +3389,8 @@ export default function MdEditor() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'documents', filter: `user_id=eq.${user.id}` },
         () => {
+          // Skip if this is likely our own save (within 3s of auto-save)
+          if (autoSave.lastSaved && Date.now() - autoSave.lastSaved.getTime() < 3000) return;
           // Debounce: coalesce rapid updates into a single fetch
           if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(async () => {
@@ -4515,7 +4517,7 @@ export default function MdEditor() {
   // Auto-refresh version list while history panel is open (3s for near-realtime feel)
   useEffect(() => {
     if (!showHistory || !docId) return;
-    const interval = setInterval(() => { loadVersions(); }, 3000);
+    const interval = setInterval(() => { loadVersions(); }, 15000);
     return () => clearInterval(interval);
   }, [showHistory, docId, loadVersions]);
 
