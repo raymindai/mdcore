@@ -1933,6 +1933,7 @@ export default function MdEditor() {
   useEffect(() => clearHighlight, [clearHighlight]);
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Set default view mode based on screen size + auto-close sidebar on mobile
   useEffect(() => {
@@ -4136,7 +4137,9 @@ export default function MdEditor() {
         setShowDocEditModeMenu(false);
         setConfirmRotateToken(false);
       }
-      setShowExportMenu(false);
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
       setShowEditModeMenu(false);
     };
     if (showMenu || showExportMenu || showEditModeMenu) {
@@ -7868,7 +7871,7 @@ ${html}
                 </div>}
                 <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* Export dropdown */}
-                <div className="relative group">
+                <div className="relative group" ref={exportMenuRef}>
                   <button
                     onClick={() => { setShowExportMenu(prev => !prev); setShowMenu(false); }}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
