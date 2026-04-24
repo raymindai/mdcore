@@ -6534,11 +6534,13 @@ ${html}
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
+                        const now = Date.now();
                         const allRootTabs = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
                           if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                           if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                          const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
-                          return sortMode === "oldest" ? ai - bi : bi - ai;
+                          const at = a.lastOpenedAt || now;
+                          const bt = b.lastOpenedAt || now;
+                          return sortMode === "newest" ? bt - at : at - bt;
                         });
                         const visibleRootTabs = showAllDocs || allRootTabs.length <= MAX_VISIBLE_DOCS ? allRootTabs : allRootTabs.slice(0, MAX_VISIBLE_DOCS);
                         return (<>
@@ -6667,8 +6669,9 @@ ${html}
                                 {[...folderTabs].sort((a, b) => {
                                   if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                                   if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                                  const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
-                                  return sortMode === "oldest" ? ai - bi : bi - ai;
+                                  const at = a.lastOpenedAt || Date.now();
+                                  const bt = b.lastOpenedAt || Date.now();
+                                  return sortMode === "newest" ? bt - at : at - bt;
                                 }).map((tab) => (
                                   <div
                                     key={tab.id}
