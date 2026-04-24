@@ -67,11 +67,14 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 ## What You Can Do
 
 - **WYSIWYG editing** — click any text in the Live view and start typing
-- **AI mdfy** — import a PDF or paste raw text, then let AI structure it as Markdown
+- **AI Tools** — Polish, Summary, TL;DR, Translate, Chat (right panel)
+- **Document Outline** — heading structure panel on the right
+- **Image Gallery** — upload, manage, and insert images (right panel)
 - **Multi-format import** — drag & drop PDF, DOCX, PPTX, XLSX, or 10+ other formats
 - **Export anywhere** — download as MD/HTML/TXT, print PDF, copy for Docs/Email/Slack
 - **Flavor conversion** — click the flavor badge (GFM ▾) to convert between formats
 - **Folders + Trash** — organize with folders, drag to move, soft delete with restore
+- **Cross-platform sync** — edit on Web, VS Code, Mac Desktop, or CLI. Same URL everywhere
 
 ## Keyboard Shortcuts
 
@@ -543,17 +546,51 @@ After (auto-converted):
 | Auth    | Done   |
 | Export  | Done   |
 
+## AI Tools
+
+Click the **AI** button in the header to open the AI panel:
+
+- **Polish** — improve writing quality and clarity
+- **Summary** — generate a concise summary at the top
+- **TL;DR** — extract key bullet points
+- **Translate** — translate to any language
+- **Chat** — type a natural language instruction to edit the document
+
+Changes are highlighted in orange and fade after 3 seconds.
+
+## Document Outline
+
+Click the **Outline** button to see your document structure. All headings (H1-H6) are listed with hierarchy. Click any heading to scroll directly to it.
+
+## Image Gallery
+
+Click the **Image** button to open the gallery panel:
+
+- Upload images (WebP auto-conversion, max 10MB per file)
+- Click any image to insert at cursor position
+- Storage quota: Free 20MB, Pro 1GB
+
 ## Narrow View
 
-Toggle **NARROW** in the panel header to constrain content width for comfortable reading — like a book layout.
+Toggle **Narrow View** in the panel header to constrain content width for comfortable reading.
 
 ## Folders & Organization
 
 - Create folders via **New Folder** at sidebar bottom
-- **Drag & drop** documents between folders
-- **Right-click** folders to rename or delete
+- **Right-click** documents to move to folders
 - **Trash** section with restore and permanent delete
-- **Sort** by newest, oldest, A→Z, Z→A
+- **Sort** by newest, oldest, A-Z, Z-A
+
+## Cross-Platform
+
+Your documents sync across all mdfy channels:
+
+- **Web** — mdfy.cc
+- **VS Code** — Extension with WYSIWYG preview
+- **Mac Desktop** — Native app with sidebar
+- **CLI** — \`npm install -g mdfy-cli\`
+- **Chrome Extension** — Capture from ChatGPT, Claude, Gemini
+- **MCP Server** — AI agents create/read/update documents
 `;
 
 /** Truncate title respecting grapheme clusters (emoji-safe) */
