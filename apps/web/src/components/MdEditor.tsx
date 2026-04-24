@@ -375,7 +375,7 @@ xychart-beta
 
 const SAMPLE_ASCII = `# ASCII Art Examples
 
-> Hover over code blocks and click **"Render"** to convert with AI.
+> Click **"Convert to Mermaid"** on any ASCII diagram to transform it into a rendered Mermaid chart.
 
 ## Architecture Diagram
 
