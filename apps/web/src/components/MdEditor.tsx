@@ -1934,10 +1934,11 @@ export default function MdEditor() {
 
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Set default view mode based on screen size
+  // Set default view mode based on screen size + auto-close sidebar on mobile
   useEffect(() => {
     if (isMobile) {
       setViewMode("preview"); // Live view only on mobile by default
+      setShowSidebar(false); // Auto-close sidebar when entering mobile viewport
     }
   }, [isMobile]);
 
@@ -5455,9 +5456,9 @@ ${html}
         className="backdrop-blur-sm relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
-        {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
-        <div className="flex flex-wrap items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2" style={{ justifyContent: "space-between" }}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", order: 0 }}>
+        {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
+        <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%" }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -5587,10 +5588,10 @@ ${html}
           </span>
         </div>
 
-        {/* Center: Home + Layout mode switcher (single group) */}
+        {/* Center: Home + Layout mode switcher — absolute center relative to window */}
         <div
           className="flex items-center rounded-lg overflow-hidden shrink-0"
-          style={{ border: "1px solid var(--border-dim)", order: 1 }}
+          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)", zIndex: 1 }}
         >
           {/* Home */}
           <button
@@ -5640,7 +5641,7 @@ ${html}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ order: 2 }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end">
 
           {/* AI Render moved to LIVE panel header */}
 
