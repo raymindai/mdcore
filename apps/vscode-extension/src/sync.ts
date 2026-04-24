@@ -292,6 +292,11 @@ export class SyncEngine {
       const config = await loadMdfyConfig(mdPath);
       if (!config) continue;
 
+      // Skip polling for documents with active Yjs collaboration
+      const { getCollabManager } = await import("./extension");
+      const mdUri = vscode.Uri.file(mdPath);
+      if (getCollabManager()?.isActive(mdUri)) continue;
+
       try {
         const result = await checkServerUpdatedAt(config.docId, this.authManager);
 

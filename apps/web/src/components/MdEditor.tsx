@@ -3227,24 +3227,20 @@ export default function MdEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, authLoading]);
 
-  // Notification polling (every 30s for logged-in users)
+  // Notification initial fetch (Realtime handles subsequent updates)
   useEffect(() => {
     if (!user?.email) { setNotifications([]); setUnreadCount(0); return; }
     const controller = new AbortController();
-    const fetchNotifs = () => {
-      fetch("/api/notifications", { headers: authHeadersRef.current, signal: controller.signal })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data) {
-            setNotifications(data.notifications || []);
-            setUnreadCount(data.unreadCount || 0);
-          }
-        })
-        .catch(() => {});
-    };
-    fetchNotifs();
-    const interval = setInterval(fetchNotifs, 30000);
-    return () => { clearInterval(interval); controller.abort(); };
+    fetch("/api/notifications", { headers: authHeadersRef.current, signal: controller.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      })
+      .catch(() => {});
+    return () => { controller.abort(); };
   }, [user?.email]);
 
   // Ref for latest markdown (avoids stale closures in Realtime + preview handlers)

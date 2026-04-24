@@ -601,6 +601,9 @@ const SyncEngine = {
       const config = loadMdfyConfig(mdPath);
       if (!config) continue;
 
+      // Skip polling for documents with active Yjs collaboration
+      if (CollaborationManager._cloudId === config.docId) continue;
+
       try {
         const check = await apiCheckUpdatedAt(config.docId);
 
