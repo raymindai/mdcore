@@ -386,6 +386,52 @@ chkFloat.addEventListener("change", () => {
   });
 })();
 
+// ─── Document Search ───
+
+const searchInput = document.getElementById("search-input");
+const searchResultsEl = document.getElementById("search-results");
+let searchTimer = null;
+
+if (searchInput) {
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    if (searchTimer) clearTimeout(searchTimer);
+    if (q.length < 3) {
+      searchResultsEl.innerHTML = "";
+      return;
+    }
+    searchTimer = setTimeout(async () => {
+      const userId = await getUserId();
+      if (!userId) {
+        searchResultsEl.innerHTML = '<div style="font-size:10px;color:#52525b;padding:4px 0">Sign in to search</div>';
+        return;
+      }
+      try {
+        const res = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({
+            action: "proxy-fetch",
+            url: `${MDFY_URL}/api/search?q=${encodeURIComponent(q)}`,
+            options: { headers: { "x-user-id": userId } },
+          }, resolve);
+        });
+        if (!res || !res.ok) { searchResultsEl.innerHTML = ""; return; }
+        const data = JSON.parse(res.body);
+        const results = data.results || [];
+        if (results.length === 0) {
+          searchResultsEl.innerHTML = '<div style="font-size:10px;color:#52525b;padding:4px 0">No results</div>';
+          return;
+        }
+        searchResultsEl.innerHTML = results.slice(0, 5).map(r =>
+          `<a href="${MDFY_URL}/?doc=${r.id}" target="_blank" style="display:block;padding:5px 8px;border-radius:4px;text-decoration:none;margin-bottom:2px;transition:background 0.1s" onmouseover="this.style.background='#1c1c24'" onmouseout="this.style.background='none'">
+            <div style="font-size:11px;font-weight:600;color:#e4e4e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</div>
+            <div style="font-size:9px;color:#52525b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(r.snippet || "").slice(0, 60)}</div>
+          </a>`
+        ).join("");
+      } catch { searchResultsEl.innerHTML = ""; }
+    }, 400);
+  });
+}
+
 // ─── Init ───
 
 detectPlatform();
