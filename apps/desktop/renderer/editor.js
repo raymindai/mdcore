@@ -14,6 +14,7 @@
   var content = document.getElementById("content");
   var toolbar = document.getElementById("toolbar");
   var welcome = document.getElementById("welcome");
+  var homeScreen = document.getElementById("home-screen");
   var splitContainer = document.getElementById("split-container");
   var renderPane = document.getElementById("render-pane");
   var editorPane = document.getElementById("editor-pane");
@@ -102,7 +103,22 @@
       });
     });
 
-    // Sidebar logo → back to welcome
+    // Home screen buttons
+    var homeNew = document.getElementById("home-new");
+    var homePaste = document.getElementById("home-paste");
+    var homeImport = document.getElementById("home-import");
+
+    if (homeNew) homeNew.addEventListener("click", function() { window.mdfyDesktop.newDocument(); });
+    if (homePaste) homePaste.addEventListener("click", function() {
+      window.mdfyDesktop.readClipboard().then(function(text) {
+        if (text && text.trim()) {
+          loadDocumentContent(text, null);
+        }
+      });
+    });
+    if (homeImport) homeImport.addEventListener("click", function() { window.mdfyDesktop.openFile(); });
+
+    // Sidebar logo → back to home
     var sidebarLogo = document.querySelector(".sidebar-logo");
     if (sidebarLogo) {
       sidebarLogo.style.cursor = "pointer";
@@ -115,7 +131,7 @@
         isDirty = false;
         currentFilePath = null;
         currentConfig = null;
-        showWelcome();
+        showHomeScreen();
       });
     }
 
@@ -1127,22 +1143,158 @@
     welcome = document.getElementById("welcome");
 
     if (welcome) welcome.style.display = "none";
+    if (homeScreen) homeScreen.style.display = "none";
     if (splitContainer) splitContainer.style.display = "";
     var cw = document.getElementById("content-wrapper");
     if (cw) cw.style.display = "";
     document.getElementById("app-header").style.display = "";
     document.getElementById("bottom-bar").style.display = "";
+    // Restore header left/right visibility
+    var hl = document.querySelector(".header-left");
+    var hr = document.querySelector(".header-right");
+    if (hl) hl.style.visibility = "";
+    if (hr) hr.style.visibility = "";
     setViewMode(currentViewMode || "live");
   }
 
   function showWelcome() {
     hasDocument = false;
     if (welcome) welcome.style.display = "";
+    if (homeScreen) homeScreen.style.display = "none";
     if (splitContainer) splitContainer.style.display = "none";
     var cw = document.getElementById("content-wrapper");
     if (cw) cw.style.display = "none";
     document.getElementById("app-header").style.display = "none";
     document.getElementById("bottom-bar").style.display = "none";
+  }
+
+  function showHomeScreen() {
+    if (welcome) welcome.style.display = "none";
+    if (homeScreen) homeScreen.style.display = "";
+    if (splitContainer) splitContainer.style.display = "none";
+    var cw = document.getElementById("content-wrapper");
+    if (cw) cw.style.display = "none";
+    var appHeader = document.getElementById("app-header");
+    if (appHeader) appHeader.style.display = "";
+    document.getElementById("bottom-bar").style.display = "none";
+    // Hide header left/right on home — only show view switcher
+    var hl = document.querySelector(".header-left");
+    var hr = document.querySelector(".header-right");
+    if (hl) hl.style.visibility = "hidden";
+    if (hr) hr.style.visibility = "hidden";
+    document.querySelectorAll(".view-btn").forEach(function(btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-view") === "home");
+    });
+    renderHomeScreen();
+  }
+
+  function renderHomeScreen() {
+    // ─── Recent ───
+    var recentList = document.getElementById("home-recent-list");
+    var recentSection = document.getElementById("home-recent-section");
+    if (recentList) {
+      // Merge workspace + recent files, dedupe
+      var allFiles = [];
+      var seenPaths = new Set();
+      for (var i = 0; i < sidebarState.workspaceFiles.length; i++) {
+        var wf = sidebarState.workspaceFiles[i];
+        if (!seenPaths.has(wf.filePath)) {
+          seenPaths.add(wf.filePath);
+          allFiles.push({
+            filePath: wf.filePath,
+            fileName: wf.fileName,
+            relativePath: wf.relativePath || wf.filePath.replace(/^\/Users\/[^/]+/, "~"),
+            modifiedAt: wf.modifiedAt,
+            config: wf.config,
+          });
+        }
+      }
+      for (var j = 0; j < sidebarState.recentFiles.length; j++) {
+        var rf = sidebarState.recentFiles[j];
+        if (!seenPaths.has(rf.path)) {
+          seenPaths.add(rf.path);
+          var parts = rf.path.split("/");
+          allFiles.push({
+            filePath: rf.path,
+            fileName: parts[parts.length - 1],
+            relativePath: rf.path.replace(/^\/Users\/[^/]+/, "~"),
+            modifiedAt: rf.modifiedAt || rf.openedAt,
+            config: rf.config,
+          });
+        }
+      }
+      // Sort by newest first
+      allFiles.sort(function(a, b) {
+        return new Date(b.modifiedAt || 0).getTime() - new Date(a.modifiedAt || 0).getTime();
+      });
+      // Limit to 8
+      allFiles = allFiles.slice(0, 8);
+
+      if (allFiles.length === 0) {
+        if (recentSection) recentSection.style.display = "none";
+      } else {
+        if (recentSection) recentSection.style.display = "";
+        var html = "";
+        for (var k = 0; k < allFiles.length; k++) {
+          var f = allFiles[k];
+          var isSynced = f.config && f.config.docId;
+          var iconSvg = isSynced
+            ? '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg>'
+            : '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 5h4M6 8h4M6 11h2"/></svg>';
+          html +=
+            '<button class="home-recent-item" data-filepath="' + f.filePath.replace(/"/g, '&quot;') + '">' +
+              '<div class="home-recent-icon">' + iconSvg + '</div>' +
+              '<div class="home-recent-info">' +
+                '<span class="home-recent-name">' + escapeHtml(f.fileName) + '</span>' +
+                '<span class="home-recent-path">' + escapeHtml(f.relativePath) + '</span>' +
+              '</div>' +
+              '<span class="home-recent-time">' + timeAgo(f.modifiedAt) + '</span>' +
+            '</button>';
+        }
+        recentList.innerHTML = html;
+      }
+    }
+
+    // ─── Examples click ───
+    var exGrid = document.getElementById("home-examples-grid");
+    if (exGrid) {
+      exGrid.onclick = function(e) {
+        var card = e.target.closest(".home-example-card");
+        if (card && card.dataset.url) {
+          window.mdfyDesktop.openInBrowser(card.dataset.url);
+        }
+      };
+    }
+
+    // ─── Recent item click ───
+    if (recentList) {
+      recentList.onclick = function(e) {
+        var item = e.target.closest(".home-recent-item");
+        if (item && item.dataset.filepath) {
+          window.mdfyDesktop.openFilePath(item.dataset.filepath);
+        }
+      };
+    }
+
+    // ─── Drop zone ───
+    var dropzone = document.getElementById("home-dropzone");
+    if (dropzone) {
+      dropzone.ondragover = function(e) { e.preventDefault(); dropzone.classList.add("active"); };
+      dropzone.ondragleave = function() { dropzone.classList.remove("active"); };
+      dropzone.ondrop = function(e) {
+        e.preventDefault();
+        dropzone.classList.remove("active");
+        var files = Array.from(e.dataTransfer.files);
+        if (files.length > 0 && files[0].path) {
+          window.mdfyDesktop.openFilePath(files[0].path);
+        }
+      };
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   var currentViewMode = "live";
@@ -1306,8 +1458,8 @@
     });
   }
 
-  // Show welcome on initial load
-  showWelcome();
+  // Show home screen on initial load
+  showHomeScreen();
 
   // ════════════════════════════════════════════════════════
   //  PUBLISH
@@ -1880,7 +2032,20 @@
 
   document.addEventListener("click", function(e) {
     var btn = e.target.closest(".view-btn");
-    if (btn) { e.preventDefault(); e.stopPropagation(); setViewMode(btn.getAttribute("data-view")); }
+    if (btn) {
+      e.preventDefault(); e.stopPropagation();
+      var view = btn.getAttribute("data-view");
+      if (view === "home") {
+        showHomeScreen();
+      } else {
+        if (hasDocument) {
+          setViewMode(view);
+        } else {
+          // No document open — show home instead
+          showHomeScreen();
+        }
+      }
+    }
   });
 
   // ════════════════════════════════════════════════════════
@@ -3613,6 +3778,10 @@
 
   initSidebar().then(function() {
     dismissLoadingOverlay();
+    // Re-render home screen now that sidebar data is loaded
+    if (homeScreen && homeScreen.style.display !== "none") {
+      renderHomeScreen();
+    }
   }).catch(function() {
     dismissLoadingOverlay();
   });
