@@ -116,27 +116,32 @@ export function useCollaboration(
       }
     }, 1500);
 
+    // Set up Supabase Realtime Broadcast channel
+    let subscribed = false;
+    const channel = supabase.channel(`yjs-doc-${cloudId}`, {
+      config: { broadcast: { self: false, ack: true } },
+    });
+
     // Listen for local Y.Doc updates and broadcast to peers
     ydoc.on("update", (update: Uint8Array, origin: unknown) => {
       if (origin === "remote") return; // Don't re-broadcast remote changes
-      const channel = channelRef.current;
-      if (channel) {
-        channel.send({
-          type: "broadcast",
-          event: "yjs-update",
-          payload: { update: uint8ToBase64(update) },
-        });
-      }
+      if (!subscribed || !channelRef.current) return;
+      channelRef.current.send({
+        type: "broadcast",
+        event: "yjs-update",
+        payload: { update: uint8ToBase64(update) },
+      }).then((status: string) => {
+        if (status !== "ok") console.warn("[collab] broadcast failed:", status);
+      });
     });
 
-    // Set up Supabase Realtime Broadcast channel
-    const channel = supabase.channel(`yjs-doc-${cloudId}`, {
-      config: { broadcast: { self: false } },
-    });
+    // Set channelRef BEFORE subscribe so ydoc update handler can send
+    channelRef.current = channel;
 
     channel
       .on("broadcast", { event: "yjs-update" }, ({ payload }: { payload: { update?: string } }) => {
         if (!payload?.update) return;
+        console.log("[collab] received yjs-update, bytes:", payload.update.length);
         const update = base64ToUint8(payload.update);
         isApplyingRemoteRef.current = true;
         Y.applyUpdate(ydoc, update, "remote");
@@ -225,28 +230,29 @@ export function useCollaboration(
         }
       })
       .subscribe(async (status: string) => {
+        console.log("[collab] channel status:", status, "cloudId:", cloudId);
         if (status === "SUBSCRIBED") {
+          subscribed = true;
           setIsCollaborating(true);
           // Request full state from any existing peers
-          channel.send({
+          const syncResult = await channel.send({
             type: "broadcast",
             event: "yjs-sync-request",
             payload: {},
           });
+          console.log("[collab] sync-request sent:", syncResult);
           // Track presence so peers can count us
           await channel.track({ joined_at: Date.now() });
         }
       });
 
-    channelRef.current = channel;
-
     return () => {
       clearTimeout(initTimer);
-      channel.unsubscribe();
+      channelRef.current = null;
+      supabase.removeChannel(channel);
       ydoc.destroy();
       ydocRef.current = null;
       ytextRef.current = null;
-      channelRef.current = null;
       setIsCollaborating(false);
       setPeerCount(0);
       setPeerCursors([]);
