@@ -9,6 +9,7 @@ import {
   updateDocument,
   pullDocument,
   checkServerUpdatedAt,
+  ConflictError,
 } from "./publish";
 import { AuthManager } from "./auth";
 import { StatusBarManager } from "./statusbar";
@@ -159,7 +160,8 @@ export class SyncEngine {
         config.editToken,
         markdown,
         title,
-        this.authManager
+        this.authManager,
+        config.lastServerUpdatedAt // expectedUpdatedAt for conflict detection
       );
 
       config.lastSyncedAt = new Date().toISOString();
@@ -169,6 +171,41 @@ export class SyncEngine {
       this.statusBar.setSynced();
       PreviewPanel.updateSyncStatusForDocument(document.uri, "synced");
     } catch (err) {
+      // Handle 409 Conflict
+      if (err instanceof Error && (err as ConflictError).conflict) {
+        this.statusBar.setConflict();
+        PreviewPanel.updateSyncStatusForDocument(document.uri, "error");
+
+        const choice = await vscode.window.showWarningMessage(
+          "This document was modified by someone else.",
+          "Push (overwrite server)",
+          "Pull (overwrite local)",
+          "Show Diff"
+        );
+
+        if (choice === "Push (overwrite server)") {
+          // Force push without expectedUpdatedAt
+          const result = await updateDocument(
+            config.docId,
+            config.editToken,
+            markdown,
+            title,
+            this.authManager
+            // no expectedUpdatedAt — force overwrite
+          );
+          config.lastSyncedAt = new Date().toISOString();
+          config.lastServerUpdatedAt = result.updated_at;
+          await saveMdfyConfig(filePath, config);
+          this.statusBar.setSynced();
+          PreviewPanel.updateSyncStatusForDocument(document.uri, "synced");
+        } else if (choice === "Pull (overwrite local)") {
+          await this.pull(document);
+        } else if (choice === "Show Diff") {
+          await this.showConflictDiff(document, config);
+        }
+        return;
+      }
+
       this.statusBar.setError();
       PreviewPanel.updateSyncStatusForDocument(document.uri, "error");
 

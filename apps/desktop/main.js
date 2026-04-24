@@ -319,7 +319,7 @@ async function apiPublish(markdown, title) {
   return resp.json();
 }
 
-async function apiUpdate(docId, editToken, markdown, title) {
+async function apiUpdate(docId, editToken, markdown, title, expectedUpdatedAt) {
   const body = {
     editToken,
     markdown,
@@ -330,12 +330,21 @@ async function apiUpdate(docId, editToken, markdown, title) {
   const email = AuthManager.getEmail();
   if (userId) body.userId = userId;
   if (email) body.userEmail = email;
+  if (expectedUpdatedAt) body.expectedUpdatedAt = expectedUpdatedAt;
 
   const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
     method: "PATCH",
     headers: AuthManager.getHeaders(),
     body: JSON.stringify(body),
   });
+  if (resp.status === 409) {
+    const conflictData = await resp.json().catch(() => ({}));
+    const err = new Error("Conflict: document was modified by someone else");
+    err.conflict = true;
+    err.serverMarkdown = conflictData.serverMarkdown || "";
+    err.serverUpdatedAt = conflictData.serverUpdatedAt || "";
+    throw err;
+  }
   if (!resp.ok) {
     handleApiAuthError(resp.status);
     throw new Error(`Update failed: ${resp.status}`);
@@ -493,12 +502,27 @@ const SyncEngine = {
     const title = extractTitle(markdown) || path.basename(filePath, ".md");
     sendToRenderer("sync-status", { filePath, status: "syncing" });
 
-    const result = await apiUpdate(config.docId, config.editToken, markdown, title);
-    config.lastSyncedAt = new Date().toISOString();
-    config.lastServerUpdatedAt = result.updated_at;
-    saveMdfyConfig(filePath, config);
+    try {
+      const result = await apiUpdate(config.docId, config.editToken, markdown, title, config.lastServerUpdatedAt);
+      config.lastSyncedAt = new Date().toISOString();
+      config.lastServerUpdatedAt = result.updated_at;
+      saveMdfyConfig(filePath, config);
 
-    sendToRenderer("sync-status", { filePath, status: "synced" });
+      sendToRenderer("sync-status", { filePath, status: "synced" });
+    } catch (err) {
+      if (err.conflict) {
+        // Send conflict event to renderer with server data
+        sendToRenderer("sync-conflict", {
+          filePath,
+          serverUpdatedAt: err.serverUpdatedAt,
+          localUpdatedAt: config.lastServerUpdatedAt,
+          serverMarkdown: err.serverMarkdown,
+          conflict: true,
+        });
+        return;
+      }
+      throw err;
+    }
   },
 
   async pull(filePath) {
@@ -1426,6 +1450,7 @@ ipcMain.handle("resolve-conflict", async (event, action, filePath) => {
     const config = loadMdfyConfig(target);
     if (config) {
       const title = extractTitle(markdown) || path.basename(target, ".md");
+      // Force push: no expectedUpdatedAt — overwrite server
       const result = await apiUpdate(config.docId, config.editToken, markdown, title);
       config.lastSyncedAt = new Date().toISOString();
       config.lastServerUpdatedAt = result.updated_at;

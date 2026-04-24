@@ -74,7 +74,8 @@ export async function updateDocument(
   editToken: string,
   markdown: string,
   title: string,
-  authManager?: AuthManager
+  authManager?: AuthManager,
+  expectedUpdatedAt?: string
 ): Promise<{ updated_at: string }> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}/api/docs/${id}`;
@@ -85,6 +86,9 @@ export async function updateDocument(
     title,
     action: "auto-save",
   };
+  if (expectedUpdatedAt) {
+    body.expectedUpdatedAt = expectedUpdatedAt;
+  }
 
   const userId = await authManager?.getUserId();
   if (userId) {
@@ -113,6 +117,19 @@ export async function updateDocument(
     body: JSON.stringify(body),
   });
 
+  if (response.status === 409) {
+    const conflictData = await response.json().catch(() => ({})) as {
+      conflict?: boolean;
+      serverMarkdown?: string;
+      serverUpdatedAt?: string;
+    };
+    const err = new Error("Conflict: document was modified by someone else");
+    (err as ConflictError).conflict = true;
+    (err as ConflictError).serverMarkdown = conflictData.serverMarkdown || "";
+    (err as ConflictError).serverUpdatedAt = conflictData.serverUpdatedAt || "";
+    throw err;
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
@@ -123,6 +140,12 @@ export async function updateDocument(
 
   const data = await response.json() as { ok: boolean; updated_at?: string };
   return { updated_at: data.updated_at || new Date().toISOString() };
+}
+
+export interface ConflictError extends Error {
+  conflict: boolean;
+  serverMarkdown: string;
+  serverUpdatedAt: string;
 }
 
 /**

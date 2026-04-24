@@ -180,6 +180,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     isDraft?: boolean;
     source?: string;
     folderId?: string | null;
+    expectedUpdatedAt?: string;
   };
   try {
     body = await req.json();
@@ -355,11 +356,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   // ─── Action: auto-save (no version history) ───
   if (body.action === "auto-save") {
-    const { markdown, title, userId, anonymousId, editToken } = body;
+    const { markdown, title, userId, anonymousId, editToken, expectedUpdatedAt } = body;
 
     const { data: doc } = await supabase
       .from("documents")
-      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at, allowed_editors")
+      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at, allowed_editors, updated_at, markdown")
       .eq("id", id)
       .single();
 
@@ -388,6 +389,20 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       // editMode === "public" → anyone can auto-save
     }
 
+    // Conflict detection: if expectedUpdatedAt is provided, compare with actual updated_at
+    if (expectedUpdatedAt && doc.updated_at) {
+      const expected = new Date(expectedUpdatedAt).getTime();
+      const actual = new Date(doc.updated_at).getTime();
+      if (actual > expected) {
+        return NextResponse.json({
+          error: "Conflict",
+          conflict: true,
+          serverMarkdown: doc.markdown || "",
+          serverUpdatedAt: doc.updated_at,
+        }, { status: 409 });
+      }
+    }
+
     // Update without creating version history
     const updatedAt = new Date().toISOString();
     const updates: Record<string, unknown> = { updated_at: updatedAt };
@@ -395,6 +410,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     if (title !== undefined) updates.title = title;
     if (body.source) updates.source = body.source;
     if (body.folderId !== undefined) updates.folder_id = body.folderId || null;
+    // Track last editor
+    if (userId) updates.last_editor_id = userId;
+    if (userEmail) updates.last_editor_email = userEmail;
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });

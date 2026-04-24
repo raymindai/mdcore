@@ -6,10 +6,16 @@ interface AutoSaveOptions {
   debounceMs?: number;
 }
 
+interface ConflictData {
+  serverMarkdown: string;
+  serverUpdatedAt: string;
+}
+
 interface AutoSaveState {
   isSaving: boolean;
   lastSaved: Date | null;
   error: string | null;
+  conflict: ConflictData | null;
 }
 
 /**
@@ -23,10 +29,12 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
     isSaving: false,
     lastSaved: null,
     error: null,
+    conflict: null,
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedMdRef = useRef<string>("");
+  const lastServerUpdatedAtRef = useRef<string>("");
   const inflightRef = useRef(false);
   const pendingRef = useRef<Parameters<typeof scheduleSave>[0] | null>(null);
   const retryCountRef = useRef(0);
@@ -59,7 +67,8 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
         if (!res.ok) return null;
         const data = await res.json();
         lastSavedMdRef.current = args.markdown;
-        setState({ isSaving: false, lastSaved: new Date(), error: null });
+        if (data.updated_at) lastServerUpdatedAtRef.current = data.updated_at;
+        setState({ isSaving: false, lastSaved: new Date(), error: null, conflict: null });
         return { id: data.id as string, editToken: data.editToken as string };
       } catch {
         setState((s) => ({ ...s, error: "Failed to create document" }));
@@ -98,24 +107,46 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
         setState((s) => ({ ...s, isSaving: true }));
 
         try {
+          const patchBody: Record<string, unknown> = {
+            action: "auto-save",
+            markdown: args.markdown,
+            title: args.title,
+            userId: args.userId,
+            userEmail: args.userEmail,
+            anonymousId: args.anonymousId,
+            editToken: args.editToken,
+          };
+          // Send expectedUpdatedAt for conflict detection
+          if (lastServerUpdatedAtRef.current) {
+            patchBody.expectedUpdatedAt = lastServerUpdatedAtRef.current;
+          }
+
           const res = await fetch(`/api/docs/${args.cloudId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "auto-save",
-              markdown: args.markdown,
-              title: args.title,
-              userId: args.userId,
-              userEmail: args.userEmail,
-              anonymousId: args.anonymousId,
-              editToken: args.editToken,
-            }),
+            body: JSON.stringify(patchBody),
           });
 
           if (res.ok) {
+            const data = await res.json().catch(() => ({}));
             lastSavedMdRef.current = args.markdown;
+            if (data.updated_at) {
+              lastServerUpdatedAtRef.current = data.updated_at;
+            }
             retryCountRef.current = 0; // Reset on success
-            setState({ isSaving: false, lastSaved: new Date(), error: null });
+            setState({ isSaving: false, lastSaved: new Date(), error: null, conflict: null });
+          } else if (res.status === 409) {
+            // Conflict: someone else saved in between
+            const conflictData = await res.json().catch(() => ({}));
+            setState((s) => ({
+              ...s,
+              isSaving: false,
+              error: null,
+              conflict: {
+                serverMarkdown: conflictData.serverMarkdown || "",
+                serverUpdatedAt: conflictData.serverUpdatedAt || "",
+              },
+            }));
           } else if (res.status === 403) {
             // Permission error — likely session expired or owner mismatch
             setState((s) => ({ ...s, isSaving: false, error: "Session expired. Refresh to continue editing." }));
@@ -157,10 +188,51 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
     }
   }, []);
 
+  /**
+   * Force-push: re-save without expectedUpdatedAt (overwrite server).
+   */
+  const forceSave = useCallback(
+    (args: {
+      cloudId: string;
+      markdown: string;
+      title?: string;
+      userId?: string;
+      userEmail?: string;
+      anonymousId?: string;
+      editToken?: string;
+    }) => {
+      // Clear conflict state
+      setState((s) => ({ ...s, conflict: null }));
+      // Clear the expected timestamp so it sends without conflict check
+      lastServerUpdatedAtRef.current = "";
+      // Clear lastSavedMd to bypass dedup (content may match the failed save attempt)
+      lastSavedMdRef.current = "";
+      scheduleSave(args);
+    },
+    [scheduleSave]
+  );
+
+  /**
+   * Dismiss conflict without action (e.g., after pulling server version).
+   */
+  const dismissConflict = useCallback(() => {
+    setState((s) => ({ ...s, conflict: null }));
+  }, []);
+
+  /**
+   * Update the last known server timestamp (e.g., after pulling).
+   */
+  const setLastServerUpdatedAt = useCallback((ts: string) => {
+    lastServerUpdatedAtRef.current = ts;
+  }, []);
+
   return {
     ...state,
     createDocument,
     scheduleSave,
+    forceSave,
+    dismissConflict,
+    setLastServerUpdatedAt,
     cancel,
   };
 }

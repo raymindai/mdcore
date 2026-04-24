@@ -32,6 +32,7 @@ import {
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
+import { usePresence } from "@/lib/usePresence";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
 import {
   createShareUrl,
@@ -1285,6 +1286,7 @@ export default function MdEditor() {
   const authHeadersRef = useRef(authHeaders);
   authHeadersRef.current = authHeaders;
   const autoSave = useAutoSave({ debounceMs: 2500 });
+  const [showConflictModal, setShowConflictModal] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
   const [authEmailInput, setAuthEmailInput] = useState("");
   const [authEmailSent, setAuthEmailSent] = useState(false);
@@ -1574,6 +1576,9 @@ export default function MdEditor() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
+  // Presence: track other editors on the same document
+  const presenceUser = useMemo(() => user ? { id: user.id, email: user.email, displayName: profile?.display_name || user.email, avatarUrl: profile?.avatar_url } : null, [user, profile]);
+  const { otherEditors } = usePresence(docId, presenceUser);
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
   // Can edit: not shared, or owner, or public doc
@@ -2037,6 +2042,8 @@ export default function MdEditor() {
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
+          // Seed the conflict detection timestamp
+          if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
           setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
         })
         .catch(() => {
@@ -3019,6 +3026,13 @@ export default function MdEditor() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, user?.id]);
+
+  // Show conflict modal when auto-save detects a 409
+  useEffect(() => {
+    if (autoSave.conflict) {
+      setShowConflictModal(true);
+    }
+  }, [autoSave.conflict]);
 
   // Session-based version snapshots:
   // - Create a snapshot when editing session begins (first edit on a doc with cloudId)
@@ -5468,6 +5482,39 @@ ${html}
                         </button>
                       ))
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Presence indicators — other editors on this document */}
+            {otherEditors.length > 0 && (
+              <div className="flex items-center -space-x-1.5 mr-1">
+                {otherEditors.slice(0, 5).map((editor) => (
+                  <div key={editor.userId} className="relative group/presence">
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                      style={{
+                        background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`,
+                        color: "#fff",
+                        outline: "2px solid var(--background)",
+                      }}
+                      title={editor.displayName || editor.email}
+                    >
+                      {(editor.displayName || editor.email || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                      <div className="font-medium" style={{ color: "var(--text-primary)" }}>{editor.displayName || "Unknown"}</div>
+                      <div style={{ color: "var(--text-muted)" }}>{editor.email}</div>
+                      <div style={{ color: "var(--accent)" }}>Editing now</div>
+                    </div>
+                  </div>
+                ))}
+                {otherEditors.length > 5 && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", outline: "2px solid var(--background)" }}>
+                    +{otherEditors.length - 5}
                   </div>
                 )}
               </div>
@@ -9014,6 +9061,109 @@ ${html}
             } catch { showToast("Failed to make private", "error"); }
           }}
         />
+      )}
+
+      {/* Conflict Modal — when auto-save detects 409 */}
+      {showConflictModal && autoSave.conflict && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => { setShowConflictModal(false); autoSave.dismissConflict(); }}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl shadow-2xl"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert width={18} height={18} style={{ color: "#f59e0b" }} />
+                <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Document Conflict
+                </h2>
+              </div>
+              <button
+                onClick={() => { setShowConflictModal(false); autoSave.dismissConflict(); }}
+                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <X width={14} height={14} />
+              </button>
+            </div>
+            <div className="px-5 pb-3">
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                This document was modified by someone else while you were editing.
+                Your changes could not be saved automatically.
+              </p>
+              {autoSave.conflict.serverUpdatedAt && (
+                <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>
+                  Server version saved at: {new Date(autoSave.conflict.serverUpdatedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <div className="px-5 pb-5 flex gap-2">
+              <button
+                onClick={() => {
+                  // Keep mine: force push without conflict check
+                  const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+                  if (currentTab?.cloudId) {
+                    autoSave.forceSave({
+                      cloudId: currentTab.cloudId,
+                      markdown: markdownRef.current,
+                      title: currentTab.title,
+                      userId: user?.id,
+                      userEmail: user?.email,
+                      anonymousId,
+                      editToken: currentTab.editToken,
+                    });
+                  }
+                  setShowConflictModal(false);
+                  showToast("Your version saved", "info");
+                }}
+                className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+              >
+                Keep mine
+              </button>
+              <button
+                onClick={async () => {
+                  // Keep theirs: pull server version
+                  if (autoSave.conflict) {
+                    setMarkdownRaw(autoSave.conflict.serverMarkdown);
+                    doRender(autoSave.conflict.serverMarkdown);
+                    autoSave.setLastServerUpdatedAt(autoSave.conflict.serverUpdatedAt);
+                    autoSave.dismissConflict();
+                    setShowConflictModal(false);
+                    showToast("Server version loaded", "info");
+                  }
+                }}
+                className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
+              >
+                Keep theirs
+              </button>
+              <button
+                onClick={() => {
+                  // View diff: show both versions side by side
+                  if (autoSave.conflict) {
+                    const serverMd = autoSave.conflict.serverMarkdown;
+                    const localMd = markdownRef.current;
+                    // Open a new tab with a diff-like view
+                    const diffContent = `# Conflict Comparison\n\n---\n\n## Your Version (Local)\n\n${localMd}\n\n---\n\n## Server Version\n\n${serverMd}`;
+                    const newId = String(++tabIdCounter);
+                    setTabs(prev => [...prev, { id: newId, title: "Conflict Diff", markdown: diffContent, readonly: true }]);
+                    setActiveTabId(newId);
+                    setShowConflictModal(false);
+                  }
+                }}
+                className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+              >
+                View diff
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Viewer Share Modal — for non-owners */}
