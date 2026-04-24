@@ -116,17 +116,19 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // Increment view count (fire-and-forget)
-  supabase
-    .from("documents")
-    .update({ view_count: (data.view_count || 0) + 1 })
-    .eq("id", id)
-    .then(() => {});
-
   // Check ownership: by user_id or anonymous_id
   const isOwnedByRequester =
     !!(requesterId && data.user_id && requesterId === data.user_id) ||
     !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
+
+  // Increment view count (fire-and-forget) — skip for document owner
+  if (!isOwnedByRequester) {
+    supabase
+      .from("documents")
+      .update({ view_count: (data.view_count || 0) + 1 })
+      .eq("id", id)
+      .then(() => {});
+  }
 
   // Don't expose sensitive fields
   const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, allowed_emails: _ae, allowed_editors: _aed, edit_token: _et, deleted_at: _da, ...safeData } = data;
