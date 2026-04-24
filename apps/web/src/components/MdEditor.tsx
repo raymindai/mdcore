@@ -1578,7 +1578,7 @@ export default function MdEditor() {
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   // Presence: track other editors on the same document
-  const presenceUser = useMemo(() => user ? { id: user.id, email: user.email, displayName: profile?.display_name || user.email, avatarUrl: profile?.avatar_url } : null, [user, profile]);
+  const presenceUser = useMemo(() => user ? { id: user.id, email: user.email, displayName: profile?.display_name || user.email, avatarUrl: profile?.avatar_url || user.user_metadata?.avatar_url || null } : null, [user, profile]);
   const { otherEditors } = usePresence(docId, presenceUser);
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
@@ -5732,8 +5732,18 @@ ${html}
               <div className="flex items-center -space-x-1.5 mr-1">
                 {otherEditors.slice(0, 5).map((editor) => (
                   <div key={editor.userId} className="relative group/presence">
+                    {editor.avatarUrl ? (
+                      <img
+                        src={editor.avatarUrl}
+                        alt={editor.displayName || editor.email}
+                        className="w-5 h-5 rounded-full shrink-0 object-cover"
+                        style={{ outline: "2px solid var(--background)" }}
+                        title={editor.displayName || editor.email}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
+                      />
+                    ) : null}
                     <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
                       style={{
                         background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`,
                         color: "#fff",
