@@ -5115,17 +5115,43 @@ ${html}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, doRender]);
 
-  // Export PDF
+  // Export PDF — open clean document in new window and print
   const handleExportPdf = useCallback(() => {
     setShowMenu(false);
-    // Switch to preview mode temporarily for print
-    const prevMode = viewMode;
-    setViewMode("preview");
-    setTimeout(() => {
-      window.print();
-      setViewMode(prevMode);
-    }, 300);
-  }, [viewMode]);
+    // Clone rendered HTML, strip UI buttons
+    const clone = document.createElement("div");
+    clone.innerHTML = html;
+    clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${title || "Document"}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 768px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  code { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; }
+  pre code { background: none; }
+  blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 1rem; color: #666; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  img { max-width: 100%; }
+  h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+  @media print { body { margin: 0; padding: 0 0.5rem; } }
+</style>
+</head>
+<body>
+${clone.innerHTML}
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  }, [html, title]);
 
   // Edit shared doc
   const _handleEditShared = useCallback(() => {
