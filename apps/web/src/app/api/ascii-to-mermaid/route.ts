@@ -171,7 +171,7 @@ async function geminiGenerate(apiKey: string, parts: unknown[]): Promise<Record<
 
     const req = https.request({
       hostname: "generativelanguage.googleapis.com",
-      path: `/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+      path: `/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
       method: "POST",
       headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(reqBody) },
       family: 4,
