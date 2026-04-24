@@ -165,30 +165,28 @@ export function useCollaboration(
         if (!payload?.state) return;
         const state = base64ToUint8(payload.state);
 
+        // Decode peer content to validate
         const freshDoc = new Y.Doc();
         Y.applyUpdate(freshDoc, state);
         const peerContent = freshDoc.getText("content").toString();
         freshDoc.destroy();
-
         if (!peerContent.trim()) return;
 
+        // ALWAYS fully replace local Y.Doc with peer's CRDT state.
+        // If both users initialized independently (race condition), their CRDT
+        // item IDs differ and position mapping breaks. Clean replace fixes this.
         isApplyingRemoteRef.current = true;
-        if (!initialized) {
-          initialized = true;
-          clearTimeout(initTimer);
-          if (ytext.length > 0) {
-            ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
-          }
-          ydoc.transact(() => { ytext.insert(0, peerContent); }, "remote");
-          onRemoteChangeRef.current(ytext.toString());
-          isApplyingRemoteRef.current = false;
-          return;
+        clearTimeout(initTimer);
+        initialized = true;
+
+        // Clear local content, then apply peer's full CRDT state
+        if (ytext.length > 0) {
+          ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
         }
+        // Apply the full CRDT state from peer — this gives us their item IDs
         Y.applyUpdate(ydoc, state, "remote");
-        const merged = ytext.toString();
-        if (merged.trim()) {
-          onRemoteChangeRef.current(merged);
-        }
+
+        onRemoteChangeRef.current(ytext.toString());
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-cursor" }, ({ payload }: { payload: { userId?: string; name?: string; index?: number; headIndex?: number } }) => {
