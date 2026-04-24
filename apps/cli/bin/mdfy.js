@@ -304,6 +304,7 @@ function cmdHelp() {
 Usage:
   mdfy publish <file>          Publish a .md file and get a URL
   mdfy publish                 Publish from stdin (pipe support)
+  mdfy search <query>           Search your documents
   mdfy read <id>               Read a document in terminal
   mdfy capture [source]        Capture terminal/AI output and publish
   mdfy update <id> <file>      Update an existing document
@@ -572,6 +573,41 @@ function formatCliSession(text) {
   return "# Terminal Session\n\n```bash\n" + text.trim() + "\n```\n";
 }
 
+// ─── Search ───
+
+async function cmdSearch(args) {
+  const query = args.join(" ").trim();
+  if (!query) { console.error("Usage: mdfy search <query>"); process.exit(1); }
+
+  const config = loadConfig();
+  if (!config.userId && !config.token) { console.error("Not logged in. Run: mdfy login"); process.exit(1); }
+
+  try {
+    const data = await api("GET", `/api/search?q=${encodeURIComponent(query)}`);
+    const results = data.results || [];
+    if (results.length === 0) { console.log("No results found."); return; }
+
+    const BOLD = "\x1b[1m";
+    const DIM = "\x1b[2m";
+    const ORANGE = "\x1b[38;5;208m";
+    const GRAY = "\x1b[38;5;243m";
+    const RESET = "\x1b[0m";
+
+    console.log(`${BOLD}${results.length} result(s) for "${query}"${RESET}\n`);
+    results.forEach((r, i) => {
+      const draft = r.isDraft ? ` ${DIM}[draft]${RESET}` : "";
+      const date = new Date(r.updatedAt).toLocaleDateString();
+      console.log(`${ORANGE}${i + 1}.${RESET} ${BOLD}${r.title}${RESET}${draft}`);
+      console.log(`   ${GRAY}${r.id}  ${date}${RESET}`);
+      if (r.snippet) console.log(`   ${r.snippet.slice(0, 100)}`);
+      console.log();
+    });
+  } catch (err) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
+}
+
 // ─── Helpers ───
 
 function extractTitle(md) {
@@ -603,6 +639,9 @@ async function main() {
       break;
     case "open":
       await cmdOpen(args.slice(1));
+      break;
+    case "search": case "s": case "find":
+      await cmdSearch(args.slice(1));
       break;
     case "read": case "view": case "cat":
       await cmdRead(args.slice(1));

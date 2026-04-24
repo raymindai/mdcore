@@ -289,6 +289,31 @@ server.tool(
   }
 );
 
+// Tool: Search documents
+server.tool(
+  "mdfy_search",
+  "Search your documents on mdfy.cc by keyword (full-text search)",
+  {
+    query: z.string().describe("Search query (keywords to find in your documents)"),
+  },
+  async ({ query }) => {
+    if (!isLoggedIn()) return loginRequiredResult();
+    try {
+      const data = await api<{ results: Array<{ id: string; title: string; snippet: string; isDraft: boolean; viewCount: number; source: string | null; updatedAt: string }> }>(
+        `/api/search?q=${encodeURIComponent(query)}`
+      );
+      const results = data.results || [];
+      if (results.length === 0) {
+        return { content: [{ type: "text" as const, text: `No documents found matching "${query}".` }] };
+      }
+      const lines = results.map((r, i) =>
+        `${i + 1}. **${r.title}** (${r.id}) — ${r.isDraft ? "private" : "shared"} — ${r.viewCount} views — ${r.updatedAt}\n   ${r.snippet}`
+      );
+      return { content: [{ type: "text" as const, text: `Found ${results.length} document(s) matching "${query}":\n\n${lines.join("\n\n")}` }] };
+    } catch (err) { return errorResult(err); }
+  }
+);
+
 // ─── Start ───
 
 async function main() {

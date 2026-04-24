@@ -1486,6 +1486,18 @@ ipcMain.handle("get-cloud-documents", async () => {
   return apiGetCloudDocuments();
 });
 
+ipcMain.handle("search-docs", async (event, query) => {
+  if (!net.isOnline()) return { results: [] };
+  if (!AuthManager.isLoggedIn()) return { results: [] };
+  try {
+    const resp = await net.fetch(`${MDFY_URL}/api/search?q=${encodeURIComponent(query)}`, {
+      headers: AuthManager.getHeaders(),
+    });
+    if (!resp.ok) return { results: [] };
+    return await resp.json();
+  } catch { return { results: [] }; }
+});
+
 ipcMain.handle("get-cloud-folders", async () => {
   if (!net.isOnline()) return [];
   const userId = AuthManager.getUserId();

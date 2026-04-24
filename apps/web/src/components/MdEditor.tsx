@@ -1623,6 +1623,9 @@ export default function MdEditor() {
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">("all");
   const [sidebarSearch, setSidebarSearch] = useState("");
+  const [cloudSearchResults, setCloudSearchResults] = useState<Array<{ id: string; title: string; snippet: string; isDraft: boolean; viewCount: number; source: string | null; updatedAt: string }>>([]);
+  const [isCloudSearching, setIsCloudSearching] = useState(false);
+  const cloudSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showAllDocs, setShowAllDocs] = useState(false);
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
@@ -1649,6 +1652,9 @@ export default function MdEditor() {
   // Command palette (Cmd+K)
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [cmdSearch, setCmdSearch] = useState("");
+  const [cmdSearchResults, setCmdSearchResults] = useState<Array<{ id: string; title: string; snippet: string }>>([]);
+  const [isCmdSearching, setIsCmdSearching] = useState(false);
+  const cmdSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showExamples, setShowExamples] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
@@ -2157,6 +2163,54 @@ export default function MdEditor() {
 
   // Clear selection on filter/search change
   useEffect(() => { setSelectedTabIds(new Set()); }, [docFilter, sidebarSearch, sortMode]);
+
+  // Debounced cloud search when sidebarSearch has 3+ chars
+  useEffect(() => {
+    if (cloudSearchTimerRef.current) clearTimeout(cloudSearchTimerRef.current);
+    if (sidebarSearch.length < 3) {
+      setCloudSearchResults([]);
+      setIsCloudSearching(false);
+      return;
+    }
+    setIsCloudSearching(true);
+    cloudSearchTimerRef.current = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(sidebarSearch)}`, { headers: authHeadersRef.current })
+        .then(res => res.ok ? res.json() : { results: [] })
+        .then(data => {
+          setCloudSearchResults(data.results || []);
+          setIsCloudSearching(false);
+        })
+        .catch(() => {
+          setCloudSearchResults([]);
+          setIsCloudSearching(false);
+        });
+    }, 400);
+    return () => { if (cloudSearchTimerRef.current) clearTimeout(cloudSearchTimerRef.current); };
+  }, [sidebarSearch]);
+
+  // Debounced search for Cmd+K palette (3+ chars, no matching commands)
+  useEffect(() => {
+    if (cmdSearchTimerRef.current) clearTimeout(cmdSearchTimerRef.current);
+    if (!showCommandPalette || cmdSearch.length < 3) {
+      setCmdSearchResults([]);
+      setIsCmdSearching(false);
+      return;
+    }
+    setIsCmdSearching(true);
+    cmdSearchTimerRef.current = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(cmdSearch)}`, { headers: authHeadersRef.current })
+        .then(res => res.ok ? res.json() : { results: [] })
+        .then(data => {
+          setCmdSearchResults(data.results || []);
+          setIsCmdSearching(false);
+        })
+        .catch(() => {
+          setCmdSearchResults([]);
+          setIsCmdSearching(false);
+        });
+    }, 400);
+    return () => { if (cmdSearchTimerRef.current) clearTimeout(cmdSearchTimerRef.current); };
+  }, [cmdSearch, showCommandPalette]);
 
   const addTabWithContent = useCallback(async (initialMd: string) => {
     const currentMd = markdownRef.current;
@@ -6372,7 +6426,57 @@ ${html}
                         </div>
                       )}
 
-                      {/* Cloud-only documents (not linked locally) */}
+                      {/* Cloud search results */}
+                      {sidebarSearch.length >= 3 && (
+                        <>
+                          {isCloudSearching && (
+                            <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                              <span className="inline-block animate-spin mr-1.5" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
+                              Searching cloud...
+                            </div>
+                          )}
+                          {!isCloudSearching && (() => {
+                            const localCloudIds = new Set(tabs.filter(t => t.cloudId).map(t => t.cloudId!));
+                            const uniqueResults = cloudSearchResults.filter(r => !localCloudIds.has(r.id));
+                            if (uniqueResults.length === 0) return null;
+                            return (
+                              <>
+                                <div className="px-3 pt-2 pb-1 text-[9px] font-semibold uppercase" style={{ color: "var(--text-faint)", letterSpacing: "0.5px" }}>
+                                  Cloud results ({uniqueResults.length})
+                                </div>
+                                {uniqueResults.map(r => {
+                                  const snippet = (r.snippet || "").slice(0, 80);
+                                  const ago = r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : "";
+                                  return (
+                                    <div
+                                      key={r.id}
+                                      className="group flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-[var(--menu-hover)]"
+                                      onClick={() => {
+                                        // Add as tab and load from cloud
+                                        const tabId = `cloud-${r.id}`;
+                                        const exists = tabs.find(t => t.id === tabId || t.cloudId === r.id);
+                                        if (exists) {
+                                          switchTab(exists.id);
+                                        } else {
+                                          const newTab = { id: tabId, title: r.title || "Untitled", markdown: "", cloudId: r.id, isDraft: r.isDraft, permission: "mine" as const };
+                                          setTabs(prev => [...prev, newTab]);
+                                          setTimeout(() => switchTab(tabId), 50);
+                                        }
+                                      }}
+                                    >
+                                      <Search width={11} height={11} className="shrink-0" style={{ color: "var(--accent)" }} />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-[11px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{r.title}</div>
+                                        <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{snippet || ago}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
                     </div>
                   </>
                   )}
@@ -9455,19 +9559,62 @@ ${html}
                   }}
                 />
               </div>
-              <div className="max-h-64 overflow-y-auto py-1">
-                {filtered.length === 0 ? (
+              <div className="max-h-80 overflow-y-auto py-1">
+                {filtered.length === 0 && cmdSearchResults.length === 0 && !isCmdSearching ? (
                   <div className="px-4 py-3 text-[12px]" style={{ color: "var(--text-faint)" }}>No matching commands</div>
-                ) : filtered.map((cmd, i) => (
-                  <button
-                    key={cmd.label}
-                    className={`w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 ? "bg-[var(--menu-hover)]" : ""}`}
-                    style={{ color: "var(--text-primary)" }}
-                    onClick={() => { cmd.action(); setShowCommandPalette(false); setCmdSearch(""); }}
-                  >
-                    {cmd.label}
-                  </button>
-                ))}
+                ) : (<>
+                  {filtered.map((cmd, i) => (
+                    <button
+                      key={cmd.label}
+                      className={`w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 && !cmdSearchResults.length ? "bg-[var(--menu-hover)]" : ""}`}
+                      style={{ color: "var(--text-primary)" }}
+                      onClick={() => { cmd.action(); setShowCommandPalette(false); setCmdSearch(""); }}
+                    >
+                      {cmd.label}
+                    </button>
+                  ))}
+                  {cmdSearch.length >= 3 && (
+                    <>
+                      {isCmdSearching && (
+                        <div className="px-4 py-2 text-[11px] flex items-center gap-2" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none" }}>
+                          <span className="inline-block animate-spin" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
+                          Searching documents...
+                        </div>
+                      )}
+                      {!isCmdSearching && cmdSearchResults.length > 0 && (
+                        <>
+                          <div className="px-4 py-1.5 text-[9px] font-semibold uppercase" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none", letterSpacing: "0.5px" }}>
+                            Documents ({cmdSearchResults.length})
+                          </div>
+                          {cmdSearchResults.map(r => (
+                            <button
+                              key={r.id}
+                              className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                              style={{ color: "var(--text-primary)" }}
+                              onClick={() => {
+                                const tabId = `cloud-${r.id}`;
+                                const exists = tabs.find(t => t.id === tabId || t.cloudId === r.id);
+                                if (exists) {
+                                  switchTab(exists.id);
+                                } else {
+                                  const newTab = { id: tabId, title: r.title || "Untitled", markdown: "", cloudId: r.id, isDraft: true, permission: "mine" as const };
+                                  setTabs(prev => [...prev, newTab]);
+                                  setTimeout(() => switchTab(tabId), 50);
+                                }
+                                setShowCommandPalette(false);
+                                setCmdSearch("");
+                              }}
+                            >
+                              <Search width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                              <span className="truncate">{r.title}</span>
+                              <span className="ml-auto text-[10px] shrink-0" style={{ color: "var(--text-faint)" }}>{(r.snippet || "").slice(0, 40)}</span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </>)}
               </div>
               <div className="px-4 py-2 text-[10px]" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
                 Press Enter to run, Esc to dismiss

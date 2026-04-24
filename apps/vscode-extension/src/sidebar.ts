@@ -106,6 +106,11 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
             await this.previewCloudDocument(msg.docId, msg.title);
           }
           break;
+        case "searchDocs":
+          if (msg.query) {
+            await this.searchDocuments(msg.query);
+          }
+          break;
         case "insert-image": {
           const editor = vscode.window.activeTextEditor;
           if (editor) {
@@ -304,6 +309,30 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       vscode.window.showErrorMessage(
         `Pull failed: ${err instanceof Error ? err.message : String(err)}`
       );
+    }
+  }
+
+  private async searchDocuments(query: string): Promise<void> {
+    if (!this._view) { return; }
+    try {
+      const baseUrl = getApiBaseUrl();
+      const token = await this._authManager.getToken();
+      const userId = await this._authManager.getUserId();
+      if (!userId) {
+        this._view.webview.postMessage({ type: "searchResults", results: [] });
+        return;
+      }
+      const headers: Record<string, string> = { "x-user-id": userId };
+      if (token) { headers["Authorization"] = `Bearer ${token}`; }
+      const res = await fetch(`${baseUrl}/api/search?q=${encodeURIComponent(query)}`, { headers });
+      if (!res.ok) {
+        this._view.webview.postMessage({ type: "searchResults", results: [] });
+        return;
+      }
+      const data = (await res.json()) as { results: Array<{ id: string; title: string; snippet: string; isDraft: boolean; updatedAt: string }> };
+      this._view.webview.postMessage({ type: "searchResults", results: data.results || [] });
+    } catch {
+      this._view?.webview.postMessage({ type: "searchResults", results: [] });
     }
   }
 
@@ -931,6 +960,12 @@ body {
         }
         return;
       }
+      if (e.data.type === 'searchResults') {
+        cloudSearchResults = e.data.results || [];
+        isCloudSearching = false;
+        render();
+        return;
+      }
       if (e.data.type === 'documents') {
         allDocs = e.data.items || [];
         cloudDocs = e.data.cloudDocs || [];
@@ -953,9 +988,25 @@ body {
       render();
     });
 
+    var cloudSearchResults = [];
+    var cloudSearchTimer = null;
+    var isCloudSearching = false;
+
     document.getElementById('search').addEventListener('input', function(e) {
       searchQuery = e.target.value.toLowerCase();
       render();
+
+      // Cloud search with debounce (3+ chars)
+      if (cloudSearchTimer) clearTimeout(cloudSearchTimer);
+      if (e.target.value.length >= 3) {
+        isCloudSearching = true;
+        cloudSearchTimer = setTimeout(function() {
+          vscode.postMessage({ type: 'searchDocs', query: e.target.value });
+        }, 400);
+      } else {
+        cloudSearchResults = [];
+        isCloudSearching = false;
+      }
     });
 
     document.getElementById('btn-refresh').addEventListener('click', function() {
@@ -1080,6 +1131,32 @@ body {
       }
 
       // Images section removed from sidebar — now in LIVE header panel
+
+      // Cloud search results
+      if (searchQuery.length >= 3) {
+        if (isCloudSearching) {
+          html += '<div class="section-header">' + icon('cloud', 12) + ' Cloud results <span class="section-count" style="animation:spin 0.8s linear infinite">...</span></div>';
+        } else if (cloudSearchResults.length > 0) {
+          // Exclude already-visible docs
+          var existingIds = {};
+          allDocs.forEach(function(d) { if (d.docId) existingIds[d.docId] = true; });
+          cloudDocs.forEach(function(d) { existingIds[d.docId] = true; });
+          var unique = cloudSearchResults.filter(function(r) { return !existingIds[r.id]; });
+          if (unique.length > 0) {
+            html += '<div class="section-header">' + icon('cloud', 12) + ' Cloud results <span class="section-count">' + unique.length + '</span></div>';
+            html += '<ul class="doc-list">';
+            unique.forEach(function(r) {
+              var snippet = (r.snippet || '').slice(0, 80);
+              var meta = relTime(r.updatedAt) + (r.isDraft ? ' \\u00b7 draft' : '');
+              html += '<li class="doc-item" data-action="openCloud" data-docid="' + esc(r.id) + '" data-title="' + esc(r.title) + '">'
+                + '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>'
+                + '<div class="doc-info"><div class="doc-name">' + esc(r.title) + '</div><div class="doc-meta">' + esc(snippet || meta) + '</div></div>'
+                + '</li>';
+            });
+            html += '</ul>';
+          }
+        }
+      }
 
       if (!html) {
         html = '<div class="empty">No documents found</div>';

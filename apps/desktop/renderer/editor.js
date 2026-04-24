@@ -36,6 +36,9 @@
   var hasDocument = false;
   var currentFilter = "all";
   var searchQuery = "";
+  var cloudSearchResults = [];
+  var cloudSearchTimer = null;
+  var isCloudSearching = false;
   var sortMode = "newest"; // newest, oldest, az, za
   var isReadOnly = false;
   var currentCloudDoc = null; // { docId, title } when previewing cloud doc
@@ -359,6 +362,31 @@
         }
         if (synced.length === 0 && cloud.length === 0) {
           html += '<div class="sidebar-empty"><p>No cloud documents</p></div>';
+        }
+      }
+    }
+
+    // Cloud search results
+    if (searchQuery.length >= 3 && sidebarState.authState.loggedIn) {
+      if (isCloudSearching) {
+        html += '<div class="section-header"><span class="section-label">Cloud results</span><span class="section-badge"><svg class="spin" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 8A6 6 0 104.8 3.3"/></svg></span></div>';
+      } else if (cloudSearchResults.length > 0) {
+        // Exclude results already visible in local/cloud lists
+        var existingIds = new Set();
+        synced.forEach(function(s) { if (s.config && s.config.docId) existingIds.add(s.config.docId); });
+        cloud.forEach(function(c) { existingIds.add(c.id); });
+        var uniqueResults = cloudSearchResults.filter(function(r) { return !existingIds.has(r.id); });
+        if (uniqueResults.length > 0) {
+          html += '<div class="section-header"><span class="section-label">Cloud results</span><span class="section-badge">' + uniqueResults.length + '</span></div>';
+          html += '<div class="file-list">';
+          uniqueResults.forEach(function(r) {
+            var snippet = (r.snippet || "").slice(0, 80);
+            html += '<div class="file-item" data-cloud-id="' + esc(r.id) + '">'
+              + '<div class="file-icon" style="color:#60a5fa"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></div>'
+              + '<div class="file-info"><div class="file-name">' + esc(r.title) + '</div>'
+              + '<div class="file-meta">' + esc(snippet) + '</div></div></div>';
+          });
+          html += '</div>';
         }
       }
     }
@@ -836,6 +864,26 @@
   document.getElementById("search-input").addEventListener("input", function(e) {
     searchQuery = e.target.value;
     renderFileList();
+
+    // Cloud search with debounce (3+ chars)
+    if (cloudSearchTimer) clearTimeout(cloudSearchTimer);
+    if (searchQuery.length >= 3 && sidebarState.authState.loggedIn && window.mdfyDesktop.searchDocs) {
+      isCloudSearching = true;
+      cloudSearchTimer = setTimeout(function() {
+        window.mdfyDesktop.searchDocs(searchQuery).then(function(data) {
+          cloudSearchResults = (data && data.results) || [];
+          isCloudSearching = false;
+          renderFileList();
+        }).catch(function() {
+          cloudSearchResults = [];
+          isCloudSearching = false;
+          renderFileList();
+        });
+      }, 400);
+    } else {
+      cloudSearchResults = [];
+      isCloudSearching = false;
+    }
   });
 
   // Help panel toggle
