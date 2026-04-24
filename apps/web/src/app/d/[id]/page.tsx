@@ -17,11 +17,6 @@ async function getDocument(id: string) {
 
   if (!data) return null;
 
-  // Draft documents: don't expose content in SSR, let client-side handle with auth
-  if (data.is_draft) {
-    return { ...data, markdown: "", isDraft: true, ownerPlan, ownerName };
-  }
-
   // Check if document owner is a Pro user (hide badge) and get display name
   let ownerPlan = "free";
   let ownerName: string | null = null;
@@ -33,6 +28,11 @@ async function getDocument(id: string) {
       .single();
     if (profile?.plan) ownerPlan = profile.plan;
     if (profile?.display_name) ownerName = profile.display_name;
+  }
+
+  // Draft documents: don't expose content in SSR, let client-side handle with auth
+  if (data.is_draft) {
+    return { ...data, markdown: "", isDraft: true, ownerPlan, ownerName };
   }
 
   return { ...data, ownerPlan, ownerName };
