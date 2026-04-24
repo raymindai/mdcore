@@ -2137,8 +2137,9 @@ export default function MdEditor() {
     const sortFn = (a: Tab, b: Tab) => {
       if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
       if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-      const ai = tabs.indexOf(a), bi = tabs.indexOf(b);
-      return sortMode === "oldest" ? ai - bi : bi - ai;
+      const at = a.lastOpenedAt || 0;
+      const bt = b.lastOpenedAt || 0;
+      return sortMode === "newest" ? bt - at : at - bt;
     };
     const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
     const myFolderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
