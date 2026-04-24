@@ -3276,11 +3276,14 @@ export default function MdEditor() {
             const localMd = markdownRef.current;
             if (serverMd === localMd) return; // no actual content change
 
-            // Check if local is dirty (user is actively typing)
-            const isDirty = autoSave.isSaving;
+            // Check if local has unsaved changes (user is actively editing)
+            // Compare current editor content with last saved version
+            const currentTabData = tabs.find(t => t.id === activeTabIdRef.current);
+            const lastSavedMd = currentTabData?.markdown || "";
+            const hasLocalChanges = localMd !== lastSavedMd || autoSave.isSaving;
 
-            if (!isDirty) {
-              // Auto-pull silently
+            if (!hasLocalChanges) {
+              // Auto-pull silently — user hasn't made local changes
               const oldMd = localMd;
               setMarkdownRaw(serverMd);
               if (serverTitle) setTitle(serverTitle);
@@ -3291,7 +3294,8 @@ export default function MdEditor() {
               highlightDiff(oldMd, serverMd);
               showToast("Document updated from another source", "info");
             } else {
-              showToast("This document was updated by someone else. Save your work, then reload to see changes.", "info");
+              // User has unsaved changes — DON'T overwrite, just notify
+              showToast("This document was updated by someone else. Your changes are preserved. Save to keep yours, or reload to see theirs.", "info");
             }
           } catch { /* fetch failed, ignore */ }
         }
