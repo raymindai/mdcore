@@ -7387,6 +7387,7 @@ ${html}
         {/* Sidebar resize handle — hidden on mobile (sidebar is overlay) */}
         {!isMobile && (
           <div
+            data-print-hide
             className="shrink-0 cursor-col-resize w-[5px]"
             style={{ background: "var(--border-dim)", position: "relative" }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
@@ -7398,6 +7399,7 @@ ${html}
       ) : (
         /* Collapsed: just the toggle button as a narrow strip */
         <div
+          data-print-hide
           className="flex flex-col shrink-0 items-center pt-1.5 gap-1"
           style={{ width: 36, borderRight: "1px solid var(--border-dim)", background: "var(--background)" }}
         >
@@ -7729,6 +7731,7 @@ ${html}
             </div>
           ) : (<>
             <div
+              data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
               onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
@@ -8466,6 +8469,7 @@ ${html}
         {/* Resize handle */}
         {viewMode === "split" && (
           <div
+            data-print-hide
             className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
             style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}

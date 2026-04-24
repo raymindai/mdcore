@@ -916,16 +916,35 @@ textarea::selection {
    Print styles (PDF export)
    ======================================== */
 @media print {
-  /* Hide everything except the preview content */
+  /* Hide everything except the rendered preview content */
   header, footer, textarea, .cm-editor, .code-copy-btn,
-  [data-print-hide] {
+  [data-print-hide],
+  [data-pane="sidebar"],
+  [data-pane="editor"] {
     display: none !important;
   }
+
 
   body {
     overflow: visible !important;
     background: white !important;
     color: #1a1a1a !important;
+  }
+
+  /* Make render pane fill the page */
+  [data-pane="render"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    flex: 1 1 100% !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  /* Let rendered content expand naturally */
+  [data-pane="render"] > * {
+    overflow: visible !important;
+    height: auto !important;
   }
 
   .mdcore-rendered {
