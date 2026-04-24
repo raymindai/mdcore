@@ -127,8 +127,14 @@ export function useCollaboration(
       .on("broadcast", { event: "yjs-ping" }, ({ payload }: { payload: { ts?: number } }) => {
         console.log("[collab] PING received from peer, latency:", Date.now() - (payload?.ts || 0), "ms");
       })
-      .on("broadcast", { event: "yjs-update" }, ({ payload }: { payload: { update?: string } }) => {
-        if (!payload?.update) return;
+      .on("broadcast", { event: "yjs-update" }, (msg: { payload?: { update?: string } } | { [key: string]: unknown }) => {
+        console.log("[collab] yjs-update handler CALLED, keys:", Object.keys(msg));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const payload = (msg as any)?.payload;
+        if (!payload?.update) {
+          console.warn("[collab] yjs-update: no payload.update in", JSON.stringify(msg).slice(0, 300));
+          return;
+        }
         console.log("[collab] RECEIVED update, b64len:", payload.update.length);
         const update = base64ToUint8(payload.update);
         isApplyingRemoteRef.current = true;
@@ -208,14 +214,15 @@ export function useCollaboration(
         if (status === "SUBSCRIBED") {
           subscribedRef.current = true;
           setIsCollaborating(true);
-          // Ping to verify broadcast works
           channel.send({ type: "broadcast", event: "yjs-ping", payload: { ts: Date.now() } });
-          channel.send({
-            type: "broadcast",
-            event: "yjs-sync-request",
-            payload: {},
-          });
+          channel.send({ type: "broadcast", event: "yjs-sync-request", payload: {} });
           channel.track({ joined_at: Date.now() });
+          // Expose manual test on window for debugging
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as any).__collabTest = () => {
+            channel.send({ type: "broadcast", event: "yjs-update", payload: { update: btoa("test123") } });
+            console.log("[collab] manual test: sent yjs-update with test payload");
+          };
         }
       });
 
