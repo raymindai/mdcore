@@ -5433,8 +5433,8 @@ ${html}
         className="backdrop-blur-sm relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
-        {/* Row 1: Logo + View mode + Actions */}
-        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5">
+        {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
+        <div className="flex flex-wrap items-center justify-between px-3 sm:px-5 py-1.5 sm:py-2.5 gap-y-1">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
