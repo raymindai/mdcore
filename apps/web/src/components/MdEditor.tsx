@@ -32,6 +32,7 @@ import {
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { usePresence } from "@/lib/usePresence";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
 import {
@@ -3216,10 +3217,209 @@ export default function MdEditor() {
     return () => { clearInterval(interval); controller.abort(); };
   }, [user?.email]);
 
-  // Preview: click to scroll to source + double-click to inline edit
-  // Ref for latest markdown (avoids stale closures in preview event handlers)
+  // Ref for latest markdown (avoids stale closures in Realtime + preview handlers)
   const markdownRef = useRef(markdown);
   markdownRef.current = markdown;
+
+  // ─── Supabase Realtime: Editor document changes ───
+  // Subscribe to document updates when a cloud document is active in the editor.
+  // If local is clean → auto-pull; if dirty → show toast with Pull/Ignore.
+  const realtimeLastSaveRef = useRef<number>(0); // timestamp of our own last save
+  useEffect(() => {
+    // Mark our own save timestamp whenever autoSave completes
+    if (autoSave.lastSaved) {
+      realtimeLastSaveRef.current = autoSave.lastSaved.getTime();
+    }
+  }, [autoSave.lastSaved]);
+
+  useEffect(() => {
+    const currentTab = tabs.find(t => t.id === activeTabId);
+    const cloudId = currentTab?.cloudId;
+    if (!cloudId) return;
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`editor-doc-${cloudId}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'documents', filter: `id=eq.${cloudId}` },
+        async (payload: { new: Record<string, unknown> }) => {
+          // Skip if this update was triggered by our own save (within 3s window)
+          const now = Date.now();
+          if (now - realtimeLastSaveRef.current < 3000) return;
+
+          const newData = payload.new;
+
+          // Handle permission/meta changes
+          if (newData.edit_mode !== undefined) {
+            setDocEditMode(newData.edit_mode as "owner" | "account" | "token" | "view" | "public");
+            setEditMode(newData.edit_mode as "owner" | "account" | "token" | "view" | "public");
+          }
+          if (newData.is_draft !== undefined) {
+            setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, isDraft: newData.is_draft as boolean } : t));
+          }
+
+          // Handle content changes
+          if (newData.markdown === undefined) return;
+          const serverMd = newData.markdown as string;
+          const serverTitle = (newData.title as string) || undefined;
+
+          // Compare to current markdown
+          const localMd = markdownRef.current;
+          if (serverMd === localMd) return; // no actual content change
+
+          // Check if user has unsaved local changes
+          const activeTab = tabs.find(t => t.id === activeTabIdRef.current);
+          const tabMd = activeTab?.markdown || "";
+          const isDirty = localMd !== tabMd && autoSave.isSaving;
+
+          if (!isDirty) {
+            // Auto-pull silently
+            setMarkdownRaw(serverMd);
+            if (serverTitle) setTitle(serverTitle);
+            doRender(serverMd);
+            if (newData.updated_at) autoSave.setLastServerUpdatedAt(newData.updated_at as string);
+            setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, markdown: serverMd, title: serverTitle || t.title } : t));
+            showToast("Document updated from another source", "info");
+          } else {
+            // Show notification with pull option
+            showToast("This document was updated by someone else. Save your work, then reload to see changes.", "info");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId, docId]);
+
+  // ─── Supabase Realtime: Notifications ───
+  // Subscribe to new notifications for the logged-in user.
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`notifications-${user.email}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_email=eq.${user.email}` },
+        (payload: { new: Record<string, unknown> }) => {
+          const notif = payload.new as unknown as { id: number; type: string; document_id: string; document_title: string; from_user_name: string; message: string; read: boolean; created_at: string };
+          // Add to notifications state
+          setNotifications(prev => [{
+            id: notif.id,
+            type: notif.type,
+            documentId: notif.document_id,
+            documentTitle: notif.document_title,
+            fromUserName: notif.from_user_name,
+            message: notif.message,
+            read: notif.read,
+            createdAt: notif.created_at,
+          }, ...prev]);
+          setUnreadCount(prev => prev + 1);
+          showToast(notif.message || "New notification", "info");
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.email]);
+
+  // ─── Supabase Realtime: Sidebar document list ───
+  // Subscribe to document changes for the current user to auto-update the sidebar.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel(`sidebar-docs-${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'documents', filter: `user_id=eq.${user.id}` },
+        () => {
+          // Debounce: coalesce rapid updates into a single fetch
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
+          try {
+            const res = await fetch("/api/user/documents", { headers: authHeadersRef.current });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data?.documents) return;
+            setServerDocs(data.documents);
+
+            // Sync tab state from server (isDraft, isSharedByMe, isRestricted, source, folderId)
+            const sharedDocIds = new Set(
+              data.documents
+                .filter((d: { edit_mode?: string; allowed_emails?: string[] }) =>
+                  (d.edit_mode && d.edit_mode !== "owner" && d.edit_mode !== "token" && d.edit_mode !== "account") ||
+                  (d.allowed_emails && d.allowed_emails.length > 0)
+                )
+                .map((d: { id: string }) => d.id)
+            );
+            const publishedIds = new Set(
+              data.documents
+                .filter((d: { is_draft?: boolean }) => d.is_draft === false)
+                .map((d: { id: string }) => d.id)
+            );
+            const restrictedIds = new Set(
+              data.documents
+                .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.length > 0)
+                .map((d: { id: string }) => d.id)
+            );
+            const sourceMap = new Map<string, string | null>(
+              data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
+            );
+
+            setTabs(prev => {
+              const existingCloudIds = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
+              // Update existing tabs
+              const updated = prev.map(t => {
+                if (!t.cloudId) return t;
+                return {
+                  ...t,
+                  isDraft: publishedIds.has(t.cloudId) ? false : true,
+                  isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
+                  isRestricted: restrictedIds.has(t.cloudId) ? true : false,
+                  source: sourceMap.get(t.cloudId) || undefined,
+                };
+              });
+              // Add new server docs that don't have local tabs
+              const newTabs = data.documents
+                .filter((d: { id: string }) => !existingCloudIds.has(d.id))
+                .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string }) => ({
+                  id: `cloud-${d.id}`,
+                  title: d.title || "Untitled",
+                  markdown: "",
+                  cloudId: d.id,
+                  isDraft: d.is_draft !== false,
+                  source: d.source || undefined,
+                  folderId: d.folder_id || undefined,
+                  permission: "mine" as const,
+                }));
+              // Remove tabs for deleted server docs
+              const serverDocIds = new Set(data.documents.map((d: { id: string }) => d.id));
+              const filtered = updated.filter(t => {
+                if (!t.cloudId) return true; // keep local-only tabs
+                if (t.id === activeTabIdRef.current) return true; // keep active tab
+                return serverDocIds.has(t.cloudId);
+              });
+              return [...filtered, ...newTabs];
+            });
+          } catch { /* offline */ }
+          }, 1500);
+        }
+      )
+      .subscribe();
+
+    return () => { if (debounceTimer) clearTimeout(debounceTimer); supabase.removeChannel(channel); };
+  }, [user?.id]);
+
+  // Preview: click to scroll to source + double-click to inline edit
 
   // Uses comrak's data-sourcepos="startLine:startCol-endLine:endCol" for accurate mapping
   useEffect(() => {
