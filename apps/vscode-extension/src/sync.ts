@@ -155,13 +155,16 @@ export class SyncEngine {
     PreviewPanel.updateSyncStatusForDocument(document.uri, "syncing");
 
     try {
+      // Skip conflict detection when Yjs collaboration is active (CRDT handles merging)
+      const { getCollabManager } = await import("./extension");
+      const collabActive = getCollabManager()?.isActive(document.uri) ?? false;
       const result = await updateDocument(
         config.docId,
         config.editToken,
         markdown,
         title,
         this.authManager,
-        config.lastServerUpdatedAt // expectedUpdatedAt for conflict detection
+        collabActive ? undefined : config.lastServerUpdatedAt
       );
 
       config.lastSyncedAt = new Date().toISOString();

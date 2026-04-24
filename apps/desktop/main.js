@@ -505,7 +505,9 @@ const SyncEngine = {
     sendToRenderer("sync-status", { filePath, status: "syncing" });
 
     try {
-      const result = await apiUpdate(config.docId, config.editToken, markdown, title, config.lastServerUpdatedAt);
+      // Skip conflict detection when Yjs collaboration is active
+      const collabActive = CollaborationManager._cloudId === config.docId;
+      const result = await apiUpdate(config.docId, config.editToken, markdown, title, collabActive ? undefined : config.lastServerUpdatedAt);
       config.lastSyncedAt = new Date().toISOString();
       config.lastServerUpdatedAt = result.updated_at;
       saveMdfyConfig(filePath, config);

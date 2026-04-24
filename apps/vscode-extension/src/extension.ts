@@ -12,6 +12,7 @@ let statusBar: StatusBarManager | undefined;
 let authManager: AuthManager | undefined;
 let sidebarProvider: MdfySidebarProvider | undefined;
 let collabManager: CollaborationManager | undefined;
+export function getCollabManager(): CollaborationManager | undefined { return collabManager; }
 let suppressAutoPreview = false;
 let isApplyingRemoteCollab = false;
 
