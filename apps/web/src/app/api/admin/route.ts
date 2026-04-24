@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch AI model config from site_config
-    let aiModels: { primary: string; lite: string } = { primary: "gemini-3-flash-preview", lite: "gemini-3.1-flash-lite-preview" };
+    const aiModels: { primary: string; lite: string } = { primary: "gemini-3-flash-preview", lite: "gemini-3.1-flash-lite-preview" };
     try {
       const { data: configRows } = await supabase!.from("site_config").select("key, value").in("key", ["ai_model_primary", "ai_model_lite"]);
       const configMap: Record<string, string> = {};
