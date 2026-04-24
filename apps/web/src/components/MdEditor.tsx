@@ -4308,28 +4308,6 @@ export default function MdEditor() {
             node = (node as HTMLElement).parentElement;
           }
 
-          // If cursor is in a new element without sourcepos (created by Enter),
-          // find the nearest previous sibling WITH sourcepos
-          if (!editedBlock) {
-            let candidate: Node | null = sel.getRangeAt(0).startContainer;
-            if (candidate?.nodeType === Node.TEXT_NODE) candidate = candidate.parentElement;
-            // Walk up to direct child of article
-            while (candidate && candidate.parentElement !== article) {
-              candidate = candidate.parentElement;
-            }
-            if (candidate) {
-              // Look backward for a sibling with sourcepos
-              let prev = (candidate as HTMLElement).previousElementSibling;
-              while (prev) {
-                if (prev.getAttribute("data-sourcepos")) {
-                  editedBlock = prev as HTMLElement;
-                  break;
-                }
-                prev = prev.previousElementSibling;
-              }
-            }
-          }
-
           if (editedBlock) {
             const sourcepos = editedBlock.getAttribute("data-sourcepos");
             const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
@@ -4346,25 +4324,18 @@ export default function MdEditor() {
 
               // Sanity check: sourcepos must reference valid lines
               if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
-                // Collect edited block + any siblings WITHOUT sourcepos
-                // (created by Enter key splitting a block)
-                const container = document.createElement("div");
-                container.appendChild(editedBlock.cloneNode(true));
-                let sibling = editedBlock.nextElementSibling;
-                while (sibling && !sibling.getAttribute("data-sourcepos")) {
-                  container.appendChild(sibling.cloneNode(true));
-                  sibling = sibling.nextElementSibling;
-                }
-                // Also check previous siblings without sourcepos (cursor may be in the new element)
-                let prevSibling = editedBlock.previousElementSibling;
-                while (prevSibling && !prevSibling.getAttribute("data-sourcepos")) {
-                  container.insertBefore(prevSibling.cloneNode(true), container.firstChild);
-                  prevSibling = prevSibling.previousElementSibling;
-                }
-                stripUiElements(container);
+                // Check if block was split by Enter (new siblings without sourcepos)
+                const hasNewSiblings = (editedBlock.nextElementSibling && !editedBlock.nextElementSibling.getAttribute("data-sourcepos"));
+                if (hasNewSiblings) {
+                  // Block was split — skip partial update, use full fallback
+                  // (partial update can't safely handle line range changes from splits)
+                } else {
+                // Clone and strip UI from just the edited block
+                const clone = editedBlock.cloneNode(true) as HTMLElement;
+                stripUiElements(clone);
 
-                // Convert all collected blocks to markdown
-                const blockMd = htmlToMarkdown(container.innerHTML).trim();
+                // Convert only this block to markdown
+                const blockMd = htmlToMarkdown(clone.outerHTML).trim();
 
                 // Replace only the corresponding lines in the original markdown
                 const before = lines.slice(0, actualStart);
@@ -4387,6 +4358,7 @@ export default function MdEditor() {
                     setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
                   }
                 }
+                } // end else (no new siblings)
               }
             }
           }
