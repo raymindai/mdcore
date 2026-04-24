@@ -3263,32 +3263,37 @@ export default function MdEditor() {
             setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, isDraft: newData.is_draft as boolean } : t));
           }
 
-          // Handle content changes
-          if (newData.markdown === undefined) return;
-          const serverMd = newData.markdown as string;
-          const serverTitle = (newData.title as string) || undefined;
+          // Fetch the latest document content from server
+          // (Realtime payload.new may not include all columns depending on REPLICA IDENTITY)
+          try {
+            const res = await fetch(`/api/docs/${cloudId}`, { headers: authHeadersRef.current });
+            if (!res.ok) return;
+            const doc = await res.json();
+            const serverMd = doc.markdown as string;
+            const serverTitle = (doc.title as string) || undefined;
 
-          // Compare to current markdown
-          const localMd = markdownRef.current;
-          if (serverMd === localMd) return; // no actual content change
+            // Compare to current markdown
+            const localMd = markdownRef.current;
+            if (serverMd === localMd) return; // no actual content change
 
-          // Check if user has unsaved local changes
-          const activeTab = tabs.find(t => t.id === activeTabIdRef.current);
-          const tabMd = activeTab?.markdown || "";
-          const isDirty = localMd !== tabMd && autoSave.isSaving;
+            // Check if local is dirty (user is actively typing)
+            const isDirty = autoSave.isSaving;
 
-          if (!isDirty) {
-            // Auto-pull silently
-            setMarkdownRaw(serverMd);
-            if (serverTitle) setTitle(serverTitle);
-            doRender(serverMd);
-            if (newData.updated_at) autoSave.setLastServerUpdatedAt(newData.updated_at as string);
-            setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, markdown: serverMd, title: serverTitle || t.title } : t));
-            showToast("Document updated from another source", "info");
-          } else {
-            // Show notification with pull option
-            showToast("This document was updated by someone else. Save your work, then reload to see changes.", "info");
-          }
+            if (!isDirty) {
+              // Auto-pull silently
+              const oldMd = localMd;
+              setMarkdownRaw(serverMd);
+              if (serverTitle) setTitle(serverTitle);
+              doRender(serverMd);
+              cmSetDocRef.current?.(serverMd);
+              if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at as string);
+              setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, markdown: serverMd, title: serverTitle || t.title } : t));
+              highlightDiff(oldMd, serverMd);
+              showToast("Document updated from another source", "info");
+            } else {
+              showToast("This document was updated by someone else. Save your work, then reload to see changes.", "info");
+            }
+          } catch { /* fetch failed, ignore */ }
         }
       )
       .subscribe();
