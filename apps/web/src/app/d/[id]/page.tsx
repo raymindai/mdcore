@@ -17,8 +17,10 @@ async function getDocument(id: string) {
 
   if (!data) return null;
 
-  // Draft documents are not publicly viewable
-  if (data.is_draft) return null;
+  // Draft documents: don't expose content in SSR, let client-side handle with auth
+  if (data.is_draft) {
+    return { ...data, markdown: "", isDraft: true, ownerPlan, ownerName };
+  }
 
   // Check if document owner is a Pro user (hide badge) and get display name
   let ownerPlan = "free";
@@ -101,15 +103,16 @@ export default async function DocPage({ params }: Props) {
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
   const isProtected = !!doc.password_hash;
   const isRestricted = (doc.allowed_emails || []).length > 0;
+  const isDraft = !!(doc as { isDraft?: boolean }).isDraft;
 
   return (
     <DocumentViewer
       id={doc.id}
-      markdown={isExpired ? "" : (isProtected ? "" : (isRestricted ? "" : doc.markdown))}
+      markdown={isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown))}
       title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
       isProtected={isProtected}
       isExpired={!!isExpired}
-      isRestricted={isRestricted}
+      isRestricted={isRestricted || isDraft}
       showBadge={doc.ownerPlan !== "pro"}
       editMode={doc.edit_mode || "token"}
     />
