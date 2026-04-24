@@ -4,6 +4,36 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import * as Y from "yjs";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
+// ─── Remote cursor types ───
+
+export interface PeerCursor {
+  userId: string;
+  name: string;
+  color: string;
+  index: number;
+  headIndex: number;
+}
+
+// Saturated colors that look good on dark backgrounds (Google Docs palette)
+const CURSOR_COLORS = [
+  "hsl(210, 90%, 56%)", // blue
+  "hsl(145, 70%, 45%)", // green
+  "hsl(270, 75%, 60%)", // purple
+  "hsl(25, 95%, 55%)",  // orange
+  "hsl(330, 80%, 58%)", // pink
+  "hsl(175, 70%, 42%)", // teal
+  "hsl(50, 90%, 50%)",  // yellow
+  "hsl(0, 80%, 58%)",   // red
+];
+
+function colorForUser(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
+  }
+  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
+}
+
 /**
  * Yjs CRDT collaborative editing hook.
  *
@@ -46,6 +76,8 @@ export function useCollaboration(
   const isApplyingRemoteRef = useRef(false);
   const [peerCount, setPeerCount] = useState(0);
   const [isCollaborating, setIsCollaborating] = useState(false);
+  const [peerCursors, setPeerCursors] = useState<PeerCursor[]>([]);
+  const lastCursorBroadcast = useRef(0);
 
   // Keep latest callback in a ref to avoid re-initializing the channel
   const onRemoteChangeRef = useRef(onRemoteChange);
@@ -168,9 +200,29 @@ export function useCollaboration(
         }
         isApplyingRemoteRef.current = false;
       })
+      .on("broadcast", { event: "yjs-cursor" }, ({ payload }: { payload: { userId?: string; name?: string; index?: number; headIndex?: number } }) => {
+        if (!payload?.userId) return;
+        const { userId, name, index, headIndex } = payload;
+        setPeerCursors(prev => {
+          const filtered = prev.filter(c => c.userId !== userId);
+          filtered.push({
+            userId: userId!,
+            name: name || "Anonymous",
+            color: colorForUser(userId!),
+            index: index ?? 0,
+            headIndex: headIndex ?? index ?? 0,
+          });
+          return filtered;
+        });
+      })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
-        setPeerCount(Math.max(0, Object.keys(presenceState).length - 1));
+        const count = Math.max(0, Object.keys(presenceState).length - 1);
+        setPeerCount(count);
+        // Clean up cursors for peers that have left
+        if (count === 0) {
+          setPeerCursors([]);
+        }
       })
       .subscribe(async (status: string) => {
         if (status === "SUBSCRIBED") {
@@ -197,6 +249,7 @@ export function useCollaboration(
       channelRef.current = null;
       setIsCollaborating(false);
       setPeerCount(0);
+      setPeerCursors([]);
     };
   }, [cloudId]); // Intentionally exclude markdown/onRemoteChange to avoid re-init
 
@@ -246,5 +299,19 @@ export function useCollaboration(
     });
   }, []);
 
-  return { applyLocalChange, forceReset, peerCount, isCollaborating };
+  // Broadcast local cursor position to peers (throttled to max every 50ms)
+  const updateCursor = useCallback((index: number, headIndex: number, userId: string, name: string) => {
+    const channel = channelRef.current;
+    if (!channel) return;
+    const now = Date.now();
+    if (now - lastCursorBroadcast.current < 50) return;
+    lastCursorBroadcast.current = now;
+    channel.send({
+      type: "broadcast",
+      event: "yjs-cursor",
+      payload: { userId, name, index, headIndex },
+    });
+  }, []);
+
+  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor };
 }

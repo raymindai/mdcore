@@ -1604,7 +1604,7 @@ export default function MdEditor() {
     // Apply to CM6 — use cmSetDoc which skips if content is identical
     cmSetDocRef.current?.(newMarkdown);
   }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -1613,6 +1613,8 @@ export default function MdEditor() {
   const collabForceResetRef = useRef(collabForceReset);
   collabForceResetRef.current = collabForceReset;
   isCollaboratingRef2.current = isCollaborating;
+  const collabUpdateCursorRef = useRef(collabUpdateCursor);
+  collabUpdateCursorRef.current = collabUpdateCursor;
 
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
@@ -1853,10 +1855,15 @@ export default function MdEditor() {
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
     onCursorActivity: (line: number) => onCursorActivityRef.current?.(line),
+    onSelectionChange: (anchor: number, head: number) => {
+      if (!isCollaboratingRef2.current || !presenceUser) return;
+      collabUpdateCursorRef.current?.(anchor, head, presenceUser.id, presenceUser.displayName || "Anonymous");
+    },
     onPaste: handlePasteForCM,
     onPasteImage: handlePasteImageForCM,
     theme,
     placeholder: "Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything...",
+    remoteCursors: isCollaborating ? collabPeerCursors : undefined,
   });
   cmSetDocRef.current = cmSetDoc;
 

@@ -724,6 +724,18 @@ function base64ToUint8(b64) {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
+// Cursor colors for collaboration (Google Docs style)
+const CURSOR_COLORS = [
+  "hsl(210, 90%, 56%)", "hsl(145, 70%, 45%)", "hsl(270, 75%, 60%)",
+  "hsl(25, 95%, 55%)", "hsl(330, 80%, 58%)", "hsl(175, 70%, 42%)",
+  "hsl(50, 90%, 50%)", "hsl(0, 80%, 58%)",
+];
+function colorForUser(userId) {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
+  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
+}
+
 const CollaborationManager = {
   _supabase: null,
   _ydoc: null,
@@ -732,6 +744,8 @@ const CollaborationManager = {
   _cloudId: null,
   _isApplyingRemote: false,
   _peerCount: 0,
+  _peerCursors: [],
+  _lastCursorBroadcast: 0,
 
   _getSupabase() {
     if (!this._supabase) {
@@ -842,10 +856,24 @@ const CollaborationManager = {
         if (merged.trim()) sendToRenderer("collab-remote-change", { markdown: merged });
         this._isApplyingRemote = false;
       })
+      .on("broadcast", { event: "yjs-cursor" }, ({ payload }) => {
+        if (!payload?.userId) return;
+        const { userId, name, index, headIndex } = payload;
+        this._peerCursors = this._peerCursors.filter(c => c.userId !== userId);
+        this._peerCursors.push({
+          userId, name: name || "Anonymous", color: colorForUser(userId),
+          index: index ?? 0, headIndex: headIndex ?? index ?? 0,
+        });
+        sendToRenderer("collab-cursors", { cursors: this._peerCursors });
+      })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
         this._peerCount = Math.max(0, Object.keys(presenceState).length - 1);
         sendToRenderer("collab-peers", { count: this._peerCount });
+        if (this._peerCount === 0) {
+          this._peerCursors = [];
+          sendToRenderer("collab-cursors", { cursors: [] });
+        }
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -885,9 +913,12 @@ const CollaborationManager = {
     this._cloudId = null;
     this._initialMarkdown = "";
     this._peerCount = 0;
+    this._peerCursors = [];
+    this._lastCursorBroadcast = 0;
     this._isApplyingRemote = false;
     sendToRenderer("collab-status", { active: false, cloudId: null });
     sendToRenderer("collab-peers", { count: 0 });
+    sendToRenderer("collab-cursors", { cursors: [] });
   },
 
   /**
@@ -919,6 +950,22 @@ const CollaborationManager = {
   },
 
   /**
+   * Broadcast local cursor position to peers (throttled).
+   */
+  updateCursor(index, headIndex, userId, name) {
+    const channel = this._channel;
+    if (!channel) return;
+    const now = Date.now();
+    if (now - this._lastCursorBroadcast < 50) return;
+    this._lastCursorBroadcast = now;
+    channel.send({
+      type: "broadcast",
+      event: "yjs-cursor",
+      payload: { userId, name, index, headIndex },
+    });
+  },
+
+  /**
    * Get current collaboration state.
    */
   getState() {
@@ -926,6 +973,7 @@ const CollaborationManager = {
       active: !!this._channel,
       cloudId: this._cloudId,
       peerCount: this._peerCount,
+      peerCursors: this._peerCursors,
     };
   },
 };
@@ -1906,6 +1954,11 @@ ipcMain.handle("collab-local-change", (event, markdown) => {
 
 ipcMain.handle("collab-get-state", () => {
   return CollaborationManager.getState();
+});
+
+ipcMain.handle("collab-update-cursor", (event, index, headIndex, userId, name) => {
+  CollaborationManager.updateCursor(index, headIndex, userId, name);
+  return { ok: true };
 });
 
 // ─── Menu ───

@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { EditorState, Compartment } from "@codemirror/state";
-import { EditorView, keymap, placeholder as cmPlaceholder, drawSelection } from "@codemirror/view";
+import { EditorState, Compartment, StateField, StateEffect } from "@codemirror/state";
+import { EditorView, keymap, placeholder as cmPlaceholder, drawSelection, Decoration, WidgetType } from "@codemirror/view";
+import type { DecorationSet } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 // language-data removed — dynamic chunk loading fails in Next.js
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
@@ -99,16 +100,141 @@ const lightColorTheme = EditorView.theme({
   },
 }, { dark: false });
 
+// ─── Remote cursor infrastructure ───
+
+export interface RemoteCursor {
+  userId: string;
+  name: string;
+  color: string;
+  index: number;
+  headIndex: number;
+}
+
+const updateRemoteCursorsEffect = StateEffect.define<RemoteCursor[]>();
+
+class RemoteCursorWidget extends WidgetType {
+  constructor(
+    readonly name: string,
+    readonly color: string,
+    readonly cursorId: string,
+  ) { super(); }
+
+  eq(other: RemoteCursorWidget) {
+    return this.cursorId === other.cursorId && this.name === other.name && this.color === other.color;
+  }
+
+  toDOM() {
+    const cursor = document.createElement("span");
+    cursor.className = "cm-remote-cursor";
+    cursor.style.borderLeft = `2px solid ${this.color}`;
+    cursor.style.position = "relative";
+    cursor.setAttribute("data-cursor-id", this.cursorId);
+
+    const label = document.createElement("span");
+    label.className = "cm-remote-cursor-label";
+    label.style.background = this.color;
+    label.style.color = "white";
+    label.style.fontSize = "10px";
+    label.style.padding = "1px 4px";
+    label.style.borderRadius = "3px";
+    label.style.position = "absolute";
+    label.style.top = "-18px";
+    label.style.left = "-1px";
+    label.style.whiteSpace = "nowrap";
+    label.style.pointerEvents = "none";
+    label.style.opacity = "1";
+    label.style.transition = "opacity 0.3s ease";
+    label.style.zIndex = "10";
+    label.textContent = this.name;
+    cursor.appendChild(label);
+
+    // Fade out label after 2 seconds
+    setTimeout(() => { label.style.opacity = "0"; }, 2000);
+
+    return cursor;
+  }
+
+  ignoreEvent() { return true; }
+}
+
+const remoteCursorsField = StateField.define<DecorationSet>({
+  create() { return Decoration.none; },
+  update(decos, tr) {
+    for (const e of tr.effects) {
+      if (e.is(updateRemoteCursorsEffect)) {
+        const cursors = e.value;
+        const docLen = tr.state.doc.length;
+        const widgets: ReturnType<typeof Decoration.widget | typeof Decoration.mark>[] = [];
+        const ranges: { from: number; to: number; deco: Decoration }[] = [];
+
+        for (const c of cursors) {
+          const idx = Math.min(c.index, docLen);
+          const head = Math.min(c.headIndex, docLen);
+
+          // Cursor line widget at head position
+          ranges.push({
+            from: head,
+            to: head,
+            deco: Decoration.widget({
+              widget: new RemoteCursorWidget(c.name, c.color, c.userId),
+              side: 1,
+            }),
+          });
+
+          // Selection highlight if there is a selection
+          if (idx !== head) {
+            const from = Math.min(idx, head);
+            const to = Math.max(idx, head);
+            if (from < to) {
+              ranges.push({
+                from,
+                to,
+                deco: Decoration.mark({
+                  attributes: {
+                    style: `background-color: ${c.color.replace(")", ", 0.2)").replace("hsl(", "hsla(")}`,
+                  },
+                  class: "cm-remote-selection",
+                }),
+              });
+            }
+          }
+        }
+
+        // Sort by from position (required by RangeSet)
+        ranges.sort((a, b) => a.from - b.from || (a.to - a.from) - (b.to - b.from));
+        return Decoration.set(ranges.map(r => r.deco.range(r.from, r.to)));
+      }
+    }
+    // Map through document changes to keep positions valid
+    return decos.map(tr.changes);
+  },
+  provide: f => EditorView.decorations.from(f),
+});
+
+const remoteCursorTheme = EditorView.baseTheme({
+  ".cm-remote-cursor": {
+    display: "inline",
+    marginLeft: "-1px",
+    marginRight: "-1px",
+  },
+  ".cm-remote-cursor-label": {
+    lineHeight: "1",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  },
+});
+
 // ─── Hook ───
 
 export interface UseCodeMirrorOptions {
   initialDoc: string;
   onChange: (value: string) => void;
   onCursorActivity?: (line: number) => void;
+  onSelectionChange?: (anchor: number, head: number) => void;
   onPaste?: (text: string, html: string) => string | null;
   onPasteImage?: (file: File, cursorOffset: number) => void;
   theme: "dark" | "light";
   placeholder?: string;
+  remoteCursors?: RemoteCursor[];
 }
 
 export interface UseCodeMirrorReturn {
@@ -129,16 +255,19 @@ export function useCodeMirror({
   initialDoc,
   onChange,
   onCursorActivity,
+  onSelectionChange,
   onPaste,
   onPasteImage,
   theme,
   placeholder,
+  remoteCursors,
 }: UseCodeMirrorOptions): UseCodeMirrorReturn {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const themeCompartment = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   const onCursorRef = useRef(onCursorActivity);
+  const onSelectionChangeRef = useRef(onSelectionChange);
   const onPasteRef = useRef(onPaste);
   const onPasteImageRef = useRef(onPasteImage);
   const isExternalUpdate = useRef(false); // suppress onChange during setDoc
@@ -146,6 +275,7 @@ export function useCodeMirror({
   // Keep refs up to date
   onChangeRef.current = onChange;
   onCursorRef.current = onCursorActivity;
+  onSelectionChangeRef.current = onSelectionChange;
   onPasteRef.current = onPaste;
   onPasteImageRef.current = onPasteImage;
 
@@ -172,14 +302,22 @@ export function useCodeMirror({
           ...searchKeymap,
           indentWithTab,
         ]),
+        remoteCursorsField,
+        remoteCursorTheme,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isExternalUpdate.current) {
             onChangeRef.current(update.state.doc.toString());
           }
           // Fire cursor activity on selection changes (not during external updates)
-          if (update.selectionSet && !isExternalUpdate.current && onCursorRef.current) {
-            const line = update.state.doc.lineAt(update.state.selection.main.head).number;
-            onCursorRef.current(line);
+          if (update.selectionSet && !isExternalUpdate.current) {
+            if (onCursorRef.current) {
+              const line = update.state.doc.lineAt(update.state.selection.main.head).number;
+              onCursorRef.current(line);
+            }
+            if (onSelectionChangeRef.current) {
+              const { anchor, head } = update.state.selection.main;
+              onSelectionChangeRef.current(anchor, head);
+            }
           }
         }),
         // Paste handler
@@ -239,6 +377,15 @@ export function useCodeMirror({
       ),
     });
   }, [theme]);
+
+  // Update remote cursors when they change
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || !remoteCursors) return;
+    view.dispatch({
+      effects: updateRemoteCursorsEffect.of(remoteCursors),
+    });
+  }, [remoteCursors]);
 
   // Imperative API
   const focus = useCallback(() => {
