@@ -4374,17 +4374,8 @@ export default function MdEditor() {
         const clone = article.cloneNode(true) as HTMLElement;
         stripUiElements(clone);
         const domMd = htmlToMarkdown(clone.innerHTML);
-
-        if (isCollaboratingRef2.current) {
-          // During collaboration: only update local state, don't call setMarkdown
-          // (which would applyLocalChange and accidentally delete remote content).
-          // Instead, directly set the raw state. The Y.Doc stays authoritative.
-          setMarkdownRaw(domMd);
-          cmSetDoc(domMd);
-        } else {
-          setMarkdown(domMd);
-          cmSetDoc(domMd);
-        }
+        setMarkdown(domMd);
+        cmSetDoc(domMd);
 
         // Sync title from edited markdown to sidebar
         const h1Match = domMd.match(/^#\s+(.+)/m);
