@@ -5465,35 +5465,6 @@ ${html}
           >
             <MdfyLogo size={18} />
           </h1>
-          {title && (
-            <button
-              className="text-xs pl-2 sm:pl-3 truncate hover:text-[var(--accent)] transition-colors hidden sm:block"
-              style={{ color: "var(--text-muted)", borderLeft: "1px solid var(--border)", maxWidth: "clamp(120px, 25vw, 300px)" }}
-              title="Click to rename"
-              onClick={() => {
-                setInlineInput({
-                  label: "Document name",
-                  defaultValue: title,
-                  onSubmit: (trimmed) => {
-                    setTitle(trimmed);
-                    setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, title: trimmed } : t));
-                    const md = markdownRef.current;
-                    const lines = md.split("\n");
-                    const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
-                    if (h1Idx >= 0) { lines[h1Idx] = `# ${trimmed}`; }
-                    else { lines.unshift(`# ${trimmed}`, ""); }
-                    const newMd = lines.join("\n");
-                    setMarkdown(newMd);
-                    doRender(newMd);
-                    cmSetDocRef.current?.(newMd);
-                    setInlineInput(null);
-                  },
-                });
-              }}
-            >
-              {title}
-            </button>
-          )}
           {/* Permanent URL badge — click to copy */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
@@ -5516,19 +5487,7 @@ ${html}
               </button>
             );
           })()}
-          {/* Save status indicator — desktop only in row 1 */}
-          <span className="hidden sm:inline">
-          {autoSave.isSaving && (
-            <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
-          )}
-          {autoSave.error && !autoSave.isSaving && (
-            <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
-          )}
-          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
-            <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
-          )}
-          </span>
-          {/* Permission badge — desktop only in row 1 */}
+          {/* Permission badge + Save status — desktop only */}
           <span className="hidden sm:inline-flex items-center">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
@@ -5619,6 +5578,9 @@ ${html}
             );
             return null;
           })()}
+          {autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>}
+          {autoSave.error && !autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>}
+          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
           </span>
         </div>
 
@@ -5679,6 +5641,25 @@ ${html}
 
           {/* AI Render moved to LIVE panel header */}
 
+          {/* Presence avatars — other editors */}
+          {otherEditors.length > 0 && (
+            <div className="flex items-center -space-x-1 mr-1">
+              {otherEditors.slice(0, 4).map((editor) => (
+                <div key={editor.email} className="relative group/avatar">
+                  {editor.avatarUrl ? (
+                    <img src={editor.avatarUrl} alt="" className="w-6 h-6 rounded-full border-2 shrink-0" style={{ borderColor: "var(--background)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                  ) : null}
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border-2 shrink-0${editor.avatarUrl ? " hidden" : ""}`} style={{ background: "#fb923c", color: "#000", borderColor: "var(--background)" }}>
+                    {(editor.displayName || editor.email || "?")[0].toUpperCase()}
+                  </div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/avatar:opacity-100 transition-opacity z-[9999]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                    {editor.displayName || editor.email}
+                  </div>
+                </div>
+              ))}
+              {otherEditors.length > 4 && <span className="text-[9px] font-mono ml-1" style={{ color: "var(--text-faint)" }}>+{otherEditors.length - 4}</span>}
+            </div>
+          )}
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
             onClick={toggleTheme}
@@ -5789,49 +5770,6 @@ ${html}
                         </button>
                       ))
                     )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Presence indicators — other editors on this document */}
-            {otherEditors.length > 0 && (
-              <div className="flex items-center -space-x-1.5 mr-1">
-                {otherEditors.slice(0, 5).map((editor) => (
-                  <div key={editor.userId} className="relative group/presence">
-                    {editor.avatarUrl ? (
-                      <img
-                        src={editor.avatarUrl}
-                        alt={editor.displayName || editor.email}
-                        className="w-5 h-5 rounded-full shrink-0 object-cover"
-                        style={{ outline: "2px solid var(--background)" }}
-                        title={editor.displayName || editor.email}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
-                      />
-                    ) : null}
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
-                      style={{
-                        background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`,
-                        color: "#fff",
-                        outline: "2px solid var(--background)",
-                      }}
-                      title={editor.displayName || editor.email}
-                    >
-                      {(editor.displayName || editor.email || "?")[0].toUpperCase()}
-                    </div>
-                    <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
-                      style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                      <div className="font-medium" style={{ color: "var(--text-primary)" }}>{editor.displayName || "Unknown"}</div>
-                      <div style={{ color: "var(--text-muted)" }}>{editor.email}</div>
-                      <div style={{ color: "var(--accent)" }}>Editing now</div>
-                    </div>
-                  </div>
-                ))}
-                {otherEditors.length > 5 && (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", outline: "2px solid var(--background)" }}>
-                    +{otherEditors.length - 5}
                   </div>
                 )}
               </div>
