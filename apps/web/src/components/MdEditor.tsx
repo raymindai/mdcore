@@ -4379,6 +4379,15 @@ export default function MdEditor() {
         }
       }
 
+      // Re-render markdown → HTML to refresh data-sourcepos attributes.
+      // With morphdom, this only patches changed DOM nodes (cursor safe).
+      // Without this, after Enter/split, all subsequent edits fall through
+      // to full fallback because new elements lack sourcepos.
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        doRender(markdownRef.current);
+      }, 300);
+
       // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       setTimeout(() => {
         wysiwygEditingRef.current = false;
