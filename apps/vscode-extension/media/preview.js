@@ -2345,7 +2345,7 @@
   if (aiChatSend) aiChatSend.addEventListener('click', sendAiChat);
   if (aiChatInput) {
     aiChatInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         sendAiChat();
       }

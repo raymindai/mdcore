@@ -3542,7 +3542,7 @@
   if (aiSideChatSend) aiSideChatSend.addEventListener("click", sendAiSideChat);
   if (aiSideChatInput) {
     aiSideChatInput.addEventListener("keydown", function(e) {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         sendAiSideChat();
       }

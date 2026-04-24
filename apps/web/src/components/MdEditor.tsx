@@ -7697,7 +7697,8 @@ ${html}
                         value={aiChatInput}
                         onChange={(e) => setAiChatInput(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && aiChatInput.trim() && !aiProcessing) {
+                          if (e.key === "Enter" && !e.nativeEvent.isComposing && aiChatInput.trim() && !aiProcessing) {
+                            e.preventDefault();
                             const instruction = aiChatInput.trim();
                             setAiChatHistory(prev => [...prev, { role: "user", text: instruction }]);
                             setAiChatInput("");
