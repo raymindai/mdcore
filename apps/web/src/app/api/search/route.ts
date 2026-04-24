@@ -43,22 +43,46 @@ export async function GET(req: NextRequest) {
 
     // Fallback: ILIKE for CJK and non-Latin content (when FTS returns nothing)
     if (!error && (!data || data.length === 0)) {
-      const likePattern = `%${q}%`;
-      let fallbackQuery = supabase
-        .from("documents")
-        .select(baseSelect)
-        .is("deleted_at", null)
-        .or(`title.ilike.${likePattern},markdown.ilike.${likePattern}`)
-        .order("updated_at", { ascending: false })
-        .limit(20);
-      if (ownerFilter) {
-        const [key, val] = Object.entries(ownerFilter)[0];
-        fallbackQuery = fallbackQuery.eq(key, val);
+      // Escape SQL LIKE wildcards (%, _) so user input is treated literally
+      const escaped = q.replace(/[%_\\]/g, (c) => `\\${c}`);
+      const likePattern = `%${escaped}%`;
+
+      // Build two separate ILIKE queries instead of .or() to avoid PostgREST
+      // comma-parsing issues when user input contains commas or periods
+      const buildQuery = (column: string) => {
+        let qb = supabase
+          .from("documents")
+          .select(baseSelect)
+          .is("deleted_at", null)
+          .ilike(column, likePattern)
+          .order("updated_at", { ascending: false })
+          .limit(20);
+        if (ownerFilter) {
+          const [key, val] = Object.entries(ownerFilter)[0];
+          qb = qb.eq(key, val);
+        }
+        return qb;
+      };
+
+      const [titleResult, markdownResult] = await Promise.all([
+        buildQuery("title"),
+        buildQuery("markdown"),
+      ]);
+
+      // Merge and deduplicate results
+      const merged = new Map<string, (typeof titleResult.data extends (infer T)[] | null ? T : never)>();
+      for (const doc of (titleResult.data || [])) {
+        merged.set(doc.id, doc);
       }
-      const fallback = await fallbackQuery;
-      if (!fallback.error) {
-        data = fallback.data;
-        error = fallback.error;
+      for (const doc of (markdownResult.data || [])) {
+        if (!merged.has(doc.id)) merged.set(doc.id, doc);
+      }
+
+      if (!titleResult.error && !markdownResult.error) {
+        data = Array.from(merged.values())
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+          .slice(0, 20);
+        error = null;
       }
     }
 
