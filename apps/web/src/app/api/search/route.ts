@@ -22,22 +22,45 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Build query — search user's own documents using PostgreSQL full-text search
-    let query = supabase
+    // Build query — try full-text search first, fallback to ILIKE for CJK content
+    const baseSelect = "id, title, markdown, created_at, updated_at, is_draft, view_count, source";
+    const ownerFilter = userId ? { user_id: userId } : anonymousId ? { anonymous_id: anonymousId } : null;
+
+    // Try FTS first (works well for English/Latin)
+    let ftsQuery = supabase
       .from("documents")
-      .select("id, title, markdown, created_at, updated_at, is_draft, view_count, source")
+      .select(baseSelect)
       .is("deleted_at", null)
       .textSearch("fts", q, { type: "websearch" })
       .order("updated_at", { ascending: false })
       .limit(20);
-
-    if (userId) {
-      query = query.eq("user_id", userId);
-    } else if (anonymousId) {
-      query = query.eq("anonymous_id", anonymousId);
+    if (ownerFilter) {
+      const [key, val] = Object.entries(ownerFilter)[0];
+      ftsQuery = ftsQuery.eq(key, val);
     }
 
-    const { data, error } = await query;
+    let { data, error } = await ftsQuery;
+
+    // Fallback: ILIKE for CJK and non-Latin content (when FTS returns nothing)
+    if (!error && (!data || data.length === 0)) {
+      const likePattern = `%${q}%`;
+      let fallbackQuery = supabase
+        .from("documents")
+        .select(baseSelect)
+        .is("deleted_at", null)
+        .or(`title.ilike.${likePattern},markdown.ilike.${likePattern}`)
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      if (ownerFilter) {
+        const [key, val] = Object.entries(ownerFilter)[0];
+        fallbackQuery = fallbackQuery.eq(key, val);
+      }
+      const fallback = await fallbackQuery;
+      if (!fallback.error) {
+        data = fallback.data;
+        error = fallback.error;
+      }
+    }
 
     if (error) {
       console.error("Search error:", error);
