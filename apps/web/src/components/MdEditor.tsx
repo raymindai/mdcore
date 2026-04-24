@@ -5453,8 +5453,8 @@ ${html}
 
       {/* Header */}
       <header
-        className="backdrop-blur-sm relative z-[100]"
-        style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
+        className="relative z-[100]"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}
       >
         {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
         <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
@@ -6219,7 +6219,7 @@ ${html}
         {isMobile && showSidebar && (
           <div
             className="fixed inset-0 z-[200]"
-            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", WebkitBackdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", transition: "background 0.25s ease, backdrop-filter 0.25s ease" }}
+            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.4)", transition: "background 0.25s ease" }}
             onClick={() => closeSidebar()}
           />
         )}
@@ -6230,6 +6230,7 @@ ${html}
             width: isMobile ? 260 : sidebarWidth,
             minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
+            borderRight: "1px solid var(--border-dim)",
             transition: isMobile ? "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : "width 0.15s ease",
             ...(isMobile ? { transform: sidebarClosing ? "translateX(-100%)" : "translateX(0)" } : {}),
           }}
