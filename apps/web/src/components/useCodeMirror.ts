@@ -255,9 +255,17 @@ export function useCodeMirror({
     const currentDoc = view.state.doc.toString();
     if (currentDoc === text) return; // no-op if same
     isExternalUpdate.current = true;
-    view.dispatch({
-      changes: { from: 0, to: currentDoc.length, insert: text },
-    });
+    // Minimal diff to preserve cursor position during collaboration
+    let prefixLen = 0;
+    const minLen = Math.min(currentDoc.length, text.length);
+    while (prefixLen < minLen && currentDoc[prefixLen] === text[prefixLen]) prefixLen++;
+    let suffixLen = 0;
+    const maxSuffix = Math.min(currentDoc.length - prefixLen, text.length - prefixLen);
+    while (suffixLen < maxSuffix && currentDoc[currentDoc.length - 1 - suffixLen] === text[text.length - 1 - suffixLen]) suffixLen++;
+    const from = prefixLen;
+    const to = currentDoc.length - suffixLen;
+    const insert = text.slice(prefixLen, text.length - suffixLen);
+    view.dispatch({ changes: { from, to, insert } });
     isExternalUpdate.current = false;
   }, []);
 

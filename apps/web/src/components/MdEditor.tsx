@@ -1597,12 +1597,13 @@ export default function MdEditor() {
 
   // ─── Yjs CRDT Collaboration ───
   // Remote change handler: update markdown, render, and sync CM6
+  // Does NOT trigger auto-save — the typing user's auto-save handles persistence
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
     doRenderRef.current(newMarkdown);
+    // Apply to CM6 — use cmSetDoc which skips if content is identical
     cmSetDocRef.current?.(newMarkdown);
-    triggerAutoSave(newMarkdown);
-  }, [triggerAutoSave]);
+  }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
     docId,
     markdown,
