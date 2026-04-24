@@ -1611,7 +1611,7 @@ export default function MdEditor() {
     }
     cmSetDocRef.current?.(newMarkdown);
   }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -1619,6 +1619,8 @@ export default function MdEditor() {
   collabApplyLocalRef.current = collabApplyLocal;
   const collabForceResetRef = useRef(collabForceReset);
   collabForceResetRef.current = collabForceReset;
+  const collabGetContentRef = useRef(collabGetContent);
+  collabGetContentRef.current = collabGetContent;
   isCollaboratingRef2.current = isCollaborating;
   const collabUpdateCursorRef = useRef(collabUpdateCursor);
   collabUpdateCursorRef.current = collabUpdateCursor;
@@ -4309,7 +4311,10 @@ export default function MdEditor() {
               const startLine = parseInt(spMatch[1]) - 1; // 0-indexed
               const endLine = parseInt(spMatch[2]) - 1;
 
-              const md = markdownRef.current;
+              // During collaboration, use Y.Doc content as base (includes remote changes).
+              // Using markdownRef.current would miss remote edits, and applyLocalChange
+              // would treat them as deletions.
+              const md = (isCollaboratingRef2.current ? collabGetContentRef.current() : null) || markdownRef.current;
               const lines = md.split("\n");
               const fmOffset = computeFrontmatterOffset(md);
               const actualStart = startLine + fmOffset;
@@ -4356,7 +4361,9 @@ export default function MdEditor() {
       // --- Fallback: full document conversion ---
       // Used when: no cursor/selection, no data-sourcepos found, block was deleted,
       // blocks were merged/split, or partial update validation failed.
-      if (!didPartialUpdate) {
+      // During collaboration, skip full conversion — it would lose remote changes
+      // (the DOM doesn't have them since doRender was skipped).
+      if (!didPartialUpdate && !isCollaboratingRef2.current) {
         const clone = article.cloneNode(true) as HTMLElement;
         stripUiElements(clone);
         const newMd = htmlToMarkdown(clone.innerHTML);

@@ -311,5 +311,10 @@ export function useCollaboration(
     });
   }, []);
 
-  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor };
+  // Get current Y.Doc content (includes remote changes)
+  const getContent = useCallback((): string | null => {
+    return ytextRef.current?.toString() ?? null;
+  }, []);
+
+  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent };
 }
