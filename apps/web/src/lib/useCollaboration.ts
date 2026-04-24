@@ -110,6 +110,7 @@ export function useCollaboration(
       if (!initialized) {
         initialized = true;
         const current = markdownRef.current;
+        console.log("[collab] init timeout: inserting local content, len:", current?.length || 0);
         if (current && ytext.length === 0) {
           ytext.insert(0, current);
         }
@@ -125,7 +126,11 @@ export function useCollaboration(
     // Listen for local Y.Doc updates and broadcast to peers
     ydoc.on("update", (update: Uint8Array, origin: unknown) => {
       if (origin === "remote") return; // Don't re-broadcast remote changes
-      if (!subscribed || !channelRef.current) return;
+      if (!subscribed || !channelRef.current) {
+        console.warn("[collab] ydoc update skipped: subscribed=", subscribed, "channel=", !!channelRef.current);
+        return;
+      }
+      console.log("[collab] broadcasting ydoc update, bytes:", update.length);
       channelRef.current.send({
         type: "broadcast",
         event: "yjs-update",
@@ -153,9 +158,7 @@ export function useCollaboration(
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // Peer just joined — send state if we have content.
-        // If not initialized yet but have local markdown, init now and respond
-        // (prevents both-users-open-simultaneously leaving both unsynced).
+        console.log("[collab] received sync-request, initialized:", initialized, "ytextLen:", ytext.length);
         if (!initialized && markdownRef.current) {
           initialized = true;
           clearTimeout(initTimer);
@@ -173,6 +176,7 @@ export function useCollaboration(
       })
       .on("broadcast", { event: "yjs-sync-response" }, ({ payload }: { payload: { state?: string } }) => {
         if (!payload?.state) return;
+        console.log("[collab] received sync-response, initialized:", initialized);
         const state = base64ToUint8(payload.state);
 
         // Decode peer content to check if it's empty
@@ -267,10 +271,14 @@ export function useCollaboration(
     if (isApplyingRemoteRef.current) return;
     const ytext = ytextRef.current;
     const ydoc = ydocRef.current;
-    if (!ytext || !ydoc) return;
+    if (!ytext || !ydoc) {
+      console.warn("[collab] applyLocalChange: no ydoc/ytext");
+      return;
+    }
 
     const currentYText = ytext.toString();
     if (currentYText === newMarkdown) return;
+    console.log("[collab] applyLocalChange: diff len", Math.abs(currentYText.length - newMarkdown.length));
 
     // Apply minimal diff to Y.Text (avoid delete-all + insert-all which causes CRDT duplication)
     ydoc.transact(() => {
