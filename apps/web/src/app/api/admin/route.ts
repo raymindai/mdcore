@@ -20,8 +20,9 @@ async function verifyAdmin(req: NextRequest): Promise<{ supabase: ReturnType<typ
 }
 
 export async function GET(req: NextRequest) {
-  const { supabase, error } = await verifyAdmin(req);
-  if (error) return error;
+  const { supabase: _sb, error } = await verifyAdmin(req);
+  if (error || !_sb) return error!;
+  const supabase = _sb;
 
   try {
     // Stats
@@ -150,7 +151,7 @@ export async function GET(req: NextRequest) {
     // Fetch AI model config from site_config
     const aiModels: { primary: string; lite: string } = { primary: "gemini-3-flash-preview", lite: "gemini-3.1-flash-lite-preview" };
     try {
-      const { data: configRows } = await supabase!.from("site_config").select("key, value").in("key", ["ai_model_primary", "ai_model_lite"]);
+      const { data: configRows } = await supabase.from("site_config").select("key, value").in("key", ["ai_model_primary", "ai_model_lite"]);
       const configMap: Record<string, string> = {};
       for (const row of configRows || []) configMap[row.key] = row.value;
       if (configMap["ai_model_primary"]) aiModels.primary = configMap["ai_model_primary"];
@@ -183,8 +184,9 @@ export async function GET(req: NextRequest) {
 
 // ─── PATCH: Update AI model settings ───
 export async function PATCH(req: NextRequest) {
-  const { supabase, error } = await verifyAdmin(req);
-  if (error) return error;
+  const { supabase: _sb, error } = await verifyAdmin(req);
+  if (error || !_sb) return error!;
+  const supabase = _sb;
 
   try {
     const body = await req.json();
@@ -217,7 +219,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     for (const u of updates) {
-      const { error: upsertErr } = await supabase!.from("site_config").upsert(u, { onConflict: "key" });
+      const { error: upsertErr } = await supabase.from("site_config").upsert(u, { onConflict: "key" });
       if (upsertErr) {
         console.error("Failed to update site_config:", upsertErr);
         return NextResponse.json({ error: "Failed to save" }, { status: 500 });
