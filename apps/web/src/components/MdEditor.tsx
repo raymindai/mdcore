@@ -1483,6 +1483,11 @@ export default function MdEditor() {
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
       maybeCreateSessionSnapshot(currentTab.cloudId);
+      // When Yjs collaboration is active, skip conflict detection
+      // (CRDT handles merging, so both users save the same merged content)
+      if (isCollaborating) {
+        autoSave.setLastServerUpdatedAt("");
+      }
       autoSave.scheduleSave({
         cloudId: currentTab.cloudId,
         markdown: val,
