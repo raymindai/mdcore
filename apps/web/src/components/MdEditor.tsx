@@ -1005,6 +1005,7 @@ interface Tab {
   sharedWithCount?: number; // number of non-owner people shared with
   isSharedByMe?: boolean;  // legacy: I've shared this doc with others
   isRestricted?: boolean;  // legacy: shared with specific people
+  viewCount?: number;      // document view count
   ownerEmail?: string;     // owner's email (for shared docs)
   source?: string;         // origin: "vscode" | "chrome" | null
   lastOpenedAt?: number;   // timestamp of last open
@@ -3318,6 +3319,9 @@ export default function MdEditor() {
           const sharedCountMap = new Map<string, number>(
             data.documents.map((d: { id: string; allowed_emails?: string[] }) => [d.id, computeSharedCount(d.allowed_emails, ownerEmailLower)])
           );
+          const viewCountMap = new Map<string, number>(
+            data.documents.map((d: { id: string; view_count?: number }) => [d.id, d.view_count || 0])
+          );
           setTabs(prev => {
             // Update existing tabs with server state
             const updated = prev.map(t => {
@@ -3330,8 +3334,9 @@ export default function MdEditor() {
               const newFolder = serverFolderId || t.folderId;
               const newEditMode = editModeMap.get(t.cloudId) || "token";
               const newSharedCount = sharedCountMap.get(t.cloudId) || 0;
-              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount) return t;
-              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount };
+              const newViewCount = viewCountMap.get(t.cloudId) || 0;
+              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount && t.viewCount === newViewCount) return t;
+              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount, viewCount: newViewCount };
             });
             // Create tabs for server docs that don't have local tabs
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
@@ -5645,7 +5650,7 @@ ${clone.innerHTML}
             const cid = ct?.cloudId || docId;
             if (!cid) return null;
             const shortUrl = `mdfy.cc/${cid}`;
-            return (
+            return (<>
               <button
                 className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden sm:inline-block"
                 style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
@@ -5657,9 +5662,14 @@ ${clone.innerHTML}
                   } catch { /* ignore */ }
                 }}
               >
-                {shortUrl}{viewCount > 0 && <span className="ml-1.5 px-1 py-0.5 rounded" style={{ background: "var(--toggle-bg)", fontSize: 8 }}>{viewCount} views</span>}
+                {shortUrl}
               </button>
-            );
+              {viewCount > 0 && (
+                <span className="text-[8px] font-mono px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
+                  {viewCount} {viewCount === 1 ? "view" : "views"}
+                </span>
+              )}
+            </>);
           })()}
           {/* Permission badge — desktop only in row 1 */}
           <span className="hidden sm:inline-flex items-center">
@@ -6686,7 +6696,7 @@ ${clone.innerHTML}
                           <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                           <div className="truncate flex-1 min-w-0">
                             <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                            {tab.lastOpenedAt && <span className="block text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>}
+                            {tab.lastOpenedAt && <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}><span>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>{(tab.viewCount ?? 0) > 0 && <span>{tab.viewCount} views</span>}</span>}
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                             className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
@@ -6814,7 +6824,7 @@ ${clone.innerHTML}
                                     <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                                     <div className="truncate flex-1 min-w-0">
                                       <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                                      {tab.lastOpenedAt && <span className="block text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>}
+                                      {tab.lastOpenedAt && <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}><span>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>{(tab.viewCount ?? 0) > 0 && <span>{tab.viewCount} views</span>}</span>}
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
                                       className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
