@@ -1740,30 +1740,33 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
 
-  // FLIP animation for sidebar tab reordering — MutationObserver approach
+  // FLIP animation for sidebar tab reordering
   const sidebarListRef = useRef<HTMLDivElement>(null);
   const sidebarPositionsRef = useRef<Map<string, number>>(new Map());
+  const flipObserverRef = useRef<MutationObserver | null>(null);
 
-  // Continuously track positions + animate when DOM children reorder
-  useEffect(() => {
+  // Snapshot positions periodically (before any reorder can happen)
+  const snapshotSidebarPositions = useCallback(() => {
     const container = sidebarListRef.current;
     if (!container) return;
+    const map = new Map<string, number>();
+    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    });
+    sidebarPositionsRef.current = map;
+  }, []);
 
-    // Snapshot current positions
-    const snapshot = () => {
-      const map = new Map<string, number>();
-      container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-        map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-      });
-      return map;
-    };
-
-    sidebarPositionsRef.current = snapshot();
+  // Set up observer once
+  useEffect(() => {
+    const container = sidebarListRef.current;
+    if (!container || flipObserverRef.current) return;
 
     const observer = new MutationObserver(() => {
       const oldPositions = sidebarPositionsRef.current;
-      // Wait one frame for layout to settle
+      if (oldPositions.size === 0) return;
+
       requestAnimationFrame(() => {
+        let didAnimate = false;
         container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
           const id = el.dataset.tabId!;
           const oldTop = oldPositions.get(id);
@@ -1771,20 +1774,49 @@ export default function MdEditor() {
           const newTop = el.getBoundingClientRect().top;
           const delta = oldTop - newTop;
           if (Math.abs(delta) < 2) return;
+          didAnimate = true;
           el.animate(
             [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
             { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
           );
         });
-        // Update snapshot for next mutation
-        sidebarPositionsRef.current = snapshot();
+        // Re-snapshot after animation
+        if (didAnimate) {
+          setTimeout(() => {
+            const map = new Map<string, number>();
+            container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+              map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+            });
+            sidebarPositionsRef.current = map;
+          }, 350);
+        } else {
+          // No animation — just re-snapshot
+          const map = new Map<string, number>();
+          container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+            map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+          });
+          sidebarPositionsRef.current = map;
+        }
       });
     });
 
+    flipObserverRef.current = observer;
     observer.observe(container, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    snapshotSidebarPositions();
+
+    return () => { observer.disconnect(); flipObserverRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabs]); // Re-attach when tabs change (re-snapshots positions)
+  }, []); // Only once — observer persists across tab changes
+
+  // Snapshot positions DURING render (before React commits DOM changes)
+  // This runs synchronously before useLayoutEffect/useEffect
+  if (sidebarListRef.current) {
+    const map = new Map<string, number>();
+    sidebarListRef.current.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    });
+    if (map.size > 0) sidebarPositionsRef.current = map;
+  }
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
