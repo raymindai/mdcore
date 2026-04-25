@@ -1069,29 +1069,29 @@ textarea::selection {
 
 /* y-prosemirror remote cursor styles */
 .yRemoteSelection {
-  background-color: var(--cursor-color, rgba(250, 129, 0, 0.3));
+  opacity: 0.15;
 }
 .yRemoteSelectionHead {
-  position: absolute;
-  border-left: 2px solid var(--cursor-color, #fb923c);
-  border-color: var(--cursor-color, #fb923c);
-  height: 1.2em;
-  box-sizing: border-box;
+  position: relative;
+  border-left: 2px solid;
+  margin-left: -1px;
+  margin-right: -1px;
+  word-break: normal;
+  pointer-events: none;
 }
 .yRemoteSelectionHead::after {
   position: absolute;
-  content: attr(data-user);
+  content: " ";
   color: #fff;
-  background-color: var(--cursor-color, #fb923c);
-  font-size: 10px;
+  font-size: 9px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  padding: 1px 4px;
+  padding: 1px 3px;
   border-radius: 3px 3px 3px 0;
-  top: -18px;
+  top: -1.1em;
   left: -1px;
   white-space: nowrap;
   pointer-events: none;
-  line-height: 1.3;
+  line-height: 1;
 }
 
 /* ========================================
