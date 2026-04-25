@@ -1983,10 +1983,12 @@ export default function MdEditor() {
   }, [viewMode]);
 
   const renderIdRef = useRef(0);
+  const lastWysiwygEditRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
-    // Skip render during WYSIWYG editing — the DOM is the user's editing surface.
-    // Rendering would replace the DOM and destroy the user's cursor/edits.
-    if (wysiwygEditingRef.current) return;
+    // Skip render during WYSIWYG editing and for 3s after last edit.
+    // The DOM is the user's editing surface — rendering would replace it.
+    // The 3s window covers auto-save → server → postgres_changes round-trip.
+    if (wysiwygEditingRef.current || Date.now() - lastWysiwygEditRef.current < 3000) return;
     const thisRender = ++renderIdRef.current;
     setIsLoading(true);
     try {
@@ -4256,6 +4258,7 @@ export default function MdEditor() {
 
   const handleWysiwygInput = useCallback(() => {
     wysiwygEditingRef.current = true;
+    lastWysiwygEditRef.current = Date.now();
     if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
     wysiwygDebounce.current = setTimeout(() => {
       const article = previewRef.current?.querySelector("article");
@@ -8078,7 +8081,7 @@ ${clone.innerHTML}
                   ref={(el) => {
                     const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
                     if (el && el.getAttribute("data-html-hash") !== hash) {
-                      if (!wysiwygEditingRef.current) {
+                      if (!wysiwygEditingRef.current && Date.now() - lastWysiwygEditRef.current >= 3000) {
                         el.innerHTML = html;
                       }
                       el.setAttribute("data-html-hash", hash);
