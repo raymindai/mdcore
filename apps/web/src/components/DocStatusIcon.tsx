@@ -50,7 +50,10 @@ function DocStatusIcon({ tab, isActive }: {
     <div className="relative shrink-0 flex items-center group/icon">
       <Icon width={14} height={14} style={{ color }} />
       {dotColor && (
-        <span className="absolute -bottom-0.5 -right-0.5 w-[5px] h-[5px] rounded-full" style={{ background: dotColor, border: "1px solid var(--background)" }} />
+        <svg className="absolute -bottom-[3px] -right-[3px]" width="8" height="8" viewBox="0 0 8 8" style={{ filter: "drop-shadow(0 0 1px var(--background))" }}>
+          <circle cx="4" cy="4" r="3.5" fill="var(--background)" />
+          <path d="M2.5 4.2L3.5 5.2L5.5 3" stroke={dotColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
       )}
       <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/icon:opacity-100 transition-opacity z-[9998]"
         style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
