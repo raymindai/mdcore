@@ -1617,15 +1617,13 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: sync all views (Tiptap, CM6)
+  // Remote change handler: sync CM6 Source view
+  // Tiptap LIVE view is synced automatically by y-prosemirror (no manual update needed)
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    // Sync Tiptap LIVE view (ProseMirror handles cursor preservation natively)
-    tiptapRef.current?.setMarkdown(newMarkdown);
-    // Sync CM6 Source view
     cmSetDocRef.current?.(newMarkdown);
   }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent, ydoc: collabYdoc } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -8069,6 +8067,7 @@ ${clone.innerHTML}
                   onChange={handleTiptapChange}
                   canEdit={canEdit}
                   narrowView={narrowView}
+                  ydoc={collabYdoc}
                   onTitleChange={(title) => {
                     setTitle(title);
                     const curTabId = activeTabIdRef.current;
