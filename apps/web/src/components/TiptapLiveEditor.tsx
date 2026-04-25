@@ -74,9 +74,40 @@ function createCollabExtension(fragment: Y.XmlFragment, awareness: Awareness | n
         yUndoPlugin(),
       ];
       if (awareness && cursorUser) {
-        // Set local awareness state for cursor display
         awareness.setLocalStateField("user", cursorUser);
-        plugins.push(yCursorPlugin(awareness));
+        plugins.push(yCursorPlugin(awareness, {
+          cursorBuilder: (user: { name: string; color: string }) => {
+            const cursor = document.createElement("span");
+            cursor.style.borderLeft = `2px solid ${user.color}`;
+            cursor.style.marginLeft = "-1px";
+            cursor.style.position = "relative";
+            cursor.style.pointerEvents = "none";
+            cursor.setAttribute("data-user", user.name);
+            const label = document.createElement("span");
+            label.style.position = "absolute";
+            label.style.top = "-1.2em";
+            label.style.left = "-1px";
+            label.style.fontSize = "9px";
+            label.style.fontFamily = "-apple-system, sans-serif";
+            label.style.background = user.color;
+            label.style.color = "#fff";
+            label.style.padding = "1px 4px";
+            label.style.borderRadius = "3px";
+            label.style.whiteSpace = "nowrap";
+            label.style.pointerEvents = "none";
+            label.style.lineHeight = "1.2";
+            label.textContent = user.name;
+            cursor.appendChild(label);
+            return cursor;
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          selectionBuilder: (user: any) => {
+            return {
+              style: `background-color: ${user.color}; opacity: 0.15;`,
+              class: "yRemoteSelection",
+            };
+          },
+        }));
       }
       return plugins;
     },
