@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import katex from "katex";
@@ -1742,45 +1743,24 @@ export default function MdEditor() {
 
   // FLIP animation for sidebar tab reordering
   const sidebarListRef = useRef<HTMLDivElement>(null);
-  const flipSnapshotRef = useRef<Map<string, number> | null>(null);
 
-  // FLIP: capture positions before state change, animate after DOM update
-  const captureTabPositions = useCallback(() => {
+  // Animate sidebar items after a tab reorder
+  const animateTabReorder = useCallback((oldPositions: Map<string, number>) => {
     const container = sidebarListRef.current;
     if (!container) return;
-    const map = new Map<string, number>();
-    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-    });
-    flipSnapshotRef.current = map;
-  }, []);
-
-  // After DOM commit: apply FLIP animation using Web Animations API
-  useLayoutEffect(() => {
-    const snapshot = flipSnapshotRef.current;
-    if (!snapshot || snapshot.size === 0) return;
-    flipSnapshotRef.current = null;
-
-    const container = sidebarListRef.current;
-    if (!container) return;
-
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
       const id = el.dataset.tabId!;
-      const oldTop = snapshot.get(id);
+      const oldTop = oldPositions.get(id);
       if (oldTop == null) return;
       const newTop = el.getBoundingClientRect().top;
       const delta = oldTop - newTop;
       if (Math.abs(delta) < 2) return;
-
       el.animate(
-        [
-          { transform: `translateY(${delta}px)` },
-          { transform: "translateY(0)" },
-        ],
+        [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
         { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
       );
     });
-  });
+  }, []);
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
@@ -2248,31 +2228,40 @@ export default function MdEditor() {
     const fromPopstate = isPopstateRef.current;
     isPopstateRef.current = false;
 
-    // Snapshot positions BEFORE state change for FLIP animation
-    captureTabPositions();
-
-    setTabs((prev) => {
-      // Save current tab's markdown + stamp lastOpenedAt on target tab
-      const saved = prev.map((t) => {
-        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
-        if (t.id !== currentTabId || t.readonly) return t;
-        return { ...t, markdown: currentMd };
-      });
-      // Load target tab
-      const target = saved.find((t) => t.id === tabId);
-      if (target) {
-        queueMicrotask(() => {
-          loadTab(target);
-          // Push history entry for user-initiated tab switches (not back/forward)
-          if (!fromPopstate) {
-            const url = target.cloudId ? `/?doc=${target.cloudId}` : "/";
-            window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null }, "", url);
-          }
-        });
-      }
-      return saved;
+    // Capture positions BEFORE state change for FLIP animation
+    const oldPositions = new Map<string, number>();
+    sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      oldPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
     });
-  }, [loadTab]);
+
+    // Use flushSync to force synchronous DOM update, then animate
+    let target: Tab | undefined;
+    flushSync(() => {
+      setTabs((prev) => {
+        const saved = prev.map((t) => {
+          if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
+          if (t.id !== currentTabId || t.readonly) return t;
+          return { ...t, markdown: currentMd };
+        });
+        target = saved.find((t) => t.id === tabId);
+        return saved;
+      });
+    });
+
+    // DOM is now updated — animate position changes
+    if (oldPositions.size > 0) animateTabReorder(oldPositions);
+
+    // Load the target tab
+    if (target) {
+      queueMicrotask(() => {
+        loadTab(target!);
+        if (!fromPopstate) {
+          const url = target!.cloudId ? `/?doc=${target!.cloudId}` : "/";
+          window.history.pushState({ mdfyTabId: target!.id, mdfyDocId: target!.cloudId || null }, "", url);
+        }
+      });
+    }
+  }, [loadTab, animateTabReorder]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
