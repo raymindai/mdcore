@@ -9288,7 +9288,8 @@ ${clone.innerHTML}
             setAllowedEmailsState(emails);
             // Publish + update tab state when sharing with specific people
             const curTabId = activeTabIdRef.current;
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isSharedByMe: true, isRestricted: emails.length > 0 } : t));
+            const othersEmails = emails.filter(e => e.toLowerCase() !== user?.email?.toLowerCase());
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isRestricted: othersEmails.length > 0 } : t));
             const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
             if (cid && user) {
               fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
