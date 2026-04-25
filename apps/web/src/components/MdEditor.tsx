@@ -1763,10 +1763,10 @@ export default function MdEditor() {
     if (!container) return;
 
     const observer = new MutationObserver((mutations) => {
-      // Only care about childList changes (element reorder), not attributes
       const hasChildChange = mutations.some(m => m.type === "childList" && (m.addedNodes.length > 0 || m.removedNodes.length > 0));
       if (!hasChildChange) return;
       const oldPositions = sidebarPositionsRef.current;
+      console.log("[FLIP] mutation detected! oldPositions:", oldPositions.size, "mutations:", mutations.length);
       if (oldPositions.size === 0) return;
 
       requestAnimationFrame(() => {
@@ -1807,6 +1807,7 @@ export default function MdEditor() {
     flipObserverRef.current = observer;
     observer.observe(container, { childList: true, subtree: true });
     snapshotSidebarPositions();
+    console.log("[FLIP] observer attached, container children:", container.children.length, "data-tab-id count:", container.querySelectorAll("[data-tab-id]").length);
 
     return () => { observer.disconnect(); flipObserverRef.current = null; };
   }); // Runs every render until observer is attached, then early-returns
