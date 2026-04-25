@@ -2216,6 +2216,7 @@ export default function MdEditor() {
     document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
       flipPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
     });
+    console.log("[FLIP] captured:", flipPositions.size);
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -2239,6 +2240,7 @@ export default function MdEditor() {
     // FLIP: animate after React commits DOM
     if (flipPositions.size > 0) {
       setTimeout(() => {
+        let count = 0;
         document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
           const id = el.dataset.tabId!;
           const oldTop = flipPositions.get(id);
@@ -2246,11 +2248,13 @@ export default function MdEditor() {
           const newTop = el.getBoundingClientRect().top;
           const delta = oldTop - newTop;
           if (Math.abs(delta) < 2) return;
+          count++;
           el.animate(
             [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
             { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
           );
         });
+        console.log("[FLIP] animated:", count);
       }, 50);
     }
   }, [loadTab]);
