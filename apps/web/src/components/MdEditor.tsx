@@ -1684,10 +1684,15 @@ export default function MdEditor() {
 
       el.style.transform = `translateY(${delta}px)`;
       el.style.transition = "none";
-      requestAnimationFrame(() => {
-        el.style.transition = "transform 250ms ease";
+      // Force layout recalculation so browser registers the initial transform
+      void el.offsetHeight;
+      el.style.transition = "transform 250ms cubic-bezier(0.25, 0.1, 0.25, 1)";
+      el.style.transform = "";
+      // Clean up inline styles after animation
+      el.addEventListener("transitionend", () => {
+        el.style.transition = "";
         el.style.transform = "";
-      });
+      }, { once: true });
     });
   });
   const importFileRef = useRef<HTMLInputElement>(null);
