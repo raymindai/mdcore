@@ -28,26 +28,6 @@ function base64ToUint8(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
-export interface PeerCursor {
-  userId: string;
-  name: string;
-  color: string;
-  index: number;
-  headIndex: number;
-}
-
-const CURSOR_COLORS = [
-  "hsl(210, 90%, 56%)", "hsl(145, 70%, 45%)", "hsl(270, 75%, 60%)",
-  "hsl(25, 95%, 55%)", "hsl(330, 80%, 58%)", "hsl(175, 70%, 42%)",
-  "hsl(50, 90%, 50%)", "hsl(0, 80%, 58%)",
-];
-
-function colorForUser(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
-  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
-}
-
 interface CollabSession {
   cloudId: string;
   ydoc: Y.Doc;
@@ -55,8 +35,6 @@ interface CollabSession {
   channel: RealtimeChannel;
   isApplyingRemote: boolean;
   peerCount: number;
-  peerCursors: PeerCursor[];
-  lastCursorBroadcast: number;
   initialized: boolean;
   initTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -81,12 +59,6 @@ export class CollaborationManager {
     active: boolean;
   }>();
   readonly onStatusChanged = this._onStatusChanged.event;
-
-  private _onCursorsChanged = new vscode.EventEmitter<{
-    uri: vscode.Uri;
-    cursors: PeerCursor[];
-  }>();
-  readonly onCursorsChanged = this._onCursorsChanged.event;
 
   private getSupabase(): SupabaseClient {
     if (!this.supabase) {
@@ -116,8 +88,6 @@ export class CollaborationManager {
       channel: null as unknown as RealtimeChannel,
       isApplyingRemote: false,
       peerCount: 0,
-      peerCursors: [],
-      lastCursorBroadcast: 0,
       initialized: false,
       initTimer: setTimeout(() => {
         if (!session.initialized) {
@@ -207,16 +177,6 @@ export class CollaborationManager {
           session.isApplyingRemote = false;
         }
       )
-      .on("broadcast", { event: "yjs-cursor" }, ({ payload }: { payload: { userId?: string; name?: string; index?: number; headIndex?: number } }) => {
-        if (!payload?.userId) return;
-        const { userId, name, index, headIndex } = payload;
-        session.peerCursors = session.peerCursors.filter(c => c.userId !== userId);
-        session.peerCursors.push({
-          userId: userId!, name: name || "Anonymous", color: colorForUser(userId!),
-          index: index ?? 0, headIndex: headIndex ?? index ?? 0,
-        });
-        this._onCursorsChanged.fire({ uri: documentUri, cursors: session.peerCursors });
-      })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
         session.peerCount = Math.max(
@@ -227,10 +187,6 @@ export class CollaborationManager {
           uri: documentUri,
           count: session.peerCount,
         });
-        if (session.peerCount === 0) {
-          session.peerCursors = [];
-          this._onCursorsChanged.fire({ uri: documentUri, cursors: [] });
-        }
       })
       .subscribe(async (status: string) => {
         if (status === "SUBSCRIBED") {
@@ -309,30 +265,6 @@ export class CollaborationManager {
   }
 
   /**
-   * Broadcast local cursor position to peers (throttled).
-   */
-  updateCursor(documentUri: vscode.Uri, index: number, headIndex: number, userId: string, name: string): void {
-    const session = this.sessions.get(documentUri.toString());
-    if (!session) return;
-    const now = Date.now();
-    if (now - session.lastCursorBroadcast < 50) return;
-    session.lastCursorBroadcast = now;
-    session.channel.send({
-      type: "broadcast",
-      event: "yjs-cursor",
-      payload: { userId, name, index, headIndex },
-    });
-  }
-
-  /**
-   * Get peer cursors for a document.
-   */
-  getPeerCursors(documentUri: vscode.Uri): PeerCursor[] {
-    const session = this.sessions.get(documentUri.toString());
-    return session?.peerCursors ?? [];
-  }
-
-  /**
    * Stop all sessions. Call on extension deactivate.
    */
   dispose(): void {
@@ -345,6 +277,5 @@ export class CollaborationManager {
     this._onRemoteChange.dispose();
     this._onPeersChanged.dispose();
     this._onStatusChanged.dispose();
-    this._onCursorsChanged.dispose();
   }
 }

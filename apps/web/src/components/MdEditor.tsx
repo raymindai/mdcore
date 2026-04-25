@@ -1933,11 +1933,13 @@ export default function MdEditor() {
   useEffect(() => clearHighlight, [clearHighlight]);
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  // Set default view mode based on screen size
+  // Set default view mode based on screen size + auto-close sidebar on mobile
   useEffect(() => {
     if (isMobile) {
       setViewMode("preview"); // Live view only on mobile by default
+      setShowSidebar(false); // Auto-close sidebar when entering mobile viewport
     }
   }, [isMobile]);
 
@@ -4135,7 +4137,9 @@ export default function MdEditor() {
         setShowDocEditModeMenu(false);
         setConfirmRotateToken(false);
       }
-      setShowExportMenu(false);
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
       setShowEditModeMenu(false);
     };
     if (showMenu || showExportMenu || showEditModeMenu) {
@@ -5111,17 +5115,43 @@ ${html}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, doRender]);
 
-  // Export PDF
+  // Export PDF — open clean document in new window and print
   const handleExportPdf = useCallback(() => {
     setShowMenu(false);
-    // Switch to preview mode temporarily for print
-    const prevMode = viewMode;
-    setViewMode("preview");
-    setTimeout(() => {
-      window.print();
-      setViewMode(prevMode);
-    }, 300);
-  }, [viewMode]);
+    // Clone rendered HTML, strip UI buttons
+    const clone = document.createElement("div");
+    clone.innerHTML = html;
+    clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${title || "Document"}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 768px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+  code { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; }
+  pre code { background: none; }
+  blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 1rem; color: #666; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f6f8fa; font-weight: 600; }
+  img { max-width: 100%; }
+  h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+  h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+  @media print { body { margin: 0; padding: 0 0.5rem; } }
+</style>
+</head>
+<body>
+${clone.innerHTML}
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  }, [html, title]);
 
   // Edit shared doc
   const _handleEditShared = useCallback(() => {
@@ -5452,12 +5482,12 @@ ${html}
 
       {/* Header */}
       <header
-        className="backdrop-blur-sm relative z-[100]"
-        style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
+        className="relative z-[100]"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}
       >
-        {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
-        <div className="flex flex-wrap items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2" style={{ justifyContent: "space-between" }}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "40%", order: 0 }}>
+        {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
+        <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -5487,7 +5517,7 @@ ${html}
               </button>
             );
           })()}
-          {/* Permission badge + Save status — desktop only */}
+          {/* Permission badge — desktop only in row 1 */}
           <span className="hidden sm:inline-flex items-center">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
@@ -5578,16 +5608,19 @@ ${html}
             );
             return null;
           })()}
-          {autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>}
-          {autoSave.error && !autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>}
-          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
+          </span>
+          {/* Save status — after permission badge */}
+          <span className="hidden sm:inline text-[10px] font-mono shrink-0">
+          {autoSave.isSaving && <span style={{ color: "var(--text-faint)" }}>Saving...</span>}
+          {autoSave.error && !autoSave.isSaving && <span style={{ color: "#ef4444" }}>{autoSave.error}</span>}
+          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
           </span>
         </div>
 
-        {/* Center: Home + Layout mode switcher (single group) */}
+        {/* Center: Home + Layout mode switcher — absolute center relative to window */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0"
-          style={{ border: "1px solid var(--border-dim)", order: 1 }}
+          className="flex items-center rounded-lg overflow-hidden shrink-0 pointer-events-auto"
+          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
           {/* Home */}
           <button
@@ -5637,29 +5670,49 @@ ${html}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ order: 2 }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
 
-          {/* Presence avatars — other editors */}
+          {/* Presence indicators — other editors on this document */}
           {otherEditors.length > 0 && (
-            <div className="flex items-center -space-x-1 mr-1">
-              {otherEditors.slice(0, 4).map((editor) => (
-                <div key={editor.email} className="relative group/avatar">
+            <div className="flex items-center -space-x-1.5 mr-1">
+              {otherEditors.slice(0, 5).map((editor) => (
+                <div key={editor.userId} className="relative group/presence">
                   {editor.avatarUrl ? (
-                    <img src={editor.avatarUrl} alt="" className="w-6 h-6 rounded-full border-2 shrink-0" style={{ borderColor: "var(--background)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
+                    <img
+                      src={editor.avatarUrl}
+                      alt={editor.displayName || editor.email}
+                      className="w-5 h-5 rounded-full shrink-0 object-cover"
+                      style={{ outline: "2px solid var(--background)" }}
+                      title={editor.displayName || editor.email}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
+                    />
                   ) : null}
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border-2 shrink-0${editor.avatarUrl ? " hidden" : ""}`} style={{ background: "#fb923c", color: "#000", borderColor: "var(--background)" }}>
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
+                    style={{ background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`, color: "#fff", outline: "2px solid var(--background)" }}
+                    title={editor.displayName || editor.email}
+                  >
                     {(editor.displayName || editor.email || "?")[0].toUpperCase()}
                   </div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/avatar:opacity-100 transition-opacity z-[9999]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                    {editor.displayName || editor.email}
+                  <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+                    <div className="font-medium" style={{ color: "var(--text-primary)" }}>{editor.displayName || "Unknown"}</div>
+                    <div style={{ color: "var(--text-muted)" }}>{editor.email}</div>
+                    <div style={{ color: "var(--accent)" }}>Editing now</div>
                   </div>
                 </div>
               ))}
-              {otherEditors.length > 4 && <span className="text-[9px] font-mono ml-1" style={{ color: "var(--text-faint)" }}>+{otherEditors.length - 4}</span>}
+              {otherEditors.length > 5 && (
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", outline: "2px solid var(--background)" }}>
+                  +{otherEditors.length - 5}
+                </div>
+              )}
             </div>
           )}
+
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
             onClick={toggleTheme}
@@ -5774,6 +5827,8 @@ ${html}
                 )}
               </div>
             )}
+
+            {/* Presence indicators moved to before theme toggle */}
 
             <div className="relative group">
               <button
@@ -6193,7 +6248,7 @@ ${html}
         {isMobile && showSidebar && (
           <div
             className="fixed inset-0 z-[200]"
-            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", WebkitBackdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", transition: "background 0.25s ease, backdrop-filter 0.25s ease" }}
+            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.4)", transition: "background 0.25s ease" }}
             onClick={() => closeSidebar()}
           />
         )}
@@ -6204,6 +6259,7 @@ ${html}
             width: isMobile ? 260 : sidebarWidth,
             minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
+            borderRight: "1px solid var(--border-dim)",
             transition: isMobile ? "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : "width 0.15s ease",
             ...(isMobile ? { transform: sidebarClosing ? "translateX(-100%)" : "translateX(0)" } : {}),
           }}
@@ -6212,7 +6268,6 @@ ${html}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-            onDoubleClick={() => closeSidebar()}
           >
             <div className="flex items-center gap-1.5">
               <div className="relative group">
@@ -7357,6 +7412,7 @@ ${html}
         {/* Sidebar resize handle — hidden on mobile (sidebar is overlay) */}
         {!isMobile && (
           <div
+            data-print-hide
             className="shrink-0 cursor-col-resize w-[5px]"
             style={{ background: "var(--border-dim)", position: "relative" }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
@@ -7368,6 +7424,7 @@ ${html}
       ) : (
         /* Collapsed: just the toggle button as a narrow strip */
         <div
+          data-print-hide
           className="flex flex-col shrink-0 items-center pt-1.5 gap-1"
           style={{ width: 36, borderRight: "1px solid var(--border-dim)", background: "var(--background)" }}
         >
@@ -7699,9 +7756,9 @@ ${html}
             </div>
           ) : (<>
             <div
+              data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-              onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
@@ -7841,7 +7898,7 @@ ${html}
                 </div>}
                 <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* Export dropdown */}
-                <div className="relative group">
+                <div className="relative group" ref={exportMenuRef}>
                   <button
                     onClick={() => { setShowExportMenu(prev => !prev); setShowMenu(false); }}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
@@ -8436,6 +8493,7 @@ ${html}
         {/* Resize handle */}
         {viewMode === "split" && (
           <div
+            data-print-hide
             className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
             style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
@@ -8457,7 +8515,6 @@ ${html}
             <div
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
-              onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <span className="shrink-0" style={{ color: "var(--accent)" }}>SOURCE</span>
