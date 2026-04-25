@@ -1740,87 +1740,8 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
 
-  // FLIP animation for sidebar tab reordering
+  // Sidebar ref for document list
   const sidebarListRef = useRef<HTMLDivElement>(null);
-  const sidebarPositionsRef = useRef<Map<string, number>>(new Map());
-  const flipObserverRef = useRef<MutationObserver | null>(null);
-
-  // Snapshot positions periodically (before any reorder can happen)
-  const snapshotSidebarPositions = useCallback(() => {
-    const container = sidebarListRef.current;
-    if (!container) return;
-    const map = new Map<string, number>();
-    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-    });
-    sidebarPositionsRef.current = map;
-  }, []);
-
-  // Set up observer ONCE — never disconnect (except unmount)
-  useEffect(() => {
-    if (flipObserverRef.current) return; // already attached
-    const container = sidebarListRef.current;
-    if (!container) return;
-    // No cleanup that nulls the ref — observer persists
-
-    const observer = new MutationObserver((mutations) => {
-      const hasChildChange = mutations.some(m => m.type === "childList" && (m.addedNodes.length > 0 || m.removedNodes.length > 0));
-      if (!hasChildChange) return;
-      const oldPositions = sidebarPositionsRef.current;
-      if (oldPositions.size === 0) return;
-
-      requestAnimationFrame(() => {
-        let didAnimate = false;
-        container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-          const id = el.dataset.tabId!;
-          const oldTop = oldPositions.get(id);
-          if (oldTop == null) return;
-          const newTop = el.getBoundingClientRect().top;
-          const delta = oldTop - newTop;
-          if (Math.abs(delta) < 2) return;
-          didAnimate = true;
-          el.animate(
-            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
-            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
-          );
-        });
-        // Re-snapshot after animation
-        if (didAnimate) {
-          setTimeout(() => {
-            const map = new Map<string, number>();
-            container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-              map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-            });
-            sidebarPositionsRef.current = map;
-          }, 350);
-        } else {
-          // No animation — just re-snapshot
-          const map = new Map<string, number>();
-          container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-            map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-          });
-          sidebarPositionsRef.current = map;
-        }
-      });
-    });
-
-    flipObserverRef.current = observer;
-    observer.observe(container, { childList: true, subtree: true });
-    snapshotSidebarPositions();
-
-    // No cleanup — observer stays attached for the lifetime of the component
-    // React Strict Mode may double-call this, but the ref guard prevents duplicates
-  }); // Runs every render until observer is attached, then early-returns via ref guard
-
-  // Snapshot positions DURING render (before React commits DOM changes)
-  // This runs synchronously before useLayoutEffect/useEffect
-  if (sidebarListRef.current) {
-    const map = new Map<string, number>();
-    sidebarListRef.current.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-    });
-    if (map.size > 0) sidebarPositionsRef.current = map;
-  }
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
@@ -2288,6 +2209,12 @@ export default function MdEditor() {
     const fromPopstate = isPopstateRef.current;
     isPopstateRef.current = false;
 
+    // FLIP: capture positions BEFORE React re-renders
+    const flipPositions = new Map<string, number>();
+    sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      flipPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    });
+
     setTabs((prev) => {
       const saved = prev.map((t) => {
         if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
@@ -2306,6 +2233,24 @@ export default function MdEditor() {
       }
       return saved;
     });
+
+    // FLIP: animate after React commits DOM (setTimeout runs after batched render)
+    if (flipPositions.size > 0) {
+      setTimeout(() => {
+        sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+          const id = el.dataset.tabId!;
+          const oldTop = flipPositions.get(id);
+          if (oldTop == null) return;
+          const newTop = el.getBoundingClientRect().top;
+          const delta = oldTop - newTop;
+          if (Math.abs(delta) < 2) return;
+          el.animate(
+            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
+            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
+          );
+        });
+      }, 0);
+    }
   }, [loadTab]);
 
   // Handle browser back/forward navigation
