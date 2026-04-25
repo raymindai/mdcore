@@ -858,7 +858,7 @@ type Theme = "dark" | "light";
 
 type AccentColor = "orange" | "blue" | "purple" | "pink" | "green" | "teal" | "red" | "yellow";
 
-type ColorScheme = "default" | "nord" | "dracula" | "solarized" | "monokai" | "onedark";
+type ColorScheme = "default" | "nord" | "dracula" | "solarized" | "monokai" | "onedark" | "paper" | "ocean";
 
 const ACCENT_COLORS: { name: AccentColor; label: string; dark: string; light: string }[] = [
   { name: "orange", label: "Orange", dark: "#fb923c", light: "#ea580c" },
@@ -871,23 +871,27 @@ const ACCENT_COLORS: { name: AccentColor; label: string; dark: string; light: st
   { name: "yellow", label: "Yellow", dark: "#fbbf24", light: "#d97706" },
 ];
 
-const COLOR_SCHEMES: { name: ColorScheme; label: string; preview: string }[] = [
-  { name: "default", label: "Default", preview: "#fb923c" },
-  { name: "nord", label: "Nord", preview: "#88c0d0" },
-  { name: "dracula", label: "Dracula", preview: "#ff79c6" },
-  { name: "solarized", label: "Solarized", preview: "#2aa198" },
-  { name: "monokai", label: "Monokai", preview: "#ffd866" },
-  { name: "onedark", label: "One Dark", preview: "#61afef" },
+const COLOR_SCHEMES: { name: ColorScheme; label: string; preview: string; desc: string }[] = [
+  { name: "default", label: "Default", preview: "#fb923c", desc: "Warm zinc + orange" },
+  { name: "nord", label: "Nord", preview: "#88c0d0", desc: "Arctic frost" },
+  { name: "dracula", label: "Dracula", preview: "#bd93f9", desc: "Dark purple" },
+  { name: "solarized", label: "Solarized", preview: "#2aa198", desc: "Warm teal" },
+  { name: "monokai", label: "Monokai", preview: "#ffd866", desc: "Warm gold" },
+  { name: "onedark", label: "One Dark", preview: "#61afef", desc: "Cool blue" },
+  { name: "paper", label: "Paper", preview: "#d4a373", desc: "Warm sepia" },
+  { name: "ocean", label: "Ocean", preview: "#06b6d4", desc: "Deep sea" },
 ];
 
 // Mapping from scheme to its natural accent color name
 const SCHEME_ACCENT_MAP: Record<ColorScheme, AccentColor> = {
   default: "orange",
   nord: "teal",
-  dracula: "pink",
+  dracula: "purple",
   solarized: "teal",
   monokai: "yellow",
   onedark: "blue",
+  paper: "orange",
+  ocean: "teal",
 };
 
 function useIsMobile() {
@@ -7459,21 +7463,21 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full bottom-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block max-h-[calc(100vh-40px)] overflow-y-auto"
+                          <div className="absolute left-full bottom-0 ml-1 w-40 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
                             {COLOR_SCHEMES.map(s => (
                               <button
                                 key={s.name}
                                 onClick={() => setColorScheme(s.name)}
-                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
-                                style={{
-                                  color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
-                                  fontWeight: colorScheme === s.name ? 600 : 400,
-                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-[var(--menu-hover)]"
+                                style={{ color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)" }}
                               >
                                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview, outline: colorScheme === s.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
-                                {s.label}
+                                <span>
+                                  <span className="text-[11px] block" style={{ fontWeight: colorScheme === s.name ? 600 : 400 }}>{s.label}</span>
+                                  <span className="text-[8px] block" style={{ color: "var(--text-faint)" }}>{s.desc}</span>
+                                </span>
                               </button>
                             ))}
                           </div>
