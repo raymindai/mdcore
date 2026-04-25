@@ -2947,7 +2947,7 @@ export default function MdEditor() {
               editToken: token || undefined,
               isDraft: doc.is_draft === false ? false : true,
               isSharedByMe: docIsSharedByMe || false,
-              isRestricted: (doc.allowedEmails?.filter((e: string) => e !== user?.email).length > 0) || false,
+              isRestricted: (doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0) || false,
               ownerEmail: doc.ownerEmail || undefined,
             };
 
@@ -3193,10 +3193,16 @@ export default function MdEditor() {
               .filter((d: { is_draft?: boolean }) => d.is_draft === false)
               .map((d: { id: string }) => d.id)
           );
-          const ownerEmail = user?.email;
+          const ownerEmailLower = user?.email?.toLowerCase();
           const restrictedIds = new Set(
             data.documents
-              .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.filter((e: string) => e !== ownerEmail).length > 0)
+              .filter((d: { allowed_emails?: string[]; edit_mode?: string }) => {
+                // Only "restricted" if there are actual non-owner recipients
+                if (!d.allowed_emails || d.allowed_emails.length === 0) return false;
+                // Filter out owner email (case-insensitive)
+                const others = d.allowed_emails.filter((e: string) => e.toLowerCase() !== ownerEmailLower);
+                return others.length > 0;
+              })
               .map((d: { id: string }) => d.id)
           );
           // Build source + folder maps from server docs
@@ -3448,9 +3454,14 @@ export default function MdEditor() {
                 .filter((d: { is_draft?: boolean }) => d.is_draft === false)
                 .map((d: { id: string }) => d.id)
             );
+            const ownerEmailLower2 = user?.email?.toLowerCase();
             const restrictedIds = new Set(
               data.documents
-                .filter((d: { allowed_emails?: string[] }) => d.allowed_emails && d.allowed_emails.filter((e: string) => e !== user?.email).length > 0)
+                .filter((d: { allowed_emails?: string[] }) => {
+                  if (!d.allowed_emails || d.allowed_emails.length === 0) return false;
+                  const others = d.allowed_emails.filter((e: string) => e.toLowerCase() !== ownerEmailLower2);
+                  return others.length > 0;
+                })
                 .map((d: { id: string }) => d.id)
             );
             const sourceMap = new Map<string, string | null>(
@@ -4788,7 +4799,7 @@ export default function MdEditor() {
             setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
               ...t,
               isSharedByMe: hasSharing,
-              isRestricted: (doc.allowedEmails?.filter((e: string) => e !== user?.email).length > 0) || false,
+              isRestricted: (doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0) || false,
             } : t));
           }
         } catch { /* ignore */ }
@@ -9257,7 +9268,7 @@ ${clone.innerHTML}
                   ...t,
                   isDraft: false,
                   isSharedByMe: true,
-                  isRestricted: allowedEmails.filter(e => e !== user?.email).length > 0,
+                  isRestricted: allowedEmails.filter(e => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0,
                 };
               }));
             }
