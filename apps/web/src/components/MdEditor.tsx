@@ -2234,22 +2234,25 @@ export default function MdEditor() {
       return saved;
     });
 
-    // FLIP: animate after React commits DOM (setTimeout runs after batched render)
+    // FLIP: animate after React commits DOM
     if (flipPositions.size > 0) {
       setTimeout(() => {
+        const deltas: string[] = [];
         sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
           const id = el.dataset.tabId!;
           const oldTop = flipPositions.get(id);
           if (oldTop == null) return;
           const newTop = el.getBoundingClientRect().top;
           const delta = oldTop - newTop;
+          deltas.push(`${(el.textContent || "").slice(0, 15)}: ${delta.toFixed(0)}px`);
           if (Math.abs(delta) < 2) return;
           el.animate(
             [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
             { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
           );
         });
-      }, 0);
+        console.log("[FLIP] deltas:", deltas.join(" | "));
+      }, 50);
     }
   }, [loadTab]);
 
