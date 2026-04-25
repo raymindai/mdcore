@@ -1756,17 +1756,17 @@ export default function MdEditor() {
     sidebarPositionsRef.current = map;
   }, []);
 
-  // Set up observer — retry until sidebar is available
+  // Set up observer ONCE — never disconnect (except unmount)
   useEffect(() => {
-    if (flipObserverRef.current) return;
+    if (flipObserverRef.current) return; // already attached
     const container = sidebarListRef.current;
     if (!container) return;
+    // No cleanup that nulls the ref — observer persists
 
     const observer = new MutationObserver((mutations) => {
       const hasChildChange = mutations.some(m => m.type === "childList" && (m.addedNodes.length > 0 || m.removedNodes.length > 0));
       if (!hasChildChange) return;
       const oldPositions = sidebarPositionsRef.current;
-      console.log("[FLIP] mutation detected! oldPositions:", oldPositions.size, "mutations:", mutations.length);
       if (oldPositions.size === 0) return;
 
       requestAnimationFrame(() => {
@@ -1807,10 +1807,10 @@ export default function MdEditor() {
     flipObserverRef.current = observer;
     observer.observe(container, { childList: true, subtree: true });
     snapshotSidebarPositions();
-    console.log("[FLIP] observer attached, container children:", container.children.length, "data-tab-id count:", container.querySelectorAll("[data-tab-id]").length);
 
-    return () => { observer.disconnect(); flipObserverRef.current = null; };
-  }); // Runs every render until observer is attached, then early-returns
+    // No cleanup — observer stays attached for the lifetime of the component
+    // React Strict Mode may double-call this, but the ref guard prevents duplicates
+  }); // Runs every render until observer is attached, then early-returns via ref guard
 
   // Snapshot positions DURING render (before React commits DOM changes)
   // This runs synchronously before useLayoutEffect/useEffect
