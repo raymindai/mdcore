@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import katex from "katex";
@@ -1651,6 +1651,45 @@ export default function MdEditor() {
   const [deletedDocId, setDeletedDocId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
+
+  // FLIP animation for sidebar tab list — tracks positions before/after re-render
+  const sidebarListRef = useRef<HTMLDivElement>(null);
+  const tabPositionsRef = useRef<Map<string, number>>(new Map());
+
+  // Before render: snapshot current positions
+  useEffect(() => {
+    const container = sidebarListRef.current;
+    if (!container) return;
+    const map = new Map<string, number>();
+    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    });
+    tabPositionsRef.current = map;
+  });
+
+  // After render: animate position changes
+  useLayoutEffect(() => {
+    const container = sidebarListRef.current;
+    if (!container) return;
+    const oldPositions = tabPositionsRef.current;
+    if (oldPositions.size === 0) return;
+
+    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      const id = el.dataset.tabId!;
+      const oldTop = oldPositions.get(id);
+      if (oldTop == null) return;
+      const newTop = el.getBoundingClientRect().top;
+      const delta = oldTop - newTop;
+      if (Math.abs(delta) < 2) return; // skip negligible changes
+
+      el.style.transform = `translateY(${delta}px)`;
+      el.style.transition = "none";
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 250ms ease";
+        el.style.transform = "";
+      });
+    });
+  });
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
@@ -2119,8 +2158,9 @@ export default function MdEditor() {
     isPopstateRef.current = false;
 
     setTabs((prev) => {
-      // Save current tab's markdown (don't update lastOpenedAt yet — defer to avoid jarring re-sort)
+      // Save current tab's markdown + stamp lastOpenedAt on target tab
       const saved = prev.map((t) => {
+        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
         if (t.id !== currentTabId || t.readonly) return t;
         return { ...t, markdown: currentMd };
       });
@@ -2138,10 +2178,6 @@ export default function MdEditor() {
       }
       return saved;
     });
-    // Defer lastOpenedAt update so sidebar doesn't re-sort immediately on click
-    setTimeout(() => {
-      setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
-    }, 400);
   }, [loadTab]);
 
   // Handle browser back/forward navigation
@@ -6472,7 +6508,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     {/* Document list — scrollable */}
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
+                    <div ref={sidebarListRef} className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
@@ -6489,6 +6525,7 @@ ${clone.innerHTML}
                       {visibleRootTabs.map((tab) => (
                         <div
                           key={tab.id}
+                          data-tab-id={tab.id}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
@@ -6875,7 +6912,7 @@ ${clone.innerHTML}
                             {!folder.collapsed && (
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {folderTabs.map(tab => (
-                                  <div key={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                                  <div key={tab.id} data-tab-id={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
