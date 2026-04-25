@@ -2254,8 +2254,8 @@ export default function MdEditor() {
             { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
           );
         });
-        console.log("[FLIP] animated:", count);
-      }, 50);
+        console.log("[FLIP] animated:", count, "found:", document.querySelectorAll("[data-tab-id]").length);
+      }, 300);
     }
   }, [loadTab]);
 
