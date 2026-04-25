@@ -4,29 +4,18 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import * as Y from "yjs";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
-// ─── Remote cursor types ───
-
-export interface PeerCursor {
-  userId: string;
-  name: string;
-  color: string;
-  index: number;
-  headIndex: number;
-}
-
-const CURSOR_COLORS = [
-  "hsl(210, 90%, 56%)", "hsl(145, 70%, 45%)", "hsl(270, 75%, 60%)",
-  "hsl(25, 95%, 55%)", "hsl(330, 80%, 58%)", "hsl(175, 70%, 42%)",
-  "hsl(50, 90%, 50%)", "hsl(0, 80%, 58%)",
-];
-
-function colorForUser(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = ((hash << 5) - hash + userId.charCodeAt(i)) | 0;
-  }
-  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
-}
+/**
+ * Yjs CRDT collaborative editing hook.
+ *
+ * Architecture:
+ *   User A's Editor <-> Y.Doc <-> Supabase Realtime Broadcast <-> Y.Doc <-> User B's Editor
+ *
+ * - Each editor maintains a Y.Doc for the active document.
+ * - Changes are synced via Supabase Realtime Broadcast (not postgres_changes).
+ * - Channel name: `yjs-doc-{cloudId}`
+ * - Y.Doc updates are sent as binary (Uint8Array -> base64).
+ * - No server-side Y.Doc persistence — markdown is saved normally via auto-save.
+ */
 
 function uint8ToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -45,21 +34,6 @@ function base64ToUint8(b64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Yjs CRDT collaborative editing hook.
- *
- * CRITICAL INVARIANT: Only ONE user initializes the Y.Doc with content.
- * All other users MUST receive the CRDT state via sync-response.
- * If two users independently insert the same text, the CRDT item IDs differ,
- * causing position mapping errors and content duplication on merge.
- *
- * Flow:
- *   1. Create empty Y.Doc
- *   2. Subscribe to channel, send sync-request
- *   3. If peer responds (sync-response): apply peer's CRDT state to our empty Y.Doc
- *   4. If no peer within 2s: we're first → insert local content (becomes the authority)
- *   5. Ongoing edits: minimal diff → Y.Doc transact → broadcast update
- */
 export function useCollaboration(
   cloudId: string | null,
   markdown: string,
@@ -69,95 +43,91 @@ export function useCollaboration(
   const ytextRef = useRef<Y.Text | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null);
-  const subscribedRef = useRef(false);
   const isApplyingRemoteRef = useRef(false);
-  const initializedRef = useRef(false);
   const [peerCount, setPeerCount] = useState(0);
   const [isCollaborating, setIsCollaborating] = useState(false);
-  const [peerCursors, setPeerCursors] = useState<PeerCursor[]>([]);
-  const lastCursorBroadcast = useRef(0);
 
+  // Keep latest callback in a ref to avoid re-initializing the channel
   const onRemoteChangeRef = useRef(onRemoteChange);
   onRemoteChangeRef.current = onRemoteChange;
 
+  // Keep latest markdown in a ref for initial Y.Text content
   const markdownRef = useRef(markdown);
   markdownRef.current = markdown;
 
-  // Broadcast handler — uses refs so it always operates on the current Y.Doc
-  // (Y.Doc may be swapped during sync-response)
-  const broadcastYjsUpdate = useCallback((update: Uint8Array, origin: unknown) => {
-    if (origin === "remote") return;
-    if (!subscribedRef.current) return;
-    channelRef.current?.send({
-      type: "broadcast",
-      event: "yjs-update",
-      payload: { update: uint8ToBase64(update) },
-    });
-  }, []);
-
+  // Initialize Y.Doc + Supabase Realtime Broadcast channel when cloudId changes
   useEffect(() => {
     if (!cloudId) {
       setIsCollaborating(false);
       setPeerCount(0);
-      setPeerCursors([]);
       return;
     }
 
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    // Create EMPTY Y.Doc — do NOT insert content yet
     const ydoc = new Y.Doc();
     const ytext = ydoc.getText("content");
     ydocRef.current = ydoc;
     ytextRef.current = ytext;
-    initializedRef.current = false;
-    subscribedRef.current = false;
 
-    // Attach broadcast handler
-    ydoc.on("update", broadcastYjsUpdate);
+    // Don't insert content yet — wait for sync-response from peers.
+    // If no peers respond within a timeout, initialize with local content.
+    let initialized = false;
+    const initTimer = setTimeout(() => {
+      if (!initialized) {
+        initialized = true;
+        const current = markdownRef.current;
+        if (current && ytext.length === 0) {
+          ytext.insert(0, current);
+        }
+      }
+    }, 1500);
 
-    // Create channel
+    // Listen for local Y.Doc updates and broadcast to peers
+    ydoc.on("update", (update: Uint8Array, origin: unknown) => {
+      if (origin === "remote") return; // Don't re-broadcast remote changes
+      const channel = channelRef.current;
+      if (channel) {
+        channel.send({
+          type: "broadcast",
+          event: "yjs-update",
+          payload: { update: uint8ToBase64(update) },
+        });
+      }
+    });
+
+    // Set up Supabase Realtime Broadcast channel
     const channel = supabase.channel(`yjs-doc-${cloudId}`, {
       config: { broadcast: { self: false } },
     });
-    channelRef.current = channel;
-
-    let initTimer: ReturnType<typeof setTimeout> | null = null;
 
     channel
-      .on("broadcast", { event: "yjs-update" }, (msg: { payload?: { update?: string } } | { [key: string]: unknown }) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const payload = (msg as any)?.payload;
+      .on("broadcast", { event: "yjs-update" }, ({ payload }: { payload: { update?: string } }) => {
         if (!payload?.update) return;
-        const curYdoc = ydocRef.current;
-        const curYtext = ytextRef.current;
-        if (!curYdoc || !curYtext) return;
         const update = base64ToUint8(payload.update);
         isApplyingRemoteRef.current = true;
-        Y.applyUpdate(curYdoc, update, "remote");
-        const merged = curYtext.toString();
+        Y.applyUpdate(ydoc, update, "remote");
+        const merged = ytext.toString();
+        // Protect against blank: only apply if result has content
         if (merged.trim() || markdownRef.current.trim().length === 0) {
           onRemoteChangeRef.current(merged);
         }
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-sync-request" }, () => {
-        // A new peer joined. If we have content, respond with our CRDT state.
-        const curYdoc = ydocRef.current;
-        const curYtext = ytextRef.current;
-        if (!curYdoc || !curYtext) return;
-
-        // If not yet initialized, initialize now so we can respond
-        if (!initializedRef.current && markdownRef.current) {
-          initializedRef.current = true;
-          if (initTimer) { clearTimeout(initTimer); initTimer = null; }
-          if (curYtext.length === 0) {
-            curYtext.insert(0, markdownRef.current);
+        // Peer just joined — send state if we have content.
+        // If not initialized yet but have local markdown, init now and respond
+        // (prevents both-users-open-simultaneously leaving both unsynced).
+        if (!initialized && markdownRef.current) {
+          initialized = true;
+          clearTimeout(initTimer);
+          if (ytext.length === 0) {
+            ytext.insert(0, markdownRef.current);
           }
         }
-        if (curYtext.length === 0) return;
-        const state = Y.encodeStateAsUpdate(curYdoc);
+        if (ytext.length === 0) return;
+        const state = Y.encodeStateAsUpdate(ydoc);
         channel.send({
           type: "broadcast",
           event: "yjs-sync-response",
@@ -166,88 +136,74 @@ export function useCollaboration(
       })
       .on("broadcast", { event: "yjs-sync-response" }, ({ payload }: { payload: { state?: string } }) => {
         if (!payload?.state) return;
-        const peerState = base64ToUint8(payload.state);
+        const state = base64ToUint8(payload.state);
 
-        // Cancel init timer
-        if (initTimer) { clearTimeout(initTimer); initTimer = null; }
-        initializedRef.current = true;
+        // Decode peer content to check if it's empty
+        const freshDoc = new Y.Doc();
+        Y.applyUpdate(freshDoc, state);
+        const peerContent = freshDoc.getText("content").toString();
+        freshDoc.destroy();
 
-        // Apply peer's state to the EXISTING Y.Doc (don't create new one).
-        // y-prosemirror's ySyncPlugin is bound to this Y.Doc's XmlFragment —
-        // destroying it would break the Tiptap binding.
-        const curYdoc = ydocRef.current;
-        const curYtext = ytextRef.current;
-        if (!curYdoc || !curYtext) return;
+        // NEVER replace with empty content — protect against blank document
+        if (!peerContent.trim()) return;
 
         isApplyingRemoteRef.current = true;
-        Y.applyUpdate(curYdoc, peerState, "remote");
-        const merged = curYtext.toString();
-        if (merged.trim()) {
+        if (!initialized) {
+          initialized = true;
+          clearTimeout(initTimer);
+          // Replace local with peer content (avoid CRDT merge duplication)
+          if (ytext.length > 0) {
+            ydoc.transact(() => { ytext.delete(0, ytext.length); }, "remote");
+          }
+          ydoc.transact(() => { ytext.insert(0, peerContent); }, "remote");
+          onRemoteChangeRef.current(ytext.toString());
+          isApplyingRemoteRef.current = false;
+          return;
+        }
+        // After initialization, use normal CRDT merge
+        Y.applyUpdate(ydoc, state, "remote");
+        const merged = ytext.toString();
+        if (merged.trim()) { // Only apply non-empty merged content
           onRemoteChangeRef.current(merged);
         }
         isApplyingRemoteRef.current = false;
       })
-      .on("broadcast", { event: "yjs-cursor" }, ({ payload }: { payload: { userId?: string; name?: string; index?: number; headIndex?: number } }) => {
-        if (!payload?.userId) return;
-        const { userId, name, index, headIndex } = payload;
-        setPeerCursors(prev => {
-          const filtered = prev.filter(c => c.userId !== userId);
-          filtered.push({
-            userId: userId!, name: name || "Anonymous", color: colorForUser(userId!),
-            index: index ?? 0, headIndex: headIndex ?? index ?? 0,
-          });
-          return filtered;
-        });
-      })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
-        const count = Math.max(0, Object.keys(presenceState).length - 1);
-        setPeerCount(count);
-        if (count === 0) setPeerCursors([]);
+        setPeerCount(Math.max(0, Object.keys(presenceState).length - 1));
       })
-      .subscribe((status: string) => {
+      .subscribe(async (status: string) => {
         if (status === "SUBSCRIBED") {
-          subscribedRef.current = true;
           setIsCollaborating(true);
-          // Send sync-request to get peer's CRDT state
-          channel.send({ type: "broadcast", event: "yjs-sync-request", payload: {} });
-          channel.track({ joined_at: Date.now() });
-
-          // Init timer: only fires if no peer responds within 2s
-          // This means we're the first user — safe to insert content
-          initTimer = setTimeout(() => {
-            if (!initializedRef.current) {
-              initializedRef.current = true;
-              const curYtext = ytextRef.current;
-              const content = markdownRef.current;
-              if (curYtext && content && curYtext.length === 0) {
-                curYtext.insert(0, content);
-              }
-            }
-          }, 2000);
+          // Request full state from any existing peers
+          channel.send({
+            type: "broadcast",
+            event: "yjs-sync-request",
+            payload: {},
+          });
+          // Track presence so peers can count us
+          await channel.track({ joined_at: Date.now() });
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
-      if (initTimer) clearTimeout(initTimer);
-      subscribedRef.current = false;
-      channelRef.current = null;
-      initializedRef.current = false;
-      const curYdoc = ydocRef.current;
-      if (curYdoc) {
-        curYdoc.off("update", broadcastYjsUpdate);
-        curYdoc.destroy();
-      }
+      clearTimeout(initTimer);
+      channel.unsubscribe();
+      ydoc.destroy();
       ydocRef.current = null;
       ytextRef.current = null;
-      supabase.removeChannel(channel);
+      channelRef.current = null;
       setIsCollaborating(false);
       setPeerCount(0);
-      setPeerCursors([]);
     };
-  }, [cloudId, broadcastYjsUpdate]);
+  }, [cloudId]); // Intentionally exclude markdown/onRemoteChange to avoid re-init
 
-  // Apply local editor change → Y.Doc transact → broadcast
+  /**
+   * Call this when the local editor content changes (user typing).
+   * Computes a Y.Doc transaction and broadcasts the update to peers.
+   */
   const applyLocalChange = useCallback((newMarkdown: string) => {
     if (isApplyingRemoteRef.current) return;
     const ytext = ytextRef.current;
@@ -257,13 +213,21 @@ export function useCollaboration(
     const currentYText = ytext.toString();
     if (currentYText === newMarkdown) return;
 
+    // Apply minimal diff to Y.Text (avoid delete-all + insert-all which causes CRDT duplication)
     ydoc.transact(() => {
+      // Find common prefix
       let prefixLen = 0;
       const minLen = Math.min(currentYText.length, newMarkdown.length);
-      while (prefixLen < minLen && currentYText[prefixLen] === newMarkdown[prefixLen]) prefixLen++;
+      while (prefixLen < minLen && currentYText[prefixLen] === newMarkdown[prefixLen]) {
+        prefixLen++;
+      }
+      // Find common suffix (from the end, not overlapping with prefix)
       let suffixLen = 0;
       const maxSuffix = Math.min(currentYText.length - prefixLen, newMarkdown.length - prefixLen);
-      while (suffixLen < maxSuffix && currentYText[currentYText.length - 1 - suffixLen] === newMarkdown[newMarkdown.length - 1 - suffixLen]) suffixLen++;
+      while (suffixLen < maxSuffix && currentYText[currentYText.length - 1 - suffixLen] === newMarkdown[newMarkdown.length - 1 - suffixLen]) {
+        suffixLen++;
+      }
+      // Delete changed middle, insert new middle
       const deleteLen = currentYText.length - prefixLen - suffixLen;
       const insertStr = newMarkdown.slice(prefixLen, newMarkdown.length - suffixLen);
       if (deleteLen > 0) ytext.delete(prefixLen, deleteLen);
@@ -271,6 +235,7 @@ export function useCollaboration(
     });
   }, []);
 
+  // Force reset Y.Doc (use after version restore to prevent CRDT merge reverting)
   const forceReset = useCallback((newMarkdown: string) => {
     const ytext = ytextRef.current;
     const ydoc = ydocRef.current;
@@ -281,22 +246,5 @@ export function useCollaboration(
     });
   }, []);
 
-  const updateCursor = useCallback((index: number, headIndex: number, userId: string, name: string) => {
-    if (!subscribedRef.current || !channelRef.current) return;
-    const now = Date.now();
-    if (now - lastCursorBroadcast.current < 50) return;
-    lastCursorBroadcast.current = now;
-    channelRef.current.send({
-      type: "broadcast",
-      event: "yjs-cursor",
-      payload: { userId, name, index, headIndex },
-    });
-  }, []);
-
-  // Get current Y.Doc content (includes remote changes)
-  const getContent = useCallback((): string | null => {
-    return ytextRef.current?.toString() ?? null;
-  }, []);
-
-  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent };
+  return { applyLocalChange, forceReset, peerCount, isCollaborating };
 }

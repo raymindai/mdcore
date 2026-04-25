@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
+import katex from "katex";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
   isAiConversation,
@@ -15,7 +16,7 @@ import MathEditor from "@/components/MathEditor";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { useCodeMirror } from "@/components/useCodeMirror";
-import TiptapLiveEditor, { type TiptapLiveEditorHandle } from "@/components/TiptapLiveEditor";
+import FloatingToolbar from "@/components/FloatingToolbar";
 import ShareModal from "@/components/ShareModal";
 import ToastContainer, { showToast } from "@/components/Toast";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
@@ -1536,7 +1537,6 @@ export default function MdEditor() {
     const prev = undoStack.current[undoStack.current.length - 1];
     setMarkdownRaw(prev);
     doRender(prev);
-    tiptapRef.current?.setMarkdown(prev);
     triggerAutoSave(prev);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
@@ -1547,14 +1547,12 @@ export default function MdEditor() {
     undoStack.current.push(next);
     setMarkdownRaw(next);
     doRender(next);
-    tiptapRef.current?.setMarkdown(next);
     triggerAutoSave(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
 
   // Tab functions use doRenderRef to avoid circular dependency
   const doRenderRef = useRef<(md: string) => void>(() => {});
-
 
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
@@ -1598,13 +1596,14 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: update all views
+  // Remote change handler: update markdown, render, and sync CM6
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
+    doRenderRef.current(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
-    tiptapRef.current?.setMarkdown(newMarkdown);
-  }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
+    triggerAutoSave(newMarkdown);
+  }, [triggerAutoSave]);
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -1612,11 +1611,7 @@ export default function MdEditor() {
   collabApplyLocalRef.current = collabApplyLocal;
   const collabForceResetRef = useRef(collabForceReset);
   collabForceResetRef.current = collabForceReset;
-  const collabGetContentRef = useRef(collabGetContent);
-  collabGetContentRef.current = collabGetContent;
   isCollaboratingRef2.current = isCollaborating;
-  const collabUpdateCursorRef = useRef(collabUpdateCursor);
-  collabUpdateCursorRef.current = collabUpdateCursor;
 
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
@@ -1624,18 +1619,6 @@ export default function MdEditor() {
   const [isEditor, setIsEditor] = useState(false);
   // view/owner mode: only owner + allowed editors. public mode: anyone can edit.
   const canEdit = !isSharedDoc || isOwner || isEditor || docEditMode === "public";
-
-  const tiptapRef = useRef<TiptapLiveEditorHandle>(null);
-
-  const handleTiptapChange = useCallback((md: string) => {
-    // Update state + auto-save, but DON'T call applyLocalChange (no Y.Text update).
-    // y-prosemirror already syncs content via Y.XmlFragment — calling applyLocalChange
-    // would create a redundant second broadcast, adding latency.
-    setMarkdownRaw(md);
-    triggerAutoSave(md);
-    cmSetDocRef.current?.(md);
-  }, [triggerAutoSave]);
-
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -1839,7 +1822,6 @@ export default function MdEditor() {
     setMarkdown(withPlaceholder);
     doRenderRef.current(withPlaceholder);
     cmSetDocRef.current?.(withPlaceholder);
-    tiptapRef.current?.setMarkdown(withPlaceholder);
     const url = await uploadImage(file);
     const current = markdownForImageRef.current;
     const imageTag = url ? `![${file.name}](${url})\n` : "";
@@ -1848,14 +1830,12 @@ export default function MdEditor() {
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
-      tiptapRef.current?.setMarkdown(updated);
     } else if (url) {
       // Placeholder was lost (e.g. user edited) — append image at end
       const updated = current + "\n" + imageTag;
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
-      tiptapRef.current?.setMarkdown(updated);
     }
   }, [uploadImage, setMarkdown]);
   const {
@@ -1872,15 +1852,10 @@ export default function MdEditor() {
     initialDoc: markdown,
     onChange: (value: string) => handleChangeRef.current(value),
     onCursorActivity: (line: number) => onCursorActivityRef.current?.(line),
-    onSelectionChange: (anchor: number, head: number) => {
-      if (!isCollaboratingRef2.current || !presenceUser) return;
-      collabUpdateCursorRef.current?.(anchor, head, presenceUser.id, presenceUser.displayName || "Anonymous");
-    },
     onPaste: handlePasteForCM,
     onPasteImage: handlePasteImageForCM,
     theme,
     placeholder: "Paste any Markdown here — GFM, Obsidian, MDX, Pandoc, anything...",
-    remoteCursors: isCollaborating ? collabPeerCursors : undefined,
   });
   cmSetDocRef.current = cmSetDoc;
 
@@ -1958,13 +1933,11 @@ export default function MdEditor() {
   useEffect(() => clearHighlight, [clearHighlight]);
 
   const menuRef = useRef<HTMLDivElement>(null);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  // Set default view mode based on screen size + auto-close sidebar on mobile
+  // Set default view mode based on screen size
   useEffect(() => {
     if (isMobile) {
       setViewMode("preview"); // Live view only on mobile by default
-      setShowSidebar(false); // Auto-close sidebar when entering mobile viewport
     }
   }, [isMobile]);
 
@@ -2104,7 +2077,6 @@ export default function MdEditor() {
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
-          tiptapRef.current?.setMarkdown(md);
           // Seed the conflict detection timestamp
           if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
           setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
@@ -2120,7 +2092,6 @@ export default function MdEditor() {
       undoStack.current = [tab.markdown];
       redoStack.current = [];
       doRenderRef.current(tab.markdown);
-      tiptapRef.current?.setMarkdown(tab.markdown);
     }
   }, []);
 
@@ -2128,11 +2099,19 @@ export default function MdEditor() {
   const isPopstateRef = useRef(false);
 
   const switchTab = useCallback((tabId: string) => {
-    // Flush Tiptap content before switching tabs
-    const tiptapMd = tiptapRef.current?.getMarkdown();
-    if (tiptapMd) {
-      setMarkdownRaw(tiptapMd);
-      markdownRef.current = tiptapMd;
+    // Flush any pending WYSIWYG edits before switching
+    if (wysiwygDebounce.current) {
+      clearTimeout(wysiwygDebounce.current);
+      wysiwygDebounce.current = undefined;
+      const article = previewRef.current?.querySelector("article");
+      if (article) {
+        const clone = article.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+        clone.querySelectorAll(".table-wrapper").forEach(w => { const t = w.querySelector("table"); if (t) w.replaceWith(t); });
+        const flushedMd = htmlToMarkdown(clone.innerHTML);
+        setMarkdownRaw(flushedMd);
+        markdownRef.current = flushedMd;
+      }
     }
     // Use refs to get current values (avoid stale closures)
     const currentMd = markdownRef.current;
@@ -2693,7 +2672,6 @@ export default function MdEditor() {
             setMarkdown(newMd);
             cmSetDoc(newMd);
             doRender(newMd);
-            tiptapRef.current?.setMarkdown(newMd);
           }
         } catch {
           btn.textContent = "Failed";
@@ -2801,7 +2779,6 @@ export default function MdEditor() {
           /* viewMode preserved — user controls it */
           await doRender(shared);
           cmSetDocRef.current?.(shared);
-          tiptapRef.current?.setMarkdown(shared);
           // Clear hash to prevent reload issues
           window.history.replaceState(null, "", "/");
           return;
@@ -2941,7 +2918,6 @@ export default function MdEditor() {
             const prevActiveId = activeTabIdRef.current; // Save before overwriting
             activeTabIdRef.current = "";
             await doRender(doc.markdown);
-            tiptapRef.current?.setMarkdown(doc.markdown);
 
             // Update tabs state (functional updater for latest state)
             const newTabId = `tab-${Date.now()}`;
@@ -2984,7 +2960,6 @@ export default function MdEditor() {
       }
 
       await doRender(markdown);
-      tiptapRef.current?.setMarkdown(markdown);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
@@ -3067,7 +3042,6 @@ export default function MdEditor() {
               if (tab.id === activeTabIdRef.current) {
                 setMarkdownRaw(doc.markdown);
                 doRender(doc.markdown);
-                tiptapRef.current?.setMarkdown(doc.markdown);
               }
             }
           }
@@ -3116,15 +3090,11 @@ export default function MdEditor() {
   }, [tabs, user?.id]);
 
   // Show conflict modal when auto-save detects a 409
-  // Skip during Yjs collaboration — CRDT handles merging, conflicts are expected
   useEffect(() => {
-    if (autoSave.conflict && !isCollaboratingRef2.current) {
+    if (autoSave.conflict) {
       setShowConflictModal(true);
-    } else if (autoSave.conflict && isCollaboratingRef2.current) {
-      // During collaboration, just clear the conflict — CRDT handles merging
-      autoSave.setLastServerUpdatedAt("");
     }
-  }, [autoSave.conflict, autoSave]);
+  }, [autoSave.conflict]);
 
   // Session-based version snapshots:
   // - Create a snapshot when editing session begins (first edit on a doc with cloudId)
@@ -3356,7 +3326,6 @@ export default function MdEditor() {
               if (serverTitle) setTitle(serverTitle);
               doRender(serverMd);
               cmSetDocRef.current?.(serverMd);
-              tiptapRef.current?.setMarkdown(serverMd);
               if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at as string);
               setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, markdown: serverMd, title: serverTitle || t.title } : t));
               highlightDiff(oldMd, serverMd);
@@ -3655,7 +3624,6 @@ export default function MdEditor() {
             setMarkdown(newMd);
             doRender(newMd);
             cmSetDocRef.current?.(newMd);
-            tiptapRef.current?.setMarkdown(newMd);
           }
           document.body.removeChild(overlay);
         };
@@ -3744,7 +3712,6 @@ export default function MdEditor() {
         setMarkdown(newMd);
         cmSetDoc(newMd);
         doRender(newMd);
-        tiptapRef.current?.setMarkdown(newMd);
       };
 
       const items: { label: string; icon: string; action: () => void; separator?: boolean }[] = [
@@ -3780,7 +3747,6 @@ export default function MdEditor() {
           setMarkdown(newMd);
           cmSetDoc(newMd);
           doRender(newMd);
-          tiptapRef.current?.setMarkdown(newMd);
         }},
       ];
 
@@ -3880,7 +3846,6 @@ export default function MdEditor() {
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDocRef.current?.(newMd);
-      tiptapRef.current?.setMarkdown(newMd);
       e.preventDefault();
     };
 
@@ -3983,7 +3948,6 @@ export default function MdEditor() {
           setMarkdown(newMd);
           doRender(newMd);
           cmSetDocRef.current?.(newMd);
-          tiptapRef.current?.setMarkdown(newMd);
         }
       };
 
@@ -4139,7 +4103,6 @@ export default function MdEditor() {
         setMarkdown(newMd);
         doRender(newMd);
         cmSetDocRef.current?.(newMd);
-        tiptapRef.current?.setMarkdown(newMd);
         closeMenu();
       });
     };
@@ -4172,9 +4135,7 @@ export default function MdEditor() {
         setShowDocEditModeMenu(false);
         setConfirmRotateToken(false);
       }
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
-        setShowExportMenu(false);
-      }
+      setShowExportMenu(false);
       setShowEditModeMenu(false);
     };
     if (showMenu || showExportMenu || showEditModeMenu) {
@@ -4195,7 +4156,7 @@ export default function MdEditor() {
       // Increase debounce for large documents to avoid lag
       const len = value.length;
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
-      debounceRef.current = setTimeout(() => { doRender(value); tiptapRef.current?.setMarkdown(value); }, debounceTime);
+      debounceRef.current = setTimeout(() => doRender(value), debounceTime);
     },
     [doRender, setMarkdown]
   );
@@ -4211,16 +4172,222 @@ export default function MdEditor() {
     cmSetDoc(markdown);
   }, [markdown, cmSetDoc]);
 
-  // Sync Tiptap when switching TO Live/Split view from Source
-  const prevViewModeRef = useRef(viewMode);
-  useEffect(() => {
-    const prev = prevViewModeRef.current;
-    prevViewModeRef.current = viewMode;
-    // When switching FROM Source to Live or Split, sync Tiptap with current markdown
-    if (prev === "editor" && viewMode !== "editor") {
-      tiptapRef.current?.setMarkdown(markdownRef.current);
+  // WYSIWYG: contentEditable preview → markdown source sync
+  const wysiwygEditingRef = useRef(false);
+  const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
+  const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
+    // Check for pasted images (handle multiple)
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith("image/"));
+    if (imageItems.length > 0) {
+      e.preventDefault();
+      // Save cursor position BEFORE async upload so we insert at the right place
+      saveInsertPosition();
+      (async () => {
+        const originTabId = activeTabIdRef.current;
+        for (const imageItem of imageItems) {
+          const file = imageItem.getAsFile();
+          if (!file) continue;
+          const ts = Date.now();
+          const placeholder = `![Uploading ${file.name || "image"}-${ts}...]()\n`;
+          // Insert placeholder at cursor position
+          const withPh = insertBlockAtCursor(placeholder);
+          setMarkdown(withPh); doRender(withPh); cmSetDoc(withPh);
+          const url = await uploadImage(file);
+          const imgMd = url ? `![${file.name || "image"}](${url})\n` : "";
+          if (activeTabIdRef.current === originTabId) {
+            // Still on the same tab — replace placeholder in current markdown
+            const current = markdownForImageRef.current;
+            const updated = current.replace(placeholder, imgMd);
+            markdownForImageRef.current = updated;
+            setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+          } else {
+            // Tab changed — update the original tab's markdown via setTabs
+            setTabs(prev => prev.map(t => {
+              if (t.id !== originTabId) return t;
+              const updated = (t.markdown || "").replace(placeholder, imgMd);
+              return { ...t, markdown: updated };
+            }));
+          }
+        }
+      })();
+      return;
     }
-  }, [viewMode]);
+
+    const text = e.clipboardData.getData("text/plain");
+    const html = e.clipboardData.getData("text/html");
+
+    // Check for CLI output first — insert at cursor, don't replace document
+    if (text && isCliOutput(text)) {
+      e.preventDefault();
+      const converted = cliToMarkdown(text);
+      document.execCommand("insertText", false, converted);
+      return;
+    }
+
+    // Check for HTML paste — insert converted markdown at cursor
+    if (html && isHtmlContent(html)) {
+      e.preventDefault();
+      const md = htmlToMarkdown(html);
+      document.execCommand("insertText", false, md);
+      return;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
+  }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
+
+  const handleWysiwygInput = useCallback(() => {
+    wysiwygEditingRef.current = true;
+    if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
+    wysiwygDebounce.current = setTimeout(() => {
+      const article = previewRef.current?.querySelector("article");
+      if (!article) return;
+
+      // Helper: strip UI elements from a cloned element
+      const stripUiElements = (el: HTMLElement) => {
+        el.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+        el.querySelectorAll(".table-wrapper").forEach(wrapper => {
+          const table = wrapper.querySelector("table");
+          if (table) wrapper.replaceWith(table);
+        });
+      };
+
+      // Helper: compute frontmatter line offset
+      const computeFrontmatterOffset = (md: string): number => {
+        const lines = md.split("\n");
+        if (lines[0]?.trim() !== "---") return 0;
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i]?.trim() === "---") return i + 1;
+        }
+        return 0;
+      };
+
+      // --- Partial update strategy using data-sourcepos ---
+      // Instead of converting the entire document on every keystroke,
+      // find the specific edited block and convert only that block.
+      // This preserves unedited markdown constructs perfectly.
+      let didPartialUpdate = false;
+      try {
+        const sel = window.getSelection();
+        if (sel?.rangeCount) {
+          // Walk from cursor to nearest ancestor with data-sourcepos
+          let node: Node | null = sel.getRangeAt(0).startContainer;
+          if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+          let editedBlock: HTMLElement | null = null;
+          while (node && node !== article) {
+            if ((node as HTMLElement).getAttribute?.("data-sourcepos")) {
+              editedBlock = node as HTMLElement;
+              break;
+            }
+            node = (node as HTMLElement).parentElement;
+          }
+
+          if (editedBlock) {
+            const sourcepos = editedBlock.getAttribute("data-sourcepos");
+            const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
+            if (spMatch) {
+              const startLine = parseInt(spMatch[1]) - 1; // 0-indexed
+              const endLine = parseInt(spMatch[2]) - 1;
+
+              const md = markdownRef.current;
+              const lines = md.split("\n");
+              const fmOffset = computeFrontmatterOffset(md);
+              const actualStart = startLine + fmOffset;
+              const actualEnd = endLine + fmOffset;
+
+              // Sanity check: sourcepos must reference valid lines
+              if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
+                // Clone and strip UI from just the edited block
+                const clone = editedBlock.cloneNode(true) as HTMLElement;
+                stripUiElements(clone);
+
+                // Convert only this block to markdown
+                const blockMd = htmlToMarkdown(clone.outerHTML).trim();
+
+                // Replace only the corresponding lines in the original markdown
+                const before = lines.slice(0, actualStart);
+                const after = lines.slice(actualEnd + 1);
+                const newMd = [...before, blockMd, ...after].join("\n");
+
+                // Validate: the partial update should produce reasonable output
+                // If the new markdown is drastically shorter, something went wrong
+                if (newMd.length > md.length * 0.5 || md.length < 20) {
+                  setMarkdown(newMd);
+                  cmSetDoc(newMd);
+                  didPartialUpdate = true;
+
+                  // Sync title from edited markdown to sidebar
+                  const h1Match = newMd.match(/^#\s+(.+)/m);
+                  if (h1Match) {
+                    const newTitle = h1Match[1].trim();
+                    setTitle(newTitle);
+                    const curTabId = activeTabIdRef.current;
+                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Any error in partial update path — fall through to full conversion
+      }
+
+      // --- Fallback: full document conversion ---
+      // Used when: no cursor/selection, no data-sourcepos found, block was deleted,
+      // blocks were merged/split, or partial update validation failed.
+      if (!didPartialUpdate) {
+        const clone = article.cloneNode(true) as HTMLElement;
+        stripUiElements(clone);
+        const newMd = htmlToMarkdown(clone.innerHTML);
+        setMarkdown(newMd);
+        cmSetDoc(newMd);
+
+        // Sync title from edited markdown to sidebar
+        const h1Match = newMd.match(/^#\s+(.+)/m);
+        if (h1Match) {
+          const newTitle = h1Match[1].trim();
+          setTitle(newTitle);
+          const curTabId = activeTabIdRef.current;
+          setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+        }
+      }
+
+      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
+      setTimeout(() => {
+        wysiwygEditingRef.current = false;
+      }, 500);
+
+      // Re-process math elements that may have been damaged by contentEditable
+      // This is targeted — only restores broken math, doesn't replace entire DOM
+      requestAnimationFrame(() => {
+        const article = previewRef.current?.querySelector("article");
+        if (!article) return;
+        // Find any raw math spans that lost their KaTeX rendering
+        article.querySelectorAll("[data-math-style]").forEach((el) => {
+          const tex = el.textContent || "";
+          const mode = el.getAttribute("data-math-style");
+          if (!tex || el.querySelector(".katex")) return; // already rendered
+          try {
+            const rendered = katex.renderToString(tex.trim(), {
+              displayMode: mode === "display",
+              throwOnError: false,
+            });
+            const wrapper = document.createElement(mode === "display" ? "div" : "span");
+            wrapper.className = "math-rendered";
+            wrapper.setAttribute("data-math-src", encodeURIComponent(tex.trim()));
+            wrapper.setAttribute("data-math-mode", mode || "inline");
+            wrapper.setAttribute("contenteditable", "false");
+            wrapper.style.cursor = "pointer";
+            wrapper.innerHTML = rendered;
+            el.replaceWith(wrapper);
+          } catch { /* ignore */ }
+        });
+      });
+    // Increase debounce for large documents to avoid lag
+    }, markdownRef.current.length > 50000 ? 500 : 150);
+  }, [setMarkdown, cmSetDoc]);
 
   // File drop handler
   const handleDrop = useCallback(
@@ -4244,7 +4411,6 @@ export default function MdEditor() {
             setMarkdown(updated);
             doRender(updated);
             cmSetDoc(updated);
-            tiptapRef.current?.setMarkdown(updated);
           } else { failed++; }
         }
         if (failed > 0) showToast(`${failed} image${failed > 1 ? "s" : ""} failed to upload`, "error");
@@ -4370,7 +4536,6 @@ export default function MdEditor() {
     if (previewVersion === versionId) {
       // Toggle off — restore current content
       setPreviewVersion(null);
-      tiptapRef.current?.setMarkdown(markdown);
       doRender(markdown);
       return;
     }
@@ -4378,9 +4543,6 @@ export default function MdEditor() {
     try {
       const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
-        // Show preview in Tiptap
-        tiptapRef.current?.setMarkdown(data.version.markdown);
-        // Also render HTML for non-Tiptap views
         const result = await renderMarkdown(data.version.markdown);
         const processed = postProcessHtml(result.html);
         setHtml(processed);
@@ -4425,7 +4587,6 @@ export default function MdEditor() {
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
         cmSetDocRef.current?.(data.version.markdown);
-        tiptapRef.current?.setMarkdown(data.version.markdown);
         // Force reset Y.Doc to prevent CRDT from reverting to old version
         collabForceResetRef.current?.(data.version.markdown);
         highlightDiff(prevMd, data.version.markdown);
@@ -4527,7 +4688,6 @@ export default function MdEditor() {
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDocRef.current?.(newMd);
-      tiptapRef.current?.setMarkdown(newMd);
       setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
 
       // Highlight changes in preview after render
@@ -4885,7 +5045,6 @@ ${html}
     setIsOwner(false);
     window.history.replaceState(null, "", "/");
     doRender("");
-    tiptapRef.current?.setMarkdown("");
     setShowMenu(false);
   }, [doRender, autoSave]);
 
@@ -4902,7 +5061,6 @@ ${html}
       setMarkdown(md);
       doRender(md);
       cmSetDocRef.current?.(md);
-      tiptapRef.current?.setMarkdown(md);
     };
 
     // Listen for Cmd+S from desktop (save to local file)
@@ -4948,49 +5106,22 @@ ${html}
       setMarkdown(formatted);
       doRender(formatted);
       cmSetDocRef.current?.(formatted);
-      tiptapRef.current?.setMarkdown(formatted);
     }
     setShowAiBanner(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, doRender]);
 
-  // Export PDF — open clean document in new window and print
+  // Export PDF
   const handleExportPdf = useCallback(() => {
     setShowMenu(false);
-    // Clone rendered HTML, strip UI buttons
-    const clone = document.createElement("div");
-    clone.innerHTML = html;
-    clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>${title || "Document"}</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 768px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
-  pre { background: #f6f8fa; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-  code { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.9em; }
-  pre code { background: none; }
-  blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 1rem; color: #666; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-  th { background: #f6f8fa; font-weight: 600; }
-  img { max-width: 100%; }
-  h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
-  h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-  h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-  @media print { body { margin: 0; padding: 0 0.5rem; } }
-</style>
-</head>
-<body>
-${clone.innerHTML}
-</body>
-</html>`);
-    printWindow.document.close();
-    printWindow.onload = () => { printWindow.print(); };
-  }, [html, title]);
+    // Switch to preview mode temporarily for print
+    const prevMode = viewMode;
+    setViewMode("preview");
+    setTimeout(() => {
+      window.print();
+      setViewMode(prevMode);
+    }, 300);
+  }, [viewMode]);
 
   // Edit shared doc
   const _handleEditShared = useCallback(() => {
@@ -5003,11 +5134,6 @@ ${clone.innerHTML}
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      // When Tiptap has focus, let it handle its own undo/redo
-      if (document.activeElement?.closest(".tiptap-editor")) {
-        // Don't intercept — Tiptap handles Cmd+Z/Cmd+Shift+Z natively
-        if (mod && e.key === "z") return;
-      }
       if (mod && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -5044,17 +5170,29 @@ ${clone.innerHTML}
         if (target.closest("[role='dialog'], [data-modal]")) return;
         cmFocus();
       }
-      // Command palette — Cmd+K (when NOT in Tiptap or contentEditable preview)
-      const inTiptap = document.activeElement?.closest(".tiptap-editor");
+      // Command palette — Cmd+K (when NOT in contentEditable preview)
       const inPreview = document.activeElement?.closest("article.mdcore-rendered");
-      if (mod && e.key === "k" && !inPreview && !inTiptap) {
+      if (mod && e.key === "k" && !inPreview) {
         e.preventDefault();
         setShowCommandPalette(prev => !prev);
         setCmdSearch("");
         return;
       }
-      // Tiptap handles its own keyboard shortcuts (Cmd+B for bold, etc.)
-      // so no custom WYSIWYG shortcuts needed here.
+      // WYSIWYG shortcuts — only when editing in preview (contentEditable)
+      if (inPreview && mod) {
+        if (e.key === "b") {
+          e.preventDefault();
+          document.execCommand("bold");
+        }
+        if (e.key === "i") {
+          e.preventDefault();
+          document.execCommand("italic");
+        }
+        if (e.key === "k") {
+          e.preventDefault();
+          setInlineInput({ label: "URL", onSubmit: (u) => { document.execCommand("createLink", false, u); setInlineInput(null); } });
+        }
+      }
     };
 
     window.addEventListener("keydown", handler);
@@ -5159,7 +5297,6 @@ ${clone.innerHTML}
     setMarkdown(newMd);
     cmSetDoc(newMd);
     doRender(newMd);
-    tiptapRef.current?.setMarkdown(newMd);
   }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
 
   const handleInsertBlock = useCallback((type: "code" | "math" | "mermaid") => {
@@ -5172,7 +5309,6 @@ ${clone.innerHTML}
         setMarkdown(newMd);
         cmSetDoc(newMd);
         doRender(newMd);
-        tiptapRef.current?.setMarkdown(newMd);
         break;
       }
       case "math":
@@ -5187,6 +5323,74 @@ ${clone.innerHTML}
         return;
     }
   }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
+
+  // Protect special elements from contentEditable — make them non-editable islands
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const article = previewRef.current.querySelector("article");
+    if (!article) return;
+    // Non-editable blocks: code, mermaid, math, tables, images, ascii diagrams
+    const nonEditableSelector = "pre, .mermaid-container, .mermaid-rendered, .math-rendered, .katex-display, .ascii-diagram, table, img";
+    article.querySelectorAll(nonEditableSelector).forEach(el => {
+      (el as HTMLElement).contentEditable = "false";
+
+      // Skip spacers for inline math — <p> spacers break list/paragraph layout
+      if (el.classList.contains("math-rendered") &&
+          el.getAttribute("data-math-mode") === "inline") {
+        return;
+      }
+
+      // For tables inside table-wrapper, add spacers to wrapper (not inside it)
+      let spacerTarget: Element = el;
+      if (el.tagName === "TABLE" && el.parentElement?.classList.contains("table-wrapper")) {
+        spacerTarget = el.parentElement;
+        (spacerTarget as HTMLElement).contentEditable = "false";
+      }
+
+      // Add editable spacer AFTER if missing — so cursor can be placed below
+      const next = spacerTarget.nextElementSibling;
+      if (!next || (next.getAttribute("contenteditable") === "false" && !next.classList.contains("ce-spacer"))) {
+        if (!spacerTarget.nextElementSibling?.classList.contains("ce-spacer")) {
+          const spacer = document.createElement("p");
+          spacer.innerHTML = "<br>";
+          spacer.className = "ce-spacer";
+          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget.nextSibling);
+        }
+      }
+
+      // Add editable spacer BEFORE if missing — so cursor can be placed above
+      const prev = spacerTarget.previousElementSibling;
+      if (!prev || (prev.getAttribute("contenteditable") === "false" && !prev.classList.contains("ce-spacer"))) {
+        if (!spacerTarget.previousElementSibling?.classList.contains("ce-spacer")) {
+          const spacer = document.createElement("p");
+          spacer.innerHTML = "<br>";
+          spacer.className = "ce-spacer";
+          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget);
+        }
+      }
+    });
+    // Suppress browser object resizing/table controls
+    try {
+      document.execCommand("enableObjectResizing", false, "false");
+      document.execCommand("enableInlineTableEditing", false, "false");
+    } catch { /* not supported in all browsers */ }
+
+    // MutationObserver: remove any browser-injected table controls (▾ dropdowns)
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLElement) {
+            // Chrome adds elements with data-column / data-row or specific classes
+            if (node.tagName === "DIV" && (node.style.position === "absolute" || node.getAttribute("data-column") !== null)) {
+              node.remove();
+            }
+          }
+        }
+      }
+    });
+    observer.observe(article, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [html]);
 
   const shareButtonLabel = {
     idle: "SHARE",
@@ -5248,12 +5452,12 @@ ${clone.innerHTML}
 
       {/* Header */}
       <header
-        className="relative z-[100]"
-        style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}
+        className="backdrop-blur-sm relative z-[100]"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)" }}
       >
-        {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
-        <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
+        {/* Row 1: Logo + View mode + Actions — wraps to two lines on narrow screens */}
+        <div className="flex flex-wrap items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-y-1 gap-x-2" style={{ justifyContent: "space-between" }}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "40%", order: 0 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -5283,7 +5487,7 @@ ${clone.innerHTML}
               </button>
             );
           })()}
-          {/* Permission badge — desktop only in row 1 */}
+          {/* Permission badge + Save status — desktop only */}
           <span className="hidden sm:inline-flex items-center">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
@@ -5374,19 +5578,16 @@ ${clone.innerHTML}
             );
             return null;
           })()}
-          </span>
-          {/* Save status — after permission badge */}
-          <span className="hidden sm:inline text-[10px] font-mono shrink-0">
-          {autoSave.isSaving && <span style={{ color: "var(--text-faint)" }}>Saving...</span>}
-          {autoSave.error && !autoSave.isSaving && <span style={{ color: "#ef4444" }}>{autoSave.error}</span>}
-          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
+          {autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>}
+          {autoSave.error && !autoSave.isSaving && <span className="text-[10px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>}
+          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span className="text-[10px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
           </span>
         </div>
 
-        {/* Center: Home + Layout mode switcher — absolute center relative to window */}
+        {/* Center: Home + Layout mode switcher (single group) */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0 pointer-events-auto"
-          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)" }}
+          className="flex items-center rounded-lg overflow-hidden shrink-0"
+          style={{ border: "1px solid var(--border-dim)", order: 1 }}
         >
           {/* Home */}
           <button
@@ -5436,49 +5637,29 @@ ${clone.innerHTML}
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ order: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
 
-          {/* Presence indicators — other editors on this document */}
+          {/* Presence avatars — other editors */}
           {otherEditors.length > 0 && (
-            <div className="flex items-center -space-x-1.5 mr-1">
-              {otherEditors.slice(0, 5).map((editor) => (
-                <div key={editor.userId} className="relative group/presence">
+            <div className="flex items-center -space-x-1 mr-1">
+              {otherEditors.slice(0, 4).map((editor) => (
+                <div key={editor.email} className="relative group/avatar">
                   {editor.avatarUrl ? (
-                    <img
-                      src={editor.avatarUrl}
-                      alt={editor.displayName || editor.email}
-                      className="w-5 h-5 rounded-full shrink-0 object-cover"
-                      style={{ outline: "2px solid var(--background)" }}
-                      title={editor.displayName || editor.email}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }}
-                    />
+                    <img src={editor.avatarUrl} alt="" className="w-6 h-6 rounded-full border-2 shrink-0" style={{ borderColor: "var(--background)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} />
                   ) : null}
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
-                    style={{ background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`, color: "#fff", outline: "2px solid var(--background)" }}
-                    title={editor.displayName || editor.email}
-                  >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold border-2 shrink-0${editor.avatarUrl ? " hidden" : ""}`} style={{ background: "#fb923c", color: "#000", borderColor: "var(--background)" }}>
                     {(editor.displayName || editor.email || "?")[0].toUpperCase()}
                   </div>
-                  <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    <div className="font-medium" style={{ color: "var(--text-primary)" }}>{editor.displayName || "Unknown"}</div>
-                    <div style={{ color: "var(--text-muted)" }}>{editor.email}</div>
-                    <div style={{ color: "var(--accent)" }}>Editing now</div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/avatar:opacity-100 transition-opacity z-[9999]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                    {editor.displayName || editor.email}
                   </div>
                 </div>
               ))}
-              {otherEditors.length > 5 && (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", outline: "2px solid var(--background)" }}>
-                  +{otherEditors.length - 5}
-                </div>
-              )}
+              {otherEditors.length > 4 && <span className="text-[9px] font-mono ml-1" style={{ color: "var(--text-faint)" }}>+{otherEditors.length - 4}</span>}
             </div>
           )}
-
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
             onClick={toggleTheme}
@@ -5593,8 +5774,6 @@ ${clone.innerHTML}
                 )}
               </div>
             )}
-
-            {/* Presence indicators moved to before theme toggle */}
 
             <div className="relative group">
               <button
@@ -6014,7 +6193,7 @@ ${clone.innerHTML}
         {isMobile && showSidebar && (
           <div
             className="fixed inset-0 z-[200]"
-            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.4)", transition: "background 0.25s ease" }}
+            style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", WebkitBackdropFilter: sidebarClosing ? "none" : "blur(8px) brightness(0.7)", transition: "background 0.25s ease, backdrop-filter 0.25s ease" }}
             onClick={() => closeSidebar()}
           />
         )}
@@ -6025,7 +6204,6 @@ ${clone.innerHTML}
             width: isMobile ? 260 : sidebarWidth,
             minWidth: isMobile ? 260 : 220,
             background: "var(--background)",
-            borderRight: "1px solid var(--border-dim)",
             transition: isMobile ? "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : "width 0.15s ease",
             ...(isMobile ? { transform: sidebarClosing ? "translateX(-100%)" : "translateX(0)" } : {}),
           }}
@@ -6034,6 +6212,7 @@ ${clone.innerHTML}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
+            onDoubleClick={() => closeSidebar()}
           >
             <div className="flex items-center gap-1.5">
               <div className="relative group">
@@ -6203,15 +6382,14 @@ ${clone.innerHTML}
                 setMarkdown(withPlaceholder);
                 doRender(withPlaceholder);
                 cmSetDoc(withPlaceholder);
-                tiptapRef.current?.setMarkdown(withPlaceholder);
                 const url = await uploadImage(file);
                 const current = markdownForImageRef.current;
                 if (url) {
                   const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated); tiptapRef.current?.setMarkdown(updated);
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
                 } else {
                   const updated = current.replace(placeholder, "");
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated); tiptapRef.current?.setMarkdown(updated);
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
                 }
               }
               e.target.value = "";
@@ -7150,7 +7328,6 @@ ${clone.innerHTML}
                             setServerDocs([]);
                             setRecentDocs([]);
                             doRender(INITIAL_TABS[0].markdown);
-                            tiptapRef.current?.setMarkdown(INITIAL_TABS[0].markdown);
                             window.history.replaceState(null, "", "/");
                             try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
                           }}
@@ -7180,7 +7357,6 @@ ${clone.innerHTML}
         {/* Sidebar resize handle — hidden on mobile (sidebar is overlay) */}
         {!isMobile && (
           <div
-            data-print-hide
             className="shrink-0 cursor-col-resize w-[5px]"
             style={{ background: "var(--border-dim)", position: "relative" }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
@@ -7192,7 +7368,6 @@ ${clone.innerHTML}
       ) : (
         /* Collapsed: just the toggle button as a narrow strip */
         <div
-          data-print-hide
           className="flex flex-col shrink-0 items-center pt-1.5 gap-1"
           style={{ width: 36, borderRight: "1px solid var(--border-dim)", background: "var(--background)" }}
         >
@@ -7524,9 +7699,9 @@ ${clone.innerHTML}
             </div>
           ) : (<>
             <div
-              data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
+              onDoubleClick={() => setViewMode(viewMode === "preview" ? "split" : "preview")}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
@@ -7666,7 +7841,7 @@ ${clone.innerHTML}
                 </div>}
                 <div className="w-px h-3.5 mx-0.5" style={{ background: "var(--border-dim)" }} />
                 {/* Export dropdown */}
-                <div className="relative group" ref={exportMenuRef}>
+                <div className="relative group">
                   <button
                     onClick={() => { setShowExportMenu(prev => !prev); setShowMenu(false); }}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
@@ -7749,11 +7924,24 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
               clearHighlight();
-              // Click on empty space below content → focus Tiptap
+              // Click on empty space below content → focus article and place cursor at end
               if (e.target === e.currentTarget) {
-                tiptapRef.current?.focus();
+                const article = e.currentTarget.querySelector("article");
+                if (article) {
+                  article.focus();
+                  // Place cursor at end of content
+                  const sel = window.getSelection();
+                  if (sel) {
+                    const range = document.createRange();
+                    range.selectNodeContents(article);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                  }
+                }
               }
             }}>
+              <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <MdfyLogo size={18} />
@@ -7761,20 +7949,44 @@ ${clone.innerHTML}
                     <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
                   </div>
                 </div>
-              ) : (
-                <TiptapLiveEditor
-                  key={`tiptap-${docId || "local"}`}
-                  ref={tiptapRef}
-                  markdown={markdown}
-                  onChange={handleTiptapChange}
-                  canEdit={canEdit}
-                  narrowView={narrowView}
-                  onTitleChange={(title) => {
-                    setTitle(title);
-                    const curTabId = activeTabIdRef.current;
-                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title } : t));
+              ) : html ? (
+                <article
+                  ref={(el) => {
+                    // Use a proper hash to detect actual content changes
+                    const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
+                    if (el && el.getAttribute("data-html-hash") !== hash) {
+                      // Only update if change came from source (not from contentEditable editing)
+                      if (!wysiwygEditingRef.current) {
+                        el.innerHTML = html;
+                      }
+                      el.setAttribute("data-html-hash", hash);
+                    }
                   }}
-                  onPasteImage={uploadImage}
+                  contentEditable={canEdit}
+                  suppressContentEditableWarning
+                  onInput={canEdit ? handleWysiwygInput : undefined}
+                  onPaste={canEdit ? handleWysiwygPaste : undefined}
+                  className={`mdcore-rendered focus:outline-none ${
+                    narrowView
+                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
+                      : "p-3 sm:p-6 max-w-none"
+                  }`}
+                  style={{ cursor: canEdit ? "text" : "default" }}
+                />
+              ) : (
+                <article
+                  contentEditable={canEdit}
+                  suppressContentEditableWarning
+                  onInput={canEdit ? handleWysiwygInput : undefined}
+                  onPaste={canEdit ? handleWysiwygPaste : undefined}
+                  className={`mdcore-rendered focus:outline-none ${
+                    narrowView
+                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
+                      : "p-3 sm:p-6 max-w-none"
+                  }`}
+                  style={{ cursor: "text", minHeight: "100%" }}
+                  data-placeholder="true"
+                  dangerouslySetInnerHTML={{ __html: "" }}
                 />
               )}
               </div>{/* end scrollable preview */}
@@ -8087,7 +8299,6 @@ ${clone.innerHTML}
                                 setMarkdown(newMd);
                                 doRender(newMd);
                                 cmSetDocRef.current?.(newMd);
-                                tiptapRef.current?.setMarkdown(newMd);
                                 showToast("Image inserted", "success");
                               }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }} title="Insert image into document">
                                 Insert
@@ -8139,7 +8350,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     <button
-                      onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) { doRender(markdown); tiptapRef.current?.setMarkdown(markdown); } }}
+                      onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) doRender(markdown); }}
                       className="flex items-center justify-center w-5 h-5 rounded transition-colors"
                       style={{ color: "var(--text-muted)" }}
                     >
@@ -8225,7 +8436,6 @@ ${clone.innerHTML}
         {/* Resize handle */}
         {viewMode === "split" && (
           <div
-            data-print-hide
             className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
             style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
@@ -8247,6 +8457,7 @@ ${clone.innerHTML}
             <div
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
+              onDoubleClick={() => setViewMode(viewMode === "editor" ? "split" : "editor")}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <span className="shrink-0" style={{ color: "var(--accent)" }}>SOURCE</span>
@@ -8320,7 +8531,6 @@ ${clone.innerHTML}
                               setMarkdown(converted);
                               cmSetDoc(converted);
                               doRender(converted);
-                              tiptapRef.current?.setMarkdown(converted);
                             }}
                             className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
                             style={{ color: "var(--text-secondary)" }}
@@ -8623,7 +8833,6 @@ ${clone.innerHTML}
                       setMarkdown(newMd);
                       doRender(newMd);
                       cmSetDocRef.current?.(newMd);
-                      tiptapRef.current?.setMarkdown(newMd);
                       setTitle(trimmed);
                     }
                     setInlineInput(null);
@@ -8935,7 +9144,6 @@ ${clone.innerHTML}
                       setMarkdown(result.markdown);
                       doRender(result.markdown);
                       cmSetDocRef.current?.(result.markdown);
-                      tiptapRef.current?.setMarkdown(result.markdown);
                     }
                     if (result.truncated) {
                       showToast("Document was very large — only the first 3 MB was processed", "info");
@@ -9211,7 +9419,6 @@ ${clone.innerHTML}
                   if (autoSave.conflict) {
                     setMarkdownRaw(autoSave.conflict.serverMarkdown);
                     doRender(autoSave.conflict.serverMarkdown);
-                    tiptapRef.current?.setMarkdown(autoSave.conflict.serverMarkdown);
                     autoSave.setLastServerUpdatedAt(autoSave.conflict.serverUpdatedAt);
                     autoSave.dismissConflict();
                     setShowConflictModal(false);
@@ -9471,7 +9678,6 @@ ${clone.innerHTML}
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
-                tiptapRef.current?.setMarkdown(newMarkdown);
                 setCanvasMermaid(undefined);
                 setShowMermaidModal(false);
               }}
@@ -9611,7 +9817,6 @@ ${clone.innerHTML}
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
-                tiptapRef.current?.setMarkdown(newMarkdown);
                 setInitialMath(undefined);
                 mathOriginalRef.current = null;
                 mathSourceIndexRef.current = -1;
