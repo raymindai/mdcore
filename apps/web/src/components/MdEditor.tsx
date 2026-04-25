@@ -3102,11 +3102,15 @@ export default function MdEditor() {
   }, [tabs, user?.id]);
 
   // Show conflict modal when auto-save detects a 409
+  // Skip during Yjs collaboration — CRDT handles merging, conflicts are expected
   useEffect(() => {
-    if (autoSave.conflict) {
+    if (autoSave.conflict && !isCollaboratingRef2.current) {
       setShowConflictModal(true);
+    } else if (autoSave.conflict && isCollaboratingRef2.current) {
+      // During collaboration, just clear the conflict — CRDT handles merging
+      autoSave.setLastServerUpdatedAt("");
     }
-  }, [autoSave.conflict]);
+  }, [autoSave.conflict, autoSave]);
 
   // Session-based version snapshots:
   // - Create a snapshot when editing session begins (first edit on a doc with cloudId)
