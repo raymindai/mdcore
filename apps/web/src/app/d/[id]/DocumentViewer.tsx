@@ -73,6 +73,15 @@ export default function DocumentViewer({
     const initial = saved || "dark";
     setThemeState(initial);
     document.documentElement.setAttribute("data-theme", initial);
+    // Restore accent and scheme
+    const accent = localStorage.getItem("mdfy-accent");
+    if (accent && accent !== "orange") {
+      document.documentElement.setAttribute("data-accent", accent);
+    }
+    const scheme = localStorage.getItem("mdfy-scheme");
+    if (scheme && scheme !== "default") {
+      document.documentElement.setAttribute("data-scheme", scheme);
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {
