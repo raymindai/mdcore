@@ -7428,24 +7428,23 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full top-0 ml-1 p-2 rounded-lg shadow-xl z-[9999] hidden group-hover/keycolor:block"
+                          <div className="absolute left-full top-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/keycolor:block"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1.5 px-0.5" style={{ color: "var(--text-faint)" }}>Key Color</div>
-                            <div className="grid grid-cols-4 gap-1">
-                              {ACCENT_COLORS.map(c => (
-                                <button
-                                  key={c.name}
-                                  onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") setColorScheme("default"); }}
-                                  className="w-5 h-5 rounded-full transition-transform hover:scale-110"
-                                  style={{
-                                    background: theme === "dark" ? c.dark : c.light,
-                                    outline: accentColor === c.name ? "2px solid var(--text-primary)" : "none",
-                                    outlineOffset: "1px",
-                                  }}
-                                  title={c.label}
-                                />
-                              ))}
-                            </div>
+                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                            {ACCENT_COLORS.map(c => (
+                              <button
+                                key={c.name}
+                                onClick={() => { setAccentColor(c.name); }}
+                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
+                                style={{
+                                  color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
+                                  fontWeight: accentColor === c.name ? 600 : 400,
+                                }}
+                              >
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
+                                {c.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
                         {/* Skin Theme — flyout */}
