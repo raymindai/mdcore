@@ -192,23 +192,38 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
     });
 
     // Initialize Y.XmlFragment with content if empty (first user)
-    // CRITICAL: This must happen AFTER the editor is created with ySyncPlugin
-    // so that ySyncPlugin picks up the changes and syncs them to peers
+    // CRITICAL: Wait for sync-response before initializing. If both users
+    // initialize independently, CRDT merge doubles the content.
     useEffect(() => {
       if (!editor || !ydoc || initializedYjsRef.current) return;
       const fragment = ydoc.getXmlFragment("prosemirror");
 
-      if (fragment.length === 0 && initialBody) {
-        // We're the first user — populate the Y.XmlFragment via the editor
-        // ySyncPlugin automatically syncs editor transactions to the fragment
+      // Already populated (from sync-response or previous session)
+      if (fragment.length > 0) {
+        initializedYjsRef.current = true;
+        return;
+      }
+
+      // Watch for fragment being populated by sync-response
+      const observer = () => {
+        if (fragment.length > 0 && !initializedYjsRef.current) {
+          initializedYjsRef.current = true;
+        }
+      };
+      fragment.observe(observer);
+
+      // Wait 2.5s (longer than useCollaboration's 2s init timer)
+      // If no peer populates the fragment, we're the first user
+      const timer = setTimeout(() => {
+        if (initializedYjsRef.current) return;
+        if (fragment.length > 0) { initializedYjsRef.current = true; return; }
         initializedYjsRef.current = true;
         suppressOnUpdate.current = true;
         editor.commands.setContent(initialBody);
         suppressOnUpdate.current = false;
-      } else if (fragment.length > 0) {
-        // Fragment has content from peer — ySyncPlugin already rendered it
-        initializedYjsRef.current = true;
-      }
+      }, 2500);
+
+      return () => { clearTimeout(timer); fragment.unobserve(observer); };
     }, [editor, ydoc, initialBody]);
 
     useEffect(() => {
