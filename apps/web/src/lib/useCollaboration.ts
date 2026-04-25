@@ -89,8 +89,10 @@ export function useCollaboration(
   // (Y.Doc may be swapped during sync-response)
   const broadcastYjsUpdate = useCallback((update: Uint8Array, origin: unknown) => {
     if (origin === "remote") return;
-    if (!subscribedRef.current) return;
-    channelRef.current?.send({
+    if (!subscribedRef.current) { console.warn("[yjs] broadcast skipped: not subscribed"); return; }
+    if (!channelRef.current) { console.warn("[yjs] broadcast skipped: no channel"); return; }
+    console.log("[yjs] broadcasting update, bytes:", update.length, "origin:", String(origin));
+    channelRef.current.send({
       type: "broadcast",
       event: "yjs-update",
       payload: { update: uint8ToBase64(update) },
@@ -148,7 +150,8 @@ export function useCollaboration(
         if (!payload?.update) return;
         const curYdoc = ydocRef.current;
         const curYtext = ytextRef.current;
-        if (!curYdoc || !curYtext) return;
+        if (!curYdoc || !curYtext) { console.warn("[yjs] receive skipped: no ydoc/ytext"); return; }
+        console.log("[yjs] received update, b64 len:", payload.update.length);
         const update = base64ToUint8(payload.update);
         isApplyingRemoteRef.current = true;
         Y.applyUpdate(curYdoc, update, "remote");
