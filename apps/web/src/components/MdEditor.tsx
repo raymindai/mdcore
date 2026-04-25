@@ -4307,7 +4307,6 @@ export default function MdEditor() {
               const startLine = parseInt(spMatch[1]) - 1; // 0-indexed
               const endLine = parseInt(spMatch[2]) - 1;
 
-              // During collaboration, use Y.Doc content as base (includes remote changes).
               const md = markdownRef.current;
               const lines = md.split("\n");
               const fmOffset = computeFrontmatterOffset(md);
@@ -4315,7 +4314,9 @@ export default function MdEditor() {
               const actualEnd = endLine + fmOffset;
 
               // Sanity check: sourcepos must reference valid lines
-              if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
+              // Also skip if Enter split the block (next sibling has no sourcepos)
+              const blockWasSplit = editedBlock.nextElementSibling && !editedBlock.nextElementSibling.getAttribute("data-sourcepos");
+              if (!blockWasSplit && actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
                 // Clone and strip UI from just the edited block
                 const clone = editedBlock.cloneNode(true) as HTMLElement;
                 stripUiElements(clone);
