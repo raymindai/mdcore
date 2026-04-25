@@ -1536,6 +1536,7 @@ export default function MdEditor() {
     const prev = undoStack.current[undoStack.current.length - 1];
     setMarkdownRaw(prev);
     doRender(prev);
+    tiptapRef.current?.setMarkdown(prev);
     triggerAutoSave(prev);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
@@ -1546,6 +1547,7 @@ export default function MdEditor() {
     undoStack.current.push(next);
     setMarkdownRaw(next);
     doRender(next);
+    tiptapRef.current?.setMarkdown(next);
     triggerAutoSave(next);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAutoSave]);
@@ -1833,6 +1835,7 @@ export default function MdEditor() {
     setMarkdown(withPlaceholder);
     doRenderRef.current(withPlaceholder);
     cmSetDocRef.current?.(withPlaceholder);
+    tiptapRef.current?.setMarkdown(withPlaceholder);
     const url = await uploadImage(file);
     const current = markdownForImageRef.current;
     const imageTag = url ? `![${file.name}](${url})\n` : "";
@@ -1841,12 +1844,14 @@ export default function MdEditor() {
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
+      tiptapRef.current?.setMarkdown(updated);
     } else if (url) {
       // Placeholder was lost (e.g. user edited) — append image at end
       const updated = current + "\n" + imageTag;
       setMarkdown(updated);
       doRenderRef.current(updated);
       cmSetDocRef.current?.(updated);
+      tiptapRef.current?.setMarkdown(updated);
     }
   }, [uploadImage, setMarkdown]);
   const {
@@ -2684,6 +2689,7 @@ export default function MdEditor() {
             setMarkdown(newMd);
             cmSetDoc(newMd);
             doRender(newMd);
+            tiptapRef.current?.setMarkdown(newMd);
           }
         } catch {
           btn.textContent = "Failed";
@@ -2791,6 +2797,7 @@ export default function MdEditor() {
           /* viewMode preserved — user controls it */
           await doRender(shared);
           cmSetDocRef.current?.(shared);
+          tiptapRef.current?.setMarkdown(shared);
           // Clear hash to prevent reload issues
           window.history.replaceState(null, "", "/");
           return;
@@ -2930,6 +2937,7 @@ export default function MdEditor() {
             const prevActiveId = activeTabIdRef.current; // Save before overwriting
             activeTabIdRef.current = "";
             await doRender(doc.markdown);
+            tiptapRef.current?.setMarkdown(doc.markdown);
 
             // Update tabs state (functional updater for latest state)
             const newTabId = `tab-${Date.now()}`;
@@ -2972,6 +2980,7 @@ export default function MdEditor() {
       }
 
       await doRender(markdown);
+      tiptapRef.current?.setMarkdown(markdown);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
@@ -3054,6 +3063,7 @@ export default function MdEditor() {
               if (tab.id === activeTabIdRef.current) {
                 setMarkdownRaw(doc.markdown);
                 doRender(doc.markdown);
+                tiptapRef.current?.setMarkdown(doc.markdown);
               }
             }
           }
@@ -3342,6 +3352,7 @@ export default function MdEditor() {
               if (serverTitle) setTitle(serverTitle);
               doRender(serverMd);
               cmSetDocRef.current?.(serverMd);
+              tiptapRef.current?.setMarkdown(serverMd);
               if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at as string);
               setTabs(prev => prev.map(t => t.cloudId === cloudId ? { ...t, markdown: serverMd, title: serverTitle || t.title } : t));
               highlightDiff(oldMd, serverMd);
@@ -3640,6 +3651,7 @@ export default function MdEditor() {
             setMarkdown(newMd);
             doRender(newMd);
             cmSetDocRef.current?.(newMd);
+            tiptapRef.current?.setMarkdown(newMd);
           }
           document.body.removeChild(overlay);
         };
@@ -3728,6 +3740,7 @@ export default function MdEditor() {
         setMarkdown(newMd);
         cmSetDoc(newMd);
         doRender(newMd);
+        tiptapRef.current?.setMarkdown(newMd);
       };
 
       const items: { label: string; icon: string; action: () => void; separator?: boolean }[] = [
@@ -3763,6 +3776,7 @@ export default function MdEditor() {
           setMarkdown(newMd);
           cmSetDoc(newMd);
           doRender(newMd);
+          tiptapRef.current?.setMarkdown(newMd);
         }},
       ];
 
@@ -3862,6 +3876,7 @@ export default function MdEditor() {
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDocRef.current?.(newMd);
+      tiptapRef.current?.setMarkdown(newMd);
       e.preventDefault();
     };
 
@@ -3964,6 +3979,7 @@ export default function MdEditor() {
           setMarkdown(newMd);
           doRender(newMd);
           cmSetDocRef.current?.(newMd);
+          tiptapRef.current?.setMarkdown(newMd);
         }
       };
 
@@ -4119,6 +4135,7 @@ export default function MdEditor() {
         setMarkdown(newMd);
         doRender(newMd);
         cmSetDocRef.current?.(newMd);
+        tiptapRef.current?.setMarkdown(newMd);
         closeMenu();
       });
     };
@@ -4174,7 +4191,7 @@ export default function MdEditor() {
       // Increase debounce for large documents to avoid lag
       const len = value.length;
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
-      debounceRef.current = setTimeout(() => doRender(value), debounceTime);
+      debounceRef.current = setTimeout(() => { doRender(value); tiptapRef.current?.setMarkdown(value); }, debounceTime);
     },
     [doRender, setMarkdown]
   );
@@ -4223,6 +4240,7 @@ export default function MdEditor() {
             setMarkdown(updated);
             doRender(updated);
             cmSetDoc(updated);
+            tiptapRef.current?.setMarkdown(updated);
           } else { failed++; }
         }
         if (failed > 0) showToast(`${failed} image${failed > 1 ? "s" : ""} failed to upload`, "error");
@@ -4348,6 +4366,7 @@ export default function MdEditor() {
     if (previewVersion === versionId) {
       // Toggle off — restore current content
       setPreviewVersion(null);
+      tiptapRef.current?.setMarkdown(markdown);
       doRender(markdown);
       return;
     }
@@ -4355,6 +4374,9 @@ export default function MdEditor() {
     try {
       const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
+        // Show preview in Tiptap
+        tiptapRef.current?.setMarkdown(data.version.markdown);
+        // Also render HTML for non-Tiptap views
         const result = await renderMarkdown(data.version.markdown);
         const processed = postProcessHtml(result.html);
         setHtml(processed);
@@ -4399,6 +4421,7 @@ export default function MdEditor() {
         setMarkdown(data.version.markdown);
         doRender(data.version.markdown);
         cmSetDocRef.current?.(data.version.markdown);
+        tiptapRef.current?.setMarkdown(data.version.markdown);
         // Force reset Y.Doc to prevent CRDT from reverting to old version
         collabForceResetRef.current?.(data.version.markdown);
         highlightDiff(prevMd, data.version.markdown);
@@ -4500,6 +4523,7 @@ export default function MdEditor() {
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDocRef.current?.(newMd);
+      tiptapRef.current?.setMarkdown(newMd);
       setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, markdown: newMd } : t));
 
       // Highlight changes in preview after render
@@ -4857,6 +4881,7 @@ ${html}
     setIsOwner(false);
     window.history.replaceState(null, "", "/");
     doRender("");
+    tiptapRef.current?.setMarkdown("");
     setShowMenu(false);
   }, [doRender, autoSave]);
 
@@ -4873,6 +4898,7 @@ ${html}
       setMarkdown(md);
       doRender(md);
       cmSetDocRef.current?.(md);
+      tiptapRef.current?.setMarkdown(md);
     };
 
     // Listen for Cmd+S from desktop (save to local file)
@@ -4918,6 +4944,7 @@ ${html}
       setMarkdown(formatted);
       doRender(formatted);
       cmSetDocRef.current?.(formatted);
+      tiptapRef.current?.setMarkdown(formatted);
     }
     setShowAiBanner(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5128,6 +5155,7 @@ ${clone.innerHTML}
     setMarkdown(newMd);
     cmSetDoc(newMd);
     doRender(newMd);
+    tiptapRef.current?.setMarkdown(newMd);
   }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
 
   const handleInsertBlock = useCallback((type: "code" | "math" | "mermaid") => {
@@ -5140,6 +5168,7 @@ ${clone.innerHTML}
         setMarkdown(newMd);
         cmSetDoc(newMd);
         doRender(newMd);
+        tiptapRef.current?.setMarkdown(newMd);
         break;
       }
       case "math":
@@ -6170,14 +6199,15 @@ ${clone.innerHTML}
                 setMarkdown(withPlaceholder);
                 doRender(withPlaceholder);
                 cmSetDoc(withPlaceholder);
+                tiptapRef.current?.setMarkdown(withPlaceholder);
                 const url = await uploadImage(file);
                 const current = markdownForImageRef.current;
                 if (url) {
                   const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated); tiptapRef.current?.setMarkdown(updated);
                 } else {
                   const updated = current.replace(placeholder, "");
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+                  setMarkdown(updated); doRender(updated); cmSetDoc(updated); tiptapRef.current?.setMarkdown(updated);
                 }
               }
               e.target.value = "";
@@ -7116,6 +7146,7 @@ ${clone.innerHTML}
                             setServerDocs([]);
                             setRecentDocs([]);
                             doRender(INITIAL_TABS[0].markdown);
+                            tiptapRef.current?.setMarkdown(INITIAL_TABS[0].markdown);
                             window.history.replaceState(null, "", "/");
                             try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
                           }}
@@ -8055,6 +8086,7 @@ ${clone.innerHTML}
                                 setMarkdown(newMd);
                                 doRender(newMd);
                                 cmSetDocRef.current?.(newMd);
+                                tiptapRef.current?.setMarkdown(newMd);
                                 showToast("Image inserted", "success");
                               }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }} title="Insert image into document">
                                 Insert
@@ -8106,7 +8138,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     <button
-                      onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) doRender(markdown); }}
+                      onClick={() => { setShowHistory(false); setPreviewVersion(null); if (previewVersion !== null) { doRender(markdown); tiptapRef.current?.setMarkdown(markdown); } }}
                       className="flex items-center justify-center w-5 h-5 rounded transition-colors"
                       style={{ color: "var(--text-muted)" }}
                     >
@@ -8287,6 +8319,7 @@ ${clone.innerHTML}
                               setMarkdown(converted);
                               cmSetDoc(converted);
                               doRender(converted);
+                              tiptapRef.current?.setMarkdown(converted);
                             }}
                             className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
                             style={{ color: "var(--text-secondary)" }}
@@ -8589,6 +8622,7 @@ ${clone.innerHTML}
                       setMarkdown(newMd);
                       doRender(newMd);
                       cmSetDocRef.current?.(newMd);
+                      tiptapRef.current?.setMarkdown(newMd);
                       setTitle(trimmed);
                     }
                     setInlineInput(null);
@@ -8900,6 +8934,7 @@ ${clone.innerHTML}
                       setMarkdown(result.markdown);
                       doRender(result.markdown);
                       cmSetDocRef.current?.(result.markdown);
+                      tiptapRef.current?.setMarkdown(result.markdown);
                     }
                     if (result.truncated) {
                       showToast("Document was very large — only the first 3 MB was processed", "info");
@@ -9175,6 +9210,7 @@ ${clone.innerHTML}
                   if (autoSave.conflict) {
                     setMarkdownRaw(autoSave.conflict.serverMarkdown);
                     doRender(autoSave.conflict.serverMarkdown);
+                    tiptapRef.current?.setMarkdown(autoSave.conflict.serverMarkdown);
                     autoSave.setLastServerUpdatedAt(autoSave.conflict.serverUpdatedAt);
                     autoSave.dismissConflict();
                     setShowConflictModal(false);
@@ -9434,6 +9470,7 @@ ${clone.innerHTML}
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
+                tiptapRef.current?.setMarkdown(newMarkdown);
                 setCanvasMermaid(undefined);
                 setShowMermaidModal(false);
               }}
@@ -9573,6 +9610,7 @@ ${clone.innerHTML}
                 setMarkdown(newMarkdown);
                 cmSetDoc(newMarkdown);
                 doRender(newMarkdown);
+                tiptapRef.current?.setMarkdown(newMarkdown);
                 setInitialMath(undefined);
                 mathOriginalRef.current = null;
                 mathSourceIndexRef.current = -1;
