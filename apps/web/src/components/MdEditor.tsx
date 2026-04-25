@@ -7763,13 +7763,13 @@ ${clone.innerHTML}
                 </div>
               ) : (
                 <TiptapLiveEditor
-                  key={`tiptap-${docId || "local"}-${!!collabYdoc}`}
+                  key={`tiptap-${docId || "local"}-${viewMode === "preview" && !!collabYdoc}`}
                   ref={tiptapRef}
                   markdown={markdown}
                   onChange={handleTiptapChange}
                   canEdit={canEdit}
                   narrowView={narrowView}
-                  ydoc={collabYdoc}
+                  ydoc={viewMode === "preview" ? collabYdoc : null}
                   awareness={collabAwareness}
                   user={user ? { name: profile?.display_name || user.email || "Anonymous", color: `hsl(${(user.id || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 70%, 50%)` } : null}
                   onTitleChange={(title) => {
