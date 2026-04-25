@@ -168,41 +168,23 @@ export function useCollaboration(
         if (!payload?.state) return;
         const peerState = base64ToUint8(payload.state);
 
-        // Validate peer content
-        const testDoc = new Y.Doc();
-        Y.applyUpdate(testDoc, peerState);
-        const peerContent = testDoc.getText("content").toString();
-        testDoc.destroy();
-        if (!peerContent.trim()) return;
-
         // Cancel init timer
         if (initTimer) { clearTimeout(initTimer); initTimer = null; }
-
-        const oldYdoc = ydocRef.current;
-
-        // Create BRAND NEW Y.Doc from peer's CRDT state.
-        // This is the ONLY safe way to ensure identical CRDT item IDs.
-        // Merging into an independently-initialized Y.Doc causes duplication.
-        isApplyingRemoteRef.current = true;
-        const newYdoc = new Y.Doc();
-        Y.applyUpdate(newYdoc, peerState, "remote");
-        const newYtext = newYdoc.getText("content");
-
-        // Swap refs BEFORE attaching handler (so broadcastYjsUpdate uses new doc)
-        ydocRef.current = newYdoc;
-        ytextRef.current = newYtext;
         initializedRef.current = true;
 
-        // Attach broadcast handler to new doc
-        newYdoc.on("update", broadcastYjsUpdate);
+        // Apply peer's state to the EXISTING Y.Doc (don't create new one).
+        // y-prosemirror's ySyncPlugin is bound to this Y.Doc's XmlFragment —
+        // destroying it would break the Tiptap binding.
+        const curYdoc = ydocRef.current;
+        const curYtext = ytextRef.current;
+        if (!curYdoc || !curYtext) return;
 
-        // Detach and destroy old doc
-        if (oldYdoc) {
-          oldYdoc.off("update", broadcastYjsUpdate);
-          oldYdoc.destroy();
+        isApplyingRemoteRef.current = true;
+        Y.applyUpdate(curYdoc, peerState, "remote");
+        const merged = curYtext.toString();
+        if (merged.trim()) {
+          onRemoteChangeRef.current(merged);
         }
-
-        onRemoteChangeRef.current(newYtext.toString());
         isApplyingRemoteRef.current = false;
       })
       .on("broadcast", { event: "yjs-cursor" }, ({ payload }: { payload: { userId?: string; name?: string; index?: number; headIndex?: number } }) => {
