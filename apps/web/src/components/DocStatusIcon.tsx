@@ -33,17 +33,17 @@ function DocStatusIcon({ tab, isActive }: {
   let dotColor: string | null = null;
 
   if (tab.permission === "readonly") {
-    Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
+    Icon = Eye; color = "var(--text-faint)"; tip = "View only";
   } else if (isSharedPublic) {
-    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared (anyone with link)";
+    Icon = Share2; color = "#4ade80"; tip = "Shared (anyone with link)";
     if (isSynced) { dotColor = "#22c55e"; tip += ` · Synced (${tab.source})`; }
   } else if (isPublished && hasSharedPeople) {
-    Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
+    Icon = Users; color = "#60a5fa"; tip = "Shared with specific people";
     if (isSynced) { dotColor = "#22c55e"; tip += ` · Synced (${tab.source})`; }
   } else if (isSynced) {
-    Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
+    Icon = CircleCheck; color = "#22c55e"; tip = `Synced (${tab.source})`;
   } else {
-    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = isPublished ? "Published" : "Private";
+    Icon = FileIcon; color = "var(--text-faint)"; tip = isPublished ? "Published" : "Private";
   }
 
   return (
