@@ -29,7 +29,7 @@ import {
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
   LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck,
 } from "lucide-react";
-import morphdom from "morphdom";
+import TiptapEditor, { type TiptapEditorHandle } from "@/components/TiptapEditor";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { useAutoSave } from "@/lib/useAutoSave";
@@ -1535,6 +1535,12 @@ export default function MdEditor() {
   }, [triggerAutoSave]);
 
   const undo = useCallback(() => {
+    // In LIVE view, use Tiptap's native undo
+    const tiptapEditor = tiptapRef.current?.getEditor();
+    if (tiptapEditor && viewModeRef.current !== "editor") {
+      tiptapEditor.commands.undo();
+      return;
+    }
     if (undoStack.current.length <= 1) return;
     const current = undoStack.current.pop()!;
     redoStack.current.push(current);
@@ -1546,6 +1552,12 @@ export default function MdEditor() {
   }, [triggerAutoSave]);
 
   const redo = useCallback(() => {
+    // In LIVE view, use Tiptap's native redo
+    const tiptapEditor = tiptapRef.current?.getEditor();
+    if (tiptapEditor && viewModeRef.current !== "editor") {
+      tiptapEditor.commands.redo();
+      return;
+    }
     if (redoStack.current.length === 0) return;
     const next = redoStack.current.pop()!;
     undoStack.current.push(next);
@@ -1557,6 +1569,9 @@ export default function MdEditor() {
 
   // Tab functions use doRenderRef to avoid circular dependency
   const doRenderRef = useRef<(md: string) => void>(() => {});
+
+  // Tiptap editor ref for LIVE view
+  const tiptapRef = useRef<TiptapEditorHandle>(null);
 
   const [html, setHtml] = useState("");
   const [flavor, setFlavor] = useState<string>("detecting...");
@@ -1573,6 +1588,8 @@ export default function MdEditor() {
     "idle" | "sharing" | "copied" | "error"
   >("idle");
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
+  const viewModeRef = useRef<ViewMode>("preview");
+  viewModeRef.current = viewMode;
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1600,11 +1617,12 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: always render immediately.
-  // morphdom patches the DOM selectively, preserving cursor position.
+  // Remote change handler: sync all views (Tiptap, CM6)
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    doRenderRef.current(newMarkdown);
+    // Sync Tiptap LIVE view (ProseMirror handles cursor preservation natively)
+    tiptapRef.current?.setMarkdown(newMarkdown);
+    // Sync CM6 Source view
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
@@ -1627,6 +1645,13 @@ export default function MdEditor() {
   const [isEditor, setIsEditor] = useState(false);
   // view/owner mode: only owner + allowed editors. public mode: anyone can edit.
   const canEdit = !isSharedDoc || isOwner || isEditor || docEditMode === "public";
+
+  // Handler for Tiptap LIVE view changes
+  const handleTiptapChange = useCallback((md: string) => {
+    setMarkdown(md);
+    cmSetDocRef.current?.(md);
+  }, [setMarkdown]);
+
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -2092,6 +2117,7 @@ export default function MdEditor() {
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
+          tiptapRef.current?.setMarkdown(md);
           // Seed the conflict detection timestamp
           if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
           setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
@@ -2107,6 +2133,7 @@ export default function MdEditor() {
       undoStack.current = [tab.markdown];
       redoStack.current = [];
       doRenderRef.current(tab.markdown);
+      tiptapRef.current?.setMarkdown(tab.markdown);
     }
   }, []);
 
@@ -8028,7 +8055,6 @@ ${clone.innerHTML}
                 }
               }
             }}>
-              <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <MdfyLogo size={18} />
@@ -8036,61 +8062,19 @@ ${clone.innerHTML}
                     <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
                   </div>
                 </div>
-              ) : html ? (
-                <article
-                  ref={(el) => {
-                    const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
-                    if (el && el.getAttribute("data-html-hash") !== hash) {
-                      if (el.innerHTML === "" || !el.childNodes.length) {
-                        // First render — set innerHTML directly
-                        el.innerHTML = html;
-                      } else {
-                        // Subsequent renders — use morphdom to patch only changed nodes
-                        // Preserves cursor position during collaboration
-                        const tmp = document.createElement("article");
-                        tmp.innerHTML = html;
-                        morphdom(el, tmp, {
-                          childrenOnly: true,
-                          onBeforeElUpdated: (fromEl, toEl) => {
-                            // Skip non-editable islands (code blocks, KaTeX, Mermaid)
-                            // if their source content hasn't changed
-                            if (fromEl.getAttribute?.("contenteditable") === "false" &&
-                                fromEl.getAttribute?.("data-sourcepos") === toEl.getAttribute?.("data-sourcepos") &&
-                                fromEl.getAttribute?.("data-sourcepos")) {
-                              return false;
-                            }
-                            return true;
-                          },
-                        });
-                      }
-                      el.setAttribute("data-html-hash", hash);
-                    }
-                  }}
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView
-                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: canEdit ? "text" : "default" }}
-                />
               ) : (
-                <article
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView
-                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: "text", minHeight: "100%" }}
-                  data-placeholder="true"
-                  dangerouslySetInnerHTML={{ __html: "" }}
+                <TiptapEditor
+                  ref={tiptapRef}
+                  initialMarkdown={markdown}
+                  onChange={handleTiptapChange}
+                  canEdit={canEdit}
+                  narrowView={narrowView}
+                  onTitleChange={(title) => {
+                    setTitle(title);
+                    const curTabId = activeTabIdRef.current;
+                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title } : t));
+                  }}
+                  onPasteImage={uploadImage}
                 />
               )}
               </div>{/* end scrollable preview */}
