@@ -268,19 +268,6 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       });
     }, [narrowView, editor]);
 
-    const setMarkdownImperative = useCallback(
-      (md: string) => {
-        if (!editor) return;
-        // When y-prosemirror is active, don't manually setContent — Yjs handles sync
-        if (ydoc) return;
-        const { frontmatter: fm, body } = extractFrontmatter(md);
-        frontmatterRef.current = fm;
-        suppressOnUpdate.current = true;
-        editor.commands.setContent(body);
-        suppressOnUpdate.current = false;
-      },
-      [editor, ydoc]
-    );
 
     const getMarkdownImperative = useCallback(() => {
       if (!editor) return "";
@@ -295,11 +282,18 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
     useImperativeHandle(
       ref,
       () => ({
-        setMarkdown: setMarkdownImperative,
+        setMarkdown: (md: string) => {
+        if (!editor) return;
+        const { frontmatter: fm, body } = extractFrontmatter(md);
+        frontmatterRef.current = fm;
+        suppressOnUpdate.current = true;
+        editor.commands.setContent(body);
+        suppressOnUpdate.current = false;
+      },
         getMarkdown: getMarkdownImperative,
         focus: () => editor?.commands.focus(),
       }),
-      [setMarkdownImperative, getMarkdownImperative, editor]
+      [getMarkdownImperative, editor]
     );
 
     if (!editor) return null;
