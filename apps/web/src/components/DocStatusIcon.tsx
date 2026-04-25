@@ -3,21 +3,49 @@ import {
   Cloud, Share2, Eye, Users, File as FileIcon, CircleCheck,
 } from "lucide-react";
 
-function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string; permission?: string }; isActive: boolean }) {
+/**
+ * Document status icon — single source of truth from tab properties.
+ *
+ * Icon logic (priority order):
+ * 1. View only: tab.permission === "readonly" → Eye
+ * 2. Synced: tab.source is vscode/desktop/cli/mcp → CircleCheck
+ * 3. Published + edit_mode=view/public: anyone can view → Share2
+ * 4. Published + has shared people: shared with specific people → Users
+ * 5. Default: private/draft → FileIcon
+ */
+function DocStatusIcon({ tab, isActive }: {
+  tab: {
+    isDraft?: boolean;
+    editMode?: string;       // "owner" | "token" | "view" | "public"
+    sharedWithCount?: number; // number of non-owner people shared with
+    source?: string;
+    cloudId?: string;
+    permission?: string;
+    // Legacy fields (still supported for backward compat)
+    isRestricted?: boolean;
+    isSharedByMe?: boolean;
+  };
+  isActive: boolean;
+}) {
   let Icon: typeof Cloud;
   let color: string;
   let tip: string;
 
+  const isPublished = tab.isDraft === false;
+  const isPublicLink = tab.editMode === "view" || tab.editMode === "public";
+  const hasSharedPeople = (tab.sharedWithCount ?? 0) > 0 || tab.isRestricted === true;
+  const isSharedPublic = isPublished && (isPublicLink || tab.isSharedByMe === true);
+
   if (tab.permission === "readonly") {
     Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
-  } else if (tab.isDraft === false && tab.isSharedByMe) {
-    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared (anyone with link)";
-  } else if (tab.isDraft === false && tab.isRestricted) {
-    Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source)) {
     Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
+  } else if (isSharedPublic) {
+    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared (anyone with link)";
+  } else if (isPublished && hasSharedPeople) {
+    Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else {
-    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Private";
+    Icon = FileIcon; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = tab.isDraft === false ? "Published" : "Private";
   }
 
   return (

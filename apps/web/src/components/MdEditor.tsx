@@ -910,8 +910,10 @@ interface Tab {
   shared?: boolean;        // opened from shared URL (not mine)
   isDraft?: boolean;       // auto-saved but not yet published
   permission?: "mine" | "editable" | "readonly";  // for sidebar badge
-  isSharedByMe?: boolean;  // I've shared this doc with others
-  isRestricted?: boolean;  // shared with specific people (allowed_emails)
+  editMode?: string;       // "owner" | "token" | "view" | "public"
+  sharedWithCount?: number; // number of non-owner people shared with
+  isSharedByMe?: boolean;  // legacy: I've shared this doc with others
+  isRestricted?: boolean;  // legacy: shared with specific people
   ownerEmail?: string;     // owner's email (for shared docs)
   source?: string;         // origin: "vscode" | "chrome" | null
   lastOpenedAt?: number;   // timestamp of last open
@@ -2940,6 +2942,7 @@ export default function MdEditor() {
             const docIsSharedByMe = perm === "mine" && (
               doc.editMode === "view" || doc.editMode === "public"
             );
+            const othersCount = doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== (user?.email || "").toLowerCase()).length || 0;
             const tabProps = {
               markdown: doc.markdown,
               title: doc.title || undefined,
@@ -2947,7 +2950,9 @@ export default function MdEditor() {
               editToken: token || undefined,
               isDraft: doc.is_draft === false ? false : true,
               isSharedByMe: docIsSharedByMe || false,
-              isRestricted: (doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0) || false,
+              isRestricted: othersCount > 0,
+              editMode: doc.editMode || "token",
+              sharedWithCount: othersCount,
               ownerEmail: doc.ownerEmail || undefined,
             };
 
@@ -3205,12 +3210,22 @@ export default function MdEditor() {
               })
               .map((d: { id: string }) => d.id)
           );
-          // Build source + folder maps from server docs
+          // Build source + folder + editMode + sharedCount maps from server docs
           const sourceMap = new Map<string, string | null>(
             data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
           );
           const folderMap = new Map<string, string | null>(
             data.documents.map((d: { id: string; folder_id?: string | null }) => [d.id, d.folder_id ?? null])
+          );
+          const editModeMap = new Map<string, string>(
+            data.documents.map((d: { id: string; edit_mode?: string }) => [d.id, d.edit_mode || "token"])
+          );
+          const computeSharedCount = (allowedEmails: string[] | undefined, ownerEmail: string | undefined) => {
+            if (!allowedEmails) return 0;
+            return allowedEmails.filter(e => e.toLowerCase() !== (ownerEmail || "").toLowerCase()).length;
+          };
+          const sharedCountMap = new Map<string, number>(
+            data.documents.map((d: { id: string; allowed_emails?: string[] }) => [d.id, computeSharedCount(d.allowed_emails, ownerEmailLower)])
           );
           setTabs(prev => {
             // Update existing tabs with server state
@@ -3222,8 +3237,10 @@ export default function MdEditor() {
               const newRestricted = restrictedIds.has(t.cloudId) ? true : false;
               const newSource = sourceMap.get(t.cloudId) || undefined;
               const newFolder = serverFolderId || t.folderId;
-              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder) return t;
-              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder };
+              const newEditMode = editModeMap.get(t.cloudId) || "token";
+              const newSharedCount = sharedCountMap.get(t.cloudId) || 0;
+              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount) return t;
+              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount };
             });
             // Create tabs for server docs that don't have local tabs
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
@@ -3467,6 +3484,16 @@ export default function MdEditor() {
             const sourceMap = new Map<string, string | null>(
               data.documents.map((d: { id: string; source?: string | null }) => [d.id, d.source ?? null])
             );
+            const editModeMap2 = new Map<string, string>(
+              data.documents.map((d: { id: string; edit_mode?: string }) => [d.id, d.edit_mode || "token"])
+            );
+            const computeSharedCount2 = (allowedEmails: string[] | undefined, ownerEmail: string | undefined) => {
+              if (!allowedEmails) return 0;
+              return allowedEmails.filter(e => e.toLowerCase() !== (ownerEmail || "").toLowerCase()).length;
+            };
+            const sharedCountMap2 = new Map<string, number>(
+              data.documents.map((d: { id: string; allowed_emails?: string[] }) => [d.id, computeSharedCount2(d.allowed_emails, ownerEmailLower2)])
+            );
 
             setTabs(prev => {
               const existingCloudIds = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
@@ -3477,9 +3504,11 @@ export default function MdEditor() {
                 const newShared = sharedDocIds.has(t.cloudId) ? true : false;
                 const newRestricted = restrictedIds.has(t.cloudId) ? true : false;
                 const newSource = sourceMap.get(t.cloudId) || undefined;
+                const newEditMode = editModeMap2.get(t.cloudId) || "token";
+                const newSharedCount = sharedCountMap2.get(t.cloudId) || 0;
                 // Only create new object if something actually changed
-                if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource) return t;
-                return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource };
+                if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.editMode === newEditMode && t.sharedWithCount === newSharedCount) return t;
+                return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, editMode: newEditMode, sharedWithCount: newSharedCount };
               });
               // Add new server docs that don't have local tabs
               const newTabs = data.documents
@@ -4796,10 +4825,13 @@ export default function MdEditor() {
             if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
             if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
             const hasSharing = doc.editMode === "view" || doc.editMode === "public";
+            const shareOthersCount = doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== (user?.email || "").toLowerCase()).length || 0;
             setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
               ...t,
               isSharedByMe: hasSharing,
-              isRestricted: (doc.allowedEmails?.filter((e: string) => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0) || false,
+              isRestricted: shareOthersCount > 0,
+              editMode: doc.editMode,
+              sharedWithCount: shareOthersCount,
             } : t));
           }
         } catch { /* ignore */ }
@@ -9262,13 +9294,16 @@ ${clone.innerHTML}
             const curTabId = activeTabIdRef.current;
             const ct = tabs.find(t => t.id === curTabId);
             if (ct?.cloudId) {
+              const closeOthers = allowedEmails.filter(e => e.toLowerCase() !== (user?.email || "").toLowerCase());
               setTabs(prev => prev.map(t => {
                 if (t.id !== curTabId) return t;
                 return {
                   ...t,
                   isDraft: false,
                   isSharedByMe: true,
-                  isRestricted: allowedEmails.filter(e => e.toLowerCase() !== user?.email?.toLowerCase()).length > 0,
+                  isRestricted: closeOthers.length > 0,
+                  editMode: docEditMode,
+                  sharedWithCount: closeOthers.length,
                 };
               }));
             }
@@ -9278,7 +9313,7 @@ ${clone.innerHTML}
             // Publish (isDraft → false) when user explicitly changes sharing settings
             const curTabId = activeTabIdRef.current;
             const isShared = mode !== "owner";
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isSharedByMe: isShared } : t));
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isSharedByMe: isShared, editMode: mode } : t));
             const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
             if (cid && user) {
               fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
@@ -9288,8 +9323,8 @@ ${clone.innerHTML}
             setAllowedEmailsState(emails);
             // Publish + update tab state when sharing with specific people
             const curTabId = activeTabIdRef.current;
-            const othersEmails = emails.filter(e => e.toLowerCase() !== user?.email?.toLowerCase());
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isRestricted: othersEmails.length > 0 } : t));
+            const othersEmails = emails.filter(e => e.toLowerCase() !== (user?.email || "").toLowerCase());
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isRestricted: othersEmails.length > 0, sharedWithCount: othersEmails.length } : t));
             const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
             if (cid && user) {
               fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
@@ -9314,6 +9349,8 @@ ${clone.innerHTML}
                 isDraft: true,
                 isSharedByMe: false,
                 isRestricted: false,
+                editMode: "owner",
+                sharedWithCount: 0,
               } : t));
               setAllowedEmailsState([]);
               setAllowedEditorsState([]);
