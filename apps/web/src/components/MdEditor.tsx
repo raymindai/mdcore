@@ -4373,9 +4373,11 @@ export default function MdEditor() {
         }
       }
 
-      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
+      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete,
+      // then re-render to update html state (prevents stale html from replacing DOM)
       setTimeout(() => {
         wysiwygEditingRef.current = false;
+        doRender(markdownRef.current);
       }, 500);
 
       // Re-process math elements that may have been damaged by contentEditable
