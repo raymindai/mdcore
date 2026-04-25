@@ -1602,7 +1602,7 @@ export default function MdEditor() {
     setMarkdownRaw(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
   }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent, ydoc: collabYdoc } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent, ydoc: collabYdoc, awareness: collabAwareness } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -7735,6 +7735,8 @@ ${clone.innerHTML}
                   canEdit={canEdit}
                   narrowView={narrowView}
                   ydoc={collabYdoc}
+                  awareness={collabAwareness}
+                  user={user ? { name: profile?.display_name || user.email || "Anonymous", color: `hsl(${(user.id || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 70%, 50%)` } : null}
                   onTitleChange={(title) => {
                     setTitle(title);
                     const curTabId = activeTabIdRef.current;

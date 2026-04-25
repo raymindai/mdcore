@@ -1067,6 +1067,33 @@ textarea::selection {
   font-style: italic;
 }
 
+/* y-prosemirror remote cursor styles */
+.yRemoteSelection {
+  background-color: var(--cursor-color, rgba(250, 129, 0, 0.3));
+}
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid var(--cursor-color, #fb923c);
+  border-color: var(--cursor-color, #fb923c);
+  height: 1.2em;
+  box-sizing: border-box;
+}
+.yRemoteSelectionHead::after {
+  position: absolute;
+  content: attr(data-user);
+  color: #fff;
+  background-color: var(--cursor-color, #fb923c);
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 1px 4px;
+  border-radius: 3px 3px 3px 0;
+  top: -18px;
+  left: -1px;
+  white-space: nowrap;
+  pointer-events: none;
+  line-height: 1.3;
+}
+
 /* ========================================
    Suppress browser native table/object controls in contentEditable
    ======================================== */

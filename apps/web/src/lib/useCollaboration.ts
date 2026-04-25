@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import * as Y from "yjs";
+import { Awareness } from "y-protocols/awareness";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 // ─── Remote cursor types ───
@@ -67,6 +68,7 @@ export function useCollaboration(
 ) {
   const ydocRef = useRef<Y.Doc | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
+  const awarenessRef = useRef<Awareness | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelRef = useRef<any>(null);
   const subscribedRef = useRef(false);
@@ -109,13 +111,30 @@ export function useCollaboration(
     // Create EMPTY Y.Doc — do NOT insert content yet
     const ydoc = new Y.Doc();
     const ytext = ydoc.getText("content");
+    const awareness = new Awareness(ydoc);
     ydocRef.current = ydoc;
     ytextRef.current = ytext;
+    awarenessRef.current = awareness;
     initializedRef.current = false;
     subscribedRef.current = false;
 
     // Attach broadcast handler
     ydoc.on("update", broadcastYjsUpdate);
+
+    // Sync awareness state changes via broadcast
+    awareness.on("update", ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
+      const changedClients = added.concat(updated, removed);
+      if (!subscribedRef.current || !channelRef.current) return;
+      const encoded = uint8ToBase64(
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        require("y-protocols/awareness").encodeAwarenessUpdate(awareness, changedClients)
+      );
+      channelRef.current.send({
+        type: "broadcast",
+        event: "yjs-awareness",
+        payload: { update: encoded },
+      });
+    });
 
     // Create channel
     const channel = supabase.channel(`yjs-doc-${cloudId}`, {
@@ -199,6 +218,12 @@ export function useCollaboration(
           return filtered;
         });
       })
+      .on("broadcast", { event: "yjs-awareness" }, ({ payload }: { payload: { update?: string } }) => {
+        if (!payload?.update) return;
+        const update = base64ToUint8(payload.update);
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        require("y-protocols/awareness").applyAwarenessUpdate(awareness, update, "remote");
+      })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
         const count = Math.max(0, Object.keys(presenceState).length - 1);
@@ -240,6 +265,10 @@ export function useCollaboration(
       }
       ydocRef.current = null;
       ytextRef.current = null;
+      if (awarenessRef.current) {
+        awarenessRef.current.destroy();
+        awarenessRef.current = null;
+      }
       supabase.removeChannel(channel);
       setIsCollaborating(false);
       setPeerCount(0);
@@ -298,7 +327,7 @@ export function useCollaboration(
     return ytextRef.current?.toString() ?? null;
   }, []);
 
-  // Expose Y.Doc for y-prosemirror binding
   const ydoc = ydocRef.current;
-  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent, ydoc };
+  const awareness = awarenessRef.current;
+  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent, ydoc, awareness };
 }

@@ -23,7 +23,8 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import { Markdown as TiptapMarkdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import * as Y from "yjs";
-import { ySyncPlugin, yUndoPlugin } from "y-prosemirror";
+import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from "y-prosemirror";
+import type { Awareness } from "y-protocols/awareness";
 
 const lowlightInstance = createLowlight(common);
 
@@ -50,6 +51,8 @@ interface TiptapLiveEditorProps {
   canEdit: boolean;
   narrowView: boolean;
   ydoc: Y.Doc | null;
+  awareness: Awareness | null;
+  user: { name: string; color: string } | null;
   onTitleChange?: (title: string) => void;
   onPasteImage?: (file: File) => Promise<string | null>;
 }
@@ -62,14 +65,20 @@ export interface TiptapLiveEditorHandle {
 
 // ─── y-prosemirror extension factory ───
 
-function createCollabExtension(fragment: Y.XmlFragment) {
+function createCollabExtension(fragment: Y.XmlFragment, awareness: Awareness | null, cursorUser: { name: string; color: string } | null) {
   return Extension.create({
     name: "yjs-collab",
     addProseMirrorPlugins() {
-      return [
+      const plugins = [
         ySyncPlugin(fragment),
         yUndoPlugin(),
       ];
+      if (awareness && cursorUser) {
+        // Set local awareness state for cursor display
+        awareness.setLocalStateField("user", cursorUser);
+        plugins.push(yCursorPlugin(awareness));
+      }
+      return plugins;
     },
   });
 }
@@ -78,7 +87,7 @@ function createCollabExtension(fragment: Y.XmlFragment) {
 
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
   function TiptapLiveEditor(
-    { markdown, onChange, canEdit, narrowView, ydoc, onTitleChange, onPasteImage },
+    { markdown, onChange, canEdit, narrowView, ydoc, awareness, user: cursorUser, onTitleChange, onPasteImage },
     ref
   ) {
     const suppressOnUpdate = useRef(false);
@@ -129,7 +138,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       // Add y-prosemirror collaboration
       if (ydoc) {
         const fragment = ydoc.getXmlFragment("prosemirror");
-        exts.push(createCollabExtension(fragment));
+        exts.push(createCollabExtension(fragment, awareness, cursorUser));
       }
       return exts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
