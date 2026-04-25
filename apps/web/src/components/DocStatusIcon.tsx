@@ -42,9 +42,10 @@ function DocStatusIcon({ tab, isActive }: {
     <div className="relative shrink-0 flex items-center group/icon" style={{ width: 18, height: 16 }}>
       <Icon width={14} height={14} style={{ color }} />
       {isSynced && (
-        <svg className="absolute -bottom-[2px] -right-[1px]" width="9" height="9" viewBox="0 0 10 10">
-          <circle cx="5" cy="5" r="4.5" fill="var(--background)" />
-          <circle cx="5" cy="5" r="4" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeDasharray="6 6" strokeLinecap="round" />
+        <svg className="absolute -bottom-[3px] -right-[3px]" width="11" height="11" viewBox="0 0 12 12">
+          <circle cx="6" cy="6" r="5.5" fill="var(--background)" />
+          <circle cx="6" cy="6" r="4.5" fill="var(--accent)" />
+          <path d="M4 6.2L5.3 7.5L8 4.5" stroke="var(--background)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </svg>
       )}
       <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/icon:opacity-100 transition-opacity z-[9998]"
