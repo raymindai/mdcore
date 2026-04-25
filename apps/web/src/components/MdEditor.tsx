@@ -1755,7 +1755,7 @@ export default function MdEditor() {
     flipSnapshotRef.current = map;
   }, []);
 
-  // After DOM commit: apply FLIP animation
+  // After DOM commit: apply FLIP animation using Web Animations API
   useLayoutEffect(() => {
     const snapshot = flipSnapshotRef.current;
     if (!snapshot || snapshot.size === 0) return;
@@ -1764,7 +1764,6 @@ export default function MdEditor() {
     const container = sidebarListRef.current;
     if (!container) return;
 
-    const elements: { el: HTMLElement; delta: number }[] = [];
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
       const id = el.dataset.tabId!;
       const oldTop = snapshot.get(id);
@@ -1772,34 +1771,14 @@ export default function MdEditor() {
       const newTop = el.getBoundingClientRect().top;
       const delta = oldTop - newTop;
       if (Math.abs(delta) < 2) return;
-      elements.push({ el, delta });
-    });
 
-    if (elements.length === 0) return;
-
-    // First: set all to old positions instantly
-    for (const { el, delta } of elements) {
-      el.style.transition = "none";
-      el.style.transform = `translateY(${delta}px)`;
-    }
-
-    // Force reflow
-    void container.offsetHeight;
-
-    // Then: animate to new positions
-    requestAnimationFrame(() => {
-      for (const { el } of elements) {
-        el.style.transition = "transform 300ms cubic-bezier(0.33, 1, 0.68, 1)";
-        el.style.transform = "";
-      }
-      // Cleanup after animation
-      const cleanup = () => {
-        for (const { el } of elements) {
-          el.style.transition = "";
-          el.style.transform = "";
-        }
-      };
-      setTimeout(cleanup, 350);
+      el.animate(
+        [
+          { transform: `translateY(${delta}px)` },
+          { transform: "translateY(0)" },
+        ],
+        { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
+      );
     });
   });
   const importFileRef = useRef<HTMLInputElement>(null);
