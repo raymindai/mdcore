@@ -23,8 +23,7 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import { Markdown as TiptapMarkdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import * as Y from "yjs";
-import { ySyncPlugin, yCursorPlugin, yUndoPlugin } from "y-prosemirror";
-import type { Awareness } from "y-protocols/awareness";
+import { ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 
 const lowlightInstance = createLowlight(common);
 
@@ -51,8 +50,6 @@ interface TiptapLiveEditorProps {
   canEdit: boolean;
   narrowView: boolean;
   ydoc: Y.Doc | null;
-  awareness: Awareness | null;
-  user: { name: string; color: string } | null;
   onTitleChange?: (title: string) => void;
   onPasteImage?: (file: File) => Promise<string | null>;
 }
@@ -65,51 +62,14 @@ export interface TiptapLiveEditorHandle {
 
 // ─── y-prosemirror extension factory ───
 
-function createCollabExtension(fragment: Y.XmlFragment, awareness: Awareness | null, cursorUser: { name: string; color: string } | null) {
+function createCollabExtension(fragment: Y.XmlFragment) {
   return Extension.create({
     name: "yjs-collab",
     addProseMirrorPlugins() {
-      const plugins = [
+      return [
         ySyncPlugin(fragment),
         yUndoPlugin(),
       ];
-      if (awareness && cursorUser) {
-        awareness.setLocalStateField("user", cursorUser);
-        plugins.push(yCursorPlugin(awareness, {
-          cursorBuilder: (user: { name: string; color: string }) => {
-            const cursor = document.createElement("span");
-            cursor.style.borderLeft = `2px solid ${user.color}`;
-            cursor.style.marginLeft = "-1px";
-            cursor.style.position = "relative";
-            cursor.style.pointerEvents = "none";
-            cursor.setAttribute("data-user", user.name);
-            const label = document.createElement("span");
-            label.style.position = "absolute";
-            label.style.top = "-1.2em";
-            label.style.left = "-1px";
-            label.style.fontSize = "9px";
-            label.style.fontFamily = "-apple-system, sans-serif";
-            label.style.background = user.color;
-            label.style.color = "#fff";
-            label.style.padding = "1px 4px";
-            label.style.borderRadius = "3px";
-            label.style.whiteSpace = "nowrap";
-            label.style.pointerEvents = "none";
-            label.style.lineHeight = "1.2";
-            label.textContent = user.name;
-            cursor.appendChild(label);
-            return cursor;
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          selectionBuilder: (user: any) => {
-            return {
-              style: `background-color: ${user.color}; opacity: 0.15;`,
-              class: "yRemoteSelection",
-            };
-          },
-        }));
-      }
-      return plugins;
     },
   });
 }
@@ -118,7 +78,7 @@ function createCollabExtension(fragment: Y.XmlFragment, awareness: Awareness | n
 
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
   function TiptapLiveEditor(
-    { markdown, onChange, canEdit, narrowView, ydoc, awareness, user: cursorUser, onTitleChange, onPasteImage },
+    { markdown, onChange, canEdit, narrowView, ydoc, onTitleChange, onPasteImage },
     ref
   ) {
     const suppressOnUpdate = useRef(false);
@@ -169,7 +129,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       // Add y-prosemirror collaboration
       if (ydoc) {
         const fragment = ydoc.getXmlFragment("prosemirror");
-        exts.push(createCollabExtension(fragment, awareness, cursorUser));
+        exts.push(createCollabExtension(fragment));
       }
       return exts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
