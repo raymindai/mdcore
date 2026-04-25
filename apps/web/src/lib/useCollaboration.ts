@@ -316,5 +316,7 @@ export function useCollaboration(
     return ytextRef.current?.toString() ?? null;
   }, []);
 
-  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent };
+  // Expose Y.Doc for y-prosemirror binding
+  const ydoc = ydocRef.current;
+  return { applyLocalChange, forceReset, peerCount, isCollaborating, peerCursors, updateCursor, getContent, ydoc };
 }
