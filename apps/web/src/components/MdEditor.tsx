@@ -1740,43 +1740,43 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
 
-  // FLIP animation for sidebar tab list — tracks positions before/after re-render
+  // FLIP animation for sidebar tab reordering
   const sidebarListRef = useRef<HTMLDivElement>(null);
-  const tabPositionsRef = useRef<Map<string, number>>(new Map());
+  const flipSnapshotRef = useRef<Map<string, number> | null>(null);
 
-  // Before render: snapshot current positions
-  useEffect(() => {
+  // Call BEFORE state change to capture current positions
+  const captureTabPositions = useCallback(() => {
     const container = sidebarListRef.current;
     if (!container) return;
     const map = new Map<string, number>();
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+      map.set(el.dataset.tabId!, el.offsetTop);
     });
-    tabPositionsRef.current = map;
-  });
+    flipSnapshotRef.current = map;
+  }, []);
 
-  // After render: animate position changes
+  // Call AFTER state change (in useLayoutEffect or rAF) to animate
   useLayoutEffect(() => {
+    const snapshot = flipSnapshotRef.current;
+    if (!snapshot || snapshot.size === 0) return;
+    flipSnapshotRef.current = null; // consume snapshot
+
     const container = sidebarListRef.current;
     if (!container) return;
-    const oldPositions = tabPositionsRef.current;
-    if (oldPositions.size === 0) return;
 
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
       const id = el.dataset.tabId!;
-      const oldTop = oldPositions.get(id);
+      const oldTop = snapshot.get(id);
       if (oldTop == null) return;
-      const newTop = el.getBoundingClientRect().top;
+      const newTop = el.offsetTop;
       const delta = oldTop - newTop;
-      if (Math.abs(delta) < 2) return; // skip negligible changes
+      if (Math.abs(delta) < 2) return;
 
       el.style.transform = `translateY(${delta}px)`;
       el.style.transition = "none";
-      // Force layout recalculation so browser registers the initial transform
       void el.offsetHeight;
-      el.style.transition = "transform 250ms cubic-bezier(0.25, 0.1, 0.25, 1)";
-      el.style.transform = "";
-      // Clean up inline styles after animation
+      el.style.transition = "transform 300ms cubic-bezier(0.25, 0.1, 0.25, 1)";
+      el.style.transform = "translateY(0)";
       el.addEventListener("transitionend", () => {
         el.style.transition = "";
         el.style.transform = "";
@@ -2249,6 +2249,9 @@ export default function MdEditor() {
     const currentTabId = activeTabIdRef.current;
     const fromPopstate = isPopstateRef.current;
     isPopstateRef.current = false;
+
+    // Snapshot positions BEFORE state change for FLIP animation
+    captureTabPositions();
 
     setTabs((prev) => {
       // Save current tab's markdown + stamp lastOpenedAt on target tab
