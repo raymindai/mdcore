@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { flushSync } from "react-dom";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import katex from "katex";
@@ -1741,26 +1740,51 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
 
-  // FLIP animation for sidebar tab reordering
+  // FLIP animation for sidebar tab reordering — MutationObserver approach
   const sidebarListRef = useRef<HTMLDivElement>(null);
+  const sidebarPositionsRef = useRef<Map<string, number>>(new Map());
 
-  // Animate sidebar items after a tab reorder
-  const animateTabReorder = useCallback((oldPositions: Map<string, number>) => {
+  // Continuously track positions + animate when DOM children reorder
+  useEffect(() => {
     const container = sidebarListRef.current;
     if (!container) return;
-    container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      const id = el.dataset.tabId!;
-      const oldTop = oldPositions.get(id);
-      if (oldTop == null) return;
-      const newTop = el.getBoundingClientRect().top;
-      const delta = oldTop - newTop;
-      if (Math.abs(delta) < 2) return;
-      el.animate(
-        [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
-        { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
-      );
+
+    // Snapshot current positions
+    const snapshot = () => {
+      const map = new Map<string, number>();
+      container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+        map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+      });
+      return map;
+    };
+
+    sidebarPositionsRef.current = snapshot();
+
+    const observer = new MutationObserver(() => {
+      const oldPositions = sidebarPositionsRef.current;
+      // Wait one frame for layout to settle
+      requestAnimationFrame(() => {
+        container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+          const id = el.dataset.tabId!;
+          const oldTop = oldPositions.get(id);
+          if (oldTop == null) return;
+          const newTop = el.getBoundingClientRect().top;
+          const delta = oldTop - newTop;
+          if (Math.abs(delta) < 2) return;
+          el.animate(
+            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
+            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
+          );
+        });
+        // Update snapshot for next mutation
+        sidebarPositionsRef.current = snapshot();
+      });
     });
-  }, []);
+
+    observer.observe(container, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs]); // Re-attach when tabs change (re-snapshots positions)
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
@@ -2228,64 +2252,25 @@ export default function MdEditor() {
     const fromPopstate = isPopstateRef.current;
     isPopstateRef.current = false;
 
-    // Capture positions BEFORE state change for FLIP animation
-    const oldPositions = new Map<string, number>();
-    const sidebarEl = sidebarListRef.current;
-    console.log("[FLIP] switchTab called. sidebarRef:", !!sidebarEl, "tabId:", tabId);
-    if (sidebarEl) {
-      sidebarEl.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-        oldPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    setTabs((prev) => {
+      const saved = prev.map((t) => {
+        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
+        if (t.id !== currentTabId || t.readonly) return t;
+        return { ...t, markdown: currentMd };
       });
-      console.log("[FLIP] captured", oldPositions.size, "positions");
-    }
-
-    // Use flushSync to force synchronous DOM update, then animate
-    let target: Tab | undefined;
-    flushSync(() => {
-      setTabs((prev) => {
-        const saved = prev.map((t) => {
-          if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
-          if (t.id !== currentTabId || t.readonly) return t;
-          return { ...t, markdown: currentMd };
-        });
-        target = saved.find((t) => t.id === tabId);
-        return saved;
-      });
-    });
-
-    // DOM is now updated — animate position changes
-    if (oldPositions.size > 0) {
-      let animated = 0;
-      const container = sidebarListRef.current;
-      if (container) {
-        container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-          const id = el.dataset.tabId!;
-          const oldTop = oldPositions.get(id);
-          if (oldTop == null) return;
-          const newTop = el.getBoundingClientRect().top;
-          const delta = oldTop - newTop;
-          if (Math.abs(delta) < 2) return;
-          animated++;
-          el.animate(
-            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
-            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
-          );
+      const target = saved.find((t) => t.id === tabId);
+      if (target) {
+        queueMicrotask(() => {
+          loadTab(target);
+          if (!fromPopstate) {
+            const url = target.cloudId ? `/?doc=${target.cloudId}` : "/";
+            window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null }, "", url);
+          }
         });
       }
-      console.log("[FLIP]", animated, "items animated, positions captured:", oldPositions.size);
-    }
-
-    // Load the target tab
-    if (target) {
-      queueMicrotask(() => {
-        loadTab(target!);
-        if (!fromPopstate) {
-          const url = target!.cloudId ? `/?doc=${target!.cloudId}` : "/";
-          window.history.pushState({ mdfyTabId: target!.id, mdfyDocId: target!.cloudId || null }, "", url);
-        }
-      });
-    }
-  }, [loadTab, animateTabReorder]);
+      return saved;
+    });
+  }, [loadTab]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
