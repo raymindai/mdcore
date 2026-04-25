@@ -7428,7 +7428,7 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full top-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/keycolor:block"
+                          <div className="absolute left-full bottom-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/keycolor:block max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
                             {ACCENT_COLORS.map(c => (
@@ -7459,7 +7459,7 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full top-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block"
+                          <div className="absolute left-full bottom-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
                             {COLOR_SCHEMES.map(s => (
