@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import * as Y from "yjs";
-import { Awareness } from "y-protocols/awareness";
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from "y-protocols/awareness";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 // ─── Remote cursor types ───
@@ -125,10 +125,7 @@ export function useCollaboration(
     awareness.on("update", ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }) => {
       const changedClients = added.concat(updated, removed);
       if (!subscribedRef.current || !channelRef.current) return;
-      const encoded = uint8ToBase64(
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require("y-protocols/awareness").encodeAwarenessUpdate(awareness, changedClients)
-      );
+      const encoded = uint8ToBase64(encodeAwarenessUpdate(awareness, changedClients));
       channelRef.current.send({
         type: "broadcast",
         event: "yjs-awareness",
@@ -221,8 +218,7 @@ export function useCollaboration(
       .on("broadcast", { event: "yjs-awareness" }, ({ payload }: { payload: { update?: string } }) => {
         if (!payload?.update) return;
         const update = base64ToUint8(payload.update);
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        require("y-protocols/awareness").applyAwarenessUpdate(awareness, update, "remote");
+        applyAwarenessUpdate(awareness, update, "remote");
       })
       .on("presence", { event: "sync" }, () => {
         const presenceState = channel.presenceState();
