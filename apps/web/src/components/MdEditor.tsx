@@ -1987,6 +1987,7 @@ export default function MdEditor() {
 
   const renderIdRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
+    console.trace("[WYSIWYG] doRender CALLED, md length:", md.length, "wysiwygEditing:", wysiwygEditingRef.current);
     const thisRender = ++renderIdRef.current;
     setIsLoading(true);
     try {
@@ -1997,7 +1998,8 @@ export default function MdEditor() {
 
       const processed = postProcessHtml(result.html);
 
-      console.log("[WYSIWYG] doRender completed — setHtml called. wysiwygEditing:", wysiwygEditingRef.current, "caller:", new Error().stack?.split("\n")[2]?.trim());
+      console.log("[WYSIWYG] doRender completed — setHtml called. wysywygEditing:", wysiwygEditingRef.current);
+      console.trace("[WYSIWYG] doRender call stack");
       setHtml(processed);
       // Reset mermaid cache so diagrams re-render after full HTML replacement
       prevMermaidCodesRef.current = [];
