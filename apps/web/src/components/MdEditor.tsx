@@ -1997,6 +1997,7 @@ export default function MdEditor() {
 
       const processed = postProcessHtml(result.html);
 
+      console.log("[WYSIWYG] doRender completed — setHtml called. wysiwygEditing:", wysiwygEditingRef.current, "caller:", new Error().stack?.split("\n")[2]?.trim());
       setHtml(processed);
       // Reset mermaid cache so diagrams re-render after full HTML replacement
       prevMermaidCodesRef.current = [];
@@ -4409,6 +4410,7 @@ export default function MdEditor() {
       // Only for simple documents without complex elements. For documents with
       // code blocks, math, mermaid, etc., skip — htmlToMarkdown is lossy.
       if (!didPartialUpdate) {
+        console.log("[WYSIWYG] partial update FAILED — using fallback");
         // Check if document has complex elements that htmlToMarkdown can't handle
         const hasComplexElements = article.querySelector("pre, .math-rendered, .mermaid-container, .mermaid-rendered, .katex, table");
         if (hasComplexElements) {
@@ -8088,7 +8090,10 @@ ${clone.innerHTML}
                     const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
                     if (el && el.getAttribute("data-html-hash") !== hash) {
                       if (!wysiwygEditingRef.current) {
+                        console.log("[WYSIWYG] innerHTML REPLACED — html changed while not editing. html length:", html.length);
                         el.innerHTML = html;
+                      } else {
+                        console.log("[WYSIWYG] innerHTML SKIPPED — editing in progress. html length:", html.length);
                       }
                       el.setAttribute("data-html-hash", hash);
                     }
