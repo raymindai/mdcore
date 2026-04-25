@@ -1596,11 +1596,12 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: update markdown state, sync CM6
-  // Tiptap syncs on view switch, not on every remote change
+  // Remote change handler: update markdown state, sync all views
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
+    // Sync Tiptap LIVE view — safe for viewer (not actively editing)
+    tiptapRef.current?.setMarkdown(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
     docId,
