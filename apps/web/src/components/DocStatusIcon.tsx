@@ -10,10 +10,10 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
 
   if (tab.permission === "readonly") {
     Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
+  } else if (tab.isDraft === false && tab.isSharedByMe) {
+    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared (anyone with link)";
   } else if (tab.isDraft === false && tab.isRestricted) {
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
-  } else if (tab.isDraft === false && tab.isSharedByMe) {
-    Icon = Share2; color = isActive ? "var(--accent)" : "#4ade80"; tip = "Shared publicly";
   } else if (tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source)) {
     Icon = CircleCheck; color = isActive ? "var(--accent)" : "#22c55e"; tip = `Synced (${tab.source})`;
   } else {
