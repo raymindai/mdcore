@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
-import katex from "katex";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
   isAiConversation,
@@ -16,7 +15,7 @@ import MathEditor from "@/components/MathEditor";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { useCodeMirror } from "@/components/useCodeMirror";
-import FloatingToolbar from "@/components/FloatingToolbar";
+import TiptapLiveEditor, { type TiptapLiveEditorHandle } from "@/components/TiptapLiveEditor";
 import ShareModal from "@/components/ShareModal";
 import ToastContainer, { showToast } from "@/components/Toast";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
@@ -1597,10 +1596,10 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: update markdown state, render, sync CM6
+  // Remote change handler: update markdown state, sync CM6
+  // Tiptap syncs on view switch, not on every remote change
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
-    doRenderRef.current(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
   }, []);
   const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
@@ -1623,6 +1622,13 @@ export default function MdEditor() {
   const [isEditor, setIsEditor] = useState(false);
   // view/owner mode: only owner + allowed editors. public mode: anyone can edit.
   const canEdit = !isSharedDoc || isOwner || isEditor || docEditMode === "public";
+
+  const tiptapRef = useRef<TiptapLiveEditorHandle>(null);
+
+  const handleTiptapChange = useCallback((md: string) => {
+    setMarkdown(md);
+    cmSetDocRef.current?.(md);
+  }, [setMarkdown]);
 
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
@@ -1983,12 +1989,7 @@ export default function MdEditor() {
   }, [viewMode]);
 
   const renderIdRef = useRef(0);
-  const lastWysiwygEditRef = useRef(0);
   const doRender = useCallback(async (md: string) => {
-    // Skip render during WYSIWYG editing and for 3s after last edit.
-    // The DOM is the user's editing surface — rendering would replace it.
-    // The 3s window covers auto-save → server → postgres_changes round-trip.
-    if (wysiwygEditingRef.current || Date.now() - lastWysiwygEditRef.current < 3000) return;
     const thisRender = ++renderIdRef.current;
     setIsLoading(true);
     try {
@@ -2094,6 +2095,7 @@ export default function MdEditor() {
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
+          tiptapRef.current?.setMarkdown(md);
           // Seed the conflict detection timestamp
           if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
           setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
@@ -2109,6 +2111,7 @@ export default function MdEditor() {
       undoStack.current = [tab.markdown];
       redoStack.current = [];
       doRenderRef.current(tab.markdown);
+      tiptapRef.current?.setMarkdown(tab.markdown);
     }
   }, []);
 
@@ -2116,19 +2119,11 @@ export default function MdEditor() {
   const isPopstateRef = useRef(false);
 
   const switchTab = useCallback((tabId: string) => {
-    // Flush any pending WYSIWYG edits before switching
-    if (wysiwygDebounce.current) {
-      clearTimeout(wysiwygDebounce.current);
-      wysiwygDebounce.current = undefined;
-      const article = previewRef.current?.querySelector("article");
-      if (article) {
-        const clone = article.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
-        clone.querySelectorAll(".table-wrapper").forEach(w => { const t = w.querySelector("table"); if (t) w.replaceWith(t); });
-        const flushedMd = htmlToMarkdown(clone.innerHTML);
-        setMarkdownRaw(flushedMd);
-        markdownRef.current = flushedMd;
-      }
+    // Flush Tiptap content before switching tabs
+    const tiptapMd = tiptapRef.current?.getMarkdown();
+    if (tiptapMd) {
+      setMarkdownRaw(tiptapMd);
+      markdownRef.current = tiptapMd;
     }
     // Use refs to get current values (avoid stale closures)
     const currentMd = markdownRef.current;
@@ -4191,277 +4186,16 @@ export default function MdEditor() {
     cmSetDoc(markdown);
   }, [markdown, cmSetDoc]);
 
-  // WYSIWYG: contentEditable preview → markdown source sync
-  const wysiwygEditingRef = useRef(false);
-  const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
-  const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
-    // Check for pasted images (handle multiple)
-    const items = Array.from(e.clipboardData.items);
-    const imageItems = items.filter(item => item.type.startsWith("image/"));
-    if (imageItems.length > 0) {
-      e.preventDefault();
-      // Save cursor position BEFORE async upload so we insert at the right place
-      saveInsertPosition();
-      (async () => {
-        const originTabId = activeTabIdRef.current;
-        for (const imageItem of imageItems) {
-          const file = imageItem.getAsFile();
-          if (!file) continue;
-          const ts = Date.now();
-          const placeholder = `![Uploading ${file.name || "image"}-${ts}...]()\n`;
-          // Insert placeholder at cursor position
-          const withPh = insertBlockAtCursor(placeholder);
-          setMarkdown(withPh); doRender(withPh); cmSetDoc(withPh);
-          const url = await uploadImage(file);
-          const imgMd = url ? `![${file.name || "image"}](${url})\n` : "";
-          if (activeTabIdRef.current === originTabId) {
-            // Still on the same tab — replace placeholder in current markdown
-            const current = markdownForImageRef.current;
-            const updated = current.replace(placeholder, imgMd);
-            markdownForImageRef.current = updated;
-            setMarkdown(updated); doRender(updated); cmSetDoc(updated);
-          } else {
-            // Tab changed — update the original tab's markdown via setTabs
-            setTabs(prev => prev.map(t => {
-              if (t.id !== originTabId) return t;
-              const updated = (t.markdown || "").replace(placeholder, imgMd);
-              return { ...t, markdown: updated };
-            }));
-          }
-        }
-      })();
-      return;
+  // Sync Tiptap when switching TO Live/Split view from Source
+  const prevViewModeRef = useRef(viewMode);
+  useEffect(() => {
+    const prev = prevViewModeRef.current;
+    prevViewModeRef.current = viewMode;
+    // When switching FROM Source to Live or Split, sync Tiptap with current markdown
+    if (prev === "editor" && viewMode !== "editor") {
+      tiptapRef.current?.setMarkdown(markdownRef.current);
     }
-
-    const text = e.clipboardData.getData("text/plain");
-    const html = e.clipboardData.getData("text/html");
-
-    // Check for CLI output first — insert at cursor, don't replace document
-    if (text && isCliOutput(text)) {
-      e.preventDefault();
-      const converted = cliToMarkdown(text);
-      document.execCommand("insertText", false, converted);
-      return;
-    }
-
-    // Check for HTML paste — insert converted markdown at cursor
-    if (html && isHtmlContent(html)) {
-      e.preventDefault();
-      const md = htmlToMarkdown(html);
-      document.execCommand("insertText", false, md);
-      return;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
-  }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
-
-  const handleWysiwygInput = useCallback(() => {
-    wysiwygEditingRef.current = true;
-    lastWysiwygEditRef.current = Date.now();
-    if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
-    wysiwygDebounce.current = setTimeout(() => {
-      const article = previewRef.current?.querySelector("article");
-      if (!article) return;
-
-      // Helper: strip UI elements from a cloned element
-      // NOTE: ce-spacer elements with user content are preserved — only empty spacers are removed
-      const stripUiElements = (el: HTMLElement) => {
-        el.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn").forEach(n => n.remove());
-        // Remove only EMPTY ce-spacer elements (the user might have typed into one after Enter)
-        el.querySelectorAll(".ce-spacer").forEach(n => {
-          const text = n.textContent?.trim();
-          if (!text || text === "") n.remove();
-        });
-        el.querySelectorAll(".table-wrapper").forEach(wrapper => {
-          const table = wrapper.querySelector("table");
-          if (table) wrapper.replaceWith(table);
-        });
-      };
-
-      // Helper: compute frontmatter line offset
-      const computeFrontmatterOffset = (md: string): number => {
-        const lines = md.split("\n");
-        if (lines[0]?.trim() !== "---") return 0;
-        for (let i = 1; i < lines.length; i++) {
-          if (lines[i]?.trim() === "---") return i + 1;
-        }
-        return 0;
-      };
-
-      // --- Partial update strategy using data-sourcepos ---
-      // Find the specific edited block and convert only that block.
-      // This preserves unedited markdown constructs (code blocks, math, mermaid).
-      // Full document htmlToMarkdown is NEVER used — it's lossy for complex elements.
-      let didPartialUpdate = false;
-      try {
-        const sel = window.getSelection();
-        if (sel?.rangeCount) {
-          // Walk from cursor to nearest ancestor with data-sourcepos
-          let node: Node | null = sel.getRangeAt(0).startContainer;
-          if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
-          let editedBlock: HTMLElement | null = null;
-          while (node && node !== article) {
-            if ((node as HTMLElement).getAttribute?.("data-sourcepos")) {
-              editedBlock = node as HTMLElement;
-              break;
-            }
-            node = (node as HTMLElement).parentElement;
-          }
-
-          // If cursor is in a ce-spacer, it means the user pressed Enter and
-          // the browser moved the cursor into the spacer. Remove the spacer class
-          // so it becomes regular user content.
-          if (!editedBlock) {
-            let cursorEl: Node | null = sel.getRangeAt(0).startContainer;
-            if (cursorEl?.nodeType === Node.TEXT_NODE) cursorEl = cursorEl.parentElement;
-            while (cursorEl && cursorEl !== article) {
-              if ((cursorEl as HTMLElement).classList?.contains("ce-spacer")) {
-                (cursorEl as HTMLElement).classList.remove("ce-spacer");
-                break;
-              }
-              cursorEl = (cursorEl as HTMLElement).parentElement;
-            }
-          }
-
-          // If cursor is in a new element without sourcepos (e.g. after Enter),
-          // find the nearest PREVIOUS sibling with sourcepos as the anchor block.
-          if (!editedBlock && sel.rangeCount) {
-            let candidate: Node | null = sel.getRangeAt(0).startContainer;
-            if (candidate?.nodeType === Node.TEXT_NODE) candidate = candidate.parentElement;
-            // Walk up to direct child of article
-            while (candidate && candidate.parentElement !== article) {
-              candidate = candidate.parentElement;
-            }
-            if (candidate) {
-              // Look backward for a sibling with sourcepos
-              let prev = (candidate as HTMLElement).previousElementSibling;
-              while (prev) {
-                if (prev.getAttribute("data-sourcepos")) {
-                  editedBlock = prev as HTMLElement;
-                  break;
-                }
-                prev = prev.previousElementSibling;
-              }
-            }
-          }
-
-          if (editedBlock) {
-            const sourcepos = editedBlock.getAttribute("data-sourcepos");
-            const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
-            if (spMatch) {
-              const startLine = parseInt(spMatch[1]) - 1; // 0-indexed
-              const endLine = parseInt(spMatch[2]) - 1;
-
-              const md = markdownRef.current;
-              const lines = md.split("\n");
-              const fmOffset = computeFrontmatterOffset(md);
-              const actualStart = startLine + fmOffset;
-              const actualEnd = endLine + fmOffset;
-
-              // Sanity check: sourcepos must reference valid lines
-              if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
-                // Collect editedBlock + any following siblings WITHOUT sourcepos
-                // (created by Enter key splitting a block)
-                // Skip empty ce-spacer elements — they're UI-only, not user content
-                const container = document.createElement("div");
-                container.appendChild(editedBlock.cloneNode(true));
-                let sibling = editedBlock.nextElementSibling;
-                while (sibling && !sibling.getAttribute("data-sourcepos")) {
-                  // Skip empty spacers — but include spacers the user typed into
-                  const isEmptySpacer = sibling.classList.contains("ce-spacer") && !sibling.textContent?.trim();
-                  if (!isEmptySpacer) {
-                    container.appendChild(sibling.cloneNode(true));
-                  }
-                  sibling = sibling.nextElementSibling;
-                }
-                stripUiElements(container);
-
-                // Convert collected blocks to markdown
-                const blockMd = htmlToMarkdown(container.innerHTML).trim();
-
-                // Replace the original sourcepos lines with the new content
-                const before = lines.slice(0, actualStart);
-                const after = lines.slice(actualEnd + 1);
-                const newMd = [...before, blockMd, ...after].join("\n");
-
-                // Validate: the partial update should produce reasonable output
-                if (newMd.length > md.length * 0.5 || md.length < 20) {
-                  setMarkdown(newMd);
-                  cmSetDoc(newMd);
-                  didPartialUpdate = true;
-
-                  // Sync title from edited markdown to sidebar
-                  const h1Match = newMd.match(/^#\s+(.+)/m);
-                  if (h1Match) {
-                    const newTitle = h1Match[1].trim();
-                    setTitle(newTitle);
-                    const curTabId = activeTabIdRef.current;
-                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch {
-        // Any error in partial update path — fall through to full conversion
-      }
-
-      // --- Fallback: full document conversion ---
-      // Only for simple documents without complex elements. For documents with
-      // code blocks, math, mermaid, etc., skip — htmlToMarkdown is lossy.
-      if (!didPartialUpdate) {
-        const clone = article.cloneNode(true) as HTMLElement;
-        stripUiElements(clone);
-        const domMd = htmlToMarkdown(clone.innerHTML);
-        setMarkdown(domMd);
-        cmSetDoc(domMd);
-
-        // Sync title
-        const h1Match = domMd.match(/^#\s+(.+)/m);
-        if (h1Match) {
-          const newTitle = h1Match[1].trim();
-          setTitle(newTitle);
-          const curTabId = activeTabIdRef.current;
-          setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
-        }
-      }
-
-      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
-      setTimeout(() => {
-        wysiwygEditingRef.current = false;
-      }, 500);
-
-      // Re-process math elements that may have been damaged by contentEditable
-      // This is targeted — only restores broken math, doesn't replace entire DOM
-      requestAnimationFrame(() => {
-        const article = previewRef.current?.querySelector("article");
-        if (!article) return;
-        // Find any raw math spans that lost their KaTeX rendering
-        article.querySelectorAll("[data-math-style]").forEach((el) => {
-          const tex = el.textContent || "";
-          const mode = el.getAttribute("data-math-style");
-          if (!tex || el.querySelector(".katex")) return; // already rendered
-          try {
-            const rendered = katex.renderToString(tex.trim(), {
-              displayMode: mode === "display",
-              throwOnError: false,
-            });
-            const wrapper = document.createElement(mode === "display" ? "div" : "span");
-            wrapper.className = "math-rendered";
-            wrapper.setAttribute("data-math-src", encodeURIComponent(tex.trim()));
-            wrapper.setAttribute("data-math-mode", mode || "inline");
-            wrapper.setAttribute("contenteditable", "false");
-            wrapper.style.cursor = "pointer";
-            wrapper.innerHTML = rendered;
-            el.replaceWith(wrapper);
-          } catch { /* ignore */ }
-        });
-      });
-    // Increase debounce for large documents to avoid lag
-    }, markdownRef.current.length > 50000 ? 500 : 150);
-  }, [setMarkdown, cmSetDoc]);
+  }, [viewMode]);
 
   // File drop handler
   const handleDrop = useCallback(
@@ -5234,6 +4968,11 @@ ${clone.innerHTML}
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
+      // When Tiptap has focus, let it handle its own undo/redo
+      if (document.activeElement?.closest(".tiptap-editor")) {
+        // Don't intercept — Tiptap handles Cmd+Z/Cmd+Shift+Z natively
+        if (mod && e.key === "z") return;
+      }
       if (mod && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -5270,29 +5009,17 @@ ${clone.innerHTML}
         if (target.closest("[role='dialog'], [data-modal]")) return;
         cmFocus();
       }
-      // Command palette — Cmd+K (when NOT in contentEditable preview)
+      // Command palette — Cmd+K (when NOT in Tiptap or contentEditable preview)
+      const inTiptap = document.activeElement?.closest(".tiptap-editor");
       const inPreview = document.activeElement?.closest("article.mdcore-rendered");
-      if (mod && e.key === "k" && !inPreview) {
+      if (mod && e.key === "k" && !inPreview && !inTiptap) {
         e.preventDefault();
         setShowCommandPalette(prev => !prev);
         setCmdSearch("");
         return;
       }
-      // WYSIWYG shortcuts — only when editing in preview (contentEditable)
-      if (inPreview && mod) {
-        if (e.key === "b") {
-          e.preventDefault();
-          document.execCommand("bold");
-        }
-        if (e.key === "i") {
-          e.preventDefault();
-          document.execCommand("italic");
-        }
-        if (e.key === "k") {
-          e.preventDefault();
-          setInlineInput({ label: "URL", onSubmit: (u) => { document.execCommand("createLink", false, u); setInlineInput(null); } });
-        }
-      }
+      // Tiptap handles its own keyboard shortcuts (Cmd+B for bold, etc.)
+      // so no custom WYSIWYG shortcuts needed here.
     };
 
     window.addEventListener("keydown", handler);
@@ -5423,74 +5150,6 @@ ${clone.innerHTML}
         return;
     }
   }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
-
-  // Protect special elements from contentEditable — make them non-editable islands
-  useEffect(() => {
-    if (!previewRef.current) return;
-    const article = previewRef.current.querySelector("article");
-    if (!article) return;
-    // Non-editable blocks: code, mermaid, math, tables, images, ascii diagrams
-    const nonEditableSelector = "pre, .mermaid-container, .mermaid-rendered, .math-rendered, .katex-display, .ascii-diagram, table, img";
-    article.querySelectorAll(nonEditableSelector).forEach(el => {
-      (el as HTMLElement).contentEditable = "false";
-
-      // Skip spacers for inline math — <p> spacers break list/paragraph layout
-      if (el.classList.contains("math-rendered") &&
-          el.getAttribute("data-math-mode") === "inline") {
-        return;
-      }
-
-      // For tables inside table-wrapper, add spacers to wrapper (not inside it)
-      let spacerTarget: Element = el;
-      if (el.tagName === "TABLE" && el.parentElement?.classList.contains("table-wrapper")) {
-        spacerTarget = el.parentElement;
-        (spacerTarget as HTMLElement).contentEditable = "false";
-      }
-
-      // Add editable spacer AFTER if missing — so cursor can be placed below
-      const next = spacerTarget.nextElementSibling;
-      if (!next || (next.getAttribute("contenteditable") === "false" && !next.classList.contains("ce-spacer"))) {
-        if (!spacerTarget.nextElementSibling?.classList.contains("ce-spacer")) {
-          const spacer = document.createElement("p");
-          spacer.innerHTML = "<br>";
-          spacer.className = "ce-spacer";
-          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget.nextSibling);
-        }
-      }
-
-      // Add editable spacer BEFORE if missing — so cursor can be placed above
-      const prev = spacerTarget.previousElementSibling;
-      if (!prev || (prev.getAttribute("contenteditable") === "false" && !prev.classList.contains("ce-spacer"))) {
-        if (!spacerTarget.previousElementSibling?.classList.contains("ce-spacer")) {
-          const spacer = document.createElement("p");
-          spacer.innerHTML = "<br>";
-          spacer.className = "ce-spacer";
-          spacerTarget.parentNode?.insertBefore(spacer, spacerTarget);
-        }
-      }
-    });
-    // Suppress browser object resizing/table controls
-    try {
-      document.execCommand("enableObjectResizing", false, "false");
-      document.execCommand("enableInlineTableEditing", false, "false");
-    } catch { /* not supported in all browsers */ }
-
-    // MutationObserver: remove any browser-injected table controls (▾ dropdowns)
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const node of m.addedNodes) {
-          if (node instanceof HTMLElement) {
-            // Chrome adds elements with data-column / data-row or specific classes
-            if (node.tagName === "DIV" && (node.style.position === "absolute" || node.getAttribute("data-column") !== null)) {
-              node.remove();
-            }
-          }
-        }
-      }
-    });
-    observer.observe(article, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [html]);
 
   const shareButtonLabel = {
     idle: "SHARE",
@@ -8051,24 +7710,11 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
               clearHighlight();
-              // Click on empty space below content → focus article and place cursor at end
+              // Click on empty space below content → focus Tiptap
               if (e.target === e.currentTarget) {
-                const article = e.currentTarget.querySelector("article");
-                if (article) {
-                  article.focus();
-                  // Place cursor at end of content
-                  const sel = window.getSelection();
-                  if (sel) {
-                    const range = document.createRange();
-                    range.selectNodeContents(article);
-                    range.collapse(false);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                  }
-                }
+                tiptapRef.current?.focus();
               }
             }}>
-              <FloatingToolbar containerRef={previewRef} />
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <MdfyLogo size={18} />
@@ -8076,37 +7722,19 @@ ${clone.innerHTML}
                     <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
                   </div>
                 </div>
-              ) : html ? (
-                <article
-                  ref={(el) => {
-                    const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
-                    if (el && el.getAttribute("data-html-hash") !== hash) {
-                      if (!wysiwygEditingRef.current && Date.now() - lastWysiwygEditRef.current >= 3000) {
-                        el.innerHTML = html;
-                      }
-                      el.setAttribute("data-html-hash", hash);
-                    }
-                  }}
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: canEdit ? "text" : "default" }}
-                />
               ) : (
-                <article
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: "text", minHeight: "100%" }}
-                  dangerouslySetInnerHTML={{ __html: "" }}
+                <TiptapLiveEditor
+                  ref={tiptapRef}
+                  markdown={markdown}
+                  onChange={handleTiptapChange}
+                  canEdit={canEdit}
+                  narrowView={narrowView}
+                  onTitleChange={(title) => {
+                    setTitle(title);
+                    const curTabId = activeTabIdRef.current;
+                    setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title } : t));
+                  }}
+                  onPasteImage={uploadImage}
                 />
               )}
               </div>{/* end scrollable preview */}
