@@ -13,6 +13,8 @@ interface PullResult {
   title: string | null;
   updated_at: string;
   editToken?: string;
+  isOwner?: boolean;
+  user_id?: string;
 }
 
 /**

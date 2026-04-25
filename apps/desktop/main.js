@@ -474,9 +474,26 @@ const SyncEngine = {
     this._pushTimers.set(filePath, timer);
   },
 
+  async checkOwnership(docId) {
+    try {
+      const data = await apiPull(docId);
+      return data.isOwner !== false;
+    } catch {
+      // Network error — allow push, server will reject if unauthorized
+      return true;
+    }
+  },
+
   async push(filePath, markdown) {
     const config = loadMdfyConfig(filePath);
     if (!config) return; // Not published
+
+    // Verify ownership before pushing — only the document owner can edit
+    const isOwner = await this.checkOwnership(config.docId);
+    if (!isOwner) {
+      sendToRenderer("sync-status", { filePath, status: "error", message: "You do not own this document. Only the owner can push changes." });
+      return;
+    }
 
     // Conflict check
     const check = await apiCheckUpdatedAt(config.docId);
@@ -732,6 +749,7 @@ const CollaborationManager = {
   _cloudId: null,
   _isApplyingRemote: false,
   _peerCount: 0,
+  _isOwner: true, // assume owner until proven otherwise
 
   _getSupabase() {
     if (!this._supabase) {
@@ -744,13 +762,14 @@ const CollaborationManager = {
    * Start collaborative editing for a document.
    * Creates Y.Doc, joins Supabase Realtime Broadcast channel.
    */
-  start(cloudId, initialMarkdown) {
+  start(cloudId, initialMarkdown, isOwner) {
     // Stop any existing session
     this.stop();
 
     if (!cloudId) return;
 
     this._cloudId = cloudId;
+    this._isOwner = isOwner !== false; // default to true if not specified
     this._initialMarkdown = initialMarkdown || "";
 
     const ydoc = new Y.Doc();
@@ -886,15 +905,18 @@ const CollaborationManager = {
     this._initialMarkdown = "";
     this._peerCount = 0;
     this._isApplyingRemote = false;
+    this._isOwner = true;
     sendToRenderer("collab-status", { active: false, cloudId: null });
     sendToRenderer("collab-peers", { count: 0 });
   },
 
   /**
    * Apply a local editor change to the Y.Doc and broadcast.
+   * Blocked for non-owner documents.
    */
   applyLocalChange(newMarkdown) {
     if (this._isApplyingRemote) return;
+    if (!this._isOwner) return; // Non-owners cannot broadcast changes
     const ytext = this._ytext;
     const ydoc = this._ydoc;
     if (!ytext || !ydoc) return;
@@ -1554,6 +1576,12 @@ ipcMain.handle("publish", async (event, markdown) => {
   if (currentFilePath) {
     const existing = loadMdfyConfig(currentFilePath);
     if (existing) {
+      // Verify ownership before pushing
+      const isOwner = await SyncEngine.checkOwnership(existing.docId);
+      if (!isOwner) {
+        return { error: "You do not own this document. Only the owner can push changes." };
+      }
+
       try {
         const result = await apiUpdate(existing.docId, existing.editToken, markdown, title);
         existing.lastSyncedAt = new Date().toISOString();
@@ -1889,8 +1917,8 @@ ipcMain.handle("get-theme", () => {
 
 // --- Collaboration ---
 
-ipcMain.handle("collab-start", (event, cloudId, markdown) => {
-  CollaborationManager.start(cloudId, markdown);
+ipcMain.handle("collab-start", (event, cloudId, markdown, isOwner) => {
+  CollaborationManager.start(cloudId, markdown, isOwner);
   return { ok: true };
 });
 

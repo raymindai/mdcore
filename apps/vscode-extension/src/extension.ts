@@ -219,6 +219,19 @@ export function activate(context: vscode.ExtensionContext): void {
       // If already published → push update instead
       const existing = await loadMdfyConfig(fileName);
       if (existing) {
+        // Verify ownership before pushing
+        try {
+          const remoteDoc = await pullDocument(existing.docId, authManager);
+          if (remoteDoc.isOwner === false) {
+            vscode.window.showWarningMessage(
+              "You do not own this document. Only the owner can push changes."
+            );
+            return;
+          }
+        } catch {
+          // Network error — proceed cautiously, server will reject if unauthorized
+        }
+
         statusBar?.setSyncing("Pushing...");
         try {
           const updateResult = await updateDocument(
@@ -541,6 +554,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidSaveTextDocument(async (doc) => {
       if (doc.languageId !== "markdown") { return; }
       // Always push on save if the file is published (has .mdfy.json sidecar)
+      // Skip if the user is not the owner
+      if (nonOwnerDocs.has(doc.uri.toString())) { return; }
       const config = await loadMdfyConfig(doc.uri.fsPath);
       if (config) {
         syncEngine?.onFileSaved(doc);
@@ -548,13 +563,16 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  // Track which documents the current user does NOT own (read-only cloud docs)
+  const nonOwnerDocs = new Set<string>();
+
   // Update preview on text change + broadcast collaboration
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.languageId === "markdown") {
         PreviewPanel.updateIfActive(e.document);
-        // Broadcast local changes to collaboration peers
-        if (!isApplyingRemoteCollab && collabManager?.isActive(e.document.uri)) {
+        // Broadcast local changes to collaboration peers — skip for non-owner docs
+        if (!isApplyingRemoteCollab && collabManager?.isActive(e.document.uri) && !nonOwnerDocs.has(e.document.uri.toString())) {
           collabManager.applyLocalChange(e.document.uri, e.document.getText());
         }
       }
@@ -572,6 +590,19 @@ export function activate(context: vscode.ExtensionContext): void {
         if (cfg) {
           const base = getApiBaseUrl();
           statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+
+          // Check ownership — mark non-owner docs to prevent editing/collaboration
+          try {
+            const remoteDoc = await pullDocument(cfg.docId, authManager);
+            if (remoteDoc.isOwner === false) {
+              nonOwnerDocs.add(editor.document.uri.toString());
+            } else {
+              nonOwnerDocs.delete(editor.document.uri.toString());
+            }
+          } catch {
+            // Network error — don't block, ownership unknown
+          }
+
           // Start collaboration if not already active
           if (!collabManager?.isActive(editor.document.uri)) {
             collabManager?.start(

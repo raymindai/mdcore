@@ -90,6 +90,21 @@ export class SyncEngine {
   }
 
   /**
+   * Check if the current user owns the document.
+   * Uses the GET endpoint which returns isOwner in the response.
+   */
+  private async checkOwnership(docId: string): Promise<boolean> {
+    try {
+      const result = await pullDocument(docId, this.authManager);
+      return result.isOwner !== false;
+    } catch {
+      // If we can't determine ownership (network error, etc.), allow push
+      // to avoid blocking legitimate owners when offline
+      return true;
+    }
+  }
+
+  /**
    * Push local changes to mdfy.cc.
    */
   async push(document: vscode.TextDocument): Promise<void> {
@@ -100,6 +115,16 @@ export class SyncEngine {
       vscode.window.showWarningMessage(
         "This file has not been published to mdfy.cc yet. Use 'mdfy: Publish' first."
       );
+      return;
+    }
+
+    // Verify ownership before pushing — only the document owner can edit
+    const isOwner = await this.checkOwnership(config.docId);
+    if (!isOwner) {
+      vscode.window.showWarningMessage(
+        "You do not own this document. Only the owner can push changes. Use 'Duplicate' to create your own copy."
+      );
+      this.statusBar.setIdle();
       return;
     }
 
