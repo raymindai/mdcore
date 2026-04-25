@@ -2230,9 +2230,14 @@ export default function MdEditor() {
 
     // Capture positions BEFORE state change for FLIP animation
     const oldPositions = new Map<string, number>();
-    sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      oldPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-    });
+    const sidebarEl = sidebarListRef.current;
+    console.log("[FLIP] switchTab called. sidebarRef:", !!sidebarEl, "tabId:", tabId);
+    if (sidebarEl) {
+      sidebarEl.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+        oldPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+      });
+      console.log("[FLIP] captured", oldPositions.size, "positions");
+    }
 
     // Use flushSync to force synchronous DOM update, then animate
     let target: Tab | undefined;
