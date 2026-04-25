@@ -9080,7 +9080,7 @@ ${clone.innerHTML}
                     await fetch(`/api/docs/${tab.cloudId}`, {
                       method: "PATCH",
                       headers,
-                      body: JSON.stringify({ action: "clear-source", editToken: tab.editToken }),
+                      body: JSON.stringify({ action: "clear-source", editToken: tab.editToken, userId: user?.id }),
                     });
                     setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, source: undefined } : t));
                   } catch {}
