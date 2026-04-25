@@ -4262,8 +4262,14 @@ export default function MdEditor() {
       if (!article) return;
 
       // Helper: strip UI elements from a cloned element
+      // NOTE: ce-spacer elements with user content are preserved — only empty spacers are removed
       const stripUiElements = (el: HTMLElement) => {
-        el.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer").forEach(n => n.remove());
+        el.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn").forEach(n => n.remove());
+        // Remove only EMPTY ce-spacer elements (the user might have typed into one after Enter)
+        el.querySelectorAll(".ce-spacer").forEach(n => {
+          const text = n.textContent?.trim();
+          if (!text || text === "") n.remove();
+        });
         el.querySelectorAll(".table-wrapper").forEach(wrapper => {
           const table = wrapper.querySelector("table");
           if (table) wrapper.replaceWith(table);
@@ -4298,6 +4304,21 @@ export default function MdEditor() {
               break;
             }
             node = (node as HTMLElement).parentElement;
+          }
+
+          // If cursor is in a ce-spacer, it means the user pressed Enter and
+          // the browser moved the cursor into the spacer. Remove the spacer class
+          // so it becomes regular user content.
+          if (!editedBlock) {
+            let cursorEl: Node | null = sel.getRangeAt(0).startContainer;
+            if (cursorEl?.nodeType === Node.TEXT_NODE) cursorEl = cursorEl.parentElement;
+            while (cursorEl && cursorEl !== article) {
+              if ((cursorEl as HTMLElement).classList?.contains("ce-spacer")) {
+                (cursorEl as HTMLElement).classList.remove("ce-spacer");
+                break;
+              }
+              cursorEl = (cursorEl as HTMLElement).parentElement;
+            }
           }
 
           // If cursor is in a new element without sourcepos (e.g. after Enter),
@@ -4339,11 +4360,16 @@ export default function MdEditor() {
               if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
                 // Collect editedBlock + any following siblings WITHOUT sourcepos
                 // (created by Enter key splitting a block)
+                // Skip empty ce-spacer elements — they're UI-only, not user content
                 const container = document.createElement("div");
                 container.appendChild(editedBlock.cloneNode(true));
                 let sibling = editedBlock.nextElementSibling;
                 while (sibling && !sibling.getAttribute("data-sourcepos")) {
-                  container.appendChild(sibling.cloneNode(true));
+                  // Skip empty spacers — but include spacers the user typed into
+                  const isEmptySpacer = sibling.classList.contains("ce-spacer") && !sibling.textContent?.trim();
+                  if (!isEmptySpacer) {
+                    container.appendChild(sibling.cloneNode(true));
+                  }
                   sibling = sibling.nextElementSibling;
                 }
                 stripUiElements(container);
