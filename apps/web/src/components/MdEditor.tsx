@@ -2938,8 +2938,7 @@ export default function MdEditor() {
             }
 
             const docIsSharedByMe = perm === "mine" && (
-              (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account") ||
-              (doc.allowedEmails && doc.allowedEmails.length > 0)
+              doc.editMode === "view" || doc.editMode === "public"
             );
             const tabProps = {
               markdown: doc.markdown,
@@ -3185,7 +3184,7 @@ export default function MdEditor() {
           // Mark tabs that have sharing enabled
           const sharedDocIds = new Set(
             data.documents
-              .filter((d: { edit_mode?: string }) => d.edit_mode === "view")
+              .filter((d: { edit_mode?: string }) => d.edit_mode === "view" || d.edit_mode === "public")
               .map((d: { id: string }) => d.id)
           );
           // Sync isDraft + restricted from server
@@ -3442,7 +3441,7 @@ export default function MdEditor() {
             // Sync tab state from server (isDraft, isSharedByMe, isRestricted, source, folderId)
             const sharedDocIds = new Set(
               data.documents
-                .filter((d: { edit_mode?: string }) => d.edit_mode === "view")
+                .filter((d: { edit_mode?: string }) => d.edit_mode === "view" || d.edit_mode === "public")
                 .map((d: { id: string }) => d.id)
             );
             const publishedIds = new Set(
@@ -4786,8 +4785,7 @@ export default function MdEditor() {
             if (doc.allowedEmails) setAllowedEmailsState(doc.allowedEmails);
             if (doc.allowedEditors) setAllowedEditorsState(doc.allowedEditors);
             if (doc.editMode) { setDocEditMode(doc.editMode); setEditMode(doc.editMode); }
-            const hasSharing = (doc.allowedEmails?.length > 0) ||
-              (doc.editMode && doc.editMode !== "owner" && doc.editMode !== "token" && doc.editMode !== "account");
+            const hasSharing = doc.editMode === "view" || doc.editMode === "public";
             setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? {
               ...t,
               isSharedByMe: hasSharing,
