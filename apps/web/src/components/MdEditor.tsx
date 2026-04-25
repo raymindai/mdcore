@@ -7724,6 +7724,7 @@ ${clone.innerHTML}
                 </div>
               ) : (
                 <TiptapLiveEditor
+                  key={`tiptap-${docId || "local"}-${!!collabYdoc}`}
                   ref={tiptapRef}
                   markdown={markdown}
                   onChange={handleTiptapChange}
