@@ -2249,7 +2249,26 @@ export default function MdEditor() {
     });
 
     // DOM is now updated — animate position changes
-    if (oldPositions.size > 0) animateTabReorder(oldPositions);
+    if (oldPositions.size > 0) {
+      let animated = 0;
+      const container = sidebarListRef.current;
+      if (container) {
+        container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+          const id = el.dataset.tabId!;
+          const oldTop = oldPositions.get(id);
+          if (oldTop == null) return;
+          const newTop = el.getBoundingClientRect().top;
+          const delta = oldTop - newTop;
+          if (Math.abs(delta) < 2) return;
+          animated++;
+          el.animate(
+            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
+            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
+          );
+        });
+      }
+      console.log("[FLIP]", animated, "items animated, positions captured:", oldPositions.size);
+    }
 
     // Load the target tab
     if (target) {
