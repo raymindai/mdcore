@@ -3141,10 +3141,7 @@ export default function MdEditor() {
           // Mark tabs that have sharing enabled
           const sharedDocIds = new Set(
             data.documents
-              .filter((d: { edit_mode?: string; allowed_emails?: string[] }) =>
-                (d.edit_mode && d.edit_mode !== "owner" && d.edit_mode !== "token" && d.edit_mode !== "account") ||
-                (d.allowed_emails && d.allowed_emails.length > 0)
-              )
+              .filter((d: { edit_mode?: string }) => d.edit_mode === "view")
               .map((d: { id: string }) => d.id)
           );
           // Sync isDraft + restricted from server
@@ -3401,10 +3398,7 @@ export default function MdEditor() {
             // Sync tab state from server (isDraft, isSharedByMe, isRestricted, source, folderId)
             const sharedDocIds = new Set(
               data.documents
-                .filter((d: { edit_mode?: string; allowed_emails?: string[] }) =>
-                  (d.edit_mode && d.edit_mode !== "owner" && d.edit_mode !== "token" && d.edit_mode !== "account") ||
-                  (d.allowed_emails && d.allowed_emails.length > 0)
-                )
+                .filter((d: { edit_mode?: string }) => d.edit_mode === "view")
                 .map((d: { id: string }) => d.id)
             );
             const publishedIds = new Set(
