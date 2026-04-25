@@ -1,11 +1,11 @@
 import { memo } from "react";
 import {
-  Share2, Eye, Users, File as FileIcon, CircleCheck, Cloud,
+  Share2, Eye, Users, File as FileIcon, Cloud,
 } from "lucide-react";
 
 /**
- * Document status icon — single source of truth from tab properties.
- * Synced + shared shows sync icon with a small colored dot indicator.
+ * Document status icon with optional sync indicator.
+ * Synced docs: base icon + ∞ symbol at bottom-right in key color.
  */
 function DocStatusIcon({ tab, isActive }: {
   tab: {
@@ -26,33 +26,33 @@ function DocStatusIcon({ tab, isActive }: {
   const isSharedPublic = isPublished && (isPublicLink || tab.isSharedByMe === true);
   const isSynced = tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source);
 
-  // Determine primary icon and secondary indicator
   let Icon: typeof Cloud;
   let color: string;
   let tip: string;
-  let dotColor: string | null = null;
 
   if (tab.permission === "readonly") {
     Icon = Eye; color = "var(--text-faint)"; tip = "View only";
   } else if (isSharedPublic) {
     Icon = Share2; color = "#4ade80"; tip = "Shared (anyone with link)";
-    if (isSynced) { dotColor = "#22c55e"; tip += ` · Synced (${tab.source})`; }
   } else if (isPublished && hasSharedPeople) {
     Icon = Users; color = "#60a5fa"; tip = "Shared with specific people";
-    if (isSynced) { dotColor = "#22c55e"; tip += ` · Synced (${tab.source})`; }
-  } else if (isSynced) {
-    Icon = CircleCheck; color = "#22c55e"; tip = `Synced (${tab.source})`;
   } else {
     Icon = FileIcon; color = "var(--text-faint)"; tip = isPublished ? "Published" : "Private";
   }
 
+  if (isSynced) {
+    tip += tip ? ` · Synced (${tab.source})` : `Synced (${tab.source})`;
+  }
+
   return (
-    <div className="relative shrink-0 flex items-center group/icon">
+    <div className="relative shrink-0 flex items-center group/icon" style={{ width: 18, height: 16 }}>
       <Icon width={14} height={14} style={{ color }} />
-      {dotColor && (
-        <svg className="absolute -bottom-[3px] -right-[3px]" width="8" height="8" viewBox="0 0 8 8" style={{ filter: "drop-shadow(0 0 1px var(--background))" }}>
-          <circle cx="4" cy="4" r="3.5" fill="var(--background)" />
-          <path d="M2.5 4.2L3.5 5.2L5.5 3" stroke={dotColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {isSynced && (
+        <svg className="absolute -bottom-[1px] -right-[1px]" width="10" height="10" viewBox="0 0 12 12" style={{ filter: "drop-shadow(0 0 1px var(--background))" }}>
+          <circle cx="6" cy="6" r="5.5" fill="var(--background)" />
+          <path d="M3 6C3 4.5 4 3.5 5.5 3.5C6.5 3.5 7.2 4 7.5 4.5M9 6C9 7.5 8 8.5 6.5 8.5C5.5 8.5 4.8 8 4.5 7.5" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+          <path d="M7 3.5L8 4.5L7.5 5" stroke="var(--accent)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <path d="M5 8.5L4 7.5L4.5 7" stroke="var(--accent)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </svg>
       )}
       <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/icon:opacity-100 transition-opacity z-[9998]"

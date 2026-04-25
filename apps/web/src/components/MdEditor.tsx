@@ -28,7 +28,6 @@ import {
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
   LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck,
-  Palette,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -859,7 +858,7 @@ type Theme = "dark" | "light";
 
 type AccentColor = "orange" | "blue" | "purple" | "pink" | "green" | "teal" | "red" | "yellow";
 
-type ColorScheme = "default" | "midnight" | "forest" | "rose" | "monochrome";
+type ColorScheme = "default" | "nord" | "dracula" | "solarized" | "monokai" | "onedark";
 
 const ACCENT_COLORS: { name: AccentColor; label: string; dark: string; light: string }[] = [
   { name: "orange", label: "Orange", dark: "#fb923c", light: "#ea580c" },
@@ -874,19 +873,21 @@ const ACCENT_COLORS: { name: AccentColor; label: string; dark: string; light: st
 
 const COLOR_SCHEMES: { name: ColorScheme; label: string; preview: string }[] = [
   { name: "default", label: "Default", preview: "#fb923c" },
-  { name: "midnight", label: "Midnight", preview: "#60a5fa" },
-  { name: "forest", label: "Forest", preview: "#4ade80" },
-  { name: "rose", label: "Rose", preview: "#f472b6" },
-  { name: "monochrome", label: "Monochrome", preview: "#a3a3a3" },
+  { name: "nord", label: "Nord", preview: "#88c0d0" },
+  { name: "dracula", label: "Dracula", preview: "#ff79c6" },
+  { name: "solarized", label: "Solarized", preview: "#2aa198" },
+  { name: "monokai", label: "Monokai", preview: "#ffd866" },
+  { name: "onedark", label: "One Dark", preview: "#61afef" },
 ];
 
-// Mapping from scheme to its native accent (used when switching schemes)
+// Mapping from scheme to its natural accent color name
 const SCHEME_ACCENT_MAP: Record<ColorScheme, AccentColor> = {
   default: "orange",
-  midnight: "blue",
-  forest: "green",
-  rose: "pink",
-  monochrome: "orange", // monochrome has its own neutral accent via CSS
+  nord: "teal",
+  dracula: "pink",
+  solarized: "teal",
+  monokai: "yellow",
+  onedark: "blue",
 };
 
 function useIsMobile() {
@@ -1662,7 +1663,6 @@ export default function MdEditor() {
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
   const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
@@ -2068,7 +2068,6 @@ export default function MdEditor() {
   useEffect(() => clearHighlight, [clearHighlight]);
 
   const menuRef = useRef<HTMLDivElement>(null);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Set default view mode based on screen size + auto-close sidebar on mobile
@@ -4300,16 +4299,13 @@ export default function MdEditor() {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
       }
-      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
-        setShowColorPicker(false);
-      }
       setShowEditModeMenu(false);
     };
-    if (showMenu || showExportMenu || showEditModeMenu || showColorPicker) {
+    if (showMenu || showExportMenu || showEditModeMenu) {
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
     }
-  }, [showMenu, showExportMenu, showEditModeMenu, showColorPicker]);
+  }, [showMenu, showExportMenu, showEditModeMenu]);
 
   // Guard to skip cmSetDoc when the change originated from CM6 itself
   const cmUpdateRef = useRef(false);
@@ -5836,61 +5832,6 @@ ${clone.innerHTML}
             </svg>
           </button>
 
-          {/* Color picker — hidden on mobile, in menu instead */}
-          <div className="relative hidden sm:block" ref={colorPickerRef}>
-            <button
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              className="px-2 h-6 rounded-md transition-colors text-[11px] flex items-center"
-              style={{ background: showColorPicker ? "var(--accent-dim)" : "var(--toggle-bg)", color: showColorPicker ? "var(--accent)" : "var(--text-muted)" }}
-              title="Theme color"
-            >
-              <Palette width={14} height={14} />
-            </button>
-            {showColorPicker && (
-              <div
-                className="absolute top-full right-0 mt-1 p-3 rounded-lg shadow-xl z-[9999]"
-                style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", width: 180 }}
-              >
-                <div className="text-[10px] font-mono uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Accent Color</div>
-                <div className="grid grid-cols-4 gap-1.5 mb-3">
-                  {ACCENT_COLORS.map(c => (
-                    <button
-                      key={c.name}
-                      onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
-                      className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                      style={{
-                        background: theme === "dark" ? c.dark : c.light,
-                        outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
-                        outlineOffset: "2px",
-                      }}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
-                <div className="text-[10px] font-mono uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>Color Scheme</div>
-                <div className="flex flex-col gap-1">
-                  {COLOR_SCHEMES.map(s => (
-                    <button
-                      key={s.name}
-                      onClick={() => { setColorScheme(s.name); setShowColorPicker(false); }}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] transition-colors text-left"
-                      style={{
-                        background: colorScheme === s.name ? "var(--accent-dim)" : "transparent",
-                        color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
-                      }}
-                    >
-                      <span
-                        className="w-3.5 h-3.5 rounded-full shrink-0"
-                        style={{ background: s.preview, outline: colorScheme === s.name ? "2px solid var(--text-primary)" : "1px solid var(--border)", outlineOffset: "1px" }}
-                      />
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Actions */}
           <div className="flex items-center gap-1">
             {/* Notifications bell */}
@@ -6139,44 +6080,6 @@ ${clone.innerHTML}
                     >
                       {theme === "dark" ? "Light mode" : "Dark mode"}
                     </button>
-                    <hr style={{ borderColor: "var(--border)" }} className="my-1" />
-                    <div className="px-3 py-1.5">
-                      <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Accent Color</div>
-                      <div className="grid grid-cols-8 gap-1">
-                        {ACCENT_COLORS.map(c => (
-                          <button
-                            key={c.name}
-                            onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
-                            className="w-5 h-5 rounded-full transition-transform hover:scale-110"
-                            style={{
-                              background: theme === "dark" ? c.dark : c.light,
-                              outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
-                              outlineOffset: "1px",
-                            }}
-                            title={c.label}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="px-3 py-1.5">
-                      <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Color Scheme</div>
-                      <div className="flex flex-wrap gap-1">
-                        {COLOR_SCHEMES.map(s => (
-                          <button
-                            key={s.name}
-                            onClick={() => { setColorScheme(s.name); setShowMenu(false); }}
-                            className="flex items-center gap-1 px-1.5 py-1 rounded text-[10px] transition-colors"
-                            style={{
-                              background: colorScheme === s.name ? "var(--accent-dim)" : "var(--toggle-bg)",
-                              color: colorScheme === s.name ? "var(--accent)" : "var(--text-muted)",
-                            }}
-                          >
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview }} />
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                     <button
                       onClick={handleClear}
@@ -7511,6 +7414,44 @@ ${clone.innerHTML}
                           Account Settings
                         </a>
                       </div>
+                      {/* Theme */}
+                      <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        <div className="text-[10px] font-mono uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Theme</div>
+                        <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+                          {ACCENT_COLORS.map(c => (
+                            <button
+                              key={c.name}
+                              onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
+                              className="w-6 h-6 rounded-full transition-transform hover:scale-110"
+                              style={{
+                                background: theme === "dark" ? c.dark : c.light,
+                                outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
+                                outlineOffset: "2px",
+                              }}
+                              title={c.label}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          {COLOR_SCHEMES.map(s => (
+                            <button
+                              key={s.name}
+                              onClick={() => { setColorScheme(s.name); }}
+                              className="flex items-center gap-2 px-2 py-1 rounded-md text-[11px] transition-colors text-left"
+                              style={{
+                                background: colorScheme === s.name ? "var(--accent-dim)" : "transparent",
+                                color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
+                              }}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full shrink-0"
+                                style={{ background: s.preview, outline: colorScheme === s.name ? "2px solid var(--text-primary)" : "1px solid var(--border)", outlineOffset: "1px" }}
+                              />
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       {/* Actions */}
                       <div className="py-1">
                         <button
@@ -7542,14 +7483,54 @@ ${clone.innerHTML}
                 )}
               </div>
             ) : (
-              <button
-                onClick={() => setShowAuthMenu(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                <User width={14} height={14} className="shrink-0" />
-                {sidebarWidth >= 180 ? "Sign In / Sign Up" : "Sign In"}
-              </button>
+              <>
+                {/* Theme picker for non-authenticated users */}
+                <div className="px-2 py-2 mb-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                  <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Theme</div>
+                  <div className="grid grid-cols-4 gap-1.5 mb-2">
+                    {ACCENT_COLORS.map(c => (
+                      <button
+                        key={c.name}
+                        onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
+                        className="w-5 h-5 rounded-full transition-transform hover:scale-110"
+                        style={{
+                          background: theme === "dark" ? c.dark : c.light,
+                          outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
+                          outlineOffset: "2px",
+                        }}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {COLOR_SCHEMES.map(s => (
+                      <button
+                        key={s.name}
+                        onClick={() => { setColorScheme(s.name); }}
+                        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] transition-colors text-left"
+                        style={{
+                          background: colorScheme === s.name ? "var(--accent-dim)" : "transparent",
+                          color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
+                        }}
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: s.preview, outline: colorScheme === s.name ? "2px solid var(--text-primary)" : "1px solid var(--border)", outlineOffset: "1px" }}
+                        />
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAuthMenu(true)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <User width={14} height={14} className="shrink-0" />
+                  {sidebarWidth >= 180 ? "Sign In / Sign Up" : "Sign In"}
+                </button>
+              </>
             )}
           </div>
         </div>
