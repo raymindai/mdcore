@@ -4281,9 +4281,9 @@ export default function MdEditor() {
       };
 
       // --- Partial update strategy using data-sourcepos ---
-      // Instead of converting the entire document on every keystroke,
-      // find the specific edited block and convert only that block.
-      // This preserves unedited markdown constructs perfectly.
+      // Find the specific edited block and convert only that block.
+      // This preserves unedited markdown constructs (code blocks, math, mermaid).
+      // Full document htmlToMarkdown is NEVER used — it's lossy for complex elements.
       let didPartialUpdate = false;
       try {
         const sel = window.getSelection();
@@ -4300,6 +4300,28 @@ export default function MdEditor() {
             node = (node as HTMLElement).parentElement;
           }
 
+          // If cursor is in a new element without sourcepos (e.g. after Enter),
+          // find the nearest PREVIOUS sibling with sourcepos as the anchor block.
+          if (!editedBlock && sel.rangeCount) {
+            let candidate: Node | null = sel.getRangeAt(0).startContainer;
+            if (candidate?.nodeType === Node.TEXT_NODE) candidate = candidate.parentElement;
+            // Walk up to direct child of article
+            while (candidate && candidate.parentElement !== article) {
+              candidate = candidate.parentElement;
+            }
+            if (candidate) {
+              // Look backward for a sibling with sourcepos
+              let prev = (candidate as HTMLElement).previousElementSibling;
+              while (prev) {
+                if (prev.getAttribute("data-sourcepos")) {
+                  editedBlock = prev as HTMLElement;
+                  break;
+                }
+                prev = prev.previousElementSibling;
+              }
+            }
+          }
+
           if (editedBlock) {
             const sourcepos = editedBlock.getAttribute("data-sourcepos");
             const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
@@ -4314,23 +4336,27 @@ export default function MdEditor() {
               const actualEnd = endLine + fmOffset;
 
               // Sanity check: sourcepos must reference valid lines
-              // Also skip if Enter split the block (next sibling has no sourcepos)
-              const blockWasSplit = editedBlock.nextElementSibling && !editedBlock.nextElementSibling.getAttribute("data-sourcepos");
-              if (!blockWasSplit && actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
-                // Clone and strip UI from just the edited block
-                const clone = editedBlock.cloneNode(true) as HTMLElement;
-                stripUiElements(clone);
+              if (actualStart >= 0 && actualEnd < lines.length && actualStart <= actualEnd) {
+                // Collect editedBlock + any following siblings WITHOUT sourcepos
+                // (created by Enter key splitting a block)
+                const container = document.createElement("div");
+                container.appendChild(editedBlock.cloneNode(true));
+                let sibling = editedBlock.nextElementSibling;
+                while (sibling && !sibling.getAttribute("data-sourcepos")) {
+                  container.appendChild(sibling.cloneNode(true));
+                  sibling = sibling.nextElementSibling;
+                }
+                stripUiElements(container);
 
-                // Convert only this block to markdown
-                const blockMd = htmlToMarkdown(clone.outerHTML).trim();
+                // Convert collected blocks to markdown
+                const blockMd = htmlToMarkdown(container.innerHTML).trim();
 
-                // Replace only the corresponding lines in the original markdown
+                // Replace the original sourcepos lines with the new content
                 const before = lines.slice(0, actualStart);
                 const after = lines.slice(actualEnd + 1);
                 const newMd = [...before, blockMd, ...after].join("\n");
 
                 // Validate: the partial update should produce reasonable output
-                // If the new markdown is drastically shorter, something went wrong
                 if (newMd.length > md.length * 0.5 || md.length < 20) {
                   setMarkdown(newMd);
                   cmSetDoc(newMd);
@@ -4354,30 +4380,37 @@ export default function MdEditor() {
       }
 
       // --- Fallback: full document conversion ---
-      // Used when: no cursor/selection, no data-sourcepos found, block was deleted,
-      // blocks were merged/split, or partial update validation failed.
+      // Only for simple documents without complex elements. For documents with
+      // code blocks, math, mermaid, etc., skip — htmlToMarkdown is lossy.
       if (!didPartialUpdate) {
-        const clone = article.cloneNode(true) as HTMLElement;
-        stripUiElements(clone);
-        const domMd = htmlToMarkdown(clone.innerHTML);
-        setMarkdown(domMd);
-        cmSetDoc(domMd);
+        // Check if document has complex elements that htmlToMarkdown can't handle
+        const hasComplexElements = article.querySelector("pre, .math-rendered, .mermaid-container, .mermaid-rendered, .katex, table");
+        if (hasComplexElements) {
+          // Skip full conversion — too risky. Content stays in DOM.
+          // The next time the user clicks into a sourcepos block, partial update handles it.
+        } else {
+          const clone = article.cloneNode(true) as HTMLElement;
+          stripUiElements(clone);
+          const domMd = htmlToMarkdown(clone.innerHTML);
+          setMarkdown(domMd);
+          cmSetDoc(domMd);
+        }
 
-        // Sync title from edited markdown to sidebar
-        const h1Match = domMd.match(/^#\s+(.+)/m);
-        if (h1Match) {
-          const newTitle = h1Match[1].trim();
-          setTitle(newTitle);
-          const curTabId = activeTabIdRef.current;
-          setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+        // Sync title
+        const h1 = article.querySelector("h1");
+        if (h1) {
+          const newTitle = h1.textContent?.trim();
+          if (newTitle) {
+            setTitle(newTitle);
+            const curTabId = activeTabIdRef.current;
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
+          }
         }
       }
 
-      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete,
-      // then re-render to update html state (prevents stale html from replacing DOM)
+      // Keep wysiwygEditingRef true long enough for the re-render cycle to complete
       setTimeout(() => {
         wysiwygEditingRef.current = false;
-        doRender(markdownRef.current);
       }, 500);
 
       // Re-process math elements that may have been damaged by contentEditable
