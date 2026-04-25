@@ -3211,14 +3211,13 @@ export default function MdEditor() {
             const updated = prev.map(t => {
               if (!t.cloudId) return t;
               const serverFolderId = folderMap.get(t.cloudId);
-              return {
-                ...t,
-                isDraft: publishedIds.has(t.cloudId) ? false : true,
-                isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
-                isRestricted: restrictedIds.has(t.cloudId) ? true : false,
-                source: sourceMap.get(t.cloudId) || undefined,
-                folderId: serverFolderId || t.folderId, // Server folder takes precedence
-              };
+              const newDraft = publishedIds.has(t.cloudId) ? false : true;
+              const newShared = sharedDocIds.has(t.cloudId) ? true : false;
+              const newRestricted = restrictedIds.has(t.cloudId) ? true : false;
+              const newSource = sourceMap.get(t.cloudId) || undefined;
+              const newFolder = serverFolderId || t.folderId;
+              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder) return t;
+              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder };
             });
             // Create tabs for server docs that don't have local tabs
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
@@ -3463,13 +3462,13 @@ export default function MdEditor() {
               // Update existing tabs
               const updated = prev.map(t => {
                 if (!t.cloudId) return t;
-                return {
-                  ...t,
-                  isDraft: publishedIds.has(t.cloudId) ? false : true,
-                  isSharedByMe: sharedDocIds.has(t.cloudId) ? true : false,
-                  isRestricted: restrictedIds.has(t.cloudId) ? true : false,
-                  source: sourceMap.get(t.cloudId) || undefined,
-                };
+                const newDraft = publishedIds.has(t.cloudId) ? false : true;
+                const newShared = sharedDocIds.has(t.cloudId) ? true : false;
+                const newRestricted = restrictedIds.has(t.cloudId) ? true : false;
+                const newSource = sourceMap.get(t.cloudId) || undefined;
+                // Only create new object if something actually changed
+                if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource) return t;
+                return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource };
               });
               // Add new server docs that don't have local tabs
               const newTabs = data.documents
@@ -6945,7 +6944,7 @@ ${clone.innerHTML}
                           key={`shared-${doc.id}`}
                           role="button"
                           tabIndex={0}
-                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
                           style={{ color: "var(--text-muted)" }}
                           onClick={async (e) => {
                             e.stopPropagation();
