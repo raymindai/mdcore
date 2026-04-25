@@ -1744,43 +1744,62 @@ export default function MdEditor() {
   const sidebarListRef = useRef<HTMLDivElement>(null);
   const flipSnapshotRef = useRef<Map<string, number> | null>(null);
 
-  // Call BEFORE state change to capture current positions
+  // FLIP: capture positions before state change, animate after DOM update
   const captureTabPositions = useCallback(() => {
     const container = sidebarListRef.current;
     if (!container) return;
     const map = new Map<string, number>();
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      map.set(el.dataset.tabId!, el.offsetTop);
+      map.set(el.dataset.tabId!, el.getBoundingClientRect().top);
     });
     flipSnapshotRef.current = map;
   }, []);
 
-  // Call AFTER state change (in useLayoutEffect or rAF) to animate
+  // After DOM commit: apply FLIP animation
   useLayoutEffect(() => {
     const snapshot = flipSnapshotRef.current;
     if (!snapshot || snapshot.size === 0) return;
-    flipSnapshotRef.current = null; // consume snapshot
+    flipSnapshotRef.current = null;
 
     const container = sidebarListRef.current;
     if (!container) return;
 
+    const elements: { el: HTMLElement; delta: number }[] = [];
     container.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
       const id = el.dataset.tabId!;
       const oldTop = snapshot.get(id);
       if (oldTop == null) return;
-      const newTop = el.offsetTop;
+      const newTop = el.getBoundingClientRect().top;
       const delta = oldTop - newTop;
       if (Math.abs(delta) < 2) return;
+      elements.push({ el, delta });
+    });
 
-      el.style.transform = `translateY(${delta}px)`;
+    if (elements.length === 0) return;
+
+    // First: set all to old positions instantly
+    for (const { el, delta } of elements) {
       el.style.transition = "none";
-      void el.offsetHeight;
-      el.style.transition = "transform 300ms cubic-bezier(0.25, 0.1, 0.25, 1)";
-      el.style.transform = "translateY(0)";
-      el.addEventListener("transitionend", () => {
-        el.style.transition = "";
+      el.style.transform = `translateY(${delta}px)`;
+    }
+
+    // Force reflow
+    void container.offsetHeight;
+
+    // Then: animate to new positions
+    requestAnimationFrame(() => {
+      for (const { el } of elements) {
+        el.style.transition = "transform 300ms cubic-bezier(0.33, 1, 0.68, 1)";
         el.style.transform = "";
-      }, { once: true });
+      }
+      // Cleanup after animation
+      const cleanup = () => {
+        for (const { el } of elements) {
+          el.style.transition = "";
+          el.style.transform = "";
+        }
+      };
+      setTimeout(cleanup, 350);
     });
   });
   const importFileRef = useRef<HTMLInputElement>(null);
