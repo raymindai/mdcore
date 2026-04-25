@@ -2212,7 +2212,15 @@ export default function MdEditor() {
     // FLIP: capture positions BEFORE React re-renders
     const flipPositions = new Map<string, number>();
     const sidebarEl = sidebarListRef.current;
-    console.log("[FLIP] sidebarRef:", !!sidebarEl, "children:", sidebarEl?.children.length, "innerHTML sample:", sidebarEl?.innerHTML.slice(0, 100));
+    // Check what's actually in the DOM
+    if (sidebarEl) {
+      const firstChild = sidebarEl.children[0] as HTMLElement;
+      console.log("[FLIP] container children:", sidebarEl.children.length,
+        "first child tag:", firstChild?.tagName,
+        "first child attrs:", firstChild ? Array.from(firstChild.attributes).map(a => a.name).join(",") : "none",
+        "all divs with data-tab-id:", sidebarEl.querySelectorAll("[data-tab-id]").length,
+        "all divs total:", sidebarEl.querySelectorAll("div").length);
+    }
     if (sidebarEl) {
       const allEls = sidebarEl.querySelectorAll<HTMLElement>("[data-tab-id]");
       console.log("[FLIP] data-tab-id elements found:", allEls.length);
