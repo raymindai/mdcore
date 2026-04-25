@@ -9286,6 +9286,7 @@ ${clone.innerHTML}
           title={title}
           userId={user.id}
           ownerEmail={user.email || ""}
+          ownerName={profile?.display_name || undefined}
           currentEditMode={docEditMode}
           initialAllowedEmails={allowedEmails}
           initialAllowedEditors={allowedEditors}

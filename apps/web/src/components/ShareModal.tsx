@@ -10,6 +10,7 @@ interface ShareModalProps {
   title?: string;
   userId: string;
   ownerEmail: string;
+  ownerName?: string;
   currentEditMode: string;
   initialAllowedEmails: string[];
   initialAllowedEditors: string[];
@@ -25,6 +26,7 @@ function ShareModal({
   title,
   userId,
   ownerEmail,
+  ownerName,
   currentEditMode,
   initialAllowedEmails,
   initialAllowedEditors,
@@ -87,7 +89,7 @@ function ShareModal({
           recipientEmail: email,
           documentId: docId,
           fromUserId: userId,
-          fromUserName: ownerEmail.split("@")[0],
+          fromUserName: ownerName || ownerEmail.split("@")[0],
           message: `shared "${title || "Untitled"}" with you`,
         }),
       }).then((res) => {
@@ -212,10 +214,11 @@ function ShareModal({
                   className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
                   style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
                 >
-                  {ownerEmail[0]?.toUpperCase() || "O"}
+                  {(ownerName || ownerEmail)[0]?.toUpperCase() || "O"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{ownerEmail}</p>
+                  <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{ownerName || ownerEmail}</p>
+                  {ownerName && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{ownerEmail}</p>}
                 </div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
                   Owner
