@@ -4409,28 +4409,19 @@ export default function MdEditor() {
       // Only for simple documents without complex elements. For documents with
       // code blocks, math, mermaid, etc., skip — htmlToMarkdown is lossy.
       if (!didPartialUpdate) {
-        // Check if document has complex elements that htmlToMarkdown can't handle
-        const hasComplexElements = article.querySelector("pre, .math-rendered, .mermaid-container, .mermaid-rendered, .katex, table");
-        if (hasComplexElements) {
-          // Skip full conversion — too risky. Content stays in DOM.
-          // The next time the user clicks into a sourcepos block, partial update handles it.
-        } else {
-          const clone = article.cloneNode(true) as HTMLElement;
-          stripUiElements(clone);
-          const domMd = htmlToMarkdown(clone.innerHTML);
-          setMarkdown(domMd);
-          cmSetDoc(domMd);
-        }
+        const clone = article.cloneNode(true) as HTMLElement;
+        stripUiElements(clone);
+        const domMd = htmlToMarkdown(clone.innerHTML);
+        setMarkdown(domMd);
+        cmSetDoc(domMd);
 
         // Sync title
-        const h1 = article.querySelector("h1");
-        if (h1) {
-          const newTitle = h1.textContent?.trim();
-          if (newTitle) {
-            setTitle(newTitle);
-            const curTabId = activeTabIdRef.current;
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
-          }
+        const h1Match = domMd.match(/^#\s+(.+)/m);
+        if (h1Match) {
+          const newTitle = h1Match[1].trim();
+          setTitle(newTitle);
+          const curTabId = activeTabIdRef.current;
+          setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, title: newTitle } : t));
         }
       }
 
