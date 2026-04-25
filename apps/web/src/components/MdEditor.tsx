@@ -2119,9 +2119,8 @@ export default function MdEditor() {
     isPopstateRef.current = false;
 
     setTabs((prev) => {
-      // Save current tab's markdown + stamp lastOpenedAt on target tab
+      // Save current tab's markdown (don't update lastOpenedAt yet — defer to avoid jarring re-sort)
       const saved = prev.map((t) => {
-        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
         if (t.id !== currentTabId || t.readonly) return t;
         return { ...t, markdown: currentMd };
       });
@@ -2139,6 +2138,10 @@ export default function MdEditor() {
       }
       return saved;
     });
+    // Defer lastOpenedAt update so sidebar doesn't re-sort immediately on click
+    setTimeout(() => {
+      setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
+    }, 400);
   }, [loadTab]);
 
   // Handle browser back/forward navigation
@@ -6489,7 +6492,7 @@ ${clone.innerHTML}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-all duration-200 ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
