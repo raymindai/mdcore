@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, memo } from "react";
 import { setAllowedEmails, changeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
-import { Lock, Link2, Unlock, X } from "lucide-react";
+import { Lock, Link2, X } from "lucide-react";
 
 interface ShareModalProps {
   docId: string;
@@ -37,8 +37,8 @@ function ShareModal({
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
   const [editors, setEditors] = useState<string[]>(initialAllowedEditors);
-  const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone-view" | "anyone">(
-    currentEditMode === "public" ? "anyone" : currentEditMode === "view" ? "anyone-view" : "restricted"
+  const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone-view">(
+    currentEditMode === "view" ? "anyone-view" : "restricted"
   );
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -112,20 +112,14 @@ function ShareModal({
     }
   }, [emails, editors, saveAccess, generalAccess, docId, userId, onEditModeChange]);
 
-  const toggleRole = useCallback(async (email: string) => {
-    const isEditor = editors.includes(email);
-    const updatedEditors = isEditor ? editors.filter(e => e !== email) : [...editors, email];
-    setEditors(updatedEditors);
-    await saveAccess(emails, updatedEditors);
-  }, [emails, editors, saveAccess]);
 
-  const handleAccessChange = useCallback(async (mode: "restricted" | "anyone-view" | "anyone") => {
+  const handleAccessChange = useCallback(async (mode: "restricted" | "anyone-view") => {
     setGeneralAccess(mode);
-    const editMode = mode === "anyone" ? "public" : mode === "anyone-view" ? "view" : "owner";
+    const editMode = mode === "anyone-view" ? "view" : "owner";
     try {
       await changeEditMode(docId, userId, editMode);
       onEditModeChange(editMode as "owner" | "view" | "public");
-      showToast(mode === "restricted" ? "Access restricted" : mode === "anyone-view" ? "Anyone can view" : "Anyone can edit", "success");
+      showToast(mode === "restricted" ? "Access restricted" : "Anyone can view", "success");
     } catch { showToast("Failed to change access", "error"); }
   }, [docId, userId, onEditModeChange]);
 
@@ -229,9 +223,7 @@ function ShareModal({
               </div>
 
               {/* Shared people */}
-              {emails.map((email) => {
-                const isEditor = editors.includes(email);
-                return (
+              {emails.map((email) => (
                 <div
                   key={email}
                   className="flex items-center gap-3 px-3 py-2.5"
@@ -239,40 +231,17 @@ function ShareModal({
                 >
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: isEditor ? "var(--accent-dim)" : "rgba(96,165,250,0.15)", color: isEditor ? "var(--accent)" : "#60a5fa" }}
+                    style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
                   >
                     {email[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
-                    <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>{isEditor ? "Can view and edit" : "Can view only"}</p>
+                    <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>Can view only</p>
                   </div>
-                  {/* Role selector — two inline buttons */}
-                  <div className="flex shrink-0 rounded overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                    <button
-                      onClick={() => isEditor && toggleRole(email)}
-                      className="text-[9px] px-2 py-1 transition-colors"
-                      style={{
-                        background: !isEditor ? "var(--surface)" : "transparent",
-                        color: !isEditor ? "var(--text-primary)" : "var(--text-faint)",
-                        fontWeight: !isEditor ? 600 : 400,
-                      }}
-                    >
-                      Viewer
-                    </button>
-                    <button
-                      onClick={() => !isEditor && toggleRole(email)}
-                      className="text-[9px] px-2 py-1 transition-colors"
-                      style={{
-                        background: isEditor ? "var(--accent-dim)" : "transparent",
-                        color: isEditor ? "var(--accent)" : "var(--text-faint)",
-                        fontWeight: isEditor ? 600 : 400,
-                        borderLeft: "1px solid var(--border-dim)",
-                      }}
-                    >
-                      Editor
-                    </button>
-                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
+                    Viewer
+                  </span>
                   <button
                     onClick={() => removeEmail(email)}
                     className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
@@ -282,8 +251,7 @@ function ShareModal({
                     <X width={10} height={10} />
                   </button>
                 </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         )}
@@ -296,8 +264,7 @@ function ShareModal({
           <div className="flex flex-col gap-1.5">
             {([
               { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <Lock width={16} height={16} strokeWidth={1.5} /> },
-              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — no editing allowed", icon: <Link2 width={16} height={16} strokeWidth={1.5} /> },
-              { value: "anyone" as const, label: "Anyone with the link can edit", desc: "Full editing access for everyone", icon: <Unlock width={16} height={16} strokeWidth={1.5} /> },
+              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — only the owner can edit", icon: <Link2 width={16} height={16} strokeWidth={1.5} /> },
             ]).map((opt) => {
               const selected = generalAccess === opt.value;
               return (

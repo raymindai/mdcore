@@ -305,14 +305,6 @@ export default function DocumentViewer({
               {title}
             </span>
           )}
-          {editMode === "public" && (
-            <span
-              className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 hidden sm:inline"
-              style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
-            >
-              Editable
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">

@@ -230,7 +230,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (body.action === "change-edit-mode") {
     const { userId, editMode: newEditMode } = body;
     if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-    if (!newEditMode || !["owner", "account", "token", "view", "public"].includes(newEditMode)) {
+    if (!newEditMode || !["owner", "token", "view"].includes(newEditMode)) {
       return NextResponse.json({ error: "Invalid editMode" }, { status: 400 });
     }
     const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
@@ -373,22 +373,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Document expired" }, { status: 410 });
     }
 
-    // Permission check: respects edit_mode + allowed_editors
+    // Permission check: only owner or editToken holder can save
     const isOwner =
       !!(userId && doc.user_id && userId === doc.user_id) ||
       !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
     const hasToken = !!(editToken && doc.edit_token === editToken);
     const userEmail = body.userEmail || "";
-    const isAllowedEditor = (doc.allowed_editors || []).some((e: string) => e.toLowerCase() === userEmail.toLowerCase());
-    const editModeVal = doc.edit_mode || "token";
 
-    if (!isOwner && !hasToken && !isAllowedEditor) {
-      if (editModeVal === "owner" || editModeVal === "account" || editModeVal === "view") {
-        return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
-      } else if (editModeVal === "token") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-      }
-      // editMode === "public" → anyone can auto-save
+    if (!isOwner && !hasToken) {
+      return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
     }
 
     // Conflict detection: if expectedUpdatedAt is provided, compare with actual updated_at
@@ -521,21 +514,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document expired" }, { status: 410 });
   }
 
-  // Permission check
+  // Permission check: only owner or editToken holder can edit
   const isDocOwner =
     !!(userId && doc.user_id && userId === doc.user_id) ||
     !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
-  const editMode = doc.edit_mode || "token";
+  const hasEditToken = !!(editToken && doc.edit_token === editToken);
 
-  if (!isDocOwner) {
-    if (editMode === "owner" || editMode === "account" || editMode === "view") {
-      return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
-    } else if (editMode === "token") {
-      if (!editToken || doc.edit_token !== editToken) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-      }
-    }
-    // editMode === "public" → anyone can edit
+  if (!isDocOwner && !hasEditToken) {
+    return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
   }
 
   // Save current version to history

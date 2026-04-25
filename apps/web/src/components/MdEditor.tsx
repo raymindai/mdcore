@@ -46,7 +46,6 @@ import {
   softDeleteDocument,
   restoreDocument,
   rotateEditToken,
-  changeEditMode,
   extractFromUrl,
   copyToClipboard,
   fetchVersions,
@@ -1308,7 +1307,6 @@ export default function MdEditor() {
   const [_serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
-  const [showPermDropdown, setShowPermDropdown] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [allowedEditors, setAllowedEditorsState] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<{ id: number; type: string; documentId: string; documentTitle: string; fromUserName: string; message: string; read: boolean; createdAt: string }[]>([]);
@@ -1615,10 +1613,10 @@ export default function MdEditor() {
 
   const [isOwner, setIsOwner] = useState(false);
   const [docEditMode, setDocEditMode] = useState<"owner" | "account" | "token" | "view" | "public">("token");
-  // Can edit: not shared, or owner, or public doc
+  // Can edit: not shared, or owner (owner-only permission model)
   const [isEditor, setIsEditor] = useState(false);
-  // view/owner mode: only owner + allowed editors. public mode: anyone can edit.
-  const canEdit = !isSharedDoc || isOwner || isEditor || docEditMode === "public";
+  // Only the document owner can edit. Non-owners must duplicate to edit.
+  const canEdit = !isSharedDoc || isOwner;
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [canvasMermaid, setCanvasMermaid] = useState<string | undefined>();
@@ -2044,7 +2042,7 @@ export default function MdEditor() {
     setDocId(tab.cloudId || null);
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
     setIsOwner(tab.permission === "mine" || !tab.permission);
-    setIsEditor(tab.permission === "editable");
+    setIsEditor(false);
     // Reset share modal state + view count for the new tab
     setViewCount(0);
     setAllowedEmailsState([]);
@@ -2055,7 +2053,6 @@ export default function MdEditor() {
         .then(r => { const vc = r.headers.get("x-view-count"); if (vc) setViewCount(parseInt(vc) || 0); })
         .catch(() => {});
     }
-    setShowPermDropdown(false);
     setShowViewerShareModal(false);
     // Update browser URL to reflect current document
     if (tab.cloudId) {
@@ -2881,23 +2878,18 @@ export default function MdEditor() {
             const token = getEditToken(fromId);
             const ownerByToken = !!token;
             const ownerByAccount = !!doc.isOwner;
-            const isPublicDoc = doc.editMode === "public";
 
-            // Determine permission
+            // Determine permission — owner-only edit model
             let perm: "mine" | "editable" | "readonly" = "readonly";
             if (ownerByToken || ownerByAccount) {
               perm = "mine";
               setIsOwner(true);
               setIsSharedDoc(false);
               /* viewMode preserved — user controls it */
-            } else if (isPublicDoc || doc.isEditor) {
-              perm = "editable";
-              setIsSharedDoc(true);
-              setIsEditor(!!doc.isEditor);
-              /* viewMode preserved — user controls it */
             } else {
               perm = "readonly";
               setIsSharedDoc(true);
+              setIsEditor(false);
               setViewMode("preview");
             }
 
@@ -4134,7 +4126,6 @@ export default function MdEditor() {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
-        setShowDocEditModeMenu(false);
         setConfirmRotateToken(false);
       }
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
@@ -4728,7 +4719,6 @@ export default function MdEditor() {
   }, []);
 
   const handleShare = useCallback(async () => {
-    setShowPermDropdown(false);
     if (!markdown.trim()) { showToast("Write something first", "info"); return; }
     if (!isAuthenticated) { showToast("Sign in to share documents", "info"); return; }
 
@@ -4972,11 +4962,8 @@ ${html}
 
   // Document settings (owner only)
   const [_showDocSettings, _setShowDocSettings] = useState(false);
-  const [showDocEditModeMenu, setShowDocEditModeMenu] = useState(false);
   const [confirmRotateToken, setConfirmRotateToken] = useState(false);
   const [rotatingToken, setRotatingToken] = useState(false);
-  const [changingEditMode, setChangingEditMode] = useState(false);
-
   const handleRotateToken = useCallback(async () => {
     if (!docId || !user?.id) return;
     if (!confirmRotateToken) { setConfirmRotateToken(true); return; }
@@ -4990,19 +4977,6 @@ ${html}
     setRotatingToken(false);
     setConfirmRotateToken(false);
   }, [docId, user, confirmRotateToken]);
-
-  const handleChangeDocEditMode = useCallback(async (newMode: "owner" | "token" | "public") => {
-    if (!docId || !user?.id) return;
-    setChangingEditMode(true);
-    try {
-      await changeEditMode(docId, user.id, newMode);
-      setDocEditMode(newMode);
-    } catch {
-      showToast("Failed to change edit mode", "error");
-    }
-    setChangingEditMode(false);
-    setShowDocEditModeMenu(false);
-  }, [docId, user]);
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
@@ -5523,88 +5497,48 @@ ${clone.innerHTML}
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
             if (perm === "readonly") return (
-              <div className="relative inline-flex items-center">
-                <button
-                  onClick={() => setShowPermDropdown(!showPermDropdown)}
-                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
+              <div className="inline-flex items-center gap-1.5">
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
                   style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                  title="View only — request edit access or duplicate to edit"
+                  title="View only — duplicate to edit"
                 >
                   VIEW&nbsp;ONLY
-                  <ChevronDown width={8} height={8} />
+                </span>
+                <button
+                  onClick={() => {
+                    const id = `tab-${Date.now()}`;
+                    const origMd = markdownRef.current;
+                    const t = title ? `${title} (copy)` : "Untitled (copy)";
+                    const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
+                    const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
+                    setTabs(prev => [...prev, newTab]);
+                    setIsSharedDoc(false);
+                    setIsOwner(true);
+                    setDocEditMode("owner");
+                    loadTab(newTab);
+                    autoSave.createDocument({
+                      markdown: md, title: t, userId: user?.id,
+                      anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                    }).then(result => {
+                      if (result) {
+                        setTabs(prev => {
+                          const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
+                          return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
+                        });
+                        setDocId(result.id);
+                        window.history.replaceState(null, "", `/?doc=${result.id}`);
+                      }
+                    });
+                  }}
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
+                  title="Duplicate to edit"
+                >
+                  <Copy width={10} height={10} />
+                  Duplicate
                 </button>
-                {showPermDropdown && (
-                  <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
-                    <div className="absolute top-full left-0 mt-1 w-44 sm:w-48 rounded-lg shadow-xl py-1 z-[9999]"
-                      style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                      {docId && user?.email && (
-                        <button
-                          onClick={async () => {
-                            setShowPermDropdown(false);
-                            try {
-                              await fetch("/api/notifications", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  recipientEmail: "__owner__",
-                                  type: "edit_request",
-                                  documentId: docId,
-                                  fromUserId: user.id,
-                                  fromUserName: user.email?.split("@")[0],
-                                  message: `requested edit access to "${title || "Untitled"}"`,
-                                }),
-                              });
-                              showToast("Edit request sent to document owner", "success");
-                            } catch { showToast("Failed to send request", "error"); }
-                          }}
-                          className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          <Pencil width={12} height={12} />
-                          Request to edit
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          setShowPermDropdown(false);
-                          const id = `tab-${Date.now()}`;
-                          const origMd = markdownRef.current;
-                          const t = title ? `${title} (copy)` : "Untitled (copy)";
-                          const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
-                          const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
-                          setTabs(prev => [...prev, newTab]);
-                          setIsSharedDoc(false);
-                          setIsOwner(true);
-                          setDocEditMode("owner");
-                          loadTab(newTab);
-                          autoSave.createDocument({
-                            markdown: md, title: t, userId: user?.id,
-                            anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                          }).then(result => {
-                            if (result) {
-                              setTabs(prev => {
-                                const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
-                                return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
-                              });
-                              setDocId(result.id);
-                              window.history.replaceState(null, "", `/?doc=${result.id}`);
-                            }
-                          });
-                        }}
-                        className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <Copy width={12} height={12} />
-                        Duplicate to edit
-                      </button>
-                    </div>
-                  </>
-                )}
               </div>
-            );
-            if (perm === "editable") return (
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>EDITABLE</span>
             );
             return null;
           })()}
@@ -5792,7 +5726,7 @@ ${clone.innerHTML}
                                 return;
                               }
                               const d = await res.json();
-                              const perm = d.isOwner ? "mine" : (d.isEditor || d.editMode === "public") ? "editable" : "readonly";
+                              const perm = d.isOwner ? "mine" : "readonly";
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || n.documentTitle || "Untitled", markdown: d.markdown, cloudId: n.documentId, permission: perm as "mine" | "editable" | "readonly", shared: perm !== "mine", ownerEmail: d.ownerEmail || n.fromUserName || undefined };
                               // Render immediately, then update tabs
@@ -5988,38 +5922,6 @@ ${clone.innerHTML}
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         <div className="px-3 py-1.5">
                           <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
-                          {/* Change permissions */}
-                          <div className="relative">
-                            <button
-                              onClick={() => setShowDocEditModeMenu(!showDocEditModeMenu)}
-                              className="w-full text-left text-xs py-1.5 transition-colors flex items-center justify-between"
-                              style={{ color: "var(--text-tertiary)" }}
-                              disabled={changingEditMode}
-                            >
-                              <span>Permissions</span>
-                              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                                {(docEditMode === "owner" || docEditMode === "account" || docEditMode === "token") ? "Only me" : "Anyone with link"}
-                              </span>
-                            </button>
-                            {showDocEditModeMenu && (
-                              <div className="mt-1 mb-1 rounded-md overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
-                                {([
-                                  { value: "owner" as const, label: "Only me", desc: "Only you can edit" },
-                                  { value: "public" as const, label: "Anyone with link", desc: "Anyone who opens this link can edit" },
-                                ] as const).map((opt) => (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => handleChangeDocEditMode(opt.value)}
-                                    className="w-full text-left px-2.5 py-1.5 text-[11px] transition-colors"
-                                    style={{ color: docEditMode === opt.value ? "var(--accent)" : "var(--text-secondary)" }}
-                                  >
-                                    <div className="font-medium">{opt.label}{docEditMode === opt.value && " \u2713"}</div>
-                                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{opt.desc}</div>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
                           {/* Rotate edit token */}
                           {confirmRotateToken ? (
                             <div className="py-1.5">
@@ -6072,7 +5974,7 @@ ${clone.innerHTML}
         </div>{/* end Row 1 */}
 
         {/* Row 2: Mobile-only — title + permission + save status */}
-        {(title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly" || ct?.permission === "editable"; })()) && (
+        {(title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly"; })()) && (
           <div className="flex sm:hidden items-center gap-2 px-3 pb-1.5 min-w-0">
             {title && (
               <span className="text-[11px] truncate flex-1 min-w-0" style={{ color: "var(--text-muted)" }}>
@@ -6112,81 +6014,48 @@ ${clone.innerHTML}
               const ct = tabs.find(t => t.id === activeTabId);
               const perm = ct?.permission;
               if (perm === "readonly") return (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowPermDropdown(!showPermDropdown)}
-                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap"
+                <div className="inline-flex items-center gap-1">
+                  <span
+                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
                     style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                    title="View only — request edit access or duplicate to edit"
+                    title="View only — duplicate to edit"
                   >
                     VIEW&nbsp;ONLY
-                    <ChevronDown width={7} height={7} />
+                  </span>
+                  <button
+                    onClick={() => {
+                      const id = `tab-${Date.now()}`;
+                      const origMd = markdownRef.current;
+                      const t2 = title ? `${title} (copy)` : "Untitled (copy)";
+                      const md = origMd.replace(/^(#\s+.+)$/m, `# ${t2}`);
+                      const newTab: Tab = { id, title: t2, markdown: md, permission: "mine", shared: false, isDraft: true };
+                      setTabs(prev => [...prev, newTab]);
+                      setIsSharedDoc(false);
+                      setIsOwner(true);
+                      setDocEditMode("owner");
+                      loadTab(newTab);
+                      autoSave.createDocument({
+                        markdown: md, title: t2, userId: user?.id,
+                        anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                      }).then(result => {
+                        if (result) {
+                          setTabs(prev => {
+                            const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
+                            return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
+                          });
+                          setDocId(result.id);
+                          window.history.replaceState(null, "", `/?doc=${result.id}`);
+                        }
+                      });
+                    }}
+                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
+                    title="Duplicate to edit"
+                  >
+                    <Copy width={9} height={9} />
+                    Duplicate
                   </button>
-                  {showPermDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowPermDropdown(false)} />
-                      <div className="absolute top-full left-0 mt-1 w-44 rounded-lg shadow-xl py-1 z-[9999]"
-                        style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                        {docId && user?.email && (
-                          <button
-                            onClick={async () => {
-                              setShowPermDropdown(false);
-                              try {
-                                await fetch("/api/notifications", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ recipientEmail: "__owner__", type: "edit_request", documentId: docId, fromUserId: user.id, fromUserName: user.email?.split("@")[0], message: `requested edit access to "${title || "Untitled"}"` }),
-                                });
-                                showToast("Edit request sent to document owner", "success");
-                              } catch { showToast("Failed to send request", "error"); }
-                            }}
-                            className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            <Pencil width={12} height={12} />
-                            Request to edit
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setShowPermDropdown(false);
-                            const id = `tab-${Date.now()}`;
-                            const origMd = markdownRef.current;
-                            const t2 = title ? `${title} (copy)` : "Untitled (copy)";
-                            const md = origMd.replace(/^(#\s+.+)$/m, `# ${t2}`);
-                            const newTab: Tab = { id, title: t2, markdown: md, permission: "mine", shared: false, isDraft: true };
-                            setTabs(prev => [...prev, newTab]);
-                            setIsSharedDoc(false);
-                            setIsOwner(true);
-                            setDocEditMode("owner");
-                            loadTab(newTab);
-                            autoSave.createDocument({
-                              markdown: md, title: t2, userId: user?.id,
-                              anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                            }).then(result => {
-                              if (result) {
-                                setTabs(prev => {
-                                  const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
-                                  return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
-                                });
-                                setDocId(result.id);
-                                window.history.replaceState(null, "", `/?doc=${result.id}`);
-                              }
-                            });
-                          }}
-                          className="w-full text-left px-3 py-2 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          <Copy width={12} height={12} />
-                          Duplicate to edit
-                        </button>
-                      </div>
-                    </>
-                  )}
                 </div>
-              );
-              if (perm === "editable") return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>EDITABLE</span>
               );
               return null;
             })()}
@@ -7051,7 +6920,7 @@ ${clone.innerHTML}
                                 return;
                               }
                               const d = await res.json();
-                              const perm = (doc.editMode === "public" || d.isEditor) ? "editable" : "readonly";
+                              const perm = "readonly";
                               const newId = `tab-${Date.now()}`;
                               const newTab: Tab = { id: newId, title: d.title || "Untitled", markdown: d.markdown, cloudId: doc.id, permission: perm as "mine" | "editable" | "readonly", shared: true, ownerEmail: d.ownerEmail || undefined };
                               // Render immediately, then update tabs
@@ -7072,7 +6941,7 @@ ${clone.innerHTML}
                             } catch { window.location.href = `/?from=${doc.id}`; }
                           }}
                         >
-                          <DocStatusIcon tab={{ permission: doc.editMode === "public" ? "editable" : "readonly" }} isActive={false} />
+                          <DocStatusIcon tab={{ permission: "readonly" }} isActive={false} />
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{doc.title || "Untitled"}</span>
                             {showSharedOwner && ((doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName) && (
@@ -9554,55 +9423,50 @@ ${clone.innerHTML}
             <div className="px-5 pb-4">
               <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>Your access</label>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
-                {(() => {
-                  const ct = tabs.find(t => t.id === activeTabId);
-                  const isEd = ct?.permission === "editable";
-                  return (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={isEd ? "#4ade80" : "var(--text-faint)"} strokeWidth="1.3" strokeLinecap="round">
-                        {isEd ? <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/> : <><rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/></>}
-                      </svg>
-                      <span className="text-xs" style={{ color: isEd ? "#4ade80" : "var(--text-faint)" }}>
-                        {isEd ? "Can view and edit" : "View only"}
-                      </span>
-                    </>
-                  );
-                })()}
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.3" strokeLinecap="round">
+                  <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
+                </svg>
+                <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+                  View only
+                </span>
               </div>
             </div>
 
             {/* Actions */}
             <div className="px-5 pb-5 flex flex-col gap-2">
-              {/* Request to edit — only if readonly and logged in */}
-              {!canEdit && user?.email && (
+              {/* Duplicate to edit — only if readonly */}
+              {!canEdit && (
                 <button
-                  onClick={async (e) => {
-                    const btn = e.currentTarget;
-                    if (btn.dataset.sent === "true") return;
-                    try {
-                      await fetch("/api/notifications", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          recipientEmail: "__owner__",
-                          type: "edit_request",
-                          documentId: docId,
-                          fromUserId: user.id,
-                          fromUserName: user.email?.split("@")[0],
-                          message: `requested edit access to "${title || "Untitled"}"`,
-                        }),
-                      });
-                      btn.dataset.sent = "true";
-                      showToast("Edit request sent to document owner", "success");
-                    } catch { showToast("Failed to send request", "error"); }
+                  onClick={() => {
+                    const id = `tab-${Date.now()}`;
+                    const origMd = markdownRef.current;
+                    const t = title ? `${title} (copy)` : "Untitled (copy)";
+                    const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
+                    const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
+                    setTabs(prev => [...prev, newTab]);
+                    setIsSharedDoc(false);
+                    setIsOwner(true);
+                    setDocEditMode("owner");
+                    loadTab(newTab);
+                    autoSave.createDocument({
+                      markdown: md, title: t, userId: user?.id,
+                      anonymousId: !user?.id ? ensureAnonymousId() : undefined,
+                    }).then(result => {
+                      if (result) {
+                        setTabs(prev => {
+                          const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
+                          return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
+                        });
+                        setDocId(result.id);
+                        window.history.replaceState(null, "", `/?doc=${result.id}`);
+                      }
+                    });
                   }}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
                   style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-                    <path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/>
-                  </svg>
-                  Request to edit
+                  <Copy width={12} height={12} />
+                  Duplicate to edit
                 </button>
               )}
             </div>

@@ -1,6 +1,6 @@
 import { memo } from "react";
 import {
-  Cloud, Share2, Eye, Pencil, Users, File as FileIcon, CircleCheck,
+  Cloud, Share2, Eye, Users, File as FileIcon, CircleCheck,
 } from "lucide-react";
 
 function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestricted?: boolean; isSharedByMe?: boolean; source?: string; cloudId?: string; permission?: string }; isActive: boolean }) {
@@ -10,8 +10,6 @@ function DocStatusIcon({ tab, isActive }: { tab: { isDraft?: boolean; isRestrict
 
   if (tab.permission === "readonly") {
     Icon = Eye; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "View only";
-  } else if (tab.permission === "editable") {
-    Icon = Pencil; color = isActive ? "var(--accent)" : "var(--text-faint)"; tip = "Editable";
   } else if (tab.isDraft === false && tab.isRestricted) {
     Icon = Users; color = isActive ? "var(--accent)" : "#60a5fa"; tip = "Shared with specific people";
   } else if (tab.isDraft === false && tab.isSharedByMe) {
