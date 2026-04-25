@@ -6,9 +6,8 @@ import {
   useImperativeHandle,
   forwardRef,
   useCallback,
-  useMemo,
 } from "react";
-import { useEditor, EditorContent, Extension } from "@tiptap/react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { Link } from "@tiptap/extension-link";
@@ -22,12 +21,8 @@ import { Image } from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { Markdown as TiptapMarkdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
-import * as Y from "yjs";
-import { ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 
 const lowlightInstance = createLowlight(common);
-
-// ─── Frontmatter helpers ───
 
 function extractFrontmatter(md: string): { frontmatter: string; body: string } {
   const lines = md.split("\n");
@@ -42,14 +37,11 @@ function extractFrontmatter(md: string): { frontmatter: string; body: string } {
   return { frontmatter: "", body: md };
 }
 
-// ─── Types ───
-
 interface TiptapLiveEditorProps {
   markdown: string;
   onChange: (markdown: string) => void;
   canEdit: boolean;
   narrowView: boolean;
-  ydoc: Y.Doc | null;
   onTitleChange?: (title: string) => void;
   onPasteImage?: (file: File) => Promise<string | null>;
 }
@@ -60,25 +52,9 @@ export interface TiptapLiveEditorHandle {
   focus: () => void;
 }
 
-// ─── y-prosemirror extension factory ───
-
-function createCollabExtension(fragment: Y.XmlFragment) {
-  return Extension.create({
-    name: "yjs-collab",
-    addProseMirrorPlugins() {
-      return [
-        ySyncPlugin(fragment),
-        yUndoPlugin(),
-      ];
-    },
-  });
-}
-
-// ─── Component ───
-
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
   function TiptapLiveEditor(
-    { markdown, onChange, canEdit, narrowView, ydoc, onTitleChange, onPasteImage },
+    { markdown, onChange, canEdit, narrowView, onTitleChange, onPasteImage },
     ref
   ) {
     const suppressOnUpdate = useRef(false);
@@ -90,21 +66,18 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
     onTitleChangeRef.current = onTitleChange;
     const onPasteImageRef = useRef(onPasteImage);
     onPasteImageRef.current = onPasteImage;
-    const initializedYjsRef = useRef(false);
 
     const { frontmatter: initialFm, body: initialBody } = extractFrontmatter(markdown);
     if (!frontmatterRef.current && initialFm) {
       frontmatterRef.current = initialFm;
     }
 
-    // Build extensions — include y-prosemirror if ydoc available
-    const extensions = useMemo(() => {
-      const exts = [
+    const editor = useEditor({
+      immediatelyRender: false,
+      extensions: [
         StarterKit.configure({
           codeBlock: false,
           heading: { levels: [1, 2, 3, 4, 5, 6] },
-          // Disable built-in history when yUndoPlugin is active
-          ...(ydoc ? { history: false } : {}),
         }),
         CodeBlockLowlight.configure({
           lowlight: lowlightInstance,
@@ -125,22 +98,8 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
           linkify: true, breaks: false,
           transformPastedText: true, transformCopiedText: true,
         }),
-      ];
-      // Add y-prosemirror collaboration
-      if (ydoc) {
-        const fragment = ydoc.getXmlFragment("prosemirror");
-        exts.push(createCollabExtension(fragment));
-      }
-      return exts;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [!!ydoc]);
-
-    const editor = useEditor({
-      immediatelyRender: false,
-      extensions,
-      // When ydoc exists, ySyncPlugin manages content — don't set initial content
-      // (it would conflict with the XmlFragment)
-      content: ydoc ? undefined : initialBody,
+      ],
+      content: initialBody,
       editorProps: {
         attributes: {
           class: `mdcore-rendered tiptap-editor max-w-none focus:outline-none ${
@@ -191,41 +150,6 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       },
     });
 
-    // Initialize Y.XmlFragment with content if empty (first user)
-    // CRITICAL: Wait for sync-response before initializing. If both users
-    // initialize independently, CRDT merge doubles the content.
-    useEffect(() => {
-      if (!editor || !ydoc || initializedYjsRef.current) return;
-      const fragment = ydoc.getXmlFragment("prosemirror");
-
-      // Already populated (from sync-response or previous session)
-      if (fragment.length > 0) {
-        initializedYjsRef.current = true;
-        return;
-      }
-
-      // Watch for fragment being populated by sync-response
-      const observer = () => {
-        if (fragment.length > 0 && !initializedYjsRef.current) {
-          initializedYjsRef.current = true;
-        }
-      };
-      fragment.observe(observer);
-
-      // Wait 2.5s (longer than useCollaboration's 2s init timer)
-      // If no peer populates the fragment, we're the first user
-      const timer = setTimeout(() => {
-        if (initializedYjsRef.current) return;
-        if (fragment.length > 0) { initializedYjsRef.current = true; return; }
-        initializedYjsRef.current = true;
-        suppressOnUpdate.current = true;
-        editor.commands.setContent(initialBody);
-        suppressOnUpdate.current = false;
-      }, 2500);
-
-      return () => { clearTimeout(timer); fragment.unobserve(observer); };
-    }, [editor, ydoc, initialBody]);
-
     useEffect(() => {
       if (!editor) return;
       editor.setEditable(canEdit);
@@ -243,28 +167,25 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       });
     }, [narrowView, editor]);
 
-
     const getMarkdownImperative = useCallback(() => {
       if (!editor) return "";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const bodyMd = (editor.storage as any).markdown?.getMarkdown() as string;
       if (!bodyMd) return frontmatterRef.current || "";
-      return frontmatterRef.current
-        ? frontmatterRef.current + "\n" + bodyMd
-        : bodyMd;
+      return frontmatterRef.current ? frontmatterRef.current + "\n" + bodyMd : bodyMd;
     }, [editor]);
 
     useImperativeHandle(
       ref,
       () => ({
         setMarkdown: (md: string) => {
-        if (!editor) return;
-        const { frontmatter: fm, body } = extractFrontmatter(md);
-        frontmatterRef.current = fm;
-        suppressOnUpdate.current = true;
-        editor.commands.setContent(body);
-        suppressOnUpdate.current = false;
-      },
+          if (!editor) return;
+          const { frontmatter: fm, body } = extractFrontmatter(md);
+          frontmatterRef.current = fm;
+          suppressOnUpdate.current = true;
+          editor.commands.setContent(body);
+          suppressOnUpdate.current = false;
+        },
         getMarkdown: getMarkdownImperative,
         focus: () => editor?.commands.focus(),
       }),

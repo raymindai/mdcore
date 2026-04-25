@@ -1598,13 +1598,13 @@ export default function MdEditor() {
   const { otherEditors } = usePresence(docId, presenceUser);
 
   // ─── Yjs CRDT Collaboration ───
-  // Remote change handler: update markdown state + CM6
-  // Tiptap syncs automatically via y-prosemirror (Y.XmlFragment → ProseMirror)
+  // Remote change handler: update all views
   const collabRemoteHandler = useCallback((newMarkdown: string) => {
     setMarkdownRaw(newMarkdown);
     cmSetDocRef.current?.(newMarkdown);
+    tiptapRef.current?.setMarkdown(newMarkdown);
   }, []);
-  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent, ydoc: collabYdoc } = useCollaboration(
+  const { applyLocalChange: collabApplyLocal, forceReset: collabForceReset, peerCount: collabPeerCount, isCollaborating, peerCursors: collabPeerCursors, updateCursor: collabUpdateCursor, getContent: collabGetContent } = useCollaboration(
     docId,
     markdown,
     collabRemoteHandler,
@@ -7763,13 +7763,12 @@ ${clone.innerHTML}
                 </div>
               ) : (
                 <TiptapLiveEditor
-                  key={`tiptap-${docId || "local"}-${viewMode === "preview" && !!collabYdoc}`}
+                  key={`tiptap-${docId || "local"}`}
                   ref={tiptapRef}
                   markdown={markdown}
                   onChange={handleTiptapChange}
                   canEdit={canEdit}
                   narrowView={narrowView}
-                  ydoc={viewMode === "preview" ? collabYdoc : null}
                   onTitleChange={(title) => {
                     setTitle(title);
                     const curTabId = activeTabIdRef.current;
