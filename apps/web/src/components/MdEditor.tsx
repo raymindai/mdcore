@@ -1756,12 +1756,16 @@ export default function MdEditor() {
     sidebarPositionsRef.current = map;
   }, []);
 
-  // Set up observer once
+  // Set up observer — retry until sidebar is available
   useEffect(() => {
+    if (flipObserverRef.current) return;
     const container = sidebarListRef.current;
-    if (!container || flipObserverRef.current) return;
+    if (!container) return;
 
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver((mutations) => {
+      // Only care about childList changes (element reorder), not attributes
+      const hasChildChange = mutations.some(m => m.type === "childList" && (m.addedNodes.length > 0 || m.removedNodes.length > 0));
+      if (!hasChildChange) return;
       const oldPositions = sidebarPositionsRef.current;
       if (oldPositions.size === 0) return;
 
@@ -1805,8 +1809,7 @@ export default function MdEditor() {
     snapshotSidebarPositions();
 
     return () => { observer.disconnect(); flipObserverRef.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only once — observer persists across tab changes
+  }); // Runs every render until observer is attached, then early-returns
 
   // Snapshot positions DURING render (before React commits DOM changes)
   // This runs synchronously before useLayoutEffect/useEffect
@@ -4566,6 +4569,7 @@ export default function MdEditor() {
             const rendered = katex.renderToString(tex.trim(), {
               displayMode: mode === "display",
               throwOnError: false,
+              strict: false,
             });
             const wrapper = document.createElement(mode === "display" ? "div" : "span");
             wrapper.className = "math-rendered";

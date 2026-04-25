@@ -171,7 +171,7 @@ function processKatex(html: string): string {
       try {
         const rendered = katex.renderToString(
           decodeHtmlEntities(tex.trim()),
-          { displayMode: false, throwOnError: false, trust: false }
+          { displayMode: false, throwOnError: false, strict: false, trust: false }
         );
         return `<span class="math-rendered" data-math-src="${encodeURIComponent(tex.trim())}" data-math-mode="inline" style="cursor:pointer">${rendered}</span>`;
       } catch {
@@ -187,7 +187,7 @@ function processKatex(html: string): string {
       try {
         const rendered = katex.renderToString(
           decodeHtmlEntities(tex.trim()),
-          { displayMode: true, throwOnError: false, trust: false }
+          { displayMode: true, throwOnError: false, strict: false, trust: false }
         );
         return `<div class="math-rendered" data-math-src="${encodeURIComponent(tex.trim())}" data-math-mode="display" style="cursor:pointer">${rendered}</div>`;
       } catch {
@@ -204,6 +204,7 @@ function processKatex(html: string): string {
         return katex.renderToString(decodeHtmlEntities(tex.trim()), {
           displayMode: true,
           throwOnError: false,
+          strict: false,
           trust: false,
         });
       } catch {
