@@ -1628,9 +1628,13 @@ export default function MdEditor() {
   const tiptapRef = useRef<TiptapLiveEditorHandle>(null);
 
   const handleTiptapChange = useCallback((md: string) => {
-    setMarkdown(md);
+    // Update state + auto-save, but DON'T call applyLocalChange (no Y.Text update).
+    // y-prosemirror already syncs content via Y.XmlFragment — calling applyLocalChange
+    // would create a redundant second broadcast, adding latency.
+    setMarkdownRaw(md);
+    triggerAutoSave(md);
     cmSetDocRef.current?.(md);
-  }, [setMarkdown]);
+  }, [triggerAutoSave]);
 
   const [showQr, setShowQr] = useState(false);
   const [showAiBanner, setShowAiBanner] = useState(false);
