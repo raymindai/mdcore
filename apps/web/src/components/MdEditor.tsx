@@ -965,17 +965,7 @@ function useTheme() {
       document.documentElement.setAttribute("data-scheme", s);
     }
     try { localStorage.setItem("mdfy-scheme", s); } catch { /* quota exceeded */ }
-    // When switching to a scheme with its own accent, also update accent to match
-    if (s !== "default") {
-      const nativeAccent = SCHEME_ACCENT_MAP[s];
-      setAccentColorState(nativeAccent);
-      if (nativeAccent === "orange") {
-        document.documentElement.removeAttribute("data-accent");
-      } else {
-        document.documentElement.setAttribute("data-accent", nativeAccent);
-      }
-      try { localStorage.setItem("mdfy-accent", nativeAccent); } catch { /* quota exceeded */ }
-    }
+    // Skin and key color are independent — user can combine any skin with any key color
   }, []);
 
   return { theme, toggleTheme, accentColor, setAccentColor, colorScheme, setColorScheme };
@@ -7424,42 +7414,70 @@ ${clone.innerHTML}
                           Account Settings
                         </a>
                       </div>
-                      {/* Theme */}
-                      <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                        <div className="text-[10px] font-mono uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Theme</div>
-                        <div className="grid grid-cols-4 gap-1.5 mb-2.5">
-                          {ACCENT_COLORS.map(c => (
-                            <button
-                              key={c.name}
-                              onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
-                              className="w-6 h-6 rounded-full transition-transform hover:scale-110"
-                              style={{
-                                background: theme === "dark" ? c.dark : c.light,
-                                outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
-                                outlineOffset: "2px",
-                              }}
-                              title={c.label}
-                            />
-                          ))}
+                      {/* Appearance */}
+                      <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        {/* Key Color — flyout */}
+                        <div className="relative group/keycolor">
+                          <button
+                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                              Key Color
+                            </span>
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 p-2 rounded-lg shadow-xl z-[9999] hidden group-hover/keycolor:block"
+                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1.5 px-0.5" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                            <div className="grid grid-cols-4 gap-1">
+                              {ACCENT_COLORS.map(c => (
+                                <button
+                                  key={c.name}
+                                  onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") setColorScheme("default"); }}
+                                  className="w-5 h-5 rounded-full transition-transform hover:scale-110"
+                                  style={{
+                                    background: theme === "dark" ? c.dark : c.light,
+                                    outline: accentColor === c.name ? "2px solid var(--text-primary)" : "none",
+                                    outlineOffset: "1px",
+                                  }}
+                                  title={c.label}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-0.5">
-                          {COLOR_SCHEMES.map(s => (
-                            <button
-                              key={s.name}
-                              onClick={() => { setColorScheme(s.name); }}
-                              className="flex items-center gap-2 px-2 py-1 rounded-md text-[11px] transition-colors text-left"
-                              style={{
-                                background: colorScheme === s.name ? "var(--accent-dim)" : "transparent",
-                                color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
-                              }}
-                            >
-                              <span
-                                className="w-3 h-3 rounded-full shrink-0"
-                                style={{ background: s.preview, outline: colorScheme === s.name ? "2px solid var(--text-primary)" : "1px solid var(--border)", outlineOffset: "1px" }}
-                              />
-                              {s.label}
-                            </button>
-                          ))}
+                        {/* Skin Theme — flyout */}
+                        <div className="relative group/skin">
+                          <button
+                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <span className="flex items-center gap-2">
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12"/><path d="M6 6v8"/></svg>
+                              Skin Theme
+                            </span>
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block"
+                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
+                            {COLOR_SCHEMES.map(s => (
+                              <button
+                                key={s.name}
+                                onClick={() => setColorScheme(s.name)}
+                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
+                                style={{
+                                  color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
+                                  fontWeight: colorScheme === s.name ? 600 : 400,
+                                }}
+                              >
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview, outline: colorScheme === s.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                       {/* Actions */}
@@ -7495,38 +7513,23 @@ ${clone.innerHTML}
             ) : (
               <>
                 {/* Theme picker for non-authenticated users */}
-                <div className="px-2 py-2 mb-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                  <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Theme</div>
-                  <div className="grid grid-cols-4 gap-1.5 mb-2">
+                <div className="px-2 py-1.5 mb-1 space-y-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                  <div className="text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                  <div className="grid grid-cols-8 gap-1">
                     {ACCENT_COLORS.map(c => (
-                      <button
-                        key={c.name}
-                        onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") { setColorScheme("default"); } }}
-                        className="w-5 h-5 rounded-full transition-transform hover:scale-110"
-                        style={{
-                          background: theme === "dark" ? c.dark : c.light,
-                          outline: accentColor === c.name && colorScheme === "default" ? "2px solid var(--text-primary)" : "none",
-                          outlineOffset: "2px",
-                        }}
-                        title={c.label}
-                      />
+                      <button key={c.name} onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") setColorScheme("default"); }}
+                        className="w-4 h-4 rounded-full transition-transform hover:scale-125"
+                        style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--text-primary)" : "none", outlineOffset: "1px" }}
+                        title={c.label} />
                     ))}
                   </div>
-                  <div className="flex flex-col gap-0.5">
+                  <div className="text-[9px] font-mono uppercase tracking-wider pt-1" style={{ color: "var(--text-faint)" }}>Skin</div>
+                  <div className="flex flex-wrap gap-1">
                     {COLOR_SCHEMES.map(s => (
-                      <button
-                        key={s.name}
-                        onClick={() => { setColorScheme(s.name); }}
-                        className="flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] transition-colors text-left"
-                        style={{
-                          background: colorScheme === s.name ? "var(--accent-dim)" : "transparent",
-                          color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)",
-                        }}
-                      >
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ background: s.preview, outline: colorScheme === s.name ? "2px solid var(--text-primary)" : "1px solid var(--border)", outlineOffset: "1px" }}
-                        />
+                      <button key={s.name} onClick={() => setColorScheme(s.name)}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-colors"
+                        style={{ background: colorScheme === s.name ? "var(--accent-dim)" : "var(--toggle-bg)", color: colorScheme === s.name ? "var(--accent)" : "var(--text-muted)" }}>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.preview }} />
                         {s.label}
                       </button>
                     ))}
