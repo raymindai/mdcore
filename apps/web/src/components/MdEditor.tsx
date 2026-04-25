@@ -2212,23 +2212,10 @@ export default function MdEditor() {
     // FLIP: capture positions BEFORE React re-renders
     const flipPositions = new Map<string, number>();
     const sidebarEl = sidebarListRef.current;
-    // Check what's actually in the DOM
-    if (sidebarEl) {
-      const firstChild = sidebarEl.children[0] as HTMLElement;
-      console.log("[FLIP] container children:", sidebarEl.children.length,
-        "first child tag:", firstChild?.tagName,
-        "first child attrs:", firstChild ? Array.from(firstChild.attributes).map(a => a.name).join(",") : "none",
-        "all divs with data-tab-id:", sidebarEl.querySelectorAll("[data-tab-id]").length,
-        "all divs total:", sidebarEl.querySelectorAll("div").length);
-    }
-    if (sidebarEl) {
-      const allEls = sidebarEl.querySelectorAll<HTMLElement>("[data-tab-id]");
-      console.log("[FLIP] data-tab-id elements found:", allEls.length);
-      allEls.forEach(el => {
-        flipPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-      });
-      console.log("[FLIP] captured", flipPositions.size, "positions");
-    }
+    // Search entire document for tab elements (they may be nested in folders)
+    document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+      flipPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
+    });
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -2252,21 +2239,18 @@ export default function MdEditor() {
     // FLIP: animate after React commits DOM
     if (flipPositions.size > 0) {
       setTimeout(() => {
-        const deltas: string[] = [];
-        sidebarListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
+        document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
           const id = el.dataset.tabId!;
           const oldTop = flipPositions.get(id);
           if (oldTop == null) return;
           const newTop = el.getBoundingClientRect().top;
           const delta = oldTop - newTop;
-          deltas.push(`${(el.textContent || "").slice(0, 15)}: ${delta.toFixed(0)}px`);
           if (Math.abs(delta) < 2) return;
           el.animate(
             [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
             { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
           );
         });
-        console.log("[FLIP] deltas:", deltas.join(" | "));
       }, 50);
     }
   }, [loadTab]);
