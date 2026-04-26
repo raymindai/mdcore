@@ -1153,7 +1153,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
       </div>
       <div id="content-wrapper">
         <div id="content-scroll">
-        <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}"
+        <article id="content" class="mdcore-rendered narrow" contenteditable="${this.isCloudPreview ? "false" : "true"}">
           ${renderedHtml}
         </article>
         </div><!-- end content-scroll -->
