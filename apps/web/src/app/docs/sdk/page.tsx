@@ -257,7 +257,7 @@ const imageUrl = await upload(file);`}</CodeBlock>
               { pkg: "@mdcore/engine", desc: "WASM Markdown renderer (Rust/comrak). GFM, KaTeX math, Mermaid diagrams, syntax highlighting.", install: "npm install @mdcore/engine" },
               { pkg: "@mdcore/styles", desc: "CSS-only package. Dark/light themes, rendered document styles, print/PDF styles. No JavaScript.", install: "npm install @mdcore/styles" },
               { pkg: "@mdcore/ai", desc: "AI provider integrations. Gemini, OpenAI, Anthropic. Text-to-Markdown, ASCII rendering.", install: "npm install @mdcore/ai" },
-              { pkg: "mdfy-mcp", desc: "MCP server for AI tools. Claude Code, Cursor, Windsurf. 6 tools for document management.", install: "npx mdfy-mcp" },
+              { pkg: "mdfy-mcp", desc: "Local stdio MCP (6 core tools). For all 25 tools use the hosted MCP at https://mdfy.cc/api/mcp.", install: "npx mdfy-mcp" },
             ].map((p, i) => (
               <div
                 key={p.pkg}

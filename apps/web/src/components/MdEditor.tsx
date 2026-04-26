@@ -1757,6 +1757,19 @@ export default function MdEditor() {
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
+  const [sidebarMode, setSidebarModeRaw] = useState<"simple" | "detailed">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("mdfy-sidebar-mode") as "simple" | "detailed") || "detailed";
+    }
+    return "detailed";
+  });
+  const setSidebarMode = useCallback((updater: "simple" | "detailed" | ((prev: "simple" | "detailed") => "simple" | "detailed")) => {
+    setSidebarModeRaw(prev => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      try { localStorage.setItem("mdfy-sidebar-mode", next); } catch { /* quota exceeded */ }
+      return next;
+    });
+  }, []);
   // Onboarding banner — first visit only
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -3996,6 +4009,9 @@ export default function MdEditor() {
       // separator line = tableStart + 1
       // data rows start at tableStart + 2, rowIndex includes header row (rowIndex 0 = header)
       const tableStart = spMatch ? parseInt(spMatch[1]) - 1 + fmOffset : -1;
+      // header (rowIndex 0) → tableStart
+      // separator → tableStart + 1 (no DOM row)
+      // data rows (rowIndex 1+) → tableStart + 1 + rowIndex
       const mdRowLine = tableStart >= 0
         ? (isHeader ? tableStart : tableStart + 1 + rowIndex)
         : -1;
@@ -6657,7 +6673,7 @@ ${clone.innerHTML}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-all duration-200 ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-all duration-200 relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -6671,10 +6687,10 @@ ${clone.innerHTML}
                           <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                           <div className="truncate flex-1 min-w-0">
                             <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                            {tab.lastOpenedAt && <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}><span>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>{(tab.viewCount ?? 0) > 0 && <span>{tab.viewCount} views</span>}</span>}
+                            {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -6785,7 +6801,7 @@ ${clone.innerHTML}
                                     draggable
                                     onDragStart={() => setDragTabId(tab.id)}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                                       color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -6799,10 +6815,10 @@ ${clone.innerHTML}
                                     <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
                                     <div className="truncate flex-1 min-w-0">
                                       <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                                      {tab.lastOpenedAt && <span className="flex items-center gap-1.5 text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.6 }}><span>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}</span>{(tab.viewCount ?? 0) > 0 && <span>{tab.viewCount} views</span>}</span>}
+                                      {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                                      className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                                      className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                                       <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
@@ -6987,7 +7003,7 @@ ${clone.innerHTML}
                           draggable
                           onDragStart={() => setDragTabId(tab.id)}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
                             background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
@@ -7009,7 +7025,7 @@ ${clone.innerHTML}
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -7401,6 +7417,15 @@ ${clone.innerHTML}
                       </div>
                       {/* Appearance */}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        {/* Sidebar Mode */}
+                        <button
+                          onClick={() => setSidebarMode(m => m === "simple" ? "detailed" : "simple")}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <List width={12} height={12} />
+                          {sidebarMode === "simple" ? "Detailed Sidebar" : "Simple Sidebar"}
+                        </button>
                         {/* Key Color — flyout */}
                         <div className="relative group/keycolor">
                           <button

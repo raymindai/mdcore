@@ -4,6 +4,11 @@ MCP server for [mdfy.cc](https://mdfy.cc) — let any AI tool create, read, upda
 
 Works with **Claude Code**, **Claude Desktop**, **Cursor**, and any [Model Context Protocol](https://modelcontextprotocol.io/) compatible client.
 
+> **Two ways to connect:**
+>
+> - **Hosted HTTP MCP** (recommended for Claude Web, Cursor, etc.) — no install. Just add `https://mdfy.cc/api/mcp` in your client's MCP/Connectors settings. Exposes 25 tools.
+> - **Local stdio MCP** (this npm package) — for Claude Desktop and Claude Code. Exposes 6 core tools. See setup below.
+
 ## Quick Start
 
 ### 1. Login (one-time)

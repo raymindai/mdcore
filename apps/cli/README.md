@@ -145,7 +145,8 @@ Credentials stored in `~/.mdfy/config.json`. Edit tokens in `~/.mdfy/tokens.json
 | Channel | Install |
 |---------|---------|
 | [Web Editor](https://mdfy.cc) | Just open the URL |
-| [MCP Server](https://www.npmjs.com/package/mdfy-mcp) | `npx mdfy-mcp` |
+| [Hosted MCP (Claude Web, Cursor, etc.)](https://mdfy.cc/docs/mcp) | URL: `https://mdfy.cc/api/mcp` |
+| [Local MCP (Claude Desktop, Claude Code)](https://www.npmjs.com/package/mdfy-mcp) | `npx mdfy-mcp` |
 | [VS Code Extension](https://mdfy.cc/plugins) | Download from Plugins page |
 | [Chrome Extension](https://mdfy.cc/plugins) | Download from Plugins page |
 | [Mac Desktop App](https://mdfy.cc/plugins) | Download from Plugins page |

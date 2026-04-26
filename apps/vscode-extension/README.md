@@ -310,7 +310,7 @@ Use the [CLI](https://www.npmjs.com/package/mdfy-cli) in your pipeline to auto-p
 
 ### Cross-AI knowledge base
 
-Publish a document from VS Code. Paste the URL into any AI conversation. Claude, ChatGPT, and Gemini can all read mdfy.cc URLs. Use the [MCP server](https://www.npmjs.com/package/mdfy-mcp) for programmatic access.
+Publish a document from VS Code. Paste the URL into any AI conversation. Claude, ChatGPT, and Gemini can all read mdfy.cc URLs. For programmatic access from Claude Web, Cursor, or Windsurf, point them at the [hosted MCP](https://mdfy.cc/docs/mcp) at `https://mdfy.cc/api/mcp` — or install the [local stdio MCP](https://www.npmjs.com/package/mdfy-mcp) for Claude Desktop.
 
 ### Meeting notes to shareable document
 
@@ -329,7 +329,8 @@ mdfy.cc is a cross-platform document publishing system. All platforms share the 
 | **[Mac Desktop](https://mdfy.cc/plugins)** | Native app with sidebar, file import (PDF, DOCX, PPTX) | [Download DMG](https://github.com/raymindai/mdcore/releases) |
 | **[Chrome Extension](https://mdfy.cc/plugins)** | Capture from ChatGPT, Claude, Gemini, GitHub | [Download](https://mdfy.cc/plugins) |
 | **[CLI](https://www.npmjs.com/package/mdfy-cli)** | `mdfy publish`, pipe support, tmux capture | `npm i -g mdfy-cli` |
-| **[MCP Server](https://www.npmjs.com/package/mdfy-mcp)** | AI agents create/read/update documents | `npx mdfy-mcp` |
+| **[Hosted MCP](https://mdfy.cc/docs/mcp)** | AI agents (Claude Web, Cursor) — 25 tools | URL: `https://mdfy.cc/api/mcp` |
+| **[Local MCP](https://www.npmjs.com/package/mdfy-mcp)** | AI agents (Claude Desktop, Code) — 6 core tools | `npx mdfy-mcp` |
 | **QuickLook** | Press Space on .md in Finder for rendered preview | [Build from source](https://github.com/raymindai/mdcore) |
 | **tmux** | Capture pane output and publish | [Install guide](https://github.com/raymindai/mdcore/tree/main/apps/tmux) |
 

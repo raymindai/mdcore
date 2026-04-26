@@ -491,8 +491,8 @@ export default function PluginsPage() {
           >
             {[
               {
-                title: "6 MCP Tools",
-                items: ["create -- new document with shareable URL", "read -- fetch document content by ID", "update -- update existing document content", "list -- list all your documents", "publish -- toggle Private/Shared", "delete -- delete a document"],
+                title: "25 MCP Tools",
+                items: ["6 core CRUD -- create, read, update, delete, list, search", "Append/prepend -- grow logs and journals", "Sections -- outline, extract, replace by heading", "Sharing -- password, expiry, email allowlist", "Versions -- history, restore, diff", "Folders, stats, recent, duplicate, import URL"],
               },
               {
                 title: "Compatibility",

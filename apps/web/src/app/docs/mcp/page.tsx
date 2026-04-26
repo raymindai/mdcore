@@ -190,8 +190,9 @@ export default function McpDocsPage() {
             <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.8, margin: 0 }}>
               The <strong style={{ color: "var(--text-primary)" }}>Model Context Protocol (MCP)</strong> is an open standard
               that lets AI assistants interact with external tools and services. The mdfy MCP server exposes
-              6 tools that any MCP-compatible AI client can use to publish, read, update, list, and delete
-              documents on mdfy.cc.
+              25 tools across 7 categories — core CRUD, append/prepend, section editing, sharing controls,
+              version history, folders, and stats. The hosted endpoint at <InlineCode>{"https://mdfy.cc/api/mcp"}</InlineCode> works
+              with any MCP-compatible client (Claude Web, Cursor, etc.).
             </p>
           </Card>
 
