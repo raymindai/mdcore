@@ -617,14 +617,39 @@
     unsync: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8A6 6 0 004.8 3.3L2 6"/><path d="M2 8a6 6 0 009.2 4.7L14 10"/><path d="M4 4l8 8"/></svg>',
     trash: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M5 4V2.5A1.5 1.5 0 016.5 1h3A1.5 1.5 0 0111 2.5V4"/><path d="M12.5 4v9a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 13V4"/></svg>',
     file: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1H4.5A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5V5z"/><path d="M9 1v4h4"/></svg>',
+    share: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v1a2 2 0 002 2h4a2 2 0 002-2v-1M8 2v8M5 5l3-3 3 3"/></svg>',
+    users: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M1 14c0-2.5 2-4.5 5-4.5s5 2 5 4.5"/><path d="M11 9.5c2 0 3.5 1.5 3.5 3.5"/></svg>',
+    eye: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>',
   };
+
+  var syncBadgeHtml = '<span class="sync-badge"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg></span>';
+
+  function docStatusIcon(doc) {
+    var editMode = doc.edit_mode || null;
+    var allowedEmails = doc.allowed_emails || null;
+    var source = doc.source || null;
+    var isDraft = doc.is_draft || false;
+    var isSynced = source === 'vscode' || source === 'desktop' || source === 'cli' || source === 'mcp';
+    var badge = isSynced ? syncBadgeHtml : '';
+
+    if (editMode === 'readonly') {
+      return '<div class="file-icon readonly" title="View only">' + SBI.eye + badge + '</div>';
+    }
+    if (editMode === 'view' || editMode === 'public' || (!isDraft && editMode !== 'private')) {
+      return '<div class="file-icon shared" title="Shared publicly">' + SBI.share + badge + '</div>';
+    }
+    if (allowedEmails && allowedEmails.length > 0) {
+      return '<div class="file-icon restricted" title="Shared with specific people">' + SBI.users + badge + '</div>';
+    }
+    return '<div class="file-icon local" title="Private">' + SBI.file + badge + '</div>';
+  }
 
   function renderSyncedItem(f) {
     var synced = f.config && f.config.lastSyncedAt ? timeAgo(f.config.lastSyncedAt) : timeAgo(f.modifiedAt);
     var meta = synced ? "synced " + synced : f.relativePath;
     var active = f.filePath === currentFilePath ? " active" : "";
     return '<div class="file-item' + active + '" data-path="' + esc(f.filePath) + '">' +
-      '<div class="file-icon synced" title="Synced with mdfy.cc">' + SBI.check + '</div>' +
+      '<div class="file-icon shared" title="Synced with mdfy.cc">' + SBI.share + syncBadgeHtml + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(f.fileName) + '</div><div class="file-meta">' + esc(meta) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="copy-url" data-path="' + esc(f.filePath) + '" title="Copy URL">' + SBI.copy + '</button>' +
@@ -652,7 +677,7 @@
     var title = cd.title || "Untitled";
     var meta = timeAgo(cd.updated_at) + (cd.is_draft ? " · draft" : "");
     return '<div class="file-item" data-cloud-id="' + esc(cd.id) + '">' +
-      '<div class="file-icon cloud" title="Cloud document">' + SBI.cloud + '</div>' +
+      docStatusIcon(cd) +
       '<div class="file-info"><div class="file-name">' + esc(title) + '</div><div class="file-meta">' + esc(meta) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="pull-cloud" data-id="' + esc(cd.id) + '" data-title="' + esc(title) + '" title="Sync to local">' + SBI.download + '</button>' +

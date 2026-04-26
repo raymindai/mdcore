@@ -20,6 +20,9 @@ interface CloudDoc {
   is_draft: boolean;
   folder_id?: string | null;
   view_count?: number;
+  edit_mode?: string | null;
+  allowed_emails?: string[] | null;
+  source?: string | null;
 }
 
 interface CloudFolder {
@@ -407,6 +410,9 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         folderId: c.folder_id || null,
         url: `${baseUrl}/d/${c.id}`,
         viewCount: c.view_count || 0,
+        editMode: c.edit_mode || null,
+        allowedEmails: c.allowed_emails || null,
+        source: c.source || null,
       })),
       cloudFolders: cloudFolders.map((f) => ({
         id: f.id,
@@ -637,8 +643,14 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 .doc-icon.published { color: #22c55e; }
+.doc-icon.shared { color: #4ade80; }
+.doc-icon.restricted { color: #60a5fa; }
+.doc-icon.readonly { color: var(--vscode-descriptionForeground); }
 .doc-icon.local { color: var(--vscode-descriptionForeground); }
 .doc-icon.cloud { color: #60a5fa; }
+.doc-icon { position: relative; }
+.doc-icon .sync-badge { position: absolute; bottom: -2px; right: -3px; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.doc-icon .sync-badge svg { width: 6px; height: 6px; }
 .doc-info { flex: 1; min-width: 0; overflow: hidden; }
 .doc-name {
   font-size: 12px; font-weight: 500;
@@ -972,10 +984,39 @@ body {
       trash:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12"/><path d="M5.5 4V2.5A1 1 0 016.5 1.5h3a1 1 0 011 1V4"/><path d="M12.5 4v9a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 13V4"/></svg>',
       folder:       '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5A1.5 1.5 0 013.5 2h3l2 2h4A1.5 1.5 0 0114 5.5v7a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5z"/></svg>',
       chevron:      '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>',
+      share:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v1a2 2 0 002 2h4a2 2 0 002-2v-1M8 2v8M5 5l3-3 3 3"/></svg>',
+      users:        '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2.5"/><circle cx="11" cy="5" r="2"/><path d="M1 14c0-2.5 2-4.5 5-4.5s5 2 5 4.5"/><path d="M11 9.5c2 0 3.5 1.5 3.5 3.5"/></svg>',
+      eye:          '<svg width="S" height="S" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>',
     };
     function icon(name, size) {
       size = size || 14;
       return (I[name] || '').replace(/S/g, size);
+    }
+
+    var syncBadge = '<span class="sync-badge"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg></span>';
+
+    function docStatusIcon(doc) {
+      var editMode = doc.editMode || null;
+      var allowedEmails = doc.allowedEmails || null;
+      var source = doc.source || null;
+      var isDraft = doc.isDraft || false;
+      var isSynced = source === 'vscode' || source === 'desktop' || source === 'cli' || source === 'mcp';
+      var badge = isSynced ? syncBadge : '';
+
+      // Readonly
+      if (editMode === 'readonly') {
+        return '<div class="doc-icon readonly">' + icon('eye', 14) + badge + '</div>';
+      }
+      // Shared publicly
+      if (editMode === 'view' || editMode === 'public' || (!isDraft && editMode !== 'private')) {
+        return '<div class="doc-icon shared">' + icon('share', 14) + badge + '</div>';
+      }
+      // Shared with specific people
+      if (allowedEmails && allowedEmails.length > 0) {
+        return '<div class="doc-icon restricted">' + icon('users', 14) + badge + '</div>';
+      }
+      // Private/draft default
+      return '<div class="doc-icon local">' + icon('file', 14) + badge + '</div>';
     }
 
     window.addEventListener('message', function(e) {
@@ -1202,7 +1243,7 @@ body {
     }
 
     function renderSyncedDoc(doc) {
-      var ic = '<div class="doc-icon published">' + icon('check', 14) + '</div>';
+      var ic = '<div class="doc-icon shared">' + icon('share', 14) + syncBadge + '</div>';
       var synced = doc.lastSynced ? relTime(doc.lastSynced) : '';
       var meta = synced ? 'synced ' + synced : doc.docId;
       var actions = ''
@@ -1227,7 +1268,7 @@ body {
     }
 
     function renderCloudDoc(doc) {
-      var ic = '<div class="doc-icon cloud">' + icon('cloud', 14) + '</div>';
+      var ic = docStatusIcon(doc);
       var viewStr = doc.viewCount > 0 ? ' · ' + doc.viewCount + ' views' : '';
       var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '') + viewStr;
       var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Sync to local">' + icon('download', 14) + '</button>'
