@@ -3,7 +3,7 @@ import * as path from "path";
 import { loadMdfyConfig, saveMdfyConfig, getApiBaseUrl, MdfyConfig, suppressAutoPreviewFor } from "./extension";
 import { PreviewPanel } from "./preview";
 import { AuthManager } from "./auth";
-import { pullDocument } from "./publish";
+import { pullDocument, publishDocument } from "./publish";
 
 interface DocItem {
   filePath: string;
@@ -98,6 +98,11 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         case "deleteSynced":
           if (msg.filePath) {
             await this.deleteSyncedDocument(msg.filePath);
+          }
+          break;
+        case "duplicateCloud":
+          if (msg.docId) {
+            await this.duplicateCloudDocument(msg.docId, msg.title);
           }
           break;
         case "deleteCloud":
@@ -281,6 +286,22 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       vscode.window.showInformationMessage("Document removed from mdfy.cc.");
     } catch {
       vscode.window.showErrorMessage("Failed to delete document.");
+    }
+  }
+
+  private async duplicateCloudDocument(docId: string, title: string): Promise<void> {
+    try {
+      const remote = await pullDocument(docId, this._authManager);
+      const newTitle = `${title || "Untitled"} (Copy)`;
+      const result = await publishDocument(remote.markdown, newTitle, this._authManager);
+      this.refresh();
+      vscode.window.showInformationMessage(`Duplicated as "${newTitle}"`);
+      // Open the new copy in preview
+      PreviewPanel.createOrShowCloud(this._extensionUri, remote.markdown, newTitle, result.id);
+    } catch (err) {
+      vscode.window.showErrorMessage(
+        `Failed to duplicate: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
@@ -1272,6 +1293,7 @@ body {
       var viewStr = doc.viewCount > 0 ? ' · ' + doc.viewCount + ' views' : '';
       var meta = relTime(doc.updatedAt) + (doc.isDraft ? ' · draft' : '') + viewStr;
       var actions = '<button class="doc-action" data-action="pull" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Sync to local">' + icon('download', 14) + '</button>'
+        + '<button class="doc-action" data-action="duplicateCloud" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '" title="Duplicate">' + icon('copy', 14) + '</button>'
         + '<button class="doc-action" data-action="browser" data-url="' + esc(doc.url) + '" title="Open in browser">' + icon('externalLink', 14) + '</button>'
         + '<button class="doc-action" data-action="deleteCloud" data-docid="' + esc(doc.docId) + '" title="Delete from cloud" style="color:#ef4444">' + icon('trash', 14) + '</button>';
       return '<li class="doc-item" data-action="openCloud" data-url="' + esc(doc.url) + '" data-docid="' + esc(doc.docId) + '" data-title="' + esc(doc.title) + '">'
@@ -1315,6 +1337,12 @@ body {
         btn.addEventListener('click', function(e) {
           e.stopPropagation();
           vscode.postMessage({ type: 'deleteSynced', filePath: btn.dataset.path });
+        });
+      });
+      container.querySelectorAll('[data-action="duplicateCloud"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          vscode.postMessage({ type: 'duplicateCloud', docId: btn.dataset.docid, title: btn.dataset.title });
         });
       });
       container.querySelectorAll('[data-action="deleteCloud"]').forEach(function(btn) {

@@ -1654,7 +1654,19 @@ ipcMain.handle("sync-pull-cloud", async (event, docId, title) => {
 });
 
 ipcMain.handle("sync-unlink", async (event, filePath) => {
-  deleteMdfyConfig(filePath || currentFilePath);
+  const target = filePath || currentFilePath;
+  const config = loadMdfyConfig(target);
+  if (config && config.docId) {
+    try {
+      const headers = await AuthManager.getHeadersWithRefresh();
+      await net.fetch(`${MDFY_URL}/api/docs/${config.docId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ action: "clear-source", userId: AuthManager.getUserId() }),
+      });
+    } catch {}
+  }
+  deleteMdfyConfig(target);
   return { ok: true };
 });
 
@@ -1676,6 +1688,33 @@ ipcMain.handle("delete-cloud-doc", async (event, docId) => {
   try {
     await apiDeleteDocument(docId, null);
     return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.handle("duplicate-cloud", async (event, docId, title) => {
+  try {
+    const data = await apiPull(docId);
+    const markdown = data.markdown || data.content || "";
+    const newTitle = (title || "Untitled") + " (Copy)";
+    const result = await apiPublish(markdown, newTitle);
+    // Open the duplicate in the editor
+    const rendered = renderMarkdown(markdown);
+    currentFilePath = null;
+    stopFileWatcher();
+    mainWindow.setTitle(newTitle + " — mdfy");
+    mainWindow.webContents.send("load-document", {
+      html: rendered.html,
+      markdown,
+      filePath: null,
+      flavor: rendered.flavor.primary,
+      config: { docId: result.id, editToken: result.editToken },
+      cloudDoc: { docId: result.id, title: newTitle, isOwner: true },
+      readOnly: false,
+      viewCount: 0,
+    });
+    return { ok: true, docId: result.id };
   } catch (err) {
     return { error: err.message };
   }

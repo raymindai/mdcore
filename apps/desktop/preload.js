@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld("mdfyDesktop", {
   syncUnlink: (filePath) => ipcRenderer.invoke("sync-unlink", filePath),
   syncDelete: (filePath) => ipcRenderer.invoke("sync-delete", filePath),
   deleteCloudDoc: (docId) => ipcRenderer.invoke("delete-cloud-doc", docId),
+  duplicateCloud: (docId, title) => ipcRenderer.invoke("duplicate-cloud", docId, title),
   resolveConflict: (action, filePath) => ipcRenderer.invoke("resolve-conflict", action, filePath),
   getServerVersion: (filePath) => ipcRenderer.invoke("get-server-version", filePath),
   previewCloudDoc: (docId, title) => ipcRenderer.invoke("preview-cloud-doc", docId, title),

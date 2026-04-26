@@ -675,7 +675,8 @@
 
   function renderCloudItem(cd) {
     var title = cd.title || "Untitled";
-    var meta = timeAgo(cd.updated_at) + (cd.is_draft ? " · draft" : "");
+    var viewStr = cd.view_count > 0 ? " · " + cd.view_count + " views" : "";
+    var meta = timeAgo(cd.updated_at) + (cd.is_draft ? " · draft" : "") + viewStr;
     return '<div class="file-item" data-cloud-id="' + esc(cd.id) + '">' +
       docStatusIcon(cd) +
       '<div class="file-info"><div class="file-name">' + esc(title) + '</div><div class="file-meta">' + esc(meta) + '</div></div>' +
@@ -1459,7 +1460,8 @@
             '</div>'
           : '<span class="cloud-banner-text">Cloud document — read only</span>' +
           '<div class="cloud-banner-actions">' +
-            '<button class="cloud-banner-btn" id="cloud-sync-local">Sync to Local</button>' +
+            '<button class="cloud-banner-btn" id="cloud-duplicate-edit">Duplicate to Edit</button>' +
+            '<button class="cloud-banner-btn secondary" id="cloud-sync-local">Sync to Local</button>' +
             '<button class="cloud-banner-btn secondary" id="cloud-open-browser">Open in Browser</button>' +
           '</div>';
         var paneContent = content.parentElement;
@@ -1470,9 +1472,20 @@
             if (r && r.ok) { refreshSidebarData().then(renderSidebar); }
           });
         });
-        document.getElementById("cloud-open-browser").addEventListener("click", function() {
-          window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + currentCloudDoc.docId);
-        });
+        var openBrowserBtn = document.getElementById("cloud-open-browser");
+        if (openBrowserBtn) {
+          openBrowserBtn.addEventListener("click", function() {
+            window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + currentCloudDoc.docId);
+          });
+        }
+        var duplicateBtn = document.getElementById("cloud-duplicate-edit");
+        if (duplicateBtn) {
+          duplicateBtn.addEventListener("click", function() {
+            window.mdfyDesktop.duplicateCloud(currentCloudDoc.docId, currentCloudDoc.title).then(function(r) {
+              if (r && r.ok) { refreshSidebarData().then(renderSidebar); }
+            });
+          });
+        }
 
         // Hide toolbar in read-only mode
         if (toolbar) toolbar.style.display = "none";
