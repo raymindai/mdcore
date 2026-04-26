@@ -4351,11 +4351,10 @@ export default function MdEditor() {
       return;
     }
 
-    // Check for markdown text paste (from agents, .md files, etc.)
-    // Detect markdown by common patterns: headings, bold, code blocks, lists
-    if (text && /^#{1,6}\s|^\*\*|^```|^- \[|^\d+\.\s|^>\s|^\|.*\|/m.test(text)) {
+    // For multi-line text paste or text with markdown patterns,
+    // insert into markdown source and re-render (prevents raw markdown showing in LIVE view)
+    if (text && (text.includes("\n") || /^#{1,6}\s|^\*\*|^```|^- \[|^\d+\.\s|^>\s|^\|.*\||^[-*] /m.test(text))) {
       e.preventDefault();
-      // Insert into markdown source at cursor position and re-render
       saveInsertPosition();
       const newMd = insertBlockAtCursor(text);
       setMarkdown(newMd);
@@ -5700,7 +5699,7 @@ ${clone.innerHTML}
         >
           {/* Home */}
           <button
-            onClick={() => { setShowOnboarding(true); }}
+            onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
             className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
             style={{
               background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
