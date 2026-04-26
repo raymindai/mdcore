@@ -6519,7 +6519,7 @@ ${clone.innerHTML}
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => { setShowMyDocs(!showMyDocs); }}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My Documents</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My MDs</span>
                     {showMyDocs && (
                       <>
                         <button
