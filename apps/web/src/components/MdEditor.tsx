@@ -4408,17 +4408,19 @@ export default function MdEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
   }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
-  // Cmd+Enter (or Ctrl+Enter) in LIVE view: escape from blockquote, list, code block, table
-  // Inserts a new paragraph after the current block in the markdown source
-  const handleWysiwygKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!((e.metaKey || e.ctrlKey) && e.key === "Enter")) return;
+  // Helper: clear wysiwygInput debounce + editing flag so doRender can update article DOM
+  const cleanupWysiwygState = useCallback(() => {
+    if (wysiwygDebounce.current) {
+      clearTimeout(wysiwygDebounce.current);
+      wysiwygDebounce.current = undefined;
+    }
+    wysiwygEditingRef.current = false;
+  }, []);
 
+  // Helper: find the outermost trapping block (blockquote, ul, ol, pre, table) from cursor
+  const findTrappingBlock = useCallback((article: Element): HTMLElement | null => {
     const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-
-    // Walk up from cursor to find a trapping block (blockquote, ul, ol, pre, table)
-    const article = previewRef.current?.querySelector("article");
-    if (!article) return;
+    if (!sel?.rangeCount) return null;
     let node: Node | null = sel.getRangeAt(0).startContainer;
     if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
     let trappingBlock: HTMLElement | null = null;
@@ -4426,87 +4428,159 @@ export default function MdEditor() {
       const tag = (node as HTMLElement).tagName?.toLowerCase();
       if (tag && ["blockquote", "ul", "ol", "pre", "table"].includes(tag)) {
         trappingBlock = node as HTMLElement;
-        // Don't break — keep walking up to find the outermost trapping block
       }
       node = (node as HTMLElement).parentElement;
     }
-    if (!trappingBlock) return;
+    return trappingBlock;
+  }, []);
 
-    e.preventDefault();
+  // Helper: escape a trapping block via markdown manipulation
+  const escapeTrappingBlock = useCallback((trappingBlock: HTMLElement) => {
+    const md = markdownRef.current;
+    const lines = md.split("\n");
 
-    // Find the block's position in markdown via data-sourcepos
+    // Try sourcepos first (works for comrak-rendered blocks)
     const sourcepos = trappingBlock.getAttribute("data-sourcepos");
     const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
-    const md = markdownRef.current;
+
+    let insertAfterLine: number; // 0-indexed line in md to insert after
 
     if (spMatch) {
       const endLine = parseInt(spMatch[2]); // 1-indexed
-      // Account for frontmatter offset
-      const lines = md.split("\n");
       let fmOffset = 0;
       if (lines[0]?.trim() === "---") {
         for (let i = 1; i < lines.length; i++) {
           if (lines[i]?.trim() === "---") { fmOffset = i + 1; break; }
         }
       }
-      const actualEnd = endLine - 1 + fmOffset; // 0-indexed
-      // Insert empty line after the block
-      const before = lines.slice(0, actualEnd + 1);
-      const after = lines.slice(actualEnd + 1);
-      const newMd = [...before, "", ""].concat(after).join("\n");
-
-      // Clear wysiwygEditingRef so doRender can update the article DOM
-      if (wysiwygDebounce.current) {
-        clearTimeout(wysiwygDebounce.current);
-        wysiwygDebounce.current = undefined;
-      }
-      wysiwygEditingRef.current = false;
-
-      setMarkdown(newMd);
-      doRender(newMd);
-      cmSetDoc(newMd);
-
-      // After DOM updates, place cursor at the new empty paragraph
-      // Use sourcepos to find the insertion point reliably (trappingBlock ref becomes stale after doRender)
-      const insertedLineNum = actualEnd + 2; // 1-indexed line number of new empty line
-      setTimeout(() => {
-        const art = previewRef.current?.querySelector("article");
-        if (!art) return;
-        // Find element whose sourcepos starts at or after the inserted line
-        let target: Element | null = null;
-        for (const child of art.children) {
-          const sp = child.getAttribute("data-sourcepos");
-          if (!sp) continue;
-          const startLine = parseInt(sp.split(":")[0]);
-          if (startLine >= insertedLineNum) {
-            target = child;
-            break;
-          }
-        }
-        // If no element found after, try the last paragraph/ce-spacer
-        if (!target) {
-          const last = art.lastElementChild;
-          if (last) target = last;
-        }
-        if (target && target.getAttribute("contenteditable") !== "false") {
-          const range = document.createRange();
-          range.selectNodeContents(target);
-          range.collapse(true);
-          const s = window.getSelection();
-          s?.removeAllRanges();
-          s?.addRange(range);
-          (target as HTMLElement).scrollIntoView?.({ block: "nearest" });
-        }
-      }, 150); // Wait for doRender + React re-render + innerHTML update
+      insertAfterLine = endLine - 1 + fmOffset;
     } else {
-      // No sourcepos — fallback: append empty paragraph at end
-      const suffix = md.endsWith("\n") ? "\n" : "\n\n";
-      const newMd = md + suffix;
-      setMarkdown(newMd);
-      doRender(newMd);
-      cmSetDoc(newMd);
+      // No sourcepos (browser-created element after user editing).
+      // First sync the DOM back to markdown so we have current state.
+      const article = previewRef.current?.querySelector("article");
+      if (article) {
+        const clone = article.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn, .ce-spacer, .ce-escape-hint").forEach(n => n.remove());
+        clone.querySelectorAll(".table-wrapper").forEach(wrapper => {
+          const table = wrapper.querySelector("table");
+          if (table) wrapper.replaceWith(table);
+        });
+        const freshMd = htmlToMarkdown(clone.innerHTML);
+        // Find the last line of blockquote/list content in the fresh markdown
+        const freshLines = freshMd.split("\n");
+        const tag = trappingBlock.tagName.toLowerCase();
+        insertAfterLine = freshLines.length - 1;
+        // Find the end of the trapping block's content
+        for (let i = freshLines.length - 1; i >= 0; i--) {
+          if (tag === "blockquote" && /^>\s?/.test(freshLines[i])) { insertAfterLine = i; break; }
+          if ((tag === "ul" || tag === "ol") && /^\s*[-*+\d]/.test(freshLines[i])) { insertAfterLine = i; break; }
+          if (freshLines[i].trim()) { insertAfterLine = i; break; }
+        }
+        // Use the fresh markdown as the base
+        const before = freshLines.slice(0, insertAfterLine + 1);
+        const after = freshLines.slice(insertAfterLine + 1);
+        const newMd = [...before, "", ""].concat(after).join("\n");
+
+        cleanupWysiwygState();
+        setMarkdown(newMd);
+        doRender(newMd);
+        cmSetDoc(newMd);
+
+        setTimeout(() => {
+          const art = previewRef.current?.querySelector("article");
+          if (!art) return;
+          const all = Array.from(art.children);
+          for (let i = all.length - 1; i >= 0; i--) {
+            if (all[i].getAttribute("contenteditable") !== "false") {
+              const range = document.createRange();
+              range.selectNodeContents(all[i]);
+              range.collapse(true);
+              const s = window.getSelection();
+              s?.removeAllRanges();
+              s?.addRange(range);
+              break;
+            }
+          }
+        }, 150);
+        return;
+      }
+      insertAfterLine = lines.length - 1;
     }
-  }, [setMarkdown, doRender, cmSetDoc]);
+
+    // Insert empty line after the block
+    const before = lines.slice(0, insertAfterLine + 1);
+    const after = lines.slice(insertAfterLine + 1);
+    const newMd = [...before, "", ""].concat(after).join("\n");
+
+    cleanupWysiwygState();
+    setMarkdown(newMd);
+    doRender(newMd);
+    cmSetDoc(newMd);
+
+    // Place cursor at the new empty paragraph after DOM update
+    setTimeout(() => {
+      const art = previewRef.current?.querySelector("article");
+      if (!art) return;
+      let target: Element | null = null;
+      for (const child of art.children) {
+        const sp = child.getAttribute("data-sourcepos");
+        if (!sp) continue;
+        const sl = parseInt(sp.split(":")[0]);
+        if (sl > insertAfterLine + 1) { target = child; break; }
+      }
+      if (!target) {
+        const all = Array.from(art.children);
+        for (let i = all.length - 1; i >= 0; i--) {
+          if (all[i].getAttribute("contenteditable") !== "false") { target = all[i]; break; }
+        }
+      }
+      if (target && target.getAttribute("contenteditable") !== "false") {
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(true);
+        const s = window.getSelection();
+        s?.removeAllRanges();
+        s?.addRange(range);
+        (target as HTMLElement).scrollIntoView?.({ block: "nearest" });
+      }
+    }, 150);
+  }, [setMarkdown, doRender, cmSetDoc, cleanupWysiwygState]);
+
+  // Keyboard handler for LIVE view contentEditable
+  const handleWysiwygKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const article = previewRef.current?.querySelector("article");
+    if (!article) return;
+
+    // ── Cmd+Enter: escape from trapping block ──
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      const trappingBlock = findTrappingBlock(article);
+      if (!trappingBlock) return;
+      e.preventDefault();
+      escapeTrappingBlock(trappingBlock);
+      return;
+    }
+
+    // ── Plain Enter inside blockquote: prevent browser from splitting into separate blockquotes ──
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      const sel = window.getSelection();
+      if (!sel?.rangeCount) return;
+      let node: Node | null = sel.getRangeAt(0).startContainer;
+      if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      let inBlockquote = false;
+      while (node && node !== article) {
+        if ((node as HTMLElement).tagName?.toLowerCase() === "blockquote") {
+          inBlockquote = true;
+          break;
+        }
+        node = (node as HTMLElement).parentElement;
+      }
+      if (inBlockquote) {
+        // Insert <br> instead of letting the browser split the blockquote
+        e.preventDefault();
+        document.execCommand("insertLineBreak", false);
+      }
+    }
+  }, [findTrappingBlock, escapeTrappingBlock]);
 
   const handleWysiwygInput = useCallback(() => {
     wysiwygEditingRef.current = true;
