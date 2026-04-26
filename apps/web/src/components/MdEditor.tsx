@@ -7778,7 +7778,7 @@ ${clone.innerHTML}
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "New Document", desc: "Blank page", kbd: isMobile ? "" : mod + "N", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch { /* clipboard permission denied — user can Cmd+V manually */ } } },
                       { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", icon: <Upload width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
                     ].map((item) => (
                       <button key={item.label} onClick={item.fn}
@@ -9999,7 +9999,7 @@ ${clone.innerHTML}
             <div className="space-y-1.5 mb-8">
               {[
                 { label: "New Document", shortcut: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318N" : "Ctrl+N"), action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                { label: "Paste from Clipboard", shortcut: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318V" : "Ctrl+V"), action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} } },
+                { label: "Paste from Clipboard", shortcut: isMobile ? "" : (typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "\u2318V" : "Ctrl+V"), action: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch {} } },
                 { label: "Import File", shortcut: "", action: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
               ].map((item) => (
                 <button
