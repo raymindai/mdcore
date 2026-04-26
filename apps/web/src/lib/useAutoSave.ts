@@ -91,6 +91,8 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
       anonymousId?: string;
       editToken?: string;
     }) => {
+      // Never save empty content — protect against content loss
+      if (!args.markdown || !args.markdown.trim()) return;
       // Skip if content hasn't changed
       if (args.markdown === lastSavedMdRef.current) return;
 

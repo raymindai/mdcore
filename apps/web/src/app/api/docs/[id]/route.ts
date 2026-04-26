@@ -209,6 +209,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document too large (max 500KB)" }, { status: 413 });
   }
 
+  // Protect against empty content overwrite — never save blank document
+  if (body.action === "auto-save" && body.markdown !== undefined && !body.markdown.trim()) {
+    return NextResponse.json({ error: "Cannot save empty document" }, { status: 400 });
+  }
+
   // ─── Action: rotate-token ───
   if (body.action === "rotate-token") {
     const { userId } = body;

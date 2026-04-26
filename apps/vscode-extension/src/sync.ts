@@ -109,6 +109,11 @@ export class SyncEngine {
    */
   async push(document: vscode.TextDocument): Promise<void> {
     const filePath = document.fileName;
+    // Never push empty content — protect against content loss
+    if (!document.getText().trim()) {
+      return;
+    }
+
     const config = await loadMdfyConfig(filePath);
 
     if (!config) {

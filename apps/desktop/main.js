@@ -485,6 +485,11 @@ const SyncEngine = {
   },
 
   async push(filePath, markdown) {
+    // Never push empty content — protect against content loss
+    if (!markdown || !markdown.trim()) {
+      console.warn("[sync] push skipped: empty content for", filePath);
+      return;
+    }
     const config = loadMdfyConfig(filePath);
     if (!config) return; // Not published
 
