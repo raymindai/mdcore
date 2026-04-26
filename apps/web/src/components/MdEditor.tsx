@@ -5509,6 +5509,20 @@ ${clone.innerHTML}
         }
       }
     });
+    // Add spacer after last child if it's a blockquote, list, or other block
+    // that traps the cursor (can't escape by pressing Enter)
+    const lastChild = article.lastElementChild;
+    if (lastChild && !lastChild.classList.contains("ce-spacer")) {
+      const tag = lastChild.tagName.toLowerCase();
+      if (["blockquote", "ul", "ol", "pre", "table"].includes(tag) ||
+          lastChild.getAttribute("contenteditable") === "false") {
+        const spacer = document.createElement("p");
+        spacer.innerHTML = "<br>";
+        spacer.className = "ce-spacer";
+        article.appendChild(spacer);
+      }
+    }
+
     // Suppress browser object resizing/table controls
     try {
       document.execCommand("enableObjectResizing", false, "false");
