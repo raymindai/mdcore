@@ -1669,25 +1669,31 @@
 
     updateSyncStatusUI("syncing");
 
-    var result = await window.mdfyDesktop.publish(currentMarkdown);
-    if (result.error) {
-      updateSyncStatusUI("error");
-      showToast("Publish failed: " + result.error);
-      return;
-    }
-
-    if (result.url) {
-      window.mdfyDesktop.writeClipboard(result.url);
-      updateSyncStatusUI("synced");
-      showToast("Published! URL copied.");
-      currentConfig = { docId: result.docId, editToken: result.editToken };
-      updatePublishedUrl();
-      await refreshSidebarData();
-      renderSidebar();
-      // Start collaboration for newly published doc
-      if (currentConfig.docId) {
-        window.mdfyDesktop.collabStart(currentConfig.docId, currentMarkdown);
+    try {
+      var result = await window.mdfyDesktop.publish(currentMarkdown);
+      if (result.error) {
+        updateSyncStatusUI("error");
+        showToast("Sync failed: " + result.error);
+        return;
       }
+
+      if (result.url) {
+        window.mdfyDesktop.writeClipboard(result.url);
+        updateSyncStatusUI("synced");
+        showToast("Published! URL copied.");
+        currentConfig = { docId: result.docId, editToken: result.editToken };
+        updatePublishedUrl();
+        await refreshSidebarData();
+        renderSidebar();
+        // Start collaboration for newly published doc
+        if (currentConfig.docId) {
+          window.mdfyDesktop.collabStart(currentConfig.docId, currentMarkdown);
+        }
+      }
+    } catch (err) {
+      console.error("[publish] Error:", err);
+      updateSyncStatusUI("error");
+      showToast("Sync failed: " + (err.message || "Unknown error"));
     }
   }
 

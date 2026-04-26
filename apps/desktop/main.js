@@ -309,9 +309,10 @@ async function apiPublish(markdown, title) {
   if (userId) body.userId = userId;
   if (email) body.userEmail = email;
 
+  const headers = await AuthManager.getHeadersWithRefresh();
   const resp = await net.fetch(`${MDFY_URL}/api/docs`, {
     method: "POST",
-    headers: AuthManager.getHeaders(),
+    headers,
     body: JSON.stringify(body),
   });
   if (!resp.ok) {
@@ -334,9 +335,10 @@ async function apiUpdate(docId, editToken, markdown, title, expectedUpdatedAt) {
   if (email) body.userEmail = email;
   if (expectedUpdatedAt) body.expectedUpdatedAt = expectedUpdatedAt;
 
+  const headers = await AuthManager.getHeadersWithRefresh();
   const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
     method: "PATCH",
-    headers: AuthManager.getHeaders(),
+    headers,
     body: JSON.stringify(body),
   });
   if (resp.status === 409) {
@@ -355,9 +357,10 @@ async function apiUpdate(docId, editToken, markdown, title, expectedUpdatedAt) {
 }
 
 async function apiPull(docId) {
+  const headers = await AuthManager.getHeadersWithRefresh();
   const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
     method: "GET",
-    headers: AuthManager.getHeaders(),
+    headers,
   });
   if (!resp.ok) {
     handleApiAuthError(resp.status);
@@ -370,7 +373,7 @@ async function apiCheckUpdatedAt(docId) {
   try {
     const resp = await net.fetch(`${MDFY_URL}/api/docs/${docId}`, {
       method: "HEAD",
-      headers: AuthManager.getHeaders(),
+      headers: AuthManager.getHeaders(), // HEAD is non-critical, no refresh needed
     });
     if (resp.status === 404 || resp.status === 410) return { status: "deleted" };
     if (!resp.ok) return { status: "error" };
@@ -385,8 +388,9 @@ async function apiGetCloudDocuments() {
   const userId = AuthManager.getUserId();
   if (!userId) return [];
   try {
+    const headers = await AuthManager.getHeadersWithRefresh();
     const resp = await net.fetch(`${MDFY_URL}/api/user/documents`, {
-      headers: AuthManager.getHeaders(),
+      headers,
     });
     if (!resp.ok) {
       handleApiAuthError(resp.status);
@@ -1571,8 +1575,12 @@ ipcMain.handle("get-auth-state", () => {
 // --- Sync ---
 
 ipcMain.handle("publish", async (event, markdown) => {
+  // Try to refresh token if expired before giving up
   if (!AuthManager.isLoggedIn()) {
-    return { error: "Not logged in" };
+    const refreshed = await AuthManager.refreshToken();
+    if (!refreshed || !AuthManager.isLoggedIn()) {
+      return { error: "Not logged in" };
+    }
   }
 
   const title = extractTitle(markdown) || "Untitled";

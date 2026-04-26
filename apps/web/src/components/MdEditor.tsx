@@ -4310,6 +4310,21 @@ export default function MdEditor() {
 
   // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
   const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
+    // Helper: after paste processing via saveInsertPosition → insertBlockAtCursor,
+    // the marker DOM mutation triggers handleWysiwygInput which sets wysiwygEditingRef=true
+    // and starts a debounce. We must clear both so that:
+    // 1. doRender's HTML can actually be applied to the article DOM (the ref callback
+    //    checks wysiwygEditingRef and skips innerHTML update if true)
+    // 2. The debounced handleWysiwygInput doesn't reconvert the OLD DOM back to markdown,
+    //    overwriting our correctly computed new markdown
+    const cleanupAfterPaste = () => {
+      if (wysiwygDebounce.current) {
+        clearTimeout(wysiwygDebounce.current);
+        wysiwygDebounce.current = undefined;
+      }
+      wysiwygEditingRef.current = false;
+    };
+
     // Check for pasted images (handle multiple)
     const items = Array.from(e.clipboardData.items);
     const imageItems = items.filter(item => item.type.startsWith("image/"));
@@ -4317,6 +4332,7 @@ export default function MdEditor() {
       e.preventDefault();
       // Save cursor position BEFORE async upload so we insert at the right place
       saveInsertPosition();
+      cleanupAfterPaste();
       (async () => {
         const originTabId = activeTabIdRef.current;
         for (const imageItem of imageItems) {
@@ -4357,6 +4373,7 @@ export default function MdEditor() {
       const converted = cliToMarkdown(text);
       saveInsertPosition();
       const newMd = insertBlockAtCursor(converted);
+      cleanupAfterPaste();
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDoc(newMd);
@@ -4369,6 +4386,7 @@ export default function MdEditor() {
       const md = htmlToMarkdown(html);
       saveInsertPosition();
       const newMd = insertBlockAtCursor(md);
+      cleanupAfterPaste();
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDoc(newMd);
@@ -4381,6 +4399,7 @@ export default function MdEditor() {
       e.preventDefault();
       saveInsertPosition();
       const newMd = insertBlockAtCursor(text);
+      cleanupAfterPaste();
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDoc(newMd);
@@ -6275,7 +6294,7 @@ ${clone.innerHTML}
 
       {/* Main content wrapper (sidebar + editor/render) */}
       <div
-        className="flex flex-1 min-h-0"
+        className="flex flex-1 min-h-0 overflow-hidden"
         onMouseMove={(e) => {
           if (isDraggingSidebar.current) {
             const wrapper = e.currentTarget;
@@ -6302,7 +6321,7 @@ ${clone.innerHTML}
           />
         )}
         <div
-          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
+          className={`flex flex-col shrink-0 overflow-x-hidden ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
@@ -6660,7 +6679,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     {/* Document list — scrollable */}
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
@@ -6698,7 +6717,7 @@ ${clone.innerHTML}
                             {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -6826,7 +6845,7 @@ ${clone.innerHTML}
                                       {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                                      className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                                      className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                                       <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
@@ -7003,7 +7022,7 @@ ${clone.innerHTML}
                     {!showSharedDocs && totalShared > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>}
                   </div>
                   {showSharedDocs && (
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Shared tabs already open — draggable to folders */}
                       {dedupedSharedTabs.map((tab) => (
                         <div
@@ -7033,7 +7052,7 @@ ${clone.innerHTML}
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -7216,7 +7235,7 @@ ${clone.innerHTML}
                     {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
                   </div>
                   {showTrash && (
-                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
