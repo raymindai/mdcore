@@ -4454,30 +4454,54 @@ export default function MdEditor() {
       const before = lines.slice(0, actualEnd + 1);
       const after = lines.slice(actualEnd + 1);
       const newMd = [...before, "", ""].concat(after).join("\n");
+
+      // Clear wysiwygEditingRef so doRender can update the article DOM
+      if (wysiwygDebounce.current) {
+        clearTimeout(wysiwygDebounce.current);
+        wysiwygDebounce.current = undefined;
+      }
+      wysiwygEditingRef.current = false;
+
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDoc(newMd);
 
-      // After render, place cursor at the new empty paragraph
-      requestAnimationFrame(() => {
+      // After DOM updates, place cursor at the new empty paragraph
+      // Use sourcepos to find the insertion point reliably (trappingBlock ref becomes stale after doRender)
+      const insertedLineNum = actualEnd + 2; // 1-indexed line number of new empty line
+      setTimeout(() => {
         const art = previewRef.current?.querySelector("article");
         if (!art) return;
-        // Find the element right after the trapping block
-        const allBlocks = Array.from(art.children);
-        const blockIdx = allBlocks.indexOf(trappingBlock!);
-        const nextBlock = allBlocks[blockIdx + 1] || allBlocks[blockIdx + 2];
-        if (nextBlock) {
+        // Find element whose sourcepos starts at or after the inserted line
+        let target: Element | null = null;
+        for (const child of art.children) {
+          const sp = child.getAttribute("data-sourcepos");
+          if (!sp) continue;
+          const startLine = parseInt(sp.split(":")[0]);
+          if (startLine >= insertedLineNum) {
+            target = child;
+            break;
+          }
+        }
+        // If no element found after, try the last paragraph/ce-spacer
+        if (!target) {
+          const last = art.lastElementChild;
+          if (last) target = last;
+        }
+        if (target && target.getAttribute("contenteditable") !== "false") {
           const range = document.createRange();
-          range.selectNodeContents(nextBlock);
+          range.selectNodeContents(target);
           range.collapse(true);
           const s = window.getSelection();
           s?.removeAllRanges();
           s?.addRange(range);
+          (target as HTMLElement).scrollIntoView?.({ block: "nearest" });
         }
-      });
+      }, 150); // Wait for doRender + React re-render + innerHTML update
     } else {
-      // No sourcepos — fallback: insert new paragraph at end of markdown
-      const newMd = md + "\n\n";
+      // No sourcepos — fallback: append empty paragraph at end
+      const suffix = md.endsWith("\n") ? "\n" : "\n\n";
+      const newMd = md + suffix;
       setMarkdown(newMd);
       doRender(newMd);
       cmSetDoc(newMd);
@@ -5642,22 +5666,8 @@ ${clone.innerHTML}
       }
     }
 
-    // Add escape hint after trapping blocks (blockquote, ul, ol, pre)
-    // Shows a subtle "⌘Enter to exit" hint when the cursor is inside the block
-    if (article.getAttribute("contenteditable") === "true") {
-      article.querySelectorAll(":scope > blockquote, :scope > ul, :scope > ol, :scope > pre").forEach(block => {
-        if (block.nextElementSibling?.classList.contains("ce-escape-hint")) return;
-        const hint = document.createElement("div");
-        hint.className = "ce-escape-hint";
-        hint.contentEditable = "false";
-        const isMac = /Mac|iPhone|iPad/.test(navigator.platform ?? "");
-        hint.textContent = `${isMac ? "⌘" : "Ctrl+"}Enter to exit block`;
-        hint.style.cssText = "font-size:10px;color:var(--text-faint);opacity:0;text-align:center;padding:2px 0;user-select:none;transition:opacity 0.15s;margin:-2px 0 4px;pointer-events:none";
-        block.addEventListener("focusin", () => { hint.style.opacity = "0.6"; });
-        block.addEventListener("focusout", () => { hint.style.opacity = "0"; });
-        block.parentNode?.insertBefore(hint, block.nextSibling);
-      });
-    }
+    // Escape hint for trapping blocks is handled via CSS ::after pseudo-element
+    // See globals.css — article[contenteditable="true"] > blockquote::after etc.
 
     // Suppress browser object resizing/table controls
     try {

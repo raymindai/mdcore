@@ -1024,6 +1024,31 @@ body {
 /* ─── Diagram design system — imported from separate file ─── */
 @import "./diagram-theme.css";
 
+/* Escape-block hint for contentEditable LIVE view */
+article[contenteditable="true"] > blockquote:last-child::after,
+article[contenteditable="true"] > ul:last-child::after,
+article[contenteditable="true"] > ol:last-child::after,
+article[contenteditable="true"] > pre:last-child::after {
+  content: "⌘Enter to exit block";
+  display: block;
+  font-size: 10px;
+  color: var(--text-faint);
+  text-align: center;
+  opacity: 0.35;
+  padding: 4px 0 0;
+  user-select: none;
+  pointer-events: none;
+}
+@supports (-moz-appearance: none) {
+  /* Firefox: use Ctrl instead of ⌘ */
+  article[contenteditable="true"] > blockquote:last-child::after,
+  article[contenteditable="true"] > ul:last-child::after,
+  article[contenteditable="true"] > ol:last-child::after,
+  article[contenteditable="true"] > pre:last-child::after {
+    content: "Ctrl+Enter to exit block";
+  }
+}
+
 /* ASCII specifics */
 .mdcore-rendered .ascii-diagram pre {
   margin: 0 !important;
