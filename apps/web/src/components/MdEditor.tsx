@@ -7496,29 +7496,6 @@ ${clone.innerHTML}
               </div>
             ) : (
               <>
-                {/* Theme picker for non-authenticated users */}
-                <div className="px-2 py-1.5 mb-1 space-y-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                  <div className="text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Key Color</div>
-                  <div className="grid grid-cols-8 gap-1">
-                    {ACCENT_COLORS.map(c => (
-                      <button key={c.name} onClick={() => { setAccentColor(c.name); if (colorScheme !== "default") setColorScheme("default"); }}
-                        className="w-4 h-4 rounded-full transition-transform hover:scale-125"
-                        style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--text-primary)" : "none", outlineOffset: "1px" }}
-                        title={c.label} />
-                    ))}
-                  </div>
-                  <div className="text-[9px] font-mono uppercase tracking-wider pt-1" style={{ color: "var(--text-faint)" }}>Skin</div>
-                  <div className="flex flex-wrap gap-1">
-                    {COLOR_SCHEMES.map(s => (
-                      <button key={s.name} onClick={() => setColorScheme(s.name)}
-                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-colors"
-                        style={{ background: colorScheme === s.name ? "var(--accent-dim)" : "var(--toggle-bg)", color: colorScheme === s.name ? "var(--accent)" : "var(--text-muted)" }}>
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: s.preview }} />
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <button
                   onClick={() => setShowAuthMenu(true)}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-[var(--accent-dim)]"
