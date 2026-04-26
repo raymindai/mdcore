@@ -197,7 +197,8 @@ export async function POST(req: NextRequest) {
     await server.connect(transport);
 
     const body = await req.json();
-    const response = await transport.handleRequest(body);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (transport as any).handleRequest(body, req);
 
     return new Response(JSON.stringify(response), {
       headers: {
