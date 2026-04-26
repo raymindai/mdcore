@@ -8122,7 +8122,7 @@ ${clone.innerHTML}
                 }
               }
             }}>
-              <FloatingToolbar containerRef={previewRef} />
+              {canEdit && <FloatingToolbar containerRef={previewRef} />}
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <MdfyLogo size={18} />

@@ -1062,10 +1062,12 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.css">
   <link rel="stylesheet" href="${cssUri}">
   ${this.isCloudPreview ? `<style>
-    #formatting-toolbar, #source-view, #split-divider, .toolbar-group { display: none !important; }
-    #live-view { width: 100% !important; }
+    #formatting-toolbar, #live-formatting-toolbar, #source-view, #split-divider, .toolbar-group, #selection-toolbar { display: none !important; }
+    #live-pane { width: 100% !important; height: 100% !important; }
+    #content-wrapper { flex: 1; min-height: 0; }
+    #content-scroll { height: 100%; }
     body { cursor: default; }
-    article[contenteditable="false"] { user-select: text; }
+    article[contenteditable="false"] { user-select: text; cursor: default; }
   </style>` : ""}
   <title>mdfy Preview</title>
 </head>
