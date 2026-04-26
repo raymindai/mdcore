@@ -1740,8 +1740,6 @@ export default function MdEditor() {
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const isDraggingSidebar = useRef(false);
 
-  // Sidebar ref for document list
-  const sidebarListRef = useRef<HTMLDivElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
@@ -2209,15 +2207,6 @@ export default function MdEditor() {
     const fromPopstate = isPopstateRef.current;
     isPopstateRef.current = false;
 
-    // FLIP: capture positions BEFORE React re-renders
-    const flipPositions = new Map<string, number>();
-    const sidebarEl = sidebarListRef.current;
-    // Search entire document for tab elements (they may be nested in folders)
-    document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-      flipPositions.set(el.dataset.tabId!, el.getBoundingClientRect().top);
-    });
-    console.log("[FLIP] captured:", flipPositions.size);
-
     setTabs((prev) => {
       const saved = prev.map((t) => {
         if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
@@ -2236,27 +2225,6 @@ export default function MdEditor() {
       }
       return saved;
     });
-
-    // FLIP: animate after React commits DOM
-    if (flipPositions.size > 0) {
-      setTimeout(() => {
-        let count = 0;
-        document.querySelectorAll<HTMLElement>("[data-tab-id]").forEach(el => {
-          const id = el.dataset.tabId!;
-          const oldTop = flipPositions.get(id);
-          if (oldTop == null) return;
-          const newTop = el.getBoundingClientRect().top;
-          const delta = oldTop - newTop;
-          if (Math.abs(delta) < 2) return;
-          count++;
-          el.animate(
-            [{ transform: `translateY(${delta}px)` }, { transform: "translateY(0)" }],
-            { duration: 300, easing: "cubic-bezier(0.33, 1, 0.68, 1)" }
-          );
-        });
-        console.log("[FLIP] animated:", count, "found:", document.querySelectorAll("[data-tab-id]").length);
-      }, 300);
-    }
   }, [loadTab]);
 
   // Handle browser back/forward navigation
@@ -6642,7 +6610,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     {/* Document list — scrollable */}
-                    <div ref={sidebarListRef} className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
@@ -6659,7 +6627,7 @@ ${clone.innerHTML}
                       {visibleRootTabs.map((tab) => (
                         <div
                           key={tab.id}
-                          data-tab-id={tab.id}
+
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
@@ -7046,7 +7014,7 @@ ${clone.innerHTML}
                             {!folder.collapsed && (
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {folderTabs.map(tab => (
-                                  <div key={tab.id} data-tab-id={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                                  <div key={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
