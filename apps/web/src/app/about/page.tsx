@@ -150,9 +150,10 @@ export default function AboutPage() {
       <section style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 60px" }}>
         <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
           <img
-            src="/images/hero-editor.png"
+            src="/images/hero-editor.webp"
             alt="mdfy.cc editor — write Markdown, see it beautifully rendered"
-            style={{ width: "100%", display: "block", borderRadius: 12, aspectRatio: "16/9", objectFit: "cover" }}
+            className="lightbox-img"
+            style={{ width: "100%", display: "block", borderRadius: 12 }}
           />
         </div>
       </section>
@@ -188,7 +189,7 @@ export default function AboutPage() {
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         {/* Before/After visual — raw md vs rendered */}
         <div style={{ margin: "0 auto 32px", maxWidth: 960, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-          <img src="/images/before-after.png" alt="Raw Markdown on the left, beautifully rendered mdfy output on the right" style={{ width: "100%", display: "block" }} />
+          <img src="/images/before-after.webp" alt="Raw Markdown on the left, beautifully rendered mdfy output on the right" className="lightbox-img" style={{ width: "100%", display: "block" }} />
         </div>
         <div className="about-grid-2" style={{ gap: 16 }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "28px 24px" }}>
@@ -314,10 +315,10 @@ export default function AboutPage() {
         {/* Feature showcase images */}
         <div className="about-grid-2" style={{ margin: "0 auto 48px", maxWidth: 960 }}>
           <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-            <img src="/images/feature-showcase-1.png" alt="mdfy.cc rendering — beautifully rendered Markdown document" style={{ width: "100%", display: "block" }} />
+            <img src="/images/feature-showcase-1.webp" alt="mdfy.cc rendering — beautifully rendered Markdown document" className="lightbox-img" style={{ width: "100%", display: "block" }} />
           </div>
           <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-            <img src="/images/feature-showcase-2.png" alt="mdfy.cc rendering — KaTeX math, Mermaid diagrams, and code" style={{ width: "100%", display: "block" }} />
+            <img src="/images/feature-showcase-2.webp" alt="mdfy.cc rendering — KaTeX math, Mermaid diagrams, and code" className="lightbox-img" style={{ width: "100%", display: "block" }} />
           </div>
         </div>
         <h2
@@ -386,21 +387,21 @@ export default function AboutPage() {
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <div className="about-grid-3">
           <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-            <img src="/images/feature-math.png" alt="KaTeX math rendering — inline and display equations" style={{ width: "100%", display: "block" }} />
+            <img src="/images/feature-math.webp" alt="KaTeX math rendering — inline and display equations" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>KaTeX Math</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Publication-quality equations</p>
             </div>
           </div>
           <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-            <img src="/images/feature-mermaid.png" alt="Mermaid diagram — flowchart rendered from Markdown" style={{ width: "100%", display: "block" }} />
+            <img src="/images/feature-mermaid.webp" alt="Mermaid diagram — flowchart rendered from Markdown" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Mermaid Diagrams</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Flowcharts, sequences, Gantt</p>
             </div>
           </div>
           <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-            <img src="/images/feature-code.png" alt="Syntax-highlighted code block with copy button" style={{ width: "100%", display: "block" }} />
+            <img src="/images/feature-code.webp" alt="Syntax-highlighted code block with copy button" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Code Highlighting</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>190+ languages, copy button</p>
@@ -676,6 +677,36 @@ export default function AboutPage() {
 
       {/* ───────── 10. FOOTER ───────── */}
       <SiteFooter />
+
+      {/* ───────── LIGHTBOX ───────── */}
+      <div id="lightbox-overlay" className="lightbox-overlay" />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            document.addEventListener('click', function(e) {
+              if (e.target.classList.contains('lightbox-img')) {
+                var overlay = document.getElementById('lightbox-overlay');
+                overlay.innerHTML = '<img src="' + e.target.src + '" alt="' + (e.target.alt || '') + '" />';
+                overlay.classList.add('active');
+              }
+            });
+            document.addEventListener('click', function(e) {
+              var overlay = document.getElementById('lightbox-overlay');
+              if (e.target === overlay || e.target.parentElement === overlay) {
+                overlay.classList.remove('active');
+                overlay.innerHTML = '';
+              }
+            });
+            document.addEventListener('keydown', function(e) {
+              if (e.key === 'Escape') {
+                var overlay = document.getElementById('lightbox-overlay');
+                overlay.classList.remove('active');
+                overlay.innerHTML = '';
+              }
+            });
+          `,
+        }}
+      />
     </div>
   );
 }
