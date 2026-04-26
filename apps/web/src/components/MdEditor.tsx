@@ -4350,6 +4350,19 @@ export default function MdEditor() {
       document.execCommand("insertText", false, md);
       return;
     }
+
+    // Check for markdown text paste (from agents, .md files, etc.)
+    // Detect markdown by common patterns: headings, bold, code blocks, lists
+    if (text && /^#{1,6}\s|^\*\*|^```|^- \[|^\d+\.\s|^>\s|^\|.*\|/m.test(text)) {
+      e.preventDefault();
+      // Insert into markdown source at cursor position and re-render
+      saveInsertPosition();
+      const newMd = insertBlockAtCursor(text);
+      setMarkdown(newMd);
+      doRender(newMd);
+      cmSetDoc(newMd);
+      return;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
   }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
