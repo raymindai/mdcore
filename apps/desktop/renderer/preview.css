@@ -1966,10 +1966,11 @@ body {
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   pointer-events: none;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-all;
   opacity: 0;
   transition: opacity 0.08s;
-  max-width: 220px;
+  max-width: 480px;
 }
 .mdfy-tip.show { opacity: 1; }
 .mdfy-tip .tip-label {

@@ -667,7 +667,7 @@
   function renderLocalItem(f) {
     var active = f.filePath === currentFilePath ? " active" : "";
     return '<div class="file-item' + active + '" data-path="' + esc(f.filePath) + '" title="' + esc(f.filePath) + '">' +
-      '<div class="file-icon local" title="Local only">' + SBI.file + '</div>' +
+      '<div class="file-icon local">' + SBI.file + '</div>' +
       '<div class="file-info"><div class="file-name">' + esc(f.fileName) + '</div><div class="file-meta">' + esc(f.relativePath) + '</div></div>' +
       '<div class="file-actions">' +
         '<button data-action="publish" data-path="' + esc(f.filePath) + '" title="Sync to mdfy.cc">' + SBI.upload + '</button>' +
