@@ -4408,6 +4408,82 @@ export default function MdEditor() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- saveInsertPosition/insertBlockAtCursor are stable refs defined later
   }, [setMarkdown, cmSetDoc, doRender, uploadImage]);
 
+  // Cmd+Enter (or Ctrl+Enter) in LIVE view: escape from blockquote, list, code block, table
+  // Inserts a new paragraph after the current block in the markdown source
+  const handleWysiwygKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!((e.metaKey || e.ctrlKey) && e.key === "Enter")) return;
+
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+
+    // Walk up from cursor to find a trapping block (blockquote, ul, ol, pre, table)
+    const article = previewRef.current?.querySelector("article");
+    if (!article) return;
+    let node: Node | null = sel.getRangeAt(0).startContainer;
+    if (node?.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    let trappingBlock: HTMLElement | null = null;
+    while (node && node !== article) {
+      const tag = (node as HTMLElement).tagName?.toLowerCase();
+      if (tag && ["blockquote", "ul", "ol", "pre", "table"].includes(tag)) {
+        trappingBlock = node as HTMLElement;
+        // Don't break — keep walking up to find the outermost trapping block
+      }
+      node = (node as HTMLElement).parentElement;
+    }
+    if (!trappingBlock) return;
+
+    e.preventDefault();
+
+    // Find the block's position in markdown via data-sourcepos
+    const sourcepos = trappingBlock.getAttribute("data-sourcepos");
+    const spMatch = sourcepos?.match(/^(\d+):\d+-(\d+):\d+$/);
+    const md = markdownRef.current;
+
+    if (spMatch) {
+      const endLine = parseInt(spMatch[2]); // 1-indexed
+      // Account for frontmatter offset
+      const lines = md.split("\n");
+      let fmOffset = 0;
+      if (lines[0]?.trim() === "---") {
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i]?.trim() === "---") { fmOffset = i + 1; break; }
+        }
+      }
+      const actualEnd = endLine - 1 + fmOffset; // 0-indexed
+      // Insert empty line after the block
+      const before = lines.slice(0, actualEnd + 1);
+      const after = lines.slice(actualEnd + 1);
+      const newMd = [...before, "", ""].concat(after).join("\n");
+      setMarkdown(newMd);
+      doRender(newMd);
+      cmSetDoc(newMd);
+
+      // After render, place cursor at the new empty paragraph
+      requestAnimationFrame(() => {
+        const art = previewRef.current?.querySelector("article");
+        if (!art) return;
+        // Find the element right after the trapping block
+        const allBlocks = Array.from(art.children);
+        const blockIdx = allBlocks.indexOf(trappingBlock!);
+        const nextBlock = allBlocks[blockIdx + 1] || allBlocks[blockIdx + 2];
+        if (nextBlock) {
+          const range = document.createRange();
+          range.selectNodeContents(nextBlock);
+          range.collapse(true);
+          const s = window.getSelection();
+          s?.removeAllRanges();
+          s?.addRange(range);
+        }
+      });
+    } else {
+      // No sourcepos — fallback: insert new paragraph at end of markdown
+      const newMd = md + "\n\n";
+      setMarkdown(newMd);
+      doRender(newMd);
+      cmSetDoc(newMd);
+    }
+  }, [setMarkdown, doRender, cmSetDoc]);
+
   const handleWysiwygInput = useCallback(() => {
     wysiwygEditingRef.current = true;
     if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
@@ -5566,6 +5642,23 @@ ${clone.innerHTML}
       }
     }
 
+    // Add escape hint after trapping blocks (blockquote, ul, ol, pre)
+    // Shows a subtle "⌘Enter to exit" hint when the cursor is inside the block
+    if (article.getAttribute("contenteditable") === "true") {
+      article.querySelectorAll(":scope > blockquote, :scope > ul, :scope > ol, :scope > pre").forEach(block => {
+        if (block.nextElementSibling?.classList.contains("ce-escape-hint")) return;
+        const hint = document.createElement("div");
+        hint.className = "ce-escape-hint";
+        hint.contentEditable = "false";
+        const isMac = /Mac|iPhone|iPad/.test(navigator.platform ?? "");
+        hint.textContent = `${isMac ? "⌘" : "Ctrl+"}Enter to exit block`;
+        hint.style.cssText = "font-size:10px;color:var(--text-faint);opacity:0;text-align:center;padding:2px 0;user-select:none;transition:opacity 0.15s;margin:-2px 0 4px;pointer-events:none";
+        block.addEventListener("focusin", () => { hint.style.opacity = "0.6"; });
+        block.addEventListener("focusout", () => { hint.style.opacity = "0"; });
+        block.parentNode?.insertBefore(hint, block.nextSibling);
+      });
+    }
+
     // Suppress browser object resizing/table controls
     try {
       document.execCommand("enableObjectResizing", false, "false");
@@ -6717,7 +6810,7 @@ ${clone.innerHTML}
                             {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="shrink-0 rounded flex items-center justify-center w-0 group-hover:w-[18px] overflow-hidden transition-all duration-150" style={{ color: "var(--text-muted)", padding: "0" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -6845,7 +6938,7 @@ ${clone.innerHTML}
                                       {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                                      className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                                      className="shrink-0 rounded flex items-center justify-center w-0 group-hover:w-[18px] overflow-hidden transition-all duration-150" style={{ color: "var(--text-muted)", padding: "0" }} title="Document options">
                                       <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
@@ -7052,7 +7145,7 @@ ${clone.innerHTML}
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
                           )}
                           <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded hidden group-hover:flex items-center justify-center" style={{ color: "var(--text-muted)", padding: "2px" }} title="Document options">
+                            className="shrink-0 rounded flex items-center justify-center w-0 group-hover:w-[18px] overflow-hidden transition-all duration-150" style={{ color: "var(--text-muted)", padding: "0" }} title="Document options">
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
@@ -8174,6 +8267,7 @@ ${clone.innerHTML}
                   suppressContentEditableWarning
                   onInput={canEdit ? handleWysiwygInput : undefined}
                   onPaste={canEdit ? handleWysiwygPaste : undefined}
+                  onKeyDown={canEdit ? handleWysiwygKeyDown : undefined}
                   className={`mdcore-rendered focus:outline-none ${
                     narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
@@ -8187,6 +8281,7 @@ ${clone.innerHTML}
                   suppressContentEditableWarning
                   onInput={canEdit ? handleWysiwygInput : undefined}
                   onPaste={canEdit ? handleWysiwygPaste : undefined}
+                  onKeyDown={canEdit ? handleWysiwygKeyDown : undefined}
                   className={`mdcore-rendered focus:outline-none ${
                     narrowView
                       ? "p-3 sm:p-6 mx-auto max-w-3xl"
