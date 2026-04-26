@@ -32,8 +32,10 @@ function DocStatusIcon({ tab, isActive }: {
     Icon = Share2; color = "#4ade80"; tip = "Shared (anyone with link)";
   } else if (isPublished && hasSharedPeople) {
     Icon = Users; color = "#60a5fa"; tip = "Shared with specific people";
+  } else if (tab.cloudId) {
+    Icon = Cloud; color = "var(--text-faint)"; tip = isPublished ? "Cloud (published)" : "Cloud";
   } else {
-    Icon = FileIcon; color = "var(--text-faint)"; tip = isPublished ? "Published" : "Private";
+    Icon = FileIcon; color = "var(--text-faint)"; tip = "Local";
   }
 
   if (isSynced) tip += ` · Synced (${tab.source})`;

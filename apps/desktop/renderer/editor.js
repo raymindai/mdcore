@@ -635,13 +635,16 @@
     if (editMode === 'readonly') {
       return '<div class="file-icon readonly" title="View only">' + SBI.eye + badge + '</div>';
     }
-    if (editMode === 'view' || editMode === 'public' || (!isDraft && editMode !== 'private')) {
+    if (editMode === 'view' || editMode === 'public') {
       return '<div class="file-icon shared" title="Shared publicly">' + SBI.share + badge + '</div>';
     }
     if (allowedEmails && allowedEmails.length > 0) {
       return '<div class="file-icon restricted" title="Shared with specific people">' + SBI.users + badge + '</div>';
     }
-    return '<div class="file-icon local" title="Private">' + SBI.file + badge + '</div>';
+    if (doc.id || doc.docId) {
+      return '<div class="file-icon cloud" title="Cloud">' + SBI.cloud + badge + '</div>';
+    }
+    return '<div class="file-icon local" title="Local">' + SBI.file + badge + '</div>';
   }
 
   function renderSyncedItem(f) {

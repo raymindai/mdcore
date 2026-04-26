@@ -1029,14 +1029,18 @@ body {
         return '<div class="doc-icon readonly">' + icon('eye', 14) + badge + '</div>';
       }
       // Shared publicly
-      if (editMode === 'view' || editMode === 'public' || (!isDraft && editMode !== 'private')) {
+      if (editMode === 'view' || editMode === 'public') {
         return '<div class="doc-icon shared">' + icon('share', 14) + badge + '</div>';
       }
       // Shared with specific people
       if (allowedEmails && allowedEmails.length > 0) {
         return '<div class="doc-icon restricted">' + icon('users', 14) + badge + '</div>';
       }
-      // Private/draft default
+      // Cloud (has docId)
+      if (doc.docId) {
+        return '<div class="doc-icon cloud">' + icon('cloud', 14) + badge + '</div>';
+      }
+      // Local file
       return '<div class="doc-icon local">' + icon('file', 14) + badge + '</div>';
     }
 
