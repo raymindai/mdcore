@@ -47,9 +47,11 @@ function ParamRow({ name, type, required, children }: { name: string; type: stri
 
 const sidebarItems = [
   { id: "what-is-mcp", label: "What is MCP" },
-  { id: "installation", label: "Installation" },
+  { id: "claude-web", label: "Claude Web (Hosted)" },
+  { id: "installation", label: "Local Installation" },
   { id: "claude-code", label: "Claude Code Setup" },
   { id: "claude-desktop", label: "Claude Desktop Setup" },
+  { id: "cursor", label: "Cursor / Windsurf" },
   { id: "tools", label: "Available Tools" },
   { id: "mdfy-create", label: "mdfy_create" },
   { id: "mdfy-read", label: "mdfy_read" },
@@ -193,8 +195,27 @@ export default function McpDocsPage() {
             </p>
           </Card>
 
+          {/* Claude Web — Hosted */}
+          <SectionHeading id="claude-web">Claude Web (Hosted MCP)</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Use mdfy.cc directly in <strong style={{ color: "var(--text-primary)" }}>claude.ai</strong> via our hosted MCP endpoint — no local install required.
+          </p>
+          <Card>
+            <SubLabel>Endpoint URL</SubLabel>
+            <CodeBlock>{`https://mdfy.cc/api/mcp`}</CodeBlock>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 16, marginBottom: 8, lineHeight: 1.7 }}>
+              In Claude.ai → <strong style={{ color: "var(--text-muted)" }}>Settings → Integrations / Connectors</strong> → Add custom MCP server → paste the URL above.
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0, lineHeight: 1.7 }}>
+              Same hosted endpoint works for any MCP-compatible client that supports remote HTTP MCP (Cursor, ChatGPT, Gemini, etc.).
+            </p>
+          </Card>
+
           {/* Installation */}
-          <SectionHeading id="installation">Installation</SectionHeading>
+          <SectionHeading id="installation">Local Installation</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            For local stdio-based clients (Claude Desktop, Claude Code, Cursor stdio mode), install the npm package:
+          </p>
           <Card>
             <CodeBlock lang="bash">{`npm install -g mdfy-cli && mdfy login`}</CodeBlock>
             <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>
@@ -237,6 +258,22 @@ export default function McpDocsPage() {
     "mdfy": {
       "command": "npx",
       "args": ["mdfy-mcp"]
+    }
+  }
+}`}</CodeBlock>
+          </Card>
+
+          {/* Cursor / Windsurf */}
+          <SectionHeading id="cursor">Cursor / Windsurf</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            Cursor and Windsurf both support MCP. Use the hosted HTTP endpoint or the npm package.
+          </p>
+          <Card>
+            <SubLabel>Cursor — Settings → MCP → Add new global MCP server</SubLabel>
+            <CodeBlock lang="json">{`{
+  "mcpServers": {
+    "mdfy": {
+      "url": "https://mdfy.cc/api/mcp"
     }
   }
 }`}</CodeBlock>

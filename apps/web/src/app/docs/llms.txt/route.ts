@@ -231,9 +231,20 @@ const docs = await client.list();
 
 ## MCP Server
 
+Two ways to connect:
+
+### Option A: Hosted HTTP MCP (Claude Web, Cursor, etc.)
+
+URL: https://mdfy.cc/api/mcp
+
+In Claude.ai: Settings → Integrations → Add custom MCP server → paste the URL.
+In Cursor: Settings → MCP → Add server with { "url": "https://mdfy.cc/api/mcp" }.
+
+### Option B: Local stdio MCP (Claude Desktop, Claude Code)
+
 Prerequisites: npm install -g mdfy-cli && mdfy login
 
-Config (.mcp.json):
+Config (.mcp.json or claude_desktop_config.json):
 \`\`\`json
 {
   "mcpServers": {
@@ -245,13 +256,15 @@ Config (.mcp.json):
 }
 \`\`\`
 
-Tools:
-- mdfy_create(markdown, title?, isDraft?): Create document, returns url/id/editToken
+### Tools (same on both transports)
+
+- mdfy_create(markdown, title?, draft?): Create document, returns url/id
 - mdfy_read(id): Read document content and metadata
-- mdfy_update(id, markdown?, title?, changeSummary?): Update document
-- mdfy_list(): List user's documents
-- mdfy_publish(id, isDraft): Toggle draft/published
-- mdfy_delete(id): Soft-delete document
+- mdfy_update(id, markdown?, title?): Update document
+- mdfy_list(): List user's documents (auth required)
+- mdfy_search(query): Full-text search user's documents (auth required)
+- mdfy_publish(id, isDraft): Toggle draft/published (stdio only)
+- mdfy_delete(id): Delete document
 
 ## npm Packages
 

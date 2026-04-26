@@ -57,7 +57,7 @@ const quickStartCards = [
   {
     tag: "MCP",
     title: "MCP Server",
-    desc: "Let Claude, Cursor, and Windsurf manage documents directly.",
+    desc: "Hosted HTTP endpoint for Claude Web + npm package for Claude Desktop, Cursor, Windsurf.",
     href: "/docs/mcp",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -496,7 +496,7 @@ export default function PluginsPage() {
               },
               {
                 title: "Compatibility",
-                items: ["Works with Claude Code", "Works with Claude Desktop", "Works with any MCP-compatible tool", "Email-based auth -- no API keys needed"],
+                items: ["Claude Web (claude.ai) -- hosted HTTP MCP", "Claude Desktop / Claude Code -- stdio", "Cursor / Windsurf / Zed -- HTTP or stdio", "ChatGPT, Gemini, and any MCP client"],
               },
               {
                 title: "Developer Experience",
@@ -534,6 +534,31 @@ export default function PluginsPage() {
             <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16, marginTop: 0 }}>
               Install
             </h3>
+
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginTop: 0, marginBottom: 8 }}>
+              Option A — Claude Web / Cursor (hosted, no install)
+            </p>
+            <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 12, marginTop: 0 }}>
+              Add this URL in your client&apos;s MCP / Connectors settings:
+            </p>
+            <pre
+              style={{
+                background: "var(--background)",
+                borderRadius: 10,
+                padding: "14px 18px",
+                fontSize: 13,
+                fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
+                color: "var(--text-secondary)",
+                margin: "0 0 24px",
+                border: "1px solid var(--border-dim)",
+              }}
+            >
+              <code>https://mdfy.cc/api/mcp</code>
+            </pre>
+
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginTop: 0, marginBottom: 8 }}>
+              Option B — Claude Desktop / Claude Code (local stdio)
+            </p>
             <p
               style={{
                 fontSize: 14,
@@ -575,10 +600,7 @@ export default function PluginsPage() {
   "mcpServers": {
     "mdfy": {
       "command": "npx",
-      "args": ["mdfy-mcp"],
-      "env": {
-        "MDFY_EMAIL": "your@email.com"
-      }
+      "args": ["mdfy-mcp"]
     }
   }
 }`}</code>
