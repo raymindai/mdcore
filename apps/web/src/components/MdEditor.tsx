@@ -4351,19 +4351,27 @@ export default function MdEditor() {
     const text = e.clipboardData.getData("text/plain");
     const html = e.clipboardData.getData("text/html");
 
-    // Check for CLI output first — insert at cursor, don't replace document
+    // Check for CLI output first — convert and insert into source + re-render
     if (text && isCliOutput(text)) {
       e.preventDefault();
       const converted = cliToMarkdown(text);
-      document.execCommand("insertText", false, converted);
+      saveInsertPosition();
+      const newMd = insertBlockAtCursor(converted);
+      setMarkdown(newMd);
+      doRender(newMd);
+      cmSetDoc(newMd);
       return;
     }
 
-    // Check for HTML paste — insert converted markdown at cursor
+    // Check for HTML paste — convert to markdown, insert into source + re-render
     if (html && isHtmlContent(html)) {
       e.preventDefault();
       const md = htmlToMarkdown(html);
-      document.execCommand("insertText", false, md);
+      saveInsertPosition();
+      const newMd = insertBlockAtCursor(md);
+      setMarkdown(newMd);
+      doRender(newMd);
+      cmSetDoc(newMd);
       return;
     }
 
