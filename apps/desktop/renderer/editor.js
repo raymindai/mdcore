@@ -1783,6 +1783,7 @@
           katex.render(el.textContent || "", el, {
             displayMode: el.getAttribute("data-math-style") === "display",
             throwOnError: false,
+            strict: false,
           });
         } catch (e) {}
       }
