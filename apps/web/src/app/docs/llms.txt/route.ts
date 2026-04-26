@@ -256,15 +256,50 @@ Config (.mcp.json or claude_desktop_config.json):
 }
 \`\`\`
 
-### Tools (same on both transports)
+### Tools (hosted HTTP MCP exposes 25)
 
+Core CRUD:
 - mdfy_create(markdown, title?, draft?): Create document, returns url/id
-- mdfy_read(id): Read document content and metadata
-- mdfy_update(id, markdown?, title?): Update document
-- mdfy_list(): List user's documents (auth required)
-- mdfy_search(query): Full-text search user's documents (auth required)
-- mdfy_publish(id, isDraft): Toggle draft/published (stdio only)
+- mdfy_read(id): Read document content
+- mdfy_update(id, markdown, title?): Update document
 - mdfy_delete(id): Delete document
+- mdfy_list(): List user's documents (auth)
+- mdfy_search(query): Full-text search (auth)
+
+Append/Prepend:
+- mdfy_append(id, content, separator?): Append content
+- mdfy_prepend(id, content): Prepend content
+
+Sections:
+- mdfy_outline(id): Get heading-based outline / TOC
+- mdfy_extract_section(id, heading): Extract content of a section
+- mdfy_replace_section(id, heading, newContent): Replace a section
+
+Duplicate/Import:
+- mdfy_duplicate(id, title?): Duplicate as new document
+- mdfy_import_url(url, title?): Fetch URL → markdown → save
+
+Sharing:
+- mdfy_publish(id, published): Toggle public/private
+- mdfy_set_password(id, password): Set/remove password
+- mdfy_set_expiry(id, expiresInHours): Set/clear expiration
+- mdfy_set_allowed_emails(id, emails): Restrict to email allowlist
+- mdfy_get_share_url(id): Get URL + access metadata
+
+Versions:
+- mdfy_versions(id): List version history
+- mdfy_restore_version(id, versionId): Restore previous version
+- mdfy_diff(id, fromVersionId, toVersionId): Line-level diff
+
+Stats/Folders:
+- mdfy_stats(id): View count, dates, status
+- mdfy_recent(): Recently visited (auth)
+- mdfy_folder_list(): List folders (auth)
+- mdfy_folder_create(name, parentId?): Create folder (auth)
+- mdfy_move_to_folder(documentId, folderId): Move doc to folder
+
+The local stdio package (mdfy-mcp v1.3.0) currently exposes the 6 core tools.
+For the full 25, use the hosted HTTP endpoint.
 
 ## npm Packages
 

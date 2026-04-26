@@ -52,7 +52,7 @@ const sidebarItems = [
   { id: "claude-code", label: "Claude Code Setup" },
   { id: "claude-desktop", label: "Claude Desktop Setup" },
   { id: "cursor", label: "Cursor / Windsurf" },
-  { id: "tools", label: "Available Tools" },
+  { id: "tools", label: "All 25 Tools" },
   { id: "mdfy-create", label: "mdfy_create" },
   { id: "mdfy-read", label: "mdfy_read" },
   { id: "mdfy-update", label: "mdfy_update" },
@@ -280,9 +280,31 @@ export default function McpDocsPage() {
           </Card>
 
           {/* Tools */}
-          <SectionHeading id="tools">Available Tools</SectionHeading>
-          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 24 }}>
-            The MCP server exposes 6 tools. Edit tokens are managed automatically by the server.
+          <SectionHeading id="tools">All 25 Tools</SectionHeading>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
+            The hosted MCP exposes 25 tools across 7 categories.
+            Auth happens via the user&apos;s mdfy.cc session (no API keys).
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 8, marginBottom: 24 }}>
+            {[
+              { cat: "Core CRUD", tools: ["mdfy_create", "mdfy_read", "mdfy_update", "mdfy_delete", "mdfy_list", "mdfy_search"] },
+              { cat: "Append/Prepend", tools: ["mdfy_append", "mdfy_prepend"] },
+              { cat: "Sections", tools: ["mdfy_outline", "mdfy_extract_section", "mdfy_replace_section"] },
+              { cat: "Duplicate/Import", tools: ["mdfy_duplicate", "mdfy_import_url"] },
+              { cat: "Sharing", tools: ["mdfy_publish", "mdfy_set_password", "mdfy_set_expiry", "mdfy_set_allowed_emails", "mdfy_get_share_url"] },
+              { cat: "Versions", tools: ["mdfy_versions", "mdfy_restore_version", "mdfy_diff"] },
+              { cat: "Stats/Folders", tools: ["mdfy_stats", "mdfy_recent", "mdfy_folder_list", "mdfy_folder_create", "mdfy_move_to_folder"] },
+            ].map((g) => (
+              <div key={g.cat} style={{ background: "var(--surface)", padding: "12px 14px", borderRadius: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{g.cat}</div>
+                {g.tools.map((t) => (
+                  <code key={t} style={{ display: "block", fontSize: 12, fontFamily: mono, color: "var(--accent)", padding: "2px 0" }}>{t}</code>
+                ))}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", lineHeight: 1.7, marginBottom: 24 }}>
+            Detailed parameters for the 6 core tools below. The other 19 follow the same pattern — the AI will autocomplete arguments from the tool descriptions when called.
           </p>
 
           <div
