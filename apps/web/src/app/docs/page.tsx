@@ -117,15 +117,13 @@ export default function DocsPage() {
           ]}
           currentPath="/docs"
         />
-        <main style={{ minWidth: 0 }}>
+        <main style={{ paddingTop: 40, paddingBottom: 80, minWidth: 0 }}>
 
       {/* ───────── HERO ───────── */}
       <section
         style={{
           position: "relative",
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "100px 24px 80px",
+          padding: "40px 0 60px",
         }}
       >
         <div
@@ -221,7 +219,7 @@ export default function DocsPage() {
 
       {/* ───────── QUICK START ───────── */}
       <section
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ padding: "0 0 80px" }}
       >
         <h2
           style={{
@@ -337,7 +335,7 @@ export default function DocsPage() {
 
       {/* ───────── TRY IT ───────── */}
       <section
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ padding: "0 0 80px" }}
       >
         <h2
           style={{
@@ -385,7 +383,7 @@ export default function DocsPage() {
 
       {/* ───────── EXPLORE ───────── */}
       <section
-        style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 80px" }}
+        style={{ padding: "0 0 80px" }}
       >
         <h2
           style={{
