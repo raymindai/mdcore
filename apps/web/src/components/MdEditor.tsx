@@ -2601,7 +2601,6 @@ export default function MdEditor() {
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
-        if (t.id === tabId) return { ...t, lastOpenedAt: Date.now() };
         if (t.id !== currentTabId || t.readonly) return t;
         return { ...t, markdown: currentMd };
       });
@@ -2615,6 +2614,10 @@ export default function MdEditor() {
           }
         });
       }
+      // Delay sort update so the sidebar doesn't jump instantly
+      setTimeout(() => {
+        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
+      }, 600);
       return saved;
     });
   }, [loadTab]);
