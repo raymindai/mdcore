@@ -8357,7 +8357,16 @@ ${clone.innerHTML}
                   if (recent.length === 0) return null;
                   return (
                     <div className="mb-6">
-                      <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Recent</div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>Recent</div>
+                        <button
+                          onClick={() => { setTabs(prev => prev.map(t => ({ ...t, lastOpenedAt: undefined }))); }}
+                          className="text-[10px] cursor-pointer"
+                          style={{ color: "var(--text-faint)", background: "none", border: "none", padding: "2px 6px", opacity: 0.6 }}
+                        >
+                          Clear
+                        </button>
+                      </div>
                       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                         {recent.map((t, i) => (
                           <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
