@@ -834,6 +834,316 @@ Introduction paragraph that hooks the reader.
   },
 ];
 
+const SAMPLE_CHROME_EXT = `# Chrome Extension
+
+> Capture AI conversations from ChatGPT, Claude, and Gemini with one click.
+
+## Install
+
+1. Visit [Chrome Web Store](https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold)
+2. Click "Add to Chrome"
+3. Pin the extension for easy access
+
+## Usage
+
+### Capture from ChatGPT / Claude / Gemini
+
+1. Open any AI conversation
+2. Click the **mdfy** floating button (bottom-right corner)
+3. Conversation is auto-formatted with User/Assistant roles
+4. URL is copied to clipboard
+
+### Capture from Any Page
+
+1. Click the mdfy icon in the toolbar
+2. Select "Capture Page"
+3. Page content is converted to Markdown and published
+
+## What Gets Captured
+
+| Source | Format |
+|--------|--------|
+| ChatGPT | Formatted conversation with roles |
+| Claude | Formatted conversation with roles |
+| Gemini | Formatted conversation with roles |
+| Any webpage | Clean Markdown from page content |
+| Selected text | Just the selection |
+
+## Tips
+
+- The floating button only appears on AI chat sites
+- All captures are **private by default**
+- URLs are permanent — share once, update anytime
+`;
+
+const SAMPLE_VSCODE_EXT = `# VS Code Extension
+
+> WYSIWYG preview, one-click publish, and bidirectional sync.
+
+## Install
+
+\`\`\`bash
+ext install raymindai.mdfy-vscode
+\`\`\`
+
+Or search "mdfy" in VS Code Extensions.
+
+## Quick Start
+
+1. Open any \`.md\` file
+2. Press **Cmd+Shift+M** to open WYSIWYG preview
+3. Press **Cmd+Alt+P** to publish → get a URL
+4. Share the URL — recipients see a rendered document
+
+## Features
+
+- **WYSIWYG** — click and type directly in the preview
+- **Toolbar** — bold, italic, headings, lists, code, tables
+- **Cloud Sync** — push/pull with conflict detection
+- **Sidebar** — browse ALL / SYNCED / LOCAL / CLOUD documents
+- **AI Tools** — Polish, Summary, TL;DR, Translate, Ask AI
+- **Export** — HTML, rich text, Markdown
+- **Outline** — document structure panel
+
+## Keyboard Shortcuts
+
+| Shortcut | Command |
+|----------|---------|
+| \`Cmd+Shift+M\` | Open WYSIWYG preview |
+| \`Cmd+Alt+P\` | Publish to mdfy.cc |
+| \`Cmd+Alt+E\` | Export document |
+
+## Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| \`mdfy.theme\` | \`auto\` | Follows your VS Code theme |
+| \`mdfy.autoSync\` | \`false\` | Auto-push on save |
+| \`mdfy.autoPreview\` | \`true\` | Auto-open preview for .md files |
+| \`mdfy.syncInterval\` | \`30\` | Polling interval (seconds) |
+`;
+
+const SAMPLE_DESKTOP = `# mdfy for Mac
+
+> Native desktop app with sidebar, sync, and local WASM rendering.
+
+## Install
+
+1. Download the DMG from [mdfy.cc/plugins](https://mdfy.cc/plugins)
+2. Drag **mdfy.app** to Applications
+3. Launch mdfy
+
+## Sidebar
+
+| Tab | Contents |
+|-----|----------|
+| ALL | Everything — local + synced + cloud |
+| SYNCED | Local files linked to mdfy.cc |
+| LOCAL | Unpublished local files |
+| CLOUD | Documents on mdfy.cc with folders |
+
+## Editing Modes
+
+- **Live** — WYSIWYG editing in rendered preview
+- **Split** — Source on left, preview on right
+- **Source** — Raw Markdown with CodeMirror
+
+## Publish
+
+Click the orange **Publish** button → URL copied to clipboard.
+
+## Features
+
+- Full WASM rendering engine (same as mdfy.cc)
+- KaTeX math, Mermaid diagrams, 190+ language highlighting
+- Document outline panel
+- Import: PDF, DOCX, PPTX, XLSX, HTML, CSV
+- Export: HTML, PDF (print), rich text
+- AI tools: Polish, Summarize, Translate, Ask AI
+- Dark and light themes
+- Offline support
+`;
+
+const SAMPLE_CLI = `# mdfy CLI
+
+> Publish Markdown from the terminal. Pipe anything to a URL.
+
+## Install
+
+\`\`\`bash
+npm install -g mdfy-cli
+\`\`\`
+
+## Publish
+
+\`\`\`bash
+# Publish a file
+mdfy publish README.md
+# → https://mdfy.cc/d/abc123  (copied to clipboard)
+
+# Publish from pipe
+echo "# Hello World" | mdfy publish
+
+# Publish clipboard
+pbpaste | mdfy publish
+\`\`\`
+
+## Pipe Anything
+
+\`\`\`bash
+claude "explain React hooks" | mdfy publish
+git log --oneline -20 | mdfy publish
+man grep | mdfy publish
+curl -s https://api.example.com/status | mdfy publish
+\`\`\`
+
+## Read in Terminal
+
+\`\`\`bash
+mdfy read abc123
+# → Color-coded headings, bold, code blocks, lists
+\`\`\`
+
+## Manage Documents
+
+\`\`\`bash
+mdfy list                       # List your documents
+mdfy update abc123 updated.md   # Update
+mdfy pull abc123 -o doc.md      # Download
+mdfy delete abc123              # Delete
+mdfy open abc123                # Open in browser
+\`\`\`
+
+## tmux Integration
+
+Add to \`~/.tmux.conf\`:
+
+\`\`\`bash
+bind-key M run-shell "tmux capture-pane -p -S -1000 | mdfy publish"
+\`\`\`
+
+## Short Aliases
+
+| Short | Full |
+|-------|------|
+| \`mdfy p\` | \`mdfy publish\` |
+| \`mdfy ls\` | \`mdfy list\` |
+| \`mdfy rm\` | \`mdfy delete\` |
+| \`mdfy cat\` | \`mdfy read\` |
+`;
+
+const SAMPLE_MCP = `# MCP Server
+
+> Let AI tools create, read, and manage documents on mdfy.cc.
+
+## What is MCP?
+
+MCP (Model Context Protocol) lets AI tools call external APIs. The mdfy MCP server gives Claude the ability to publish and manage documents.
+
+## Setup
+
+### Option A: Hosted HTTP MCP (recommended)
+
+For **Claude Web**, **Cursor**, **Windsurf**:
+
+1. Go to Settings → Integrations / MCP
+2. Add server URL: \`https://mdfy.cc/api/mcp\`
+3. Done — 25 tools available
+
+### Option B: Local stdio MCP
+
+For **Claude Code** and **Claude Desktop**:
+
+\`\`\`bash
+npx mdfy-cli login
+\`\`\`
+
+Add to \`.mcp.json\`:
+
+\`\`\`json
+{
+  "mcpServers": {
+    "mdfy": {
+      "command": "npx",
+      "args": ["mdfy-mcp"]
+    }
+  }
+}
+\`\`\`
+
+## Usage Examples
+
+\`\`\`
+You: "Publish my meeting notes to mdfy"
+Claude: → mdfy_create → https://mdfy.cc/d/abc123
+
+You: "Show me my documents"
+Claude: → mdfy_list → 8 documents found
+
+You: "Make that document private"
+Claude: → mdfy_publish(published: false) → Now private
+
+You: "Update it with this new section"
+Claude: → mdfy_update → Document updated, same URL
+\`\`\`
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| \`mdfy_create\` | Create document, get URL |
+| \`mdfy_read\` | Read document content |
+| \`mdfy_update\` | Update document |
+| \`mdfy_list\` | List your documents |
+| \`mdfy_publish\` | Toggle public/private |
+| \`mdfy_delete\` | Delete document |
+
+The hosted HTTP MCP exposes 25 tools including append, sections, versions, folders, and more.
+`;
+
+const SAMPLE_QUICKLOOK = `# QuickLook Preview
+
+> Press Space on any .md file in Finder to see a rendered preview.
+
+## Install
+
+1. Install mdfy for Mac — QuickLook is bundled automatically
+2. Or download MdfyQuickLook separately from [mdfy.cc/plugins](https://mdfy.cc/plugins)
+3. Enable in **System Settings → Extensions → Quick Look**
+
+## Usage
+
+1. Open Finder
+2. Select any \`.md\` file
+3. Press **Space**
+4. See the rendered preview with syntax highlighting, tables, and math
+
+## What You See
+
+- Rendered Markdown with proper typography
+- Syntax-highlighted code blocks
+- Tables with alignment
+- KaTeX math equations
+- Dark / light theme (follows system preference)
+- "Open on mdfy.cc" button
+
+## Supported Files
+
+| Extension | Supported |
+|-----------|-----------|
+| \`.md\` | Yes |
+| \`.markdown\` | Yes |
+| \`.mdown\` | Yes |
+| \`.mkd\` | Yes |
+
+## Tips
+
+- Works in Finder, Desktop, and Open/Save dialogs
+- Preview updates when you press Space again after editing
+- Click "Open on mdfy.cc" to publish directly from the preview
+- No background processes — lightweight QuickLook extension
+`;
+
 const EXAMPLE_OWNER = "master@mdfy.cc";
 const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
@@ -846,6 +1156,12 @@ const EXAMPLE_TABS: Tab[] = [
   { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-diagrams", title: extractTitleFromMd(SAMPLE_DIAGRAMS), markdown: SAMPLE_DIAGRAMS, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-ascii", title: extractTitleFromMd(SAMPLE_ASCII), markdown: SAMPLE_ASCII, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-chrome-ext", title: extractTitleFromMd(SAMPLE_CHROME_EXT), markdown: SAMPLE_CHROME_EXT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-vscode-ext", title: extractTitleFromMd(SAMPLE_VSCODE_EXT), markdown: SAMPLE_VSCODE_EXT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-desktop", title: extractTitleFromMd(SAMPLE_DESKTOP), markdown: SAMPLE_DESKTOP, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-cli", title: extractTitleFromMd(SAMPLE_CLI), markdown: SAMPLE_CLI, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-mcp", title: extractTitleFromMd(SAMPLE_MCP), markdown: SAMPLE_MCP, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-quicklook", title: extractTitleFromMd(SAMPLE_QUICKLOOK), markdown: SAMPLE_QUICKLOOK, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
 ];
 
 const INITIAL_TABS: Tab[] = [
