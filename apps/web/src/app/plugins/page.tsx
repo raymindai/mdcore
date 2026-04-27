@@ -390,6 +390,15 @@ export default function PluginsPage() {
             >
               View on Chrome Web Store
             </a>
+            <span style={{ margin: "0 8px", color: "var(--border)" }}>|</span>
+            <a
+              href="https://mdfy.cc/d/mcRfLTP7"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block", fontSize: 12, color: "var(--text-muted)", textDecoration: "none" }}
+            >
+              Quick Start Guide
+            </a>
           </div>
         </div>
       </section>
@@ -670,6 +679,14 @@ export default function PluginsPage() {
               >
                 Full API Reference
               </Link>
+              <a
+                href="https://mdfy.cc/d/r-um_oJp"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block", padding: "10px 24px", borderRadius: 8, fontSize: 14, fontWeight: 700, color: "var(--text-muted)", textDecoration: "none", border: "1px solid var(--border-dim)" }}
+              >
+                Quick Start Guide
+              </a>
             </div>
           </div>
         </div>
@@ -848,6 +865,9 @@ export default function PluginsPage() {
               </a>
               <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>318 KB</span>
             </div>
+            <a href="https://mdfy.cc/d/zOjZPXY7" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", marginTop: 8, display: "inline-block" }}>
+              Quick Start Guide
+            </a>
           </div>
         </div>
       </section>
@@ -1008,6 +1028,8 @@ export default function PluginsPage() {
             </div>
             <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
               macOS 13 (Ventura) or later required.
+              <span style={{ margin: "0 8px", color: "var(--border)" }}>|</span>
+              <a href="https://mdfy.cc/d/CaQ31sfk" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Quick Start Guide</a>
             </p>
           </div>
         </div>
@@ -1079,6 +1101,9 @@ export default function PluginsPage() {
                 </div>
               ))}
             </div>
+            <a href="https://mdfy.cc/d/gIHYPRxD" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", marginTop: 12, display: "inline-block" }}>
+              Quick Start Guide
+            </a>
           </div>
         </div>
       </section>
@@ -1241,6 +1266,8 @@ export default function PluginsPage() {
             </div>
             <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
               macOS 13 (Ventura) or later required. Apple Silicon build.
+              <span style={{ margin: "0 8px", color: "var(--border)" }}>|</span>
+              <a href="https://mdfy.cc/d/womPEbUm" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Quick Start Guide</a>
             </p>
           </div>
         </div>
