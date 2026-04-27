@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import MdfyLogo from "@/components/MdfyLogo";
+import WelcomeOverlay from "@/components/WelcomeOverlay";
 
 const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   ssr: false,
@@ -45,5 +46,10 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
 });
 
 export default function Home() {
-  return <MdEditor />;
+  return (
+    <>
+      <WelcomeOverlay />
+      <MdEditor />
+    </>
+  );
 }

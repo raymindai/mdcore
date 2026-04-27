@@ -1816,8 +1816,10 @@ export default function MdEditor() {
     return INITIAL_TABS;
   });
   const [activeTabId, setActiveTabId] = useState(() => {
-    if (typeof window === "undefined") return "tab-welcome";
-    return localStorage.getItem("mdfy-active-tab") || tabs[0]?.id || "tab-welcome";
+    if (typeof window === "undefined") return "";
+    const saved = localStorage.getItem("mdfy-active-tab");
+    // First visit: no saved tab → return empty (show home screen)
+    return saved || "";
   });
   const activeTabIdRef = useRef(activeTabId);
   activeTabIdRef.current = activeTabId;
@@ -2148,7 +2150,12 @@ export default function MdEditor() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
   });
-  const [examplesCollapsed, setExamplesCollapsed] = useState(true);
+  const [examplesCollapsed, setExamplesCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const saved = localStorage.getItem("mdfy-examples-collapsed");
+    // First visit: no saved state → open (false)
+    return saved === "true";
+  });
   const [selectedTabIds, setSelectedTabIds] = useState<Set<string>>(new Set());
   const [hiddenExampleIds, setHiddenExampleIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -7720,7 +7727,7 @@ ${clone.innerHTML}
                 <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setExamplesCollapsed(!examplesCollapsed)}
+                    onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
                   >
                     <BookOpen width={11} height={11} style={{ color: examplesCollapsed ? "var(--text-faint)" : "var(--accent)" }} />
                     <span className="flex-1 text-[11px] font-medium" style={{ color: examplesCollapsed ? "var(--text-muted)" : "var(--accent)" }}>Examples</span>
@@ -8358,8 +8365,8 @@ ${clone.innerHTML}
                   <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Create</div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "New Document", desc: "Blank page", kbd: isMobile ? "" : mod + "N", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                      { label: "Paste", desc: "From clipboard", kbd: isMobile ? "" : mod + "V", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch { /* clipboard permission denied — user can Cmd+V manually */ } } },
+                      { label: "New Document", desc: "Blank page", kbd: "", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
+                      { label: "Paste", desc: "From clipboard", kbd: "", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch { /* clipboard permission denied — user can Cmd+V manually */ } } },
                       { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", icon: <Upload width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
                     ].map((item) => (
                       <button key={item.label} onClick={item.fn}
@@ -8391,7 +8398,7 @@ ${clone.innerHTML}
 
                 {/* Examples — 2 column grid */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Examples</div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Examples</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
@@ -8407,7 +8414,7 @@ ${clone.innerHTML}
                 </div>
                 {/* Explore + Plugins — 2 column grid */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Explore</div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Explore</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {([
                       { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c", icon: <Zap width={14} height={14} /> },
