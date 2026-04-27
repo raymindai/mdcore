@@ -899,8 +899,9 @@ export default function PluginsPage() {
           <div style={{ padding: "0 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
               <img
-                src="/images/plugin-desktop.png"
-                alt="mdfy for Mac — native desktop app with sidebar"
+                src="/images/plugin-desktop.webp"
+                alt="mdfy for Mac — sidebar with cloud folders, Mermaid diagrams, tables, and document outline"
+                className="lightbox-img"
                 style={{ width: "100%", display: "block", borderRadius: 12 }}
               />
             </div>
