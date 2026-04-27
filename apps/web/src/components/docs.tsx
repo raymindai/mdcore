@@ -503,12 +503,21 @@ export function SiteFooter() {
 }
 
 /* ─── DocsSidebar ─── */
+
+const docsNav = [
+  { label: "Overview", href: "/docs" },
+  { label: "REST API", href: "/docs/api" },
+  { label: "CLI", href: "/docs/cli" },
+  { label: "JavaScript SDK", href: "/docs/sdk" },
+  { label: "MCP Server", href: "/docs/mcp" },
+];
+
 export function DocsSidebar({
   items,
-  alsoSee,
+  currentPath,
 }: {
   items: { id: string; label: string }[];
-  alsoSee: { label: string; href: string }[];
+  currentPath?: string;
 }) {
   return (
     <aside
@@ -523,6 +532,7 @@ export function DocsSidebar({
         paddingBottom: 40,
       }}
     >
+      {/* Section navigation */}
       <p
         style={{
           fontSize: 10,
@@ -531,67 +541,76 @@ export function DocsSidebar({
           fontFamily: mono,
           letterSpacing: 1,
           textTransform: "uppercase",
-          marginBottom: 16,
+          marginBottom: 12,
           marginTop: 0,
         }}
       >
-        On This Page
+        Documentation
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {items.map((item) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            style={{
-              fontSize: 13,
-              color: "var(--text-muted)",
-              textDecoration: "none",
-              padding: "5px 12px",
-              borderRadius: 6,
-              display: "block",
-            }}
-          >
-            {item.label}
-          </a>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 20 }}>
+        {docsNav.map((item) => {
+          const active = currentPath === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                fontSize: 13,
+                fontWeight: active ? 600 : 400,
+                color: active ? "var(--accent)" : "var(--text-muted)",
+                background: active ? "var(--accent-dim)" : "transparent",
+                textDecoration: "none",
+                padding: "6px 12px",
+                borderRadius: 6,
+                display: "block",
+                transition: "background 0.1s",
+              }}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </div>
-      <div
-        style={{
-          borderTop: "1px solid var(--border-dim)",
-          marginTop: 24,
-          paddingTop: 16,
-        }}
-      >
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: "var(--text-faint)",
-            fontFamily: mono,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            marginBottom: 12,
-            marginTop: 0,
-          }}
-        >
-          Also See
-        </p>
-        {alsoSee.map((l) => (
-          <Link
-            key={l.label}
-            href={l.href}
-            style={{
-              display: "block",
-              fontSize: 13,
-              color: "var(--text-faint)",
-              textDecoration: "none",
-              padding: "4px 12px",
-            }}
-          >
-            {l.label}
-          </Link>
-        ))}
-      </div>
+
+      {/* On this page */}
+      {items.length > 0 && (
+        <>
+          <div style={{ borderTop: "1px solid var(--border-dim)", marginBottom: 16, paddingTop: 16 }}>
+            <p
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "var(--text-faint)",
+                fontFamily: mono,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                marginBottom: 12,
+                marginTop: 0,
+              }}
+            >
+              On This Page
+            </p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {items.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-muted)",
+                  textDecoration: "none",
+                  padding: "5px 12px",
+                  borderRadius: 6,
+                  display: "block",
+                }}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </>
+      )}
     </aside>
   );
 }

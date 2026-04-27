@@ -65,11 +65,7 @@ export default function SdkDocsPage() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          alsoSee={[
-            { label: "REST API", href: "/docs/api" },
-            { label: "CLI", href: "/docs/cli" },
-            { label: "MCP Server", href: "/docs/mcp" },
-          ]}
+          currentPath="/docs/sdk"
         />
 
         {/* MAIN */}

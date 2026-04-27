@@ -211,11 +211,7 @@ export default function ApiDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          alsoSee={[
-            { label: "CLI", href: "/ko/docs/cli" },
-            { label: "SDK", href: "/ko/docs/sdk" },
-            { label: "MCP Server", href: "/ko/docs/mcp" },
-          ]}
+          currentPath="/docs/api"
         />
 
         {/* MAIN CONTENT */}

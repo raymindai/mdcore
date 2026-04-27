@@ -167,11 +167,7 @@ export default function McpDocsPage() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          alsoSee={[
-            { label: "REST API", href: "/docs/api" },
-            { label: "CLI", href: "/docs/cli" },
-            { label: "SDK", href: "/docs/sdk" },
-          ]}
+          currentPath="/docs/mcp"
         />
 
         {/* MAIN */}

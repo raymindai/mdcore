@@ -66,11 +66,7 @@ export default function CliDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          alsoSee={[
-            { label: "REST API", href: "/ko/docs/api" },
-            { label: "SDK", href: "/ko/docs/sdk" },
-            { label: "MCP Server", href: "/ko/docs/mcp" },
-          ]}
+          currentPath="/docs/cli"
         />
 
         {/* MAIN */}

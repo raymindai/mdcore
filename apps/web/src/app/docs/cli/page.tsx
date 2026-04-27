@@ -66,11 +66,7 @@ export default function CliDocsPage() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          alsoSee={[
-            { label: "REST API", href: "/docs/api" },
-            { label: "SDK", href: "/docs/sdk" },
-            { label: "MCP Server", href: "/docs/mcp" },
-          ]}
+          currentPath="/docs/cli"
         />
 
         {/* MAIN */}
