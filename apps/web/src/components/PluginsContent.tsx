@@ -13,7 +13,6 @@ export default function PluginsContent({ locale }: { locale: "en" | "ko" }) {
         background: "var(--background)",
         color: "var(--foreground)",
         minHeight: "100vh",
-        overflowX: "hidden",
       }}
     >
       {/* ───────── NAV ───────── */}

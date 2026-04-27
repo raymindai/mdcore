@@ -103,7 +103,6 @@ export default function DocsPage() {
         background: "var(--background)",
         color: "var(--foreground)",
         minHeight: "100vh",
-        overflowX: "hidden",
       }}
     >
       <DocsNav />
