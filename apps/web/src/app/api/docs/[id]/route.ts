@@ -367,7 +367,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { data: doc } = await supabase
       .from("documents")
-      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at, allowed_editors, updated_at, markdown")
+      .select("edit_token, user_id, anonymous_id, edit_mode, expires_at, allowed_editors, updated_at, markdown, title")
       .eq("id", id)
       .single();
 
@@ -416,6 +416,26 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+
+    // Send notification to document owner when updated from external source (CLI, MCP, Desktop)
+    // Skip if the editor IS the owner (no self-notification) or if source is web auto-save
+    const externalSource = body.source && body.source !== "web";
+    if (externalSource && doc.user_id && userId !== doc.user_id) {
+      try {
+        const { data: ownerUser } = await supabase.auth.admin.getUserById(doc.user_id);
+        if (ownerUser?.user?.email) {
+          const editorName = userEmail || "Someone";
+          await supabase.from("notifications").insert({
+            recipient_email: ownerUser.user.email,
+            type: "document_updated",
+            document_id: id,
+            document_title: title || doc.title || "Untitled",
+            from_user_name: editorName,
+            message: `${editorName} updated "${title || doc.title || "Untitled"}" via ${body.source}`,
+          });
+        }
+      } catch { /* notification is best-effort */ }
+    }
 
     return NextResponse.json({ ok: true, updated_at: updatedAt });
   }

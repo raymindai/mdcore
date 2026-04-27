@@ -39,6 +39,7 @@ export default function DocumentViewer({
   const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
   const [copied, setCopied] = useState(false);
   const [accessRevoked, setAccessRevoked] = useState(false);
+  const [updateToast, setUpdateToast] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const markdownRef = useRef(initialMarkdown);
   markdownRef.current = markdown;
@@ -242,6 +243,8 @@ export default function DocumentViewer({
               if (doc.markdown !== markdownRef.current) {
                 setMarkdown(doc.markdown);
                 if (doc.title) setTitle(doc.title);
+                setUpdateToast(true);
+                setTimeout(() => setUpdateToast(false), 3000);
               }
             }
           } catch { /* offline */ }
@@ -270,6 +273,8 @@ export default function DocumentViewer({
             if (doc.markdown !== markdownRef.current) {
               setMarkdown(doc.markdown);
               if (doc.title) setTitle(doc.title);
+              setUpdateToast(true);
+              setTimeout(() => setUpdateToast(false), 3000);
             }
           }
         }
@@ -580,6 +585,24 @@ export default function DocumentViewer({
           </div>
         </div>
       </footer>
+
+      {/* Update toast */}
+      {updateToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-[12px] font-medium animate-[fade-in-up_0.2s_ease]"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--accent)",
+            color: "var(--text-primary)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2L6 10l-4-4"/>
+          </svg>
+          Document updated
+        </div>
+      )}
     </div>
   );
 }
