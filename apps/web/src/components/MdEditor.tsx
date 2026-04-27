@@ -7730,7 +7730,7 @@ ${clone.innerHTML}
                     onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
                   >
                     <BookOpen width={11} height={11} style={{ color: examplesCollapsed ? "var(--text-faint)" : "var(--accent)" }} />
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: examplesCollapsed ? "var(--text-muted)" : "var(--accent)" }}>Examples</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: examplesCollapsed ? "var(--text-muted)" : "var(--accent)" }}>Guides & Examples</span>
                     {examplesCollapsed && exampleTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>}
                   </div>
                   {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
@@ -8398,7 +8398,7 @@ ${clone.innerHTML}
 
                 {/* Examples — 2 column grid */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Examples</div>
+                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Guides & Examples</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
