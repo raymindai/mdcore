@@ -943,7 +943,7 @@ export default function PluginsPage() {
             </div>
             <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
               <a
-                href="https://github.com/raymindai/mdcore/releases/download/v2.0.0/mdfy-2.0.0-universal.dmg"
+                href="https://github.com/raymindai/mdcore/releases/download/v2.0.0/mdfy-2.0.0-arm64.dmg"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -960,7 +960,7 @@ export default function PluginsPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Download v2.0.0 for Mac
               </a>
-              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>174 MB (Universal — Intel + Apple Silicon)</span>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>97 MB (Apple Silicon)</span>
             </div>
             <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
               macOS 13 (Ventura) or later required.
