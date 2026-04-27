@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import MdfyLogo from "@/components/MdfyLogo";
+import { DocsNav, SiteFooter } from "@/components/docs";
 
 interface TrendingRepo {
   name: string;
@@ -115,20 +115,7 @@ export default function DiscoverPage() {
 
   return (
     <div style={{ background: "var(--background)", color: "var(--foreground)", minHeight: "100vh" }}>
-      {/* Nav */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 40, borderBottom: "1px solid var(--border-dim)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <Link href="/" style={{ textDecoration: "none" }}><MdfyLogo size={22} /></Link>
-            <div style={{ display: "flex", gap: 16 }}>
-              <Link href="/about" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>About</Link>
-              <Link href="/plugins" style={{ color: "var(--text-muted)", fontSize: 13, textDecoration: "none" }}>Plugins</Link>
-              <Link href="/discover" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Trending</Link>
-            </div>
-          </div>
-          <Link href="/" style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Open Editor</Link>
-        </div>
-      </nav>
+      <DocsNav />
 
       {/* Hero */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "60px 24px 40px" }}>
@@ -265,6 +252,7 @@ export default function DiscoverPage() {
         </p>
       </div>
 
+      <SiteFooter />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
