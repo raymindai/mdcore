@@ -75,6 +75,12 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem('mdfy-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#faf9f7'}var a=localStorage.getItem('mdfy-accent');if(a&&a!=='orange'){document.documentElement.setAttribute('data-accent',a)}var s=localStorage.getItem('mdfy-scheme');if(s&&s!=='default'){document.documentElement.setAttribute('data-scheme',s)}}catch(e){}`,
           }}
         />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-V3LTDKKHTS" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-V3LTDKKHTS');`,
+          }}
+        />
         <script src="https://cdn.jsdelivr.net/npm/mermaid@11.13.0/dist/mermaid.min.js" defer />
         <script
           dangerouslySetInnerHTML={{
