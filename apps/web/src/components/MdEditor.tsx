@@ -8342,7 +8342,7 @@ ${clone.innerHTML}
                   if (recent.length === 0) return null;
                   return (
                     <div className="mb-6">
-                      <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--text-faint)" }}>Recent</div>
+                      <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Recent</div>
                       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                         {recent.map((t, i) => (
                           <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
@@ -8435,6 +8435,17 @@ ${clone.innerHTML}
                       </a>
                     ))}
                   </div>
+                </div>
+
+                {/* Replay welcome */}
+                <div className="text-center mt-2 mb-4">
+                  <button
+                    onClick={() => { localStorage.removeItem("mdfy-welcome-seen"); window.location.reload(); }}
+                    className="text-[11px] cursor-pointer"
+                    style={{ color: "var(--text-faint)", background: "none", border: "none", padding: "4px 8px", opacity: 0.6 }}
+                  >
+                    Replay welcome tour
+                  </button>
                 </div>
               </div>
             </div>
