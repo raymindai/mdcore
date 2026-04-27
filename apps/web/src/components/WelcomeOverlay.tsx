@@ -41,6 +41,25 @@ const slides = [
       </svg>
     ),
   },
+  {
+    step: "04",
+    title: "Works everywhere.",
+    desc: null,
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+      </svg>
+    ),
+    surfaces: [
+      { name: "Chrome Extension", desc: "Capture AI conversations", color: "#4ade80" },
+      { name: "VS Code", desc: "WYSIWYG preview + sync", color: "#60a5fa" },
+      { name: "Mac App", desc: "Native desktop with sidebar", color: "#fb923c" },
+      { name: "CLI", desc: "Pipe anything to a URL", color: "#4ade80" },
+      { name: "MCP Server", desc: "AI agents read & write docs", color: "#60a5fa" },
+      { name: "QuickLook", desc: "Space to preview in Finder", color: "#fbbf24" },
+    ],
+    pluginsLink: true,
+  },
 ];
 
 export default function WelcomeOverlay() {
@@ -165,19 +184,43 @@ export default function WelcomeOverlay() {
           </h2>
 
           {/* Description */}
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--text-muted)",
-              lineHeight: 1.6,
-              margin: 0,
-              maxWidth: 360,
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}
-          >
-            {slide.desc}
-          </p>
+          {slide.desc && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--text-muted)",
+                lineHeight: 1.6,
+                margin: 0,
+                maxWidth: 360,
+                marginLeft: "auto",
+                marginRight: "auto",
+              }}
+            >
+              {slide.desc}
+            </p>
+          )}
+
+          {/* Surfaces list (slide 04) */}
+          {"surfaces" in slide && slide.surfaces && (
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6, maxWidth: 320, marginLeft: "auto", marginRight: "auto" }}>
+              {(slide.surfaces as { name: string; desc: string; color: string }[]).map((s) => (
+                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", borderRadius: 8, background: "var(--background)", textAlign: "left" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", minWidth: 110 }}>{s.name}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{s.desc}</span>
+                </div>
+              ))}
+              {"pluginsLink" in slide && slide.pluginsLink && (
+                <Link
+                  href="/plugins"
+                  onClick={dismiss}
+                  style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", marginTop: 4 }}
+                >
+                  See all integrations &rarr;
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Dots */}
