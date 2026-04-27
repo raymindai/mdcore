@@ -14,8 +14,8 @@ interface TrendingRepo {
   readmeUrl: string;
 }
 
-// Cache trending data for 1 hour
-let cache: { data: TrendingRepo[]; timestamp: number } | null = null;
+// Cache trending data for 1 hour, keyed by period
+const cache: Record<string, { data: TrendingRepo[]; timestamp: number }> = {};
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 async function fetchTrending(period: string = "daily"): Promise<TrendingRepo[]> {
@@ -75,18 +75,23 @@ async function fetchTrending(period: string = "daily"): Promise<TrendingRepo[]> 
 
 export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") || "daily";
-  const cacheKey = `${period}`;
 
   // Return cached if fresh
-  if (cache && cache.timestamp > Date.now() - CACHE_TTL) {
-    return NextResponse.json({ repos: cache.data, cached: true });
+  if (cache[period] && cache[period].timestamp > Date.now() - CACHE_TTL) {
+    return NextResponse.json({ repos: cache[period].data, cached: true });
   }
 
   try {
     const repos = await fetchTrending(period);
-    cache = { data: repos, timestamp: Date.now() };
+    if (repos.length > 0) {
+      cache[period] = { data: repos, timestamp: Date.now() };
+    }
     return NextResponse.json({ repos, cached: false });
   } catch {
+    // Return stale cache if available
+    if (cache[period]) {
+      return NextResponse.json({ repos: cache[period].data, cached: true, stale: true });
+    }
     return NextResponse.json({ error: "Failed to fetch trending" }, { status: 502 });
   }
 }
