@@ -1166,9 +1166,9 @@ export default function PluginsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
                 { step: "1", text: "Download and unzip MdfyQuickLook.zip below" },
-                { step: "2", text: "Move MdfyQuickLook.app to ~/Applications (or /Applications)" },
-                { step: "3", text: "Open MdfyQuickLook.app once to register the extension" },
-                { step: "4", text: "Enable in System Settings > Extensions > Quick Look" },
+                { step: "2", text: "Move MdfyQuickLook.app to Applications folder" },
+                { step: "3", text: "Open MdfyQuickLook.app once (registers the QuickLook extension)" },
+                { step: "4", text: "Go to System Settings > General > Login Items & Extensions > Quick Look, and enable mdfy" },
                 { step: "5", text: "Select any .md file in Finder and press Space" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
