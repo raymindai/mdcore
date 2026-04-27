@@ -2466,7 +2466,8 @@ export default function MdEditor() {
         if (thisRender !== renderIdRef.current) return;
         setWordCount(md.trim() ? md.trim().split(/\s+/).length : 0);
         setLineCount(md.split("\n").length);
-        if (md.length > 50 && isAiConversation(md)) {
+        const ct = tabs.find(t => t.id === activeTabIdRef.current);
+        if (md.length > 50 && isAiConversation(md) && !ct?.readonly && ct?.ownerEmail !== EXAMPLE_OWNER) {
           setShowAiBanner(true);
         } else {
           setShowAiBanner(false);
