@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CodeBlock, InlineCode, DocsNav, SiteFooter, mono } from "@/components/docs";
+import { CodeBlock, InlineCode, DocsNav, DocsSidebar, SiteFooter, mono } from "@/components/docs";
 
 export const metadata: Metadata = {
   title: "Documentation — mdfy.cc",
@@ -107,6 +107,17 @@ export default function DocsPage() {
       }}
     >
       <DocsNav />
+
+      <div className="docs-layout">
+        <DocsSidebar
+          items={[
+            { id: "quick-start", label: "Quick Start" },
+            { id: "also-see", label: "Also See" },
+            { id: "llms-txt", label: "llms.txt" },
+          ]}
+          currentPath="/docs"
+        />
+        <main style={{ minWidth: 0 }}>
 
       {/* ───────── HERO ───────── */}
       <section
@@ -455,6 +466,9 @@ export default function DocsPage() {
           </Link>
         </p>
       </section>
+
+        </main>
+      </div>
 
       {/* ───────── FOOTER ───────── */}
       <SiteFooter />
