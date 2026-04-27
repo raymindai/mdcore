@@ -256,14 +256,19 @@ export default function PluginsPage() {
             </div>
           </div>
 
-          {/* Screenshot */}
+          {/* Screenshots */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
-              <img
-                src="/images/plugin-chrome.png"
-                alt="mdfy Chrome extension capturing a ChatGPT conversation"
-                style={{ width: "100%", display: "block", borderRadius: 12 }}
-              />
+            <div className="about-grid-2" style={{ gap: 12 }}>
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+                  <img
+                    src={`/images/plugin-chrome-${n}.webp`}
+                    alt={`mdfy Chrome extension screenshot ${n}`}
+                    className="lightbox-img"
+                    style={{ width: "100%", display: "block" }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1269,6 +1274,36 @@ export default function PluginsPage() {
 
       {/* ───────── FOOTER ───────── */}
       <SiteFooter />
+
+      {/* ───────── LIGHTBOX ───────── */}
+      <div id="lightbox-overlay" className="lightbox-overlay" />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            document.addEventListener('click', function(e) {
+              if (e.target.classList.contains('lightbox-img')) {
+                var overlay = document.getElementById('lightbox-overlay');
+                overlay.innerHTML = '<img src="' + e.target.src + '" alt="' + (e.target.alt || '') + '" />';
+                overlay.classList.add('active');
+              }
+            });
+            document.addEventListener('click', function(e) {
+              var overlay = document.getElementById('lightbox-overlay');
+              if (e.target === overlay || e.target.parentElement === overlay) {
+                overlay.classList.remove('active');
+                overlay.innerHTML = '';
+              }
+            });
+            document.addEventListener('keydown', function(e) {
+              if (e.key === 'Escape') {
+                var overlay = document.getElementById('lightbox-overlay');
+                overlay.classList.remove('active');
+                overlay.innerHTML = '';
+              }
+            });
+          `,
+        }}
+      />
     </div>
   );
 }
