@@ -116,7 +116,7 @@ export default function WelcomeOverlay() {
         opacity: exiting ? 0 : 1,
         transition: "opacity 0.3s",
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) skip(); }}
+      onClick={() => {}}
     >
       <div
         style={{
@@ -272,19 +272,6 @@ export default function WelcomeOverlay() {
                 Prev
               </button>
             )}
-            <button
-              onClick={skip}
-              style={{
-                fontSize: 13,
-                color: "var(--text-faint)",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              Skip
-            </button>
           </div>
 
           {/* Right: Next / Get Started / Learn More */}
