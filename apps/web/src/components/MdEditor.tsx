@@ -1737,7 +1737,7 @@ export default function MdEditor() {
   // Diagram rendering mode removed — ASCII diagrams use "Convert to Mermaid" button per diagram
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "6";
+  const TABS_VERSION = "7";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
