@@ -148,7 +148,7 @@ export default function AboutPage() {
 
       {/* ───────── HERO EDITOR SCREENSHOT ───────── */}
       <section style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden" }}>
           <img
             src="/images/hero-editor.webp"
             alt="mdfy.cc editor — write Markdown, see it beautifully rendered"
@@ -188,7 +188,7 @@ export default function AboutPage() {
       {/* ───────── 3. BEFORE / WITH MDFY ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         {/* Before/After visual — raw md vs rendered */}
-        <div style={{ margin: "0 auto 32px", maxWidth: 960, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+        <div style={{ margin: "0 auto 32px", maxWidth: 960, borderRadius: 12, overflow: "hidden" }}>
           <img src="/images/before-after.webp" alt="Raw Markdown on the left, beautifully rendered mdfy output on the right" className="lightbox-img" style={{ width: "100%", display: "block" }} />
         </div>
         <div className="about-grid-2" style={{ gap: 16 }}>
@@ -314,10 +314,10 @@ export default function AboutPage() {
       >
         {/* Feature showcase images */}
         <div className="about-grid-2" style={{ margin: "0 auto 48px", maxWidth: 960 }}>
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <div style={{ borderRadius: 12, overflow: "hidden" }}>
             <img src="/images/feature-showcase-1.webp" alt="mdfy.cc rendering — beautifully rendered Markdown document" className="lightbox-img" style={{ width: "100%", display: "block" }} />
           </div>
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <div style={{ borderRadius: 12, overflow: "hidden" }}>
             <img src="/images/feature-showcase-2.webp" alt="mdfy.cc rendering — KaTeX math, Mermaid diagrams, and code" className="lightbox-img" style={{ width: "100%", display: "block" }} />
           </div>
         </div>
@@ -386,21 +386,21 @@ export default function AboutPage() {
       {/* ───────── FEATURE DETAIL IMAGES ───────── */}
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
         <div className="about-grid-3">
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <div style={{ borderRadius: 12, overflow: "hidden" }}>
             <img src="/images/feature-math.webp" alt="KaTeX math rendering — inline and display equations" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>KaTeX Math</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Publication-quality equations</p>
             </div>
           </div>
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <div style={{ borderRadius: 12, overflow: "hidden" }}>
             <img src="/images/feature-mermaid.webp" alt="Mermaid diagram — flowchart rendered from Markdown" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Mermaid Diagrams</p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-faint)" }}>Flowcharts, sequences, Gantt</p>
             </div>
           </div>
-          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+          <div style={{ borderRadius: 12, overflow: "hidden" }}>
             <img src="/images/feature-code.webp" alt="Syntax-highlighted code block with copy button" className="lightbox-img" style={{ width: "100%", display: "block" }} />
             <div style={{ padding: "12px 16px", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Code Highlighting</p>

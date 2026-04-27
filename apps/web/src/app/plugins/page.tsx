@@ -260,7 +260,7 @@ export default function PluginsPage() {
           <div style={{ padding: "0 32px 24px" }}>
             <div className="about-grid-2" style={{ gap: 12 }}>
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+                <div key={n} style={{ borderRadius: 12, overflow: "hidden" }}>
                   <img
                     src={`/images/plugin-chrome-${n}.webp`}
                     alt={`mdfy Chrome extension screenshot ${n}`}
@@ -485,7 +485,7 @@ export default function PluginsPage() {
 
           {/* MCP screenshot */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img src="/images/plugin-mcp.png" alt="mdfy MCP server — Claude creating a document via mdfy_create" style={{ width: "100%", display: "block" }} />
             </div>
           </div>
@@ -719,7 +719,7 @@ export default function PluginsPage() {
 
           {/* Screenshot */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-vscode.webp"
                 alt="mdfy VS Code extension — WYSIWYG preview with sidebar, toolbar, and document outline"
@@ -897,7 +897,7 @@ export default function PluginsPage() {
 
           {/* Screenshot */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-desktop.webp"
                 alt="mdfy for Mac — sidebar with cloud folders, Mermaid diagrams, tables, and document outline"
@@ -1015,7 +1015,7 @@ export default function PluginsPage() {
           </div>
           {/* Screenshot */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-cli.webp"
                 alt="mdfy CLI — echo hello | mdfy publish → shareable URL"
@@ -1112,7 +1112,7 @@ export default function PluginsPage() {
 
           {/* Screenshot */}
           <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-quicklook.webp"
                 alt="mdfy QuickLook — press Space in Finder to preview rendered Markdown with tables and code"

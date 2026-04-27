@@ -186,7 +186,7 @@ export default function DocsPage() {
 
       {/* ───────── DOCS HERO IMAGE ───────── */}
       <section style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
+        <div style={{ borderRadius: 12, overflow: "hidden" }}>
           <img src="/images/docs-api.png" alt="mdfy.cc API — curl request creating a document and getting a shareable URL" style={{ width: "100%", display: "block" }} />
         </div>
       </section>
