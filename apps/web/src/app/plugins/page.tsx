@@ -1017,8 +1017,9 @@ export default function PluginsPage() {
           <div style={{ padding: "0 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
               <img
-                src="/images/plugin-cli.png"
-                alt="mdfy CLI — publish Markdown from the terminal"
+                src="/images/plugin-cli.webp"
+                alt="mdfy CLI — echo hello | mdfy publish → shareable URL"
+                className="lightbox-img"
                 style={{ width: "100%", display: "block", borderRadius: 12 }}
               />
             </div>
