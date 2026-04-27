@@ -435,7 +435,7 @@ export function SiteFooter() {
             </p>
             {[
               { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
-              { label: "Contact", href: "mailto:hi@raymind.ai" },
+              { label: "hi@mdfy.cc", href: "mailto:hi@mdfy.cc" },
               { label: "Privacy Policy", href: "/privacy" },
             ].map((l) => (
               <a
