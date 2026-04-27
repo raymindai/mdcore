@@ -1734,8 +1734,14 @@ export default function MdEditor() {
     return INITIAL_FOLDERS;
   });
   const [showMyDocs, setShowMyDocs] = useState(true);
-  const [showSharedDocs, setShowSharedDocs] = useState(false);
-  const [showTrash, setShowTrash] = useState(false);
+  const [showSharedDocs, setShowSharedDocs] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mdfy-show-shared") === "true";
+  });
+  const [showTrash, setShowTrash] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mdfy-show-trash") === "true";
+  });
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -2099,7 +2105,10 @@ export default function MdEditor() {
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
-  const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">("all");
+  const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">(() => {
+    if (typeof window === "undefined") return "all";
+    return (localStorage.getItem("mdfy-doc-filter") as "all" | "private" | "shared" | "synced") || "all";
+  });
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [cloudSearchResults, setCloudSearchResults] = useState<Array<{ id: string; title: string; snippet: string; isDraft: boolean; viewCount: number; source: string | null; updatedAt: string }>>([]);
   const [isCloudSearching, setIsCloudSearching] = useState(false);
@@ -7186,7 +7195,7 @@ ${clone.innerHTML}
                             return (
                             <button
                               key={f}
-                              onClick={() => setDocFilter(f)}
+                              onClick={() => { setDocFilter(f); localStorage.setItem("mdfy-doc-filter", f); }}
                               title={tips[f]}
                               className="flex-1 text-[9px] font-semibold py-1 transition-colors"
                               style={{
@@ -7531,7 +7540,7 @@ ${clone.innerHTML}
                 <div className={`shrink-0 ${showSharedDocs ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setShowSharedDocs(!showSharedDocs)}
+                    onClick={() => { const next = !showSharedDocs; setShowSharedDocs(next); localStorage.setItem("mdfy-show-shared", String(next)); }}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--accent)" : "var(--text-muted)" }}>Shared with me</span>
                     {showSharedDocs && (
@@ -7778,7 +7787,7 @@ ${clone.innerHTML}
                 <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => setShowTrash(!showTrash)}
+                    onClick={() => { const next = !showTrash; setShowTrash(next); localStorage.setItem("mdfy-show-trash", String(next)); }}
                   >
                     <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--accent)" : "var(--text-muted)" }}>Trash</span>
                     {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
