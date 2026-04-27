@@ -382,9 +382,14 @@ export default function PluginsPage() {
               </a>
               <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>42 KB</span>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
-              Chrome Web Store listing coming soon.
-            </p>
+            <a
+              href="https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block", fontSize: 12, color: "var(--accent)", marginTop: 12, textDecoration: "none" }}
+            >
+              View on Chrome Web Store
+            </a>
           </div>
         </div>
       </section>
