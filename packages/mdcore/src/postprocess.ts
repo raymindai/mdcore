@@ -210,10 +210,14 @@ function styleAsciiDiagrams(html: string): string {
   return html.replace(
     /<pre([^>]*)>(?:<div class="code-header"[\s\S]*?<\/div>)?<code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
     (match, preAttrs, codeAttrs, content) => {
+      // Skip code blocks with a known language — they're source code, not diagrams
       if (
         /lang="mermaid"/.test(preAttrs) ||
         /language-mermaid/.test(codeAttrs)
       )
+        return match;
+      // If the code block has any language specified, it's source code — not ASCII art
+      if (/lang="[^"]+"/i.test(preAttrs) || /language-\w+/.test(codeAttrs))
         return match;
       const decoded = decodeHtmlEntities(content);
       if ((decoded.match(boxCharsRegex) || []).length < MIN_BOX_CHARS)
