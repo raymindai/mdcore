@@ -780,10 +780,11 @@ export default function PluginsPage() {
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
               <a
-                href="/downloads/mdfy-vscode-1.0.1.vsix"
-                download
+                href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode"
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -798,13 +799,27 @@ export default function PluginsPage() {
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download v1.0.1
+                Install from Marketplace
               </a>
-              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>298 KB (.vsix)</span>
+              <a
+                href="https://github.com/raymindai/mdcore/releases/download/v2.0.0/mdfy-vscode-1.3.0.vsix"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--accent-dim)",
+                  color: "var(--accent)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Download v1.3.0 (.vsix)
+              </a>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>318 KB</span>
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
-              VS Code Marketplace listing coming soon.
-            </p>
           </div>
         </div>
       </section>
