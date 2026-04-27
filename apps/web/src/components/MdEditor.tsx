@@ -56,15 +56,14 @@ import {
 
 const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
-> **Your Markdown, Beautifully Published.**
-> Import anything. Render beautifully. Share instantly.
+> **The Markdown Hub.** Collect from anywhere. Edit with AI. Publish with a permanent URL.
 
 ## Get Started
 
-1. **Type or paste** anything — Markdown, plain text, Claude Code output
+1. **Type or paste** anything — Markdown, plain text, AI output, code
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
 3. **Edit** inline in the Live view, or use Source for raw Markdown
-4. **Share** with one click — generates a short URL like \`mdfy.cc/abc123\`
+4. **Share** with one click — generates a permanent URL like \`mdfy.cc/d/abc123\`
 
 ## What You Can Do
 
@@ -82,19 +81,31 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 | Shortcut | Action |
 |----------|--------|
-| ⌘B | Bold |
-| ⌘I | Italic |
-| ⌘K | Insert link |
-| ⌘S | Share (copy URL) |
-| ⌘Z / ⌘⇧Z | Undo / Redo |
-| ⌘⇧C | Copy HTML |
-| ⌘\\\\ | Toggle view mode |
+| Cmd+B | Bold |
+| Cmd+I | Italic |
+| Cmd+K | Insert link |
+| Cmd+S | Share (copy URL) |
+| Cmd+Z / Cmd+Shift+Z | Undo / Redo |
+| Cmd+Shift+C | Copy HTML |
+| Cmd+\\\\ | Toggle view mode |
+
+## Available Everywhere
+
+| Channel | How |
+|---------|-----|
+| Web | You are here — [mdfy.cc](https://mdfy.cc) |
+| VS Code | [Extension](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode) — Cmd+Shift+M to preview |
+| Mac App | Native desktop with sidebar and sync |
+| CLI | \`npm install -g mdfy-cli\` — pipe anything to a URL |
+| Chrome | [Extension](https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold) — capture AI conversations |
+| MCP | Connect Claude, Cursor, or any AI tool |
+| QuickLook | Press Space on .md files in Finder |
 
 ## Try It Now
 
-- **Drop a PDF here** — see AI mdfy turn it into clean Markdown
-- **Click +** in the sidebar to start a new doc from a template
-- **Sign in** (sidebar bottom) for cloud sync and short URL sharing — free during the beta, no credit card
+- **Drop a PDF here** — AI mdfy turns it into clean Markdown
+- **Click +** in the sidebar to start from a template
+- **Sign in** (sidebar bottom) for cloud sync and short URL sharing — free during beta
 
 ---
 
@@ -463,7 +474,7 @@ const SAMPLE_IMPORT_EXPORT = `# Import & Export Guide
 
 ## Import — 13+ Formats
 
-Drop any file onto mdfy.cc or click **IMPORT** in the sidebar.
+Drop any file onto mdfy.cc, use the **IMPORT** button in the sidebar, or paste content directly.
 
 | Format | How it works |
 |--------|-------------|
@@ -487,9 +498,21 @@ After importing, you'll see **"mdfy this document?"** — click **mdfy it** to l
 
 > Works great for PDF imports where formatting is lost during text extraction.
 
+### Import via CLI
+
+\`\`\`bash
+# Pipe any file content
+cat report.md | mdfy publish
+pbpaste | mdfy publish
+\`\`\`
+
+### Import via Chrome Extension
+
+Click the mdfy button on ChatGPT, Claude, or Gemini to capture AI conversations directly.
+
 ## Export — Every Destination
 
-Click the **Export** icon in the Live view header.
+Click the **Export** icon in the Live view header (Cmd+Alt+E).
 
 ### Download
 - **Markdown (.md)** — raw source
@@ -497,13 +520,18 @@ Click the **Export** icon in the Live view header.
 - **Plain Text (.txt)** — formatting stripped
 
 ### Print
-- **PDF** — via browser print dialog
+- **PDF** — via browser print dialog (Cmd+P)
 
 ### Clipboard
 - **Raw HTML** — for web use
-- **Rich Text** — paste into Google Docs, Email, Word
-- **Slack (mrkdwn)** — formatted for Slack
+- **Rich Text** — paste into Google Docs, Email, Word with formatting preserved
+- **Slack (mrkdwn)** — formatted for Slack channels
 - **Plain Text** — no formatting
+
+### Share
+- **Permanent URL** — \`mdfy.cc/d/abc123\` — one click to copy
+- **Embed** — iframe code for websites
+- **QR Code** — for mobile sharing
 `;
 
 const SAMPLE_FEATURES = `# Key Features
@@ -583,16 +611,21 @@ Toggle **Narrow View** in the panel header to constrain content width for comfor
 - **Trash** section with restore and permanent delete
 - **Sort** by newest, oldest, A-Z, Z-A
 
-## Cross-Platform
+## Cross-Platform Sync
 
-Your documents sync across all mdfy channels:
+Your documents sync across all 7 mdfy channels:
 
-- **Web** — mdfy.cc
-- **VS Code** — Extension with WYSIWYG preview
-- **Mac Desktop** — Native app with sidebar
-- **CLI** — \`npm install -g mdfy-cli\`
-- **Chrome Extension** — Capture from ChatGPT, Claude, Gemini
-- **MCP Server** — AI agents create/read/update documents
+| Channel | Install | What it does |
+|---------|---------|-------------|
+| Web | [mdfy.cc](https://mdfy.cc) | Full editor with AI tools |
+| VS Code | \`ext install raymindai.mdfy-vscode\` | WYSIWYG preview + sync |
+| Mac App | [Download DMG](https://mdfy.cc/plugins) | Native sidebar + offline |
+| CLI | \`npm install -g mdfy-cli\` | Pipe anything to a URL |
+| Chrome | [Chrome Web Store](https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold) | Capture AI conversations |
+| MCP | \`npx mdfy-mcp\` or hosted at mdfy.cc/api/mcp | AI tools integration |
+| QuickLook | Bundled with Mac app | Space to preview in Finder |
+
+Same URL, same content, everywhere.
 `;
 
 /** Truncate title respecting grapheme clusters (emoji-safe) */
@@ -1737,7 +1770,7 @@ export default function MdEditor() {
   // Diagram rendering mode removed — ASCII diagrams use "Convert to Mermaid" button per diagram
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "7";
+  const TABS_VERSION = "8";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
