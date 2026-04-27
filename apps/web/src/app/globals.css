@@ -2026,17 +2026,27 @@ textarea::selection {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, opacity 0.15s, transform 0.15s;
   z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
-.hero-c-arrow:hover { background: var(--border); }
+.hero-c-arrow:hover { background: rgba(0, 0, 0, 0.7); transform: scale(1.08); }
+[data-theme="light"] .hero-c-arrow {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+[data-theme="light"] .hero-c-arrow:hover { background: rgba(255, 255, 255, 0.9); }
 .hero-c-arrow-left { left: max(16px, calc(50vw - 560px)); }
 .hero-c-arrow-right { right: max(16px, calc(50vw - 560px)); }
 /* Dots */
