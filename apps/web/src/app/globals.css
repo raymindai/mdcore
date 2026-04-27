@@ -1878,3 +1878,67 @@ textarea::selection {
   border-radius: 8px;
   object-fit: contain;
 }
+
+/* ========================================
+   Terminal mockup
+   ======================================== */
+.terminal-mock {
+  background: #1a1a1e;
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.terminal-mock-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #252528;
+}
+.terminal-mock-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.terminal-mock-dot.red { background: #ff5f57; }
+.terminal-mock-dot.yellow { background: #febc2e; }
+.terminal-mock-dot.green { background: #28c840; }
+.terminal-mock-title {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: #71717a;
+  margin-right: 42px;
+}
+.terminal-mock-body {
+  padding: 16px 20px 20px;
+  color: #d4d4d8;
+}
+.terminal-mock-body .prompt {
+  color: #71717a;
+}
+.terminal-mock-body .cmd {
+  color: #fafafa;
+}
+.terminal-mock-body .output {
+  color: #a1a1aa;
+}
+.terminal-mock-body .url {
+  color: #fb923c;
+}
+.terminal-mock-body .success {
+  color: #4ade80;
+}
+.terminal-mock-body .comment {
+  color: #52525b;
+}
+.terminal-mock-body .line {
+  display: block;
+  min-height: 1.7em;
+}
+.terminal-mock-body .line-gap {
+  display: block;
+  height: 0.5em;
+}

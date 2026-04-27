@@ -257,7 +257,7 @@ export default function PluginsPage() {
           </div>
 
           {/* Screenshots */}
-          <div style={{ padding: "0 32px 24px" }}>
+          <div style={{ padding: "16px 32px 24px" }}>
             <div className="about-grid-2" style={{ gap: 12 }}>
               {[1, 2, 3, 4].map((n) => (
                 <div key={n} style={{ borderRadius: 12, overflow: "hidden" }}>
@@ -483,10 +483,32 @@ export default function PluginsPage() {
             </div>
           </div>
 
-          {/* MCP screenshot */}
-          <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden" }}>
-              <img src="/images/plugin-mcp.png" alt="mdfy MCP server — Claude creating a document via mdfy_create" style={{ width: "100%", display: "block" }} />
+          {/* MCP conversation mockup */}
+          <div style={{ padding: "16px 32px 24px" }}>
+            <div className="terminal-mock">
+              <div className="terminal-mock-bar">
+                <span className="terminal-mock-dot red" />
+                <span className="terminal-mock-dot yellow" />
+                <span className="terminal-mock-dot green" />
+                <span className="terminal-mock-title">Claude Code</span>
+              </div>
+              <div className="terminal-mock-body">
+                <span className="line"><span className="prompt">You: </span><span className="cmd">Publish my meeting notes to mdfy</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="prompt">Claude: </span><span className="output">{"I'll create the document now."}</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="comment">{"  mdfy_create({ markdown: \"# Meeting Notes...\" })"}</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="success">Document created:</span></span>
+                <span className="line"><span className="output">  URL: </span><span className="url">https://mdfy.cc/d/abc123</span></span>
+                <span className="line"><span className="output">  Status: publicly accessible</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="prompt">You: </span><span className="cmd">Make it private</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="comment">{"  mdfy_publish({ id: \"abc123\", published: false })"}</span></span>
+                <span className="line-gap" />
+                <span className="line"><span className="success">Document is now private (draft).</span></span>
+              </div>
             </div>
           </div>
 
@@ -718,7 +740,7 @@ export default function PluginsPage() {
           </div>
 
           {/* Screenshot */}
-          <div style={{ padding: "0 32px 24px" }}>
+          <div style={{ padding: "16px 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-vscode.webp"
@@ -896,7 +918,7 @@ export default function PluginsPage() {
           </div>
 
           {/* Screenshot */}
-          <div style={{ padding: "0 32px 24px" }}>
+          <div style={{ padding: "16px 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-desktop.webp"
@@ -1013,15 +1035,31 @@ export default function PluginsPage() {
               <span style={{ background: "var(--accent-dim)", color: "var(--accent)", padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>npm install -g mdfy</span>
             </div>
           </div>
-          {/* Screenshot */}
-          <div style={{ padding: "0 32px 24px" }}>
-            <div style={{ borderRadius: 12, overflow: "hidden" }}>
-              <img
-                src="/images/plugin-cli.webp"
-                alt="mdfy CLI — echo hello | mdfy publish → shareable URL"
-                className="lightbox-img"
-                style={{ width: "100%", display: "block", borderRadius: 12 }}
-              />
+          {/* Terminal mockup */}
+          <div style={{ padding: "16px 32px 24px" }}>
+            <div className="terminal-mock">
+              <div className="terminal-mock-bar">
+                <span className="terminal-mock-dot red" />
+                <span className="terminal-mock-dot yellow" />
+                <span className="terminal-mock-dot green" />
+                <span className="terminal-mock-title">Terminal</span>
+              </div>
+              <div className="terminal-mock-body">
+                <span className="line comment">{"# Publish a file"}</span>
+                <span className="line"><span className="prompt">$ </span><span className="cmd">mdfy publish README.md</span></span>
+                <span className="line"><span className="url">https://mdfy.cc/d/abc123</span></span>
+                <span className="line"><span className="success">  URL copied to clipboard</span></span>
+                <span className="line-gap" />
+                <span className="line comment">{"# Pipe anything"}</span>
+                <span className="line"><span className="prompt">$ </span><span className="cmd">{"echo \"# Hello World\" | mdfy publish"}</span></span>
+                <span className="line"><span className="url">https://mdfy.cc/d/def456</span></span>
+                <span className="line"><span className="success">  URL copied to clipboard</span></span>
+                <span className="line-gap" />
+                <span className="line comment">{"# Read in terminal"}</span>
+                <span className="line"><span className="prompt">$ </span><span className="cmd">mdfy read abc123</span></span>
+                <span className="line"><span className="output">{"# Hello World"}</span></span>
+                <span className="line"><span className="output">{"This is a published document..."}</span></span>
+              </div>
             </div>
           </div>
 
@@ -1111,7 +1149,7 @@ export default function PluginsPage() {
           </div>
 
           {/* Screenshot */}
-          <div style={{ padding: "0 32px 24px" }}>
+          <div style={{ padding: "16px 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden" }}>
               <img
                 src="/images/plugin-quicklook.webp"

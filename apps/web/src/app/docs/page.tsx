@@ -184,10 +184,27 @@ export default function DocsPage() {
         </p>
       </section>
 
-      {/* ───────── DOCS HERO IMAGE ───────── */}
+      {/* ───────── DOCS HERO — API EXAMPLE ───────── */}
       <section style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px 60px" }}>
-        <div style={{ borderRadius: 12, overflow: "hidden" }}>
-          <img src="/images/docs-api.png" alt="mdfy.cc API — curl request creating a document and getting a shareable URL" style={{ width: "100%", display: "block" }} />
+        <div className="terminal-mock">
+          <div className="terminal-mock-bar">
+            <span className="terminal-mock-dot red" />
+            <span className="terminal-mock-dot yellow" />
+            <span className="terminal-mock-dot green" />
+            <span className="terminal-mock-title">Terminal</span>
+          </div>
+          <div className="terminal-mock-body">
+            <span className="line comment">{"# Create a document"}</span>
+            <span className="line"><span className="prompt">$ </span><span className="cmd">{"curl -X POST https://mdfy.cc/api/docs \\"}</span></span>
+            <span className="line"><span className="cmd">{"  -H 'Content-Type: application/json' \\"}</span></span>
+            <span className="line"><span className="cmd">{"  -d '{\"markdown\": \"# Hello World\"}'"}</span></span>
+            <span className="line-gap" />
+            <span className="line"><span className="output">{`{`}</span></span>
+            <span className="line"><span className="output">{"  \"id\": "}</span><span className="url">{`"abc123"`}</span><span className="output">,</span></span>
+            <span className="line"><span className="output">{"  \"url\": "}</span><span className="url">{`"https://mdfy.cc/d/abc123"`}</span><span className="output">,</span></span>
+            <span className="line"><span className="output">{"  \"editToken\": \"eyJ...\""}</span></span>
+            <span className="line"><span className="output">{`}`}</span></span>
+          </div>
         </div>
       </section>
 
