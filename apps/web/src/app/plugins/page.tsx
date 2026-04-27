@@ -1113,8 +1113,9 @@ export default function PluginsPage() {
           <div style={{ padding: "0 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
               <img
-                src="/images/plugin-quicklook.png"
-                alt="mdfy QuickLook — press Space in Finder to preview Markdown"
+                src="/images/plugin-quicklook.webp"
+                alt="mdfy QuickLook — press Space in Finder to preview rendered Markdown with tables and code"
+                className="lightbox-img"
                 style={{ width: "100%", display: "block", borderRadius: 12 }}
               />
             </div>
