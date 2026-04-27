@@ -1104,8 +1104,9 @@ function MdCanvas({
           if (e.button !== 0) return;
           const rect = canvasRef.current?.getBoundingClientRect();
           if (!rect) return;
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
+          const el = canvasRef.current!;
+          const x = e.clientX - rect.left + el.scrollLeft;
+          const y = e.clientY - rect.top + el.scrollTop;
           setSelectionBox({ startX: x, startY: y, endX: x, endY: y });
         }}
         onMouseMove={(e) => {
@@ -1114,7 +1115,8 @@ function MdCanvas({
           if (selectionBox && !dragState && !connectState) {
             const rect = canvasRef.current?.getBoundingClientRect();
             if (!rect) return;
-            setSelectionBox((prev) => prev ? { ...prev, endX: e.clientX - rect.left, endY: e.clientY - rect.top } : null);
+            const el = canvasRef.current!;
+            setSelectionBox((prev) => prev ? { ...prev, endX: e.clientX - rect.left + el.scrollLeft, endY: e.clientY - rect.top + el.scrollTop } : null);
           }
         }}
         onMouseUp={(e) => {
@@ -1155,17 +1157,20 @@ function MdCanvas({
           }
         }}
       >
-        {/* Grid */}
+        {/* Grid — covers full scrollable area */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
+            inset: 0,
+            minWidth: Math.max(2000, ...nodes.map(n => n.x + 200)),
+            minHeight: Math.max(2000, ...nodes.map(n => n.y + 200)),
             backgroundImage: "radial-gradient(circle, var(--border-dim) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}
         />
 
-        {/* Edges SVG */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+        {/* Edges SVG — covers full scrollable area */}
+        <svg className="absolute pointer-events-none" style={{ zIndex: 1, inset: 0, minWidth: Math.max(2000, ...nodes.map(n => n.x + 200)), minHeight: Math.max(2000, ...nodes.map(n => n.y + 200)) }}>
           <defs>
             <marker id="arr" markerWidth="6" markerHeight="4" refX="5.5" refY="2" orient="auto">
               <polygon points="0 0, 6 2, 0 4" fill="var(--text-muted)" />

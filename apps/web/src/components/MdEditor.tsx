@@ -4090,24 +4090,101 @@ export default function MdEditor() {
           </div>
         `;
 
-        const textarea = document.createElement("textarea");
-        textarea.value = originalCode;
-        textarea.style.cssText = `
-          flex:1;min-height:200px;background:var(--background);color:var(--editor-text);
-          border:1px solid var(--border);border-radius:8px;padding:12px;
-          font-family:ui-monospace,'JetBrains Mono','Fira Code',monospace;font-size:13px;
-          line-height:1.6;resize:vertical;outline:none;
+        const editorContainer = document.createElement("div");
+        editorContainer.style.cssText = `
+          flex:1;min-height:200px;background:var(--background);
+          border:1px solid var(--border);border-radius:8px;overflow:hidden;
         `;
-        textarea.spellcheck = false;
 
         modal.appendChild(header);
-        modal.appendChild(textarea);
+        modal.appendChild(editorContainer);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
-        textarea.focus();
+
+        // Initialize CodeMirror 6 with syntax highlighting
+        let codeValue = originalCode;
+        (async () => {
+          try {
+            const { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } = await import("@codemirror/view");
+            const { EditorState } = await import("@codemirror/state");
+            const { defaultHighlightStyle, syntaxHighlighting, bracketMatching, indentOnInput } = await import("@codemirror/language");
+            const { defaultKeymap, history, historyKeymap, indentWithTab } = await import("@codemirror/commands");
+            const { closeBrackets, closeBracketsKeymap } = await import("@codemirror/autocomplete");
+            const { searchKeymap } = await import("@codemirror/search");
+
+            // Try to load language support
+            const langExts: import("@codemirror/state").Extension[] = [];
+            if (currentLang) {
+              try {
+                const { languages } = await import("@codemirror/language-data");
+                const langDesc = languages.find(l =>
+                  l.name.toLowerCase() === currentLang.toLowerCase() ||
+                  l.alias.some(a => a.toLowerCase() === currentLang.toLowerCase()) ||
+                  l.extensions.some(e => e === `.${currentLang.toLowerCase()}`)
+                );
+                if (langDesc) {
+                  const langSupport = await langDesc.load();
+                  langExts.push(langSupport);
+                }
+              } catch { /* no language support */ }
+            }
+
+            const cmView = new EditorView({
+              state: EditorState.create({
+                doc: originalCode,
+                extensions: [
+                  lineNumbers(),
+                  highlightActiveLineGutter(),
+                  highlightSpecialChars(),
+                  history(),
+                  drawSelection(),
+                  indentOnInput(),
+                  bracketMatching(),
+                  closeBrackets(),
+                  highlightActiveLine(),
+                  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+                  ...langExts,
+                  keymap.of([
+                    ...closeBracketsKeymap,
+                    ...defaultKeymap,
+                    ...searchKeymap,
+                    ...historyKeymap,
+                    indentWithTab,
+                    { key: "Mod-Enter", run: () => { save(); return true; } },
+                    { key: "Escape", run: () => { cancel(); return true; } },
+                  ]),
+                  EditorView.theme({
+                    "&": { fontSize: "13px", height: "100%" },
+                    ".cm-scroller": { fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace", overflow: "auto" },
+                    ".cm-gutters": { background: "var(--background)", borderRight: "1px solid var(--border-dim)", color: "var(--text-faint)" },
+                    ".cm-activeLineGutter": { background: "var(--accent-dim)" },
+                    ".cm-activeLine": { background: "rgba(255,255,255,0.03)" },
+                    ".cm-content": { caretColor: "var(--accent)" },
+                    ".cm-cursor": { borderLeftColor: "var(--accent)" },
+                    ".cm-selectionBackground": { background: "rgba(251,146,60,0.2) !important" },
+                  }),
+                  EditorView.updateListener.of(update => {
+                    if (update.docChanged) codeValue = update.state.doc.toString();
+                  }),
+                ],
+              }),
+              parent: editorContainer,
+            });
+            cmView.focus();
+          } catch {
+            // Fallback to textarea if CM6 fails to load
+            const textarea = document.createElement("textarea");
+            textarea.value = originalCode;
+            textarea.style.cssText = `width:100%;min-height:200px;background:var(--background);color:var(--editor-text);border:none;padding:12px;font-family:ui-monospace,monospace;font-size:13px;line-height:1.6;resize:vertical;outline:none;`;
+            textarea.spellcheck = false;
+            editorContainer.appendChild(textarea);
+            textarea.focus();
+            textarea.addEventListener("input", () => { codeValue = textarea.value; });
+          }
+        })();
 
         const save = () => {
-          const newCode = textarea.value;
+          const newCode = codeValue;
           const newLang = (header.querySelector("#code-lang") as HTMLInputElement)?.value?.trim() || "";
           const codeChanged = newCode !== originalCode;
           const langChanged = newLang !== currentLang;
@@ -4137,9 +4214,9 @@ export default function MdEditor() {
         overlay.addEventListener("click", (ev) => {
           if (ev.target === overlay) cancel();
         });
-        textarea.addEventListener("keydown", (ke) => {
+        // Keyboard shortcuts (Escape/Cmd+S) handled by CM6 keymap; overlay-level Escape fallback
+        overlay.addEventListener("keydown", (ke) => {
           if (ke.key === "Escape") cancel();
-          if (ke.key === "s" && (ke.metaKey || ke.ctrlKey)) { ke.preventDefault(); save(); }
         });
 
         return;
