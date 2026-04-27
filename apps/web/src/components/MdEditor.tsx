@@ -2019,9 +2019,22 @@ export default function MdEditor() {
   const [narrowView, setNarrowView] = useState(true);
   const [narrowSource, setNarrowSource] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const [showOutlinePanel, setShowOutlinePanel] = useState(true);
-  const [showImagePanel, setShowImagePanel] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mdfy-panel-ai") === "true";
+  });
+  const [showOutlinePanel, setShowOutlinePanel] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("mdfy-panel-outline");
+    return saved === null ? true : saved === "true";
+  });
+  const [showImagePanel, setShowImagePanel] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mdfy-panel-image") === "true";
+  });
+  // Persist right panel state
+  useEffect(() => { try { localStorage.setItem("mdfy-panel-ai", String(showAIPanel)); localStorage.setItem("mdfy-panel-outline", String(showOutlinePanel)); localStorage.setItem("mdfy-panel-image", String(showImagePanel)); } catch {} }, [showAIPanel, showOutlinePanel, showImagePanel]);
+
   const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
   const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
   const [imagesLoading, setImagesLoading] = useState(false);
