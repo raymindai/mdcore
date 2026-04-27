@@ -6203,7 +6203,7 @@ ${clone.innerHTML}
             const shortUrl = `mdfy.cc/${cid}`;
             return (<>
               <button
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden sm:inline-block"
+                className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden lg:inline-block"
                 style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                 title="Click to copy document URL"
                 onClick={async () => {
@@ -6216,14 +6216,14 @@ ${clone.innerHTML}
                 {shortUrl}
               </button>
               {viewCount > 0 && (
-                <span className="text-[8px] font-mono px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
+                <span className="text-[8px] font-mono px-1.5 py-0.5 rounded shrink-0 hidden lg:inline-block" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
                   {viewCount} {viewCount === 1 ? "view" : "views"}
                 </span>
               )}
             </>);
           })()}
           {/* Permission badge — desktop only in row 1 */}
-          <span className="hidden sm:inline-flex items-center">
+          <span className="hidden lg:inline-flex items-center">
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             const perm = ct?.permission;
@@ -6275,7 +6275,7 @@ ${clone.innerHTML}
           })()}
           </span>
           {/* Save status — after permission badge */}
-          <span className="hidden sm:inline text-[10px] font-mono shrink-0">
+          <span className="hidden lg:inline text-[10px] font-mono shrink-0">
           {autoSave.isSaving && <span style={{ color: "var(--text-faint)" }}>Saving...</span>}
           {autoSave.error && !autoSave.isSaving && <span style={{ color: "#ef4444" }}>{autoSave.error}</span>}
           {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
@@ -9445,15 +9445,12 @@ ${clone.innerHTML}
           <button onClick={() => { setShowCommandPalette(true); setCmdSearch(""); }} className="transition-colors hidden sm:inline-flex items-center gap-1" style={{ color: "var(--text-faint)", background: "none", border: "1px solid var(--border-dim)", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer" }} title="Command palette">
             <span style={{ fontSize: 10 }}>{navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl+"}K</span>
           </button>
-          <a href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.cc">About</a>
-          <a href="/plugins" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
-          <a href="/discover" className="transition-colors" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
-          <a href="/docs" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="API documentation">API</a>
-          <a href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="mdfy VS Code extension">VS Code</a>
-          <a href="https://chrome.google.com/webstore" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="mdfy Chrome extension">Chrome</a>
-          <a href="/privacy" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Privacy policy">Privacy</a>
-          <a href="/terms" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Terms of service">Terms</a>
-          <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="mdcore on GitHub">GitHub</a>
+          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.cc">About</a>
+          <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
+          <a href="/discover" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
+          <a href="/docs" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="API documentation">API</a>
+          <a href="/privacy" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Privacy policy">Privacy</a>
+          <a href="/terms" className="transition-colors hidden lg:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Terms of service">Terms</a>
         </div>
         {/* Right: stats + engine badges — tap to expand on mobile */}
         <div className="flex items-center gap-3 shrink-0">
