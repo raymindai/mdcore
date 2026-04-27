@@ -338,10 +338,12 @@ const texts = {
     ],
 
     carousel: [
-      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG 에디터", title: "WYSIWYG 에디터", desc: "렌더링된 미리보기에서 직접 클릭하고 타이핑" },
-      { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome 확장 — Claude에서 캡처", title: "Chrome 확장", desc: "ChatGPT, Claude, Gemini에서 원클릭 캡처" },
-      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc 렌더링된 문서", title: "아름다운 렌더링", desc: "테이블, 리스트, 헤딩 — 정밀하게 렌더링" },
-      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc 수학과 다이어그램", title: "수학, 다이어그램, 코드", desc: "KaTeX 방정식, Mermaid 차트, 190+ 언어 하이라이팅" },
+      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG 에디터", title: "WYSIWYG 에디터", desc: "렌더링된 미리보기에서 직접 클릭하고 타이핑", href: "/", linkText: "에디터 열기" },
+      { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome 확장 — Claude에서 캡처", title: "Chrome 확장", desc: "ChatGPT, Claude, Gemini에서 원클릭 캡처", href: "/plugins#chrome", linkText: "확장 설치" },
+      { src: "/images/plugin-vscode.webp", alt: "mdfy VS Code 확장 — WYSIWYG 미리보기와 사이드바", title: "VS Code 확장", desc: "WYSIWYG 미리보기, 클라우드 싱크, AI 도구 — 에디터에서 바로", href: "/plugins#vscode", linkText: "확장 설치" },
+      { src: "/images/plugin-desktop.webp", alt: "mdfy for Mac — 사이드바와 문서 아웃라인", title: "mdfy for Mac", desc: "사이드바, 폴더, 오프라인 지원이 있는 네이티브 데스크톱 앱", href: "/plugins#desktop", linkText: "앱 다운로드" },
+      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc 렌더링된 문서", title: "아름다운 렌더링", desc: "테이블, 리스트, 헤딩 — 정밀하게 렌더링", href: "/", linkText: "지금 사용하기" },
+      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc 수학과 다이어그램", title: "수학, 다이어그램, 코드", desc: "KaTeX 방정식, Mermaid 차트, 190+ 언어 하이라이팅", href: "/docs", linkText: "문서 보기" },
     ],
 
     pillars: [
