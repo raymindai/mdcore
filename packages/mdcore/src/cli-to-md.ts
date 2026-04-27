@@ -43,7 +43,7 @@ export function cliToMarkdown(text: string): string {
 
   // Indented sections with headers
   md = md.replace(
-    /^(\S[^\n:]+):?\s*\n((?:\s{2,}[^\n]+\n?)+)/gm,
+    /^(\S[^\n:]+):?\s*\n((?:\s{2,}[^\n]+\n)*(?:\s{2,}[^\n]+))/gm,
     (_, header, body) => {
       const trimmedHeader = header.trim().replace(/:$/, "");
       const lines = body.split("\n").filter((l: string) => l.trim());

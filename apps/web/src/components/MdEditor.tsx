@@ -3103,22 +3103,15 @@ export default function MdEditor() {
           // Find the ASCII text in markdown and replace with mermaid code block
           const currentMd = markdown || "";
           // The ASCII is inside a ```text or ``` block — find and replace
-          const escaped = asciiText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          // Try matching with any language tag or no tag
-          const blockRegex = new RegExp("```[a-z]*\\n" + escaped.replace(/\n/g, "\\n") + "\\n```", "s");
+          // Use indexOf instead of dynamic regex to avoid ReDoS
           let newMd = currentMd;
-          if (blockRegex.test(currentMd)) {
-            newMd = currentMd.replace(blockRegex, "```mermaid\n" + mermaidCode + "\n```");
-          } else {
-            // Fallback: try to find the raw ASCII text and wrap it
-            const idx = currentMd.indexOf(asciiText);
-            if (idx !== -1) {
-              // Find the enclosing ``` block
-              const before = currentMd.lastIndexOf("```", idx);
-              const after = currentMd.indexOf("```", idx + asciiText.length);
-              if (before !== -1 && after !== -1) {
-                newMd = currentMd.substring(0, before) + "```mermaid\n" + mermaidCode + "\n" + currentMd.substring(after);
-              }
+          const asciiIdx = currentMd.indexOf(asciiText);
+          if (asciiIdx !== -1) {
+            // Find the enclosing ``` block
+            const before = currentMd.lastIndexOf("```", asciiIdx);
+            const after = currentMd.indexOf("```", asciiIdx + asciiText.length);
+            if (before !== -1 && after !== -1) {
+              newMd = currentMd.substring(0, before) + "```mermaid\n" + mermaidCode + "\n" + currentMd.substring(after);
             }
           }
 
@@ -4182,9 +4175,31 @@ export default function MdEditor() {
         // Try matching by filename
         const filename = src.split("/").pop()?.split("?")[0] || "";
         if (filename) {
-          const fnRegex = new RegExp(`!\\[([^\\]]*)\\]\\([^)]*${filename.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^)]*\\)`);
-          const fnMatch = md.match(fnRegex);
-          if (fnMatch) return { full: fnMatch[0], alt: fnMatch[1], index: fnMatch.index! };
+          // Use indexOf to avoid ReDoS from overlapping [^)]* quantifiers
+          let searchStart = 0;
+          while (searchStart < md.length) {
+            const fnIdx = md.indexOf(filename, searchStart);
+            if (fnIdx === -1) break;
+            // Walk backwards to find ![
+            const bangBracket = md.lastIndexOf("![", fnIdx);
+            if (bangBracket === -1 || bangBracket < searchStart) { searchStart = fnIdx + 1; continue; }
+            // Find ]( between ![ and filename
+            const closeBracketParen = md.indexOf("](", bangBracket);
+            if (closeBracketParen === -1 || closeBracketParen >= fnIdx) { searchStart = fnIdx + 1; continue; }
+            // Find closing ) after filename
+            const closeParen = md.indexOf(")", fnIdx + filename.length);
+            if (closeParen === -1) { searchStart = fnIdx + 1; continue; }
+            // Verify no newlines in the URL part and no ) before filename
+            const urlPart = md.substring(closeBracketParen + 2, closeParen);
+            if (!urlPart.includes("\n") && !urlPart.includes(")")) {
+              const full = md.substring(bangBracket, closeParen + 1);
+              const altMatch = full.match(/^!\[([^\]]*)\]/);
+              if (altMatch) {
+                return { full, alt: altMatch[1], index: bangBracket };
+              }
+            }
+            searchStart = fnIdx + 1;
+          }
         }
         return null;
       };

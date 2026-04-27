@@ -3517,7 +3517,7 @@
   function markdownToSlack(md) {
     var slack = md.replace(/\*\*(.+?)\*\*/g, "\u27e6BOLD\u27e7$1\u27e6/BOLD\u27e7");
     slack = slack.replace(/__(.+?)__/g, "\u27e6BOLD\u27e7$1\u27e6/BOLD\u27e7");
-    slack = slack.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "_$1_");
+    slack = slack.replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, "_$1_");
     slack = slack.replace(/\u27e6BOLD\u27e7/g, "*").replace(/\u27e6\/BOLD\u27e7/g, "*");
     return slack
       .replace(/~~(.+?)~~/g, "~$1~")

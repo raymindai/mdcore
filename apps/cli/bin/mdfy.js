@@ -393,9 +393,9 @@ function renderTerminal(markdown, title) {
     // Bold/italic inline
     else {
       let formatted = line;
-      formatted = formatted.replace(/\*\*(.+?)\*\*/g, `${BOLD}$1${RESET}`);
-      formatted = formatted.replace(/\*(.+?)\*/g, `${ITALIC}$1${RESET}`);
-      formatted = formatted.replace(/`(.+?)`/g, `${ORANGE}$1${RESET}`);
+      formatted = formatted.replace(/\*\*([^*]+)\*\*/g, `${BOLD}$1${RESET}`);
+      formatted = formatted.replace(/\*([^*]+)\*/g, `${ITALIC}$1${RESET}`);
+      formatted = formatted.replace(/`([^`]+)`/g, `${ORANGE}$1${RESET}`);
       output += formatted + "\n";
     }
   }
