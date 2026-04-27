@@ -1,0 +1,629 @@
+/* ─── About page translations ─── */
+
+export type AboutTexts = ReturnType<typeof getAboutTexts>;
+
+export function getAboutTexts(locale: "en" | "ko") {
+  return texts[locale];
+}
+
+const texts = {
+  en: {
+    hero: {
+      h1_1: "Own your markdown.",
+      h1_2: "Use it anywhere.",
+      sub: "Capture AI answers. Edit in WYSIWYG. Share, bundle, deploy as context. Owned, edited, portable.",
+      cta_primary: "Open mdfy editor",
+      cta_secondary: "Install Chrome extension",
+    },
+
+    platforms: [
+      { name: "Web", href: "/" },
+      { name: "VS Code", href: "/plugins#vscode" },
+      { name: "Mac App", href: "/plugins#desktop" },
+      { name: "CLI", href: "/plugins#cli" },
+      { name: "Chrome", href: "/plugins#chrome" },
+      { name: "MCP", href: "/plugins#mcp" },
+      { name: "QuickLook", href: "/plugins#quicklook" },
+    ],
+
+    carousel: [
+      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG editor", title: "WYSIWYG Editor", desc: "Click and type directly in the rendered preview", href: "/", linkText: "Open editor" },
+      { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome extension capturing from Claude", title: "Chrome Extension", desc: "One-click capture from ChatGPT, Claude, Gemini", href: "/plugins#chrome", linkText: "Get extension" },
+      { src: "/images/plugin-vscode.webp", alt: "mdfy VS Code extension with WYSIWYG preview and sidebar", title: "VS Code Extension", desc: "WYSIWYG preview, cloud sync, AI tools — right in your editor", href: "/plugins#vscode", linkText: "Install extension" },
+      { src: "/images/plugin-desktop.webp", alt: "mdfy for Mac with sidebar and document outline", title: "mdfy for Mac", desc: "Native desktop app with sidebar, folders, and offline support", href: "/plugins#desktop", linkText: "Download app" },
+      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc rendered document", title: "Beautiful Rendering", desc: "Tables, lists, headings — rendered with precision", href: "/", linkText: "Try it now" },
+      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc math and diagrams", title: "Math, Diagrams, Code", desc: "KaTeX equations, Mermaid charts, 190+ language highlighting", href: "/docs", linkText: "See docs" },
+    ],
+
+    pillars: [
+      {
+        label: "CAPTURE",
+        color: "#fb923c",
+        title: "Capture. Import. Paste.",
+        desc: "From any AI, any editor, any file — into one URL.",
+        items: [
+          "Capture from ChatGPT, Claude, Gemini",
+          "Import PDF, DOCX, PPTX, CSV, 14+ formats",
+          "Paste markdown, code, or plain text",
+          "Chrome extension: one-click AI capture",
+          "VS Code, Mac app, CLI, terminal pipe",
+        ],
+      },
+      {
+        label: "EDIT",
+        color: "#4ade80",
+        title: "Edit like a doc.",
+        desc: "Click and type in the rendered preview. No markdown syntax needed.",
+        items: [
+          "WYSIWYG: bold, italic, headings, lists",
+          "KaTeX math equations",
+          "Mermaid diagrams",
+          "Syntax-highlighted code blocks",
+          "AI tools: polish, summarize, translate",
+        ],
+      },
+      {
+        label: "SHARE",
+        color: "#60a5fa",
+        title: "Get a permanent URL.",
+        desc: "One click to publish. Anyone can view it — no app, no login needed.",
+        items: [
+          "Short URL: mdfy.cc/d/abc123",
+          "Works forever — no expiration",
+          "Public, unlisted, or private",
+          "Embed in websites or Slack",
+          "QR code for mobile sharing",
+        ],
+      },
+    ],
+
+    pillars_footer: "Also works from VS Code, Mac app, CLI, and MCP server.",
+    pillars_footer_link: "See all integrations",
+
+    ecosystem: {
+      heading: "One URL, every surface",
+      sub: "Write from 7 surfaces. Read from anywhere. One permanent URL connects them all.",
+      sources: ["ChatGPT", "Claude", "Gemini", "VS Code", "Terminal", "Finder", "Browser"] as string[],
+      input_surfaces: [
+        { name: "Chrome", color: "#4ade80", href: "/plugins#chrome" },
+        { name: "VS Code", color: "#60a5fa", href: "/plugins#vscode" },
+        { name: "Mac App", color: "#fb923c", href: "/plugins#desktop" },
+        { name: "CLI", color: "#4ade80", href: "/plugins#cli" },
+        { name: "MCP", color: "#60a5fa", href: "/plugins#mcp" },
+      ],
+      output_targets: [
+        { name: "Browser", color: "#fb923c", href: "/" },
+        { name: "AI context", color: "#60a5fa", href: "/docs/mcp" },
+        { name: "Embed", color: "#4ade80", href: "/docs/api" },
+        { name: "API", color: "#fbbf24", href: "/docs/api" },
+      ],
+      bottom_label: "Write from any surface. Read from any context. Same URL.",
+    },
+
+    features_heading: "What you can do",
+    features_sub: "Every feature is built to work together. Import from anywhere, edit how you want, share with one click.",
+
+    features: [
+      { label: "WYSIWYG Editing", desc: "Edit directly in the rendered preview. Bold, italic, headings, lists — click and type like a word processor.", color: "#fb923c" },
+      { label: "Instant Share", desc: "One click generates a short URL. Anyone can view your beautifully rendered document — no app needed.", color: "#4ade80" },
+      { label: "KaTeX Math", desc: "Inline and display math equations rendered with LaTeX-quality precision. Write formulas that look publication-ready.", color: "#fbbf24" },
+      { label: "Mermaid Diagrams", desc: "Flowcharts, sequence diagrams, Gantt charts — write them in Markdown, see them as interactive visuals.", color: "#60a5fa" },
+      { label: "Code Highlighting", desc: "190+ languages with syntax highlighting via highlight.js. Every programming language you write in.", color: "#38bdf8" },
+      { label: "Dark / Light Mode", desc: "Two carefully crafted themes. Your preference is saved locally. Shared docs respect the viewer's choice.", color: "#fb923c" },
+      { label: "Import Anything", desc: "PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, RST, RTF — drop any file and get Markdown. AI-powered mdfy restructures raw text.", color: "#4ade80" },
+      { label: "Version History", desc: "Every change is tracked. Revert to any previous version. The URL stays the same — recipients always see the latest.", color: "#fbbf24" },
+    ],
+
+    feature_images: [
+      { src: "/images/feature-math.webp", alt: "KaTeX math rendering — inline and display equations", title: "KaTeX Math", sub: "Publication-quality equations" },
+      { src: "/images/feature-mermaid.webp", alt: "Mermaid diagram — flowchart rendered from Markdown", title: "Mermaid Diagrams", sub: "Flowcharts, sequences, Gantt" },
+      { src: "/images/feature-code.webp", alt: "Syntax-highlighted code block with copy button", title: "Code Highlighting", sub: "190+ languages, copy button" },
+    ],
+
+    how_it_works_heading: "Under the hood",
+    how_it_works_sub: "A Rust engine compiled to WASM renders your Markdown in ~2ms. No server round-trip for previews.",
+
+    timeline: [
+      { marker: "Input", text: "Paste, drop a file, or capture from any AI chat" },
+      { marker: "Parse", text: "Rust engine (comrak) compiles to WASM, parses Markdown in ~2ms" },
+      { marker: "Render", text: "Code highlighting, KaTeX math, Mermaid diagrams applied" },
+      { marker: "Edit", text: "WYSIWYG: click and type in the live rendered preview" },
+      { marker: "Publish", text: "One click generates a permanent URL — share anywhere" },
+    ],
+
+    before_after: {
+      heading: "The problem",
+      sub: "You get great answers from AI every day. Then you close the tab and they disappear forever.",
+      image_alt: "Rendered preview on the left, raw Markdown on the right",
+      image_title: "Before and After",
+      image_sub: "Rendered preview on the left, raw Markdown on the right",
+      before_title: "Before mdfy",
+      before_items: [
+        "- .md files are raw text nobody wants to read",
+        "- Copy to Google Docs — formatting breaks",
+        "- Share via Slack — looks like code",
+        "- Different AIs, different formats",
+        "- Edit requires VS Code or terminal",
+        "- Version control? Manual backups",
+      ],
+      after_title: "With mdfy",
+      after_items: [
+        "Every .md gets a beautiful, shareable URL",
+        "Edit in browser — no install, no login to view",
+        "Works with every AI — ChatGPT, Claude, Gemini",
+        "Edit from Mac, VS Code, Chrome, or mobile",
+        "Version history, sharing permissions, access control",
+        "Import anything — PDF, DOCX, PPTX, paste",
+      ],
+    },
+
+    vision: {
+      heading: "Where mdfy is going",
+      sub: "Everything above works today. Here is what we are building next.",
+      today_title: "Today",
+      today_badge: "Live",
+      today_phase: "Phase 1",
+      today_items: [
+        "Multi-surface capture",
+        "Beautiful WYSIWYG editing",
+        "Permanent URLs with sharing",
+        "AI tools (polish, summary, translate, chat)",
+        "14+ file format imports",
+        "KaTeX math, Mermaid diagrams, syntax highlighting",
+      ],
+      tomorrow_title: "Tomorrow",
+      tomorrow_badge: "Coming Soon",
+      tomorrow_phase: "Phase 2 — Q2 2026",
+      tomorrow_items: [
+        "Memory Bundle — Multiple mdfy URLs as a single deployable AI context",
+        "Semantic search — Find by meaning, not just keyword",
+        "Bundle versioning — Snapshot a moment. Compare evolutions",
+        "MCP write access — Let AI agents write back to your memory",
+      ],
+      beyond_title: "Beyond",
+      beyond_badge: "Vision",
+      beyond_phase: "Phase 3+",
+      beyond_items: [
+        "mdfy Bundle Spec — Open standard for AI memory bundles",
+        "Bundle marketplace",
+        "Team workspaces",
+        "Enterprise self-host",
+      ],
+      manifesto_link: "Read the full manifesto",
+    },
+
+    comparison_md: {
+      heading: "mdfy vs Markdown publishing tools",
+      sub: "Publish Markdown to the web. How does mdfy stack up?",
+      columns: ["", "mdfy.cc", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
+      rows: [
+        { feature: "No signup to publish", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Instant shareable URL", vals: ["yes", "yes", "no", "yes", "yes"] },
+        { feature: "WYSIWYG editing", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Source stays on your machine", vals: ["yes", "no", "no", "yes", "no"] },
+        { feature: "KaTeX math", vals: ["yes", "yes", "no", "yes", "no"] },
+        { feature: "Mermaid diagrams", vals: ["yes", "yes", "no", "yes", "no"] },
+        { feature: "CLI publish / pipe", vals: ["yes", "no", "no", "no", "yes"] },
+        { feature: "AI integration (MCP)", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "VS Code extension", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Chrome extension", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Mac desktop app", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Bidirectional sync", vals: ["yes", "yes", "no", "yes", "no"] },
+      ],
+    },
+
+    comparison_ai: {
+      heading: "mdfy vs AI Memory Solutions",
+      sub: "Other tools extract memory from your conversations automatically. mdfy takes a different approach: you decide what to remember.",
+      columns: ["", "mdfy.cc", "Mem0", "Letta", "Notion AI"] as string[],
+      rows: [
+        { feature: "Author your own memory", vals: ["yes", "no", "no", "partial"] },
+        { feature: "Markdown native", vals: ["yes", "no", "no", "partial"] },
+        { feature: "Permanent URLs", vals: ["yes", "no", "no", "no"] },
+        { feature: "Multi-LLM agnostic", vals: ["yes", "yes", "yes", "no"] },
+        { feature: "Open source engine", vals: ["yes", "yes", "yes", "no"] },
+        { feature: "Bundle for deployment", vals: ["yes", "no", "no", "no"] },
+        { feature: "Human-readable storage", vals: ["yes", "partial", "partial", "yes"] },
+        { feature: "MCP support", vals: ["yes", "yes", "no", "no"] },
+        { feature: "WYSIWYG editing", vals: ["yes", "no", "no", "yes"] },
+        { feature: "No vendor lock-in", vals: ["yes", "yes", "yes", "no"] },
+      ],
+      footer: "Mem0 and Letta are excellent at what they do — they extract memory from your AI conversations automatically. mdfy answers a different question: what do you want to remember? You author. You bundle. You deploy.",
+    },
+
+    pricing_heading: "Pricing",
+
+    pricing_tiers: [
+      {
+        name: "No Account",
+        badge: null,
+        sub: "Use immediately, no sign-up",
+        border: "var(--border-dim)",
+        nameColor: "var(--text-faint)",
+        opacity: 0.7,
+        items: [
+          { text: "+ Instant rendering", accent: false, dim: false },
+          { text: "+ Import / Export all formats", accent: false, dim: false },
+          { text: "+ Share via hash URL", accent: false, dim: false },
+          { text: "- Local only, no cloud", accent: false, dim: true },
+          { text: "- No short URLs", accent: false, dim: true },
+        ],
+      },
+      {
+        name: "Beta",
+        badge: "Free Now",
+        sub: "Everything unlocked while we're testing",
+        border: "var(--accent-dim)",
+        nameColor: "var(--text-primary)",
+        opacity: 1,
+        items: [
+          { text: "Unlimited documents", accent: true, dim: false },
+          { text: "Documents never expire", accent: true, dim: false },
+          { text: "Cloud sync across devices", accent: true, dim: false },
+          { text: "Short URL sharing", accent: true, dim: false },
+          { text: "AI mdfy structuring", accent: true, dim: false },
+          { text: "All formats supported", accent: true, dim: false },
+          { text: "- mdfy.cc badge on shared docs", accent: false, dim: false, faint: true },
+        ],
+      },
+      {
+        name: "Pro",
+        badge: "After Beta",
+        sub: "Pricing announced when beta ends",
+        border: "var(--accent)",
+        nameColor: "var(--accent)",
+        opacity: 1,
+        items: [
+          { text: "Everything in Beta", accent: true, dim: false },
+          { text: "No badge on shared docs", accent: true, dim: false },
+          { text: "Custom domain", accent: true, dim: false },
+          { text: "View analytics", accent: true, dim: false },
+          { text: "Password protection", accent: true, dim: false },
+          { text: "Priority AI mdfy", accent: true, dim: false },
+          { text: "Memory Bundles", accent: true, dim: false, coming: "Coming Q2 2026" },
+          { text: "Semantic search", accent: true, dim: false, coming: "Coming Q2 2026" },
+          { text: "Bundle versioning", accent: true, dim: false, coming: "Coming Q2 2026" },
+        ],
+      },
+      {
+        name: "Build",
+        badge: "Coming Q2 2026",
+        sub: "For AI builders and power users",
+        border: "var(--border-dim)",
+        nameColor: "var(--text-primary)",
+        opacity: 1,
+        items: [
+          { text: "Everything in Pro", accent: true, dim: false },
+          { text: "Unlimited Memory Bundles", accent: true, dim: false },
+          { text: "API access (read/write)", accent: true, dim: false },
+          { text: "MCP server (full, write enabled)", accent: true, dim: false },
+          { text: "Bundle versioning + snapshots", accent: true, dim: false },
+          { text: "Bundle analytics", accent: true, dim: false },
+          { text: "Webhook integrations", accent: true, dim: false },
+          { text: "Format adapters (Claude XML, etc.)", accent: true, dim: false },
+        ],
+      },
+    ],
+
+    bigger_picture: {
+      heading: "The bigger picture",
+      sub: "This is more than a markdown tool. Read why I'm building mdfy.",
+      manifesto_link: "Read the manifesto",
+    },
+
+    cta: {
+      heading: "Paste something. See what happens.",
+      sub: "No signup. No install. Paste any markdown and get a URL in 3 seconds.",
+      button: "Open Editor",
+    },
+  },
+
+  ko: {
+    hero: {
+      h1_1: "당신의 마크다운,",
+      h1_2: "어디서든.",
+      sub: "AI 답변을 캡처하세요. WYSIWYG으로 편집하세요. 공유하고, 번들하고, 컨텍스트로 배포하세요. 내가 만들고, 내가 쓰고, 내 것.",
+      cta_primary: "에디터 열기",
+      cta_secondary: "Chrome 확장 설치",
+    },
+
+    platforms: [
+      { name: "Web", href: "/" },
+      { name: "VS Code", href: "/plugins#vscode" },
+      { name: "Mac App", href: "/plugins#desktop" },
+      { name: "CLI", href: "/plugins#cli" },
+      { name: "Chrome", href: "/plugins#chrome" },
+      { name: "MCP", href: "/plugins#mcp" },
+      { name: "QuickLook", href: "/plugins#quicklook" },
+    ],
+
+    carousel: [
+      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG 에디터", title: "WYSIWYG 에디터", desc: "렌더링된 미리보기에서 직접 클릭하고 타이핑" },
+      { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome 확장 — Claude에서 캡처", title: "Chrome 확장", desc: "ChatGPT, Claude, Gemini에서 원클릭 캡처" },
+      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc 렌더링된 문서", title: "아름다운 렌더링", desc: "테이블, 리스트, 헤딩 — 정밀하게 렌더링" },
+      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc 수학과 다이어그램", title: "수학, 다이어그램, 코드", desc: "KaTeX 방정식, Mermaid 차트, 190+ 언어 하이라이팅" },
+    ],
+
+    pillars: [
+      {
+        label: "CAPTURE",
+        color: "#fb923c",
+        title: "캡처. 임포트. 붙여넣기.",
+        desc: "어떤 AI, 어떤 편집기, 어떤 파일에서든 — 하나의 URL로.",
+        items: [
+          "ChatGPT, Claude, Gemini에서 캡처",
+          "PDF, DOCX, PPTX, CSV 등 14+ 포맷 가져오기",
+          "마크다운, 코드, 일반 텍스트 붙여넣기",
+          "Chrome 확장: 원클릭 AI 캡처",
+          "VS Code, Mac 앱, CLI, 터미널 파이프",
+        ],
+      },
+      {
+        label: "EDIT",
+        color: "#4ade80",
+        title: "문서처럼 편집.",
+        desc: "렌더링된 미리보기에서 클릭하고 타이핑. 마크다운 문법 몰라도 됩니다.",
+        items: [
+          "WYSIWYG: 볼드, 이탤릭, 헤딩, 리스트",
+          "KaTeX 수학 방정식",
+          "Mermaid 다이어그램",
+          "구문 강조된 코드 블록",
+          "AI 도구: 다듬기, 요약, 번역",
+        ],
+      },
+      {
+        label: "SHARE",
+        color: "#60a5fa",
+        title: "영구 URL 받기.",
+        desc: "한 번의 클릭으로 퍼블리시. 누구나 볼 수 있습니다 — 앱도, 로그인도 필요 없습니다.",
+        items: [
+          "짧은 URL: mdfy.cc/d/abc123",
+          "영구 보존 — 만료 없음",
+          "공개, 비공개, 또는 링크 공유",
+          "웹사이트나 Slack에 임베드",
+          "모바일 공유용 QR 코드",
+        ],
+      },
+    ],
+
+    pillars_footer: "VS Code, Mac 앱, CLI, MCP 서버에서도 사용 가능합니다.",
+    pillars_footer_link: "모든 연동 보기",
+
+    ecosystem: {
+      heading: "하나의 URL, 모든 곳에서",
+      sub: "7개의 곳에서 작성하세요. 어디서든 읽으세요. 하나의 영구 URL이 모두를 연결합니다.",
+      sources: ["ChatGPT", "Claude", "Gemini", "VS Code", "Terminal", "Finder", "Browser"] as string[],
+      input_surfaces: [
+        { name: "Chrome", color: "#4ade80", href: "/plugins#chrome" },
+        { name: "VS Code", color: "#60a5fa", href: "/plugins#vscode" },
+        { name: "Mac App", color: "#fb923c", href: "/plugins#desktop" },
+        { name: "CLI", color: "#4ade80", href: "/plugins#cli" },
+        { name: "MCP", color: "#60a5fa", href: "/plugins#mcp" },
+      ],
+      output_targets: [
+        { name: "Browser", color: "#fb923c", href: "/" },
+        { name: "AI context", color: "#60a5fa", href: "/docs/mcp" },
+        { name: "Embed", color: "#4ade80", href: "/docs/api" },
+        { name: "API", color: "#fbbf24", href: "/docs/api" },
+      ],
+      bottom_label: "어디서든 작성하고, 어떤 컨텍스트에서든 읽으세요. 같은 URL.",
+    },
+
+    features_heading: "What you can do",
+    features_sub: "모든 기능이 함께 작동하도록 설계되었습니다. 어디서든 가져오고, 원하는 대로 편집하고, 한 번의 클릭으로 공유하세요.",
+
+    features: [
+      { label: "WYSIWYG 편집", desc: "렌더링된 미리보기에서 직접 편집하세요. 볼드, 이탤릭, 헤딩, 리스트 — 워드 프로세서처럼 클릭하고 타이핑하세요.", color: "#fb923c" },
+      { label: "즉시 공유", desc: "한 번의 클릭으로 짧은 URL을 생성합니다. 누구나 아름답게 렌더링된 문서를 볼 수 있습니다 — 앱 설치 불필요.", color: "#4ade80" },
+      { label: "KaTeX 수학", desc: "인라인 및 디스플레이 수학 방정식을 LaTeX 품질로 렌더링합니다. 출판 수준의 수식을 작성하세요.", color: "#fbbf24" },
+      { label: "Mermaid 다이어그램", desc: "플로우차트, 시퀀스 다이어그램, 간트 차트 — 마크다운으로 작성하고, 인터랙티브 비주얼로 보세요.", color: "#60a5fa" },
+      { label: "코드 하이라이팅", desc: "highlight.js를 통한 190+ 언어 구문 강조. 당신이 사용하는 모든 프로그래밍 언어를 지원합니다.", color: "#38bdf8" },
+      { label: "다크 / 라이트 모드", desc: "정성스럽게 만든 두 가지 테마. 선호 설정은 로컬에 저장됩니다. 공유 문서는 보는 사람의 선택을 따릅니다.", color: "#fb923c" },
+      { label: "무엇이든 가져오기", desc: "PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, RST, RTF — 아무 파일이나 드롭하면 마크다운으로 변환됩니다. AI 기반 mdfy가 원시 텍스트를 구조화합니다.", color: "#4ade80" },
+      { label: "버전 히스토리", desc: "모든 변경이 추적됩니다. 이전 버전으로 되돌릴 수 있습니다. URL은 그대로 — 수신자는 항상 최신 버전을 봅니다.", color: "#fbbf24" },
+    ],
+
+    feature_images: [
+      { src: "/images/feature-math.webp", alt: "KaTeX 수학 렌더링 — 인라인 및 디스플레이 방정식", title: "KaTeX 수학", sub: "출판 수준의 방정식" },
+      { src: "/images/feature-mermaid.webp", alt: "Mermaid 다이어그램 — 마크다운에서 렌더링된 플로우차트", title: "Mermaid 다이어그램", sub: "플로우차트, 시퀀스, 간트" },
+      { src: "/images/feature-code.webp", alt: "구문 강조된 코드 블록과 복사 버튼", title: "코드 하이라이팅", sub: "190+ 언어, 복사 버튼" },
+    ],
+
+    how_it_works_heading: "Under the hood",
+    how_it_works_sub: "Rust 엔진이 WASM으로 컴파일되어 ~2ms 안에 렌더링합니다. 미리보기를 위한 서버 왕복이 없습니다.",
+
+    timeline: [
+      { marker: "Input", text: "붙여넣기, 파일 드롭, 또는 AI 채팅에서 캡처" },
+      { marker: "Parse", text: "Rust 엔진(comrak)이 WASM으로 컴파일, ~2ms 안에 파싱" },
+      { marker: "Render", text: "코드 하이라이팅, KaTeX 수식, Mermaid 다이어그램 적용" },
+      { marker: "Edit", text: "WYSIWYG: 렌더링된 프리뷰에서 클릭하고 바로 편집" },
+      { marker: "Publish", text: "한 번의 클릭으로 영구 URL 생성 — 어디서든 공유" },
+    ],
+
+    before_after: {
+      heading: "왜 이것이 중요한가",
+      sub: "좋은 AI 답변이 채팅 기록 속으로 사라집니다. .md 파일은 아무도 안 읽습니다. mdfy가 그걸 바꿉니다.",
+      image_alt: "왼쪽은 렌더링된 미리보기, 오른쪽은 원시 마크다운",
+      image_title: "Before and After",
+      image_sub: "왼쪽은 렌더링된 미리보기, 오른쪽은 원시 마크다운",
+      before_title: "mdfy 이전",
+      before_items: [
+        "- .md 파일은 아무도 읽고 싶지 않은 원시 텍스트",
+        "- Google Docs에 복사 — 포맷 깨짐",
+        "- Slack으로 공유 — 코드처럼 보임",
+        "- AI마다 다른 포맷",
+        "- 편집하려면 VS Code나 터미널 필요",
+        "- 버전 관리? 수동 백업",
+      ],
+      after_title: "mdfy와 함께",
+      after_items: [
+        "모든 .md가 아름답고 공유 가능한 URL을 가짐",
+        "브라우저에서 편집 — 설치 불필요, 보는 데 로그인 불필요",
+        "모든 AI와 호환 — ChatGPT, Claude, Gemini",
+        "Mac, VS Code, Chrome, 모바일에서 편집",
+        "버전 히스토리, 공유 권한, 접근 제어",
+        "무엇이든 가져오기 — PDF, DOCX, PPTX, 붙여넣기",
+      ],
+    },
+
+    vision: {
+      heading: "Where mdfy is going",
+      sub: "위의 모든 것은 오늘 이미 작동합니다. 하지만 더 큰 베팅은 마크다운 URL이 AI 시대 지식의 substrate가 된다는 것입니다 — 퍼블리싱뿐 아니라, 메모리.",
+      today_title: "오늘",
+      today_badge: "Live",
+      today_phase: "Phase 1",
+      today_items: [
+        "멀티 서피스 캡처",
+        "아름다운 WYSIWYG 편집",
+        "공유 가능한 영구 URL",
+        "AI 도구 (다듬기, 요약, 번역, 채팅)",
+        "14+ 파일 포맷 가져오기",
+        "KaTeX 수학, Mermaid 다이어그램, 구문 강조",
+      ],
+      tomorrow_title: "내일",
+      tomorrow_badge: "Coming Soon",
+      tomorrow_phase: "Phase 2 — Q2 2026",
+      tomorrow_items: [
+        "Memory Bundle — 여러 mdfy URL을 하나의 배포 가능한 AI 컨텍스트로",
+        "시맨틱 검색 — 키워드가 아닌 의미로 찾기",
+        "Bundle 버전 관리 — 순간을 스냅샷. 변화를 비교",
+        "MCP 쓰기 접근 — AI 에이전트가 당신의 메모리에 기록",
+      ],
+      beyond_title: "그 너머",
+      beyond_badge: "Vision",
+      beyond_phase: "Phase 3+",
+      beyond_items: [
+        "mdfy Bundle Spec — AI 메모리 번들의 오픈 표준",
+        "Bundle 마켓플레이스",
+        "팀 워크스페이스",
+        "기업용 셀프 호스트",
+      ],
+      manifesto_link: "전체 manifesto 읽기",
+    },
+
+    comparison_md: {
+      heading: "mdfy vs Markdown publishing tools",
+      sub: "마크다운을 웹에 퍼블리시. mdfy는 어떻게 다를까?",
+      columns: ["", "mdfy.cc", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
+      rows: [
+        { feature: "No signup to publish", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Instant shareable URL", vals: ["yes", "yes", "no", "yes", "yes"] },
+        { feature: "WYSIWYG editing", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Source stays on your machine", vals: ["yes", "no", "no", "yes", "no"] },
+        { feature: "KaTeX math", vals: ["yes", "yes", "no", "yes", "no"] },
+        { feature: "Mermaid diagrams", vals: ["yes", "yes", "no", "yes", "no"] },
+        { feature: "CLI publish / pipe", vals: ["yes", "no", "no", "no", "yes"] },
+        { feature: "AI integration (MCP)", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "VS Code extension", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Chrome extension", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Mac desktop app", vals: ["yes", "no", "no", "no", "no"] },
+        { feature: "Bidirectional sync", vals: ["yes", "yes", "no", "yes", "no"] },
+      ],
+    },
+
+    comparison_ai: {
+      heading: "mdfy vs AI Memory Solutions",
+      sub: "다른 도구는 대화에서 memory를 자동 추출합니다. mdfy는 다른 접근입니다: 당신이 무엇을 기억할지 결정합니다.",
+      columns: ["", "mdfy.cc", "Mem0", "Letta", "Notion AI"] as string[],
+      rows: [
+        { feature: "Author your own memory", vals: ["yes", "no", "no", "partial"] },
+        { feature: "Markdown native", vals: ["yes", "no", "no", "partial"] },
+        { feature: "Permanent URLs", vals: ["yes", "no", "no", "no"] },
+        { feature: "Multi-LLM agnostic", vals: ["yes", "yes", "yes", "no"] },
+        { feature: "Open source engine", vals: ["yes", "yes", "yes", "no"] },
+        { feature: "Bundle for deployment", vals: ["yes", "no", "no", "no"] },
+        { feature: "Human-readable storage", vals: ["yes", "partial", "partial", "yes"] },
+        { feature: "MCP support", vals: ["yes", "yes", "no", "no"] },
+        { feature: "WYSIWYG editing", vals: ["yes", "no", "no", "yes"] },
+        { feature: "No vendor lock-in", vals: ["yes", "yes", "yes", "no"] },
+      ],
+      footer: "Mem0과 Letta는 각자의 영역에서 뛰어납니다 — AI 대화에서 메모리를 자동으로 추출합니다. mdfy는 다른 질문에 답합니다: 당신은 무엇을 기억하고 싶은가? 당신이 작성합니다. 당신이 번들합니다. 당신이 배포합니다.",
+    },
+
+    pricing_heading: "요금제",
+
+    pricing_tiers: [
+      {
+        name: "비로그인",
+        badge: null,
+        sub: "가입 없이 즉시 사용",
+        border: "var(--border-dim)",
+        nameColor: "var(--text-faint)",
+        opacity: 0.7,
+        items: [
+          { text: "+ 즉시 렌더링", accent: false, dim: false },
+          { text: "+ 모든 포맷 가져오기 / 내보내기", accent: false, dim: false },
+          { text: "+ 해시 URL로 공유", accent: false, dim: false },
+          { text: "- 로컬 전용, 클라우드 없음", accent: false, dim: true },
+          { text: "- 짧은 URL 없음", accent: false, dim: true },
+        ],
+      },
+      {
+        name: "Beta",
+        badge: "현재 무료",
+        sub: "테스트 기간 동안 모든 기능 무료",
+        border: "var(--accent-dim)",
+        nameColor: "var(--text-primary)",
+        opacity: 1,
+        items: [
+          { text: "무제한 문서", accent: true, dim: false },
+          { text: "문서 영구 보존", accent: true, dim: false },
+          { text: "클라우드 동기화", accent: true, dim: false },
+          { text: "짧은 URL 공유", accent: true, dim: false },
+          { text: "AI mdfy 구조화", accent: true, dim: false },
+          { text: "모든 포맷 지원", accent: true, dim: false },
+          { text: "- 공유 문서에 mdfy.cc 뱃지", accent: false, dim: false, faint: true },
+        ],
+      },
+      {
+        name: "Pro",
+        badge: "베타 이후",
+        sub: "베타 종료 시 가격 안내 예정",
+        border: "var(--accent)",
+        nameColor: "var(--accent)",
+        opacity: 1,
+        items: [
+          { text: "Beta의 모든 기능", accent: true, dim: false },
+          { text: "공유 문서 뱃지 제거", accent: true, dim: false },
+          { text: "커스텀 도메인", accent: true, dim: false },
+          { text: "조회 분석", accent: true, dim: false },
+          { text: "비밀번호 보호", accent: true, dim: false },
+          { text: "우선 AI mdfy", accent: true, dim: false },
+          { text: "Memory Bundles", accent: true, dim: false, coming: "Coming Q2 2026" },
+          { text: "시맨틱 검색", accent: true, dim: false, coming: "Coming Q2 2026" },
+          { text: "Bundle 버전 관리", accent: true, dim: false, coming: "Coming Q2 2026" },
+        ],
+      },
+      {
+        name: "Build",
+        badge: "Coming Q2 2026",
+        sub: "AI 빌더와 파워 유저를 위한 플랜",
+        border: "var(--border-dim)",
+        nameColor: "var(--text-primary)",
+        opacity: 1,
+        items: [
+          { text: "Pro의 모든 기능", accent: true, dim: false },
+          { text: "무제한 Memory Bundles", accent: true, dim: false },
+          { text: "API 접근 (읽기/쓰기)", accent: true, dim: false },
+          { text: "MCP 서버 (전체, 쓰기 활성화)", accent: true, dim: false },
+          { text: "Bundle 버전 관리 + 스냅샷", accent: true, dim: false },
+          { text: "Bundle 분석", accent: true, dim: false },
+          { text: "Webhook 연동", accent: true, dim: false },
+          { text: "포맷 어댑터 (Claude XML 등)", accent: true, dim: false },
+        ],
+      },
+    ],
+
+    bigger_picture: {
+      heading: "더 큰 그림",
+      sub: "이건 단순한 마크다운 도구가 아닙니다. 왜 mdfy를 만드는지 읽어보세요.",
+      manifesto_link: "manifesto 읽기",
+    },
+
+    cta: {
+      heading: "지금 시작하세요.",
+      sub: "로그인 필요 없습니다. 파일을 드롭하고, 아무거나 붙여넣고, 아름답게 보세요.",
+      button: "에디터 열기",
+    },
+  },
+} as const;

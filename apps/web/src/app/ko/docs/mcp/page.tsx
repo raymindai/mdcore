@@ -14,11 +14,11 @@ import {
 export const metadata: Metadata = {
   title: "MCP Server — mdfy.cc",
   description:
-    "MCP (Model Context Protocol) server for mdfy.cc. Let Claude, Cursor, and Windsurf manage documents directly.",
+    "mdfy.cc MCP (Model Context Protocol) 서버. Claude, Cursor, Windsurf에서 문서를 직접 관리할 수 있습니다.",
   openGraph: {
     title: "MCP Server — mdfy.cc",
-    description: "Let AI tools publish and manage documents on mdfy.cc.",
-    url: "https://mdfy.cc/docs/mcp",
+    description: "AI 도구에서 mdfy.cc 문서를 게시하고 관리합니다.",
+    url: "https://mdfy.cc/ko/docs/mcp",
   },
 };
 
@@ -46,43 +46,43 @@ function ParamRow({ name, type, required, children }: { name: string; type: stri
 }
 
 const sidebarItems = [
-  { id: "what-is-mcp", label: "What is MCP" },
-  { id: "claude-web", label: "Claude Web (Hosted)" },
-  { id: "installation", label: "Local Installation" },
-  { id: "claude-code", label: "Claude Code Setup" },
-  { id: "claude-desktop", label: "Claude Desktop Setup" },
+  { id: "what-is-mcp", label: "MCP란" },
+  { id: "claude-web", label: "Claude Web (호스팅)" },
+  { id: "installation", label: "로컬 설치" },
+  { id: "claude-code", label: "Claude Code 설정" },
+  { id: "claude-desktop", label: "Claude Desktop 설정" },
   { id: "cursor", label: "Cursor / Windsurf" },
-  { id: "tools", label: "All 25 Tools" },
+  { id: "tools", label: "전체 25개 도구" },
   { id: "mdfy-create", label: "mdfy_create" },
   { id: "mdfy-read", label: "mdfy_read" },
   { id: "mdfy-update", label: "mdfy_update" },
   { id: "mdfy-list", label: "mdfy_list" },
   { id: "mdfy-publish", label: "mdfy_publish" },
   { id: "mdfy-delete", label: "mdfy_delete" },
-  { id: "examples", label: "Usage Examples" },
+  { id: "examples", label: "사용 예시" },
 ];
 
 const tools = [
   {
     id: "mdfy-create",
     name: "mdfy_create",
-    desc: "Create a new document from Markdown content. Returns the document URL, ID, and edit token.",
+    desc: "Markdown 내용으로 새 문서를 생성합니다. 문서 URL, ID, edit token을 반환합니다.",
     params: [
-      { name: "markdown", type: "string", required: true, desc: "The Markdown content." },
-      { name: "title", type: "string", required: false, desc: "Document title." },
-      { name: "isDraft", type: "boolean", required: false, desc: "Create as draft. Default: false." },
+      { name: "markdown", type: "string", required: true, desc: "Markdown 내용." },
+      { name: "title", type: "string", required: false, desc: "문서 제목." },
+      { name: "isDraft", type: "boolean", required: false, desc: "임시 저장으로 생성. 기본값: false." },
     ],
-    example: `// In Claude Code:
-"Publish this analysis as a document on mdfy.cc"
+    example: `// Claude Code에서:
+"이 분석 내용을 mdfy.cc에 문서로 게시해줘"
 
-// Claude calls mdfy_create:
+// Claude가 mdfy_create를 호출:
 {
   "markdown": "# Performance Analysis\\n...",
   "title": "Performance Analysis",
   "isDraft": false
 }
 
-// Returns:
+// 반환값:
 {
   "url": "https://mdfy.cc/d/abc123",
   "id": "abc123",
@@ -92,30 +92,30 @@ const tools = [
   {
     id: "mdfy-read",
     name: "mdfy_read",
-    desc: "Fetch a document's content and metadata by ID.",
+    desc: "ID로 문서의 내용과 메타데이터를 조회합니다.",
     params: [
-      { name: "id", type: "string", required: true, desc: "Document ID." },
+      { name: "id", type: "string", required: true, desc: "문서 ID." },
     ],
-    example: `// "Read the document at mdfy.cc/d/abc123"
+    example: `// "mdfy.cc/d/abc123 문서를 읽어줘"
 
-// Claude calls mdfy_read:
+// Claude가 mdfy_read를 호출:
 { "id": "abc123" }
 
-// Returns full markdown content and metadata`,
+// 전체 markdown 내용과 메타데이터를 반환`,
   },
   {
     id: "mdfy-update",
     name: "mdfy_update",
-    desc: "Update an existing document's content or title.",
+    desc: "기존 문서의 내용이나 제목을 수정합니다.",
     params: [
-      { name: "id", type: "string", required: true, desc: "Document ID." },
-      { name: "markdown", type: "string", required: false, desc: "New Markdown content." },
-      { name: "title", type: "string", required: false, desc: "New title." },
-      { name: "changeSummary", type: "string", required: false, desc: "Description of changes." },
+      { name: "id", type: "string", required: true, desc: "문서 ID." },
+      { name: "markdown", type: "string", required: false, desc: "새 Markdown 내용." },
+      { name: "title", type: "string", required: false, desc: "새 제목." },
+      { name: "changeSummary", type: "string", required: false, desc: "변경 사항 설명." },
     ],
-    example: `// "Update the document with the revised version"
+    example: `// "수정된 버전으로 문서를 업데이트해줘"
 
-// Claude calls mdfy_update:
+// Claude가 mdfy_update를 호출:
 {
   "id": "abc123",
   "markdown": "# Revised Analysis\\n...",
@@ -125,52 +125,52 @@ const tools = [
   {
     id: "mdfy-list",
     name: "mdfy_list",
-    desc: "List all documents owned by the authenticated user.",
+    desc: "인증된 사용자의 모든 문서를 조회합니다.",
     params: [],
-    example: `// "Show me my published documents"
+    example: `// "내가 게시한 문서들을 보여줘"
 
-// Claude calls mdfy_list (no parameters)
-// Returns array of documents with id, title, status`,
+// Claude가 mdfy_list를 호출 (매개변수 없음)
+// id, title, status가 포함된 문서 배열을 반환`,
   },
   {
     id: "mdfy-publish",
     name: "mdfy_publish",
-    desc: "Toggle a document between draft (private) and published (shared) state.",
+    desc: "문서를 임시 저장(비공개)과 게시(공개) 상태 간에 전환합니다.",
     params: [
-      { name: "id", type: "string", required: true, desc: "Document ID." },
-      { name: "isDraft", type: "boolean", required: true, desc: "Set to true for draft, false for published." },
+      { name: "id", type: "string", required: true, desc: "문서 ID." },
+      { name: "isDraft", type: "boolean", required: true, desc: "true이면 임시 저장, false이면 게시." },
     ],
-    example: `// "Make document abc123 public"
+    example: `// "abc123 문서를 공개해줘"
 
-// Claude calls mdfy_publish:
+// Claude가 mdfy_publish를 호출:
 { "id": "abc123", "isDraft": false }`,
   },
   {
     id: "mdfy-delete",
     name: "mdfy_delete",
-    desc: "Soft-delete a document. Can be restored by owner.",
+    desc: "문서를 소프트 삭제합니다. 소유자가 복원할 수 있습니다.",
     params: [
-      { name: "id", type: "string", required: true, desc: "Document ID." },
+      { name: "id", type: "string", required: true, desc: "문서 ID." },
     ],
-    example: `// "Delete the old draft"
+    example: `// "오래된 임시 저장을 삭제해줘"
 
-// Claude calls mdfy_delete:
+// Claude가 mdfy_delete를 호출:
 { "id": "abc123" }`,
   },
 ];
 
-export default function McpDocsPage() {
+export default function McpDocsPageKo() {
   return (
     <div style={{ background: "var(--background)", color: "var(--foreground)", minHeight: "100vh" }}>
-      <DocsNav />
+      <DocsNav lang="ko" />
 
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
           alsoSee={[
-            { label: "REST API", href: "/docs/api" },
-            { label: "CLI", href: "/docs/cli" },
-            { label: "SDK", href: "/docs/sdk" },
+            { label: "REST API", href: "/ko/docs/api" },
+            { label: "CLI", href: "/ko/docs/cli" },
+            { label: "SDK", href: "/ko/docs/sdk" },
           ]}
         />
 
@@ -181,86 +181,86 @@ export default function McpDocsPage() {
             MCP Server
           </h1>
           <p style={{ fontSize: 16, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 32, maxWidth: 640 }}>
-            Let Claude, Cursor, Windsurf, and other AI tools create and manage documents on mdfy.cc directly.
+            Claude, Cursor, Windsurf 및 기타 AI 도구에서 mdfy.cc 문서를 직접 생성하고 관리할 수 있습니다.
           </p>
 
-          {/* Memory Layer intro */}
+          {/* Memory Layer 소개 */}
           <div style={{ background: "var(--surface)", border: "1px solid var(--accent-dim)", borderRadius: 14, padding: "28px 24px", marginBottom: 40 }}>
             <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: "0 0 8px" }}>
-              The MCP-native memory layer for AI agents.
+              AI 에이전트를 위한 MCP-native memory layer.
             </p>
             <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 20px", lineHeight: 1.7 }}>
-              Read mdfy URLs as context today. Write memory back via MCP in Phase 2.
+              오늘 mdfy URL을 컨텍스트로 읽고, Phase 2에서 MCP를 통해 메모리를 기록합니다.
             </p>
             <div className="about-grid-2" style={{ gap: 16 }}>
               <div>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", margin: "0 0 8px" }}>
-                  Today <span className="live-badge">Live</span>
+                  오늘 <span className="live-badge">Live</span>
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
-                  <li style={{ padding: "3px 0" }}>Read mdfy URLs as AI context</li>
-                  <li style={{ padding: "3px 0" }}>Document CRUD via 25 MCP tools</li>
-                  <li style={{ padding: "3px 0" }}>Auto-source detection</li>
+                  <li style={{ padding: "3px 0" }}>mdfy URL을 AI 컨텍스트로 읽기</li>
+                  <li style={{ padding: "3px 0" }}>25개 MCP 도구를 통한 문서 CRUD</li>
+                  <li style={{ padding: "3px 0" }}>자동 소스 감지</li>
                 </ul>
               </div>
               <div>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", margin: "0 0 8px" }}>
-                  Coming <span className="coming-soon-badge">Q2 2026</span>
+                  출시 예정 <span className="coming-soon-badge">Q2 2026</span>
                 </p>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: 13, color: "var(--text-faint)" }}>
-                  <li style={{ padding: "3px 0" }}>Memory write access</li>
-                  <li style={{ padding: "3px 0" }}>Bundle deploy</li>
-                  <li style={{ padding: "3px 0" }}>Multi-agent memory sharing</li>
-                  <li style={{ padding: "3px 0" }}>Real-time bundle sync</li>
+                  <li style={{ padding: "3px 0" }}>메모리 쓰기 접근</li>
+                  <li style={{ padding: "3px 0" }}>번들 배포</li>
+                  <li style={{ padding: "3px 0" }}>멀티 에이전트 메모리 공유</li>
+                  <li style={{ padding: "3px 0" }}>실시간 번들 동기화</li>
                 </ul>
               </div>
             </div>
           </div>
 
-          {/* What is MCP */}
-          <SectionHeading id="what-is-mcp">What is MCP</SectionHeading>
+          {/* MCP란 */}
+          <SectionHeading id="what-is-mcp">MCP란</SectionHeading>
           <Card>
             <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.8, margin: 0 }}>
-              The <strong style={{ color: "var(--text-primary)" }}>Model Context Protocol (MCP)</strong> is an open standard
-              that lets AI assistants interact with external tools and services. The mdfy MCP server exposes
-              25 tools across 7 categories — core CRUD, append/prepend, section editing, sharing controls,
-              version history, folders, and stats. The hosted endpoint at <InlineCode>{"https://mdfy.cc/api/mcp"}</InlineCode> works
-              with any MCP-compatible client (Claude Web, Cursor, etc.).
+              <strong style={{ color: "var(--text-primary)" }}>Model Context Protocol (MCP)</strong>은 AI 어시스턴트가
+              외부 도구 및 서비스와 상호작용할 수 있게 하는 개방형 표준입니다. mdfy MCP 서버는
+              7개 카테고리에 걸쳐 25개 도구를 제공합니다 -- 핵심 CRUD, append/prepend, 섹션 편집, 공유 설정,
+              버전 이력, 폴더, 통계. <InlineCode>{"https://mdfy.cc/api/mcp"}</InlineCode>의 호스팅 엔드포인트는
+              모든 MCP 호환 클라이언트(Claude Web, Cursor 등)에서 사용할 수 있습니다.
             </p>
           </Card>
 
-          {/* Claude Web — Hosted */}
-          <SectionHeading id="claude-web">Claude Web (Hosted MCP)</SectionHeading>
+          {/* Claude Web -- 호스팅 */}
+          <SectionHeading id="claude-web">Claude Web (호스팅 MCP)</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            Use mdfy.cc directly in <strong style={{ color: "var(--text-primary)" }}>claude.ai</strong> via our hosted MCP endpoint — no local install required.
+            호스팅 MCP 엔드포인트를 통해 <strong style={{ color: "var(--text-primary)" }}>claude.ai</strong>에서 바로 mdfy.cc를 사용할 수 있습니다 -- 로컬 설치가 필요 없습니다.
           </p>
           <Card>
-            <SubLabel>Endpoint URL</SubLabel>
+            <SubLabel>엔드포인트 URL</SubLabel>
             <CodeBlock>{`https://mdfy.cc/api/mcp`}</CodeBlock>
             <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 16, marginBottom: 8, lineHeight: 1.7 }}>
-              In Claude.ai → <strong style={{ color: "var(--text-muted)" }}>Settings → Integrations / Connectors</strong> → Add custom MCP server → paste the URL above.
+              Claude.ai에서 <strong style={{ color: "var(--text-muted)" }}>Settings &rarr; Integrations / Connectors</strong> &rarr; Add custom MCP server &rarr; 위 URL을 붙여넣기 합니다.
             </p>
             <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0, lineHeight: 1.7 }}>
-              Same hosted endpoint works for any MCP-compatible client that supports remote HTTP MCP (Cursor, ChatGPT, Gemini, etc.).
+              같은 호스팅 엔드포인트가 원격 HTTP MCP를 지원하는 모든 MCP 호환 클라이언트(Cursor, ChatGPT, Gemini 등)에서 동작합니다.
             </p>
           </Card>
 
-          {/* Installation */}
-          <SectionHeading id="installation">Local Installation</SectionHeading>
+          {/* 로컬 설치 */}
+          <SectionHeading id="installation">로컬 설치</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            For local stdio-based clients (Claude Desktop, Claude Code, Cursor stdio mode), install the npm package:
+            로컬 stdio 기반 클라이언트(Claude Desktop, Claude Code, Cursor stdio 모드)의 경우, npm 패키지를 설치합니다:
           </p>
           <Card>
             <CodeBlock lang="bash">{`npm install -g mdfy-cli && mdfy login`}</CodeBlock>
             <p style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>
-              The MCP server uses JWT authentication from <InlineCode>{"mdfy login"}</InlineCode>. No environment variables needed.
+              MCP 서버는 <InlineCode>{"mdfy login"}</InlineCode>의 JWT 인증을 사용합니다. 환경 변수 설정이 필요 없습니다.
             </p>
           </Card>
 
           {/* Claude Code */}
-          <SectionHeading id="claude-code">Claude Code Setup</SectionHeading>
+          <SectionHeading id="claude-code">Claude Code 설정</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            Add to <InlineCode>{".mcp.json"}</InlineCode> in your project root:
+            프로젝트 루트의 <InlineCode>{".mcp.json"}</InlineCode>에 추가합니다:
           </p>
           <Card>
             <CodeBlock lang="json">{`{
@@ -274,9 +274,9 @@ export default function McpDocsPage() {
           </Card>
 
           {/* Claude Desktop */}
-          <SectionHeading id="claude-desktop">Claude Desktop Setup</SectionHeading>
+          <SectionHeading id="claude-desktop">Claude Desktop 설정</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            Add to <InlineCode>{"claude_desktop_config.json"}</InlineCode>:
+            <InlineCode>{"claude_desktop_config.json"}</InlineCode>에 추가합니다:
           </p>
           <Card>
             <SubLabel>macOS</SubLabel>
@@ -300,10 +300,10 @@ export default function McpDocsPage() {
           {/* Cursor / Windsurf */}
           <SectionHeading id="cursor">Cursor / Windsurf</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            Cursor and Windsurf both support MCP. Use the hosted HTTP endpoint or the npm package.
+            Cursor와 Windsurf 모두 MCP를 지원합니다. 호스팅 HTTP 엔드포인트 또는 npm 패키지를 사용합니다.
           </p>
           <Card>
-            <SubLabel>Cursor — Settings → MCP → Add new global MCP server</SubLabel>
+            <SubLabel>Cursor -- Settings &rarr; MCP &rarr; Add new global MCP server</SubLabel>
             <CodeBlock lang="json">{`{
   "mcpServers": {
     "mdfy": {
@@ -313,21 +313,21 @@ export default function McpDocsPage() {
 }`}</CodeBlock>
           </Card>
 
-          {/* Tools */}
-          <SectionHeading id="tools">All 25 Tools</SectionHeading>
+          {/* 도구 */}
+          <SectionHeading id="tools">전체 25개 도구</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            The hosted MCP exposes 25 tools across 7 categories.
-            Auth happens via the user&apos;s mdfy.cc session (no API keys).
+            호스팅 MCP는 7개 카테고리에 걸쳐 25개 도구를 제공합니다.
+            인증은 사용자의 mdfy.cc 세션을 통해 이루어집니다 (API 키 불필요).
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 8, marginBottom: 24 }}>
             {[
-              { cat: "Core CRUD", tools: ["mdfy_create", "mdfy_read", "mdfy_update", "mdfy_delete", "mdfy_list", "mdfy_search"] },
+              { cat: "핵심 CRUD", tools: ["mdfy_create", "mdfy_read", "mdfy_update", "mdfy_delete", "mdfy_list", "mdfy_search"] },
               { cat: "Append/Prepend", tools: ["mdfy_append", "mdfy_prepend"] },
-              { cat: "Sections", tools: ["mdfy_outline", "mdfy_extract_section", "mdfy_replace_section"] },
-              { cat: "Duplicate/Import", tools: ["mdfy_duplicate", "mdfy_import_url"] },
-              { cat: "Sharing", tools: ["mdfy_publish", "mdfy_set_password", "mdfy_set_expiry", "mdfy_set_allowed_emails", "mdfy_get_share_url"] },
-              { cat: "Versions", tools: ["mdfy_versions", "mdfy_restore_version", "mdfy_diff"] },
-              { cat: "Stats/Folders", tools: ["mdfy_stats", "mdfy_recent", "mdfy_folder_list", "mdfy_folder_create", "mdfy_move_to_folder"] },
+              { cat: "섹션", tools: ["mdfy_outline", "mdfy_extract_section", "mdfy_replace_section"] },
+              { cat: "복제/가져오기", tools: ["mdfy_duplicate", "mdfy_import_url"] },
+              { cat: "공유", tools: ["mdfy_publish", "mdfy_set_password", "mdfy_set_expiry", "mdfy_set_allowed_emails", "mdfy_get_share_url"] },
+              { cat: "버전", tools: ["mdfy_versions", "mdfy_restore_version", "mdfy_diff"] },
+              { cat: "통계/폴더", tools: ["mdfy_stats", "mdfy_recent", "mdfy_folder_list", "mdfy_folder_create", "mdfy_move_to_folder"] },
             ].map((g) => (
               <div key={g.cat} style={{ background: "var(--surface)", padding: "12px 14px", borderRadius: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{g.cat}</div>
@@ -338,7 +338,7 @@ export default function McpDocsPage() {
             ))}
           </div>
           <p style={{ fontSize: 13, color: "var(--text-faint)", lineHeight: 1.7, marginBottom: 24 }}>
-            Detailed parameters for the 6 core tools below. The other 19 follow the same pattern — the AI will autocomplete arguments from the tool descriptions when called.
+            아래에 핵심 6개 도구의 상세 매개변수를 설명합니다. 나머지 19개도 같은 패턴을 따르며, 호출 시 AI가 도구 설명에서 인자를 자동 완성합니다.
           </p>
 
           <div
@@ -370,7 +370,7 @@ export default function McpDocsPage() {
             ))}
           </div>
 
-          {/* Individual Tools */}
+          {/* 개별 도구 */}
           {tools.map((tool) => (
             <div key={tool.id} id={tool.id} style={{ scrollMarginTop: 80, marginBottom: 32 }}>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
@@ -380,7 +380,7 @@ export default function McpDocsPage() {
               <Card>
                 {tool.params.length > 0 && (
                   <>
-                    <SubLabel>Parameters</SubLabel>
+                    <SubLabel>매개변수</SubLabel>
                     <div style={{ marginBottom: 16 }}>
                       {tool.params.map((p) => (
                         <ParamRow key={p.name} name={p.name} type={p.type} required={p.required}>
@@ -390,57 +390,57 @@ export default function McpDocsPage() {
                     </div>
                   </>
                 )}
-                <SubLabel>Example</SubLabel>
+                <SubLabel>예시</SubLabel>
                 <CodeBlock>{tool.example}</CodeBlock>
               </Card>
             </div>
           ))}
 
-          {/* Usage Examples */}
-          <SectionHeading id="examples">Usage Examples</SectionHeading>
+          {/* 사용 예시 */}
+          <SectionHeading id="examples">사용 예시</SectionHeading>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Card>
-              <SubLabel>Publish a document</SubLabel>
-              <CodeBlock>{`You: "Write a blog post about WebAssembly and publish it on mdfy.cc"
+              <SubLabel>문서 게시</SubLabel>
+              <CodeBlock>{`You: "WebAssembly에 대한 블로그 글을 써서 mdfy.cc에 게시해줘"
 
-Claude: I'll write the blog post and publish it for you.
+Claude: 블로그 글을 작성하고 게시하겠습니다.
 
-[Claude writes the content, then calls mdfy_create]
+[Claude가 내용을 작성한 후 mdfy_create를 호출]
 
-Done! Your blog post is live at https://mdfy.cc/d/abc123`}</CodeBlock>
+완료! 블로그 글이 https://mdfy.cc/d/abc123 에 게시되었습니다.`}</CodeBlock>
             </Card>
 
             <Card>
-              <SubLabel>Update with revisions</SubLabel>
-              <CodeBlock>{`You: "Update the document at mdfy.cc/d/abc123 - add a section about benchmarks"
+              <SubLabel>수정 반영</SubLabel>
+              <CodeBlock>{`You: "mdfy.cc/d/abc123 문서에 벤치마크 섹션을 추가해줘"
 
-Claude: I'll read the current document and add the benchmarks section.
+Claude: 현재 문서를 읽고 벤치마크 섹션을 추가하겠습니다.
 
-[Claude calls mdfy_read, then mdfy_update with new content]
+[Claude가 mdfy_read를 호출한 후 mdfy_update로 새 내용을 반영]
 
-Updated! The document now includes the benchmarks section.`}</CodeBlock>
+업데이트 완료! 문서에 벤치마크 섹션이 추가되었습니다.`}</CodeBlock>
             </Card>
 
             <Card>
-              <SubLabel>Manage documents</SubLabel>
-              <CodeBlock>{`You: "Show me my recent documents and delete the old drafts"
+              <SubLabel>문서 관리</SubLabel>
+              <CodeBlock>{`You: "내 최근 문서를 보여주고 오래된 임시 저장을 삭제해줘"
 
-Claude: Let me list your documents.
+Claude: 문서 목록을 확인하겠습니다.
 
-[Claude calls mdfy_list]
+[Claude가 mdfy_list를 호출]
 
-You have 5 documents:
-1. "API Guide" (published) - updated 2h ago
-2. "Draft notes" (draft) - updated 3d ago
-3. "Old meeting notes" (draft) - updated 2w ago
+5개의 문서가 있습니다:
+1. "API Guide" (게시됨) - 2시간 전 수정
+2. "Draft notes" (임시 저장) - 3일 전 수정
+3. "Old meeting notes" (임시 저장) - 2주 전 수정
 
-Should I delete the old drafts (#2 and #3)?
+오래된 임시 저장(#2, #3)을 삭제할까요?
 
-You: "Yes"
+You: "네"
 
-[Claude calls mdfy_delete for each]
+[Claude가 각각에 대해 mdfy_delete를 호출]
 
-Done! Deleted 2 documents.`}</CodeBlock>
+완료! 2개의 문서가 삭제되었습니다.`}</CodeBlock>
             </Card>
           </div>
         </main>

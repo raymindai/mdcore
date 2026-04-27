@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
 
@@ -141,12 +142,21 @@ export function SubLabel({ children }: { children: string }) {
 }
 
 /* ─── DocsNav ─── */
-export function DocsNav({ active = "docs" }: { active?: "about" | "plugins" | "docs" } = {}) {
+export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "plugins" | "docs"; lang?: "en" | "ko" } = {}) {
+  const prefix = lang === "ko" ? "/ko" : "";
   const navItems = [
-    { label: "About", href: "/about", key: "about" },
-    { label: "Plugins", href: "/plugins", key: "plugins" },
-    { label: "Docs", href: "/docs", key: "docs" },
+    { label: "About", href: `${prefix}/about`, key: "about" },
+    { label: "Plugins", href: `${prefix}/plugins`, key: "plugins" },
+    { label: "Docs", href: `${prefix}/docs`, key: "docs" },
   ];
+
+  /* Derive the current path's counterpart in the other language */
+  const langSwitchPaths: Record<string, { en: string; ko: string }> = {
+    about: { en: "/about", ko: "/ko/about" },
+    plugins: { en: "/plugins", ko: "/ko/plugins" },
+    docs: { en: "/docs", ko: "/ko/docs" },
+  };
+  const currentPaths = langSwitchPaths[active] || langSwitchPaths.about;
   return (
     <nav
       style={{
@@ -168,32 +178,40 @@ export function DocsNav({ active = "docs" }: { active?: "about" | "plugins" | "d
           alignItems: "center",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <MdfyLogo size={22} />
-          </Link>
-          <div className="site-nav-links">
-            {navItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="site-nav-link"
-                data-active={active === item.key}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-        <div className="site-nav-right">
+        <Link href="/" style={{ textDecoration: "none", flexShrink: 0 }}>
+          <MdfyLogo size={22} />
+        </Link>
+        <div className="site-nav-links" style={{ flex: 1, justifyContent: "center" }}>
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className="site-nav-link"
+              data-active={active === item.key}
+            >
+              {item.label}
+            </Link>
+          ))}
           <a
             href="https://github.com/raymindai/mdcore"
             target="_blank"
             rel="noopener noreferrer"
-            className="site-nav-right-link"
+            className="site-nav-link"
           >
             GitHub
           </a>
+        </div>
+        <div className="site-nav-right">
+          <details className="lang-dropdown">
+            <summary className="lang-dropdown-toggle">
+              {lang === "en" ? "EN" : "KO"}
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2 4 5 7 8 4" /></svg>
+            </summary>
+            <div className="lang-dropdown-menu">
+              <Link href={currentPaths.en} className={lang === "en" ? "active" : ""} onClick={() => { document.cookie = "mdfy-lang=en;path=/;max-age=31536000"; }}>English</Link>
+              <Link href={currentPaths.ko} className={lang === "ko" ? "active" : ""} onClick={() => { document.cookie = "mdfy-lang=;path=/;max-age=0"; }}>한국어</Link>
+            </div>
+          </details>
           <Link href="/" className="site-nav-cta">
             Open Editor
           </Link>
@@ -212,6 +230,16 @@ export function DocsNav({ active = "docs" }: { active?: "about" | "plugins" | "d
                 {item.label}
               </Link>
             ))}
+            <details className="lang-dropdown">
+              <summary className="lang-dropdown-toggle">
+                {lang === "en" ? "EN" : "KO"}
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="2 4 5 7 8 4" /></svg>
+              </summary>
+              <div className="lang-dropdown-menu">
+                <Link href={currentPaths.en} className={lang === "en" ? "active" : ""}>English</Link>
+                <Link href={currentPaths.ko} className={lang === "ko" ? "active" : ""}>한국어</Link>
+              </div>
+            </details>
             <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer">GitHub</a>
             <Link href="/">Open Editor</Link>
           </div>

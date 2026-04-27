@@ -1942,3 +1942,142 @@ textarea::selection {
   display: block;
   height: 0.5em;
 }
+
+/* ─── Phase badges (manifesto, roadmap, about) ─── */
+.live-badge,
+.coming-soon-badge,
+.vision-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  vertical-align: middle;
+  margin-left: 6px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.live-badge {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+.coming-soon-badge {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+.vision-badge {
+  color: var(--text-faint);
+  background: var(--surface);
+}
+
+/* Image glow effect */
+.img-glow {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25), 0 0 60px rgba(251, 146, 60, 0.08);
+}
+
+/* Hero carousel */
+.hero-c-track {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 calc(50vw - 540px);
+  scrollbar-width: none;
+}
+.hero-c-track::-webkit-scrollbar { display: none; }
+.hero-c-track { cursor: grab; }
+.hero-c-track:active { cursor: grabbing; }
+.hero-c-item {
+  flex-shrink: 0;
+  width: 1080px;
+  scroll-snap-align: center;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.hero-c-item img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.hero-c-caption {
+  padding: 12px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border-dim);
+}
+.hero-c-caption p:first-child {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.hero-c-caption p:last-child {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+/* Arrows */
+.hero-c-arrow {
+  position: absolute;
+  top: calc(50% - 28px);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+  z-index: 2;
+}
+.hero-c-arrow:hover { background: var(--border); }
+.hero-c-arrow-left { left: max(16px, calc(50vw - 560px)); }
+.hero-c-arrow-right { right: max(16px, calc(50vw - 560px)); }
+/* Dots */
+.hero-c-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.hero-c-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.hero-c-dot.active {
+  background: var(--accent);
+  transform: scale(1.25);
+}
+.hero-c-dot:hover:not(.active) { background: var(--text-faint); }
+@media (max-width: 1200px) {
+  .hero-c-track { padding: 0 calc(50vw - 45vw); }
+  .hero-c-item { width: 90vw; }
+  .hero-c-arrow-left { left: 12px; }
+  .hero-c-arrow-right { right: 12px; }
+}
+@media (max-width: 640px) {
+  .hero-c-track { padding: 0 16px; }
+  .hero-c-item { width: 92vw; }
+  .hero-c-arrow { display: none; }
+}
+
+/* ─── Language Dropdown ─── */
+.lang-dropdown { position: relative; }
+.lang-dropdown summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); font-weight: 600; font-family: var(--font-geist-mono), monospace; }
+.lang-dropdown summary::-webkit-details-marker { display: none; }
+.lang-dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px; min-width: 100px; z-index: 50; }
+.lang-dropdown-menu a { display: block; padding: 6px 12px; font-size: 12px; color: var(--text-muted); text-decoration: none; border-radius: 4px; }
+.lang-dropdown-menu a:hover { background: var(--background); color: var(--text-primary); }
+.lang-dropdown-menu a.active { color: var(--accent); }
