@@ -2,7 +2,12 @@
 
 ## The fastest way from thought to shared document.
 
-Import anything. Render **beautifully**. Share ~~instantly~~. Powered by Rust + WASM.
+**Markdown URLs that humans write and AI reads.** Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.
+
+[![Live](https://img.shields.io/badge/mdfy.cc-live-orange)](https://mdfy.cc)
+[![VS Code](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode)
+[![MCP](https://img.shields.io/badge/MCP-npm-red)](https://www.npmjs.com/package/mdfy-mcp)
+[![CLI](https://img.shields.io/badge/CLI-npm-green)](https://www.npmjs.com/package/mdfy)
 
 ```text
                     mdcore engine (Rust)
@@ -15,251 +20,226 @@ Import anything. Render **beautifully**. Share ~~instantly~~. Powered by Rust + 
     Browser Edge  Deno Node Raycast  CLI  Mobile
     mdfy.cc  CF         npm  Obsidian  brew  iOS
              Workers    pkg  VS Code   install Android
-
 ```
-
-## What is this?
-
-> mdcore is a Markdown parsing, rendering, and conversion engine built in Rust. The web product mdfy.cc is the first surface built on top of the engine.
-
-mdfy.cc is not just a renderer — it’s a full document platform:
 
 ---
 
-- **Import** any file format (PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, and more)
-- **Edit** inline with WYSIWYG or source Markdown
-- **AI mdfy** — AI-powered structuring turns raw text into clean Markdown
-- **Share** with a single click — short URL with beautiful rendered output
-- **Export** to MD, HTML, TXT, PDF, or copy as rich text for Docs/Email/Slack
+## What is this?
+
+**mdcore** is a Markdown parsing, rendering, and conversion engine built in Rust. **mdfy.cc** is the full document platform built on top of it.
+
+Every document gets a permanent short URL (`mdfy.cc/abc123`) that works everywhere — browsers, AI chats, Slack, email, embeds. No login to view. No paywall.
+
+## 8 Channels
+
+mdfy.cc is available everywhere:
+
+| Channel | Status | Install |
+|---------|--------|---------|
+| [**Web**](https://mdfy.cc) | Live | Just open mdfy.cc |
+| [**VS Code**](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode) | v1.3.0 | Marketplace or [.vsix download](https://github.com/raymindai/mdcore/releases) |
+| [**Desktop (Mac)**](https://github.com/raymindai/mdcore/releases) | v2.0.0 | DMG download |
+| [**CLI**](https://www.npmjs.com/package/mdfy) | v1.3.0 | `npm install -g mdfy` |
+| [**MCP Server**](https://www.npmjs.com/package/mdfy-mcp) | v1.3.0 | `npx mdfy-mcp` or hosted `mdfy.cc/api/mcp` |
+| [**Chrome Extension**](https://github.com/raymindai/mdcore/releases) | v2.0.0 | Download from releases |
+| **QuickLook (Mac)** | v1.0.0 | [Download](https://github.com/raymindai/mdcore/releases) |
+| **API** | Live | `https://mdfy.cc/api/docs` |
 
 ## Features
 
 ### Editor
-
-- WYSIWYG editing — edit directly in the rendered preview like a word processor
-- **Source editing** — CodeMirror 6 with Markdown-aware highlighting
-- **Split view** — side-by-side Beautified + MDFIED (source) panels
+- **WYSIWYG** — edit directly in the rendered preview (contentEditable)
+- **Source** — CodeMirror 6 with Markdown syntax highlighting
+- **Split view** — side-by-side Live + Source panels
 - **Floating toolbar** — context-aware formatting on text selection
-- **Narrow view** — constrain content width for comfortable reading
+- **Cmd+Enter** — escape from blockquote/list/code blocks
+- **Mermaid visual editor** — drag-and-drop flowchart canvas
 
-### Import (13 formats)
-
-- **Documents** — MD, PDF, DOCX, PPTX, XLSX, HTML, RTF
-- **Data** — CSV, JSON, XML
-- **Academic** — LaTeX, RST (reStructuredText)
-- **Plain text** — TXT
-- **CLI output** — auto-detects Claude Code / terminal output (unicode tables, checkmarks)
-- **AI mdfy** — post-import AI structuring via Gemini
+### Import (13+ formats)
+- Documents — MD, PDF, DOCX, PPTX, XLSX, HTML, RTF
+- Data — CSV, JSON, XML
+- Academic — LaTeX, reStructuredText
+- AI output — auto-detects ChatGPT/Claude/Gemini conversations
+- CLI output — auto-detects terminal tables and unicode formatting
 
 ### Export
-
-- **Download** — Markdown, HTML, Plain Text
-- **Print** — PDF via browser print
-- **Clipboard** — Raw HTML, Rich Text (Google Docs/Email), Slack mrkdwn, Plain Text
-- **Share** — Short URL, QR Code, Embed code (iframe)
+- Download — Markdown, HTML, Plain Text
+- Print — PDF via browser print (custom print CSS)
+- Clipboard — Raw HTML, Rich Text (Google Docs/Email), Slack mrkdwn
+- Share — Short URL, QR Code, Embed code (iframe)
 
 ### Rendering
-
 - **Full GFM** — tables, task lists, footnotes, strikethrough, autolinks
-- **Math** — KaTeX for inline and display equations
-- **Mermaid** — flowcharts, sequence diagrams, gantt charts
+- **Math** — KaTeX inline (`$...$`) and display (`$$...$$`)
+- **Mermaid** — flowcharts, sequence, gantt, class, state diagrams
 - **190+ languages** — syntax highlighting via highlight.js
+- **ASCII diagrams** — auto-detect and style box-drawing characters
 - **Flavor detection** — auto-detects GFM, Obsidian, MDX, Pandoc, CommonMark
-- **Flavor conversion** — convert between GFM, CommonMark, Obsidian with one click
 
 ### Organization
+- Folders with drag-and-drop
+- Trash with restore
+- Sort by newest, oldest, A→Z, Z→A
+- Document search
+- Simple / Detailed sidebar modes
 
-- **Folders** — create, rename, drag-and-drop documents between folders
-- **Trash** — soft delete with restore
-- **Sorting** — newest, oldest, A→Z, Z→A
-- **Cloud sync** — sign in to save documents across devices
+### Sharing & Access
+- Owner-only editing model (non-owners view, duplicate to edit)
+- Password protection + expiry dates
+- Email allowlist for restricted access
+- View count tracking
+- Key color + skin theme customization (8 colors, 8 schemes)
 
-### Auth & Sharing
+### Auth
+- Google / GitHub OAuth + Email magic link
+- Anonymous editing (no login required to create)
+- Cloud sync across devices
 
-- **Google / GitHub OAuth** + Email magic link
-- **Beta** — everything unlocked while we’re testing, no credit card
-- **Pro tier** — kicks in after beta: no badge, custom domain, analytics, password protection (pricing TBD)
+## CLI
+
+```bash
+# Publish a file
+mdfy publish README.md
+
+# Pipe from any command
+echo "# Hello" | mdfy publish
+tmux capture-pane -p | mdfy publish
+pbpaste | mdfy publish
+
+# Manage documents
+mdfy list
+mdfy read abc123
+mdfy update abc123 updated.md
+mdfy search "meeting notes"
+mdfy pull abc123 -o doc.md
+```
+
+## MCP Server
+
+Connect any AI tool to mdfy.cc:
+
+```json
+{
+  "mcpServers": {
+    "mdfy": {
+      "command": "npx",
+      "args": ["mdfy-mcp"]
+    }
+  }
+}
+```
+
+Or use the hosted endpoint: `https://mdfy.cc/api/mcp`
+
+25 tools: create, read, update, delete, list, search, append, prepend, sections, sharing, versions, folders, stats, and more.
 
 ## Packages
 
-mdcore ships five npm packages that can be used independently:
-
 | Package | Description | Install |
-| --- | --- | --- |
-| @mdcore/engine | Rust WASM engine + TypeScript postprocessor (highlight.js, KaTeX, Mermaid, file import) | npm i @mdcore/engine |
-| @mdcore/styles | CSS-only rendering styles – dark/light themes, document layout, print, diagrams | npm i @mdcore/styles |
-| @mdcore/api | HTTP client for the mdfy.cc document API (publish, update, pull, delete, versions) | npm i @mdcore/api |
-| @mdcore/ai | AI provider abstraction (Gemini, OpenAI, Anthropic) for text-to-markdown and diagram rendering | npm i @mdcore/ai |
-
-The Rust engine source lives in [`packages/engine/`](packages/engine/) and is compiled to WASM, then wrapped by the TypeScript package in [`packages/mdcore/`](packages/mdcore/).
-
-See [docs/PACKAGES.md](docs/PACKAGES.md) for the full architecture guide, dependency graph, and migration instructions.
+|---------|-------------|---------|
+| `@mdcore/engine` | Rust WASM engine + TypeScript postprocessor | `npm i @mdcore/engine` |
+| `@mdcore/styles` | CSS-only rendering styles (dark/light themes) | `npm i @mdcore/styles` |
+| `@mdcore/api` | HTTP client for mdfy.cc API | `npm i @mdcore/api` |
+| `@mdcore/ai` | AI provider abstraction (Gemini, OpenAI, Anthropic) | `npm i @mdcore/ai` |
 
 ## Tech Stack
 
 | Layer | Technology |
-| --- | --- |
+|-------|-----------|
 | Core Engine | Rust + comrak |
 | WASM | wasm-bindgen + wasm-pack |
 | Web App | Next.js 15 + React 19 + TailwindCSS v4 |
+| Desktop | Electron |
+| VS Code | Extension API + WebView |
 | Source Editor | CodeMirror 6 |
 | Math | KaTeX |
 | Diagrams | Mermaid.js |
-| DOCX Import | mammoth |
-| Office Import | officeparser (PPTX, XLSX) |
-| PDF Import | pdf-parse (server-side) |
-| AI Structuring | Gemini API |
-| HTML → MD | Turndown + GFM plugin |
-| Auth | Supabase Auth (@supabase/ssr) |
+| Auth | Supabase Auth |
 | Database | Supabase PostgreSQL |
+| Realtime | Supabase Realtime (Yjs CRDT) |
 | Hosting | Vercel |
+
+## Quick Start
+
+```bash
+# Run the web app
+cd apps/web
+npm install
+npm run dev    # → http://localhost:3000
+
+# Build the Rust engine
+cd packages/engine
+cargo test
+wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release
+
+# Build Desktop DMG
+cd apps/desktop
+npm run build:dmg
+```
 
 ## Project Structure
 
 ```text
 mdcore/
 ├── packages/
-│   ├── engine/              # Rust core engine (comrak → WASM)
-│   │   └── src/
-│   │       ├── lib.rs       # WASM bindings (wasm-bindgen)
-│   │       ├── render.rs    # HTML rendering via comrak
-│   │       └── flavor.rs    # MD flavor detection
-│   ├── mdcore/              # @mdcore/engine npm package (TypeScript)
-│   │   └── src/
-│   │       ├── index.ts     # mdcore object + re-exports
-│   │       ├── postprocess.ts  # highlight.js + KaTeX + ASCII diagrams
-│   │       ├── file-import.ts  # CSV, JSON, XML, HTML, RTF, LaTeX, RST
-│   │       ├── html-to-md.ts   # HTML → Markdown (Turndown)
-│   │       ├── cli-to-md.ts    # CLI output → Markdown
-│   │       └── mermaid-style.ts # Mermaid SVG post-processing
+│   ├── engine/              # Rust core (comrak → WASM)
+│   ├── mdcore/              # @mdcore/engine npm package
 │   ├── styles/              # @mdcore/styles (CSS-only)
-│   │   └── src/
-│   │       ├── index.css    # Main entry (imports all)
-│   │       ├── theme-dark.css   # Dark theme variables
-│   │       ├── theme-light.css  # Light theme variables
-│   │       ├── rendered.css # .mdcore-rendered document styles
-│   │       ├── code.css     # highlight.js light-mode overrides
-│   │       ├── diagram.css  # Mermaid + ASCII containers
-│   │       └── print.css    # Print / PDF export
 │   ├── api/                 # @mdcore/api (HTTP client)
-│   │   └── src/
-│   │       ├── client.ts    # MdfyClient class
-│   │       ├── documents.ts # Standalone functions
-│   │       ├── upload.ts    # Image upload
-│   │       └── types.ts     # TypeScript interfaces
 │   └── ai/                  # @mdcore/ai (AI providers)
-│       └── src/
-│           ├── mdfy-text.ts     # Raw text → structured Markdown
-│           ├── ascii-render.ts  # ASCII/Mermaid → styled HTML
-│           ├── conversation.ts  # AI conversation detection
-│           └── providers/       # Gemini, OpenAI, Anthropic
 ├── apps/
-│   ├── web/                 # Next.js 15 web app (mdfy.cc)
-│   │   └── src/
-│   │       ├── app/
-│   │       │   ├── api/
-│   │       │   │   ├── docs/          # Document CRUD
-│   │       │   │   ├── import/pdf/    # PDF text extraction
-│   │       │   │   ├── import/office/ # PPTX/XLSX extraction
-│   │       │   │   ├── import/mdfy/   # AI structuring
-│   │       │   │   ├── user/          # User documents
-│   │       │   │   └── og/            # OG image generation
-│   │       │   ├── auth/callback/     # OAuth callback
-│   │       │   ├── d/[id]/            # SSR document viewer
-│   │       │   ├── embed/[id]/        # Embed viewer
-│   │       │   └── about/             # About page
-│   │       ├── lib/
-│   │       │   ├── engine.ts          # WASM engine wrapper
-│   │       │   ├── share.ts           # URL sharing + document API
-│   │       │   ├── useAuth.ts         # Auth hook
-│   │       │   └── supabase*.ts       # Supabase clients
-│   │       └── components/
-│   │           ├── MdEditor.tsx       # Main editor (WYSIWYG + Source)
-│   │           ├── FloatingToolbar.tsx # Selection toolbar
-│   │           ├── useCodeMirror.ts   # CM6 hook
-│   │           ├── MdCanvas.tsx       # Mermaid visual editor
-│   │           └── MathEditor.tsx     # KaTeX equation editor
-│   └── vscode-extension/   # VS Code extension
-├── docs/
-│   ├── PACKAGES.md          # Package architecture guide
-│   ├── ARCHITECTURE.md      # Technical architecture decisions
-│   ├── ROADMAP.md           # Product roadmap
-│   ├── MANIFESTO.md         # Project manifesto
-│   └── MASTER-PLAN.md       # Master plan
-└── package.json
-
-```
-
-## Quick Start
-
-### Prerequisites
-
-- [Rust](https://rustup.rs/) (1.70+)
-- [wasm-pack](https://rustwasm.github.io/wasm-pack/)
-- Node.js 18+
-
-### Run the web app
-
-```text
-cd apps/web
-npm install
-npm run dev    # → http://localhost:3000
-
-```
-
-### Build the engine
-
-```text
-cd packages/engine
-cargo test
-wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release
-
-```
-
-### Environment variables
-
-```text
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-GEMINI_API_KEY=your-gemini-key
-
+│   ├── web/                 # Next.js 15 (mdfy.cc)
+│   ├── desktop/             # Electron Mac app
+│   ├── vscode-extension/    # VS Code extension
+│   ├── chrome-extension/    # Chrome extension
+│   └── quicklook/           # macOS QuickLook
+├── docs/                    # Architecture, roadmap, manifesto
+└── .github/workflows/       # CI/CD
 ```
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
-| --- | --- |
+|----------|--------|
 | ⌘B | Bold |
 | ⌘I | Italic |
 | ⌘K | Insert link |
-| ⌘S | Share (copy URL) |
+| ⌘S | Share / copy URL |
 | ⌘⇧C | Copy HTML |
-| ⌘Z | Undo |
-| ⌘⇧Z | Redo |
-| ⌘\ | Toggle view mode |
-| Esc | Focus editor |
-| Double-click | Edit code/math/diagram/table inline |
+| ⌘Z / ⌘⇧Z | Undo / Redo |
+| ⌘\\ | Toggle view mode |
+| ⌘Enter | Exit block (quote/list/code) |
+| ⌘K | Command palette |
+| Alt+1/2/3 | Live / Split / Source |
+| Dbl-click | Edit code/math/diagram/table |
 
 ## Roadmap
 
-- [x] WYSIWYG editing (contentEditable on rendered HTML)
-- [x] Multi-format import (PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, RST)
-- [x] AI mdfy structuring (Gemini)
-- [x] CLI output auto-conversion
-- [x] Folders + Trash + Sorting
-- [x] Auth (Google/GitHub/Email)
-- [x] Cloud sync + document ownership
-- [x] Viral badge (“Published with mdfy.cc”)
-- [x] Flavor conversion (GFM ↔ CommonMark ↔ Obsidian)
-- [ ] Stripe billing (Pro $8/mo)
-- [ ] Custom do
-- [ ] View analytics
-- [ ] Chrome extension (ChatGPT/Claude → mdfy.cc)
-- [ ] `@mdcore/engine` npm package
-- [ ] `@mdcore/terminal` CLI renderer
-- [ ] VS Code / Obsidian plugins
-- [ ] Mobile SDK (UniFFI → Swift/Kotlin)
+- [x] Rust WASM engine + Next.js web app
+- [x] WYSIWYG + Source + Split editing
+- [x] 13+ format import (PDF, DOCX, PPTX, XLSX...)
+- [x] Math (KaTeX), Mermaid diagrams, 190+ language highlighting
+- [x] Short URL sharing + QR code + embed
+- [x] Auth (Google/GitHub/Email) + cloud sync
+- [x] Password protection + expiry + email allowlist
+- [x] Folders + Trash + sorting
+- [x] VS Code extension (Marketplace)
+- [x] Desktop Mac app (Electron)
+- [x] Chrome extension (ChatGPT/Claude/Gemini capture)
+- [x] CLI tool (`npm install -g mdfy`)
+- [x] MCP Server (25 tools, hosted + stdio)
+- [x] macOS QuickLook
+- [x] REST API + documentation
+- [x] Mermaid visual editor (canvas)
+- [x] AI conversation detection + formatting
+- [x] Key color + skin theme customization
+- [x] Owner-only editing model
+- [x] Document notifications
+- [ ] Stripe billing (Pro tier)
+- [ ] Custom domains
+- [ ] View analytics dashboard
+- [ ] Obsidian plugin
+- [ ] Mobile (iOS/Android)
 
 ## License
 
@@ -269,4 +249,4 @@ MIT
 
 **mdcore** — *The fastest way from thought to shared document.*
 
-[mdfy.cc](https://mdfy.cc) · [mdcore.ai](https://mdcore.ai)
+[mdfy.cc](https://mdfy.cc) · [Docs](https://mdfy.cc/docs) · [Plugins](https://mdfy.cc/plugins) · [GitHub](https://github.com/raymindai/mdcore)
