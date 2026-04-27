@@ -721,8 +721,9 @@ export default function PluginsPage() {
           <div style={{ padding: "0 32px 24px" }}>
             <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-dim)" }}>
               <img
-                src="/images/plugin-vscode.png"
-                alt="mdfy VS Code extension — WYSIWYG preview with cloud sync"
+                src="/images/plugin-vscode.webp"
+                alt="mdfy VS Code extension — WYSIWYG preview with sidebar, toolbar, and document outline"
+                className="lightbox-img"
                 style={{ width: "100%", display: "block", borderRadius: 12 }}
               />
             </div>
@@ -1164,19 +1165,41 @@ export default function PluginsPage() {
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { step: "1", text: "Open apps/quicklook/MdfyQuickLook in Xcode" },
-                { step: "2", text: "Build and run the QuickLookExtension target" },
-                { step: "3", text: "Enable \"mdfy QuickLook\" in System Settings > Extensions > Quick Look" },
-                { step: "4", text: "Select any .md file in Finder and press Space" },
+                { step: "1", text: "Download and unzip MdfyQuickLook.zip below" },
+                { step: "2", text: "Move MdfyQuickLook.app to ~/Applications (or /Applications)" },
+                { step: "3", text: "Open MdfyQuickLook.app once to register the extension" },
+                { step: "4", text: "Enable in System Settings > Extensions > Quick Look" },
+                { step: "5", text: "Select any .md file in Finder and press Space" },
               ].map((s) => (
                 <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{s.step}</span>
-                  <code style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-geist-mono), monospace" }}>{s.text}</code>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>{s.text}</span>
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 16, marginBottom: 0 }}>
-              Distributable .appex package coming soon.
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+              <a
+                href="https://github.com/raymindai/mdcore/releases/download/v2.0.0/MdfyQuickLook.zip"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "var(--accent)",
+                  color: "var(--background)",
+                  padding: "10px 24px",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download QuickLook
+              </a>
+              <span style={{ fontSize: 12, color: "var(--text-faint)", alignSelf: "center" }}>45 KB (.zip)</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, marginBottom: 0 }}>
+              macOS 13 (Ventura) or later required. Apple Silicon build.
             </p>
           </div>
         </div>
