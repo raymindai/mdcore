@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import katex from "katex";
@@ -2618,40 +2619,42 @@ export default function MdEditor() {
       }
       // Delay sort update with FLIP animation
       setTimeout(() => {
-        // FLIP Step 1: Record current positions of all sidebar items
-        const rects = new Map<string, DOMRect>();
+        // FLIP Step 1: Record current positions (relative to sidebar scroll container)
+        const rects = new Map<string, { top: number }>();
+        const sidebar = document.querySelector("[data-sidebar-scroll]");
+        const scrollTop = sidebar?.scrollTop || 0;
         document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
           const id = el.getAttribute("data-sidebar-tab-id");
-          if (id) rects.set(id, el.getBoundingClientRect());
+          if (id) rects.set(id, { top: el.getBoundingClientRect().top + scrollTop });
         });
-        sidebarItemRectsRef.current = rects;
 
-        // FLIP Step 2: Update state (triggers re-render with new order)
-        setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
-        setReorderedTabId(tabId);
+        // FLIP Step 2: Synchronously update state so DOM is ready to measure
+        flushSync(() => {
+          setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
+        });
 
-        // FLIP Step 3: After React renders, apply inverse transform then animate
-        requestAnimationFrame(() => {
-          document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
-            const id = el.getAttribute("data-sidebar-tab-id");
-            if (!id) return;
-            const oldRect = rects.get(id);
-            if (!oldRect) return;
-            const newRect = el.getBoundingClientRect();
-            const deltaY = oldRect.top - newRect.top;
-            if (Math.abs(deltaY) < 2) return; // skip if barely moved
-            el.style.transform = `translateY(${deltaY}px)`;
-            el.style.transition = "none";
-            requestAnimationFrame(() => {
-              el.style.transition = "transform 0.35s ease-out";
-              el.style.transform = "translateY(0)";
-              el.addEventListener("transitionend", () => {
-                el.style.transition = "";
-                el.style.transform = "";
-              }, { once: true });
-            });
-          });
-          setTimeout(() => { setReorderedTabId(null); }, 400);
+        // FLIP Step 3: Measure new positions and apply inverse transform
+        const newScrollTop = sidebar?.scrollTop || 0;
+        document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
+          const id = el.getAttribute("data-sidebar-tab-id");
+          if (!id) return;
+          const oldPos = rects.get(id);
+          if (!oldPos) return;
+          const newTop = el.getBoundingClientRect().top + newScrollTop;
+          const deltaY = oldPos.top - newTop;
+          if (Math.abs(deltaY) < 2) return;
+          // Apply inverse: item appears at old position
+          el.style.transform = `translateY(${deltaY}px)`;
+          el.style.transition = "none";
+          // Force reflow
+          el.offsetHeight; // eslint-disable-line @typescript-eslint/no-unused-expressions
+          // Animate to new position
+          el.style.transition = "transform 0.3s ease-out";
+          el.style.transform = "translateY(0)";
+          const cleanup = () => { el.style.transition = ""; el.style.transform = ""; };
+          el.addEventListener("transitionend", cleanup, { once: true });
+          // Safety cleanup in case transitionend doesn't fire
+          setTimeout(cleanup, 350);
         });
       }, 600);
       return saved;
@@ -7366,7 +7369,7 @@ ${clone.innerHTML}
                       )}
                     </div>
                     {/* Document list — scrollable */}
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
+                    <div data-sidebar-scroll className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root-level documents (no folder, mine only) */}
                       {(() => {
                         const MAX_VISIBLE_DOCS = 100;
