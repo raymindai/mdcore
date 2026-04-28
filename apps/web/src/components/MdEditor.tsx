@@ -1829,6 +1829,7 @@ export default function MdEditor() {
   });
   const activeTabIdRef = useRef(activeTabId);
   const [reorderedTabId, setReorderedTabId] = useState<string | null>(null);
+  const sidebarItemRectsRef = useRef<Map<string, DOMRect>>(new Map());
   activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
@@ -2615,11 +2616,43 @@ export default function MdEditor() {
           }
         });
       }
-      // Delay sort update so the sidebar doesn't jump instantly
+      // Delay sort update with FLIP animation
       setTimeout(() => {
+        // FLIP Step 1: Record current positions of all sidebar items
+        const rects = new Map<string, DOMRect>();
+        document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
+          const id = el.getAttribute("data-sidebar-tab-id");
+          if (id) rects.set(id, el.getBoundingClientRect());
+        });
+        sidebarItemRectsRef.current = rects;
+
+        // FLIP Step 2: Update state (triggers re-render with new order)
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
         setReorderedTabId(tabId);
-        setTimeout(() => { setReorderedTabId(null); }, 400);
+
+        // FLIP Step 3: After React renders, apply inverse transform then animate
+        requestAnimationFrame(() => {
+          document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
+            const id = el.getAttribute("data-sidebar-tab-id");
+            if (!id) return;
+            const oldRect = rects.get(id);
+            if (!oldRect) return;
+            const newRect = el.getBoundingClientRect();
+            const deltaY = oldRect.top - newRect.top;
+            if (Math.abs(deltaY) < 2) return; // skip if barely moved
+            el.style.transform = `translateY(${deltaY}px)`;
+            el.style.transition = "none";
+            requestAnimationFrame(() => {
+              el.style.transition = "transform 0.35s ease-out";
+              el.style.transform = "translateY(0)";
+              el.addEventListener("transitionend", () => {
+                el.style.transition = "";
+                el.style.transform = "";
+              }, { once: true });
+            });
+          });
+          setTimeout(() => { setReorderedTabId(null); }, 400);
+        });
       }, 600);
       return saved;
     });
@@ -7350,7 +7383,7 @@ ${clone.innerHTML}
                       {visibleRootTabs.map((tab) => (
                         <div
                           key={tab.id}
-                          className={reorderedTabId === tab.id ? "sidebar-item-reordered" : ""}
+                          data-sidebar-tab-id={tab.id}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
@@ -7479,10 +7512,11 @@ ${clone.innerHTML}
                                 }).map((tab) => (
                                   <div
                                     key={tab.id}
+                                    data-sidebar-tab-id={tab.id}
                                     draggable
                                     onDragStart={() => setDragTabId(tab.id)}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative ${reorderedTabId === tab.id ? "sidebar-item-reordered" : ""}`}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                                       color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
