@@ -1828,6 +1828,7 @@ export default function MdEditor() {
     return saved || "";
   });
   const activeTabIdRef = useRef(activeTabId);
+  const [reorderedTabId, setReorderedTabId] = useState<string | null>(null);
   activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
@@ -2617,6 +2618,8 @@ export default function MdEditor() {
       // Delay sort update so the sidebar doesn't jump instantly
       setTimeout(() => {
         setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
+        setReorderedTabId(tabId);
+        setTimeout(() => { setReorderedTabId(null); }, 400);
       }, 600);
       return saved;
     });
@@ -7347,7 +7350,7 @@ ${clone.innerHTML}
                       {visibleRootTabs.map((tab) => (
                         <div
                           key={tab.id}
-
+                          className={reorderedTabId === tab.id ? "sidebar-item-reordered" : ""}
                           draggable={tab.ownerEmail !== EXAMPLE_OWNER}
                           onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
@@ -7479,7 +7482,7 @@ ${clone.innerHTML}
                                     draggable
                                     onDragStart={() => setDragTabId(tab.id)}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative"
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative ${reorderedTabId === tab.id ? "sidebar-item-reordered" : ""}`}
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                                       color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
