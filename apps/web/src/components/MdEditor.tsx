@@ -7011,7 +7011,7 @@ ${clone.innerHTML}
           />
         )}
         <div
-          className={`flex flex-col shrink-0 overflow-x-hidden ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
+          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
@@ -7028,20 +7028,14 @@ ${clone.innerHTML}
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
           >
             <div className="flex items-center gap-1.5">
-              <div className="relative group">
-                <button
-                  onClick={() => closeSidebar()}
-                  className="p-1 rounded transition-colors"
-                  style={{ color: "var(--accent)" }}
-                  title="Close sidebar"
-                >
-                  <PanelLeft width={14} height={14} />
-                </button>
-                <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                  Close sidebar
-                </div>
-              </div>
+              <button
+                onClick={() => closeSidebar()}
+                className="p-1 rounded transition-colors"
+                style={{ color: "var(--accent)" }}
+                title="Close sidebar"
+              >
+                <PanelLeft width={14} height={14} />
+              </button>
               <span style={{ color: "var(--accent)" }}>FILES</span>
               <button
                 id="sidebar-refresh-btn"
@@ -7082,47 +7076,22 @@ ${clone.innerHTML}
               </button>
             </div>
             <div className="flex items-stretch gap-1">
-              <div className="relative group flex">
-                <button
-                  onClick={() => importFileRef.current?.click()}
-                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                  title="Import files"
-                >
-                  <Download width={10} height={10} />
-                </button>
-                <div className="absolute top-full left-0 mt-1 w-52 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>Import Files</p>
-                  <p style={{ marginBottom: 4 }}>Select multiple files at once. Supported formats:</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {["MD", "PDF", "DOCX", "PPTX", "XLSX", "HTML", "CSV", "LaTeX", "RST", "RTF", "JSON", "XML", "TXT"].map(f => (
-                      <span key={f} className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>{f}</span>
-                    ))}
-                  </div>
-                  <div className="mt-2 space-y-0.5 text-[9px]" style={{ color: "var(--text-faint)" }}>
-                    <div>PDF: max 4MB</div>
-                    <div>PPTX / XLSX / Office: max 10MB</div>
-                    <div>Text formats: no limit</div>
-                    <div>AI structuring (mdfy): up to 30K chars</div>
-                  </div>
-                  <p className="mt-1.5" style={{ color: "var(--text-faint)" }}>Or drag & drop files anywhere</p>
-                </div>
-              </div>
-              <div className="relative group flex">
-                <button
-                  onClick={addTab}
-                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                  title="New document"
-                >
-                  <Plus width={10} height={10} />
-                </button>
-                <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9999]"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                  Create a new blank document
-                </div>
-              </div>
+              <button
+                onClick={() => importFileRef.current?.click()}
+                className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                title="Import files (MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, RST, RTF, JSON, XML, TXT)"
+              >
+                <Download width={10} height={10} />
+              </button>
+              <button
+                onClick={addTab}
+                className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                title="New document"
+              >
+                <Plus width={10} height={10} />
+              </button>
             </div>
           </div>
           {/* Hidden file input for import */}
