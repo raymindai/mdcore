@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { flushSync } from "react-dom";
+import { flushSync, createPortal } from "react-dom";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import katex from "katex";
@@ -1431,6 +1431,55 @@ function TBtn({ tip, preview, active, onClick, children }: {
           <span className="text-[10px]">{tip}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Portal-based Tooltip (never clipped by overflow) ───
+function Tooltip({ children, text, position = "bottom" }: { children: React.ReactNode; text: React.ReactNode; position?: "bottom" | "right" | "top" }) {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  const handleMouseEnter = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    if (position === "bottom") {
+      setCoords({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+    } else if (position === "right") {
+      setCoords({ top: rect.top + rect.height / 2, left: rect.right + 6 });
+    } else if (position === "top") {
+      setCoords({ top: rect.top - 6, left: rect.left + rect.width / 2 });
+    }
+    setShow(true);
+  };
+
+  return (
+    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} style={{ display: "inline-flex" }}>
+      {children}
+      {show && typeof document !== "undefined" && createPortal(
+        <div style={{
+          position: "fixed",
+          top: coords.top,
+          left: coords.left,
+          transform: position === "bottom" ? "translateX(-50%)" : position === "top" ? "translate(-50%, -100%)" : "translateY(-50%)",
+          zIndex: 99999,
+          padding: "6px 10px",
+          borderRadius: 6,
+          fontSize: 11,
+          fontWeight: 500,
+          color: "var(--text-secondary)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          pointerEvents: "none" as const,
+          whiteSpace: "nowrap" as const,
+          maxWidth: 280,
+        }}>
+          {text}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -7028,14 +7077,15 @@ ${clone.innerHTML}
             style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
           >
             <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => closeSidebar()}
-                className="p-1 rounded transition-colors"
-                style={{ color: "var(--accent)" }}
-                title="Close sidebar"
-              >
-                <PanelLeft width={14} height={14} />
-              </button>
+              <Tooltip text="Close sidebar">
+                <button
+                  onClick={() => closeSidebar()}
+                  className="p-1 rounded transition-colors"
+                  style={{ color: "var(--accent)" }}
+                >
+                  <PanelLeft width={14} height={14} />
+                </button>
+              </Tooltip>
               <span style={{ color: "var(--accent)" }}>FILES</span>
               <button
                 id="sidebar-refresh-btn"
@@ -7076,22 +7126,41 @@ ${clone.innerHTML}
               </button>
             </div>
             <div className="flex items-stretch gap-1">
-              <button
-                onClick={() => importFileRef.current?.click()}
-                className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                title="Import files (MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, LaTeX, RST, RTF, JSON, XML, TXT)"
-              >
-                <Download width={10} height={10} />
-              </button>
-              <button
-                onClick={addTab}
-                className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                title="New document"
-              >
-                <Plus width={10} height={10} />
-              </button>
+              <Tooltip text={
+                <div style={{ whiteSpace: "normal", maxWidth: 220 }}>
+                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4, fontSize: 10 }}>Import Files</p>
+                  <p style={{ marginBottom: 4, fontSize: 10 }}>Select multiple files at once. Supported formats:</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
+                    {["MD", "PDF", "DOCX", "PPTX", "XLSX", "HTML", "CSV", "LaTeX", "RST", "RTF", "JSON", "XML", "TXT"].map(f => (
+                      <span key={f} style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9, padding: "1px 4px", borderRadius: 3, fontFamily: "monospace" }}>{f}</span>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 9, color: "var(--text-faint)", lineHeight: 1.4 }}>
+                    <div>PDF: max 4MB</div>
+                    <div>PPTX / XLSX / Office: max 10MB</div>
+                    <div>Text formats: no limit</div>
+                    <div>AI structuring (mdfy): up to 30K chars</div>
+                  </div>
+                  <p style={{ marginTop: 4, fontSize: 9, color: "var(--text-faint)" }}>Or drag & drop files anywhere</p>
+                </div>
+              }>
+                <button
+                  onClick={() => importFileRef.current?.click()}
+                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                >
+                  <Download width={10} height={10} />
+                </button>
+              </Tooltip>
+              <Tooltip text="Create a new blank document">
+                <button
+                  onClick={addTab}
+                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                >
+                  <Plus width={10} height={10} />
+                </button>
+              </Tooltip>
             </div>
           </div>
           {/* Hidden file input for import */}
@@ -8239,41 +8308,31 @@ ${clone.innerHTML}
           className="flex flex-col shrink-0 items-center pt-1.5 gap-1"
           style={{ width: 36, borderRight: "1px solid var(--border-dim)", background: "var(--background)" }}
         >
-          <div className="relative group">
+          <Tooltip text="Open sidebar" position="right">
             <button
               onClick={() => setShowSidebar(true)}
               className="p-1 rounded transition-colors"
               style={{ color: "var(--text-muted)" }}
-              title="Open sidebar"
             >
               <PanelLeft width={14} height={14} />
             </button>
-            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Open sidebar
-            </div>
-          </div>
-          <div className="relative group">
+          </Tooltip>
+          <Tooltip text="New document" position="right">
             <button
               onClick={addTab}
               className="p-1 rounded transition-colors"
               style={{ color: "var(--text-muted)" }}
-              title="New document"
             >
               <Plus width={14} height={14} />
             </button>
-            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              New document
-            </div>
-          </div>
+          </Tooltip>
           <div className="flex-1" />
-          <div className="relative group pb-2">
+          <div className="pb-2">
+            <Tooltip text={isAuthenticated ? profile?.display_name || user?.email : "Sign in"} position="right">
             <button
               onClick={() => { setShowSidebar(true); setTimeout(() => setShowAuthMenu(true), 100); }}
               className="p-1 rounded transition-colors"
               style={{ color: isAuthenticated ? "var(--accent)" : "var(--text-faint)" }}
-              title={isAuthenticated ? "Account" : "Sign in"}
             >
               {isAuthenticated ? (
                 <img src={resolveAvatar(profile, user, 16)} alt="" className="w-4 h-4 rounded-full" />
@@ -8281,10 +8340,7 @@ ${clone.innerHTML}
                 <User width={14} height={14} />
               )}
             </button>
-            <div className="absolute left-full ml-1 top-1/2 -translate-y-1/2 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              {isAuthenticated ? profile?.display_name || user?.email : "Sign in"}
-            </div>
+            </Tooltip>
           </div>
         </div>
       )}
