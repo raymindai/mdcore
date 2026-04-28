@@ -2690,8 +2690,8 @@ export default function MdEditor() {
       if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
       if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
       const now = Date.now();
-      const at = a.lastOpenedAt || now;
-      const bt = b.lastOpenedAt || now;
+      const at = a.lastOpenedAt || 0;
+      const bt = b.lastOpenedAt || 0;
       return sortMode === "newest" ? bt - at : at - bt;
     };
     const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
@@ -7509,8 +7509,8 @@ ${clone.innerHTML}
                                 {[...folderTabs].sort((a, b) => {
                                   if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
                                   if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                                  const at = a.lastOpenedAt || Date.now();
-                                  const bt = b.lastOpenedAt || Date.now();
+                                  const at = a.lastOpenedAt || 0;
+                                  const bt = b.lastOpenedAt || 0;
                                   return sortMode === "newest" ? bt - at : at - bt;
                                 }).map((tab) => (
                                   <div
