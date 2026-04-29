@@ -29,16 +29,20 @@ export async function middleware(request: NextRequest) {
   const ua = request.headers.get("user-agent") || "";
   const accept = request.headers.get("accept");
 
-  // Bot/AI accessing documents → fetch raw markdown
-  if (isBot(ua, accept)) {
+  // Document access — serve raw markdown for ALL non-interactive requests
+  // /d/ID SSR is unreliable (WASM bundle issue), so serve markdown
+  // directly from Supabase. Real browsers still work via client-side JS.
+  {
     let docId: string | null = null;
-    // /?doc=ID
-    if (pathname === "/" && searchParams.has("doc")) {
+    // /?doc=ID (only for bots — humans get the editor)
+    if (pathname === "/" && searchParams.has("doc") && isBot(ua, accept)) {
       docId = searchParams.get("doc");
     }
-    // /d/ID
+    // /d/ID — serve markdown if NOT a real browser navigation
+    // Real browsers send Sec-Fetch-Mode: navigate; fetchers/bots don't
     const docMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
-    if (docMatch) docId = docMatch[1];
+    const secFetchMode = request.headers.get("sec-fetch-mode");
+    if (docMatch && secFetchMode !== "navigate") docId = docMatch[1];
 
     if (docId) {
       try {
