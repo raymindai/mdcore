@@ -108,8 +108,9 @@ export default async function DocPage({ params }: Props) {
   const visibleMarkdown = isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown));
 
   return (
-    <>
-      {/* Raw markdown for non-JS fetchers (AI tools, scrapers, OG crawlers) */}
+    <div>
+      {/* SSR-rendered raw markdown for non-JS fetchers (AI tools, scrapers, OG crawlers) */}
+      {/* This is a server component div — NOT inside the client DocumentViewer boundary */}
       {visibleMarkdown && (
         <article
           id="mdfy-raw-content"
@@ -124,13 +125,13 @@ export default async function DocPage({ params }: Props) {
       <DocumentViewer
         id={doc.id}
         markdown={visibleMarkdown}
-      title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
-      isProtected={isProtected}
-      isExpired={!!isExpired}
-      isRestricted={isRestricted || isDraft}
-      showBadge={doc.ownerPlan !== "pro"}
-      editMode={doc.edit_mode || "token"}
-    />
-    </>
+        title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
+        isProtected={isProtected}
+        isExpired={!!isExpired}
+        isRestricted={isRestricted || isDraft}
+        showBadge={doc.ownerPlan !== "pro"}
+        editMode={doc.edit_mode || "token"}
+      />
+    </div>
   );
 }
