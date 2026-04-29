@@ -5,12 +5,17 @@ import { CodeBlock, InlineCode, DocsNav, DocsSidebar, SiteFooter, mono } from "@
 export const metadata: Metadata = {
   title: "Documentation — mdfy.cc",
   description:
-    "Complete developer documentation for mdfy.cc. REST API, CLI, JavaScript SDK, MCP server, and npm packages.",
+    "Complete developer documentation for mdfy.cc. REST API, CLI, JavaScript SDK, MCP server, and npm packages for Markdown publishing.",
+  alternates: {
+    canonical: "https://mdfy.cc/docs",
+    languages: { ko: "https://mdfy.cc/ko/docs" },
+  },
   openGraph: {
     title: "Documentation — mdfy.cc",
     description:
       "Complete developer documentation. REST API, CLI, SDK, MCP server.",
     url: "https://mdfy.cc/docs",
+    images: [{ url: "/api/og?title=Documentation", width: 1200, height: 630 }],
   },
 };
 

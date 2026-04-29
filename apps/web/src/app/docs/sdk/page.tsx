@@ -14,11 +14,16 @@ import {
 export const metadata: Metadata = {
   title: "JavaScript SDK — mdfy.cc",
   description:
-    "JavaScript/TypeScript SDK for mdfy.cc. MdfyClient class, standalone functions, npm packages.",
+    "JavaScript and TypeScript SDK for mdfy.cc. MdfyClient class, standalone functions, and npm packages for programmatic Markdown document management.",
+  alternates: {
+    canonical: "https://mdfy.cc/docs/sdk",
+    languages: { ko: "https://mdfy.cc/ko/docs/sdk" },
+  },
   openGraph: {
     title: "JavaScript SDK — mdfy.cc",
-    description: "TypeScript-first SDK. Publish, read, update documents.",
+    description: "TypeScript-first SDK. Publish, read, update documents programmatically.",
     url: "https://mdfy.cc/docs/sdk",
+    images: [{ url: "/api/og?title=JavaScript%20SDK", width: 1200, height: 630 }],
   },
 };
 

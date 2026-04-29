@@ -51,6 +51,13 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  alternates: {
+    canonical: "https://mdfy.cc",
+    languages: {
+      en: "https://mdfy.cc",
+      ko: "https://mdfy.cc/ko",
+    },
+  },
   other: {
     "theme-color": "#09090b",
   },
@@ -75,6 +82,33 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem('mdfy-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#faf9f7'}var a=localStorage.getItem('mdfy-accent');if(a&&a!=='orange'){document.documentElement.setAttribute('data-accent',a)}var s=localStorage.getItem('mdfy-scheme');if(s&&s!=='default'){document.documentElement.setAttribute('data-scheme',s)}}catch(e){}`,
           }}
         />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "mdfy.cc",
+          "url": "https://mdfy.cc",
+          "description": "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Raymind AI",
+            "url": "https://raymind.ai"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://mdfy.cc/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        })}} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "mdfy.cc",
+          "applicationCategory": "Productivity",
+          "operatingSystem": "Web, macOS, VS Code, Chrome",
+          "url": "https://mdfy.cc",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "description": "Markdown publishing tool with WYSIWYG editing, AI conversation capture, and permanent shareable URLs."
+        })}} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-V3LTDKKHTS" />
         <script
           dangerouslySetInnerHTML={{

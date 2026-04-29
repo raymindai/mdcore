@@ -14,11 +14,16 @@ import {
 export const metadata: Metadata = {
   title: "CLI Reference — mdfy.cc",
   description:
-    "mdfy CLI reference. Publish Markdown from the command line. Pipe stdin, capture tmux panes, manage documents.",
+    "mdfy CLI reference. Publish Markdown from the command line. Pipe stdin, capture tmux panes, manage documents with simple terminal commands.",
+  alternates: {
+    canonical: "https://mdfy.cc/docs/cli",
+    languages: { ko: "https://mdfy.cc/ko/docs/cli" },
+  },
   openGraph: {
     title: "CLI Reference — mdfy.cc",
-    description: "Publish Markdown from the command line.",
+    description: "Publish Markdown from the command line. Pipe stdin, capture tmux, manage documents.",
     url: "https://mdfy.cc/docs/cli",
+    images: [{ url: "/api/og?title=CLI", width: 1200, height: 630 }],
   },
 };
 

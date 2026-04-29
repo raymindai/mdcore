@@ -12,13 +12,18 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "JavaScript SDK — mdfy.cc",
+  title: "JavaScript SDK 레퍼런스 — mdfy.cc",
   description:
-    "mdfy.cc JavaScript/TypeScript SDK. MdfyClient 클래스, 독립 함수, npm 패키지.",
+    "mdfy.cc JavaScript/TypeScript SDK. MdfyClient 클래스, 독립 함수, npm 패키지로 프로그래밍 방식의 마크다운 문서 관리를 지원합니다.",
+  alternates: {
+    canonical: "https://mdfy.cc/ko/docs/sdk",
+    languages: { en: "https://mdfy.cc/docs/sdk" },
+  },
   openGraph: {
-    title: "JavaScript SDK — mdfy.cc",
-    description: "TypeScript-first SDK. 문서 게시, 조회, 수정.",
+    title: "JavaScript SDK 레퍼런스 — mdfy.cc",
+    description: "TypeScript-first SDK. 문서 게시, 조회, 수정을 프로그래밍으로.",
     url: "https://mdfy.cc/ko/docs/sdk",
+    images: [{ url: "/api/og?title=JavaScript%20SDK", width: 1200, height: 630 }],
   },
 };
 

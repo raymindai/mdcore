@@ -12,13 +12,18 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "MCP Server — mdfy.cc",
+  title: "MCP Server 레퍼런스 — mdfy.cc",
   description:
-    "mdfy.cc MCP (Model Context Protocol) 서버. Claude, Cursor, Windsurf에서 문서를 직접 관리할 수 있습니다.",
+    "mdfy.cc MCP (Model Context Protocol) 서버. Claude, Cursor, Windsurf 등 AI 도구에서 25개 도구로 문서를 직접 생성하고 관리할 수 있습니다.",
+  alternates: {
+    canonical: "https://mdfy.cc/ko/docs/mcp",
+    languages: { en: "https://mdfy.cc/docs/mcp" },
+  },
   openGraph: {
-    title: "MCP Server — mdfy.cc",
-    description: "AI 도구에서 mdfy.cc 문서를 게시하고 관리합니다.",
+    title: "MCP Server 레퍼런스 — mdfy.cc",
+    description: "AI 도구에서 mdfy.cc 문서를 게시하고 관리합니다. 25개 도구 지원.",
     url: "https://mdfy.cc/ko/docs/mcp",
+    images: [{ url: "/api/og?title=MCP%20Server", width: 1200, height: 630 }],
   },
 };
 

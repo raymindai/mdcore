@@ -14,11 +14,16 @@ import {
 export const metadata: Metadata = {
   title: "MCP Server — mdfy.cc",
   description:
-    "MCP (Model Context Protocol) server for mdfy.cc. Let Claude, Cursor, and Windsurf manage documents directly.",
+    "MCP (Model Context Protocol) server for mdfy.cc. Let Claude, Cursor, Windsurf, and other AI tools create and manage documents directly with 25 tools.",
+  alternates: {
+    canonical: "https://mdfy.cc/docs/mcp",
+    languages: { ko: "https://mdfy.cc/ko/docs/mcp" },
+  },
   openGraph: {
     title: "MCP Server — mdfy.cc",
-    description: "Let AI tools publish and manage documents on mdfy.cc.",
+    description: "Let AI tools publish and manage documents on mdfy.cc. 25 tools for Claude, Cursor, and Windsurf.",
     url: "https://mdfy.cc/docs/mcp",
+    images: [{ url: "/api/og?title=MCP%20Server", width: 1200, height: 630 }],
   },
 };
 

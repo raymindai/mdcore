@@ -13,11 +13,16 @@ import {
 export const metadata: Metadata = {
   title: "REST API Reference — mdfy.cc",
   description:
-    "Complete REST API reference for mdfy.cc. Create, read, update, and delete Markdown documents via HTTP.",
+    "Complete REST API reference for mdfy.cc. Create, read, update, and delete Markdown documents via HTTP. Includes code examples in curl, JavaScript, and Python.",
+  alternates: {
+    canonical: "https://mdfy.cc/docs/api",
+    languages: { ko: "https://mdfy.cc/ko/docs/api" },
+  },
   openGraph: {
     title: "REST API Reference — mdfy.cc",
     description: "Full REST API reference. Endpoints, parameters, examples.",
     url: "https://mdfy.cc/docs/api",
+    images: [{ url: "/api/og?title=REST%20API", width: 1200, height: 630 }],
   },
 };
 

@@ -14,11 +14,16 @@ import {
 export const metadata: Metadata = {
   title: "CLI 레퍼런스 — mdfy.cc",
   description:
-    "mdfy CLI 레퍼런스. 커맨드 라인에서 Markdown을 게시합니다. stdin 파이프, tmux 캡처, 문서 관리.",
+    "mdfy CLI 레퍼런스. 커맨드 라인에서 Markdown을 게시합니다. stdin 파이프, tmux 캡처, 문서 관리를 간단한 터미널 명령어로 수행하세요.",
+  alternates: {
+    canonical: "https://mdfy.cc/ko/docs/cli",
+    languages: { en: "https://mdfy.cc/docs/cli" },
+  },
   openGraph: {
     title: "CLI 레퍼런스 — mdfy.cc",
-    description: "커맨드 라인에서 Markdown을 게시합니다.",
+    description: "커맨드 라인에서 Markdown을 게시합니다. stdin 파이프, tmux 캡처, 문서 관리.",
     url: "https://mdfy.cc/ko/docs/cli",
+    images: [{ url: "/api/og?title=CLI", width: 1200, height: 630 }],
   },
 };
 

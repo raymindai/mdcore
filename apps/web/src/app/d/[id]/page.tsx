@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${title} — mdfy.cc`,
       description,
-      url: `https://mdfy.cc/${id}`,
+      url: `https://mdfy.cc/d/${id}`,
       siteName: "mdfy.cc",
       type: "article",
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],

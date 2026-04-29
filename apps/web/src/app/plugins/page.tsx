@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import PluginsContent from "@/components/PluginsContent";
 
 export const metadata: Metadata = {
-  title: "Plugins — mdfy.cc",
+  title: "Plugins and Extensions — mdfy.cc",
   description:
-    "CLI tool, Mac app, Chrome extension, VS Code extension, QuickLook. Bring mdfy.cc everywhere.",
+    "Bring mdfy.cc everywhere with CLI, Mac desktop app, Chrome extension, VS Code extension, and macOS QuickLook. Capture AI chats, publish from terminal.",
+  alternates: {
+    canonical: "https://mdfy.cc/plugins",
+    languages: { ko: "https://mdfy.cc/ko/plugins" },
+  },
   openGraph: {
-    title: "Plugins — mdfy.cc",
-    description: "Chrome extension for AI chat capture. macOS QuickLook for Markdown preview.",
+    title: "Plugins and Extensions — mdfy.cc",
+    description: "Chrome extension for AI chat capture. VS Code extension, CLI, Mac app, and macOS QuickLook for Markdown.",
     url: "https://mdfy.cc/plugins",
+    images: [{ url: "/api/og?title=Plugins", width: 1200, height: 630 }],
   },
 };
 

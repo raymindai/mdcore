@@ -5,12 +5,17 @@ import { CodeBlock, InlineCode, DocsNav, SiteFooter, mono } from "@/components/d
 export const metadata: Metadata = {
   title: "문서 — mdfy.cc",
   description:
-    "개발자를 위한 퍼블리싱 API. 마크다운 문서를 프로그래밍 방식으로 생성, 관리, 공유하세요.",
+    "mdfy.cc 개발자 문서. REST API, CLI, JavaScript SDK, MCP 서버로 마크다운 문서를 프로그래밍 방식으로 생성, 관리, 공유하세요.",
+  alternates: {
+    canonical: "https://mdfy.cc/ko/docs",
+    languages: { en: "https://mdfy.cc/docs" },
+  },
   openGraph: {
     title: "문서 — mdfy.cc",
     description:
       "개발자 문서. REST API, CLI, SDK, MCP Server.",
     url: "https://mdfy.cc/ko/docs",
+    images: [{ url: "/api/og?title=Documentation", width: 1200, height: 630 }],
   },
 };
 
