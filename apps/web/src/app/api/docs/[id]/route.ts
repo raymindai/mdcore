@@ -121,8 +121,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     !!(requesterId && data.user_id && requesterId === data.user_id) ||
     !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
 
-  // Increment view count (fire-and-forget) — skip for document owner
-  if (!isOwnedByRequester) {
+  // Increment view count (fire-and-forget) — skip for owner and realtime refreshes
+  const skipViewCount = _req.headers.get("x-no-view-count") === "1";
+  if (!isOwnedByRequester && !skipViewCount) {
     supabase
       .from("documents")
       .update({ view_count: (data.view_count || 0) + 1 })

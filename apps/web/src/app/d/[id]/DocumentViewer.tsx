@@ -240,8 +240,11 @@ export default function DocumentViewer({
         { event: 'UPDATE', schema: 'public', table: 'documents', filter: `id=eq.${id}` },
         async () => {
           // Document was updated — fetch fresh content and check permissions
+          // Use x-no-view-count to prevent view_count increment → Realtime loop
           try {
-            const res = await fetch(`/api/docs/${id}`);
+            const res = await fetch(`/api/docs/${id}`, {
+              headers: { "x-no-view-count": "1" },
+            });
             if (res.status === 403 || res.status === 404) {
               // Access revoked or document made private/draft
               setAccessRevoked(true);
