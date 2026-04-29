@@ -53,17 +53,6 @@
       "destination": "https://mdfy.cc/:path*",
       "permanent": true
     },
-    {
-      "source": "/:id([A-Za-z0-9_-]{6,12})",
-      "has": [{ "type": "header", "key": "sec-fetch-dest", "value": "document" }],
-      "destination": "/d/:id",
-      "statusCode": 302
-    },
-    {
-      "source": "/:id([A-Za-z0-9_-]{6,12})",
-      "destination": "/api/docs/:id",
-      "statusCode": 302
-    }
   ],
   "rewrites": [
     {
@@ -75,6 +64,15 @@
       "source": "/",
       "has": [{ "type": "host", "value": "mdcore.ai" }],
       "destination": "/mdcore-ai"
+    },
+    {
+      "source": "/:id([A-Za-z0-9_-]{6,12})",
+      "has": [{ "type": "header", "key": "sec-fetch-dest", "value": "document" }],
+      "destination": "/d/:id"
+    },
+    {
+      "source": "/:id([A-Za-z0-9_-]{6,12})",
+      "destination": "/api/docs/:id"
     }
   ]
 }
