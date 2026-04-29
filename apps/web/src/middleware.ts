@@ -4,12 +4,6 @@ import type { NextRequest } from "next/server";
 // Pages that have Korean versions
 const I18N_PAGES = ["/about", "/manifesto", "/docs", "/plugins"];
 
-// Known static routes — anything NOT in this list with a short ID pattern is a document
-const STATIC_ROUTES = new Set([
-  "/", "/about", "/manifesto", "/plugins", "/docs", "/discover",
-  "/privacy", "/terms", "/settings", "/auth",
-  "/ko", "/ko/about", "/ko/manifesto", "/ko/plugins", "/ko/docs",
-]);
 
 export function middleware(request: NextRequest) {
   try {

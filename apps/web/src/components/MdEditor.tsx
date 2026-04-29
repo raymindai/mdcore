@@ -8161,7 +8161,7 @@ ${clone.innerHTML}
                             {showExamples ? "ON" : "OFF"}
                           </span>
                         </button>
-                        <a
+                        <Link
                           href="/settings"
                           onClick={() => setShowAuthMenu(false)}
                           className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
@@ -8169,7 +8169,7 @@ ${clone.innerHTML}
                         >
                           <User width={12} height={12} />
                           Account Settings
-                        </a>
+                        </Link>
                       </div>
                       {/* Appearance */}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>

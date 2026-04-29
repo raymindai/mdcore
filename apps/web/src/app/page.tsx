@@ -63,6 +63,7 @@ export default function Home() {
             <li>Password protection and expiring links</li>
             <li>Export to PDF, copy as rich text for Google Docs and email</li>
           </ul>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- noscript context, Link component won't work */}
           <p><a href="/about">About mdfy.cc</a> | <a href="/plugins">Plugins and Extensions</a> | <a href="/docs">Developer Documentation</a> | <a href="/manifesto">Manifesto</a></p>
         </div>
       </noscript>
