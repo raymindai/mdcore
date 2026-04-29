@@ -34,13 +34,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(url, 301);
     }
 
-    // /{id} short URL → rewrite to /d/{id} (internal Next.js route)
-    const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
-    if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/d/${shortIdMatch[1]}`;
-      return NextResponse.rewrite(url);
-    }
+    // /{id} is now handled by /[id]/page.tsx filesystem route directly
+    // No middleware rewrite needed — eliminates rewrite-related 500s
 
     // i18n redirects
     const langCookie = request.cookies.get("mdfy-lang")?.value;
