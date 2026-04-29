@@ -20,16 +20,8 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    // /d/ID → redirect to /{id} (backwards compat)
-    const dMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
-    if (dMatch) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/${dMatch[1]}`;
-      return NextResponse.redirect(url, 301);
-    }
-
-    // /{id} is now handled by /[id]/page.tsx filesystem route directly
-    // No middleware rewrite needed — eliminates rewrite-related 500s
+    // /d/{id} stays as the rendered page — no redirect
+    // /{id} is a route handler that serves content + redirects browsers to /d/{id}
 
     // i18n redirects
     const langCookie = request.cookies.get("mdfy-lang")?.value;
