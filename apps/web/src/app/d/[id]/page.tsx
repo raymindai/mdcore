@@ -109,30 +109,7 @@ export default async function DocPage({ params }: Props) {
 
   return (
     <div>
-      {/* SSR: raw markdown for crawlers/AI — visually hidden when JS loads, stays in DOM */}
-      {visibleMarkdown && (
-        <main
-          id="mdfy-ssr-content"
-          role="article"
-          aria-label={doc.title || "Document"}
-          style={{
-            maxWidth: 800, margin: "0 auto", padding: "40px 24px",
-            fontFamily: "system-ui, sans-serif", lineHeight: 1.7,
-            color: "#d4d4d8", background: "#09090b", minHeight: "100vh"
-          }}
-        >
-          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16, color: "#fafafa" }}>
-            {doc.title || "Untitled"}
-          </h1>
-          <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word", fontSize: 14 }}>
-            {visibleMarkdown}
-          </pre>
-          <footer style={{ marginTop: 40, fontSize: 12, color: "#71717a" }}>
-            Published on <a href={`https://mdfy.cc/${id}`} style={{ color: "#fb923c" }}>mdfy.cc/{id}</a>
-          </footer>
-        </main>
-      )}
-      {/* Client: full DocumentViewer replaces the SSR content */}
+      {/* LLM readability handled by /api/docs/{id} via Vercel rewrite — no SSR raw text needed */}
       <ClientViewer
         id={doc.id}
         markdown={visibleMarkdown}

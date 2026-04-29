@@ -68,19 +68,6 @@ export default function DocumentViewer({
     })();
   }, [id, isRestricted, unlocked]);
 
-  // Visually hide SSR content when client-side viewer mounts
-  // Keep in DOM for LLM/crawler text extraction (don't use display:none)
-  useEffect(() => {
-    const ssr = document.getElementById("mdfy-ssr-content");
-    if (ssr) {
-      ssr.style.position = "absolute";
-      ssr.style.width = "1px";
-      ssr.style.height = "1px";
-      ssr.style.overflow = "hidden";
-      ssr.style.clip = "rect(0, 0, 0, 0)";
-      ssr.style.whiteSpace = "nowrap";
-    }
-  }, []);
 
   // Theme
   useEffect(() => {
