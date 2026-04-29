@@ -4,6 +4,14 @@ import type { NextRequest } from "next/server";
 // Pages that have Korean versions
 const I18N_PAGES = ["/about", "/manifesto", "/docs", "/plugins"];
 
+// Known static routes — anything NOT in this list with a short ID pattern is a document
+const STATIC_ROUTES = new Set([
+  "/", "/about", "/manifesto", "/plugins", "/docs", "/discover",
+  "/privacy", "/terms", "/settings", "/auth",
+  "/ko", "/ko/about", "/ko/manifesto", "/ko/plugins", "/ko/docs",
+  "/embed", "/raw", "/d",
+]);
+
 // Common bot/crawler user agents
 const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|linkedinbot|twitterbot|whatsapp|telegram|discord|slack|claude|chatgpt|gpt|anthropic|openai|google-extended|bingbot|yandex|baidu|duckduck|archive\.org|wget|curl|httpie|python-requests|axios|node-fetch|undici/i;
 
@@ -35,6 +43,21 @@ export function middleware(request: NextRequest) {
       url.search = "";
       return NextResponse.rewrite(url);
     }
+  }
+
+  // Short URL: /zggFXgUL → rewrite to /d/zggFXgUL (or /raw/ for bots)
+  // Match: single path segment, 6-12 alphanumeric/dash/underscore chars, not a known route
+  const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
+  if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/d/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
+    const docId = shortIdMatch[1];
+    const url = request.nextUrl.clone();
+    if (isBot(ua)) {
+      url.pathname = `/raw/${docId}`;
+    } else {
+      url.pathname = `/d/${docId}`;
+    }
+    url.search = "";
+    return NextResponse.rewrite(url);
   }
 
   const langCookie = request.cookies.get("mdfy-lang")?.value;
