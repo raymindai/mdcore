@@ -23,39 +23,65 @@ export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const ua = request.headers.get("user-agent") || "";
 
-  // Bot/AI accessing documents → serve raw markdown
+  // Bot/AI accessing documents → fetch raw markdown from API
   if (isBot(ua)) {
-    // /?doc=ID → rewrite to /raw/ID
+    let docId: string | null = null;
+    // /?doc=ID
     if (pathname === "/" && searchParams.has("doc")) {
-      const docId = searchParams.get("doc");
-      if (docId) {
-        const url = request.nextUrl.clone();
-        url.pathname = `/raw/${docId}`;
-        url.search = "";
-        return NextResponse.rewrite(url);
-      }
+      docId = searchParams.get("doc");
     }
-    // /d/ID → rewrite to /raw/ID
+    // /d/ID
     const docMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
-    if (docMatch) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/raw/${docMatch[1]}`;
-      url.search = "";
-      return NextResponse.rewrite(url);
+    if (docMatch) docId = docMatch[1];
+
+    if (docId) {
+      try {
+        const apiUrl = `${request.nextUrl.origin}/api/docs/${docId}`;
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.markdown && !data.is_draft && !data.hasPassword) {
+            const title = data.title || "Untitled";
+            const body = `# ${title}\n\n${data.markdown}`;
+            return new NextResponse(body, {
+              status: 200,
+              headers: {
+                "Content-Type": "text/markdown; charset=utf-8",
+                "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+                "X-Document-ID": docId,
+              },
+            });
+          }
+        }
+      } catch { /* fallthrough to normal rendering */ }
     }
   }
 
-  // Short URL: /zggFXgUL → rewrite to /d/zggFXgUL (or /raw/ for bots)
-  // Match: single path segment, 6-12 alphanumeric/dash/underscore chars, not a known route
+  // Short URL: /zggFXgUL → rewrite to /d/zggFXgUL (bots already handled above)
   const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
   if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/d/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
     const docId = shortIdMatch[1];
-    const url = request.nextUrl.clone();
+    // Bot: serve raw markdown via API
     if (isBot(ua)) {
-      url.pathname = `/raw/${docId}`;
-    } else {
-      url.pathname = `/d/${docId}`;
+      try {
+        const apiUrl = `${request.nextUrl.origin}/api/docs/${docId}`;
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.markdown && !data.is_draft && !data.hasPassword) {
+            const title = data.title || "Untitled";
+            const body = `# ${title}\n\n${data.markdown}`;
+            return new NextResponse(body, {
+              status: 200,
+              headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=60" },
+            });
+          }
+        }
+      } catch { /* fallthrough */ }
     }
+    // Human: rewrite to /d/ID
+    const url = request.nextUrl.clone();
+    url.pathname = `/d/${docId}`;
     url.search = "";
     return NextResponse.rewrite(url);
   }
