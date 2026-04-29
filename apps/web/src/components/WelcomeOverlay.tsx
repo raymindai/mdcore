@@ -245,44 +245,46 @@ export default function WelcomeOverlay() {
 
         {/* Actions */}
         <div style={{ padding: "16px 40px 32px" }}>
-          {/* Prev — small text link above buttons */}
-          {!isFirst && (
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
+          {/* Button row */}
+          <div style={{ display: "flex", gap: 10 }}>
+            {!isFirst && (
               <button
                 onClick={() => setCurrent((c) => c - 1)}
                 style={{
-                  fontSize: 12,
-                  color: "var(--text-faint)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
                   background: "none",
-                  border: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "12px 20px",
                   cursor: "pointer",
-                  padding: 0,
+                  flexShrink: 0,
                 }}
               >
-                &larr; Back
+                Back
               </button>
-            </div>
-          )}
-          {/* Main CTA */}
-          <button
-            onClick={next}
-            style={{
-              width: "100%",
-              background: isLast ? "var(--accent)" : "var(--surface)",
-              color: isLast ? "#000" : "var(--text-primary)",
-              border: isLast ? "none" : "1px solid var(--border)",
-              padding: "12px 28px",
-              borderRadius: 10,
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            {isLast ? "Get started" : "Next"}
-          </button>
-          {/* Learn more — below Get started on last slide */}
+            )}
+            <button
+              onClick={next}
+              style={{
+                flex: 1,
+                background: isLast ? "var(--accent)" : "var(--surface)",
+                color: isLast ? "#000" : "var(--text-primary)",
+                border: isLast ? "none" : "1px solid var(--border)",
+                padding: "12px 28px",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {isLast ? "Get started" : "Next"}
+            </button>
+          </div>
+          {/* Learn more — below on last slide */}
           {isLast && (
-            <div style={{ textAlign: "center", marginTop: 12 }}>
+            <div style={{ textAlign: "center", marginTop: 14 }}>
               <Link
                 href="/about"
                 onClick={dismiss}
