@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "officeparser"],
+  outputFileTracingIncludes: {
+    "/d/[id]": ["./src/lib/wasm/**/*.wasm"],
+    "/embed/[id]": ["./src/lib/wasm/**/*.wasm"],
+  },
   webpack(config) {
     config.experiments = {
       ...config.experiments,
