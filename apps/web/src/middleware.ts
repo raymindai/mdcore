@@ -12,11 +12,16 @@ const STATIC_ROUTES = new Set([
   "/embed", "/raw", "/d",
 ]);
 
-// Common bot/crawler user agents
-const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|linkedinbot|twitterbot|whatsapp|telegram|discord|slack|claude|chatgpt|gpt|anthropic|openai|google-extended|bingbot|yandex|baidu|duckduck|archive\.org|wget|curl|httpie|python-requests|axios|node-fetch|undici/i;
+// Detect non-browser requests (bots, AI tools, scrapers, CLI tools)
+// Strategy: if it's NOT a known browser, treat as bot
+const BROWSER_UA = /Mozilla\/|Chrome\/|Safari\/|Firefox\/|Edge\/|Opera\//;
+const KNOWN_BOTS = /bot|crawl|spider|slurp|facebook|linkedin|twitter|whatsapp|telegram|discord|slack|claude|chatgpt|gpt|anthropic|openai|google-extended|bing|yandex|baidu|duckduck|archive\.org|wget|curl|httpie|python|axios|node-fetch|undici|fetch|http|scraper/i;
 
 function isBot(ua: string): boolean {
-  return BOT_UA.test(ua);
+  if (!ua) return true; // No UA = bot
+  if (KNOWN_BOTS.test(ua)) return true; // Known bot pattern
+  if (!BROWSER_UA.test(ua)) return true; // Not a browser = bot
+  return false;
 }
 
 export async function middleware(request: NextRequest) {
