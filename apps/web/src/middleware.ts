@@ -58,5 +58,21 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|images|icons).*)"],
+  // Only run middleware on paths that actually need it
+  // Document routes /{id} must NOT go through middleware (causes 500 for some fetchers)
+  matcher: [
+    "/",
+    "/about",
+    "/manifesto",
+    "/docs",
+    "/plugins",
+    "/ko/:path*",
+    "/d/:path*",
+    "/discover",
+    "/settings",
+    "/privacy",
+    "/terms",
+    "/admin",
+    "/embed/:path*",
+  ],
 };
