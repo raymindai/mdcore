@@ -52,7 +52,7 @@
       "has": [{ "type": "host", "value": "www.mdfy.cc" }],
       "destination": "https://mdfy.cc/:path*",
       "permanent": true
-    },
+    }
   ],
   "rewrites": [
     {
