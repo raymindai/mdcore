@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { renderMarkdown } from "@/lib/engine";
-import { postProcessHtml } from "@/lib/postprocess";
 import { useParams } from "next/navigation";
 
 export default function EmbedPage() {
@@ -33,6 +31,8 @@ export default function EmbedPage() {
           return;
         }
         const doc = await res.json();
+        const { renderMarkdown } = await import("@/lib/engine");
+        const { postProcessHtml } = await import("@/lib/postprocess");
         const result = await renderMarkdown(doc.markdown);
         const processed = postProcessHtml(result.html);
         setHtml(processed);
