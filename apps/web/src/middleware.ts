@@ -13,23 +13,24 @@ const STATIC_ROUTES = new Set([
 ]);
 
 // Detect non-browser requests (bots, AI tools, scrapers, CLI tools)
-// Strategy: if it's NOT a known browser, treat as bot
-const BROWSER_UA = /Mozilla\/|Chrome\/|Safari\/|Firefox\/|Edge\/|Opera\//;
 const KNOWN_BOTS = /bot|crawl|spider|slurp|facebook|linkedin|twitter|whatsapp|telegram|discord|slack|claude|chatgpt|gpt|anthropic|openai|google-extended|bing|yandex|baidu|duckduck|archive\.org|wget|curl|httpie|python|axios|node-fetch|undici|fetch|http|scraper/i;
 
-function isBot(ua: string): boolean {
-  if (!ua) return true; // No UA = bot
-  if (KNOWN_BOTS.test(ua)) return true; // Known bot pattern
-  if (!BROWSER_UA.test(ua)) return true; // Not a browser = bot
+function isBot(ua: string, accept?: string | null): boolean {
+  if (!ua) return true;
+  if (KNOWN_BOTS.test(ua)) return true;
+  // Real browsers send detailed Accept headers; API clients/fetchers send */* or nothing
+  if (accept && !accept.includes("text/html")) return true;
+  if (!accept || accept === "*/*") return true;
   return false;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const ua = request.headers.get("user-agent") || "";
+  const accept = request.headers.get("accept");
 
-  // Bot/AI accessing documents → fetch raw markdown from API
-  if (isBot(ua)) {
+  // Bot/AI accessing documents → fetch raw markdown
+  if (isBot(ua, accept)) {
     let docId: string | null = null;
     // /?doc=ID
     if (pathname === "/" && searchParams.has("doc")) {
@@ -76,7 +77,7 @@ export async function middleware(request: NextRequest) {
   if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/d/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
     const docId = shortIdMatch[1];
     // Bot: serve raw markdown via Supabase direct
-    if (isBot(ua)) {
+    if (isBot(ua, accept)) {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -131,7 +132,7 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
   response.headers.set("X-Middleware-Active", "true");
-  response.headers.set("X-Is-Bot", String(isBot(ua)));
+  response.headers.set("X-Is-Bot", String(isBot(ua, accept)));
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
