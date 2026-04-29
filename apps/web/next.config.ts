@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "officeparser"],
   outputFileTracingIncludes: {
-    "/d/[id]": ["./src/lib/wasm/**/*.wasm"],
-    "/embed/[id]": ["./src/lib/wasm/**/*.wasm"],
+    "/d/[id]": ["./.next/server/chunks/static/wasm/*.wasm", "./src/lib/wasm/**/*.wasm"],
+    "/embed/[id]": ["./.next/server/chunks/static/wasm/*.wasm", "./src/lib/wasm/**/*.wasm"],
   },
   webpack(config) {
     config.experiments = {
