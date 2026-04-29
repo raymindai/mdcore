@@ -19,7 +19,7 @@ export async function GET(
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, is_draft, deleted_at, password_hash, user_id, expires_at")
+    .select("id, markdown, title, is_draft, deleted_at, password_hash, expires_at")
     .eq("id", id)
     .single();
 
@@ -27,58 +27,28 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
+  if (data.is_draft || data.password_hash) {
+    return NextResponse.redirect(new URL(`/d/${id}`, _request.url));
+  }
+
   const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
   if (isExpired) {
     return new NextResponse("Document expired", { status: 410 });
   }
 
-  // Protected/draft/restricted: redirect to viewer page (handles auth UI)
-  if (data.password_hash || data.is_draft) {
-    return NextResponse.redirect(new URL(`/d/${id}`, _request.url));
-  }
-
   const title = data.title || "Untitled";
   const markdown = data.markdown || "";
 
-  // Return HTML with:
-  // 1. Full markdown visible in the DOM (LLMs read this)
-  // 2. JS redirect to /d/{id} for browsers (full rendered experience)
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} — mdfy.cc</title>
-<meta name="description" content="${escapeHtml(markdown.slice(0, 200).replace(/[#*_`\n]/g, " ").trim())}">
-<meta property="og:title" content="${escapeHtml(title)} — mdfy.cc">
-<meta property="og:url" content="https://mdfy.cc/${id}">
-<meta property="og:site_name" content="mdfy.cc">
-<meta property="og:type" content="article">
-<script>window.location.replace('/d/${id}');</script>
-<style>body{max-width:800px;margin:0 auto;padding:40px 24px;font-family:system-ui,sans-serif;line-height:1.7;color:#d4d4d8;background:#09090b}h1{color:#fafafa;font-size:28px;font-weight:700}pre{white-space:pre-wrap;word-wrap:break-word;font-size:14px}a{color:#fb923c}</style>
-</head>
-<body>
-<h1>${escapeHtml(title)}</h1>
-<pre>${escapeHtml(markdown)}</pre>
-<footer style="margin-top:40px;font-size:12px;color:#71717a">
-Published on <a href="https://mdfy.cc/${id}">mdfy.cc/${id}</a>
-</footer>
-</body>
-</html>`;
+  // Browsers (JS-capable): redirect to full rendered viewer
+  // LLMs/crawlers (no JS): read the markdown content directly
+  const body = `# ${title}\n\n${markdown}`;
 
-  return new NextResponse(html, {
+  return new NextResponse(body, {
     status: 200,
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "text/markdown; charset=utf-8",
       "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      "X-Document-ID": id,
     },
   });
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
