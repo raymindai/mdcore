@@ -58,7 +58,7 @@
       "destination": "/d/:id"
     },
     {
-      "source": "/((?!_next|api|d|about|embed|mdcore-ai|favicon.ico|.*\\.wasm).*)",
+      "source": "/((?!_next|api|d|raw|about|embed|mdcore-ai|favicon.ico|.*\\.wasm).*)",
       "destination": "/"
     }
   ]
