@@ -3458,7 +3458,7 @@
   function updatePublishedUrl() {
     if (!headerUrlBtn) return;
     if (currentConfig && currentConfig.docId) {
-      var url = "mdfy.cc/?doc=" + currentConfig.docId;
+      var url = "mdfy.cc/d/" + currentConfig.docId;
       headerUrlBtn.textContent = url;
       headerUrlBtn.style.display = "";
       headerUrlBtn.setAttribute("data-url", "https://" + url);

@@ -6406,7 +6406,7 @@ ${clone.innerHTML}
             const ct = tabs.find(t => t.id === activeTabId);
             const cid = ct?.cloudId || docId;
             if (!cid) return null;
-            const shortUrl = `mdfy.cc/${cid}`;
+            const shortUrl = `mdfy.cc/d/${cid}`;
             return (<>
               <button
                 className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden lg:inline-block"
@@ -6928,7 +6928,7 @@ ${clone.innerHTML}
                   className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
                   style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                   title="Click to copy document URL"
-                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
+                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/d/${cid}`); showToast("URL copied", "success"); } catch {} }}
                 >
                   /{cid}
                 </button>
@@ -10542,7 +10542,7 @@ ${clone.innerHTML}
               mdfy.cc/{docId}
             </p>
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/d/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
               alt="QR Code"
               width={200}
               height={200}
