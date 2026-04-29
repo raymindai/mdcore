@@ -41,21 +41,30 @@ export async function middleware(request: NextRequest) {
 
     if (docId) {
       try {
-        const apiUrl = `${request.nextUrl.origin}/api/docs/${docId}`;
-        const res = await fetch(apiUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.markdown && !data.is_draft && !data.hasPassword) {
-            const title = data.title || "Untitled";
-            const body = `# ${title}\n\n${data.markdown}`;
-            return new NextResponse(body, {
-              status: 200,
-              headers: {
-                "Content-Type": "text/markdown; charset=utf-8",
-                "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-                "X-Document-ID": docId,
-              },
-            });
+        // Fetch directly from Supabase (not self-referencing API to avoid edge deadlock)
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const res = await fetch(
+            `${supabaseUrl}/rest/v1/documents?id=eq.${docId}&select=id,markdown,title,is_draft,password_hash,deleted_at`,
+            { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+          );
+          if (res.ok) {
+            const rows = await res.json();
+            const doc = rows?.[0];
+            if (doc?.markdown && !doc.is_draft && !doc.password_hash && !doc.deleted_at) {
+              const title = doc.title || "Untitled";
+              const body = `# ${title}\n\n${doc.markdown}`;
+              return new NextResponse(body, {
+                status: 200,
+                headers: {
+                  "Content-Type": "text/markdown; charset=utf-8",
+                  "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+                  "X-Document-ID": docId,
+                  "X-Powered-By": "mdcore-engine/0.1.0",
+                },
+              });
+            }
           }
         }
       } catch { /* fallthrough to normal rendering */ }
@@ -66,20 +75,27 @@ export async function middleware(request: NextRequest) {
   const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
   if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/d/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
     const docId = shortIdMatch[1];
-    // Bot: serve raw markdown via API
+    // Bot: serve raw markdown via Supabase direct
     if (isBot(ua)) {
       try {
-        const apiUrl = `${request.nextUrl.origin}/api/docs/${docId}`;
-        const res = await fetch(apiUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.markdown && !data.is_draft && !data.hasPassword) {
-            const title = data.title || "Untitled";
-            const body = `# ${title}\n\n${data.markdown}`;
-            return new NextResponse(body, {
-              status: 200,
-              headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=60" },
-            });
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (supabaseUrl && supabaseKey) {
+          const res = await fetch(
+            `${supabaseUrl}/rest/v1/documents?id=eq.${docId}&select=id,markdown,title,is_draft,password_hash,deleted_at`,
+            { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+          );
+          if (res.ok) {
+            const rows = await res.json();
+            const doc = rows?.[0];
+            if (doc?.markdown && !doc.is_draft && !doc.password_hash && !doc.deleted_at) {
+              const title = doc.title || "Untitled";
+              const body = `# ${title}\n\n${doc.markdown}`;
+              return new NextResponse(body, {
+                status: 200,
+                headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=60", "X-Powered-By": "mdcore-engine/0.1.0" },
+              });
+            }
           }
         }
       } catch { /* fallthrough */ }
