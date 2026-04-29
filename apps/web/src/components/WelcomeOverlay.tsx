@@ -244,39 +244,45 @@ export default function WelcomeOverlay() {
         </div>
 
         {/* Actions */}
-        <div
-          style={{
-            padding: "16px 40px 32px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          {/* Left: Skip or Prev */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {!isFirst && (
+        <div style={{ padding: "16px 40px 32px" }}>
+          {/* Prev — small text link above buttons */}
+          {!isFirst && (
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
               <button
                 onClick={() => setCurrent((c) => c - 1)}
                 style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
+                  fontSize: 12,
+                  color: "var(--text-faint)",
                   background: "none",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: "8px 16px",
+                  border: "none",
                   cursor: "pointer",
+                  padding: 0,
                 }}
               >
-                Prev
+                &larr; Back
               </button>
-            )}
-          </div>
-
-          {/* Right: Next / Get Started / Learn More */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {isLast && (
+            </div>
+          )}
+          {/* Main CTA */}
+          <button
+            onClick={next}
+            style={{
+              width: "100%",
+              background: isLast ? "var(--accent)" : "var(--surface)",
+              color: isLast ? "#000" : "var(--text-primary)",
+              border: isLast ? "none" : "1px solid var(--border)",
+              padding: "12px 28px",
+              borderRadius: 10,
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {isLast ? "Get started" : "Next"}
+          </button>
+          {/* Learn more — below Get started on last slide */}
+          {isLast && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
               <Link
                 href="/about"
                 onClick={dismiss}
@@ -286,25 +292,10 @@ export default function WelcomeOverlay() {
                   textDecoration: "none",
                 }}
               >
-                Learn more
+                Learn more about mdfy
               </Link>
-            )}
-            <button
-              onClick={next}
-              style={{
-                background: isLast ? "var(--accent)" : "var(--surface)",
-                color: isLast ? "#000" : "var(--text-primary)",
-                border: isLast ? "none" : "1px solid var(--border)",
-                padding: "10px 28px",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {isLast ? "Get started" : "Next"}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
