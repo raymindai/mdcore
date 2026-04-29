@@ -105,10 +105,19 @@ export default async function DocPage({ params }: Props) {
   const isRestricted = (doc.allowed_emails || []).length > 0;
   const isDraft = !!(doc as { isDraft?: boolean }).isDraft;
 
+  const visibleMarkdown = isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown));
+
   return (
-    <DocumentViewer
-      id={doc.id}
-      markdown={isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown))}
+    <>
+      {/* Raw markdown for non-JS fetchers (AI tools, scrapers) */}
+      {visibleMarkdown && (
+        <div id="mdfy-raw-content" style={{ display: "none" }} data-document-id={doc.id} data-document-title={doc.title || "Untitled"}>
+          <pre>{visibleMarkdown}</pre>
+        </div>
+      )}
+      <DocumentViewer
+        id={doc.id}
+        markdown={visibleMarkdown}
       title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
       isProtected={isProtected}
       isExpired={!!isExpired}
