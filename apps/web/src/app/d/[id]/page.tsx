@@ -109,11 +109,17 @@ export default async function DocPage({ params }: Props) {
 
   return (
     <>
-      {/* Raw markdown for non-JS fetchers (AI tools, scrapers) */}
+      {/* Raw markdown for non-JS fetchers (AI tools, scrapers, OG crawlers) */}
       {visibleMarkdown && (
-        <div id="mdfy-raw-content" style={{ display: "none" }} data-document-id={doc.id} data-document-title={doc.title || "Untitled"}>
+        <article
+          id="mdfy-raw-content"
+          data-document-id={doc.id}
+          data-document-title={doc.title || "Untitled"}
+          style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}
+        >
+          <h1>{doc.title || "Untitled"}</h1>
           <pre>{visibleMarkdown}</pre>
-        </div>
+        </article>
       )}
       <DocumentViewer
         id={doc.id}
