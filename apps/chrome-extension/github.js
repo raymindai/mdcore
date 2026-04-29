@@ -84,7 +84,6 @@
                     title,
                     editMode: "account",
                     source: "github",
-                    isDraft: true,
                   }),
                 },
               }, resolve);
