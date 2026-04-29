@@ -19,7 +19,7 @@ function isBot(ua: string): boolean {
   return BOT_UA.test(ua);
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   const ua = request.headers.get("user-agent") || "";
 
