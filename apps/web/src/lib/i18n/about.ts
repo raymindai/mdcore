@@ -69,7 +69,7 @@ const texts = {
         title: "Get a permanent URL.",
         desc: "One click to publish. Anyone can view it — no app, no login needed.",
         items: [
-          "Short URL: mdfy.cc/d/abc123",
+          "Short URL: mdfy.cc/abc123",
           "Works forever — no expiration",
           "Public, unlisted, or private",
           "Embed in websites or Slack",
@@ -381,7 +381,7 @@ const texts = {
         title: "영구 URL 받기.",
         desc: "한 번의 클릭으로 퍼블리시. 누구나 볼 수 있습니다 — 앱도, 로그인도 필요 없습니다.",
         items: [
-          "짧은 URL: mdfy.cc/d/abc123",
+          "짧은 URL: mdfy.cc/abc123",
           "영구 보존 — 만료 없음",
           "공개, 비공개, 또는 링크 공유",
           "웹사이트나 Slack에 임베드",

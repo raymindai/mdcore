@@ -214,7 +214,7 @@ export default function DocsPage() {
             <span className="line-gap" />
             <span className="line"><span className="output">{`{`}</span></span>
             <span className="line"><span className="output">{"  \"id\": "}</span><span className="url">{`"abc123"`}</span><span className="output">,</span></span>
-            <span className="line"><span className="output">{"  \"url\": "}</span><span className="url">{`"https://mdfy.cc/d/abc123"`}</span><span className="output">,</span></span>
+            <span className="line"><span className="output">{"  \"url\": "}</span><span className="url">{`"https://mdfy.cc/abc123"`}</span><span className="output">,</span></span>
             <span className="line"><span className="output">{"  \"editToken\": \"eyJ...\""}</span></span>
             <span className="line"><span className="output">{`}`}</span></span>
           </div>
@@ -381,7 +381,7 @@ export default function DocsPage() {
 
 # Response:
 # { "id": "abc123", "editToken": "tok_...", "created_at": "..." }
-# View at: https://mdfy.cc/d/abc123`}</CodeBlock>
+# View at: https://mdfy.cc/abc123`}</CodeBlock>
         </div>
       </section>
 

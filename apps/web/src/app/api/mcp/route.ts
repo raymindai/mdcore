@@ -115,7 +115,7 @@ function createMcpServer(userId?: string) {
         is_draft: isDraft, source: "mcp",
       });
       if (error) return errorResult(`Failed to create: ${error.message}`);
-      return textResult(`Document created:\n- URL: ${BASE_URL}/d/${id}\n- ID: ${id}\n- Status: ${isDraft ? "private draft" : "publicly accessible"}`);
+      return textResult(`Document created:\n- URL: ${BASE_URL}/${id}\n- ID: ${id}\n- Status: ${isDraft ? "private draft" : "publicly accessible"}`);
     }
   );
 
@@ -324,7 +324,7 @@ function createMcpServer(userId?: string) {
         is_draft: true, source: "mcp",
       });
       if (error) return errorResult(`Failed: ${error.message}`);
-      return textResult(`Duplicated ${id} → ${newId}\nURL: ${BASE_URL}/d/${newId}`);
+      return textResult(`Duplicated ${id} → ${newId}\nURL: ${BASE_URL}/${newId}`);
     }
   );
 
@@ -354,7 +354,7 @@ function createMcpServer(userId?: string) {
           is_draft: true, source: "mcp",
         });
         if (error) return errorResult(`Failed to save: ${error.message}`);
-        return textResult(`Imported ${url}\n→ ${BASE_URL}/d/${newId}\nID: ${newId}\nLength: ${markdown.length} chars`);
+        return textResult(`Imported ${url}\n→ ${BASE_URL}/${newId}\nID: ${newId}\nLength: ${markdown.length} chars`);
       } catch (err) {
         return errorResult(err instanceof Error ? err.message : "fetch failed");
       }
@@ -424,7 +424,7 @@ function createMcpServer(userId?: string) {
         .eq("id", id).single();
       if (error || !data) return errorResult("Document not found");
       const lines = [
-        `URL: ${BASE_URL}/d/${id}`,
+        `URL: ${BASE_URL}/${id}`,
         `Title: ${data.title || "Untitled"}`,
         `Status: ${data.is_draft ? "private draft" : "publicly accessible"}`,
         `Password: ${data.password_hash ? "yes" : "no"}`,
@@ -444,7 +444,7 @@ function createMcpServer(userId?: string) {
       if (!supabase) return errorResult("Storage not configured");
       const { error } = await supabase.from("documents").update({ is_draft: !published }).eq("id", id);
       if (error) return errorResult(error.message);
-      return textResult(published ? `${id} is now public: ${BASE_URL}/d/${id}` : `${id} is now private.`);
+      return textResult(published ? `${id} is now public: ${BASE_URL}/${id}` : `${id} is now private.`);
     }
   );
 
@@ -530,7 +530,7 @@ function createMcpServer(userId?: string) {
         `Views: ${data.view_count || 0}`,
         `Created: ${data.created_at}`,
         `Last updated: ${data.updated_at}`,
-        `URL: ${BASE_URL}/d/${id}`,
+        `URL: ${BASE_URL}/${id}`,
       ].join("\n"));
     }
   );

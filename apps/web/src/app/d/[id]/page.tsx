@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getSupabaseClient } from "@/lib/supabase";
 import { notFound } from "next/navigation";
-import DocumentViewer from "./DocumentViewer";
+import ClientViewer from "./ClientViewer";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${title} — mdfy.cc`,
       description,
-      url: `https://mdfy.cc/d/${id}`,
+      url: `https://mdfy.cc/${id}`,
       siteName: "mdfy.cc",
       type: "article",
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
@@ -108,15 +108,37 @@ export default async function DocPage({ params }: Props) {
   const visibleMarkdown = isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown));
 
   return (
-    <DocumentViewer
-      id={doc.id}
-      markdown={visibleMarkdown}
-      title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
-      isProtected={isProtected}
-      isExpired={!!isExpired}
-      isRestricted={isRestricted || isDraft}
-      showBadge={doc.ownerPlan !== "pro"}
-      editMode={doc.edit_mode || "token"}
-    />
+    <div>
+      {/* SSR: raw markdown for crawlers/AI — hidden when JS loads */}
+      {visibleMarkdown && (
+        <article
+          id="mdfy-ssr-content"
+          style={{
+            maxWidth: 800, margin: "0 auto", padding: "40px 24px",
+            fontFamily: "system-ui, sans-serif", lineHeight: 1.7,
+            color: "#d4d4d8", background: "#09090b", minHeight: "100vh"
+          }}
+        >
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16, color: "#fafafa" }}>
+            {doc.title || "Untitled"}
+          </h1>
+          <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word", fontSize: 14 }}>
+            {visibleMarkdown}
+          </pre>
+        </article>
+      )}
+      {/* Client: full DocumentViewer replaces the SSR content */}
+      <ClientViewer
+        id={doc.id}
+        markdown={visibleMarkdown}
+        title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
+        isProtected={isProtected}
+        isExpired={!!isExpired}
+        isRestricted={isRestricted || isDraft}
+        showBadge={doc.ownerPlan !== "pro"}
+        editMode={doc.edit_mode || "token"}
+      />
+    </div>
   );
 }
+

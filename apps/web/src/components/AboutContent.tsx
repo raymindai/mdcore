@@ -217,7 +217,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
 
             {/* Central hub */}
             <div style={{ background: "var(--accent)", color: "#000", padding: "12px 24px", borderRadius: 10, fontSize: 14, fontWeight: 800, fontFamily: "var(--font-geist-mono), monospace", boxShadow: "0 0 30px rgba(251,146,60,0.15)", whiteSpace: "nowrap" }}>
-              mdfy.cc/d/*
+              mdfy.cc/*
             </div>
 
             {/* Arrow */}

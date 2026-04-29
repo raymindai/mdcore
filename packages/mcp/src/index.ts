@@ -144,7 +144,7 @@ server.tool(
       });
 
       saveToken(result.id, result.editToken);
-      const url = `${BASE_URL}/d/${result.id}`;
+      const url = `${BASE_URL}/${result.id}`;
 
       return {
         content: [{
@@ -276,7 +276,7 @@ server.tool(
           editToken,
         }),
       });
-      const url = `${BASE_URL}/d/${id}`;
+      const url = `${BASE_URL}/${id}`;
       return {
         content: [{
           type: "text" as const,

@@ -89,7 +89,7 @@ const tools = [
 
 // Returns:
 {
-  "url": "https://mdfy.cc/d/abc123",
+  "url": "https://mdfy.cc/abc123",
   "id": "abc123",
   "editToken": "tok_..."
 }`,
@@ -101,7 +101,7 @@ const tools = [
     params: [
       { name: "id", type: "string", required: true, desc: "Document ID." },
     ],
-    example: `// "Read the document at mdfy.cc/d/abc123"
+    example: `// "Read the document at mdfy.cc/abc123"
 
 // Claude calls mdfy_read:
 { "id": "abc123" }
@@ -408,12 +408,12 @@ Claude: I'll write the blog post and publish it for you.
 
 [Claude writes the content, then calls mdfy_create]
 
-Done! Your blog post is live at https://mdfy.cc/d/abc123`}</CodeBlock>
+Done! Your blog post is live at https://mdfy.cc/abc123`}</CodeBlock>
             </Card>
 
             <Card>
               <SubLabel>Update with revisions</SubLabel>
-              <CodeBlock>{`You: "Update the document at mdfy.cc/d/abc123 - add a section about benchmarks"
+              <CodeBlock>{`You: "Update the document at mdfy.cc/abc123 - add a section about benchmarks"
 
 Claude: I'll read the current document and add the benchmarks section.
 

@@ -64,7 +64,7 @@ No API keys or environment variables needed. Authentication is handled via `mdfy
 
 ```
 You: "Create a document with my meeting notes"
-AI:  mdfy_create → https://mdfy.cc/d/abc123 (URL copied!)
+AI:  mdfy_create → https://mdfy.cc/abc123 (URL copied!)
 
 You: "List my documents"
 AI:  mdfy_list → 8 documents found
@@ -87,13 +87,13 @@ AI:  mdfy_delete → Moved to trash
 mdfy.cc URLs work as context across AI conversations:
 
 ```
-You (in Claude): "Summarize the research at mdfy.cc/d/abc123"
+You (in Claude): "Summarize the research at mdfy.cc/abc123"
 AI:  mdfy_read → reads the document → provides summary
 
-You (in ChatGPT): "Read mdfy.cc/d/abc123 and suggest improvements"
+You (in ChatGPT): "Read mdfy.cc/abc123 and suggest improvements"
 ChatGPT: fetches the URL → gives feedback
 
-You (in Claude): "Update mdfy.cc/d/abc123 with the improvements"
+You (in Claude): "Update mdfy.cc/abc123 with the improvements"
 AI:  mdfy_update → document updated, same URL
 ```
 
@@ -111,7 +111,7 @@ No email spoofing possible — all requests are authenticated via JWT.
 
 ## Features
 
-- **Permanent URLs** — every document gets a short URL (`mdfy.cc/d/...`) that never expires
+- **Permanent URLs** — every document gets a short URL (`mdfy.cc/...`) that never expires
 - **Auto-managed edit tokens** — create a doc, get edit access automatically
 - **Public or private** — toggle visibility with `mdfy_publish`
 - **Markdown rendering** — documents render with syntax highlighting, KaTeX math, Mermaid diagrams

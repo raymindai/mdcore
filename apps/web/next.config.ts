@@ -2,10 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "officeparser"],
-  outputFileTracingIncludes: {
-    "/d/[id]": ["./.next/server/chunks/static/wasm/*.wasm", "./src/lib/wasm/**/*.wasm"],
-    "/embed/[id]": ["./.next/server/chunks/static/wasm/*.wasm", "./src/lib/wasm/**/*.wasm"],
-  },
   webpack(config) {
     config.experiments = {
       ...config.experiments,
@@ -18,15 +14,6 @@ const nextConfig: NextConfig = {
       config.externals.push({ mermaid: "mermaid" });
     }
     return config;
-  },
-  async rewrites() {
-    return [
-      {
-        // Short document IDs → SSR viewer page
-        source: "/:id([A-Za-z0-9_-]{6,10})",
-        destination: "/d/:id",
-      },
-    ];
   },
 };
 

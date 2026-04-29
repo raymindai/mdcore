@@ -824,14 +824,14 @@
       case "copy-url": {
         var config = findConfigByPath(pathOrId);
         if (config) {
-          window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + config.docId);
+          window.mdfyDesktop.writeClipboard("https://mdfy.cc/" + config.docId);
           showToast("URL copied");
         }
         break;
       }
       case "open-browser": {
         var config2 = findConfigByPath(pathOrId);
-        if (config2) window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + config2.docId);
+        if (config2) window.mdfyDesktop.openInBrowser("https://mdfy.cc/" +config2.docId);
         break;
       }
       case "unlink":
@@ -854,7 +854,7 @@
         }
         break;
       case "open-cloud-browser":
-        window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + pathOrId);
+        window.mdfyDesktop.openInBrowser("https://mdfy.cc/" +pathOrId);
         break;
       case "delete-synced":
         if (confirm("Delete this document from mdfy.cc? The local file will remain.")) {
@@ -1478,7 +1478,7 @@
         var openBrowserBtn = document.getElementById("cloud-open-browser");
         if (openBrowserBtn) {
           openBrowserBtn.addEventListener("click", function() {
-            window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + currentCloudDoc.docId);
+            window.mdfyDesktop.openInBrowser("https://mdfy.cc/" +currentCloudDoc.docId);
           });
         }
         var duplicateBtn = document.getElementById("cloud-duplicate-edit");
@@ -3304,11 +3304,11 @@
 
     if (config && config.docId) {
       items.push({ label: "Copy URL", action: function() {
-        window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + config.docId);
+        window.mdfyDesktop.writeClipboard("https://mdfy.cc/" + config.docId);
         showToast("URL copied");
       }});
       items.push({ label: "Open in Browser", action: function() {
-        window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + config.docId);
+        window.mdfyDesktop.openInBrowser("https://mdfy.cc/" +config.docId);
       }});
       items.push({ divider: true });
       items.push({ label: "Unsync", action: async function() {
@@ -3349,10 +3349,10 @@
         var r = await window.mdfyDesktop.syncPullCloud(docId, title);
         if (r && r.ok) { await refreshSidebarData(); renderSidebar(); }
       }},
-      { label: "Open in Browser", action: function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc/?doc=" + docId); } },
+      { label: "Open in Browser", action: function() { window.mdfyDesktop.openInBrowser("https://mdfy.cc/" +docId); } },
       { divider: true },
       { label: "Copy URL", action: function() {
-        window.mdfyDesktop.writeClipboard("https://mdfy.cc/d/" + docId);
+        window.mdfyDesktop.writeClipboard("https://mdfy.cc/" + docId);
         showToast("URL copied");
       }},
     ];
@@ -3458,7 +3458,7 @@
   function updatePublishedUrl() {
     if (!headerUrlBtn) return;
     if (currentConfig && currentConfig.docId) {
-      var url = "mdfy.cc/d/" + currentConfig.docId;
+      var url = "mdfy.cc/" + currentConfig.docId;
       headerUrlBtn.textContent = url;
       headerUrlBtn.style.display = "";
       headerUrlBtn.setAttribute("data-url", "https://" + url);

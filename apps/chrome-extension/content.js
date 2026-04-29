@@ -1025,7 +1025,7 @@
           }
           const { id, editToken } = parsed;
           const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
-          window.open(MDFY_URL + "/?doc=" + id + tokenParam, "mdfy_" + Date.now());
+          window.open(MDFY_URL + "/?from=" + id + tokenParam, "mdfy_" + Date.now());
           return;
         }
         // Check for auth failure

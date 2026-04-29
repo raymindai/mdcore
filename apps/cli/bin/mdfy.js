@@ -122,7 +122,7 @@ async function cmdPublish(args) {
       source: "cli",
     });
 
-    const url = `${BASE_URL}/d/${result.id}`;
+    const url = `${BASE_URL}/${result.id}`;
     console.log(url);
 
     // Save token for future updates
@@ -166,7 +166,7 @@ async function cmdUpdate(args) {
       editToken,
       title: extractTitle(markdown),
     });
-    console.log(`Updated: ${BASE_URL}/d/${id}`);
+    console.log(`Updated: ${BASE_URL}/${id}`);
   } catch (err) {
     console.error(`Error: ${err.message}`);
     process.exit(1);
@@ -240,7 +240,7 @@ async function cmdList() {
 async function cmdOpen(args) {
   const id = args[0];
   if (!id) { console.error("Usage: mdfy open <id>"); process.exit(1); }
-  const url = `${BASE_URL}/d/${id}`;
+  const url = `${BASE_URL}/${id}`;
   if (process.platform === "darwin") {
     require("child_process").exec(`open "${url}"`);
   } else if (process.platform === "linux") {
@@ -340,7 +340,7 @@ async function cmdRead(args) {
   if (!id) { console.error("Usage: mdfy read <id>"); process.exit(1); }
 
   // Accept full URL or just ID
-  id = id.replace(/^https?:\/\/mdfy\.cc\/\?doc=/, "").replace(/^https?:\/\/mdfy\.cc\/d\//, "").replace(/^mdfy\.cc\/\?doc=/, "").replace(/^mdfy\.cc\/d\//, "");
+  id = id.replace(/^https?:\/\/mdfy\.cc\/\?doc=/, "").replace(/^https?:\/\/mdfy\.cc\/d\//, "").replace(/^https?:\/\/mdfy\.cc\//, "").replace(/^mdfy\.cc\/\?doc=/, "").replace(/^mdfy\.cc\/d\//, "").replace(/^mdfy\.cc\//, "");
 
   try {
     const doc = await api("GET", `/api/docs/${id}`);
@@ -466,7 +466,7 @@ async function cmdCapture(args) {
       source: "cli-capture",
     });
 
-    const url = `${BASE_URL}/d/${result.id}`;
+    const url = `${BASE_URL}/${result.id}`;
     console.log(url);
 
     const tokens = loadTokens();

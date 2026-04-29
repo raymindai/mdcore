@@ -89,7 +89,7 @@ const tools = [
 
 // 반환값:
 {
-  "url": "https://mdfy.cc/d/abc123",
+  "url": "https://mdfy.cc/abc123",
   "id": "abc123",
   "editToken": "tok_..."
 }`,
@@ -101,7 +101,7 @@ const tools = [
     params: [
       { name: "id", type: "string", required: true, desc: "문서 ID." },
     ],
-    example: `// "mdfy.cc/d/abc123 문서를 읽어줘"
+    example: `// "mdfy.cc/abc123 문서를 읽어줘"
 
 // Claude가 mdfy_read를 호출:
 { "id": "abc123" }
@@ -408,12 +408,12 @@ Claude: 블로그 글을 작성하고 게시하겠습니다.
 
 [Claude가 내용을 작성한 후 mdfy_create를 호출]
 
-완료! 블로그 글이 https://mdfy.cc/d/abc123 에 게시되었습니다.`}</CodeBlock>
+완료! 블로그 글이 https://mdfy.cc/abc123 에 게시되었습니다.`}</CodeBlock>
             </Card>
 
             <Card>
               <SubLabel>수정 반영</SubLabel>
-              <CodeBlock>{`You: "mdfy.cc/d/abc123 문서에 벤치마크 섹션을 추가해줘"
+              <CodeBlock>{`You: "mdfy.cc/abc123 문서에 벤치마크 섹션을 추가해줘"
 
 Claude: 현재 문서를 읽고 벤치마크 섹션을 추가하겠습니다.
 

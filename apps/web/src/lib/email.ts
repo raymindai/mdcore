@@ -103,7 +103,7 @@ export async function sendShareEmail(
   docId: string
 ): Promise<void> {
   const subject = `${fromName} shared a document with you on mdfy.cc`;
-  const docUrl = `https://mdfy.cc/d/${docId}`;
+  const docUrl = `https://mdfy.cc/${docId}`;
 
   const body = card(`
     <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#fafafa">${fromName} shared a document with you</p>
@@ -126,7 +126,7 @@ export async function sendEditRequestEmail(
   docId: string
 ): Promise<void> {
   const subject = `${fromName} requested edit access on mdfy.cc`;
-  const docUrl = `https://mdfy.cc/d/${docId}`;
+  const docUrl = `https://mdfy.cc/${docId}`;
 
   const body = card(`
     <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#fafafa">${fromName} requested edit access</p>
@@ -204,7 +204,7 @@ export function getTemplatePreviews(): { name: string; subject: string; html: st
         <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.5">
           Document: <span style="color:#e4e4e7;font-weight:600">System Design: Real-Time Notification Service</span>
         </p>
-        ${ctaButton("Open Document", "https://mdfy.cc/d/abc123")}
+        ${ctaButton("Open Document", "https://mdfy.cc/abc123")}
       `), to),
     },
     {
@@ -215,7 +215,7 @@ export function getTemplatePreviews(): { name: string; subject: string; html: st
         <p style="margin:0 0 20px;font-size:14px;color:#a1a1aa;line-height:1.5">
           Document: <span style="color:#e4e4e7;font-weight:600">Q2 2026 Revenue Analysis</span>
         </p>
-        ${ctaButton("Open Document", "https://mdfy.cc/d/def456")}
+        ${ctaButton("Open Document", "https://mdfy.cc/def456")}
       `), to),
     },
     {

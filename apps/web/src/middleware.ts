@@ -9,119 +9,39 @@ const STATIC_ROUTES = new Set([
   "/", "/about", "/manifesto", "/plugins", "/docs", "/discover",
   "/privacy", "/terms", "/settings", "/auth",
   "/ko", "/ko/about", "/ko/manifesto", "/ko/plugins", "/ko/docs",
-  "/embed", "/raw", "/d",
 ]);
 
-// Detect non-browser requests (bots, AI tools, scrapers, CLI tools)
-const KNOWN_BOTS = /bot|crawl|spider|slurp|facebook|linkedin|twitter|whatsapp|telegram|discord|slack|claude|chatgpt|gpt|anthropic|openai|google-extended|bing|yandex|baidu|duckduck|archive\.org|wget|curl|httpie|python|axios|node-fetch|undici|fetch|http|scraper/i;
-
-function isBot(ua: string, accept?: string | null): boolean {
-  if (!ua) return true;
-  if (KNOWN_BOTS.test(ua)) return true;
-  // Real browsers send detailed Accept headers; API clients/fetchers send */* or nothing
-  if (accept && !accept.includes("text/html")) return true;
-  if (!accept || accept === "*/*") return true;
-  return false;
-}
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
-  const ua = request.headers.get("user-agent") || "";
-  const accept = request.headers.get("accept");
 
-  // Document access — serve raw markdown for ALL non-interactive requests
-  // /d/ID SSR is unreliable (WASM bundle issue), so serve markdown
-  // directly from Supabase. Real browsers still work via client-side JS.
-  {
-    let docId: string | null = null;
-    // /?doc=ID (only for bots — humans get the editor)
-    if (pathname === "/" && searchParams.has("doc") && isBot(ua, accept)) {
-      docId = searchParams.get("doc");
-    }
-    // /d/ID — serve markdown for non-navigate requests
-    // Browsers that navigate to /d/ get redirected to /?doc= (client-rendered editor)
-    // Everything else (AI fetch, cURL, bots, embeds) gets raw markdown
-    const docMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
-    if (docMatch) {
-      const sfm = request.headers.get("sec-fetch-mode");
-      if (sfm === "navigate") {
-        // Real browser navigation → redirect to editor (which works with client JS)
-        const url = request.nextUrl.clone();
-        url.pathname = "/";
-        url.searchParams.set("doc", docMatch[1]);
-        return NextResponse.redirect(url);
-      }
-      docId = docMatch[1];
-    }
-
+  // /?doc=ID → redirect to /{id} (backwards compat)
+  if (pathname === "/" && searchParams.has("doc")) {
+    const docId = searchParams.get("doc");
     if (docId) {
-      try {
-        // Fetch directly from Supabase (not self-referencing API to avoid edge deadlock)
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (supabaseUrl && supabaseKey) {
-          const res = await fetch(
-            `${supabaseUrl}/rest/v1/documents?id=eq.${docId}&select=id,markdown,title,is_draft,password_hash,deleted_at`,
-            { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-          );
-          if (res.ok) {
-            const rows = await res.json();
-            const doc = rows?.[0];
-            if (doc?.markdown && !doc.is_draft && !doc.password_hash && !doc.deleted_at) {
-              const title = doc.title || "Untitled";
-              const body = `# ${title}\n\n${doc.markdown}`;
-              return new NextResponse(body, {
-                status: 200,
-                headers: {
-                  "Content-Type": "text/markdown; charset=utf-8",
-                  "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-                  "X-Document-ID": docId,
-                  "X-Powered-By": "mdcore-engine/0.1.0",
-                },
-              });
-            }
-          }
-        }
-      } catch { /* fallthrough to normal rendering */ }
+      const url = request.nextUrl.clone();
+      url.pathname = `/${docId}`;
+      url.search = "";
+      return NextResponse.redirect(url, 301);
     }
   }
 
-  // Short URL: /zggFXgUL → rewrite to /d/zggFXgUL (bots already handled above)
-  const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
-  if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/d/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
-    const docId = shortIdMatch[1];
-    // Bot: serve raw markdown via Supabase direct
-    if (isBot(ua, accept)) {
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (supabaseUrl && supabaseKey) {
-          const res = await fetch(
-            `${supabaseUrl}/rest/v1/documents?id=eq.${docId}&select=id,markdown,title,is_draft,password_hash,deleted_at`,
-            { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-          );
-          if (res.ok) {
-            const rows = await res.json();
-            const doc = rows?.[0];
-            if (doc?.markdown && !doc.is_draft && !doc.password_hash && !doc.deleted_at) {
-              const title = doc.title || "Untitled";
-              const body = `# ${title}\n\n${doc.markdown}`;
-              return new NextResponse(body, {
-                status: 200,
-                headers: { "Content-Type": "text/markdown; charset=utf-8", "Cache-Control": "public, max-age=60", "X-Powered-By": "mdcore-engine/0.1.0" },
-              });
-            }
-          }
-        }
-      } catch { /* fallthrough */ }
-    }
-    // Human: rewrite to /d/ID
+  // /d/ID → redirect to /{id} (backwards compat)
+  const dMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
+  if (dMatch) {
     const url = request.nextUrl.clone();
-    url.pathname = `/d/${docId}`;
-    url.search = "";
+    url.pathname = `/${dMatch[1]}`;
+    return NextResponse.redirect(url, 301);
+  }
+
+  // /{id} short URL → rewrite to /d/{id} (internal Next.js route)
+  const shortIdMatch = pathname.match(/^\/([A-Za-z0-9_-]{6,12})$/);
+  if (shortIdMatch && !STATIC_ROUTES.has(pathname) && !pathname.startsWith("/ko/") && !pathname.startsWith("/docs/") && !pathname.startsWith("/embed/") && !pathname.startsWith("/raw/") && !pathname.startsWith("/auth/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/d/${shortIdMatch[1]}`;
     return NextResponse.rewrite(url);
   }
 
+  // i18n redirects
   const langCookie = request.cookies.get("mdfy-lang")?.value;
 
   // If user explicitly chose English and is on /ko/ path, redirect to English
@@ -145,8 +65,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  response.headers.set("X-Middleware-Active", "true");
-  response.headers.set("X-Is-Bot", String(isBot(ua, accept)));
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");

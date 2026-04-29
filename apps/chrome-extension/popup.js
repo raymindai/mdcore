@@ -94,7 +94,7 @@ async function openInMdfy(markdown) {
         let parsed; try { parsed = JSON.parse(res.body); } catch { throw new Error("Invalid response"); }
         const { id, editToken } = parsed;
         const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
-        chrome.tabs.create({ url: MDFY_URL + "/?doc=" + id + tokenParam });
+        chrome.tabs.create({ url: MDFY_URL + "/?from=" + id + tokenParam });
         setStatus("Published to mdfy.cc", "success");
         return;
       }
@@ -426,7 +426,7 @@ if (searchInput) {
           return;
         }
         searchResultsEl.innerHTML = results.slice(0, 5).map(r =>
-          `<a href="${MDFY_URL}/?doc=${escHtml(r.id)}" target="_blank" style="display:block;padding:5px 8px;border-radius:4px;text-decoration:none;margin-bottom:2px;transition:background 0.1s" onmouseover="this.style.background='#1c1c24'" onmouseout="this.style.background='none'">
+          `<a href="${MDFY_URL}/${escHtml(r.id)}" target="_blank" style="display:block;padding:5px 8px;border-radius:4px;text-decoration:none;margin-bottom:2px;transition:background 0.1s" onmouseover="this.style.background='#1c1c24'" onmouseout="this.style.background='none'">
             <div style="font-size:11px;font-weight:600;color:#e4e4e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title)}</div>
             <div style="font-size:9px;color:#52525b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml((r.snippet || "").slice(0, 60))}</div>
           </a>`

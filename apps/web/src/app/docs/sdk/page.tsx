@@ -98,7 +98,7 @@ export default function SdkDocsPage() {
             <CodeBlock lang="typescript">{`import { publish } from "@mdcore/api";
 
 const result = await publish("# Hello World");
-console.log(result.url);  // https://mdfy.cc/d/abc123`}</CodeBlock>
+console.log(result.url);  // https://mdfy.cc/abc123`}</CodeBlock>
           </Card>
 
           {/* MdfyClient */}
@@ -145,7 +145,7 @@ const client = new MdfyClient({
 
 console.log(result.id);        // "abc123"
 console.log(result.editToken); // "tok_aBcDeFgH..."
-console.log(result.url);       // "https://mdfy.cc/d/abc123"`}</CodeBlock>
+console.log(result.url);       // "https://mdfy.cc/abc123"`}</CodeBlock>
           </Card>
 
           {/* client.pull() */}

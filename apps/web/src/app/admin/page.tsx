@@ -324,7 +324,7 @@ export default function AdminPage() {
                   {docs.map(d => (
                     <tr key={d.id}>
                       <td style={tdStyle}>
-                        <a href={`/d/${d.id}`} target="_blank" style={{ color: "#fb923c", textDecoration: "none" }}>
+                        <a href={`/${d.id}`} target="_blank" style={{ color: "#fb923c", textDecoration: "none" }}>
                           {d.title || "Untitled"}
                         </a>
                       </td>

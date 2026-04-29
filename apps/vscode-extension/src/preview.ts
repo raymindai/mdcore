@@ -408,7 +408,7 @@ document.querySelectorAll('[data-math-style]').forEach(el=>{try{katex.render(el.
               const docId = match?.[0]?.replace("cloud:", "") || "";
               if (docId) {
                 const baseUrl = vscode.workspace.getConfiguration("mdfy").get<string>("apiBaseUrl", "https://mdfy.cc");
-                vscode.env.openExternal(vscode.Uri.parse(`${baseUrl}/d/${docId}`));
+                vscode.env.openExternal(vscode.Uri.parse(`${baseUrl}/${docId}`));
               }
             }
             break;

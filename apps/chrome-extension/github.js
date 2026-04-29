@@ -95,7 +95,7 @@
               try { parsed = JSON.parse(uploadRes.body); } catch { throw new Error("Invalid response"); }
               const { id, editToken } = parsed;
               const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
-              window.open(MDFY_URL + "/?doc=" + id + tokenParam, "_blank");
+              window.open(MDFY_URL + "/?from=" + id + tokenParam, "_blank");
               btn.classList.remove("mdfy-gh-loading");
               btn.classList.add("mdfy-gh-done");
               btn.querySelector(".mdfy-gh-label").textContent = "Opened!";

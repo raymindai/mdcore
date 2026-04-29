@@ -1265,7 +1265,7 @@ async function openCloudDocumentInApp(docId) {
       config: { docId, editToken: data.editToken },
     });
   } catch (err) {
-    shell.openExternal(`${MDFY_URL}/d/${docId}`);
+    shell.openExternal(`${MDFY_URL}/${docId}`);
   }
 }
 
@@ -1600,7 +1600,7 @@ ipcMain.handle("publish", async (event, markdown) => {
         existing.lastSyncedAt = new Date().toISOString();
         existing.lastServerUpdatedAt = result.updated_at;
         saveMdfyConfig(currentFilePath, existing);
-        return { url: `${MDFY_URL}/d/${existing.docId}`, docId: existing.docId };
+        return { url: `${MDFY_URL}/${existing.docId}`, docId: existing.docId };
       } catch (err) {
         return { error: err.message };
       }
@@ -1610,7 +1610,7 @@ ipcMain.handle("publish", async (event, markdown) => {
   // First publish
   try {
     const result = await apiPublish(markdown, title);
-    const url = `${MDFY_URL}/d/${result.id}`;
+    const url = `${MDFY_URL}/${result.id}`;
 
     if (currentFilePath) {
       saveMdfyConfig(currentFilePath, {

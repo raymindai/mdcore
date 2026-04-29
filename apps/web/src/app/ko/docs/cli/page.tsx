@@ -195,7 +195,7 @@ mdfy delete abc123 --yes`}</CodeBlock>
           <SectionHeading id="open">open</SectionHeading>
           <Card>
             <CodeBlock lang="bash">{`mdfy open abc123
-# Opens https://mdfy.cc/d/abc123 in your default browser`}</CodeBlock>
+# Opens https://mdfy.cc/abc123 in your default browser`}</CodeBlock>
           </Card>
 
           {/* capture */}

@@ -64,7 +64,7 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 1. **Type or paste** anything — Markdown, plain text, AI output, code
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
 3. **Edit** inline in the Live view, or use Source for raw Markdown
-4. **Share** with one click — generates a permanent URL like \`mdfy.cc/d/abc123\`
+4. **Share** with one click — generates a permanent URL like \`mdfy.cc/abc123\`
 
 ## What You Can Do
 
@@ -530,7 +530,7 @@ Click the **Export** icon in the Live view header (Cmd+Alt+E).
 - **Plain Text** — no formatting
 
 ### Share
-- **Permanent URL** — \`mdfy.cc/d/abc123\` — one click to copy
+- **Permanent URL** — \`mdfy.cc/abc123\` — one click to copy
 - **Embed** — iframe code for websites
 - **QR Code** — for mobile sharing
 `;
@@ -1013,7 +1013,7 @@ npm install -g mdfy-cli
 \`\`\`bash
 # Publish a file
 mdfy publish README.md
-# → https://mdfy.cc/d/abc123  (copied to clipboard)
+# → https://mdfy.cc/abc123  (copied to clipboard)
 
 # Publish from pipe
 echo "# Hello World" | mdfy publish
@@ -1109,7 +1109,7 @@ Add to \`.mcp.json\`:
 
 \`\`\`
 You: "Publish my meeting notes to mdfy"
-Claude: → mdfy_create → https://mdfy.cc/d/abc123
+Claude: → mdfy_create → https://mdfy.cc/abc123
 
 You: "Show me my documents"
 Claude: → mdfy_list → 8 documents found
@@ -2589,7 +2589,7 @@ export default function MdEditor() {
     setShowViewerShareModal(false);
     // Update browser URL to reflect current document
     if (tab.cloudId) {
-      window.history.replaceState(null, "", `/?doc=${tab.cloudId}`);
+      window.history.replaceState(null, "", `/${tab.cloudId}`);
     } else {
       window.history.replaceState(null, "", "/");
     }
@@ -2661,7 +2661,7 @@ export default function MdEditor() {
         queueMicrotask(() => {
           loadTab(target);
           if (!fromPopstate) {
-            const url = target.cloudId ? `/?doc=${target.cloudId}` : "/";
+            const url = target.cloudId ? `/${target.cloudId}` : "/";
             window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null }, "", url);
           }
         });
@@ -2865,7 +2865,7 @@ export default function MdEditor() {
       });
       setDocId(result.id);
       // Update URL without navigation
-      window.history.replaceState(null, "", `/?doc=${result.id}`);
+      window.history.replaceState(null, "", `/${result.id}`);
       // BUG 8 fix: If content changed during cloud creation window, trigger save
       const currentMd = markdownRef.current;
       if (currentMd !== initialMd) {
@@ -3498,7 +3498,7 @@ export default function MdEditor() {
               const saved = prev.map(t => t.id === prevActiveId && !t.readonly ? { ...t, markdown: markdownRef.current } : t);
               return [...saved, newTab];
             });
-            window.history.replaceState(null, "", `/?doc=${fromId}`);
+            window.history.replaceState(null, "", `/${fromId}`);
 
             // Record visit (fire-and-forget)
             if (user?.id) {
@@ -5704,7 +5704,7 @@ export default function MdEditor() {
         setDocId(newDocId);
         setIsOwner(true);
         setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken } : t));
-        window.history.replaceState(null, "", `/?doc=${newDocId}`);
+        window.history.replaceState(null, "", `/${newDocId}`);
         // Open share modal — doc stays as draft until user changes settings
         setShareState("idle");
         setShowShareModal(true);
@@ -5718,7 +5718,7 @@ export default function MdEditor() {
           setIsOwner(true);
           setTabs(prev => prev.map(t => t.id === activeTabIdRef.current ? { ...t, cloudId: newDocId, editToken } : t));
           await copyToClipboard(url);
-          window.history.replaceState(null, "", `/?doc=${newDocId}`);
+          window.history.replaceState(null, "", `/${newDocId}`);
           setShareState("copied");
           setTimeout(() => setShareState("idle"), 3000);
         } catch {
@@ -6406,7 +6406,7 @@ ${clone.innerHTML}
             const ct = tabs.find(t => t.id === activeTabId);
             const cid = ct?.cloudId || docId;
             if (!cid) return null;
-            const shortUrl = `mdfy.cc/d/${cid}`;
+            const shortUrl = `mdfy.cc/${cid}`;
             return (<>
               <button
                 className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden lg:inline-block"
@@ -6464,7 +6464,7 @@ ${clone.innerHTML}
                           return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
                         });
                         setDocId(result.id);
-                        window.history.replaceState(null, "", `/?doc=${result.id}`);
+                        window.history.replaceState(null, "", `/${result.id}`);
                       }
                     });
                   }}
@@ -6928,7 +6928,7 @@ ${clone.innerHTML}
                   className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
                   style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                   title="Click to copy document URL"
-                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/d/${cid}`); showToast("URL copied", "success"); } catch {} }}
+                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
                 >
                   /{cid}
                 </button>
@@ -6982,7 +6982,7 @@ ${clone.innerHTML}
                             return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
                           });
                           setDocId(result.id);
-                          window.history.replaceState(null, "", `/?doc=${result.id}`);
+                          window.history.replaceState(null, "", `/${result.id}`);
                         }
                       });
                     }}
@@ -10482,7 +10482,7 @@ ${clone.innerHTML}
                           return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
                         });
                         setDocId(result.id);
-                        window.history.replaceState(null, "", `/?doc=${result.id}`);
+                        window.history.replaceState(null, "", `/${result.id}`);
                       }
                     });
                   }}
@@ -10542,7 +10542,7 @@ ${clone.innerHTML}
               mdfy.cc/{docId}
             </p>
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/d/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
               alt="QR Code"
               width={200}
               height={200}

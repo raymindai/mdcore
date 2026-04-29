@@ -183,7 +183,7 @@ export function activate(context: vscode.ExtensionContext): void {
           PreviewPanel.setPublishedStateForDocument(
             editor.document.uri,
             config.docId,
-            `${baseUrl}/d/${config.docId}`
+            `${baseUrl}/${config.docId}`
           );
         }, 300);
       }
@@ -241,7 +241,7 @@ export function activate(context: vscode.ExtensionContext): void {
           existing.lastServerUpdatedAt = updateResult.updated_at;
           await saveMdfyConfig(fileName, existing);
 
-          const url = `${baseUrl}/d/${existing.docId}`;
+          const url = `${baseUrl}/${existing.docId}`;
           await vscode.env.clipboard.writeText(url);
           statusBar?.setPublished(url);
           sidebarProvider?.refresh();
@@ -259,7 +259,7 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBar?.setSyncing("Publishing...");
       try {
         const result = await publishDocument(markdown, title, authManager);
-        const url = `${baseUrl}/d/${result.id}`;
+        const url = `${baseUrl}/${result.id}`;
 
         await saveMdfyConfig(fileName, {
           docId: result.id,
@@ -589,7 +589,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const cfg = await loadMdfyConfig(editor.document.fileName);
         if (cfg) {
           const base = getApiBaseUrl();
-          statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+          statusBar?.setPublished(`${base}/${cfg.docId}`);
 
           // Check ownership — mark non-owner docs to prevent editing/collaboration
           try {
@@ -686,7 +686,7 @@ export function activate(context: vscode.ExtensionContext): void {
     loadMdfyConfig(activeEditor.document.fileName).then((cfg) => {
       if (cfg) {
         const base = getApiBaseUrl();
-        statusBar?.setPublished(`${base}/d/${cfg.docId}`);
+        statusBar?.setPublished(`${base}/${cfg.docId}`);
         // Start collaboration for initially open document
         collabManager?.start(
           activeEditor.document.uri,

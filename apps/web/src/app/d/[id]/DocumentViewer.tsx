@@ -68,6 +68,12 @@ export default function DocumentViewer({
     })();
   }, [id, isRestricted, unlocked]);
 
+  // Hide SSR content when client-side viewer mounts
+  useEffect(() => {
+    const ssr = document.getElementById("mdfy-ssr-content");
+    if (ssr) ssr.style.display = "none";
+  }, []);
+
   // Theme
   useEffect(() => {
     const saved = localStorage.getItem("mdfy-theme") as Theme | null;

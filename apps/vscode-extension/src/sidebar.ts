@@ -400,7 +400,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
       isOpen: d.isOpen,
       published: !!d.config,
       docId: d.config?.docId,
-      url: d.config ? `${baseUrl}/d/${d.config.docId}` : undefined,
+      url: d.config ? `${baseUrl}/${d.config.docId}` : undefined,
       lastSynced: d.config?.lastSyncedAt,
     }));
 
@@ -429,7 +429,7 @@ export class MdfySidebarProvider implements vscode.WebviewViewProvider {
         updatedAt: c.updated_at,
         isDraft: c.is_draft,
         folderId: c.folder_id || null,
-        url: `${baseUrl}/d/${c.id}`,
+        url: `${baseUrl}/${c.id}`,
         viewCount: c.view_count || 0,
         editMode: c.edit_mode || null,
         allowedEmails: c.allowed_emails || null,
