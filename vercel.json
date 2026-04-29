@@ -52,14 +52,6 @@
       "source": "/",
       "has": [{ "type": "host", "value": "mdcore.ai" }],
       "destination": "/mdcore-ai"
-    },
-    {
-      "source": "/:id([A-Za-z0-9_-]{6,10})",
-      "destination": "/d/:id"
-    },
-    {
-      "source": "/((?!_next|api|d|raw|about|embed|mdcore-ai|favicon.ico|.*\\.wasm).*)",
-      "destination": "/"
     }
   ]
 }
