@@ -125,5 +125,6 @@ export default async function DocPage({ params }: Props) {
       showBadge={doc.ownerPlan !== "pro"}
       editMode={doc.edit_mode || "token"}
     />
+    </>
   );
 }
