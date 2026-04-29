@@ -45,11 +45,7 @@ const slides = [
     step: "04",
     title: "Works everywhere.",
     desc: null,
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-      </svg>
-    ),
+    icon: null,
     surfaces: [
       { name: "Chrome Extension", desc: "Capture AI conversations", color: "#4ade80" },
       { name: "VS Code", desc: "WYSIWYG preview + sync", color: "#60a5fa" },
@@ -131,7 +127,7 @@ export default function WelcomeOverlay() {
         }}
       >
         {/* Content */}
-        <div style={{ padding: "48px 40px 32px", textAlign: "center" }}>
+        <div style={{ padding: slide.icon ? "48px 40px 32px" : "32px 40px 24px", textAlign: "center" }}>
           {/* Icon */}
           {slide.icon && (
             <div style={{ marginBottom: 20, display: "flex", justifyContent: "center" }}>{slide.icon}</div>
