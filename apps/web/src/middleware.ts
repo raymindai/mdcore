@@ -38,11 +38,21 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/" && searchParams.has("doc") && isBot(ua, accept)) {
       docId = searchParams.get("doc");
     }
-    // /d/ID — serve markdown if NOT a real browser navigation
-    // Real browsers send Sec-Fetch-Mode: navigate; fetchers/bots don't
+    // /d/ID — serve markdown for non-navigate requests
+    // Browsers that navigate to /d/ get redirected to /?doc= (client-rendered editor)
+    // Everything else (AI fetch, cURL, bots, embeds) gets raw markdown
     const docMatch = pathname.match(/^\/d\/([A-Za-z0-9_-]+)$/);
-    const secFetchMode = request.headers.get("sec-fetch-mode");
-    if (docMatch && secFetchMode !== "navigate") docId = docMatch[1];
+    if (docMatch) {
+      const sfm = request.headers.get("sec-fetch-mode");
+      if (sfm === "navigate") {
+        // Real browser navigation → redirect to editor (which works with client JS)
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        url.searchParams.set("doc", docMatch[1]);
+        return NextResponse.redirect(url);
+      }
+      docId = docMatch[1];
+    }
 
     if (docId) {
       try {
