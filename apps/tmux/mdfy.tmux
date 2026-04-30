@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mdfy tmux plugin — capture pane and publish to mdfy.cc
+# mdfy tmux plugin — capture pane and publish to mdfy.app
 #
 # Installation:
 #   1. Copy this file to ~/.tmux/plugins/mdfy/mdfy.tmux
@@ -11,7 +11,7 @@
 #   set -g @plugin 'raymindai/mdfy-tmux'
 #
 # Usage:
-#   prefix + M    — Capture current pane and publish to mdfy.cc
+#   prefix + M    — Capture current pane and publish to mdfy.app
 #   prefix + C-m  — Capture and publish (copy mode selection only)
 #
 # Requires: mdfy CLI (npm install -g mdfy)

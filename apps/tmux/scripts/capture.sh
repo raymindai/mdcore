@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Capture current tmux pane and publish to mdfy.cc
+# Capture current tmux pane and publish to mdfy.app
 # Called by mdfy.tmux keybinding
 
 # Check if mdfy CLI is installed

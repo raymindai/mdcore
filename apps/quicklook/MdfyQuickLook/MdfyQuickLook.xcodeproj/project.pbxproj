@@ -284,7 +284,7 @@
 				DEVELOPMENT_TEAM = W7NL89YGSD;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HostApp/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 mdfy.cc. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 mdfy.app. All rights reserved.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -311,7 +311,7 @@
 				DEVELOPMENT_TEAM = W7NL89YGSD;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HostApp/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 mdfy.cc. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright 2026 mdfy.app. All rights reserved.";
 				INFOPLIST_KEY_NSMainStoryboardFile = "";
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (

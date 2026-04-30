@@ -544,12 +544,12 @@ class PreviewViewController: NSViewController, QLPreviewingController {
         <span class="mdfy-filename">{{FILE_NAME}}</span>
       </div>
       <div class="mdfy-topbar-right">
-        <a class="mdfy-btn" id="open-in-mdfy" href="https://mdfy.cc" target="_blank" rel="noopener">
+        <a class="mdfy-btn" id="open-in-mdfy" href="https://mdfy.app" target="_blank" rel="noopener">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-3M9 1h6m0 0v6m0-6L8 8"
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Open on mdfy.cc
+          Open on mdfy.app
         </a>
         <button class="mdfy-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">
           <svg id="theme-icon-sun" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">
@@ -953,7 +953,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
     })();
 
     // Try opening in the mdfy desktop app via custom URL scheme.
-    // Falls back to https://mdfy.cc if the desktop app is not installed.
+    // Falls back to https://mdfy.app if the desktop app is not installed.
     function openInMdfy(event) {
       event.preventDefault();
       var fileName = encodeURIComponent('{{FILE_NAME}}');
@@ -966,7 +966,7 @@ class PreviewViewController: NSViewController, QLPreviewingController {
       // After a short delay, if we're still here, open in browser
       setTimeout(function() {
         document.body.removeChild(iframe);
-        window.open('https://mdfy.cc', '_blank');
+        window.open('https://mdfy.app', '_blank');
       }, 500);
       return false;
     }
