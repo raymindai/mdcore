@@ -3447,7 +3447,7 @@ export default function MdEditor() {
               perm = "mine";
               setIsOwner(true);
               setIsSharedDoc(false);
-              /* viewMode preserved — user controls it */
+              setViewMode("preview"); // Show Live view when opening own doc via URL
             } else {
               perm = "readonly";
               setIsSharedDoc(true);
