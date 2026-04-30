@@ -110,9 +110,12 @@ export default function KnowledgeGraph({
 
     (async () => {
       // Dynamic imports for SSR safety
+      // @ts-expect-error — no type declarations for 3d-force-graph
       const ForceGraph3DModule = await import("3d-force-graph");
       const ForceGraph3D = ForceGraph3DModule.default;
+      // @ts-expect-error — three types not installed
       const THREE = await import("three");
+      // @ts-expect-error — three submodule types
       const { UnrealBloomPass } = await import("three/examples/jsm/postprocessing/UnrealBloomPass.js");
 
       if (destroyed || !containerRef.current) return;
