@@ -2,7 +2,7 @@
 
 **Write Markdown in VS Code. Publish as a beautiful web document. Share a permanent URL.**
 
-![mdfy WYSIWYG Preview](https://mdfy.app/images/vscode/hero.png)
+![mdfy WYSIWYG Preview](https://mdfy.app/images/plugin-vscode.webp)
 
 mdfy.app turns your Markdown files into shareable, beautifully rendered documents with a permanent URL -- directly from VS Code. No copy-pasting into Google Docs. No screenshots. No "can you open this .md file?" conversations.
 
@@ -48,7 +48,7 @@ VS Code's built-in Markdown preview is read-only and local. mdfy gives you:
 
 Press **Cmd+Shift+M** to open the mdfy preview panel. Unlike the built-in preview, you can **edit directly in the rendered view**.
 
-![WYSIWYG Preview](https://mdfy.app/images/vscode/preview.png)
+![WYSIWYG Preview](https://mdfy.app/images/hero-editor.webp)
 
 - Click any text to edit it in place
 - Formatting toolbar appears on selection: bold, italic, headings, lists, links, code, tables
@@ -91,11 +91,11 @@ Click the **Outline** button in the preview toolbar to open a document structure
 
 Turn any `.md` file into a shareable URL in one click.
 
-![Publish Flow](https://mdfy.app/images/vscode/publish.png)
+![Publish Flow](https://mdfy.app/images/feature-showcase-1.webp)
 
 1. Open a `.md` file
 2. **Cmd+Alt+P** or right-click > **Publish to mdfy.app**
-3. URL is generated: `mdfy.app/d/abc123`
+3. URL is generated: `mdfy.app/abc123`
 4. URL is copied to clipboard -- paste it anywhere
 
 **No account required** for basic publishing. The recipient sees a beautifully rendered document in their browser -- they don't need VS Code, Markdown knowledge, or an account.
@@ -104,7 +104,7 @@ Turn any `.md` file into a shareable URL in one click.
 
 Keep your local files in sync with the published version.
 
-![Sync Status](https://mdfy.app/images/vscode/sync.png)
+![Sync Status](https://mdfy.app/images/feature-showcase-2.webp)
 
 - **Auto-push on save** -- your published document updates when you save locally (configurable)
 - **Pull remote changes** -- if someone edits on mdfy.app, pull the changes to your local file
@@ -116,7 +116,7 @@ Keep your local files in sync with the published version.
 
 Browse all your documents in one place.
 
-![Sidebar](https://mdfy.app/images/vscode/sidebar.png)
+![Sidebar](https://mdfy.app/images/plugin-vscode.webp)
 
 Click the mdfy icon in the Activity Bar to open the sidebar:
 
@@ -336,7 +336,7 @@ mdfy.app is a cross-platform document publishing system. All platforms share the
 
 ### The URL is the bridge
 
-Every mdfy document has a permanent short URL (`mdfy.app/d/abc123`). This URL:
+Every mdfy document has a permanent short URL (`mdfy.app/abc123`). This URL:
 
 - Renders beautifully in any browser
 - Is readable by any AI (paste it into a ChatGPT/Claude conversation)
