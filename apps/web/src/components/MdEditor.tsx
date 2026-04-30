@@ -2836,7 +2836,7 @@ export default function MdEditor() {
 
     const id = `tab-${tabIdCounter++}`;
     const tabTitle = extractTitleFromMd(initialMd) || "Untitled";
-    const newTab: Tab = { id, title: tabTitle, markdown: initialMd, isDraft: true, permission: "mine" };
+    const newTab: Tab = { id, title: tabTitle, markdown: initialMd, isDraft: true, permission: "mine", lastOpenedAt: Date.now() };
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -3491,6 +3491,7 @@ export default function MdEditor() {
                 id: newTabId, cloudId: fromId, ...tabProps,
                 title: doc.title || "Shared Document",
                 shared: perm !== "mine",
+                lastOpenedAt: Date.now(),
               };
               activeTabIdRef.current = newTab.id;
               setActiveTabId(newTab.id);
@@ -3766,7 +3767,7 @@ export default function MdEditor() {
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
             const newTabs = data.documents
               .filter((d: { id: string }) => !existingCloudIds.has(d.id))
-              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string }) => ({
+              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string; updated_at?: string; created_at?: string }) => ({
                 id: `cloud-${d.id}`,
                 title: d.title || "Untitled",
                 markdown: "",
@@ -3775,6 +3776,7 @@ export default function MdEditor() {
                 source: d.source || undefined,
                 folderId: d.folder_id || undefined,
                 permission: "mine" as const,
+                lastOpenedAt: d.updated_at ? new Date(d.updated_at).getTime() : d.created_at ? new Date(d.created_at).getTime() : Date.now(),
               }));
             return [...updated, ...newTabs];
           });
@@ -4033,7 +4035,7 @@ export default function MdEditor() {
               // Add new server docs that don't have local tabs
               const newTabs = data.documents
                 .filter((d: { id: string }) => !existingCloudIds.has(d.id))
-                .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string }) => ({
+                .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string; updated_at?: string; created_at?: string }) => ({
                   id: `cloud-${d.id}`,
                   title: d.title || "Untitled",
                   markdown: "",
@@ -4042,6 +4044,7 @@ export default function MdEditor() {
                   source: d.source || undefined,
                   folderId: d.folder_id || undefined,
                   permission: "mine" as const,
+                  lastOpenedAt: d.updated_at ? new Date(d.updated_at).getTime() : d.created_at ? new Date(d.created_at).getTime() : Date.now(),
                 }));
               // Remove tabs for deleted server docs
               const serverDocIds = new Set(data.documents.map((d: { id: string }) => d.id));
