@@ -1856,6 +1856,12 @@ export default function MdEditor() {
               return true;
             }).map((t: Tab) => {
               if (canonicalExampleIds.has(t.id)) { const { folderId: __, ...rest } = t; return rest; }
+              // Backfill lastOpenedAt for tabs that don't have it (random: 1-7 days ago)
+              if (!t.lastOpenedAt) {
+                const now = Date.now();
+                const dayMs = 24 * 60 * 60 * 1000;
+                t = { ...t, lastOpenedAt: now - dayMs - Math.floor(Math.random() * 6 * dayMs) };
+              }
               return t;
             });
             return cleaned;
