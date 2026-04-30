@@ -48,8 +48,6 @@ VS Code's built-in Markdown preview is read-only and local. mdfy gives you:
 
 Press **Cmd+Shift+M** to open the mdfy preview panel. Unlike the built-in preview, you can **edit directly in the rendered view**.
 
-![WYSIWYG Preview](https://mdfy.app/images/hero-editor.webp)
-
 - Click any text to edit it in place
 - Formatting toolbar appears on selection: bold, italic, headings, lists, links, code, tables
 - Changes sync back to your `.md` source file in real time
@@ -91,8 +89,6 @@ Click the **Outline** button in the preview toolbar to open a document structure
 
 Turn any `.md` file into a shareable URL in one click.
 
-![Publish Flow](https://mdfy.app/images/feature-showcase-1.webp)
-
 1. Open a `.md` file
 2. **Cmd+Alt+P** or right-click > **Publish to mdfy.app**
 3. URL is generated: `mdfy.app/abc123`
@@ -104,8 +100,6 @@ Turn any `.md` file into a shareable URL in one click.
 
 Keep your local files in sync with the published version.
 
-![Sync Status](https://mdfy.app/images/feature-showcase-2.webp)
-
 - **Auto-push on save** -- your published document updates when you save locally (configurable)
 - **Pull remote changes** -- if someone edits on mdfy.app, pull the changes to your local file
 - **Conflict detection** -- when both sides change, VS Code's diff editor opens with three merge options: pull, push, or view diff
@@ -115,8 +109,6 @@ Keep your local files in sync with the published version.
 ### Sidebar
 
 Browse all your documents in one place.
-
-![Sidebar](https://mdfy.app/images/plugin-vscode.webp)
 
 Click the mdfy icon in the Activity Bar to open the sidebar:
 
@@ -331,7 +323,7 @@ mdfy.app is a cross-platform document publishing system. All platforms share the
 | **[CLI](https://www.npmjs.com/package/mdfy-cli)** | `mdfy publish`, pipe support, tmux capture | `npm i -g mdfy-cli` |
 | **[Hosted MCP](https://mdfy.app/docs/mcp)** | AI agents (Claude Web, Cursor) — 25 tools | URL: `https://mdfy.app/api/mcp` |
 | **[Local MCP](https://www.npmjs.com/package/mdfy-mcp)** | AI agents (Claude Desktop, Code) — 6 core tools | `npx mdfy-mcp` |
-| **QuickLook** | Press Space on .md in Finder for rendered preview | [Build from source](https://github.com/raymindai/mdcore) |
+| **[QuickLook](https://mdfy.app/plugins)** | Press Space on .md in Finder for rendered preview | [Download](https://github.com/raymindai/mdcore/releases) |
 | **tmux** | Capture pane output and publish | [Install guide](https://github.com/raymindai/mdcore/tree/main/apps/tmux) |
 
 ### The URL is the bridge
