@@ -44,25 +44,35 @@ export default function DocumentViewer({
   const markdownRef = useRef(initialMarkdown);
   markdownRef.current = markdown;
 
-  // For restricted docs: try client-side fetch with user credentials
+  // Check ownership: if logged-in user owns this doc, redirect to editor
+  // Also handles restricted docs: try client-side fetch with user credentials
   useEffect(() => {
-    if (!isRestricted || unlocked) return;
-    // Try to get user session from Supabase and re-fetch
     (async () => {
       try {
         const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
         const supabase = getSupabaseBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.email) return;
+        if (!user) return;
+
         const res = await fetch(`/api/docs/${id}`, {
-          headers: { "x-user-id": user.id, "x-user-email": user.email },
+          headers: { "x-user-id": user.id, "x-user-email": user.email || "" },
         });
-        if (res.ok) {
-          const doc = await res.json();
+        if (!res.ok) return;
+
+        const doc = await res.json();
+
+        // Owner → open in editor instead of viewer
+        if (doc.isOwner) {
+          window.location.replace(`/?from=${id}`);
+          return;
+        }
+
+        // Not owner but has access to restricted doc → show content
+        if (isRestricted && !unlocked && doc.markdown) {
           setMarkdown(doc.markdown);
           if (doc.title) setTitle(doc.title);
           setUnlocked(true);
-          setIsLoading(true); // trigger render
+          setIsLoading(true);
         }
       } catch { /* no session or not authorized */ }
     })();
