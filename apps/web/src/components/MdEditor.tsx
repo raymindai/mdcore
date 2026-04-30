@@ -28,7 +28,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -2246,6 +2246,8 @@ export default function MdEditor() {
   });
   const lastClickedTabIdRef = useRef<string | null>(null);
   const [confirmTrash, setConfirmTrash] = useState(false);
+  const [showBundleCreator, setShowBundleCreator] = useState(false);
+  const [bundleCreatorDocs, setBundleCreatorDocs] = useState<Array<{ id: string; title: string }>>([]);
   const [_renderPaneNarrow, setRenderPaneNarrow] = useState(false);
   const [renderPaneUnderNarrowWidth, setRenderPaneUnderNarrowWidth] = useState(false);
   const [_editorPaneNarrow, setEditorPaneNarrow] = useState(false);
@@ -8066,6 +8068,21 @@ ${clone.innerHTML}
                   </div>
                 )}
                 <button onClick={() => {
+                  // Bundle: collect selected document cloudIds
+                  const selectedCloudIds = tabs.filter(t => selectedTabIds.has(t.id) && t.cloudId).map(t => ({ id: t.cloudId!, title: t.title || "Untitled" }));
+                  if (selectedCloudIds.length < 2) {
+                    showToast("Select at least 2 published documents to create a bundle", "error");
+                    return;
+                  }
+                  setBundleCreatorDocs(selectedCloudIds);
+                  setShowBundleCreator(true);
+                  setSelectedTabIds(new Set());
+                }} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]"
+                  style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)" }}
+                  title="Create Bundle">
+                  <Layers width={11} height={11} /><span>Bundle</span>
+                </button>
+                <button onClick={() => {
                   if (!confirmTrash) {
                     setConfirmTrash(true);
                     setTimeout(() => { setConfirmTrash(false); }, 3000);
@@ -8202,7 +8219,7 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full bottom-0 ml-1 w-32 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/keycolor:block max-h-[calc(100vh-40px)] overflow-y-auto"
+                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/keycolor:block z-[9999]"><div className="w-32 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
                             {ACCENT_COLORS.map(c => (
@@ -8219,7 +8236,7 @@ ${clone.innerHTML}
                                 {c.label}
                               </button>
                             ))}
-                          </div>
+                          </div></div>
                         </div>
                         {/* Skin Theme — flyout */}
                         <div className="relative group/skin">
@@ -8233,7 +8250,7 @@ ${clone.innerHTML}
                             </span>
                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
                           </button>
-                          <div className="absolute left-full bottom-0 ml-1 w-40 rounded-lg shadow-xl z-[9999] py-1 hidden group-hover/skin:block max-h-[calc(100vh-40px)] overflow-y-auto"
+                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/skin:block z-[9999]"><div className="w-40 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
                             {COLOR_SCHEMES.map(s => (
@@ -8250,7 +8267,7 @@ ${clone.innerHTML}
                                 </span>
                               </button>
                             ))}
-                          </div>
+                          </div></div>
                         </div>
                       </div>
                       {/* Actions */}
@@ -11026,6 +11043,86 @@ ${clone.innerHTML}
           </div>
         );
       })()}
+
+      {/* Bundle Creator Modal */}
+      {showBundleCreator && bundleCreatorDocs.length > 0 && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowBundleCreator(false)}
+        >
+          <div
+            className="rounded-xl w-full max-w-md mx-4 overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
+              <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>{bundleCreatorDocs.length} documents selected</p>
+            </div>
+            <div className="px-5 py-4">
+              <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
+              <input
+                id="bundle-title-input"
+                type="text"
+                defaultValue=""
+                placeholder="My Bundle"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-4"
+                style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+                autoFocus
+              />
+              <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Documents</label>
+              <div className="space-y-1 max-h-48 overflow-auto">
+                {bundleCreatorDocs.map((doc, i) => (
+                  <div key={doc.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px]" style={{ background: "var(--background)", color: "var(--text-secondary)" }}>
+                    <span style={{ color: "var(--text-faint)" }}>{i + 1}.</span>
+                    <span className="flex-1 truncate">{doc.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-5 py-3 flex justify-end gap-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
+              <button
+                onClick={() => setShowBundleCreator(false)}
+                className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const titleInput = document.getElementById("bundle-title-input") as HTMLInputElement;
+                  const title = titleInput?.value?.trim() || "Untitled Bundle";
+                  const docIds = bundleCreatorDocs.map(d => d.id);
+                  try {
+                    const headers: Record<string, string> = { "Content-Type": "application/json", ...authHeaders };
+                    const res = await fetch("/api/bundles", {
+                      method: "POST",
+                      headers,
+                      body: JSON.stringify({ title, documentIds: docIds }),
+                    });
+                    if (!res.ok) {
+                      showToast("Failed to create bundle", "error");
+                      return;
+                    }
+                    const data = await res.json();
+                    setShowBundleCreator(false);
+                    // Open bundle in new tab
+                    window.open(`/b/${data.id}`, "_blank");
+                    showToast("Bundle created!", "success");
+                  } catch {
+                    showToast("Failed to create bundle", "error");
+                  }
+                }}
+                className="px-4 py-1.5 rounded-md text-[11px] font-medium"
+                style={{ background: "var(--accent)", color: "#fff" }}
+              >
+                Create Bundle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
