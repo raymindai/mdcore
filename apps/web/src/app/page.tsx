@@ -16,7 +16,7 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
 
       {/* SEO-friendly tagline */}
       <h1 className="text-xs tracking-wide" style={{ color: "var(--text-faint)", fontWeight: 400 }}>
-        mdfy.cc — Your Markdown, Beautifully Published.
+        mdfy.app — Your Markdown, Beautifully Published.
       </h1>
 
       {/* Animated bar */}
@@ -50,7 +50,7 @@ export default function Home() {
     <>
       <noscript>
         <div style={{ padding: "60px 24px", maxWidth: 800, margin: "0 auto", fontFamily: "system-ui, sans-serif", color: "#fafafa", background: "#09090b" }}>
-          <h1>mdfy.cc — Your Markdown, Beautifully Published</h1>
+          <h1>mdfy.app — Your Markdown, Beautifully Published</h1>
           <p>Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI conversation capture, cross-platform sync, and a developer-friendly API. No login required — paste or type, get a permanent URL in seconds.</p>
           <h2>Features</h2>
           <ul>
@@ -64,7 +64,7 @@ export default function Home() {
             <li>Export to PDF, copy as rich text for Google Docs and email</li>
           </ul>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- noscript context, Link component won't work */}
-          <p><a href="/about">About mdfy.cc</a> | <a href="/plugins">Plugins and Extensions</a> | <a href="/docs">Developer Documentation</a> | <a href="/manifesto">Manifesto</a></p>
+          <p><a href="/about">About mdfy.app</a> | <a href="/plugins">Plugins and Extensions</a> | <a href="/docs">Developer Documentation</a> | <a href="/manifesto">Manifesto</a></p>
         </div>
       </noscript>
       <WelcomeOverlay />

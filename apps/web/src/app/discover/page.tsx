@@ -127,7 +127,7 @@ export default function DiscoverPage() {
           <span style={{ color: "var(--accent)" }}>beautifully rendered.</span>
         </h1>
         <p style={{ fontSize: 15, color: "var(--text-tertiary)", maxWidth: 500, lineHeight: 1.7 }}>
-          Explore documentation from the hottest GitHub projects. Every .md file rendered with mdfy.cc.
+          Explore documentation from the hottest GitHub projects. Every .md file rendered with mdfy.app.
         </p>
       </div>
 
@@ -246,7 +246,7 @@ export default function DiscoverPage() {
 
         {/* Footer note */}
         <p style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", marginTop: 24, lineHeight: 1.6 }}>
-          Data from GitHub API. Click any repo to browse its .md files and open them in mdfy.cc.
+          Data from GitHub API. Click any repo to browse its .md files and open them in mdfy.app.
           <br />
           <a href="https://github.com/trending" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>See full GitHub Trending →</a>
         </p>

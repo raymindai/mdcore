@@ -20,7 +20,7 @@ export class AuthManager {
 
   /**
    * Initiate login flow.
-   * Opens the browser to mdfy.cc/auth/vscode which redirects back with a token.
+   * Opens the browser to mdfy.app/auth/vscode which redirects back with a token.
    */
   async login(): Promise<void> {
     const baseUrl = getApiBaseUrl();
@@ -37,7 +37,7 @@ export class AuthManager {
     vscode.env.openExternal(vscode.Uri.parse(authUrl));
 
     vscode.window.showInformationMessage(
-      "Opening mdfy.cc login in your browser. Complete login there to continue."
+      "Opening mdfy.app login in your browser. Complete login there to continue."
     );
 
     // Wait for the callback
@@ -54,7 +54,7 @@ export class AuthManager {
 
       await this.storeToken(token);
       this._onDidLogin.fire();
-      vscode.window.showInformationMessage("Successfully logged in to mdfy.cc.");
+      vscode.window.showInformationMessage("Successfully logged in to mdfy.app.");
     } catch (err) {
       vscode.window.showErrorMessage(
         `Login failed: ${err instanceof Error ? err.message : String(err)}`
@@ -85,7 +85,7 @@ export class AuthManager {
       this.storeToken(token).then(() => {
         this._onDidLogin.fire();
         vscode.window.showInformationMessage(
-          "Successfully logged in to mdfy.cc."
+          "Successfully logged in to mdfy.app."
         );
       });
     } else {

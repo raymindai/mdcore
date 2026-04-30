@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.cc -- Your Markdown, Beautifully Published.",
+  title: "mdfy.app -- Your Markdown, Beautifully Published.",
   description:
     "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
   keywords: [
@@ -29,20 +29,20 @@ export const metadata: Metadata = {
     "API",
     "AI",
   ],
-  authors: [{ name: "mdfy", url: "https://mdfy.cc" }],
-  metadataBase: new URL("https://mdfy.cc"),
+  authors: [{ name: "mdfy", url: "https://mdfy.app" }],
+  metadataBase: new URL("https://mdfy.app"),
   openGraph: {
-    title: "mdfy.cc -- Your Markdown, Beautifully Published.",
+    title: "mdfy.app -- Your Markdown, Beautifully Published.",
     description:
       "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
-    url: "https://mdfy.cc",
-    siteName: "mdfy.cc",
+    url: "https://mdfy.app",
+    siteName: "mdfy.app",
     type: "website",
     images: [{ url: "/api/og", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.cc -- Your Markdown, Beautifully Published.",
+    title: "mdfy.app -- Your Markdown, Beautifully Published.",
     description:
       "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API.",
     images: ["/api/og"],
@@ -52,10 +52,10 @@ export const metadata: Metadata = {
     follow: true,
   },
   alternates: {
-    canonical: "https://mdfy.cc",
+    canonical: "https://mdfy.app",
     languages: {
-      en: "https://mdfy.cc",
-      ko: "https://mdfy.cc/ko",
+      en: "https://mdfy.app",
+      ko: "https://mdfy.app/ko",
     },
   },
   other: {
@@ -85,8 +85,8 @@ export default function RootLayout({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "mdfy.cc",
-          "url": "https://mdfy.cc",
+          "name": "mdfy.app",
+          "url": "https://mdfy.app",
           "description": "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
           "publisher": {
             "@type": "Organization",
@@ -95,17 +95,17 @@ export default function RootLayout({
           },
           "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://mdfy.cc/?q={search_term_string}",
+            "target": "https://mdfy.app/?q={search_term_string}",
             "query-input": "required name=search_term_string"
           }
         })}} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          "name": "mdfy.cc",
+          "name": "mdfy.app",
           "applicationCategory": "Productivity",
           "operatingSystem": "Web, macOS, VS Code, Chrome",
-          "url": "https://mdfy.cc",
+          "url": "https://mdfy.app",
           "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
           "description": "Markdown publishing tool with WYSIWYG editing, AI conversation capture, and permanent shareable URLs."
         })}} />

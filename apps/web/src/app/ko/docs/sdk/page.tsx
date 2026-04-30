@@ -12,17 +12,17 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "JavaScript SDK 레퍼런스 — mdfy.cc",
+  title: "JavaScript SDK 레퍼런스 — mdfy.app",
   description:
-    "mdfy.cc JavaScript/TypeScript SDK. MdfyClient 클래스, 독립 함수, npm 패키지로 프로그래밍 방식의 마크다운 문서 관리를 지원합니다.",
+    "mdfy.app JavaScript/TypeScript SDK. MdfyClient 클래스, 독립 함수, npm 패키지로 프로그래밍 방식의 마크다운 문서 관리를 지원합니다.",
   alternates: {
-    canonical: "https://mdfy.cc/ko/docs/sdk",
-    languages: { en: "https://mdfy.cc/docs/sdk" },
+    canonical: "https://mdfy.app/ko/docs/sdk",
+    languages: { en: "https://mdfy.app/docs/sdk" },
   },
   openGraph: {
-    title: "JavaScript SDK 레퍼런스 — mdfy.cc",
+    title: "JavaScript SDK 레퍼런스 — mdfy.app",
     description: "TypeScript-first SDK. 문서 게시, 조회, 수정을 프로그래밍으로.",
-    url: "https://mdfy.cc/ko/docs/sdk",
+    url: "https://mdfy.app/ko/docs/sdk",
     images: [{ url: "/api/og?title=JavaScript%20SDK", width: 1200, height: 630 }],
   },
 };
@@ -80,7 +80,7 @@ export default function SdkDocsPageKo() {
             JavaScript SDK
           </h1>
           <p style={{ fontSize: 16, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 32, maxWidth: 640 }}>
-            mdfy.cc를 위한 TypeScript-first 클라이언트. Node.js, Deno, Bun, 브라우저에서 동작합니다. 의존성 없음.
+            mdfy.app를 위한 TypeScript-first 클라이언트. Node.js, Deno, Bun, 브라우저에서 동작합니다. 의존성 없음.
           </p>
 
           {/* 설치 */}
@@ -98,7 +98,7 @@ export default function SdkDocsPageKo() {
             <CodeBlock lang="typescript">{`import { publish } from "@mdcore/api";
 
 const result = await publish("# Hello World");
-console.log(result.url);  // https://mdfy.cc/abc123`}</CodeBlock>
+console.log(result.url);  // https://mdfy.app/abc123`}</CodeBlock>
           </Card>
 
           {/* MdfyClient */}
@@ -110,12 +110,12 @@ console.log(result.url);  // https://mdfy.cc/abc123`}</CodeBlock>
             <CodeBlock lang="typescript">{`import { MdfyClient } from "@mdcore/api";
 
 const client = new MdfyClient({
-  baseUrl: "https://mdfy.cc",  // default
+  baseUrl: "https://mdfy.app",  // default
   userId: "user-uuid",          // optional
   email: "user@example.com",    // optional
 });`}</CodeBlock>
             <SubLabel>생성자 옵션</SubLabel>
-            <MethodRow name="baseUrl" returns="string" desc="API Base URL. 기본값: https://mdfy.cc" />
+            <MethodRow name="baseUrl" returns="string" desc="API Base URL. 기본값: https://mdfy.app" />
             <MethodRow name="userId" returns="string" desc="소유권 기반 작업을 위한 사용자 UUID." />
             <MethodRow name="email" returns="string" desc="사용자 식별용 이메일." />
 
@@ -145,7 +145,7 @@ const client = new MdfyClient({
 
 console.log(result.id);        // "abc123"
 console.log(result.editToken); // "tok_aBcDeFgH..."
-console.log(result.url);       // "https://mdfy.cc/abc123"`}</CodeBlock>
+console.log(result.url);       // "https://mdfy.app/abc123"`}</CodeBlock>
           </Card>
 
           {/* client.pull() */}
@@ -254,11 +254,11 @@ const imageUrl = await upload(file);`}</CodeBlock>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {[
-              { pkg: "@mdcore/api", desc: "mdfy.cc HTTP 클라이언트. 문서 게시, 조회, 수정, 삭제. 의존성 없음 (native fetch).", install: "npm install @mdcore/api" },
+              { pkg: "@mdcore/api", desc: "mdfy.app HTTP 클라이언트. 문서 게시, 조회, 수정, 삭제. 의존성 없음 (native fetch).", install: "npm install @mdcore/api" },
               { pkg: "@mdcore/engine", desc: "WASM Markdown 렌더러 (Rust/comrak). GFM, KaTeX 수학, Mermaid 다이어그램, 구문 강조.", install: "npm install @mdcore/engine" },
               { pkg: "@mdcore/styles", desc: "CSS 전용 패키지. 다크/라이트 테마, 렌더링 스타일, 인쇄/PDF 스타일. JavaScript 없음.", install: "npm install @mdcore/styles" },
               { pkg: "@mdcore/ai", desc: "AI 프로바이더 연동. Gemini, OpenAI, Anthropic. 텍스트-Markdown 변환, ASCII 렌더링.", install: "npm install @mdcore/ai" },
-              { pkg: "mdfy-mcp", desc: "로컬 stdio MCP (핵심 도구 6개). 전체 25개 도구는 https://mdfy.cc/api/mcp 호스팅 MCP에서 사용 가능.", install: "npx mdfy-mcp" },
+              { pkg: "mdfy-mcp", desc: "로컬 stdio MCP (핵심 도구 6개). 전체 25개 도구는 https://mdfy.app/api/mcp 호스팅 MCP에서 사용 가능.", install: "npx mdfy-mcp" },
             ].map((p, i) => (
               <div
                 key={p.pkg}

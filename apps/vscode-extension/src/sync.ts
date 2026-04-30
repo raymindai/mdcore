@@ -105,7 +105,7 @@ export class SyncEngine {
   }
 
   /**
-   * Push local changes to mdfy.cc.
+   * Push local changes to mdfy.app.
    */
   async push(document: vscode.TextDocument): Promise<void> {
     const filePath = document.fileName;
@@ -118,7 +118,7 @@ export class SyncEngine {
 
     if (!config) {
       vscode.window.showWarningMessage(
-        "This file has not been published to mdfy.cc yet. Use 'mdfy: Publish' first."
+        "This file has not been published to mdfy.app yet. Use 'mdfy: Publish' first."
       );
       return;
     }
@@ -145,7 +145,7 @@ export class SyncEngine {
         await vscode.workspace.fs.delete(vscode.Uri.file(configPath));
       } catch { /* already gone */ }
       vscode.window.showWarningMessage(
-        `"${vscode.workspace.asRelativePath(document.uri)}" was deleted on mdfy.cc. Local sync removed.`
+        `"${vscode.workspace.asRelativePath(document.uri)}" was deleted on mdfy.app. Local sync removed.`
       );
       this.statusBar.setIdle();
       return;
@@ -250,7 +250,7 @@ export class SyncEngine {
   }
 
   /**
-   * Pull latest content from mdfy.cc into the local file.
+   * Pull latest content from mdfy.app into the local file.
    */
   async pull(document: vscode.TextDocument): Promise<void> {
     const filePath = document.fileName;
@@ -258,7 +258,7 @@ export class SyncEngine {
 
     if (!config) {
       vscode.window.showWarningMessage(
-        "This file has not been published to mdfy.cc yet. Use 'mdfy: Publish' first."
+        "This file has not been published to mdfy.app yet. Use 'mdfy: Publish' first."
       );
       return;
     }
@@ -289,7 +289,7 @@ export class SyncEngine {
 
       this.statusBar.setSynced();
       PreviewPanel.updateSyncStatusForDocument(document.uri, "synced");
-      vscode.window.showInformationMessage("Pulled latest from mdfy.cc.");
+      vscode.window.showInformationMessage("Pulled latest from mdfy.app.");
     } catch (err) {
       this.statusBar.setError();
       PreviewPanel.updateSyncStatusForDocument(document.uri, "error");
@@ -334,7 +334,7 @@ export class SyncEngine {
           try { await vscode.workspace.fs.delete(sidecarUri); } catch { /* already gone */ }
           const fileName = sidecarPath.replace(/\.mdfy\.json$/, ".md");
           vscode.window.showInformationMessage(
-            `"${vscode.workspace.asRelativePath(fileName)}" was deleted on mdfy.cc. Sync removed.`
+            `"${vscode.workspace.asRelativePath(fileName)}" was deleted on mdfy.app. Sync removed.`
           );
           continue;
         }
@@ -408,7 +408,7 @@ export class SyncEngine {
         "vscode.diff",
         serverDoc.uri,
         document.uri,
-        `mdfy.cc (server) <-> ${vscode.workspace.asRelativePath(document.uri)} (local)`
+        `mdfy.app (server) <-> ${vscode.workspace.asRelativePath(document.uri)} (local)`
       );
     } catch (err) {
       vscode.window.showErrorMessage(

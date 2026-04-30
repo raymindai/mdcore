@@ -4,11 +4,11 @@
 
 **Tweet 1 (Hook)**
 
-I built mdfy.cc — paste Markdown, get a beautiful document.
+I built mdfy.app — paste Markdown, get a beautiful document.
 
 Powered by a Rust engine compiled to WASM. Renders in 2ms. No server, no login.
 
-Try it → mdfy.cc
+Try it → mdfy.app
 
 🧵 Here's how I built it as a solo dev with Claude:
 
@@ -28,11 +28,11 @@ I wanted: paste → beautiful → share. That's it.
 
 **Tweet 3 (Solution)**
 
-mdfy.cc does exactly that:
+mdfy.app does exactly that:
 
 1. Paste any Markdown
 2. See it rendered instantly (tables, math, diagrams, code)
-3. Click Share → get mdfy.cc/abc123
+3. Click Share → get mdfy.app/abc123
 4. Anyone can view it. No account needed.
 
 ---
@@ -70,14 +70,14 @@ Next up:
 
 The vision: own the Markdown infrastructure layer for the AI era.
 
-Try it: mdfy.cc
+Try it: mdfy.app
 Star it: github.com/raymindai/mdcore
 
 ---
 
 **Tweet 7 (CTA)**
 
-If you work with Markdown (so... everyone who uses AI), try mdfy.cc.
+If you work with Markdown (so... everyone who uses AI), try mdfy.app.
 
 No login. No paywall. Just paste and share.
 

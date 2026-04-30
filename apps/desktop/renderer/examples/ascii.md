@@ -6,7 +6,7 @@
 
 ```
 ┌──────────────────────────────────────────┐
-│              mdfy.cc                      │
+│              mdfy.app                      │
 │                                          │
 │  ┌─ Input ─────────────────────────────┐ │
 │  │ Chrome Extension: AI → capture      │ │
@@ -23,8 +23,8 @@
 │                    │                      │
 │                    ▼                      │
 │  ┌─ Output ────────────────────────────┐ │
-│  │ mdfy.cc/{id} — shareable URL        │ │
-│  │ + "Published with mdfy.cc" badge    │ │
+│  │ mdfy.app/{id} — shareable URL        │ │
+│  │ + "Published with mdfy.app" badge    │ │
 │  └─────────────────────────────────────┘ │
 └──────────────────────────────────────────┘
 ```
@@ -40,7 +40,7 @@
 │  Clarity  ██████░░░░ 63%     │
 │                              │
 │  — Analyzed by mdcore        │
-│  mdfy.cc                     │
+│  mdfy.app                     │
 └─────────────────────────────┘
 ```
 

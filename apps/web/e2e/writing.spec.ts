@@ -74,10 +74,10 @@ test.describe.serial("Writing — Source View (CodeMirror)", () => {
   });
 
   test("link renders as clickable", async ({ page }) => {
-    await page.keyboard.type("[mdfy](https://mdfy.cc)");
+    await page.keyboard.type("[mdfy](https://mdfy.app)");
     await page.click('button:has-text("Live")');
     await page.waitForTimeout(500);
-    const link = page.locator('.mdcore-rendered a[href="https://mdfy.cc"]');
+    const link = page.locator('.mdcore-rendered a[href="https://mdfy.app"]');
     await expect(link).toBeVisible();
     await expect(link).toContainText("mdfy");
   });

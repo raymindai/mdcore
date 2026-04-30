@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const isRestricted = (doc.allowed_emails || []).length > 0;
 
   if (isExpired) {
-    return { title: "Expired — mdfy.cc", robots: { index: false, follow: false } };
+    return { title: "Expired — mdfy.app", robots: { index: false, follow: false } };
   }
 
   // Don't index private content
@@ -72,23 +72,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // Author attribution (only when not protected and we have a display name)
   const authorParam = !isProtected && doc.ownerName ? `&author=${encodeURIComponent(doc.ownerName)}` : "";
-  const ogImageUrl = `https://mdfy.cc/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}${authorParam}`;
+  const ogImageUrl = `https://mdfy.app/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}${authorParam}`;
 
   return {
-    title: `${title} — mdfy.cc`,
+    title: `${title} — mdfy.app`,
     description,
     robots: noIndex ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
-      title: `${title} — mdfy.cc`,
+      title: `${title} — mdfy.app`,
       description,
-      url: `https://mdfy.cc/${id}`,
-      siteName: "mdfy.cc",
+      url: `https://mdfy.app/${id}`,
+      siteName: "mdfy.app",
       type: "article",
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} — mdfy.cc`,
+      title: `${title} — mdfy.app`,
       description,
       images: [ogImageUrl],
     },

@@ -93,7 +93,7 @@ export default function SettingsPage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Sign in to access account settings.</p>
         <Link href="/" className="text-sm font-medium px-4 py-2 rounded-lg" style={{ background: "var(--accent)", color: "#000", textDecoration: "none" }}>
-          Go to mdfy.cc
+          Go to mdfy.app
         </Link>
       </div>
     );

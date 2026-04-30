@@ -2,7 +2,7 @@
 // Loaded by index.html before editor.js
 
 window.MDFY_EXAMPLES = {
-  welcome: `# Welcome to mdfy.cc
+  welcome: `# Welcome to mdfy.app
 
 > **Your Markdown, Beautifully Published.**
 > Import anything. Render beautifully. Share instantly.
@@ -12,7 +12,7 @@ window.MDFY_EXAMPLES = {
 1. **Type or paste** anything — Markdown, plain text, Claude Code output
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
 3. **Edit** inline in the Live view, or use Source for raw Markdown
-4. **Share** with one click — generates a short URL like \`mdfy.cc/abc123\`
+4. **Share** with one click — generates a short URL like \`mdfy.app/abc123\`
 
 ## What You Can Do
 
@@ -106,7 +106,7 @@ console.log(\`Detected: \${flavor.primary}\`);
 \`\`\`python
 import requests
 
-response = requests.post("https://mdfy.cc/api/docs", json={
+response = requests.post("https://mdfy.app/api/docs", json={
     "markdown": "# Hello World",
 })
 print(response.json()["id"])  # → "abc123"
@@ -240,7 +240,7 @@ erDiagram
 mindmap
   root((mdcore))
     Product
-      mdfy.cc
+      mdfy.app
       Chrome Extension
     Engine
       Rust
@@ -257,7 +257,7 @@ mindmap
 timeline
     title mdcore Milestones
     2026 Q1 : Engine v0.1
-             : mdfy.cc launch
+             : mdfy.app launch
     2026 Q2 : npm package
              : CLI tool
     2026 Q3 : API platform
@@ -327,7 +327,7 @@ xychart-beta
 
 \`\`\`
 ┌──────────────────────────────────────────┐
-│              mdfy.cc                      │
+│              mdfy.app                      │
 │                                          │
 │  ┌─ Input ─────────────────────────────┐ │
 │  │ Chrome Extension: AI → capture      │ │
@@ -344,8 +344,8 @@ xychart-beta
 │                    │                      │
 │                    ▼                      │
 │  ┌─ Output ────────────────────────────┐ │
-│  │ mdfy.cc/{id} — shareable URL        │ │
-│  │ + "Published with mdfy.cc" badge    │ │
+│  │ mdfy.app/{id} — shareable URL        │ │
+│  │ + "Published with mdfy.app" badge    │ │
 │  └─────────────────────────────────────┘ │
 └──────────────────────────────────────────┘
 \`\`\`
@@ -361,7 +361,7 @@ xychart-beta
 │  Clarity  ██████░░░░ 63%     │
 │                              │
 │  — Analyzed by mdcore        │
-│  mdfy.cc                     │
+│  mdfy.app                     │
 └─────────────────────────────┘
 \`\`\`
 
@@ -406,7 +406,7 @@ Everything is unlocked while we're testing — no credit card required.
 
 ## Import — 13+ Formats
 
-Drop any file onto mdfy.cc or click **IMPORT** in the sidebar.
+Drop any file onto mdfy.app or click **IMPORT** in the sidebar.
 
 | Format | How it works |
 |--------|-------------|
@@ -458,7 +458,7 @@ Click anywhere in the **Live** view to start editing. Format with the toolbar or
 
 ## Flavor Detection & Conversion
 
-mdfy.cc auto-detects your Markdown flavor:
+mdfy.app auto-detects your Markdown flavor:
 
 - **GFM** — GitHub Flavored Markdown (tables, task lists, strikethrough)
 - **CommonMark** — Standard, maximum compatibility
@@ -529,7 +529,7 @@ Toggle **Narrow View** in the panel header to constrain content width for comfor
 
 Your documents sync across all mdfy channels:
 
-- **Web** — mdfy.cc
+- **Web** — mdfy.app
 - **VS Code** — Extension with WYSIWYG preview
 - **Mac Desktop** — Native app with sidebar
 - **CLI** — \`npm install -g mdfy-cli\`

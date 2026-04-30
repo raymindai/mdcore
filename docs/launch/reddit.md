@@ -14,13 +14,13 @@ The rendering engine is Rust (comrak) compiled to WASM. Renders in ~2ms client-s
 
 Built as a solo dev with Claude. Would love feedback on the rendering quality.
 
-https://mdfy.cc
+https://mdfy.app
 
 ---
 
 ## r/SideProject
 
-**Title:** mdfy.cc — paste Markdown, get a beautiful document with a shareable link
+**Title:** mdfy.app — paste Markdown, get a beautiful document with a shareable link
 
 Built this because I kept copying AI outputs (ChatGPT, Claude) and having nowhere nice to share them.
 
@@ -32,7 +32,7 @@ Tech: Rust engine compiled to WASM, Next.js frontend, Supabase storage.
 
 Solo founder, built in 3 weeks. Feedback welcome!
 
-https://mdfy.cc
+https://mdfy.app
 
 ---
 
@@ -42,12 +42,12 @@ https://mdfy.cc
 
 Tired of copying ChatGPT responses and losing all the formatting?
 
-mdfy.cc lets you paste any Markdown and instantly get a beautiful, shareable document.
+mdfy.app lets you paste any Markdown and instantly get a beautiful, shareable document.
 
 - Paste the Markdown → renders tables, code, math, diagrams perfectly
-- Click Share → get a short link (mdfy.cc/abc123)
+- Click Share → get a short link (mdfy.app/abc123)
 - Anyone with the link sees the beautifully rendered document
 
 Works with any Markdown, but especially good with AI outputs since it handles all the extensions (math, Mermaid diagrams, complex tables).
 
-No login required. Free. https://mdfy.cc
+No login required. Free. https://mdfy.app

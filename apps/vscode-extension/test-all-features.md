@@ -20,7 +20,7 @@ You can also combine them: ***bold italic***, **~~bold strikethrough~~**, *~~ita
 
 ## Links and Images
 
-Here is a [link to mdfy.cc](https://mdfy.cc) and another [link to GitHub](https://github.com).
+Here is a [link to mdfy.app](https://mdfy.app) and another [link to GitHub](https://github.com).
 
 ![Sample Image](https://picsum.photos/600/300)
 
@@ -109,7 +109,7 @@ LIMIT 10;
 | Feature | Status | Notes |
 | --- | --- | --- |
 | WYSIWYG Preview | Done | contentEditable |
-| Publish to mdfy.cc | Done | One-click |
+| Publish to mdfy.app | Done | One-click |
 | Bidirectional Sync | Done | Push/Pull |
 | Code Highlighting | Done | highlight.js |
 | Math Rendering | Done | KaTeX |
@@ -166,7 +166,7 @@ graph TD
 sequenceDiagram
     participant U as User
     participant V as VS Code
-    participant S as mdfy.cc
+    participant S as mdfy.app
     U->>V: Edit markdown
     V->>V: WYSIWYG Preview
     V->>S: Publish
@@ -207,11 +207,11 @@ Ellipsis: ...
 
 ## Mixed Content
 
-Here's a paragraph with **bold**, *italic*, `code`, and a [link](https://mdfy.cc) all together. Following this is a code block, then a table, then a diagram:
+Here's a paragraph with **bold**, *italic*, `code`, and a [link](https://mdfy.app) all together. Following this is a code block, then a table, then a diagram:
 
 ```bash
 echo "Hello, World!"
-curl -s https://mdfy.cc/api/docs | jq '.id'
+curl -s https://mdfy.app/api/docs | jq '.id'
 ```
 
 | Input | Output |
@@ -230,4 +230,4 @@ pie title Document Types
 
 ---
 
-*Published with [mdfy.cc](https://mdfy.cc) -- Your Markdown, Beautifully Published.*
+*Published with [mdfy.app](https://mdfy.app) -- Your Markdown, Beautifully Published.*

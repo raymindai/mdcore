@@ -1,7 +1,7 @@
 {
   "name": "@mdcore/ai",
   "version": "0.1.0",
-  "description": "AI provider abstraction for mdfy.cc — Gemini, OpenAI, Anthropic with text-to-markdown and diagram conversion",
+  "description": "AI provider abstraction for mdfy.app — Gemini, OpenAI, Anthropic with text-to-markdown and diagram conversion",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

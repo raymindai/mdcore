@@ -25,7 +25,7 @@ const { createClient } = require("@supabase/supabase-js");
 
 // ─── Constants ───
 
-const MDFY_URL = "https://mdfy.cc";
+const MDFY_URL = "https://mdfy.app";
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const SYNC_POLL_INTERVAL = 30000; // 30 seconds
 const PUSH_DEBOUNCE_MS = 2000;
@@ -1149,7 +1149,7 @@ function openFileInApp(filePath) {
       });
     } else {
       // Non-text: show import message
-      const msg = `Import ${ext} files by opening them on mdfy.cc.`;
+      const msg = `Import ${ext} files by opening them on mdfy.app.`;
       const md = `# ${path.basename(absolutePath)}\n\n${msg}`;
       const result = renderMarkdown(md);
       mainWindow.webContents.send("load-document", {
@@ -2059,7 +2059,7 @@ function buildMenu() {
         },
         { type: "separator" },
         {
-          label: "Publish to mdfy.cc",
+          label: "Publish to mdfy.app",
           accelerator: "CmdOrCtrl+Shift+P",
           click: () => {
             if (mainWindow) mainWindow.webContents.send("trigger-publish");
@@ -2098,8 +2098,8 @@ function buildMenu() {
     {
       label: "Help",
       submenu: [
-        { label: "mdfy.cc", click: () => shell.openExternal("https://mdfy.cc") },
-        { label: "About mdfy", click: () => shell.openExternal("https://mdfy.cc/about") },
+        { label: "mdfy.app", click: () => shell.openExternal("https://mdfy.app") },
+        { label: "About mdfy", click: () => shell.openExternal("https://mdfy.app/about") },
       ],
     },
   ];
@@ -2152,8 +2152,8 @@ app.whenReady().then(() => {
     applicationName: "mdfy",
     applicationVersion: app.getVersion(),
     version: `Electron ${process.versions.electron}`,
-    copyright: "Copyright 2024-2026 mdfy.cc",
-    website: "https://mdfy.cc",
+    copyright: "Copyright 2024-2026 mdfy.app",
+    website: "https://mdfy.app",
     iconPath: path.join(__dirname, "assets", "icon.png"),
   });
 

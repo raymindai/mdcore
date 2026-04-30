@@ -560,9 +560,9 @@ export default function DocumentViewer({
         <div className="flex justify-center gap-2 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
           <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono"
             style={{ color: "var(--text-muted)" }}>
-            Published with <span style={{ color: "var(--accent)", fontWeight: 600 }}>mdfy</span>.cc
+            Published with <span style={{ color: "var(--accent)", fontWeight: 600 }}>mdfy</span>.app
           </span>
-          <a href="https://mdfy.cc" target="_blank" rel="noopener noreferrer"
+          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-mono transition-all hover:scale-105"
             style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}>
             Make your own

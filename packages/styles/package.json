@@ -1,7 +1,7 @@
 {
   "name": "@mdcore/styles",
   "version": "0.1.0",
-  "description": "mdfy.cc rendering styles — dark/light themes, rendered document CSS",
+  "description": "mdfy.app rendering styles — dark/light themes, rendered document CSS",
   "main": "src/index.css",
   "style": "src/index.css",
   "exports": {

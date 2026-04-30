@@ -1,6 +1,6 @@
 # @mdcore/api
 
-HTTP client for the [mdfy.cc](https://mdfy.cc) API -- publish, update, pull, delete, and manage Markdown documents programmatically.
+HTTP client for the [mdfy.app](https://mdfy.app) API -- publish, update, pull, delete, and manage Markdown documents programmatically.
 
 Works in Node.js, Deno, Bun, and browsers (anywhere `fetch` is available).
 
@@ -18,7 +18,7 @@ Publish a document in 3 lines:
 import { publish } from "@mdcore/api";
 
 const result = await publish("# Hello World");
-console.log(result.url); // "https://mdfy.cc/abc123"
+console.log(result.url); // "https://mdfy.app/abc123"
 ```
 
 ## MdfyClient (Recommended)
@@ -29,7 +29,7 @@ The `MdfyClient` class provides all API operations with shared configuration.
 import { MdfyClient } from "@mdcore/api";
 
 const client = new MdfyClient({
-  baseUrl: "https://mdfy.cc",  // default, can be omitted
+  baseUrl: "https://mdfy.app",  // default, can be omitted
   userId: "user_123",          // optional, for authenticated operations
 });
 ```
@@ -38,7 +38,7 @@ const client = new MdfyClient({
 
 ```ts
 interface MdfyClientConfig {
-  /** Base URL of the mdfy.cc API (default: "https://mdfy.cc") */
+  /** Base URL of the mdfy.app API (default: "https://mdfy.app") */
   baseUrl?: string;
   /** Authentication token (for authenticated operations) */
   token?: string;
@@ -60,7 +60,7 @@ const result = await client.publish("# Hello World", "My Document", {
   editMode: "token",    // optional: "token" (default), "anyone", "authenticated"
 });
 
-console.log(result.url);       // "https://mdfy.cc/abc123"
+console.log(result.url);       // "https://mdfy.app/abc123"
 console.log(result.id);        // "abc123"
 console.log(result.editToken); // save this for future edits/deletes
 ```
@@ -240,7 +240,7 @@ Every standalone function accepts an optional `MdfyClientConfig` as its last arg
 
 ```ts
 await publish("# Hello", "Title", undefined, {
-  baseUrl: "https://staging.mdfy.cc",
+  baseUrl: "https://staging.mdfy.app",
   userId: "user_123",
 });
 ```

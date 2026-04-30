@@ -1,6 +1,6 @@
 # mdfy tmux plugin
 
-Capture terminal output and AI conversations from tmux and publish to mdfy.cc.
+Capture terminal output and AI conversations from tmux and publish to mdfy.app.
 
 Press `prefix + M` to capture the current pane and get a shareable URL.
 

@@ -4,7 +4,7 @@
 >
 > Last updated: 2026-03-23
 >
-> ⚠️ **전략 업데이트 (2026-03-23)**: 기술 결정(Rust/WASM/comrak)은 전부 유효. 변경된 것은 우선순위: 엔진 표면 확장(npm, CLI, VS Code 등)보다 [**mdfy.cc**](http://mdfy.cc) **바이럴 루프**(뱃지 + Chrome 익스텐션)를 먼저 완성. 컴파일 타겟에 **macOS QuickLook** (aarch64-apple-darwin)도 추가됨. 상세: `updatedDirection.md` v5.0 참조.
+> ⚠️ **전략 업데이트 (2026-03-23)**: 기술 결정(Rust/WASM/comrak)은 전부 유효. 변경된 것은 우선순위: 엔진 표면 확장(npm, CLI, VS Code 등)보다 [**mdfy.app**](http://mdfy.app) **바이럴 루프**(뱃지 + Chrome 익스텐션)를 먼저 완성. 컴파일 타겟에 **macOS QuickLook** (aarch64-apple-darwin)도 추가됨. 상세: `updatedDirection.md` v5.0 참조.
 
 ---
 
@@ -20,7 +20,7 @@
 
 | \# | Surface | 실행환경 | 필요한 컴파일 타겟 | TypeScript | Rust |
 | --- | --- | --- | --- | --- | --- |
-| 1 | [mdfy.cc](http://mdfy.cc) (웹 제품) | Browser | WASM / JS | ✅ | ✅ WASM |
+| 1 | [mdfy.app](http://mdfy.app) (웹 제품) | Browser | WASM / JS | ✅ | ✅ WASM |
 | 2 | @mdcore/engine (npm) | Node.js | Native addon / WASM | ✅ | ✅ napi-rs |
 | 3 | @mdcore/terminal (CLI) | OS native | 독립 바이너리 | ❌ Node 필요 | ✅ 단일 바이너리 |
 | 4 | VS Code 확장 | Node + Web | JS / WASM | ✅ | ✅ 둘 다 |
@@ -83,7 +83,7 @@ MDX 지원:      markdown-rs (Vercel 후원, MDX 네이티브)
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Consumer Layer (JS/TS)                       │
-│   mdfy.cc (React)  │  @mdcore/sdk (npm)  │  VS Code  │  Obsidian  │
+│   mdfy.app (React)  │  @mdcore/sdk (npm)  │  VS Code  │  Obsidian  │
 └──────────┬──────────┴──────────┬──────────┴─────┬─────┴─────┬──────┘
            │                     │                │           │
      ┌─────┴─────────────────────┴────────────────┴───────────┴──────┐
@@ -132,7 +132,7 @@ MDX 지원:      markdown-rs (Vercel 후원, MDX 네이티브)
      ┌──────┼──────┐        ┌──────┴──────┐         ┌──────┴──────┐
      │      │      │        │             │         │             │
   Browser  Edge   Deno    Node.js      Raycast    CLI        GitHub
-  mdfy.cc  CF     import  @mdcore/     Extension  @mdcore/   Action
+  mdfy.app  CF     import  @mdcore/     Extension  @mdcore/   Action
            Worker         engine                  terminal
                                                   brew install
 ```
@@ -212,7 +212,7 @@ Week 1: Rust 프로젝트 셋업
 Week 2: WASM 컴파일 + 웹 통합
   - wasm-bindgen 셋업
   - parse(md) → HTML 함수 WASM으로 노출
-  - mdfy.cc (Next.js)에서 WASM import
+  - mdfy.app (Next.js)에서 WASM import
   - 렌더링 커스터마이징 (테마, 스타일)
 
 Week 3: napi-rs + npm 패키지
@@ -221,7 +221,7 @@ Week 3: napi-rs + npm 패키지
   - 플랫폼별 prebuild (linux-x64, darwin-arm64, wasm)
   - TypeScript 타입 정의 자동 생성
 
-Week 4: mdfy.cc MVP
+Week 4: mdfy.app MVP
   - Next.js + WASM 엔진 통합
   - 입력 → 렌더링 → 공유 기본 플로우
   - Shiki (하이라이팅), KaTeX (수학), Mermaid (다이어그램)은 JS로 유지
@@ -289,7 +289,7 @@ Week 4: mdfy.cc MVP
 │  └── uniffi          — iOS/Android 바인딩 (Phase 3)      │
 │                                                          │
 │  PRODUCT (TypeScript/React)                              │
-│  ├── Next.js 15      — mdfy.cc 웹앱                     │
+│  ├── Next.js 15      — mdfy.app 웹앱                     │
 │  ├── TailwindCSS     — 스타일링                          │
 │  ├── shadcn/ui       — UI 컴포넌트                       │
 │  ├── Shiki           — 코드 하이라이팅 (브라우저)          │

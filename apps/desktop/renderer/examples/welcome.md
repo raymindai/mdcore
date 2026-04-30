@@ -1,4 +1,4 @@
-# Welcome to mdfy.cc
+# Welcome to mdfy.app
 
 > **Your Markdown, Beautifully Published.**
 > Import anything. Render beautifully. Share instantly.
@@ -8,7 +8,7 @@
 1. **Type or paste** anything — Markdown, plain text, Claude Code output
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
 3. **Edit** inline in the Live view, or use Source for raw Markdown
-4. **Share** with one click — generates a short URL like `mdfy.cc/abc123`
+4. **Share** with one click — generates a short URL like `mdfy.app/abc123`
 
 ## What You Can Do
 

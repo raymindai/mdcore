@@ -18,7 +18,7 @@ interface PullResult {
 }
 
 /**
- * Publish a new document to mdfy.cc.
+ * Publish a new document to mdfy.app.
  * POST /api/docs → { id, editToken }
  */
 export async function publishDocument(
@@ -68,7 +68,7 @@ export async function publishDocument(
 }
 
 /**
- * Update an existing document on mdfy.cc.
+ * Update an existing document on mdfy.app.
  * PATCH /api/docs/{id} → { ok: true, updated_at }
  */
 export async function updateDocument(
@@ -151,7 +151,7 @@ export interface ConflictError extends Error {
 }
 
 /**
- * Pull the latest document content from mdfy.cc.
+ * Pull the latest document content from mdfy.app.
  * GET /api/docs/{id} → { markdown, title, updated_at, ... }
  */
 export async function pullDocument(

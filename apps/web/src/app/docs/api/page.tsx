@@ -11,17 +11,17 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "REST API Reference — mdfy.cc",
+  title: "REST API Reference — mdfy.app",
   description:
-    "Complete REST API reference for mdfy.cc. Create, read, update, and delete Markdown documents via HTTP. Includes code examples in curl, JavaScript, and Python.",
+    "Complete REST API reference for mdfy.app. Create, read, update, and delete Markdown documents via HTTP. Includes code examples in curl, JavaScript, and Python.",
   alternates: {
-    canonical: "https://mdfy.cc/docs/api",
-    languages: { ko: "https://mdfy.cc/ko/docs/api" },
+    canonical: "https://mdfy.app/docs/api",
+    languages: { ko: "https://mdfy.app/ko/docs/api" },
   },
   openGraph: {
-    title: "REST API Reference — mdfy.cc",
+    title: "REST API Reference — mdfy.app",
     description: "Full REST API reference. Endpoints, parameters, examples.",
-    url: "https://mdfy.cc/docs/api",
+    url: "https://mdfy.app/docs/api",
     images: [{ url: "/api/og?title=REST%20API", width: 1200, height: 630 }],
   },
 };
@@ -257,7 +257,7 @@ export default function ApiDocsPage() {
               }}
             >
               All endpoints accept and return JSON. Base URL:{" "}
-              <InlineCode>{"https://mdfy.cc"}</InlineCode>
+              <InlineCode>{"https://mdfy.app"}</InlineCode>
             </p>
             <p
               style={{
@@ -307,7 +307,7 @@ export default function ApiDocsPage() {
             </div>
 
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/docs \\
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/docs \\
   -H "Content-Type: application/json" \\
   -d '{
     "markdown": "# Hello World\\nThis is my document.",
@@ -316,7 +316,7 @@ export default function ApiDocsPage() {
   }'`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
-            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.cc/api/docs", {
+            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/docs", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -330,7 +330,7 @@ const data = await res.json();`}</CodeBlock>
             <SubLabel>Request - Python</SubLabel>
             <CodeBlock lang="python">{`import requests
 
-res = requests.post("https://mdfy.cc/api/docs", json={
+res = requests.post("https://mdfy.app/api/docs", json={
     "markdown": "# Hello World\\nThis is my document.",
     "title": "My Document",
     "isDraft": False,
@@ -369,20 +369,20 @@ data = res.json()`}</CodeBlock>
             </div>
 
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl https://mdfy.cc/api/docs/abc123
+            <CodeBlock lang="bash">{`curl https://mdfy.app/api/docs/abc123
 
 # With password:
-curl https://mdfy.cc/api/docs/abc123 \\
+curl https://mdfy.app/api/docs/abc123 \\
   -H "x-document-password: mysecret"`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
-            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.cc/api/docs/abc123");
+            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/docs/abc123");
 const doc = await res.json();`}</CodeBlock>
 
             <SubLabel>Request - Python</SubLabel>
             <CodeBlock lang="python">{`import requests
 
-res = requests.get("https://mdfy.cc/api/docs/abc123")
+res = requests.get("https://mdfy.app/api/docs/abc123")
 doc = res.json()`}</CodeBlock>
 
             <SubLabel>Response 200</SubLabel>
@@ -434,7 +434,7 @@ doc = res.json()`}</CodeBlock>
             </div>
 
             <SubLabel>Request - curl (update content)</SubLabel>
-            <CodeBlock lang="bash">{`curl -X PATCH https://mdfy.cc/api/docs/abc123 \\
+            <CodeBlock lang="bash">{`curl -X PATCH https://mdfy.app/api/docs/abc123 \\
   -H "Content-Type: application/json" \\
   -d '{
     "editToken": "tok_aBcDeFgH",
@@ -443,7 +443,7 @@ doc = res.json()`}</CodeBlock>
   }'`}</CodeBlock>
 
             <SubLabel>Request - curl (soft delete)</SubLabel>
-            <CodeBlock lang="bash">{`curl -X PATCH https://mdfy.cc/api/docs/abc123 \\
+            <CodeBlock lang="bash">{`curl -X PATCH https://mdfy.app/api/docs/abc123 \\
   -H "Content-Type: application/json" \\
   -d '{
     "editToken": "tok_aBcDeFgH",
@@ -451,7 +451,7 @@ doc = res.json()`}</CodeBlock>
   }'`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
-            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.cc/api/docs/abc123", {
+            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/docs/abc123", {
   method: "PATCH",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -463,7 +463,7 @@ doc = res.json()`}</CodeBlock>
             <SubLabel>Request - Python</SubLabel>
             <CodeBlock lang="python">{`import requests
 
-res = requests.patch("https://mdfy.cc/api/docs/abc123", json={
+res = requests.patch("https://mdfy.app/api/docs/abc123", json={
     "editToken": "tok_aBcDeFgH",
     "markdown": "# Updated Content",
 })`}</CodeBlock>
@@ -484,14 +484,14 @@ res = requests.patch("https://mdfy.cc/api/docs/abc123", json={
             description="Check when a document was last updated. Returns x-updated-at response header. Useful for sync polling without downloading full content."
           >
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl -I https://mdfy.cc/api/docs/abc123
+            <CodeBlock lang="bash">{`curl -I https://mdfy.app/api/docs/abc123
 
 # Response headers:
 # x-updated-at: 2026-04-15T01:00:00Z
 # x-content-length: 1234`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
-            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.cc/api/docs/abc123", {
+            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/docs/abc123", {
   method: "HEAD",
 });
 const updatedAt = res.headers.get("x-updated-at");`}</CodeBlock>
@@ -499,7 +499,7 @@ const updatedAt = res.headers.get("x-updated-at");`}</CodeBlock>
             <SubLabel>Request - Python</SubLabel>
             <CodeBlock lang="python">{`import requests
 
-res = requests.head("https://mdfy.cc/api/docs/abc123")
+res = requests.head("https://mdfy.app/api/docs/abc123")
 updated_at = res.headers["x-updated-at"]`}</CodeBlock>
           </EndpointBlock>
 
@@ -518,11 +518,11 @@ updated_at = res.headers["x-updated-at"]`}</CodeBlock>
             </div>
 
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl https://mdfy.cc/api/user/documents \\
+            <CodeBlock lang="bash">{`curl https://mdfy.app/api/user/documents \\
   -H "x-user-id: user-uuid-here"`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
-            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.cc/api/user/documents", {
+            <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/user/documents", {
   headers: { "x-user-id": "user-uuid-here" },
 });
 const { documents } = await res.json();`}</CodeBlock>
@@ -530,7 +530,7 @@ const { documents } = await res.json();`}</CodeBlock>
             <SubLabel>Request - Python</SubLabel>
             <CodeBlock lang="python">{`import requests
 
-res = requests.get("https://mdfy.cc/api/user/documents",
+res = requests.get("https://mdfy.app/api/user/documents",
     headers={"x-user-id": "user-uuid-here"})
 documents = res.json()["documents"]`}</CodeBlock>
 
@@ -557,14 +557,14 @@ documents = res.json()["documents"]`}</CodeBlock>
             description="Upload an image file. Returns a public URL. Accepts multipart form-data with a file field."
           >
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl -X POST https://mdfy.cc/api/upload \\
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/upload \\
   -F "file=@screenshot.png"`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
             <CodeBlock lang="javascript">{`const form = new FormData();
 form.append("file", fileBlob, "screenshot.png");
 
-const res = await fetch("https://mdfy.cc/api/upload", {
+const res = await fetch("https://mdfy.app/api/upload", {
   method: "POST",
   body: form,
 });
@@ -574,13 +574,13 @@ const { url } = await res.json();`}</CodeBlock>
             <CodeBlock lang="python">{`import requests
 
 with open("screenshot.png", "rb") as f:
-    res = requests.post("https://mdfy.cc/api/upload",
+    res = requests.post("https://mdfy.app/api/upload",
         files={"file": f})
 url = res.json()["url"]`}</CodeBlock>
 
             <SubLabel>Response 200</SubLabel>
             <CodeBlock lang="json">{`{
-  "url": "https://storage.mdfy.cc/uploads/screenshot.png"
+  "url": "https://storage.mdfy.app/uploads/screenshot.png"
 }`}</CodeBlock>
           </EndpointBlock>
 
@@ -595,7 +595,7 @@ url = res.json()["url"]`}</CodeBlock>
               maxWidth: 640,
             }}
           >
-            mdfy.cc uses progressive authentication. Basic operations require no auth.
+            mdfy.app uses progressive authentication. Basic operations require no auth.
             Advanced features use edit tokens or user identity.
           </p>
 

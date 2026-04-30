@@ -202,7 +202,7 @@ export function activate(context: vscode.ExtensionContext): void {
       // Require login for publish
       if (!await authManager?.isLoggedIn()) {
         const choice = await vscode.window.showWarningMessage(
-          "Sign in to mdfy.cc to publish documents.",
+          "Sign in to mdfy.app to publish documents.",
           "Sign In"
         );
         if (choice === "Sign In") { vscode.commands.executeCommand("mdfy.login"); }
@@ -526,14 +526,14 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("mdfy.sync", async () => {
       const items: vscode.QuickPickItem[] = [
-        { label: "$(cloud-upload) Publish", description: "Publish current file to mdfy.cc" },
-        { label: "$(arrow-up) Push", description: "Push local changes to mdfy.cc" },
-        { label: "$(arrow-down) Pull", description: "Pull latest from mdfy.cc" },
-        { label: "$(sign-in) Login", description: "Login to mdfy.cc" },
+        { label: "$(cloud-upload) Publish", description: "Publish current file to mdfy.app" },
+        { label: "$(arrow-up) Push", description: "Push local changes to mdfy.app" },
+        { label: "$(arrow-down) Pull", description: "Pull latest from mdfy.app" },
+        { label: "$(sign-in) Login", description: "Login to mdfy.app" },
       ];
 
       const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: "mdfy.cc Sync Actions",
+        placeHolder: "mdfy.app Sync Actions",
       });
 
       if (!selected) {return;}
@@ -729,7 +729,7 @@ export function getAuthManager(): AuthManager | undefined {
 
 export function getApiBaseUrl(): string {
   const config = vscode.workspace.getConfiguration("mdfy");
-  return config.get<string>("apiBaseUrl") ?? "https://mdfy.cc";
+  return config.get<string>("apiBaseUrl") ?? "https://mdfy.app";
 }
 
 export interface MdfyConfig {

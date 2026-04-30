@@ -1,12 +1,12 @@
-# mdfy.cc -- Markdown Publisher for VS Code
+# mdfy.app -- Markdown Publisher for VS Code
 
 **Write Markdown in VS Code. Publish as a beautiful web document. Share a permanent URL.**
 
-![mdfy WYSIWYG Preview](https://mdfy.cc/images/vscode/hero.png)
+![mdfy WYSIWYG Preview](https://mdfy.app/images/vscode/hero.png)
 
-mdfy.cc turns your Markdown files into shareable, beautifully rendered documents with a permanent URL -- directly from VS Code. No copy-pasting into Google Docs. No screenshots. No "can you open this .md file?" conversations.
+mdfy.app turns your Markdown files into shareable, beautifully rendered documents with a permanent URL -- directly from VS Code. No copy-pasting into Google Docs. No screenshots. No "can you open this .md file?" conversations.
 
-Powered by a Rust + WASM rendering engine with GFM, KaTeX math, Mermaid diagrams, and 190+ language syntax highlighting. The same engine that powers [mdfy.cc](https://mdfy.cc), the Chrome extension, and the Mac desktop app.
+Powered by a Rust + WASM rendering engine with GFM, KaTeX math, Mermaid diagrams, and 190+ language syntax highlighting. The same engine that powers [mdfy.app](https://mdfy.app), the Chrome extension, and the Mac desktop app.
 
 ---
 
@@ -48,7 +48,7 @@ VS Code's built-in Markdown preview is read-only and local. mdfy gives you:
 
 Press **Cmd+Shift+M** to open the mdfy preview panel. Unlike the built-in preview, you can **edit directly in the rendered view**.
 
-![WYSIWYG Preview](https://mdfy.cc/images/vscode/preview.png)
+![WYSIWYG Preview](https://mdfy.app/images/vscode/preview.png)
 
 - Click any text to edit it in place
 - Formatting toolbar appears on selection: bold, italic, headings, lists, links, code, tables
@@ -91,11 +91,11 @@ Click the **Outline** button in the preview toolbar to open a document structure
 
 Turn any `.md` file into a shareable URL in one click.
 
-![Publish Flow](https://mdfy.cc/images/vscode/publish.png)
+![Publish Flow](https://mdfy.app/images/vscode/publish.png)
 
 1. Open a `.md` file
-2. **Cmd+Alt+P** or right-click > **Publish to mdfy.cc**
-3. URL is generated: `mdfy.cc/d/abc123`
+2. **Cmd+Alt+P** or right-click > **Publish to mdfy.app**
+3. URL is generated: `mdfy.app/d/abc123`
 4. URL is copied to clipboard -- paste it anywhere
 
 **No account required** for basic publishing. The recipient sees a beautifully rendered document in their browser -- they don't need VS Code, Markdown knowledge, or an account.
@@ -104,10 +104,10 @@ Turn any `.md` file into a shareable URL in one click.
 
 Keep your local files in sync with the published version.
 
-![Sync Status](https://mdfy.cc/images/vscode/sync.png)
+![Sync Status](https://mdfy.app/images/vscode/sync.png)
 
 - **Auto-push on save** -- your published document updates when you save locally (configurable)
-- **Pull remote changes** -- if someone edits on mdfy.cc, pull the changes to your local file
+- **Pull remote changes** -- if someone edits on mdfy.app, pull the changes to your local file
 - **Conflict detection** -- when both sides change, VS Code's diff editor opens with three merge options: pull, push, or view diff
 - **Offline queue** -- if you save while offline, changes are queued and pushed when you reconnect
 - **Status bar indicator** -- always shows the current state: synced, pushing, pulling, or conflict
@@ -116,13 +116,13 @@ Keep your local files in sync with the published version.
 
 Browse all your documents in one place.
 
-![Sidebar](https://mdfy.cc/images/vscode/sidebar.png)
+![Sidebar](https://mdfy.app/images/vscode/sidebar.png)
 
 Click the mdfy icon in the Activity Bar to open the sidebar:
 
 - **Local files** -- all `.md` files in your workspace with sync status
-- **Synced documents** -- locally edited files that are published to mdfy.cc
-- **Cloud documents** -- documents on mdfy.cc that you can pull locally
+- **Synced documents** -- locally edited files that are published to mdfy.app
+- **Cloud documents** -- documents on mdfy.app that you can pull locally
 - **Cloud folders** -- organized with expand/collapse
 - **Search** -- filter across all document types
 - **File path** -- hover to see full path, click to open
@@ -152,7 +152,7 @@ Keyboard shortcut: **Cmd+Alt+E**
 ### With Account (for sync and AI)
 
 1. Open Command Palette (**Cmd+Shift+P**)
-2. Run **mdfy: Login to mdfy.cc**
+2. Run **mdfy: Login to mdfy.app**
 3. Browser opens for Google or GitHub OAuth
 4. You're authenticated -- sync and AI features are now available
 
@@ -165,11 +165,11 @@ All commands are available via Command Palette (**Cmd+Shift+P**, type "mdfy"):
 | Command | Description |
 |---------|-------------|
 | **mdfy: Preview (WYSIWYG)** | Open live preview with inline editing |
-| **mdfy: Publish to mdfy.cc** | Publish and get a shareable URL |
-| **mdfy: Push to mdfy.cc** | Push local changes to cloud |
-| **mdfy: Pull from mdfy.cc** | Pull latest version from cloud |
+| **mdfy: Publish to mdfy.app** | Publish and get a shareable URL |
+| **mdfy: Push to mdfy.app** | Push local changes to cloud |
+| **mdfy: Pull from mdfy.app** | Pull latest version from cloud |
 | **mdfy: Export** | Export to HTML or rich text |
-| **mdfy: Login to mdfy.cc** | Authenticate for account features |
+| **mdfy: Login to mdfy.app** | Authenticate for account features |
 | **mdfy: Sync Status** | Show current sync state |
 | **mdfy: AI Polish** | Improve writing quality and clarity |
 | **mdfy: AI Summary** | Generate a concise summary |
@@ -186,14 +186,14 @@ All commands are also available in the right-click context menu when editing a M
 | Shortcut | Command |
 |----------|---------|
 | `Cmd+Shift+M` | Open WYSIWYG preview |
-| `Cmd+Alt+P` | Publish to mdfy.cc |
+| `Cmd+Alt+P` | Publish to mdfy.app |
 | `Cmd+Alt+E` | Export document |
 
 ---
 
 ## Settings
 
-Configure via VS Code Settings (Cmd+,) under "mdfy.cc":
+Configure via VS Code Settings (Cmd+,) under "mdfy.app":
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -201,7 +201,7 @@ Configure via VS Code Settings (Cmd+,) under "mdfy.cc":
 | `mdfy.autoSync` | `false` | Automatically push changes on file save |
 | `mdfy.autoPreview` | `true` | Automatically open mdfy preview when opening a .md file |
 | `mdfy.syncInterval` | `30` | Polling interval for remote changes (seconds, 10-300) |
-| `mdfy.apiBaseUrl` | `https://mdfy.cc` | API endpoint (for self-hosted instances) |
+| `mdfy.apiBaseUrl` | `https://mdfy.app` | API endpoint (for self-hosted instances) |
 
 ---
 
@@ -275,9 +275,9 @@ This file tracks sync state. Add it to `.gitignore` if you don't want it in vers
 ### Sync flow
 
 ```
-Local save --> auto-push (if enabled) --> mdfy.cc updated
+Local save --> auto-push (if enabled) --> mdfy.app updated
                                               |
-Someone edits on mdfy.cc                      |
+Someone edits on mdfy.app                      |
                                               v
 Polling detects change --> pull notification --> accept or diff
 ```
@@ -298,11 +298,11 @@ When both local and remote have changed:
 
 ### Share technical documentation
 
-Write your README, API docs, or architecture decisions in VS Code. Publish to mdfy.cc. Share the URL with your team. They see a beautifully rendered document -- no `.md` file viewer needed.
+Write your README, API docs, or architecture decisions in VS Code. Publish to mdfy.app. Share the URL with your team. They see a beautifully rendered document -- no `.md` file viewer needed.
 
 ### Capture and refine AI output
 
-Use the [Chrome extension](https://mdfy.cc/plugins) to capture an AI conversation. Pull it into VS Code for editing. Push refined version back. The URL stays the same.
+Use the [Chrome extension](https://mdfy.app/plugins) to capture an AI conversation. Pull it into VS Code for editing. Push refined version back. The URL stays the same.
 
 ### Publish from CI/CD
 
@@ -310,7 +310,7 @@ Use the [CLI](https://www.npmjs.com/package/mdfy-cli) in your pipeline to auto-p
 
 ### Cross-AI knowledge base
 
-Publish a document from VS Code. Paste the URL into any AI conversation. Claude, ChatGPT, and Gemini can all read mdfy.cc URLs. For programmatic access from Claude Web, Cursor, or Windsurf, point them at the [hosted MCP](https://mdfy.cc/docs/mcp) at `https://mdfy.cc/api/mcp` — or install the [local stdio MCP](https://www.npmjs.com/package/mdfy-mcp) for Claude Desktop.
+Publish a document from VS Code. Paste the URL into any AI conversation. Claude, ChatGPT, and Gemini can all read mdfy.app URLs. For programmatic access from Claude Web, Cursor, or Windsurf, point them at the [hosted MCP](https://mdfy.app/docs/mcp) at `https://mdfy.app/api/mcp` — or install the [local stdio MCP](https://www.npmjs.com/package/mdfy-mcp) for Claude Desktop.
 
 ### Meeting notes to shareable document
 
@@ -320,23 +320,23 @@ Take notes in Markdown during a meeting. When done, Cmd+Alt+P to publish. Share 
 
 ## mdfy Ecosystem
 
-mdfy.cc is a cross-platform document publishing system. All platforms share the same rendering engine and the same document URLs.
+mdfy.app is a cross-platform document publishing system. All platforms share the same rendering engine and the same document URLs.
 
 | Platform | What it does | Install |
 |----------|-------------|---------|
-| **[Web Editor](https://mdfy.cc)** | Full editor with WYSIWYG, image gallery, AI tools | [mdfy.cc](https://mdfy.cc) |
+| **[Web Editor](https://mdfy.app)** | Full editor with WYSIWYG, image gallery, AI tools | [mdfy.app](https://mdfy.app) |
 | **VS Code** | Preview, publish, sync from your editor | You are here |
-| **[Mac Desktop](https://mdfy.cc/plugins)** | Native app with sidebar, file import (PDF, DOCX, PPTX) | [Download DMG](https://github.com/raymindai/mdcore/releases) |
-| **[Chrome Extension](https://mdfy.cc/plugins)** | Capture from ChatGPT, Claude, Gemini, GitHub | [Download](https://mdfy.cc/plugins) |
+| **[Mac Desktop](https://mdfy.app/plugins)** | Native app with sidebar, file import (PDF, DOCX, PPTX) | [Download DMG](https://github.com/raymindai/mdcore/releases) |
+| **[Chrome Extension](https://mdfy.app/plugins)** | Capture from ChatGPT, Claude, Gemini, GitHub | [Download](https://mdfy.app/plugins) |
 | **[CLI](https://www.npmjs.com/package/mdfy-cli)** | `mdfy publish`, pipe support, tmux capture | `npm i -g mdfy-cli` |
-| **[Hosted MCP](https://mdfy.cc/docs/mcp)** | AI agents (Claude Web, Cursor) — 25 tools | URL: `https://mdfy.cc/api/mcp` |
+| **[Hosted MCP](https://mdfy.app/docs/mcp)** | AI agents (Claude Web, Cursor) — 25 tools | URL: `https://mdfy.app/api/mcp` |
 | **[Local MCP](https://www.npmjs.com/package/mdfy-mcp)** | AI agents (Claude Desktop, Code) — 6 core tools | `npx mdfy-mcp` |
 | **QuickLook** | Press Space on .md in Finder for rendered preview | [Build from source](https://github.com/raymindai/mdcore) |
 | **tmux** | Capture pane output and publish | [Install guide](https://github.com/raymindai/mdcore/tree/main/apps/tmux) |
 
 ### The URL is the bridge
 
-Every mdfy document has a permanent short URL (`mdfy.cc/d/abc123`). This URL:
+Every mdfy document has a permanent short URL (`mdfy.app/d/abc123`). This URL:
 
 - Renders beautifully in any browser
 - Is readable by any AI (paste it into a ChatGPT/Claude conversation)
@@ -352,13 +352,13 @@ Every mdfy document has a permanent short URL (`mdfy.cc/d/abc123`). This URL:
 A: No. You can publish without logging in. The document gets a permanent URL and an edit token (stored locally). Login is needed for cloud sync, document listing, and AI tools.
 
 **Q: Is my Markdown sent to a server?**
-A: Rendering happens entirely in your browser via WASM. When you publish, the Markdown is stored on mdfy.cc (Supabase PostgreSQL). Documents can be private or public.
+A: Rendering happens entirely in your browser via WASM. When you publish, the Markdown is stored on mdfy.app (Supabase PostgreSQL). Documents can be private or public.
 
 **Q: Can I use this with private/internal documents?**
 A: Yes. Published documents default to private (draft). You control visibility via the publish toggle. Documents can also be password-protected on the web editor.
 
 **Q: What happens if I uninstall the extension?**
-A: Your local `.md` files are unchanged. Published documents remain on mdfy.cc. The `.mdfy.json` sidecar files can be deleted.
+A: Your local `.md` files are unchanged. Published documents remain on mdfy.app. The `.mdfy.json` sidecar files can be deleted.
 
 **Q: Does it work with existing Markdown extensions?**
 A: Yes. mdfy adds its own preview panel and does not interfere with the built-in Markdown preview or other extensions.
@@ -375,9 +375,9 @@ A: mdfy renders Markdown with KaTeX math, Mermaid diagrams, and full GFM. It has
 
 ## Links
 
-- [mdfy.cc](https://mdfy.cc) -- Web editor
-- [Plugins page](https://mdfy.cc/plugins) -- All platforms and downloads
-- [API Documentation](https://mdfy.cc/docs) -- REST API reference
+- [mdfy.app](https://mdfy.app) -- Web editor
+- [Plugins page](https://mdfy.app/plugins) -- All platforms and downloads
+- [API Documentation](https://mdfy.app/docs) -- REST API reference
 - [GitHub](https://github.com/raymindai/mdcore) -- Source code
 - [Issues](https://github.com/raymindai/mdcore/issues) -- Bug reports and feature requests
 

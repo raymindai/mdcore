@@ -12,17 +12,17 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "CLI Reference — mdfy.cc",
+  title: "CLI Reference — mdfy.app",
   description:
     "mdfy CLI reference. Publish Markdown from the command line. Pipe stdin, capture tmux panes, manage documents with simple terminal commands.",
   alternates: {
-    canonical: "https://mdfy.cc/docs/cli",
-    languages: { ko: "https://mdfy.cc/ko/docs/cli" },
+    canonical: "https://mdfy.app/docs/cli",
+    languages: { ko: "https://mdfy.app/ko/docs/cli" },
   },
   openGraph: {
-    title: "CLI Reference — mdfy.cc",
+    title: "CLI Reference — mdfy.app",
     description: "Publish Markdown from the command line. Pipe stdin, capture tmux, manage documents.",
-    url: "https://mdfy.cc/docs/cli",
+    url: "https://mdfy.app/docs/cli",
     images: [{ url: "/api/og?title=CLI", width: 1200, height: 630 }],
   },
 };
@@ -96,14 +96,14 @@ export default function CliDocsPage() {
           {/* Commands Overview */}
           <SectionHeading id="commands">Commands</SectionHeading>
           <Card>
-            <CommandRow cmd="mdfy publish <file>" desc="Publish a Markdown file or stdin to mdfy.cc." />
+            <CommandRow cmd="mdfy publish <file>" desc="Publish a Markdown file or stdin to mdfy.app." />
             <CommandRow cmd="mdfy update <id> <file>" desc="Update an existing document with new content." />
             <CommandRow cmd="mdfy pull <id>" desc="Download a document's Markdown content." />
             <CommandRow cmd="mdfy delete <id>" desc="Soft-delete a document." />
             <CommandRow cmd="mdfy list" desc="List all your documents." />
             <CommandRow cmd="mdfy open <id>" desc="Open a document in the browser." />
             <CommandRow cmd="mdfy capture" desc="Capture the current tmux pane and publish." />
-            <CommandRow cmd="mdfy login" desc="Authenticate with mdfy.cc." />
+            <CommandRow cmd="mdfy login" desc="Authenticate with mdfy.app." />
             <CommandRow cmd="mdfy logout" desc="Clear stored credentials." />
             <CommandRow cmd="mdfy whoami" desc="Show current authenticated user." />
           </Card>
@@ -195,7 +195,7 @@ mdfy delete abc123 --yes`}</CodeBlock>
           <SectionHeading id="open">open</SectionHeading>
           <Card>
             <CodeBlock lang="bash">{`mdfy open abc123
-# Opens https://mdfy.cc/abc123 in your default browser`}</CodeBlock>
+# Opens https://mdfy.app/abc123 in your default browser`}</CodeBlock>
           </Card>
 
           {/* capture */}
@@ -296,7 +296,7 @@ alias mtx="tmux capture-pane -p | mdfy publish"`}</CodeBlock>
           <SectionHeading id="config">Configuration</SectionHeading>
           <Card>
             <SubLabel>Environment Variables</SubLabel>
-            <CommandRow cmd="MDFY_URL" desc="Base URL for the API. Default: https://mdfy.cc" />
+            <CommandRow cmd="MDFY_URL" desc="Base URL for the API. Default: https://mdfy.app" />
 
             <SubLabel>Config File</SubLabel>
             <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8, marginBottom: 12, lineHeight: 1.7 }}>
@@ -305,7 +305,7 @@ alias mtx="tmux capture-pane -p | mdfy publish"`}</CodeBlock>
             </p>
             <CodeBlock lang="json">{`// ~/.mdfy/config.json
 {
-  "apiUrl": "https://mdfy.cc",
+  "apiUrl": "https://mdfy.app",
   "email": "user@example.com",
   "token": "..."
 }`}</CodeBlock>

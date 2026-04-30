@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://mdfy.cc";
+  const base = "https://mdfy.app";
   const now = new Date();
   return [
     // English pages

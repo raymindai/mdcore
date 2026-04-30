@@ -30,7 +30,7 @@ RULES:
 - For tree/hierarchy diagrams, use "graph TD" (top-down).
 - For flowcharts with decisions, use "graph TD" with diamond nodes for conditions.
 - For sequence diagrams, use "sequenceDiagram".
-- For each node, include ALL text associated with it. If a node has sub-labels below it (like "Browser" with "mdfy.cc" below), combine them: A["Browser<br/>mdfy.cc"]
+- For each node, include ALL text associated with it. If a node has sub-labels below it (like "Browser" with "mdfy.app" below), combine them: A["Browser<br/>mdfy.app"]
 - Use descriptive node IDs (e.g., A, B, C or short names).
 - Preserve the exact connection structure — which nodes connect to which.
 - If the diagram has colored or highlighted text, ignore the styling — just preserve the text.

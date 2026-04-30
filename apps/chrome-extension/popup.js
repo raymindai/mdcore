@@ -1,8 +1,8 @@
 /**
- * mdfy.cc Chrome Extension — Popup Script
+ * mdfy.app Chrome Extension — Popup Script
  */
 
-const MDFY_URL = "https://mdfy.cc";
+const MDFY_URL = "https://mdfy.app";
 const MAX_URL_BYTES = 8000;
 
 const statusEl = document.getElementById("status");
@@ -69,7 +69,7 @@ function setStatus(text, type = "") {
   statusEl.className = "status " + type;
 }
 
-// ─── Send to mdfy.cc ───
+// ─── Send to mdfy.app ───
 
 async function openInMdfy(markdown) {
   if (!markdown || markdown.trim().length === 0) {
@@ -95,12 +95,12 @@ async function openInMdfy(markdown) {
         const { id, editToken } = parsed;
         const tokenParam = editToken ? "&token=" + encodeURIComponent(editToken) : "";
         chrome.tabs.create({ url: MDFY_URL + "/?from=" + id + tokenParam });
-        setStatus("Published to mdfy.cc", "success");
+        setStatus("Published to mdfy.app", "success");
         return;
       }
       // Check for auth failure
       if (res.status === 401 || res.status === 403) {
-        setStatus("Session expired. Log in at mdfy.cc to sync.", "error");
+        setStatus("Session expired. Log in at mdfy.app to sync.", "error");
         chrome.storage.local.remove("mdfy-was-logged-in");
       }
     } catch (err) {
@@ -114,7 +114,7 @@ async function openInMdfy(markdown) {
 
   if (url.length <= MAX_URL_BYTES) {
     chrome.tabs.create({ url });
-    setStatus("Opened in mdfy.cc", "success");
+    setStatus("Opened in mdfy.app", "success");
   } else {
     let copied = false;
     try {
@@ -123,7 +123,7 @@ async function openInMdfy(markdown) {
     } catch { }
     chrome.tabs.create({ url: MDFY_URL });
     if (copied) {
-      setStatus("Content copied — paste into mdfy.cc", "success");
+      setStatus("Content copied — paste into mdfy.app", "success");
     } else {
       setStatus("Content too large for URL. Please copy manually.", "error");
     }
@@ -157,8 +157,8 @@ async function detectPlatform() {
       platform = "gemini";
     }
 
-    // Check if on mdfy.cc
-    if (url.includes("mdfy.cc")) {
+    // Check if on mdfy.app
+    if (url.includes("mdfy.app")) {
       showOnMdfy();
       return null;
     }
@@ -170,7 +170,7 @@ async function detectPlatform() {
       platformNameEl.classList.add("active");
       platformNameEl.textContent = "GitHub Markdown detected";
       btnCapture.disabled = true;
-      setStatus("Use the 'Open in mdfy.cc' button on the page", "");
+      setStatus("Use the 'Open in mdfy.app' button on the page", "");
       return null;
     }
 
@@ -200,11 +200,11 @@ function showOnMdfy() {
   }
   if (platformNameEl) {
     platformNameEl.classList.add("active");
-    platformNameEl.textContent = "mdfy.cc";
+    platformNameEl.textContent = "mdfy.app";
   }
   btnCapture.disabled = true;
   const labelEl = btnCapture.querySelector(".label");
-  if (labelEl) labelEl.innerHTML = 'You\'re on mdfy.cc<span class="desc">Create and edit documents directly here</span>';
+  if (labelEl) labelEl.innerHTML = 'You\'re on mdfy.app<span class="desc">Create and edit documents directly here</span>';
   rangeSelector.style.display = "none";
 }
 
@@ -378,7 +378,7 @@ chkFloat.addEventListener("change", () => {
   chrome.storage.local.get(["mdfy-was-logged-in"], (data) => {
     if (!userId && data["mdfy-was-logged-in"]) {
       // User was logged in before but no longer — session expired
-      setStatus("Session expired. Log in at mdfy.cc to sync.", "error");
+      setStatus("Session expired. Log in at mdfy.app to sync.", "error");
       chrome.storage.local.remove("mdfy-was-logged-in");
     } else if (userId) {
       chrome.storage.local.set({ "mdfy-was-logged-in": "1" });

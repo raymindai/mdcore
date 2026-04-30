@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Canonical mdfy.cc logo component.
+ * Canonical mdfy.app logo component.
  * Renders inline SVG so CSS variables are respected for theming.
  * Source of truth: assets/brand/
  *
@@ -10,10 +10,10 @@
  */
 export default function MdfyLogo({
   size = 22,
-  variant = "mdfy.cc",
+  variant = "mdfy.app",
 }: {
   size?: number;
-  variant?: "mdfy.cc" | "mdcore.ai";
+  variant?: "mdfy.app" | "mdcore.ai";
 }) {
   const weight = 800;
   const letterSpacing = "-0.02em";

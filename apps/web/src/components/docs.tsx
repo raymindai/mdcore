@@ -311,7 +311,7 @@ export function DocsFooter({
             margin: 0,
           }}
         >
-          &copy; 2026 mdfy.cc
+          &copy; 2026 mdfy.app
         </p>
       </div>
     </footer>
@@ -435,7 +435,7 @@ export function SiteFooter() {
             </p>
             {[
               { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
-              { label: "hi@mdfy.cc", href: "mailto:hi@mdfy.cc" },
+              { label: "hi@mdfy.app", href: "mailto:hi@mdfy.app" },
               { label: "Privacy Policy", href: "/privacy" },
             ].map((l) => (
               <a
@@ -494,7 +494,7 @@ export function SiteFooter() {
               margin: 0,
             }}
           >
-            &copy; 2026 mdfy.cc. All rights reserved.
+            &copy; 2026 mdfy.app. All rights reserved.
           </p>
         </div>
       </div>

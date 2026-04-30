@@ -7,7 +7,7 @@ import { homedir } from "os";
 
 // ─── Config ───
 
-const BASE_URL = (process.env.MDFY_BASE_URL || "https://mdfy.cc").replace(/\/$/, "");
+const BASE_URL = (process.env.MDFY_BASE_URL || "https://mdfy.app").replace(/\/$/, "");
 const MDFY_DIR = join(homedir(), ".mdfy");
 const CONFIG_FILE = join(MDFY_DIR, "config.json");
 const TOKEN_FILE = join(MDFY_DIR, "tokens.json");
@@ -108,7 +108,7 @@ function loginRequiredResult() {
   return {
     content: [{
       type: "text" as const,
-      text: "Not logged in. Run `mdfy login` in your terminal first to authenticate with mdfy.cc.",
+      text: "Not logged in. Run `mdfy login` in your terminal first to authenticate with mdfy.app.",
     }],
     isError: true as const,
   };
@@ -124,7 +124,7 @@ const server = new McpServer({
 // Tool: Create document
 server.tool(
   "mdfy_create",
-  "Create a new Markdown document on mdfy.cc and get a shareable URL",
+  "Create a new Markdown document on mdfy.app and get a shareable URL",
   {
     markdown: z.string().describe("Markdown content for the document"),
     title: z.string().optional().describe("Document title (extracted from H1 if omitted)"),
@@ -159,7 +159,7 @@ server.tool(
 // Tool: Read document
 server.tool(
   "mdfy_read",
-  "Fetch a document's markdown content from mdfy.cc",
+  "Fetch a document's markdown content from mdfy.app",
   {
     id: z.string().describe("Document ID (the short code from the URL)"),
   },
@@ -181,7 +181,7 @@ server.tool(
 // Tool: Update document
 server.tool(
   "mdfy_update",
-  "Update an existing document's content on mdfy.cc",
+  "Update an existing document's content on mdfy.app",
   {
     id: z.string().describe("Document ID"),
     markdown: z.string().describe("New markdown content"),
@@ -205,7 +205,7 @@ server.tool(
 // Tool: List documents
 server.tool(
   "mdfy_list",
-  "List all documents owned by the current user on mdfy.cc",
+  "List all documents owned by the current user on mdfy.app",
   {},
   async () => {
     if (!isLoggedIn()) return loginRequiredResult();
@@ -228,7 +228,7 @@ server.tool(
 // Tool: Delete document
 server.tool(
   "mdfy_delete",
-  "Delete a document from mdfy.cc (moves to trash, can be restored)",
+  "Delete a document from mdfy.app (moves to trash, can be restored)",
   {
     id: z.string().describe("Document ID to delete"),
     permanent: z.boolean().optional().describe("If true, permanently delete (default: false = soft delete / trash)"),
@@ -261,7 +261,7 @@ server.tool(
 // Tool: Publish / Make Private
 server.tool(
   "mdfy_publish",
-  "Toggle a document between public (shared) and private (draft) on mdfy.cc",
+  "Toggle a document between public (shared) and private (draft) on mdfy.app",
   {
     id: z.string().describe("Document ID"),
     published: z.boolean().describe("true = make publicly accessible, false = make private"),
@@ -292,7 +292,7 @@ server.tool(
 // Tool: Search documents
 server.tool(
   "mdfy_search",
-  "Search your documents on mdfy.cc by keyword (full-text search)",
+  "Search your documents on mdfy.app by keyword (full-text search)",
   {
     query: z.string().describe("Search query (keywords to find in your documents)"),
   },

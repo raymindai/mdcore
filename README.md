@@ -4,7 +4,7 @@
 
 **Markdown URLs that humans write and AI reads.** Import anything. Render beautifully. Share instantly. Powered by Rust + WASM.
 
-[![Live](https://img.shields.io/badge/mdfy.cc-live-orange)](https://mdfy.cc)
+[![Live](https://img.shields.io/badge/mdfy.app-live-orange)](https://mdfy.app)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Marketplace-blue)](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode)
 [![MCP](https://img.shields.io/badge/MCP-npm-red)](https://www.npmjs.com/package/mdfy-mcp)
 [![CLI](https://img.shields.io/badge/CLI-npm-green)](https://www.npmjs.com/package/mdfy)
@@ -18,7 +18,7 @@
             │              │              │
        ┌────┼────┐    ┌────┼────┐    ┌───┼────┐
     Browser Edge  Deno Node Raycast  CLI  Mobile
-    mdfy.cc  CF         npm  Obsidian  brew  iOS
+    mdfy.app  CF         npm  Obsidian  brew  iOS
              Workers    pkg  VS Code   install Android
 ```
 
@@ -26,24 +26,24 @@
 
 ## What is this?
 
-**mdcore** is a Markdown parsing, rendering, and conversion engine built in Rust. **mdfy.cc** is the full document platform built on top of it.
+**mdcore** is a Markdown parsing, rendering, and conversion engine built in Rust. **mdfy.app** is the full document platform built on top of it.
 
-Every document gets a permanent short URL (`mdfy.cc/abc123`) that works everywhere — browsers, AI chats, Slack, email, embeds. No login to view. No paywall.
+Every document gets a permanent short URL (`mdfy.app/abc123`) that works everywhere — browsers, AI chats, Slack, email, embeds. No login to view. No paywall.
 
 ## 8 Channels
 
-mdfy.cc is available everywhere:
+mdfy.app is available everywhere:
 
 | Channel | Status | Install |
 |---------|--------|---------|
-| [**Web**](https://mdfy.cc) | Live | Just open mdfy.cc |
+| [**Web**](https://mdfy.app) | Live | Just open mdfy.app |
 | [**VS Code**](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode) | v1.3.0 | Marketplace or [.vsix download](https://github.com/raymindai/mdcore/releases) |
 | [**Desktop (Mac)**](https://github.com/raymindai/mdcore/releases) | v2.0.0 | DMG download |
 | [**CLI**](https://www.npmjs.com/package/mdfy) | v1.3.0 | `npm install -g mdfy` |
-| [**MCP Server**](https://www.npmjs.com/package/mdfy-mcp) | v1.3.0 | `npx mdfy-mcp` or hosted `mdfy.cc/api/mcp` |
+| [**MCP Server**](https://www.npmjs.com/package/mdfy-mcp) | v1.3.0 | `npx mdfy-mcp` or hosted `mdfy.app/api/mcp` |
 | [**Chrome Extension**](https://github.com/raymindai/mdcore/releases) | v2.0.0 | Download from releases |
 | **QuickLook (Mac)** | v1.0.0 | [Download](https://github.com/raymindai/mdcore/releases) |
-| **API** | Live | `https://mdfy.cc/api/docs` |
+| **API** | Live | `https://mdfy.app/api/docs` |
 
 ## Features
 
@@ -116,7 +116,7 @@ mdfy pull abc123 -o doc.md
 
 ## MCP Server
 
-Connect any AI tool to mdfy.cc:
+Connect any AI tool to mdfy.app:
 
 ```json
 {
@@ -129,7 +129,7 @@ Connect any AI tool to mdfy.cc:
 }
 ```
 
-Or use the hosted endpoint: `https://mdfy.cc/api/mcp`
+Or use the hosted endpoint: `https://mdfy.app/api/mcp`
 
 25 tools: create, read, update, delete, list, search, append, prepend, sections, sharing, versions, folders, stats, and more.
 
@@ -139,7 +139,7 @@ Or use the hosted endpoint: `https://mdfy.cc/api/mcp`
 |---------|-------------|---------|
 | `@mdcore/engine` | Rust WASM engine + TypeScript postprocessor | `npm i @mdcore/engine` |
 | `@mdcore/styles` | CSS-only rendering styles (dark/light themes) | `npm i @mdcore/styles` |
-| `@mdcore/api` | HTTP client for mdfy.cc API | `npm i @mdcore/api` |
+| `@mdcore/api` | HTTP client for mdfy.app API | `npm i @mdcore/api` |
 | `@mdcore/ai` | AI provider abstraction (Gemini, OpenAI, Anthropic) | `npm i @mdcore/ai` |
 
 ## Tech Stack
@@ -188,7 +188,7 @@ mdcore/
 │   ├── api/                 # @mdcore/api (HTTP client)
 │   └── ai/                  # @mdcore/ai (AI providers)
 ├── apps/
-│   ├── web/                 # Next.js 15 (mdfy.cc)
+│   ├── web/                 # Next.js 15 (mdfy.app)
 │   ├── desktop/             # Electron Mac app
 │   ├── vscode-extension/    # VS Code extension
 │   ├── chrome-extension/    # Chrome extension
@@ -249,4 +249,4 @@ MIT
 
 **mdcore** — *The fastest way from thought to shared document.*
 
-[mdfy.cc](https://mdfy.cc) · [Docs](https://mdfy.cc/docs) · [Plugins](https://mdfy.cc/plugins) · [GitHub](https://github.com/raymindai/mdcore)
+[mdfy.app](https://mdfy.app) · [Docs](https://mdfy.app/docs) · [Plugins](https://mdfy.app/plugins) · [GitHub](https://github.com/raymindai/mdcore)

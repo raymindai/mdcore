@@ -2164,7 +2164,7 @@
   // Initialize flavor badge with detected flavor
   updateFlavorBadge(currentFlavor);
 
-  // ─── Custom Tooltips (instant, like mdfy.cc) ───
+  // ─── Custom Tooltips (instant, like mdfy.app) ───
 
   var tooltipEl = null;
   var tooltipTimer = null;

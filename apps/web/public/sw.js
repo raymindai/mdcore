@@ -1,4 +1,4 @@
-// mdfy.cc Service Worker — Offline caching + Share Target
+// mdfy.app Service Worker — Offline caching + Share Target
 const CACHE_NAME = "mdfy-v1";
 const STATIC_ASSETS = ["/", "/manifest.json"];
 

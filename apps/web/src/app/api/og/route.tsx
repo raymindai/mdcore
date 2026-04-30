@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
               }}
             >
               <span style={{ color: "#71717a", fontSize: "15px", fontWeight: 500 }}>
-                mdfy.cc{hasTitle ? `/${rawTitle.slice(0, 20).toLowerCase().replace(/[^a-z0-9]/g, "-")}` : ""}
+                mdfy.app{hasTitle ? `/${rawTitle.slice(0, 20).toLowerCase().replace(/[^a-z0-9]/g, "-")}` : ""}
               </span>
             </div>
             <div style={{ display: "flex", width: "62px" }} />
@@ -197,7 +197,7 @@ export async function GET(req: NextRequest) {
           }}
         >
           <span style={{ color: "#3f3f46", fontSize: "17px" }}>published with</span>
-          <span style={{ color: "#737373", fontSize: "17px", fontWeight: 700 }}>mdfy.cc</span>
+          <span style={{ color: "#737373", fontSize: "17px", fontWeight: 700 }}>mdfy.app</span>
         </div>
       </div>
     ),

@@ -1,8 +1,8 @@
 /**
- * mdfy.cc Chrome Extension — GitHub Integration
+ * mdfy.app Chrome Extension — GitHub Integration
  *
- * Detects .md files on GitHub and adds an "Open in mdfy.cc" button.
- * Fetches raw markdown and opens it in mdfy.cc for beautiful rendering + editing.
+ * Detects .md files on GitHub and adds an "Open in mdfy.app" button.
+ * Fetches raw markdown and opens it in mdfy.app for beautiful rendering + editing.
  */
 
 (function () {
@@ -11,7 +11,7 @@
   if (document.documentElement.dataset.mdfyGithub) return;
   document.documentElement.dataset.mdfyGithub = "1";
 
-  const MDFY_URL = "https://mdfy.cc";
+  const MDFY_URL = "https://mdfy.app";
 
   function isMarkdownPage() {
     // GitHub .md file view: URL like /owner/repo/blob/branch/path/file.md
@@ -41,8 +41,8 @@
     const btn = document.createElement("button");
     btn.id = "mdfy-github-btn";
     btn.className = "mdfy-github-btn";
-    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.cc</span>';
-    btn.title = "Open this Markdown file in mdfy.cc for beautiful rendering and editing";
+    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.app</span>';
+    btn.title = "Open this Markdown file in mdfy.app for beautiful rendering and editing";
 
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
@@ -63,7 +63,7 @@
           return;
         }
 
-        // Try authenticated upload if user is logged in to mdfy.cc
+        // Try authenticated upload if user is logged in to mdfy.app
         try {
           const userId = await new Promise((resolve) => {
             chrome.runtime.sendMessage({ action: "get-user-id" }, (r) => resolve(r?.userId));
@@ -214,7 +214,7 @@
 
   function resetButton(btn) {
     btn.classList.remove("mdfy-gh-loading", "mdfy-gh-done", "mdfy-gh-error");
-    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.cc</span>';
+    btn.innerHTML = '<span class="mdfy-gh-label">Open in mdfy.app</span>';
   }
 
   // Compression (same as content.js)

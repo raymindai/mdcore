@@ -15,10 +15,10 @@ import type {
   ApiError,
 } from "./types.js";
 
-const DEFAULT_BASE_URL = "https://mdfy.cc";
+const DEFAULT_BASE_URL = "https://mdfy.app";
 
 /**
- * mdfy.cc API client.
+ * mdfy.app API client.
  *
  * Provides methods to publish, update, pull, delete documents,
  * manage versions, upload images, and control access.
@@ -27,9 +27,9 @@ const DEFAULT_BASE_URL = "https://mdfy.cc";
  * ```ts
  * import { MdfyClient } from "@mdcore/api";
  *
- * const client = new MdfyClient({ baseUrl: "https://mdfy.cc" });
+ * const client = new MdfyClient({ baseUrl: "https://mdfy.app" });
  * const result = await client.publish("# Hello World");
- * console.log(result.url); // "https://mdfy.cc/abc123"
+ * console.log(result.url); // "https://mdfy.app/abc123"
  * ```
  */
 export class MdfyClient {
@@ -372,7 +372,7 @@ export class MdfyClient {
 // ─── Error class ───
 
 /**
- * Error thrown by the mdfy.cc API client.
+ * Error thrown by the mdfy.app API client.
  */
 export class MdfyApiError extends Error {
   /** HTTP status code */

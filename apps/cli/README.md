@@ -2,7 +2,7 @@
 
 Publish Markdown from anywhere — terminal, scripts, CI/CD, tmux. Every output becomes a permanent, shareable URL.
 
-Part of the [mdfy.cc](https://mdfy.cc) ecosystem.
+Part of the [mdfy.app](https://mdfy.app) ecosystem.
 
 ## Install
 
@@ -15,7 +15,7 @@ npm install -g mdfy-cli
 ```bash
 # Publish a file → get a URL
 mdfy publish README.md
-# → https://mdfy.cc/d/abc123 (copied to clipboard)
+# → https://mdfy.app/d/abc123 (copied to clipboard)
 
 # Publish from pipe
 echo "# Hello World" | mdfy publish
@@ -40,7 +40,7 @@ mdfy read abc123
 | `mdfy delete <id>` | Delete a document |
 | `mdfy list` | List your documents |
 | `mdfy open <id>` | Open document in browser |
-| `mdfy login` | Authenticate with mdfy.cc |
+| `mdfy login` | Authenticate with mdfy.app |
 | `mdfy logout` | Clear stored credentials |
 | `mdfy whoami` | Show current user |
 
@@ -97,7 +97,7 @@ AI conversations (Claude Code, ChatGPT CLI, Ollama) are auto-detected and format
 mdfy read abc123
 
 # By URL
-mdfy read https://mdfy.cc/d/abc123
+mdfy read https://mdfy.app/d/abc123
 
 # Output includes: color-coded headings, bold, code, blockquotes, lists
 ```
@@ -134,8 +134,8 @@ Credentials stored in `~/.mdfy/config.json`. Edit tokens in `~/.mdfy/tokens.json
 
 ## How It Works
 
-1. `mdfy publish` sends Markdown to mdfy.cc API
-2. Returns a permanent short URL (`mdfy.cc/d/...`)
+1. `mdfy publish` sends Markdown to mdfy.app API
+2. Returns a permanent short URL (`mdfy.app/d/...`)
 3. URL is copied to clipboard (macOS)
 4. Edit token is saved locally for future updates
 5. Documents render with syntax highlighting, math (KaTeX), and Mermaid diagrams
@@ -144,19 +144,19 @@ Credentials stored in `~/.mdfy/config.json`. Edit tokens in `~/.mdfy/tokens.json
 
 | Channel | Install |
 |---------|---------|
-| [Web Editor](https://mdfy.cc) | Just open the URL |
-| [Hosted MCP (Claude Web, Cursor, etc.)](https://mdfy.cc/docs/mcp) | URL: `https://mdfy.cc/api/mcp` |
+| [Web Editor](https://mdfy.app) | Just open the URL |
+| [Hosted MCP (Claude Web, Cursor, etc.)](https://mdfy.app/docs/mcp) | URL: `https://mdfy.app/api/mcp` |
 | [Local MCP (Claude Desktop, Claude Code)](https://www.npmjs.com/package/mdfy-mcp) | `npx mdfy-mcp` |
-| [VS Code Extension](https://mdfy.cc/plugins) | Download from Plugins page |
-| [Chrome Extension](https://mdfy.cc/plugins) | Download from Plugins page |
-| [Mac Desktop App](https://mdfy.cc/plugins) | Download from Plugins page |
+| [VS Code Extension](https://mdfy.app/plugins) | Download from Plugins page |
+| [Chrome Extension](https://mdfy.app/plugins) | Download from Plugins page |
+| [Mac Desktop App](https://mdfy.app/plugins) | Download from Plugins page |
 | [tmux Plugin](https://github.com/raymindai/mdcore/tree/main/apps/tmux) | Manual install |
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MDFY_URL` | `https://mdfy.cc` | API base URL |
+| `MDFY_URL` | `https://mdfy.app` | API base URL |
 
 ## License
 

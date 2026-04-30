@@ -1,7 +1,7 @@
 {
   "name": "@mdcore/api",
   "version": "0.1.0",
-  "description": "mdfy.cc API client — publish, update, pull, delete documents",
+  "description": "mdfy.app API client — publish, update, pull, delete documents",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

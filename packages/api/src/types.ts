@@ -4,7 +4,7 @@
 
 /** Configuration for the MdfyClient */
 export interface MdfyClientConfig {
-  /** Base URL of the mdfy.cc API (default: "https://mdfy.cc") */
+  /** Base URL of the mdfy.app API (default: "https://mdfy.app") */
   baseUrl?: string;
   /** Authentication token (for authenticated operations) */
   token?: string;
@@ -26,7 +26,7 @@ export interface PublishOptions {
 
 /** Result of publishing a document */
 export interface PublishResult {
-  /** Full URL to the published document (e.g., "https://mdfy.cc/abc123") */
+  /** Full URL to the published document (e.g., "https://mdfy.app/abc123") */
   url: string;
   /** Document ID (the short code) */
   id: string;

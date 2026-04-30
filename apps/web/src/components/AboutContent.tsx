@@ -189,7 +189,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
           {t.ecosystem.sub}
         </p>
 
-        {/* Flow: Sources -> mdfy.cc -> Outputs */}
+        {/* Flow: Sources -> mdfy.app -> Outputs */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 20, padding: "40px 32px", overflow: "hidden" }}>
           {/* Row 1: Input sources */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
@@ -217,7 +217,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
 
             {/* Central hub */}
             <div style={{ background: "var(--accent)", color: "#000", padding: "12px 24px", borderRadius: 10, fontSize: 14, fontWeight: 800, fontFamily: "var(--font-geist-mono), monospace", boxShadow: "0 0 30px rgba(251,146,60,0.15)", whiteSpace: "nowrap" }}>
-              mdfy.cc/*
+              mdfy.app/*
             </div>
 
             {/* Arrow */}
@@ -527,7 +527,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {t.comparison_md.columns.map((h) => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: h === "" ? "left" : "center", fontSize: 12, fontWeight: h === "mdfy.cc" ? 800 : 600, color: h === "mdfy.cc" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 16px", textAlign: h === "" ? "left" : "center", fontSize: 12, fontWeight: h === "mdfy.app" ? 800 : 600, color: h === "mdfy.app" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -563,7 +563,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
                 {t.comparison_ai.columns.map((h) => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: h === "" ? "left" : "center", fontSize: 12, fontWeight: h === "mdfy.cc" ? 800 : 600, color: h === "mdfy.cc" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "12px 16px", textAlign: h === "" ? "left" : "center", fontSize: 12, fontWeight: h === "mdfy.app" ? 800 : 600, color: h === "mdfy.app" ? "var(--accent)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>

@@ -1,9 +1,9 @@
 /**
- * mdfy.cc Chrome Extension — Content Script
+ * mdfy.app Chrome Extension — Content Script
  *
  * Injected into ChatGPT, Claude, and Gemini pages.
  * Adds a floating "mdfy" button and per-message mini buttons.
- * Extracts conversation content as Markdown and sends to mdfy.cc.
+ * Extracts conversation content as Markdown and sends to mdfy.app.
  */
 
 (function () {
@@ -13,7 +13,7 @@
   if (document.documentElement.dataset.mdfyInjected) return;
   document.documentElement.dataset.mdfyInjected = "1";
 
-  const MDFY_URL = "https://mdfy.cc";
+  const MDFY_URL = "https://mdfy.app";
   const MAX_URL_BYTES = 8000; // ~8KB limit for URL hash
 
   // ─── Platform Detection ───
@@ -29,7 +29,7 @@
   const platform = detectPlatform();
   if (!platform) return;
 
-  // ─── Compression (matches mdfy.cc's share.ts) ───
+  // ─── Compression (matches mdfy.app's share.ts) ───
 
   function arrayBufferToBase64Url(buffer) {
     const bytes = new Uint8Array(buffer);
@@ -953,14 +953,14 @@
 
     if (matches.length === 0) return markdown;
 
-    // If logged in, upload images to mdfy.cc permanent storage
+    // If logged in, upload images to mdfy.app permanent storage
     const userId = await getUserId();
     if (!userId) return markdown; // Keep original URLs as-is
 
     // Filter to uploadable images (include data: URLs from captured diagrams)
     const uploadable = matches.filter((match) => {
       const url = match[2];
-      if (url.includes("supabase") || url.includes("mdfy.cc")) return false;
+      if (url.includes("supabase") || url.includes("mdfy.app")) return false;
       if (url.startsWith("data:")) return true; // captured diagram screenshots
       if (!url.startsWith("http")) return false;
       return true;
@@ -992,7 +992,7 @@
     return result;
   }
 
-  // ─── Send to mdfy.cc ───
+  // ─── Send to mdfy.app ───
 
   async function sendToMdfy(markdown) {
     if (!markdown || markdown.trim().length === 0) {
@@ -1030,7 +1030,7 @@
         }
         // Check for auth failure
         if (res.status === 401 || res.status === 403) {
-          showToast("Session expired. Log in at mdfy.cc to sync.", 5000);
+          showToast("Session expired. Log in at mdfy.app to sync.", 5000);
         }
       } catch (err) {
         console.warn("[mdfy] Authenticated share failed, falling back to hash URL:", err);
@@ -1069,7 +1069,7 @@
     const btn = document.createElement("button");
     btn.id = "mdfy-float-btn";
     btn.innerHTML = '<span class="mdfy-btn-logo"><span class="mdfy-logo-md">md</span><span class="mdfy-logo-fy">fy</span></span><span class="mdfy-btn-label">All</span>';
-    btn.title = "Capture entire conversation and publish on mdfy.cc";
+    btn.title = "Capture entire conversation and publish on mdfy.app";
 
     const toggle = document.createElement("button");
     toggle.id = "mdfy-float-toggle";
@@ -1233,7 +1233,7 @@
       const miniBtn = document.createElement("button");
       miniBtn.className = "mdfy-mini-btn";
       miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';
-      miniBtn.title = "Send this Q&A to mdfy.cc";
+      miniBtn.title = "Send this Q&A to mdfy.app";
 
       const resetMini = () => {
         miniBtn.innerHTML = '<span class="mdfy-mini-logo"><span class="mdfy-mini-md">md</span><span class="mdfy-mini-fy">fy</span></span><span class="mdfy-mini-label">this</span>';

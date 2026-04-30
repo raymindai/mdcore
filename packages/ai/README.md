@@ -1,6 +1,6 @@
 # @mdcore/ai
 
-AI provider abstraction for [mdfy.cc](https://mdfy.cc) -- supports Google Gemini, OpenAI, and Anthropic with built-in text-to-markdown conversion, ASCII diagram rendering, and AI conversation detection.
+AI provider abstraction for [mdfy.app](https://mdfy.app) -- supports Google Gemini, OpenAI, and Anthropic with built-in text-to-markdown conversion, ASCII diagram rendering, and AI conversation detection.
 
 **BYOK (Bring Your Own Key)** -- this package makes raw HTTP calls to each provider's API. No SDKs required. You supply the API key.
 
@@ -270,7 +270,7 @@ const config = {
 };
 ```
 
-Gemini is the default provider used by mdfy.cc. It offers the best cost/speed ratio for text-to-markdown tasks.
+Gemini is the default provider used by mdfy.app. It offers the best cost/speed ratio for text-to-markdown tasks.
 
 ### OpenAI
 

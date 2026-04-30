@@ -1,12 +1,12 @@
 # mdfy-mcp
 
-MCP server for [mdfy.cc](https://mdfy.cc) — let any AI tool create, read, update, and manage Markdown documents with permanent shareable URLs.
+MCP server for [mdfy.app](https://mdfy.app) — let any AI tool create, read, update, and manage Markdown documents with permanent shareable URLs.
 
 Works with **Claude Code**, **Claude Desktop**, **Cursor**, and any [Model Context Protocol](https://modelcontextprotocol.io/) compatible client.
 
 > **Two ways to connect:**
 >
-> - **Hosted HTTP MCP** (recommended for Claude Web, Cursor, etc.) — no install. Just add `https://mdfy.cc/api/mcp` in your client's MCP/Connectors settings. Exposes 25 tools.
+> - **Hosted HTTP MCP** (recommended for Claude Web, Cursor, etc.) — no install. Just add `https://mdfy.app/api/mcp` in your client's MCP/Connectors settings. Exposes 25 tools.
 > - **Local stdio MCP** (this npm package) — for Claude Desktop and Claude Code. Exposes 6 core tools. See setup below.
 
 ## Quick Start
@@ -64,7 +64,7 @@ No API keys or environment variables needed. Authentication is handled via `mdfy
 
 ```
 You: "Create a document with my meeting notes"
-AI:  mdfy_create → https://mdfy.cc/abc123 (URL copied!)
+AI:  mdfy_create → https://mdfy.app/abc123 (URL copied!)
 
 You: "List my documents"
 AI:  mdfy_list → 8 documents found
@@ -84,16 +84,16 @@ AI:  mdfy_delete → Moved to trash
 
 ### Cross-AI Workflow
 
-mdfy.cc URLs work as context across AI conversations:
+mdfy.app URLs work as context across AI conversations:
 
 ```
-You (in Claude): "Summarize the research at mdfy.cc/abc123"
+You (in Claude): "Summarize the research at mdfy.app/abc123"
 AI:  mdfy_read → reads the document → provides summary
 
-You (in ChatGPT): "Read mdfy.cc/abc123 and suggest improvements"
+You (in ChatGPT): "Read mdfy.app/abc123 and suggest improvements"
 ChatGPT: fetches the URL → gives feedback
 
-You (in Claude): "Update mdfy.cc/abc123 with the improvements"
+You (in Claude): "Update mdfy.app/abc123 with the improvements"
 AI:  mdfy_update → document updated, same URL
 ```
 
@@ -111,7 +111,7 @@ No email spoofing possible — all requests are authenticated via JWT.
 
 ## Features
 
-- **Permanent URLs** — every document gets a short URL (`mdfy.cc/...`) that never expires
+- **Permanent URLs** — every document gets a short URL (`mdfy.app/...`) that never expires
 - **Auto-managed edit tokens** — create a doc, get edit access automatically
 - **Public or private** — toggle visibility with `mdfy_publish`
 - **Markdown rendering** — documents render with syntax highlighting, KaTeX math, Mermaid diagrams
@@ -120,21 +120,21 @@ No email spoofing possible — all requests are authenticated via JWT.
 
 ## Other Channels
 
-mdfy.cc is available everywhere:
+mdfy.app is available everywhere:
 
 | Channel | Install |
 |---------|---------|
-| [Web Editor](https://mdfy.cc) | Just open the URL |
+| [Web Editor](https://mdfy.app) | Just open the URL |
 | [CLI](https://www.npmjs.com/package/mdfy-cli) | `npm install -g mdfy-cli` |
-| [VS Code Extension](https://mdfy.cc/plugins) | Download .vsix from Plugins page |
-| [Chrome Extension](https://mdfy.cc/plugins) | Download from Plugins page |
-| [Mac Desktop App](https://mdfy.cc/plugins) | Download .dmg from Plugins page |
+| [VS Code Extension](https://mdfy.app/plugins) | Download .vsix from Plugins page |
+| [Chrome Extension](https://mdfy.app/plugins) | Download from Plugins page |
+| [Mac Desktop App](https://mdfy.app/plugins) | Download .dmg from Plugins page |
 
 ## Links
 
-- Website: [mdfy.cc](https://mdfy.cc)
-- Plugins: [mdfy.cc/plugins](https://mdfy.cc/plugins)
-- API Docs: [mdfy.cc/docs](https://mdfy.cc/docs)
+- Website: [mdfy.app](https://mdfy.app)
+- Plugins: [mdfy.app/plugins](https://mdfy.app/plugins)
+- API Docs: [mdfy.app/docs](https://mdfy.app/docs)
 - GitHub: [github.com/raymindai/mdcore](https://github.com/raymindai/mdcore)
 
 ## License

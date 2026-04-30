@@ -353,17 +353,17 @@ body {
       </svg>
       Edit in mdfy
     </a>
-    <a class="mdfy-btn mdfy-btn-primary" href="https://mdfy.cc" target="_blank" rel="noopener">
+    <a class="mdfy-btn mdfy-btn-primary" href="https://mdfy.app" target="_blank" rel="noopener">
       Publish
     </a>
     <script>
     function openInMdfy() {
-      // Try mdfy:// URL scheme (desktop app), fallback to mdfy.cc
+      // Try mdfy:// URL scheme (desktop app), fallback to mdfy.app
       var filePath = document.querySelector('.mdfy-filename')?.textContent || '';
       var mdfyUrl = 'mdfy://open?file=' + encodeURIComponent(filePath);
       var fallback = setTimeout(function() {
         // Desktop app not installed — open download page
-        window.open('https://mdfy.cc/plugins', '_blank');
+        window.open('https://mdfy.app/plugins', '_blank');
       }, 500);
       window.location.href = mdfyUrl;
       // If URL scheme worked, cancel fallback

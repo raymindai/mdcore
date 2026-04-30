@@ -1,6 +1,6 @@
 # @mdcore/styles
 
-The rendering stylesheet for [mdfy.cc](https://mdfy.cc) -- dark/light themes, rendered document CSS, code highlighting overrides, Mermaid/ASCII diagram containers, print styles, and toolbar/scrollbar styling.
+The rendering stylesheet for [mdfy.app](https://mdfy.app) -- dark/light themes, rendered document CSS, code highlighting overrides, Mermaid/ASCII diagram containers, print styles, and toolbar/scrollbar styling.
 
 Zero JavaScript. Pure CSS. Just import and go.
 

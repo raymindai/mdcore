@@ -12,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
         // /api/docs/ is allowed so AI tools can fetch document content
       },
     ],
-    sitemap: "https://mdfy.cc/sitemap.xml",
-    host: "https://mdfy.cc",
+    sitemap: "https://mdfy.app/sitemap.xml",
+    host: "https://mdfy.app",
   };
 }

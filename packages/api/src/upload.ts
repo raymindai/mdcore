@@ -6,7 +6,7 @@ import { MdfyClient } from "./client.js";
 import type { MdfyClientConfig, UploadResult } from "./types.js";
 
 /**
- * Upload an image file to mdfy.cc storage.
+ * Upload an image file to mdfy.app storage.
  *
  * Requires userId or anonymousId in config.
  * Supported formats: JPEG, PNG, GIF, WebP, SVG.

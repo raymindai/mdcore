@@ -71,7 +71,7 @@ function base64UrlToArrayBuffer(base64url: string): ArrayBuffer {
  */
 export async function createShareUrl(markdown: string): Promise<string> {
   const compressed = await compress(markdown);
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://mdfy.cc";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://mdfy.app";
   return `${baseUrl}/#md=${compressed}`;
 }
 
@@ -124,7 +124,7 @@ export async function createShortUrl(
 
   const { id, editToken } = await res.json();
   const baseUrl =
-    typeof window !== "undefined" ? window.location.origin : "https://mdfy.cc";
+    typeof window !== "undefined" ? window.location.origin : "https://mdfy.app";
 
   return { url: `${baseUrl}/${id}`, editToken };
 }

@@ -55,7 +55,7 @@ import {
 
 // ─── Sample documents for default tabs ───
 
-const SAMPLE_WELCOME = `# Welcome to mdfy.cc
+const SAMPLE_WELCOME = `# Welcome to mdfy.app
 
 > **The Markdown Hub.** Collect from anywhere. Edit with AI. Publish with a permanent URL.
 
@@ -64,7 +64,7 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 1. **Type or paste** anything — Markdown, plain text, AI output, code
 2. **Import** files — PDF, Word, PowerPoint, Excel, HTML, CSV, LaTeX, and more
 3. **Edit** inline in the Live view, or use Source for raw Markdown
-4. **Share** with one click — generates a permanent URL like \`mdfy.cc/abc123\`
+4. **Share** with one click — generates a permanent URL like \`mdfy.app/abc123\`
 
 ## What You Can Do
 
@@ -94,7 +94,7 @@ const SAMPLE_WELCOME = `# Welcome to mdfy.cc
 
 | Channel | How |
 |---------|-----|
-| Web | You are here — [mdfy.cc](https://mdfy.cc) |
+| Web | You are here — [mdfy.app](https://mdfy.app) |
 | VS Code | [Extension](https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode) — Cmd+Shift+M to preview |
 | Mac App | Native desktop with sidebar and sync |
 | CLI | \`npm install -g mdfy-cli\` — pipe anything to a URL |
@@ -171,7 +171,7 @@ console.log(\`Detected: \${flavor.primary}\`);
 \`\`\`python
 import requests
 
-response = requests.post("https://mdfy.cc/api/docs", json={
+response = requests.post("https://mdfy.app/api/docs", json={
     "markdown": "# Hello World",
 })
 print(response.json()["id"])  # → "abc123"
@@ -306,7 +306,7 @@ erDiagram
 mindmap
   root((mdcore))
     Product
-      mdfy.cc
+      mdfy.app
       Chrome Extension
     Engine
       Rust
@@ -323,7 +323,7 @@ mindmap
 timeline
     title mdcore Milestones
     2026 Q1 : Engine v0.1
-             : mdfy.cc launch
+             : mdfy.app launch
     2026 Q2 : npm package
              : CLI tool
     2026 Q3 : API platform
@@ -395,7 +395,7 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 
 \`\`\`
 ┌──────────────────────────────────────────┐
-│              mdfy.cc                      │
+│              mdfy.app                      │
 │                                          │
 │  ┌─ Input ─────────────────────────────┐ │
 │  │ Chrome Extension: AI → capture      │ │
@@ -412,8 +412,8 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 │                    │                      │
 │                    ▼                      │
 │  ┌─ Output ────────────────────────────┐ │
-│  │ mdfy.cc/{id} — shareable URL        │ │
-│  │ + "Published with mdfy.cc" badge    │ │
+│  │ mdfy.app/{id} — shareable URL        │ │
+│  │ + "Published with mdfy.app" badge    │ │
 │  └─────────────────────────────────────┘ │
 └──────────────────────────────────────────┘
 \`\`\`
@@ -429,7 +429,7 @@ const SAMPLE_ASCII = `# ASCII Art Examples
 │  Clarity  ██████░░░░ 63%     │
 │                              │
 │  — Analyzed by mdcore        │
-│  mdfy.cc                     │
+│  mdfy.app                     │
 └─────────────────────────────┘
 \`\`\`
 
@@ -475,7 +475,7 @@ const SAMPLE_IMPORT_EXPORT = `# Import & Export Guide
 
 ## Import — 13+ Formats
 
-Drop any file onto mdfy.cc, use the **IMPORT** button in the sidebar, or paste content directly.
+Drop any file onto mdfy.app, use the **IMPORT** button in the sidebar, or paste content directly.
 
 | Format | How it works |
 |--------|-------------|
@@ -530,7 +530,7 @@ Click the **Export** icon in the Live view header (Cmd+Alt+E).
 - **Plain Text** — no formatting
 
 ### Share
-- **Permanent URL** — \`mdfy.cc/abc123\` — one click to copy
+- **Permanent URL** — \`mdfy.app/abc123\` — one click to copy
 - **Embed** — iframe code for websites
 - **QR Code** — for mobile sharing
 `;
@@ -545,7 +545,7 @@ Click anywhere in the **Live** view to start editing. Format with the toolbar or
 
 ## Flavor Detection & Conversion
 
-mdfy.cc auto-detects your Markdown flavor:
+mdfy.app auto-detects your Markdown flavor:
 
 - **GFM** — GitHub Flavored Markdown (tables, task lists, strikethrough)
 - **CommonMark** — Standard, maximum compatibility
@@ -618,12 +618,12 @@ Your documents sync across all 7 mdfy channels:
 
 | Channel | Install | What it does |
 |---------|---------|-------------|
-| Web | [mdfy.cc](https://mdfy.cc) | Full editor with AI tools |
+| Web | [mdfy.app](https://mdfy.app) | Full editor with AI tools |
 | VS Code | \`ext install raymindai.mdfy-vscode\` | WYSIWYG preview + sync |
-| Mac App | [Download DMG](https://mdfy.cc/plugins) | Native sidebar + offline |
+| Mac App | [Download DMG](https://mdfy.app/plugins) | Native sidebar + offline |
 | CLI | \`npm install -g mdfy-cli\` | Pipe anything to a URL |
 | Chrome | [Chrome Web Store](https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold) | Capture AI conversations |
-| MCP | \`npx mdfy-mcp\` or hosted at mdfy.cc/api/mcp | AI tools integration |
+| MCP | \`npx mdfy-mcp\` or hosted at mdfy.app/api/mcp | AI tools integration |
 | QuickLook | Bundled with Mac app | Space to preview in Finder |
 
 Same URL, same content, everywhere.
@@ -944,7 +944,7 @@ Or search "mdfy" in VS Code Extensions.
 | Shortcut | Command |
 |----------|---------|
 | \`Cmd+Shift+M\` | Open WYSIWYG preview |
-| \`Cmd+Alt+P\` | Publish to mdfy.cc |
+| \`Cmd+Alt+P\` | Publish to mdfy.app |
 | \`Cmd+Alt+E\` | Export document |
 
 ## Settings
@@ -963,7 +963,7 @@ const SAMPLE_DESKTOP = `# mdfy for Mac
 
 ## Install
 
-1. Download the DMG from [mdfy.cc/plugins](https://mdfy.cc/plugins)
+1. Download the DMG from [mdfy.app/plugins](https://mdfy.app/plugins)
 2. Drag **mdfy.app** to Applications
 3. Launch mdfy
 
@@ -972,9 +972,9 @@ const SAMPLE_DESKTOP = `# mdfy for Mac
 | Tab | Contents |
 |-----|----------|
 | ALL | Everything — local + synced + cloud |
-| SYNCED | Local files linked to mdfy.cc |
+| SYNCED | Local files linked to mdfy.app |
 | LOCAL | Unpublished local files |
-| CLOUD | Documents on mdfy.cc with folders |
+| CLOUD | Documents on mdfy.app with folders |
 
 ## Editing Modes
 
@@ -988,7 +988,7 @@ Click the orange **Publish** button → URL copied to clipboard.
 
 ## Features
 
-- Full WASM rendering engine (same as mdfy.cc)
+- Full WASM rendering engine (same as mdfy.app)
 - KaTeX math, Mermaid diagrams, 190+ language highlighting
 - Document outline panel
 - Import: PDF, DOCX, PPTX, XLSX, HTML, CSV
@@ -1013,7 +1013,7 @@ npm install -g mdfy-cli
 \`\`\`bash
 # Publish a file
 mdfy publish README.md
-# → https://mdfy.cc/abc123  (copied to clipboard)
+# → https://mdfy.app/abc123  (copied to clipboard)
 
 # Publish from pipe
 echo "# Hello World" | mdfy publish
@@ -1068,7 +1068,7 @@ bind-key M run-shell "tmux capture-pane -p -S -1000 | mdfy publish"
 
 const SAMPLE_MCP = `# MCP Server
 
-> Let AI tools create, read, and manage documents on mdfy.cc.
+> Let AI tools create, read, and manage documents on mdfy.app.
 
 ## What is MCP?
 
@@ -1081,7 +1081,7 @@ MCP (Model Context Protocol) lets AI tools call external APIs. The mdfy MCP serv
 For **Claude Web**, **Cursor**, **Windsurf**:
 
 1. Go to Settings → Integrations / MCP
-2. Add server URL: \`https://mdfy.cc/api/mcp\`
+2. Add server URL: \`https://mdfy.app/api/mcp\`
 3. Done — 25 tools available
 
 ### Option B: Local stdio MCP
@@ -1109,7 +1109,7 @@ Add to \`.mcp.json\`:
 
 \`\`\`
 You: "Publish my meeting notes to mdfy"
-Claude: → mdfy_create → https://mdfy.cc/abc123
+Claude: → mdfy_create → https://mdfy.app/abc123
 
 You: "Show me my documents"
 Claude: → mdfy_list → 8 documents found
@@ -1142,7 +1142,7 @@ const SAMPLE_QUICKLOOK = `# QuickLook Preview
 ## Install
 
 1. Install mdfy for Mac — QuickLook is bundled automatically
-2. Or download MdfyQuickLook separately from [mdfy.cc/plugins](https://mdfy.cc/plugins)
+2. Or download MdfyQuickLook separately from [mdfy.app/plugins](https://mdfy.app/plugins)
 3. Enable in **System Settings → Extensions → Quick Look**
 
 ## Usage
@@ -1159,7 +1159,7 @@ const SAMPLE_QUICKLOOK = `# QuickLook Preview
 - Tables with alignment
 - KaTeX math equations
 - Dark / light theme (follows system preference)
-- "Open on mdfy.cc" button
+- "Open on mdfy.app" button
 
 ## Supported Files
 
@@ -1174,11 +1174,11 @@ const SAMPLE_QUICKLOOK = `# QuickLook Preview
 
 - Works in Finder, Desktop, and Open/Save dialogs
 - Preview updates when you press Space again after editing
-- Click "Open on mdfy.cc" to publish directly from the preview
+- Click "Open on mdfy.app" to publish directly from the preview
 - No background processes — lightweight QuickLook extension
 `;
 
-const EXAMPLE_OWNER = "master@mdfy.cc";
+const EXAMPLE_OWNER = "master@mdfy.app";
 const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
 const INITIAL_FOLDERS: Folder[] = [];
@@ -2205,7 +2205,7 @@ export default function MdEditor() {
       const saved = localStorage.getItem("mdfy-tabs");
       if (saved) {
         const parsed = JSON.parse(saved);
-        const hasOwnDocs = Array.isArray(parsed) && parsed.some((t: { ownerEmail?: string; deleted?: boolean }) => !t.deleted && t.ownerEmail !== "master@mdfy.cc");
+        const hasOwnDocs = Array.isArray(parsed) && parsed.some((t: { ownerEmail?: string; deleted?: boolean }) => !t.deleted && t.ownerEmail !== "master@mdfy.app");
         if (!hasOwnDocs) return true;
       }
     } catch {}
@@ -6397,7 +6397,7 @@ ${clone.innerHTML}
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
-            title="mdfy.cc — About"
+            title="mdfy.app — About"
           >
             <MdfyLogo size={18} />
           </h1>
@@ -6406,7 +6406,7 @@ ${clone.innerHTML}
             const ct = tabs.find(t => t.id === activeTabId);
             const cid = ct?.cloudId || docId;
             if (!cid) return null;
-            const shortUrl = `mdfy.cc/${cid}`;
+            const shortUrl = `mdfy.app/${cid}`;
             return (<>
               <button
                 className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden lg:inline-block"
@@ -6807,7 +6807,7 @@ ${clone.innerHTML}
                         </button>
                         <button
                           onClick={() => {
-                            const code = `<iframe src="https://mdfy.cc/embed/${docId}" width="100%" height="500" frameborder="0" style="border:1px solid #27272a;border-radius:8px;"></iframe>`;
+                            const code = `<iframe src="https://mdfy.app/embed/${docId}" width="100%" height="500" frameborder="0" style="border:1px solid #27272a;border-radius:8px;"></iframe>`;
                             copyToClipboard(code);
                             setShowMenu(false);
                           }}
@@ -6928,7 +6928,7 @@ ${clone.innerHTML}
                   className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
                   style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                   title="Click to copy document URL"
-                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.cc/${cid}`); showToast("URL copied", "success"); } catch {} }}
+                  onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.app/${cid}`); showToast("URL copied", "success"); } catch {} }}
                 >
                   /{cid}
                 </button>
@@ -8612,7 +8612,7 @@ ${clone.innerHTML}
                       { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c", icon: <Zap width={14} height={14} /> },
                       { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa", icon: <FileText width={14} height={14} /> },
                       { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80", icon: <Download width={14} height={14} /> },
-                      { label: "About", desc: "How mdfy.cc works", url: "/about", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
+                      { label: "About", desc: "How mdfy.app works", url: "/about", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
@@ -9637,7 +9637,7 @@ ${clone.innerHTML}
           <button onClick={() => { setShowCommandPalette(true); setCmdSearch(""); }} className="transition-colors hidden sm:inline-flex items-center gap-1" style={{ color: "var(--text-faint)", background: "none", border: "1px solid var(--border-dim)", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer" }} title="Command palette">
             <span style={{ fontSize: 10 }}>{navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl+"}K</span>
           </button>
-          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.cc">About</a>
+          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.app">About</a>
           <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
           <a href="/discover" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
           <a href="/docs" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="API documentation">API</a>
@@ -10017,7 +10017,7 @@ ${clone.innerHTML}
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>All formats supported</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.cc badge</span></li>
+                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.app badge</span></li>
                   </ul>
                 </div>
                 {/* Pro tier — kicks in after beta */}
@@ -10539,10 +10539,10 @@ ${clone.innerHTML}
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>
-              mdfy.cc/{docId}
+              mdfy.app/{docId}
             </p>
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.cc/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://mdfy.app/${docId}`)}&bgcolor=18181b&color=fafafa&format=svg`}
               alt="QR Code"
               width={200}
               height={200}

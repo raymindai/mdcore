@@ -1,6 +1,6 @@
 # mdfy QuickLook
 
-A macOS QuickLook preview generator for Markdown files, styled to match [mdfy.cc](https://mdfy.cc).
+A macOS QuickLook preview generator for Markdown files, styled to match [mdfy.app](https://mdfy.app).
 
 Press **Space** in Finder to preview any `.md` file with full rendering: syntax highlighting, KaTeX math, Mermaid diagrams, GFM tables, and task lists.
 
@@ -13,7 +13,7 @@ Press **Space** in Finder to preview any `.md` file with full rendering: syntax 
 - Automatic dark/light mode (follows macOS system appearance)
 - "Open in mdfy" button for one-click publishing
 - Copy buttons on code blocks
-- Identical styling to mdfy.cc
+- Identical styling to mdfy.app
 
 ## Quick Start (CLI Tool)
 
@@ -104,7 +104,7 @@ User presses Space on .md file
   -> Beautiful preview displayed in Finder
 ```
 
-The rendering pipeline matches mdfy.cc exactly because it uses the same client-side libraries and CSS variables.
+The rendering pipeline matches mdfy.app exactly because it uses the same client-side libraries and CSS variables.
 
 ## File Structure
 
@@ -117,7 +117,7 @@ apps/quicklook/
 │   │       ├── PreviewProvider.swift   # CLI tool + extension provider
 │   │       └── template.html          # HTML template with JS renderers
 │   └── Resources/
-│       └── preview.css            # mdfy.cc rendering styles
+│       └── preview.css            # mdfy.app rendering styles
 ├── install.sh                     # Build & install script
 └── README.md                      # This file
 ```
@@ -128,7 +128,7 @@ apps/quicklook/
 
 The rendering styles live in `Resources/preview.css` and are injected into the HTML template at build time. These are a direct port of the `.mdcore-rendered` styles from `apps/web/src/app/globals.css`.
 
-To update after changing mdfy.cc styles:
+To update after changing mdfy.app styles:
 
 1. Edit `Resources/preview.css` to match the updated `globals.css`
 2. Rebuild with `./install.sh`

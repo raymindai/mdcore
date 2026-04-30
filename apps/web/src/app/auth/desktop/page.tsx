@@ -76,7 +76,7 @@ export default function DesktopAuthPage() {
           </svg>
           <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>Connected to mdfy for Mac</p>
           <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 400 }}>
-            Your mdfy.cc account is now linked. You can close this tab and return to the app.
+            Your mdfy.app account is now linked. You can close this tab and return to the app.
           </p>
         </>
       )}
@@ -85,7 +85,7 @@ export default function DesktopAuthPage() {
         <>
           <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>Sign in to connect mdfy for Mac</p>
           <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 400 }}>
-            Use the same account you use on mdfy.cc
+            Use the same account you use on mdfy.app
           </p>
           <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
             <button
@@ -115,7 +115,7 @@ export default function DesktopAuthPage() {
           <p style={{ fontSize: 16, fontWeight: 600, color: "var(--error, #ef4444)" }}>Connection Failed</p>
           <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Please try again.</p>
           <Link href="/" style={{ padding: "10px 24px", borderRadius: 8, background: "var(--accent-dim)", color: "var(--accent)", textDecoration: "none", fontSize: 14, fontWeight: 600 }}>
-            Go to mdfy.cc
+            Go to mdfy.app
           </Link>
         </>
       )}

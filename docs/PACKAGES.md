@@ -11,7 +11,7 @@ mdcore is organized as a monorepo with five packages under `packages/`:
 | `packages/engine` | `@mdcore/engine` (Rust crate) | Rust Markdown parser (comrak) compiled to WASM | Rust |
 | `packages/mdcore` | `@mdcore/engine` (npm) | TypeScript wrapper around WASM -- render, postprocess, file import | TypeScript |
 | `packages/styles` | `@mdcore/styles` | CSS-only package -- themes, rendered doc styles, print | CSS |
-| `packages/api` | `@mdcore/api` | HTTP client for the mdfy.cc document API | TypeScript |
+| `packages/api` | `@mdcore/api` | HTTP client for the mdfy.app document API | TypeScript |
 | `packages/ai` | `@mdcore/ai` | AI provider abstraction (Gemini, OpenAI, Anthropic) | TypeScript |
 
 ## Architecture
@@ -41,7 +41,7 @@ mdcore is organized as a monorepo with five packages under `packages/`:
             +-----------+-----------+
             |           |           |
          apps/web    apps/vscode   3rd party
-         (mdfy.cc)   extension     integrations
+         (mdfy.app)   extension     integrations
 
 ```
 
@@ -114,7 +114,7 @@ CSS-only package. No JavaScript, no build step.
 
 ### @mdcore/api -- `packages/api`
 
-HTTP client for the mdfy.cc REST API. Zero dependencies (uses native `fetch`).
+HTTP client for the mdfy.app REST API. Zero dependencies (uses native `fetch`).
 
 **Responsibilities:**
 - `MdfyClient` class with full CRUD operations
@@ -150,7 +150,7 @@ const md = await mdfyText(rawText, { provider: "gemini", apiKey: "..." });
 
 ## How Apps Use Packages
 
-### apps/web (mdfy.cc)
+### apps/web (mdfy.app)
 
 The main web app uses all packages:
 
@@ -170,7 +170,7 @@ The VS Code extension uses a subset of packages:
 |---------|-------|
 | `@mdcore/engine` (npm) | Renders Markdown in the preview webview |
 | `@mdcore/styles` | Styles the webview preview panel |
-| `@mdcore/api` | Publishes documents to mdfy.cc from the editor |
+| `@mdcore/api` | Publishes documents to mdfy.app from the editor |
 
 ### Third-Party Integrations
 
@@ -209,7 +209,7 @@ No package depends on another package. They are fully independent and can be ins
 
 ## Migration Guide
 
-If you previously used mdfy.cc code directly (copying from `apps/web/src/lib/`), here is how to migrate to packages:
+If you previously used mdfy.app code directly (copying from `apps/web/src/lib/`), here is how to migrate to packages:
 
 ### Rendering
 

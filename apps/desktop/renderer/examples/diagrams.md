@@ -99,7 +99,7 @@ erDiagram
 mindmap
   root((mdcore))
     Product
-      mdfy.cc
+      mdfy.app
       Chrome Extension
     Engine
       Rust
@@ -116,7 +116,7 @@ mindmap
 timeline
     title mdcore Milestones
     2026 Q1 : Engine v0.1
-             : mdfy.cc launch
+             : mdfy.app launch
     2026 Q2 : npm package
              : CLI tool
     2026 Q3 : API platform

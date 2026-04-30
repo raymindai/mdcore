@@ -2,7 +2,7 @@
 
 > ⚠️ **전략 업데이트 (2026-03-23)**: 엔진 철학은 유효하나, 제품 포지셔닝이 업데이트되었다.
 > "Engine over Editor" → "Markdown은 엔진이지 인터페이스가 아니다" (사용자는 MD를 몰라도 된다).
-> mdfy.cc는 쇼케이스가 아니라 핵심 사업이다. 바이럴 뱃지 + 크로스 AI 레이어가 해자.
+> mdfy.app는 쇼케이스가 아니라 핵심 사업이다. 바이럴 뱃지 + 크로스 AI 레이어가 해자.
 > 상세: `updatedDirection.md` v5.0 참조.
 
 ## Markdown has converged as the interface layer between AI and humans.
@@ -83,7 +83,7 @@ We are V8, not Chrome. WebKit, not Safari. SQLite, not a database GUI.
 
 Editors are products. Products compete on UX and features. They rise and fall with design trends. The engine underneath persists across generations of products. We build the layer that every editor, viewer, and tool can depend on.
 
-We ship a product — mdfy.cc — because people need a front door. But the product is an expression of the engine, not the other way around.
+We ship a product — mdfy.app — because people need a front door. But the product is an expression of the engine, not the other way around.
 
 ### Every flavor in, correct output out
 
@@ -115,11 +115,11 @@ This is the model of Elastic, Redis, Vercel, and every successful open-core infr
 
 **Developers** embed `@mdcore/engine` (free, open source) and optionally pay for the hosted API when they need rendering at scale without managing infrastructure.
 
-**Teams** use mdfy.cc Pro for collaborative Markdown workspaces with shared templates, branded exports, and analytics.
+**Teams** use mdfy.app Pro for collaborative Markdown workspaces with shared templates, branded exports, and analytics.
 
 **Enterprises** pay for mdcore Cloud — API access with SLAs, custom themes, private rendering, and compliance features.
 
-**Everyone else** uses mdfy.cc for free — paste Markdown, see it rendered, share a link. No account required. The free tier is the acquisition funnel. It proves the engine works. It generates word of mouth.
+**Everyone else** uses mdfy.app for free — paste Markdown, see it rendered, share a link. No account required. The free tier is the acquisition funnel. It proves the engine works. It generates word of mouth.
 
 The pricing follows the infrastructure model: the engine is free because it needs to be everywhere. The services on top of the engine are where value capture happens.
 
@@ -143,7 +143,7 @@ And the team that builds the infrastructure for that layer will be building on t
 
 ## What we are not
 
-~~We are not an editor company. We are not competing with Obsidian, Notion, or Typora.~~ *(Updated: mdfy.cc is now positioned as the core product — a web-native document publishing tool. mditor provides WYSIWYG + Source modes so users don't need to know Markdown. See updatedDirection.md v5.0.)*
+~~We are not an editor company. We are not competing with Obsidian, Notion, or Typora.~~ *(Updated: mdfy.app is now positioned as the core product — a web-native document publishing tool. mditor provides WYSIWYG + Source modes so users don't need to know Markdown. See updatedDirection.md v5.0.)*
 
 We are not a conversion tool. We are not competing with Pandoc on format transformation.
 
@@ -156,6 +156,6 @@ We are the engine layer beneath the product — and the product is the publishin
 *mdcore — The Markdown Engine for the AI Era*
 
 *Engine: [github.com/mdcore](https://github.com/mdcore)*
-*Product: [mdfy.cc](https://mdfy.cc)*
+*Product: [mdfy.app](https://mdfy.app)*
 *API: [mdcore.ai](https://mdcore.ai)*
 *Standard: [mdcore.md](https://mdcore.md)*

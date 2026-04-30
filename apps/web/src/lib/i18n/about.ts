@@ -27,13 +27,13 @@ const texts = {
     ],
 
     carousel: [
-      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG editor", title: "WYSIWYG Editor", desc: "Click and type directly in the rendered preview", href: "/", linkText: "Open editor" },
+      { src: "/images/hero-editor.webp", alt: "mdfy.app WYSIWYG editor", title: "WYSIWYG Editor", desc: "Click and type directly in the rendered preview", href: "/", linkText: "Open editor" },
       { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome extension capturing from Claude", title: "Chrome Extension", desc: "One-click capture from ChatGPT, Claude, Gemini", href: "/plugins#chrome", linkText: "Get extension" },
       { src: "/images/hero-mcp.webp", alt: "mdfy MCP server in Claude Code", title: "MCP Server", desc: "AI agents create, read, and manage documents via MCP", href: "/plugins#mcp", linkText: "Setup guide" },
       { src: "/images/plugin-vscode.webp", alt: "mdfy VS Code extension with WYSIWYG preview and sidebar", title: "VS Code Extension", desc: "WYSIWYG preview, cloud sync, AI tools — right in your editor", href: "/plugins#vscode", linkText: "Install extension" },
       { src: "/images/plugin-desktop.webp", alt: "mdfy for Mac with sidebar and document outline", title: "mdfy for Mac", desc: "Native desktop app with sidebar, folders, and offline support", href: "/plugins#desktop", linkText: "Download app" },
-      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc rendered document", title: "Beautiful Rendering", desc: "Tables, lists, headings — rendered with precision", href: "/", linkText: "Try it now" },
-      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc math and diagrams", title: "Math, Diagrams, Code", desc: "KaTeX equations, Mermaid charts, 190+ language highlighting", href: "/docs", linkText: "See docs" },
+      { src: "/images/feature-showcase-1.webp", alt: "mdfy.app rendered document", title: "Beautiful Rendering", desc: "Tables, lists, headings — rendered with precision", href: "/", linkText: "Try it now" },
+      { src: "/images/feature-showcase-2.webp", alt: "mdfy.app math and diagrams", title: "Math, Diagrams, Code", desc: "KaTeX equations, Mermaid charts, 190+ language highlighting", href: "/docs", linkText: "See docs" },
     ],
 
     pillars: [
@@ -69,7 +69,7 @@ const texts = {
         title: "Get a permanent URL.",
         desc: "One click to publish. Anyone can view it — no app, no login needed.",
         items: [
-          "Short URL: mdfy.cc/abc123",
+          "Short URL: mdfy.app/abc123",
           "Works forever — no expiration",
           "Public, unlisted, or private",
           "Embed in websites or Slack",
@@ -196,7 +196,7 @@ const texts = {
     comparison_md: {
       heading: "mdfy vs Markdown publishing tools",
       sub: "Publish Markdown to the web. How does mdfy stack up?",
-      columns: ["", "mdfy.cc", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
+      columns: ["", "mdfy.app", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
       rows: [
         { feature: "No signup to publish", vals: ["yes", "no", "no", "no", "no"] },
         { feature: "Instant shareable URL", vals: ["yes", "yes", "no", "yes", "yes"] },
@@ -216,7 +216,7 @@ const texts = {
     comparison_ai: {
       heading: "mdfy vs AI Memory Solutions",
       sub: "Other tools extract memory from your conversations automatically. mdfy takes a different approach: you decide what to remember.",
-      columns: ["", "mdfy.cc", "Mem0", "Letta", "Notion AI"] as string[],
+      columns: ["", "mdfy.app", "Mem0", "Letta", "Notion AI"] as string[],
       rows: [
         { feature: "Author your own memory", vals: ["yes", "no", "no", "partial"] },
         { feature: "Markdown native", vals: ["yes", "no", "no", "partial"] },
@@ -264,7 +264,7 @@ const texts = {
           { text: "Short URL sharing", accent: true, dim: false },
           { text: "AI mdfy structuring", accent: true, dim: false },
           { text: "All formats supported", accent: true, dim: false },
-          { text: "- mdfy.cc badge on shared docs", accent: false, dim: false, faint: true },
+          { text: "- mdfy.app badge on shared docs", accent: false, dim: false, faint: true },
         ],
       },
       {
@@ -339,13 +339,13 @@ const texts = {
     ],
 
     carousel: [
-      { src: "/images/hero-editor.webp", alt: "mdfy.cc WYSIWYG 에디터", title: "WYSIWYG 에디터", desc: "렌더링된 미리보기에서 직접 클릭하고 타이핑", href: "/", linkText: "에디터 열기" },
+      { src: "/images/hero-editor.webp", alt: "mdfy.app WYSIWYG 에디터", title: "WYSIWYG 에디터", desc: "렌더링된 미리보기에서 직접 클릭하고 타이핑", href: "/", linkText: "에디터 열기" },
       { src: "/images/hero-chromeext.webp", alt: "mdfy Chrome 확장 — Claude에서 캡처", title: "Chrome 확장", desc: "ChatGPT, Claude, Gemini에서 원클릭 캡처", href: "/plugins#chrome", linkText: "확장 설치" },
       { src: "/images/hero-mcp.webp", alt: "mdfy MCP 서버 — Claude Code에서 사용", title: "MCP 서버", desc: "AI 에이전트가 MCP로 문서를 생성, 읽기, 관리", href: "/plugins#mcp", linkText: "설정 가이드" },
       { src: "/images/plugin-vscode.webp", alt: "mdfy VS Code 확장 — WYSIWYG 미리보기와 사이드바", title: "VS Code 확장", desc: "WYSIWYG 미리보기, 클라우드 싱크, AI 도구 — 에디터에서 바로", href: "/plugins#vscode", linkText: "확장 설치" },
       { src: "/images/plugin-desktop.webp", alt: "mdfy for Mac — 사이드바와 문서 아웃라인", title: "mdfy for Mac", desc: "사이드바, 폴더, 오프라인 지원이 있는 네이티브 데스크톱 앱", href: "/plugins#desktop", linkText: "앱 다운로드" },
-      { src: "/images/feature-showcase-1.webp", alt: "mdfy.cc 렌더링된 문서", title: "아름다운 렌더링", desc: "테이블, 리스트, 헤딩 — 정밀하게 렌더링", href: "/", linkText: "지금 사용하기" },
-      { src: "/images/feature-showcase-2.webp", alt: "mdfy.cc 수학과 다이어그램", title: "수학, 다이어그램, 코드", desc: "KaTeX 방정식, Mermaid 차트, 190+ 언어 하이라이팅", href: "/docs", linkText: "문서 보기" },
+      { src: "/images/feature-showcase-1.webp", alt: "mdfy.app 렌더링된 문서", title: "아름다운 렌더링", desc: "테이블, 리스트, 헤딩 — 정밀하게 렌더링", href: "/", linkText: "지금 사용하기" },
+      { src: "/images/feature-showcase-2.webp", alt: "mdfy.app 수학과 다이어그램", title: "수학, 다이어그램, 코드", desc: "KaTeX 방정식, Mermaid 차트, 190+ 언어 하이라이팅", href: "/docs", linkText: "문서 보기" },
     ],
 
     pillars: [
@@ -381,7 +381,7 @@ const texts = {
         title: "영구 URL 받기.",
         desc: "한 번의 클릭으로 퍼블리시. 누구나 볼 수 있습니다 — 앱도, 로그인도 필요 없습니다.",
         items: [
-          "짧은 URL: mdfy.cc/abc123",
+          "짧은 URL: mdfy.app/abc123",
           "영구 보존 — 만료 없음",
           "공개, 비공개, 또는 링크 공유",
           "웹사이트나 Slack에 임베드",
@@ -508,7 +508,7 @@ const texts = {
     comparison_md: {
       heading: "mdfy vs Markdown publishing tools",
       sub: "마크다운을 웹에 퍼블리시. mdfy는 어떻게 다를까?",
-      columns: ["", "mdfy.cc", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
+      columns: ["", "mdfy.app", "HackMD", "StackEdit", "Obsidian Publish", "GitHub Gist"] as string[],
       rows: [
         { feature: "No signup to publish", vals: ["yes", "no", "no", "no", "no"] },
         { feature: "Instant shareable URL", vals: ["yes", "yes", "no", "yes", "yes"] },
@@ -528,7 +528,7 @@ const texts = {
     comparison_ai: {
       heading: "mdfy vs AI Memory Solutions",
       sub: "다른 도구는 대화에서 memory를 자동 추출합니다. mdfy는 다른 접근입니다: 당신이 무엇을 기억할지 결정합니다.",
-      columns: ["", "mdfy.cc", "Mem0", "Letta", "Notion AI"] as string[],
+      columns: ["", "mdfy.app", "Mem0", "Letta", "Notion AI"] as string[],
       rows: [
         { feature: "Author your own memory", vals: ["yes", "no", "no", "partial"] },
         { feature: "Markdown native", vals: ["yes", "no", "no", "partial"] },
@@ -576,7 +576,7 @@ const texts = {
           { text: "짧은 URL 공유", accent: true, dim: false },
           { text: "AI mdfy 구조화", accent: true, dim: false },
           { text: "모든 포맷 지원", accent: true, dim: false },
-          { text: "- 공유 문서에 mdfy.cc 뱃지", accent: false, dim: false, faint: true },
+          { text: "- 공유 문서에 mdfy.app 뱃지", accent: false, dim: false, faint: true },
         ],
       },
       {

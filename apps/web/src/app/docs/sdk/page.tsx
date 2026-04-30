@@ -12,17 +12,17 @@ import {
 } from "@/components/docs";
 
 export const metadata: Metadata = {
-  title: "JavaScript SDK — mdfy.cc",
+  title: "JavaScript SDK — mdfy.app",
   description:
-    "JavaScript and TypeScript SDK for mdfy.cc. MdfyClient class, standalone functions, and npm packages for programmatic Markdown document management.",
+    "JavaScript and TypeScript SDK for mdfy.app. MdfyClient class, standalone functions, and npm packages for programmatic Markdown document management.",
   alternates: {
-    canonical: "https://mdfy.cc/docs/sdk",
-    languages: { ko: "https://mdfy.cc/ko/docs/sdk" },
+    canonical: "https://mdfy.app/docs/sdk",
+    languages: { ko: "https://mdfy.app/ko/docs/sdk" },
   },
   openGraph: {
-    title: "JavaScript SDK — mdfy.cc",
+    title: "JavaScript SDK — mdfy.app",
     description: "TypeScript-first SDK. Publish, read, update documents programmatically.",
-    url: "https://mdfy.cc/docs/sdk",
+    url: "https://mdfy.app/docs/sdk",
     images: [{ url: "/api/og?title=JavaScript%20SDK", width: 1200, height: 630 }],
   },
 };
@@ -80,7 +80,7 @@ export default function SdkDocsPage() {
             JavaScript SDK
           </h1>
           <p style={{ fontSize: 16, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 32, maxWidth: 640 }}>
-            TypeScript-first client for mdfy.cc. Works in Node.js, Deno, Bun, and browsers. Zero dependencies.
+            TypeScript-first client for mdfy.app. Works in Node.js, Deno, Bun, and browsers. Zero dependencies.
           </p>
 
           {/* Installation */}
@@ -98,7 +98,7 @@ export default function SdkDocsPage() {
             <CodeBlock lang="typescript">{`import { publish } from "@mdcore/api";
 
 const result = await publish("# Hello World");
-console.log(result.url);  // https://mdfy.cc/abc123`}</CodeBlock>
+console.log(result.url);  // https://mdfy.app/abc123`}</CodeBlock>
           </Card>
 
           {/* MdfyClient */}
@@ -110,12 +110,12 @@ console.log(result.url);  // https://mdfy.cc/abc123`}</CodeBlock>
             <CodeBlock lang="typescript">{`import { MdfyClient } from "@mdcore/api";
 
 const client = new MdfyClient({
-  baseUrl: "https://mdfy.cc",  // default
+  baseUrl: "https://mdfy.app",  // default
   userId: "user-uuid",          // optional
   email: "user@example.com",    // optional
 });`}</CodeBlock>
             <SubLabel>Constructor Options</SubLabel>
-            <MethodRow name="baseUrl" returns="string" desc="API base URL. Default: https://mdfy.cc" />
+            <MethodRow name="baseUrl" returns="string" desc="API base URL. Default: https://mdfy.app" />
             <MethodRow name="userId" returns="string" desc="User UUID for ownership-based operations." />
             <MethodRow name="email" returns="string" desc="User email for identification." />
 
@@ -145,7 +145,7 @@ const client = new MdfyClient({
 
 console.log(result.id);        // "abc123"
 console.log(result.editToken); // "tok_aBcDeFgH..."
-console.log(result.url);       // "https://mdfy.cc/abc123"`}</CodeBlock>
+console.log(result.url);       // "https://mdfy.app/abc123"`}</CodeBlock>
           </Card>
 
           {/* client.pull() */}
@@ -254,11 +254,11 @@ const imageUrl = await upload(file);`}</CodeBlock>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {[
-              { pkg: "@mdcore/api", desc: "HTTP client for mdfy.cc. Publish, read, update, delete documents. Zero dependencies (native fetch).", install: "npm install @mdcore/api" },
+              { pkg: "@mdcore/api", desc: "HTTP client for mdfy.app. Publish, read, update, delete documents. Zero dependencies (native fetch).", install: "npm install @mdcore/api" },
               { pkg: "@mdcore/engine", desc: "WASM Markdown renderer (Rust/comrak). GFM, KaTeX math, Mermaid diagrams, syntax highlighting.", install: "npm install @mdcore/engine" },
               { pkg: "@mdcore/styles", desc: "CSS-only package. Dark/light themes, rendered document styles, print/PDF styles. No JavaScript.", install: "npm install @mdcore/styles" },
               { pkg: "@mdcore/ai", desc: "AI provider integrations. Gemini, OpenAI, Anthropic. Text-to-Markdown, ASCII rendering.", install: "npm install @mdcore/ai" },
-              { pkg: "mdfy-mcp", desc: "Local stdio MCP (6 core tools). For all 25 tools use the hosted MCP at https://mdfy.cc/api/mcp.", install: "npx mdfy-mcp" },
+              { pkg: "mdfy-mcp", desc: "Local stdio MCP (6 core tools). For all 25 tools use the hosted MCP at https://mdfy.app/api/mcp.", install: "npx mdfy-mcp" },
             ].map((p, i) => (
               <div
                 key={p.pkg}

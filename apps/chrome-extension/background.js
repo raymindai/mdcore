@@ -1,12 +1,12 @@
 /**
- * mdfy.cc Chrome Extension — Background Service Worker
+ * mdfy.app Chrome Extension — Background Service Worker
  *
  * Handles context menu and message passing.
  * Works on AI chat pages (full conversation capture) and any page (selection/page capture).
  */
 
-const MDFY_URL = "https://mdfy.cc";
-const MDFY_COOKIE_URL = "https://mdfy.cc";
+const MDFY_URL = "https://mdfy.app";
+const MDFY_COOKIE_URL = "https://mdfy.app";
 const MAX_URL_BYTES = 8000;
 
 // ─── Compression (same as content.js / share.ts) ───
@@ -50,12 +50,12 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "mdfy-send-selection",
-      title: "Send selection to mdfy.cc",
+      title: "Send selection to mdfy.app",
       contexts: ["selection"],
     });
     chrome.contextMenus.create({
       id: "mdfy-capture-page",
-      title: "Send this page to mdfy.cc",
+      title: "Send this page to mdfy.app",
       contexts: ["page"],
     });
   });
@@ -194,7 +194,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       }
     } catch (err) {
       console.warn("[mdfy] Page extraction failed:", err);
-      // Last resort: just open mdfy.cc
+      // Last resort: just open mdfy.app
       chrome.tabs.create({ url: MDFY_URL });
     }
   }
@@ -215,7 +215,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // async
   }
 
-  // Upload image data URL to mdfy.cc (bypasses CORS)
+  // Upload image data URL to mdfy.app (bypasses CORS)
   if (request.action === "upload-image") {
     const { dataUrl, userId } = request;
     (async () => {
@@ -253,8 +253,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const { url, options } = request;
     try {
       const parsed = new URL(url);
-      if (parsed.origin !== "https://mdfy.cc") {
-        sendResponse({ ok: false, error: "Only requests to mdfy.cc are allowed" });
+      if (parsed.origin !== "https://mdfy.app") {
+        sendResponse({ ok: false, error: "Only requests to mdfy.app are allowed" });
         return true;
       }
     } catch {
@@ -280,7 +280,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "get-user-id") {
-    // Get user ID from Supabase auth cookies on mdfy.cc
+    // Get user ID from Supabase auth cookies on mdfy.app
     // Supabase stores auth as base64-encoded JSON split across multiple cookies:
     //   sb-{ref}-auth-token.0, sb-{ref}-auth-token.1, etc.
     // Value format: "base64-" prefix + base64(JSON with {access_token, user: {id}})

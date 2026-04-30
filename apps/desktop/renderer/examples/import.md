@@ -2,7 +2,7 @@
 
 ## Import — 13+ Formats
 
-Drop any file onto mdfy.cc or click **IMPORT** in the sidebar.
+Drop any file onto mdfy.app or click **IMPORT** in the sidebar.
 
 | Format | How it works |
 |--------|-------------|

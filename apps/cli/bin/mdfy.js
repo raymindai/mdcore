@@ -13,7 +13,7 @@
      mdfy list                    List your documents
      mdfy open <id>               Open document in browser
      mdfy render <file>           Render markdown to HTML
-     mdfy login                   Authenticate with mdfy.cc
+     mdfy login                   Authenticate with mdfy.app
      mdfy logout                  Clear stored credentials
      mdfy whoami                  Show current user
 
@@ -28,7 +28,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const BASE_URL = process.env.MDFY_URL || "https://mdfy.cc";
+const BASE_URL = process.env.MDFY_URL || "https://mdfy.app";
 const CONFIG_DIR = path.join(os.homedir(), ".mdfy");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 const TOKENS_FILE = path.join(CONFIG_DIR, "tokens.json");
@@ -252,7 +252,7 @@ async function cmdOpen(args) {
 }
 
 async function cmdLogin() {
-  console.log("Opening mdfy.cc in your browser...");
+  console.log("Opening mdfy.app in your browser...");
   console.log("After signing in, copy your API token from the settings page.");
   console.log("");
 
@@ -313,7 +313,7 @@ Usage:
   mdfy delete <id>             Delete a document
   mdfy list                    List your documents
   mdfy open <id>               Open document in browser
-  mdfy login                   Authenticate with mdfy.cc
+  mdfy login                   Authenticate with mdfy.app
   mdfy logout                  Clear stored credentials
   mdfy whoami                  Show current user
 
@@ -326,7 +326,7 @@ Examples:
   mdfy pull abc123 -o meeting.md
 
 Environment:
-  MDFY_URL    Base URL (default: https://mdfy.cc)
+  MDFY_URL    Base URL (default: https://mdfy.app)
 
 Config:  ~/.mdfy/config.json
 Tokens:  ~/.mdfy/tokens.json

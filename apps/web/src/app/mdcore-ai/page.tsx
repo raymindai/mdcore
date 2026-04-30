@@ -9,7 +9,7 @@ const apis = [
     name: "Render",
     method: "POST",
     path: "/v1/render",
-    desc: "Markdown to beautiful HTML, PNG, or PDF. The same Rust engine behind mdfy.cc — now as an API.",
+    desc: "Markdown to beautiful HTML, PNG, or PDF. The same Rust engine behind mdfy.app — now as an API.",
     color: "#fb923c",
     code: `curl -X POST https://api.mdcore.ai/v1/render \\
   -H "Authorization: Bearer mc_..." \\
@@ -148,7 +148,7 @@ export default function MdcoreAiPage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <a href="https://mdfy.cc" style={{ color: "var(--text-faint)", fontSize: 12, textDecoration: "none", ...mono }}>mdfy.cc</a>
+            <a href="https://mdfy.app" style={{ color: "var(--text-faint)", fontSize: 12, textDecoration: "none", ...mono }}>mdfy.app</a>
             <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" style={{ color: "var(--text-faint)", fontSize: 12, textDecoration: "none", ...mono }}>GitHub</a>
             <a href="#waitlist" style={{ background: "var(--accent)", color: "#000", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: "none", ...mono }}>
               Join Waitlist
@@ -458,8 +458,8 @@ $$`}
         </div>
 
         <p style={{ textAlign: "center", marginTop: 24 }}>
-          <a href="https://mdfy.cc" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
-            Try it live on mdfy.cc &rarr;
+          <a href="https://mdfy.app" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
+            Try it live on mdfy.app &rarr;
           </a>
         </p>
       </section>
@@ -710,7 +710,7 @@ markdown = client.convert(url)` },
             The engine is live. The API is coming.
           </h3>
           <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 8, maxWidth: 480, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
-            mdcore already powers <a href="https://mdfy.cc" style={{ color: "var(--accent)", textDecoration: "none" }}>mdfy.cc</a> in production — rendering Markdown with Rust + WASM in the browser.
+            mdcore already powers <a href="https://mdfy.app" style={{ color: "var(--accent)", textDecoration: "none" }}>mdfy.app</a> in production — rendering Markdown with Rust + WASM in the browser.
             The hosted API is next. Join the waitlist for early access.
           </p>
           <p style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 28, ...mono }}>
@@ -728,16 +728,16 @@ markdown = client.convert(url)` },
           <p style={{ fontSize: 13, fontWeight: 700, ...mono, color: "var(--accent)", marginBottom: 12, marginTop: 0 }}>PLAYGROUND</p>
           <h3 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", margin: "0 0 12px", letterSpacing: "-0.02em" }}>Try the engine now — it&apos;s already live.</h3>
           <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 28, maxWidth: 440, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
-            The same Rust + WASM engine that will power the API is running client-side on mdfy.cc right now. Paste any Markdown and see the output.
+            The same Rust + WASM engine that will power the API is running client-side on mdfy.app right now. Paste any Markdown and see the output.
           </p>
-          <a href="https://mdfy.cc" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Open mdfy.cc</a>
+          <a href="https://mdfy.app" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Open mdfy.app</a>
         </div>
       </section>
 
       {/* ══════════ CTA ══════════ */}
       <section style={{ maxWidth: 1120, margin: "0 auto", padding: "0 24px 120px", textAlign: "center" }}>
         <p style={{ fontSize: 14, color: "var(--text-faint)", margin: "0 0 24px", ...mono }}>
-          The engine is already live on mdfy.cc. The API is next.
+          The engine is already live on mdfy.app. The API is next.
         </p>
         <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, letterSpacing: "-0.03em", margin: "0 0 12px", color: "var(--accent)" }}>
           Be first to ship with mdcore.
@@ -745,7 +745,7 @@ markdown = client.convert(url)` },
         <p style={{ fontSize: 16, color: "var(--text-muted)", margin: "0 0 32px" }}>Join the waitlist for early API access and developer preview.</p>
         <a href="#waitlist" style={{ display: "inline-block", background: "var(--accent)", color: "#000", padding: "14px 36px", borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>Join the Waitlist</a>
         <p style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 12, ...mono }}>
-          <a href="https://mdfy.cc" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Try the engine live on mdfy.cc &rarr;</a>
+          <a href="https://mdfy.app" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Try the engine live on mdfy.app &rarr;</a>
         </p>
       </section>
 
@@ -771,7 +771,7 @@ markdown = client.convert(url)` },
                 { label: "API Docs", href: "/mdcore-ai/docs" },
                 { label: "Playground", href: "#playground" },
                 { label: "Pricing", href: "#pricing" },
-                { label: "mdfy.cc", href: "https://mdfy.cc" },
+                { label: "mdfy.app", href: "https://mdfy.app" },
                 { label: "Chrome Extension", href: "/plugins" },
                 { label: "@mdcore/terminal", href: "#" },
               ].map((link) => (
@@ -797,8 +797,8 @@ markdown = client.convert(url)` },
             <div>
               <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 16, marginTop: 0, ...mono, letterSpacing: 1, textTransform: "uppercase" }}>Company</p>
               {[
-                { label: "About", href: "https://mdfy.cc/about" },
-                { label: "Manifesto", href: "https://mdfy.cc/about" },
+                { label: "About", href: "https://mdfy.app/about" },
+                { label: "Manifesto", href: "https://mdfy.app/about" },
                 { label: "Contact", href: "mailto:hi@raymind.ai" },
                 { label: "Twitter / X", href: "#" },
               ].map((link) => (

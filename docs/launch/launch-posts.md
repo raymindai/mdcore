@@ -1,10 +1,10 @@
-# mdfy.cc Launch Posts
+# mdfy.app Launch Posts
 
 ---
 
 ## 1. Hacker News (Show HN)
 
-**Title:** Show HN: mdfy.cc -- Rust+WASM engine that turns AI output into shareable docs
+**Title:** Show HN: mdfy.app -- Rust+WASM engine that turns AI output into shareable docs
 
 ---
 
@@ -16,7 +16,7 @@ I built a cross-platform Markdown publishing tool that captures AI output and tu
 
 Why Rust instead of a JS parser? Because I wanted one engine, many surfaces. The same comrak core powers the web app, a VS Code extension, a CLI, a Chrome extension, a Mac desktop app (Electron), an MCP server, and a tmux integration. Seven channels, one rendering pipeline. No divergence.
 
-**The cross-AI angle:** The Chrome extension captures from ChatGPT, Claude, and Gemini. The MCP server lets any AI agent publish or read documents programmatically. The URL is the interchange format -- any AI can write to it, any AI can read from it. This makes mdfy.cc a layer that sits across AI providers rather than inside one.
+**The cross-AI angle:** The Chrome extension captures from ChatGPT, Claude, and Gemini. The MCP server lets any AI agent publish or read documents programmatically. The URL is the interchange format -- any AI can write to it, any AI can read from it. This makes mdfy.app a layer that sits across AI providers rather than inside one.
 
 **What it supports:** GFM (tables, task lists, footnotes), KaTeX math, Mermaid diagrams, 190+ language syntax highlighting, dark/light mode, password-protected docs, embed via iframe, rich-text copy for Docs/Email, and mrkdwn copy for Slack.
 
@@ -24,7 +24,7 @@ Why Rust instead of a JS parser? Because I wanted one engine, many surfaces. The
 
 Free during beta. No login required to publish.
 
-Try it: https://mdfy.cc
+Try it: https://mdfy.app
 Source: https://github.com/raymindai/mdcore
 
 Happy to discuss the Rust-to-WASM pipeline, the cross-AI positioning, or anything else.
@@ -35,23 +35,23 @@ Happy to discuss the Rust-to-WASM pipeline, the cross-AI positioning, or anythin
 
 **Tagline:** AI output to shareable document in one click
 
-**Description:** mdfy.cc captures AI output from ChatGPT, Claude, and Gemini and turns it into a permanent, beautifully rendered URL. Powered by a Rust+WASM engine. Available on web, CLI, VS Code, Chrome, Mac desktop, MCP server, and tmux. No login required.
+**Description:** mdfy.app captures AI output from ChatGPT, Claude, and Gemini and turns it into a permanent, beautifully rendered URL. Powered by a Rust+WASM engine. Available on web, CLI, VS Code, Chrome, Mac desktop, MCP server, and tmux. No login required.
 
 **Maker Comment:**
 
-I am Hyunsang, the solo founder of mdfy.cc. I built the entire product with Claude as my pair programmer.
+I am Hyunsang, the solo founder of mdfy.app. I built the entire product with Claude as my pair programmer.
 
 The problem I kept hitting: I would have a great conversation with an AI, get a well-structured response with code blocks, tables, and diagrams, and then have no good way to share it. Copy-paste into Docs breaks the formatting. Screenshots lose the text. Saving as a file means the recipient needs to know what Markdown is.
 
-mdfy.cc fixes this. Paste any Markdown, get a rendered document, click share, and you have a permanent URL anyone can open in a browser. The whole flow takes under 5 seconds.
+mdfy.app fixes this. Paste any Markdown, get a rendered document, click share, and you have a permanent URL anyone can open in a browser. The whole flow takes under 5 seconds.
 
 What makes this different from existing Markdown tools:
 
-First, it is a cross-AI layer. The Chrome extension captures directly from ChatGPT, Claude, and Gemini. The MCP server lets AI agents publish and read documents programmatically. mdfy.cc sits between AI providers and the people who need to read their output.
+First, it is a cross-AI layer. The Chrome extension captures directly from ChatGPT, Claude, and Gemini. The MCP server lets AI agents publish and read documents programmatically. mdfy.app sits between AI providers and the people who need to read their output.
 
 Second, seven channels from one engine. The rendering core is Rust compiled to WASM. The same binary powers the web app, a CLI tool, a VS Code extension, a Chrome extension, a Mac desktop app, an MCP server, and a tmux integration. One codebase, consistent rendering everywhere.
 
-Third, zero friction. No account creation. No login wall. Paste and share. The document gets a short URL like mdfy.cc/abc123 with an edit token so you can update or delete it later.
+Third, zero friction. No account creation. No login wall. Paste and share. The document gets a short URL like mdfy.app/abc123 with an edit token so you can update or delete it later.
 
 The rendering handles everything modern Markdown needs: GFM tables, KaTeX math, Mermaid diagrams, syntax highlighting for 190+ languages, dark and light modes, and mobile-responsive layout.
 
@@ -65,7 +65,7 @@ Free during beta. I would love to hear what you think.
 
 ---
 
-I have been working on mdfy.cc, a Markdown publishing tool that turns AI output into shareable URLs. The interesting part from an engineering perspective is the architecture: a single Rust rendering engine compiled to WASM, shared across seven different surfaces.
+I have been working on mdfy.app, a Markdown publishing tool that turns AI output into shareable URLs. The interesting part from an engineering perspective is the architecture: a single Rust rendering engine compiled to WASM, shared across seven different surfaces.
 
 **The engine:** Built on comrak, the same GFM-compliant Markdown parser that GitLab and Reddit use. Compiled to WASM via wasm-bindgen with wasm-pack targeting the bundler output. The binary is around 600KB. Rendering happens client-side in about 2ms. No server round-trip for the parse-and-render step.
 
@@ -77,10 +77,10 @@ I have been working on mdfy.cc, a Markdown publishing tool that turns AI output 
 
 **The seven clients:** Web app (Next.js 15), CLI, VS Code extension, Chrome extension (captures from ChatGPT/Claude/Gemini), Mac desktop (Electron), MCP server (lets AI agents publish/read docs), and tmux integration. All share the same engine.
 
-**Cross-AI angle:** The MCP server is the most interesting piece architecturally. Any AI agent that speaks MCP can create, read, update, or delete documents on mdfy.cc. The Chrome extension captures AI conversations. The URL becomes the interchange format between AI systems.
+**Cross-AI angle:** The MCP server is the most interesting piece architecturally. Any AI agent that speaks MCP can create, read, update, or delete documents on mdfy.app. The Chrome extension captures AI conversations. The URL becomes the interchange format between AI systems.
 
 Open source: github.com/raymindai/mdcore
-Live: mdfy.cc
+Live: mdfy.app
 
 Built solo with Claude as pair programmer. Feedback on the architecture welcome.
 
@@ -90,7 +90,7 @@ Built solo with Claude as pair programmer. Feedback on the architecture welcome.
 
 **Tweet 1**
 
-I built mdfy.cc -- it turns AI output into shareable documents.
+I built mdfy.app -- it turns AI output into shareable documents.
 
 Paste Markdown. Get a permanent URL. No login.
 
@@ -104,7 +104,7 @@ The problem: every AI outputs Markdown. ChatGPT, Claude, Gemini -- all of them.
 
 But that output is trapped in chat windows. Copy it out and the formatting breaks. There is no fast path from AI response to a document you can share.
 
-mdfy.cc fixes that.
+mdfy.app fixes that.
 
 **Tweet 3**
 
@@ -112,10 +112,10 @@ How it works:
 
 1. Paste any Markdown (or capture from AI with the Chrome extension)
 2. Rendered instantly -- tables, math, diagrams, code
-3. Click Share -- get a URL like mdfy.cc/abc123
+3. Click Share -- get a URL like mdfy.app/abc123
 4. Anyone can view it. No account needed on either end.
 
-mdfy.cc
+mdfy.app
 
 **Tweet 4**
 
@@ -135,7 +135,7 @@ Same rendering everywhere. No parser divergence.
 
 The MCP server is the part I am most excited about.
 
-Any AI agent can publish or read documents on mdfy.cc programmatically. The URL becomes the interchange format between AI systems.
+Any AI agent can publish or read documents on mdfy.app programmatically. The URL becomes the interchange format between AI systems.
 
 Cross-AI publishing layer. No vendor lock-in.
 
@@ -145,7 +145,7 @@ Built this solo with Claude as my pair programmer. Architecture, Rust code, fron
 
 Free during beta. No login required.
 
-Try it: mdfy.cc
+Try it: mdfy.app
 Source: github.com/raymindai/mdcore
 
 Feedback welcome.

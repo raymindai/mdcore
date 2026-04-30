@@ -49,8 +49,20 @@
   "redirects": [
     {
       "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.mdfy.app" }],
+      "destination": "https://mdfy.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mdfy.cc" }],
+      "destination": "https://mdfy.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
       "has": [{ "type": "host", "value": "www.mdfy.cc" }],
-      "destination": "https://mdfy.cc/:path*",
+      "destination": "https://mdfy.app/:path*",
       "permanent": true
     }
   ],

@@ -107,12 +107,12 @@ export default function EmbedPage() {
               This document is password-protected.
             </div>
             <a
-              href={`https://mdfy.cc/${id}`}
+              href={`https://mdfy.app/${id}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "var(--accent)", textDecoration: "underline", fontSize: "0.95rem" }}
             >
-              View it at mdfy.cc/{id}
+              View it at mdfy.app/{id}
             </a>
           </div>
         ) : (
@@ -132,12 +132,12 @@ export default function EmbedPage() {
         }}
       >
         <a
-          href={`https://mdfy.cc/${id}`}
+          href={`https://mdfy.app/${id}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "var(--accent)", textDecoration: "none" }}
         >
-          mdfy.cc
+          mdfy.app
         </a>
       </div>
     </div>
