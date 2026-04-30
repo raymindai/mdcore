@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "mdfy.app — One URL for your markdown, everywhere",
   "version": "2.2.0",
-  "description": "Capture AI conversations from ChatGPT, Claude, and Gemini. Edit in WYSIWYG, share with a permanent link. Same document, same URL, every surface.",
+  "description": "Capture AI conversations from ChatGPT, Claude, and Gemini. Edit in WYSIWYG, share with a permanent link.",
   "permissions": ["activeTab", "tabs", "contextMenus", "storage", "scripting", "cookies"],
   "host_permissions": [
     "<all_urls>"
