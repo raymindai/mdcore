@@ -8174,7 +8174,7 @@ ${clone.innerHTML}
                           </div>
                         )}
                       </div>
-                      {/* Settings */}
+                      {/* Toggles: Guides & Sidebar mode */}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <button
                           onClick={() => { setShowExamples(!showExamples); }}
@@ -8183,61 +8183,26 @@ ${clone.innerHTML}
                         >
                           <BookOpen width={12} height={12} />
                           <span className="flex-1">Show Guides & Examples</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: showExamples ? "var(--accent-dim)" : "var(--border-dim)", color: showExamples ? "var(--accent)" : "var(--text-faint)" }}>
-                            {showExamples ? "ON" : "OFF"}
+                          <span className="relative inline-flex items-center" style={{ width: 28, height: 14 }}>
+                            <span className="absolute inset-0 rounded-full transition-colors" style={{ background: showExamples ? "var(--accent)" : "var(--text-faint)", opacity: showExamples ? 1 : 0.3 }} />
+                            <span className="absolute rounded-full transition-transform" style={{ width: 10, height: 10, top: 2, background: "#fff", transform: showExamples ? "translateX(16px)" : "translateX(2px)" }} />
                           </span>
                         </button>
-                        <button
-                          onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          <User width={12} height={12} />
-                          Account Settings
-                        </button>
-                      </div>
-                      {/* Appearance */}
-                      <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                        {/* Sidebar Mode */}
                         <button
                           onClick={() => setSidebarMode(m => m === "simple" ? "detailed" : "simple")}
                           className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <List width={12} height={12} />
-                          {sidebarMode === "simple" ? "Detailed Sidebar" : "Simple Sidebar"}
+                          <span className="flex-1">{sidebarMode === "simple" ? "Detailed Sidebar" : "Simple Sidebar"}</span>
+                          <span className="relative inline-flex items-center" style={{ width: 28, height: 14 }}>
+                            <span className="absolute inset-0 rounded-full transition-colors" style={{ background: sidebarMode === "detailed" ? "var(--accent)" : "var(--text-faint)", opacity: sidebarMode === "detailed" ? 1 : 0.3 }} />
+                            <span className="absolute rounded-full transition-transform" style={{ width: 10, height: 10, top: 2, background: "#fff", transform: sidebarMode === "detailed" ? "translateX(16px)" : "translateX(2px)" }} />
+                          </span>
                         </button>
-                        {/* Key Color — flyout */}
-                        <div className="relative group/keycolor">
-                          <button
-                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
-                              Key Color
-                            </span>
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
-                          </button>
-                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/keycolor:block z-[9999]"><div className="w-32 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
-                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
-                            {ACCENT_COLORS.map(c => (
-                              <button
-                                key={c.name}
-                                onClick={() => { setAccentColor(c.name); }}
-                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
-                                style={{
-                                  color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
-                                  fontWeight: accentColor === c.name ? 600 : 400,
-                                }}
-                              >
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
-                                {c.label}
-                              </button>
-                            ))}
-                          </div></div>
-                        </div>
+                      </div>
+                      {/* Appearance: Skin Theme first, then Key Color */}
+                      <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         {/* Skin Theme — flyout */}
                         <div className="relative group/skin">
                           <button
@@ -8269,9 +8234,48 @@ ${clone.innerHTML}
                             ))}
                           </div></div>
                         </div>
+                        {/* Key Color — flyout */}
+                        <div className="relative group/keycolor">
+                          <button
+                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                              Key Color
+                            </span>
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
+                          </button>
+                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/keycolor:block z-[9999]"><div className="w-32 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
+                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                            {ACCENT_COLORS.map(c => (
+                              <button
+                                key={c.name}
+                                onClick={() => { setAccentColor(c.name); }}
+                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
+                                style={{
+                                  color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
+                                  fontWeight: accentColor === c.name ? 600 : 400,
+                                }}
+                              >
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
+                                {c.label}
+                              </button>
+                            ))}
+                          </div></div>
+                        </div>
                       </div>
-                      {/* Actions */}
+                      {/* Account + Sign Out */}
                       <div className="py-1">
+                        <button
+                          onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
+                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <User width={12} height={12} />
+                          Account Settings
+                        </button>
                         <button
                           onClick={() => {
                             signOut();
