@@ -339,10 +339,9 @@ mdfy.app is a cross-platform document publishing system. All platforms share the
 Every mdfy document has a permanent short URL (`mdfy.app/abc123`). This URL:
 
 - Renders beautifully in any browser
-- Is readable by any AI (paste it into a ChatGPT/Claude conversation)
-- Can be embedded in websites via iframe
+- Is readable by any AI -- paste `mdfy.app/abc123` into Claude or ChatGPT and they can read the full content
+- Can be embedded in websites via iframe (`mdfy.app/embed/abc123`)
 - Updates in place when you push changes
-- Works offline via hash-based fallback
 
 ---
 
@@ -355,7 +354,7 @@ A: No. You can publish without logging in. The document gets a permanent URL and
 A: Rendering happens entirely in your browser via WASM. When you publish, the Markdown is stored on mdfy.app (Supabase PostgreSQL). Documents can be private or public.
 
 **Q: Can I use this with private/internal documents?**
-A: Yes. Published documents default to private (draft). You control visibility via the publish toggle. Documents can also be password-protected on the web editor.
+A: Yes. Published documents are public by default but can be made private (draft) from the web editor. Documents can also be password-protected or restricted to specific email addresses.
 
 **Q: What happens if I uninstall the extension?**
 A: Your local `.md` files are unchanged. Published documents remain on mdfy.app. The `.mdfy.json` sidecar files can be deleted.
@@ -364,13 +363,16 @@ A: Your local `.md` files are unchanged. Published documents remain on mdfy.app.
 A: Yes. mdfy adds its own preview panel and does not interfere with the built-in Markdown preview or other extensions.
 
 **Q: How is this different from GitHub Gists?**
-A: mdfy renders Markdown with KaTeX math, Mermaid diagrams, and full GFM. It has WYSIWYG editing, AI tools, bidirectional sync, and works across 8 platforms. Gists are static text files.
+A: mdfy renders Markdown with KaTeX math, Mermaid diagrams, and full GFM. It has WYSIWYG editing, AI tools, bidirectional sync, and works across 9 platforms. Gists are static text files.
+
+**Q: Can AI read my published documents?**
+A: Yes. Paste any mdfy.app URL into Claude or ChatGPT and they can read the full document content. This makes mdfy a cross-AI knowledge sharing layer.
 
 ---
 
 ## Requirements
 
-- VS Code 1.85 or later
+- VS Code 1.80 or later
 - macOS, Windows, or Linux
 
 ## Links
