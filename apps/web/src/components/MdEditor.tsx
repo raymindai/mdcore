@@ -8159,20 +8159,19 @@ ${clone.innerHTML}
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <BookOpen width={12} height={12} />
-                          <span className="flex-1">Show Examples</span>
+                          <span className="flex-1">Show Guides & Examples</span>
                           <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: showExamples ? "var(--accent-dim)" : "var(--border-dim)", color: showExamples ? "var(--accent)" : "var(--text-faint)" }}>
                             {showExamples ? "ON" : "OFF"}
                           </span>
                         </button>
-                        <Link
-                          href="/settings"
-                          onClick={() => setShowAuthMenu(false)}
+                        <button
+                          onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
                           className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                          style={{ color: "var(--text-secondary)", textDecoration: "none" }}
+                          style={{ color: "var(--text-secondary)" }}
                         >
                           <User width={12} height={12} />
                           Account Settings
-                        </Link>
+                        </button>
                       </div>
                       {/* Appearance */}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
