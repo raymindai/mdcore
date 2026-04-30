@@ -2,32 +2,32 @@
 
 ## Extension Name
 
-mdfy.app — Publish AI Output
+mdfy.app — One URL for your markdown, everywhere
 
 ## Short Description (132 chars max)
 
-One-click capture from ChatGPT, Claude, and Gemini. Publish as a beautiful, shareable document on mdfy.app.
+Capture AI conversations, import any file, edit in WYSIWYG, share with a permanent link. Same document, same URL, every surface.
 
 ## Detailed Description (16,000 chars max)
 
-mdfy.app turns AI conversations into shareable documents — instantly.
+One URL for your markdown, everywhere.
 
-Working with ChatGPT, Claude, or Gemini? One click captures the conversation, formats it as a clean document, and gives you a permanent URL you can share with anyone.
+Capture AI conversations, import any file, edit in WYSIWYG, share with a permanent link. Available on web, Mac, VS Code, CLI, Chrome extension, and MCP server — same document, same URL, every surface.
 
 WHAT IT DOES
 
 – Capture full conversations from ChatGPT, Claude, and Gemini
-– Capture individual messages with per-message “mdfy this” buttons
+– Capture individual messages with per-message "mdfy this" buttons
 – Capture selected text from any webpage
 – Open GitHub .md files directly in mdfy.app for beautiful rendering
-– Publish instantly and get a shareable URL (mdfy.app/d/…)
+– Publish instantly and get a permanent URL (mdfy.app/abc123)
 
 HOW IT WORKS
 
 1. Chat with any AI assistant as usual
 2. Click the mdfy button (floating or per-message)
 3. Your conversation is published as a formatted document
-4. Share the URL — no login required
+4. Share the URL — anyone can view it, any AI can read it
 
 SUPPORTED PLATFORMS
 
@@ -43,7 +43,7 @@ Conversation Capture
 - Full conversation with proper User/Assistant formatting
 - Range selection: capture last 3, 5, or 10 exchanges
 - Per-message mini buttons on hover
-- Floating “mdfy All” button with quick access
+- Floating "mdfy All" button with quick access
 
 Smart Formatting
 
@@ -52,16 +52,21 @@ Smart Formatting
 - Mermaid diagrams preserved as source code
 - Tables, lists, and all Markdown formatting intact
 
+AI-Readable URLs
+
+- Published documents are readable by Claude and ChatGPT
+- Paste mdfy.app/abc123 into any AI conversation to share context
+- Cross-AI knowledge sharing — capture from one AI, share with another
+
 Publishing Options
 
-- Permanent short URL (mdfy.app/d/…)
+- Permanent short URL (mdfy.app/abc123)
 - No account required for basic publishing
 - Logged-in users get documents saved to their account
-- Hash-based fallback for offline/anonymous sharing
 
 GitHub Integration
 
-- “Open in mdfy.app” button on any .md file
+- "Open in mdfy.app" button on any .md file
 - Beautiful rendering with code highlighting, math, and diagrams
 - Works on repository file views
 
@@ -75,15 +80,15 @@ PRIVACY
 PERMISSIONS EXPLAINED
 
 - activeTab: Access the current tab to extract content
-- tabs: Detect which AI platform you’re on
-- contextMenus: Right-click “Publish selection to mdfy.app”
+- tabs: Detect which AI platform you're on
+- contextMenus: Right-click "Publish selection to mdfy.app"
 - storage: Save your preferences (floating button visibility)
 - scripting: Inject capture functionality into AI pages
 - cookies: Check mdfy.app login status for authenticated publishing
 
 ---
 
-mdfy.app — The fastest way from AI output to shared document.
+mdfy.app — One URL for your markdown, everywhere.
 
 ## Category
 
@@ -95,7 +100,7 @@ English
 
 ## Single Purpose Description (required by Chrome policy)
 
-This extension from ChatGPT, Claude, and Gemini, and publishes it as a formatted document on mdfy.app.
+Captures AI conversation content from ChatGPT, Claude, and Gemini, and publishes it as a formatted document on mdfy.app.
 
 ---
 
@@ -107,30 +112,29 @@ This extension from ChatGPT, Claude, and Gemini, and publishes it as a formatted
 
 ### Screenshots (1280x800 or 640x400, min 1, max 5)
 
-Screenshot 1 — “Capture from ChatGPT”
+Screenshot 1 — "Capture from ChatGPT"
 Show: ChatGPT page with floating mdfy button visible, conversation in background.
 Caption: One-click capture from ChatGPT
 
-Screenshot 2 — “Capture from Claude”
+Screenshot 2 — "Capture from Claude"
 Show: Claude.ai page with per-message mini buttons visible on hover.
 Caption: Per-message capture from Claude
 
-Screenshot 3 — “Published Document”
-Show: mdfy.app/d/… page with a beautifully rendered document (code blocks, headings, etc).
+Screenshot 3 — "Published Document"
+Show: mdfy.app page with a beautifully rendered document (code blocks, headings, etc).
 Caption: Beautiful, shareable documents
 
-Screenshot 4 — “GitHub Integration”
-Show: GitHub .md file page with “Open in mdfy.app” button visible.
+Screenshot 4 — "GitHub Integration"
+Show: GitHub .md file page with "Open in mdfy.app" button visible.
 Caption: Open GitHub Markdown in mdfy.app
 
-Screenshot 5 — “Extension Popup”
+Screenshot 5 — "Extension Popup"
 Show: The popup UI with platform detection indicator and capture options.
 Caption: Smart platform detection
 
-### Promotional Images (optional)
+### Promotional Tile (1280x800)
 
-- Small tile: 440x280
-- Marquee: 1400x560
+Hero image with mdfy.app branding + "One URL for your markdown, everywhere" tagline.
 
 ---
 
@@ -146,7 +150,7 @@ activeTab: Required to read conversation content from the current AI chat page (
 
 tabs: Required to detect which AI platform the user is currently on, to show the correct platform indicator in the popup and apply platform-specific extraction logic.
 
-contextMenus: Required to add a right-click menu option “Publish selection to mdfy.app” for capturing selected text on any page.
+contextMenus: Required to add a right-click menu option "Publish selection to mdfy.app" for capturing selected text on any page.
 
 storage: Required to persist user preferences such as floating button visibility setting across browser sessions.
 
@@ -154,7 +158,7 @@ scripting: Required to inject the content capture script into AI platform pages 
 
 cookies: Required to check if the user is logged into mdfy.app, enabling authenticated publishing that saves documents to their account.
 
-host_permissions (<all_urls>): Required for the context menu “Publish selection” feature to work on any webpage, and for the background service worker to make API calls to mdfy.app on behalf of the content script (CORS bypass).
+host_permissions (<all_urls>): Required for the context menu "Publish selection" feature to work on any webpage, and for the background service worker to make API calls to mdfy.app on behalf of the content script (CORS bypass).
 
 ### Data Usage Disclosure
 
@@ -174,4 +178,4 @@ We do not sell user data.
 
 ### Data Use Purposes
 
-- Conversation content is sent to mdfy.app solely to create a shareable document at the user’s explicit request.
+- Conversation content is sent to mdfy.app solely to create a shareable document at the user's explicit request.
