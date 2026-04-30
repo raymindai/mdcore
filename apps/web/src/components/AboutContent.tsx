@@ -326,6 +326,62 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
         </div>
       </section>
 
+      {/* ───────── CUSTOMIZATION ───────── */}
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
+          {locale === "ko" ? "커스터마이징" : "Customization"}
+        </h2>
+        <p style={{ fontSize: 14, color: "var(--text-faint)", marginBottom: 32, lineHeight: 1.6, maxWidth: 600 }}>
+          {locale === "ko"
+            ? "8가지 스킨 테마와 8가지 키 컬러를 조합하여 나만의 에디터를 만들 수 있습니다."
+            : "Combine 8 skin themes with 8 key colors to make the editor yours."}
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
+          {/* Skin Themes */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px 22px" }}>
+            <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-geist-mono), monospace", color: "var(--accent)", background: "var(--accent-dim)", padding: "3px 10px", borderRadius: 6, marginBottom: 12 }}>
+              {locale === "ko" ? "스킨 테마" : "Skin Themes"}
+            </span>
+            <p style={{ color: "var(--text-tertiary)", fontSize: 13, lineHeight: 1.6, margin: "0 0 16px" }}>
+              {locale === "ko"
+                ? "전체 색상 팔레트를 변경합니다. 배경, 텍스트, 보더, 표면 색상이 모두 바뀝니다."
+                : "Change the entire color palette — background, text, borders, and surfaces all adapt."}
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {["Default", "Nord", "Dracula", "Solarized", "Monokai", "One Dark", "Paper", "Ocean"].map(name => (
+                <span key={name} style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border-dim)", color: "var(--text-muted)", fontFamily: "var(--font-geist-mono), monospace" }}>{name}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Colors */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 14, padding: "24px 22px" }}>
+            <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-geist-mono), monospace", color: "var(--accent)", background: "var(--accent-dim)", padding: "3px 10px", borderRadius: 6, marginBottom: 12 }}>
+              {locale === "ko" ? "키 컬러" : "Key Color"}
+            </span>
+            <p style={{ color: "var(--text-tertiary)", fontSize: 13, lineHeight: 1.6, margin: "0 0 16px" }}>
+              {locale === "ko"
+                ? "강조 색상을 선택합니다. 모든 스킨 테마에서 독립적으로 작동합니다."
+                : "Pick an accent color. Works independently on any skin theme."}
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { name: "Orange", color: "#fb923c" }, { name: "Blue", color: "#60a5fa" },
+                { name: "Purple", color: "#a78bfa" }, { name: "Pink", color: "#f472b6" },
+                { name: "Green", color: "#4ade80" }, { name: "Teal", color: "#2dd4bf" },
+                { name: "Red", color: "#f87171" }, { name: "Yellow", color: "#fbbf24" },
+              ].map(c => (
+                <span key={c.name} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border-dim)", color: "var(--text-muted)", fontFamily: "var(--font-geist-mono), monospace" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.color }} />
+                  {c.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ───────── 5. HOW IT WORKS ───────── */}
       <section
         style={{
