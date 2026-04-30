@@ -340,7 +340,7 @@ async function cmdRead(args) {
   if (!id) { console.error("Usage: mdfy read <id>"); process.exit(1); }
 
   // Accept full URL or just ID
-  id = id.replace(/^https?:\/\/mdfy\.cc\/\?doc=/, "").replace(/^https?:\/\/mdfy\.cc\/d\//, "").replace(/^https?:\/\/mdfy\.cc\//, "").replace(/^mdfy\.cc\/\?doc=/, "").replace(/^mdfy\.cc\/d\//, "").replace(/^mdfy\.cc\//, "");
+  id = id.replace(/^https?:\/\/mdfy\.(cc|app)\/\?doc=/, "").replace(/^https?:\/\/mdfy\.(cc|app)\/d\//, "").replace(/^https?:\/\/mdfy\.(cc|app)\//, "").replace(/^mdfy\.(cc|app)\/\?doc=/, "").replace(/^mdfy\.(cc|app)\/d\//, "").replace(/^mdfy\.(cc|app)\//, "");
 
   try {
     const doc = await api("GET", `/api/docs/${id}`);

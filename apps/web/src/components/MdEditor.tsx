@@ -9916,7 +9916,7 @@ ${clone.innerHTML}
             {/* Header */}
             <div className="px-6 pt-6 pb-4 text-center">
               <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                Sign in to <span style={{ color: "var(--accent)" }}>mdfy</span>.cc
+                Sign in to <span style={{ color: "var(--accent)" }}>mdfy</span>.app
               </h2>
               <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Save, sync, and publish your documents</p>
             </div>
