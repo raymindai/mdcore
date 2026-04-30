@@ -8067,19 +8067,50 @@ ${clone.innerHTML}
                     </div>
                   </div>
                 )}
-                <button onClick={() => {
-                  // Bundle: collect selected document cloudIds
-                  const selectedCloudIds = tabs.filter(t => selectedTabIds.has(t.id) && t.cloudId).map(t => ({ id: t.cloudId!, title: t.title || "Untitled" }));
-                  if (selectedCloudIds.length < 2) {
-                    showToast("Select at least 2 published documents to create a bundle", "error");
-                    return;
-                  }
-                  setBundleCreatorDocs(selectedCloudIds);
-                  setShowBundleCreator(true);
-                  setSelectedTabIds(new Set());
-                }} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]"
-                  style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)" }}
-                  title="Create Bundle">
+                <button
+                  onClick={async () => {
+                    if (selectedTabIds.size < 2) return;
+                    const selectedTabs = tabs.filter(t => selectedTabIds.has(t.id));
+                    // Auto-publish local-only tabs to server first
+                    const docsForBundle: Array<{ id: string; title: string }> = [];
+                    for (const tab of selectedTabs) {
+                      if (tab.cloudId) {
+                        docsForBundle.push({ id: tab.cloudId, title: tab.title || "Untitled" });
+                      } else {
+                        // Save to server as draft
+                        try {
+                          const res = await fetch("/api/docs", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", ...authHeaders },
+                            body: JSON.stringify({ markdown: tab.markdown || "", title: tab.title || null, isDraft: true }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            // Update tab with cloudId
+                            setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, cloudId: data.id, editToken: data.editToken } : t));
+                            docsForBundle.push({ id: data.id, title: tab.title || "Untitled" });
+                          }
+                        } catch { /* skip failed uploads */ }
+                      }
+                    }
+                    if (docsForBundle.length < 2) {
+                      showToast("Failed to prepare documents for bundle", "error");
+                      return;
+                    }
+                    setBundleCreatorDocs(docsForBundle);
+                    setShowBundleCreator(true);
+                    setSelectedTabIds(new Set());
+                  }}
+                  disabled={selectedTabIds.size < 2}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]"
+                  style={{
+                    color: selectedTabIds.size >= 2 ? "var(--accent)" : "var(--text-faint)",
+                    border: `1px solid ${selectedTabIds.size >= 2 ? "var(--accent-dim)" : "var(--border-dim)"}`,
+                    opacity: selectedTabIds.size >= 2 ? 1 : 0.5,
+                    cursor: selectedTabIds.size >= 2 ? "pointer" : "not-allowed",
+                  }}
+                  title={selectedTabIds.size >= 2 ? "Create Bundle" : "Select at least 2 documents"}
+                >
                   <Layers width={11} height={11} /><span>Bundle</span>
                 </button>
                 <button onClick={() => {
@@ -11103,7 +11134,7 @@ ${clone.innerHTML}
                     const res = await fetch("/api/bundles", {
                       method: "POST",
                       headers,
-                      body: JSON.stringify({ title, documentIds: docIds }),
+                      body: JSON.stringify({ title, documentIds: docIds, isDraft: false }),
                     });
                     if (!res.ok) {
                       showToast("Failed to create bundle", "error");

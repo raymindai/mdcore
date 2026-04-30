@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     userId?: string;
     userEmail?: string;
     anonymousId?: string;
+    isDraft?: boolean;
   };
   try {
     body = await req.json();
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { title, description, documentIds, password, anonymousId } = body;
+  const { title, description, documentIds, password, anonymousId, isDraft } = body;
   let { userId } = body;
 
   // Verify JWT
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       password_hash: passwordHash,
       user_id: userId || null,
       anonymous_id: (!userId && anonymousId) ? anonymousId : null,
-      is_draft: true,
+      is_draft: isDraft ?? true,
     });
     if (!error) { insertError = null; break; }
     if (error.code === "23505") { insertError = error; continue; }

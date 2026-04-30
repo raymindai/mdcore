@@ -6,12 +6,10 @@ import dynamic from "next/dynamic";
 import MdfyLogo from "@/components/MdfyLogo";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
-import { extractGraphHeuristic, type GraphData } from "@/lib/graph-extract";
 
-const KnowledgeGraph = dynamic(() => import("@/components/KnowledgeGraph"), { ssr: false });
+const BundleCanvas = dynamic(() => import("@/components/BundleCanvas"), { ssr: false });
 
 type Theme = "dark" | "light";
-type ViewMode = "graph" | "list";
 
 interface BundleDocument {
   id: string;
@@ -26,10 +24,8 @@ export default function BundleViewer({
   title: initialTitle,
   description,
   isProtected = false,
-  isDraft = false,
   documentCount,
   showBadge = true,
-  layout = "graph",
 }: {
   id: string;
   title: string | null;
@@ -41,16 +37,18 @@ export default function BundleViewer({
   layout?: string;
 }) {
   const [documents, setDocuments] = useState<BundleDocument[]>([]);
-  const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [aiGraph, setAiGraph] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [editToken, setEditToken] = useState<string | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedHtml, setSelectedHtml] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>(layout === "list" ? "list" : "graph");
   const [theme, setThemeState] = useState<Theme>("dark");
   const [isLoading, setIsLoading] = useState(true);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
-  const [unlocked, setUnlocked] = useState(!isProtected && !isDraft);
+  const [unlocked, setUnlocked] = useState(!isProtected);
   const [copied, setCopied] = useState(false);
+  const [contextCopied, setContextCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Theme
@@ -77,20 +75,13 @@ export default function BundleViewer({
       try {
         const headers: Record<string, string> = {};
 
-        // Add auth headers if available
-        try {
-          const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
-          const supabase = getSupabaseBrowserClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            headers["x-user-id"] = user.id;
-            if (user.email) headers["x-user-email"] = user.email;
-          }
-        } catch { /* no session */ }
-
-        // Add anonymous ID
+        // Build headers from localStorage (non-blocking)
         const anonId = localStorage.getItem("mdfy-anonymous-id");
         if (anonId) headers["x-anonymous-id"] = anonId;
+        const storedUserId = localStorage.getItem("mdfy-user-id");
+        if (storedUserId) headers["x-user-id"] = storedUserId;
+        const storedEmail = localStorage.getItem("mdfy-user-email");
+        if (storedEmail) headers["x-user-email"] = storedEmail;
 
         const res = await fetch(`/api/bundles/${id}`, { headers });
         if (!res.ok) {
@@ -107,19 +98,43 @@ export default function BundleViewer({
         }
 
         const data = await res.json();
+        const docs = data.documents || [];
+        setDocuments(docs);
+        if (data.editToken) setEditToken(data.editToken);
 
-        // If owner, could redirect to editor (future)
-        setDocuments(data.documents || []);
-
-        // Use cached graph data if available, otherwise extract heuristically
+        // Use cached AI graph if available
         if (data.graph_data) {
-          setGraphData(data.graph_data);
-        } else if (data.documents?.length > 0) {
-          const extracted = extractGraphHeuristic(data.documents);
-          setGraphData(extracted);
+          setAiGraph(data.graph_data);
         }
 
+        // Auto-open first document
+        if (docs.length > 0) {
+          const first = docs[0];
+          setSelectedDocId(first.id);
+          try {
+            const result = await renderMarkdown(first.markdown);
+            const processed = postProcessHtml(result.html);
+            setSelectedHtml(processed);
+          } catch { /* render error */ }
+        }
         setIsLoading(false);
+
+        // Trigger AI analysis if no cached graph
+        if (!data.graph_data && docs.length >= 2) {
+          setIsAnalyzing(true);
+          try {
+            const graphRes = await fetch(`/api/bundles/${id}/graph`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...headers },
+              body: JSON.stringify({ editToken: data.editToken }),
+            });
+            if (graphRes.ok) {
+              const graphData = await graphRes.json();
+              setAiGraph(graphData.graphData);
+            }
+          } catch { /* AI not available */ }
+          setIsAnalyzing(false);
+        }
       } catch {
         setIsLoading(false);
       }
@@ -144,24 +159,37 @@ export default function BundleViewer({
     }
   };
 
+  // Copy as Context — concatenate all docs for AI
+  const handleCopyContext = useCallback(async () => {
+    const context = documents.map((doc, i) => {
+      const title = doc.title || "Untitled";
+      return `--- Document ${i + 1}: ${title} ---\n\n${doc.markdown}`;
+    }).join("\n\n---\n\n");
+
+    const header = `Bundle: ${initialTitle || "Untitled Bundle"}\nDocuments: ${documents.length}\n\n`;
+    try {
+      await navigator.clipboard.writeText(header + context);
+      setContextCopied(true);
+      setTimeout(() => setContextCopied(false), 2000);
+    } catch { /* clipboard error */ }
+  }, [documents, initialTitle]);
+
   // Render selected document
   const renderDocument = useCallback(async (doc: BundleDocument) => {
     setSelectedDocId(doc.id);
     try {
       const result = await renderMarkdown(doc.markdown);
-      const processed = await postProcessHtml(result.html);
+      const processed = postProcessHtml(result.html);
       setSelectedHtml(processed);
     } catch {
       setSelectedHtml(`<p style="color: var(--text-muted)">Failed to render document</p>`);
     }
-  }, [theme]);
+  }, []);
 
-  // Handle graph node click
-  const handleNodeClick = useCallback((nodeId: string, nodeType: string, documentId?: string) => {
-    if (nodeType === "document" && documentId) {
-      const doc = documents.find(d => d.id === documentId);
-      if (doc) renderDocument(doc);
-    }
+  // Handle canvas node click
+  const handleDocumentClick = useCallback((docId: string) => {
+    const doc = documents.find(d => d.id === docId);
+    if (doc) renderDocument(doc);
   }, [documents, renderDocument]);
 
   // Re-render selected doc when theme changes
@@ -177,15 +205,10 @@ export default function BundleViewer({
     if (!selectedHtml || !previewRef.current) return;
     const containers = previewRef.current.querySelectorAll(".mermaid-container");
     if (containers.length === 0) return;
-
     (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: theme === "dark" ? "dark" : "default",
-          securityLevel: "loose",
-        });
+        mermaid.initialize({ startOnLoad: false, theme: theme === "dark" ? "dark" : "default", securityLevel: "loose" });
         for (const el of containers) {
           const code = el.getAttribute("data-mermaid");
           if (!code) continue;
@@ -223,18 +246,10 @@ export default function BundleViewer({
               onKeyDown={e => e.key === "Enter" && handlePasswordSubmit()}
               placeholder="Enter password"
               className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
-              style={{
-                background: "var(--surface)",
-                color: "var(--text-primary)",
-                border: `1px solid ${passwordError ? "#ef4444" : "var(--border)"}`,
-              }}
+              style={{ background: "var(--surface)", color: "var(--text-primary)", border: `1px solid ${passwordError ? "#ef4444" : "var(--border)"}` }}
               autoFocus
             />
-            <button
-              onClick={handlePasswordSubmit}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
-              style={{ background: "var(--accent)", color: "#fff" }}
-            >
+            <button onClick={handlePasswordSubmit} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: "var(--accent)", color: "#fff" }}>
               Unlock
             </button>
           </div>
@@ -272,31 +287,6 @@ export default function BundleViewer({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            <button
-              onClick={() => setViewMode("graph")}
-              className="px-2.5 py-1.5 text-[11px] font-medium transition-colors"
-              style={{
-                background: viewMode === "graph" ? "var(--accent)" : "transparent",
-                color: viewMode === "graph" ? "#fff" : "var(--text-muted)",
-              }}
-            >
-              Graph
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className="px-2.5 py-1.5 text-[11px] font-medium transition-colors"
-              style={{
-                background: viewMode === "list" ? "var(--accent)" : "transparent",
-                color: viewMode === "list" ? "#fff" : "var(--text-muted)",
-                borderLeft: "1px solid var(--border)",
-              }}
-            >
-              List
-            </button>
-          </div>
-
           {/* Theme toggle */}
           <button onClick={toggleTheme} className="p-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]" title="Toggle theme">
             {theme === "dark" ? (
@@ -317,146 +307,77 @@ export default function BundleViewer({
         </div>
       </header>
 
-      {/* Content */}
-      {viewMode === "graph" ? (
-        <div className="flex-1 flex flex-col">
-          {/* Knowledge Graph */}
-          {graphData && graphData.nodes.length > 0 ? (
-            <div className="relative" style={{ height: selectedDocId ? "45vh" : "calc(100vh - 53px)", minHeight: 300, transition: "height 0.3s ease" }}>
-              <KnowledgeGraph
-                graphData={graphData}
-                documents={documents}
-                onNodeClick={handleNodeClick}
-                height="100%"
-              />
-            </div>
+      {/* Canvas + Document Reader split */}
+      <div className="flex" style={{ height: "calc(100vh - 53px)" }}>
+        {/* Canvas */}
+        <div className="relative" style={{ flex: 1, height: "100%", borderRight: selectedDocId ? "1px solid var(--border)" : "none" }}>
+          {documents.length > 0 ? (
+            <BundleCanvas
+              documents={documents}
+              aiGraph={aiGraph}
+              isAnalyzing={isAnalyzing}
+              onDocumentClick={handleDocumentClick}
+              onCopyContext={handleCopyContext}
+            />
           ) : (
-            <div className="flex items-center justify-center py-20" style={{ color: "var(--text-muted)" }}>
-              <p className="text-sm">No graph data available</p>
+            <div className="flex items-center justify-center h-full" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm">No documents in this bundle</p>
             </div>
           )}
 
-          {/* Selected document viewer */}
-          {selectedDocId && (
-            <div className="flex-1 overflow-auto" style={{ borderTop: "1px solid var(--border)" }}>
-              {/* Document header */}
-              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-2.5" style={{ background: "var(--surface)", borderBottom: "1px solid var(--border-dim)" }}>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>
-                    {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
-                  </span>
-                  <button
-                    onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
-                    className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                    style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
-                  >
-                    Open
-                  </button>
-                </div>
+          {/* Context copied toast */}
+          {contextCopied && (
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-lg text-xs font-medium animate-in fade-in" style={{ background: "var(--accent)", color: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+              Copied all documents as AI context
+            </div>
+          )}
+        </div>
+
+        {/* Document Reader Panel */}
+        {selectedDocId && (
+          <div className="w-[45%] max-w-2xl flex flex-col overflow-hidden">
+            {/* Panel header */}
+            <div className="shrink-0 flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                  {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
+                </span>
                 <button
-                  onClick={() => { setSelectedDocId(null); setSelectedHtml(""); }}
+                  onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
                   className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-faint)" }}
+                  style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
                 >
-                  Close
+                  Open
                 </button>
               </div>
-              {/* Rendered content */}
-              <div className="max-w-3xl mx-auto px-6 py-8">
-                <div
-                  ref={previewRef}
-                  className="mdcore-rendered prose prose-invert"
-                  dangerouslySetInnerHTML={{ __html: selectedHtml }}
-                />
-              </div>
+              <button
+                onClick={() => { setSelectedDocId(null); setSelectedHtml(""); }}
+                className="p-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
             </div>
-          )}
-        </div>
-      ) : (
-        /* List view */
-        <div className="flex-1 overflow-auto">
-          {/* Document list sidebar + graph mini widget */}
-          <div className="max-w-4xl mx-auto px-6 py-8">
-            {/* Mini graph */}
-            {graphData && graphData.nodes.length > 0 && (
-              <div className="rounded-xl overflow-hidden mb-8" style={{ border: "1px solid var(--border)", height: 250 }}>
-                <KnowledgeGraph
-                  graphData={graphData}
-                  documents={documents}
-                  onNodeClick={handleNodeClick}
-                  height={250}
-                />
-              </div>
-            )}
-
-            {/* Documents rendered sequentially */}
-            {documents.map((doc, i) => (
-              <DocumentCard key={doc.id} doc={doc} theme={theme} index={i} total={documents.length} />
-            ))}
+            {/* Rendered content */}
+            <div className="flex-1 overflow-auto px-6 py-6">
+              <div
+                ref={previewRef}
+                className="mdcore-rendered prose prose-invert"
+                dangerouslySetInnerHTML={{ __html: selectedHtml }}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Badge */}
-      {showBadge && (
-        <div className="shrink-0 text-center py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer" className="text-[10px] transition-colors hover:underline" style={{ color: "var(--text-faint)" }}>
+      {showBadge && !selectedDocId && (
+        <div className="absolute bottom-3 right-3 z-20">
+          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer" className="text-[9px] px-2 py-1 rounded transition-colors hover:underline" style={{ color: "var(--text-faint)", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}>
             Published with mdfy.app
           </a>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Document Card (for list view) ───
-
-function DocumentCard({ doc, theme, index, total }: { doc: BundleDocument; theme: Theme; index: number; total: number }) {
-  const [html, setHtml] = useState("");
-  const previewRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await renderMarkdown(doc.markdown);
-        const processed = await postProcessHtml(result.html);
-        setHtml(processed);
-      } catch { /* render error */ }
-    })();
-  }, [doc.markdown, theme]);
-
-  // Mermaid
-  useEffect(() => {
-    if (!html || !previewRef.current) return;
-    const containers = previewRef.current.querySelectorAll(".mermaid-container");
-    if (containers.length === 0) return;
-    (async () => {
-      try {
-        const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({ startOnLoad: false, theme: theme === "dark" ? "dark" : "default", securityLevel: "loose" });
-        for (const el of containers) {
-          const code = el.getAttribute("data-mermaid");
-          if (!code) continue;
-          const { svg } = await mermaid.render(`mermaid-list-${Math.random().toString(36).slice(2)}`, code);
-          el.innerHTML = svg;
-        }
-      } catch { /* mermaid error */ }
-    })();
-  }, [html, theme]);
-
-  return (
-    <div className="mb-8" style={{ borderBottom: index < total - 1 ? "1px solid var(--border-dim)" : "none", paddingBottom: index < total - 1 ? "2rem" : 0 }}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{doc.title || "Untitled"}</h2>
-        <a href={`/d/${doc.id}`} target="_blank" rel="noopener noreferrer" className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>
-          Open
-        </a>
-      </div>
-      <div
-        ref={previewRef}
-        className="mdcore-rendered prose prose-invert"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
     </div>
   );
 }

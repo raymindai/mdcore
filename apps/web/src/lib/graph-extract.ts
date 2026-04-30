@@ -227,26 +227,30 @@ export function extractGraphHeuristic(documents: DocumentInput[]): GraphData {
     }
   }
 
-  // 3. Add concept nodes for terms shared across 2+ documents
-  const sharedConcepts: Array<{ key: string; label: string; docIds: string[]; weight: number }> = [];
+  // 3. Add concept nodes for terms shared across 2+ documents (max 20)
+  const candidateConcepts: Array<{ key: string; label: string; docIds: string[]; weight: number }> = [];
 
   for (const [key, docSet] of conceptDocs) {
     if (docSet.size < 2) continue;
-
     const label = key.startsWith("lang:") ? key.slice(5) : key;
-    const type = key.startsWith("lang:") ? "tag" as const : "concept" as const;
-    const weight = docSet.size;
+    candidateConcepts.push({ key, label, docIds: Array.from(docSet), weight: docSet.size });
+  }
 
-    const nodeId = `concept:${key}`;
+  // Sort by weight (most shared first), limit to top 20
+  candidateConcepts.sort((a, b) => b.weight - a.weight);
+  const sharedConcepts = candidateConcepts.slice(0, 20);
+
+  for (const concept of sharedConcepts) {
+    const type = concept.key.startsWith("lang:") ? "tag" as const : "concept" as const;
+    const nodeId = `concept:${concept.key}`;
     if (!nodeIds.has(nodeId)) {
       nodes.push({
         id: nodeId,
-        label,
+        label: concept.label,
         type,
-        weight: Math.min(8, 1 + weight),
+        weight: Math.min(8, 1 + concept.weight),
       });
       nodeIds.add(nodeId);
-      sharedConcepts.push({ key, label, docIds: Array.from(docSet), weight });
     }
   }
 
