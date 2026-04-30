@@ -14,12 +14,6 @@ function isValidDocId(id: string): boolean {
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
 
-  // Browser navigating via /{id} rewrite → redirect to rendered page
-  const secFetchDest = _req.headers.get("sec-fetch-dest");
-  if (secFetchDest === "document") {
-    return NextResponse.redirect(new URL(`/d/${id}`, _req.url));
-  }
-
   if (!isValidDocId(id)) {
     return NextResponse.json({ error: "Invalid document ID" }, { status: 400 });
   }
