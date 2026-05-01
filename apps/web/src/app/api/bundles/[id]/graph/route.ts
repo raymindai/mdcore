@@ -4,32 +4,45 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-const EXTRACTION_PROMPT = `You are a knowledge graph extractor. Given a collection of documents, extract:
+const EXTRACTION_PROMPT = `You are a knowledge graph extractor and document analyst. Given a collection of documents, do two things:
 
-1. **Entities**: Named concepts, technologies, people, organizations, methodologies mentioned across documents
-2. **Relationships**: How entities connect to each other and to documents
-3. **Clusters**: Groups of related entities/documents by topic
+1. **Extract a knowledge graph** of key concepts, entities, and relationships
+2. **Analyze the bundle** to provide summary, themes, and insights
 
 Return ONLY valid JSON in this exact format:
 {
   "nodes": [
-    { "id": "unique-id", "label": "Display Name", "type": "concept|entity|tag", "weight": 1-10 }
+    { "id": "concept:unique-id", "label": "Display Name", "type": "concept|entity|tag", "weight": 1-10 }
   ],
   "edges": [
-    { "source": "node-id", "target": "node-id", "label": "relationship", "weight": 1-5, "type": "shares_concept|related|references" }
+    { "source": "node-id", "target": "node-id", "label": "brief relationship description", "weight": 1-5, "type": "shares_concept|related|references|contains" }
   ],
   "clusters": [
-    { "id": "cluster-0", "label": "Cluster Name", "nodeIds": ["node-id-1", "node-id-2"], "color": "#hex" }
+    { "id": "cluster-0", "label": "Cluster Name", "nodeIds": ["node-id-1"], "color": "#hex" }
+  ],
+  "summary": "A 2-3 sentence summary of what this collection of documents covers as a whole.",
+  "themes": ["theme1", "theme2", "theme3"],
+  "insights": [
+    "Key insight about how documents relate or complement each other",
+    "Gap or contradiction found across documents",
+    "Strategic observation from reading all documents together"
   ]
 }
 
-Rules:
+CRITICAL RULES:
 - Include document nodes with type "document" and their original IDs prefixed with "doc:"
-- Concept nodes should have IDs prefixed with "concept:"
+- Concept nodes: "concept:" prefix. Entity nodes: "concept:" prefix but type "entity". Tag nodes: "concept:" prefix but type "tag"
 - Weight 1-10 for nodes (importance), 1-5 for edges (strength)
-- Use these cluster colors in order: #fb923c, #60a5fa, #a78bfa, #4ade80, #f472b6, #2dd4bf, #fbbf24, #f87171
-- Extract 10-30 concept nodes maximum
-- Only create edges for meaningful relationships`;
+- Edge labels should be SHORT (2-4 words) describing the relationship
+- Use these cluster colors: #fb923c, #60a5fa, #a78bfa, #4ade80, #f472b6, #2dd4bf
+- Extract 8-15 concept/entity/tag nodes (quality over quantity)
+- Only create edges for MEANINGFUL relationships (not obvious ones)
+- **EVERY concept/entity/tag node MUST have at least one edge connecting it to a document node (doc:xxx).** This is the most important rule. A concept without a document connection is useless. The edge should show WHICH document(s) the concept comes from or relates to.
+- Concept-to-concept edges are allowed IN ADDITION to document edges, but never as the only connection.
+- If a concept appears in multiple documents, create edges from each relevant document to that concept.
+- summary: what do these documents TOGETHER tell us?
+- themes: 3-5 overarching themes across all documents
+- insights: 2-4 non-obvious insights from cross-document analysis`;
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
@@ -229,6 +242,9 @@ function parseGraphJson(text: string) {
       nodes: parsed.nodes || [],
       edges: parsed.edges || [],
       clusters: parsed.clusters || [],
+      summary: parsed.summary || null,
+      themes: parsed.themes || [],
+      insights: parsed.insights || [],
       version: 1,
     };
   } catch {

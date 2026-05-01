@@ -42,6 +42,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "@xyflow/react": "^12.10.2",
     "dagre": "^0.8.5",
+    "elkjs": "^0.11.1",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.40",
     "lucide-react": "^1.8.0",

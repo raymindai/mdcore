@@ -42,6 +42,17 @@ export default function BundleViewer({
   const [editToken, setEditToken] = useState<string | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedHtml, setSelectedHtml] = useState("");
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState<{
+    type: string;
+    label: string;
+    weight?: number;
+    summary?: string;
+    themes?: string[];
+    insights?: string[];
+    connectedDocs?: Array<{ id: string; title: string }>;
+    relationships?: Array<{ label: string; target: string }>;
+    docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
+  } | null>(null);
   const [theme, setThemeState] = useState<Theme>("dark");
   const [isLoading, setIsLoading] = useState(true);
   const [passwordInput, setPasswordInput] = useState("");
@@ -174,6 +185,27 @@ export default function BundleViewer({
     } catch { /* clipboard error */ }
   }, [documents, initialTitle]);
 
+  // Regenerate AI analysis
+  const handleRegenerate = useCallback(async () => {
+    setAiGraph(null);
+    setIsAnalyzing(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const anonId = localStorage.getItem("mdfy-anonymous-id");
+      if (anonId) headers["x-anonymous-id"] = anonId;
+      const graphRes = await fetch(`/api/bundles/${id}/graph`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ editToken }),
+      });
+      if (graphRes.ok) {
+        const graphData = await graphRes.json();
+        setAiGraph(graphData.graphData);
+      }
+    } catch { /* AI error */ }
+    setIsAnalyzing(false);
+  }, [id, editToken]);
+
   // Render selected document
   const renderDocument = useCallback(async (doc: BundleDocument) => {
     setSelectedDocId(doc.id);
@@ -187,10 +219,76 @@ export default function BundleViewer({
   }, []);
 
   // Handle canvas node click
-  const handleDocumentClick = useCallback((docId: string) => {
-    const doc = documents.find(d => d.id === docId);
-    if (doc) renderDocument(doc);
-  }, [documents, renderDocument]);
+  const handleNodeClick = useCallback((nodeId: string) => {
+    // Document node
+    if (nodeId.startsWith("doc:")) {
+      const docId = nodeId.slice(4);
+      const doc = documents.find(d => d.id === docId);
+      if (doc) {
+        const wc = doc.markdown.split(/\s+/).filter(Boolean).length;
+        setSelectedNodeInfo({
+          type: "document",
+          label: doc.title || "Untitled",
+          docStats: {
+            wordCount: wc,
+            readingTime: Math.max(1, Math.ceil(wc / 200)),
+            sections: (doc.markdown.match(/^#{1,3}\s+/gm) || []).length,
+            hasCode: /```\w+/.test(doc.markdown),
+          },
+          // Find concepts connected to this doc
+          connectedDocs: aiGraph?.edges
+            ?.filter((e: any) => (e.source === nodeId || e.target === nodeId) && !(e.source === nodeId && e.target.startsWith("doc:")) && !(e.target === nodeId && e.source.startsWith("doc:")))
+            .map((e: any) => {
+              const conceptId = e.source === nodeId ? e.target : e.source;
+              const concept = aiGraph?.nodes.find((n: any) => n.id === conceptId);
+              return concept ? { id: conceptId, title: `${concept.label} (${e.label || concept.type})` } : null;
+            }).filter(Boolean) as any || [],
+        });
+        renderDocument(doc);
+      }
+      return;
+    }
+    // Concept/entity/tag node
+    if (nodeId.startsWith("concept:") && aiGraph) {
+      const concept = aiGraph.nodes.find((n: any) => n.id === nodeId);
+      if (!concept) return;
+      const connectedDocIds = aiGraph.edges
+        .filter((e: any) => (e.source === nodeId && e.target.startsWith("doc:")) || (e.target === nodeId && e.source.startsWith("doc:")))
+        .map((e: any) => e.source.startsWith("doc:") ? e.source.slice(4) : e.target.slice(4));
+      const connectedDocs = documents.filter(d => connectedDocIds.includes(d.id));
+      const relationships = aiGraph.edges
+        .filter((e: any) => e.source === nodeId || e.target === nodeId)
+        .map((e: any) => {
+          const targetId = e.source === nodeId ? e.target : e.source;
+          const targetNode = aiGraph.nodes.find((n: any) => n.id === targetId) || documents.find(d => `doc:${d.id}` === targetId);
+          return { label: e.label || "related", target: (targetNode as any)?.label || (targetNode as any)?.title || targetId };
+        });
+
+      setSelectedDocId(null);
+      setSelectedHtml("");
+      setSelectedNodeInfo({
+        type: concept.type,
+        label: concept.label,
+        weight: concept.weight,
+        connectedDocs: connectedDocs.map(d => ({ id: d.id, title: d.title || "Untitled" })),
+        relationships,
+      });
+      return;
+    }
+    // Summary node
+    if (nodeId === "analysis:summary" && aiGraph) {
+      setSelectedDocId(null);
+      setSelectedHtml("");
+      setSelectedNodeInfo({
+        type: "analysis",
+        label: "Bundle Analysis",
+        summary: aiGraph.summary,
+        themes: aiGraph.themes,
+        insights: aiGraph.insights,
+      });
+      return;
+    }
+  }, [documents, renderDocument, aiGraph]);
 
   // Re-render selected doc when theme changes
   useEffect(() => {
@@ -281,7 +379,26 @@ export default function BundleViewer({
             <MdfyLogo />
           </Link>
           <div className="flex flex-col">
-            <h1 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{initialTitle || "Untitled Bundle"}</h1>
+            {editToken ? (
+              <input
+                className="text-sm font-semibold bg-transparent outline-none border-b border-transparent hover:border-[var(--border)] focus:border-[var(--accent)] transition-colors"
+                style={{ color: "var(--text-primary)", maxWidth: 300 }}
+                defaultValue={initialTitle || "Untitled Bundle"}
+                onBlur={(e) => {
+                  const newTitle = e.target.value.trim();
+                  if (newTitle && newTitle !== initialTitle) {
+                    fetch(`/api/bundles/${id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ title: newTitle, editToken }),
+                    }).catch(() => {});
+                  }
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              />
+            ) : (
+              <h1 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{initialTitle || "Untitled Bundle"}</h1>
+            )}
             {description && <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{description}</p>}
           </div>
         </div>
@@ -316,8 +433,10 @@ export default function BundleViewer({
               documents={documents}
               aiGraph={aiGraph}
               isAnalyzing={isAnalyzing}
-              onDocumentClick={handleDocumentClick}
+              selectedDocId={selectedDocId}
+              onDocumentClick={handleNodeClick}
               onCopyContext={handleCopyContext}
+              onRegenerate={handleRegenerate}
             />
           ) : (
             <div className="flex items-center justify-center h-full" style={{ color: "var(--text-muted)" }}>
@@ -333,38 +452,158 @@ export default function BundleViewer({
           )}
         </div>
 
-        {/* Document Reader Panel */}
-        {selectedDocId && (
+        {/* Side Panel — Document content OR Node info */}
+        {(selectedDocId || selectedNodeInfo) && (
           <div className="w-[45%] max-w-2xl flex flex-col overflow-hidden">
             {/* Panel header */}
             <div className="shrink-0 flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
-                  {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
-                </span>
-                <button
-                  onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
-                  className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
-                >
-                  Open
-                </button>
+                {selectedDocId ? (
+                  <>
+                    <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+                      {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
+                    </span>
+                    <button
+                      onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
+                      className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
+                    >
+                      Open
+                    </button>
+                  </>
+                ) : selectedNodeInfo && (
+                  <>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                      {selectedNodeInfo.type}
+                    </span>
+                    <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {selectedNodeInfo.label}
+                    </span>
+                  </>
+                )}
               </div>
               <button
-                onClick={() => { setSelectedDocId(null); setSelectedHtml(""); }}
+                onClick={() => { setSelectedDocId(null); setSelectedHtml(""); setSelectedNodeInfo(null); }}
                 className="p-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                 style={{ color: "var(--text-faint)" }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
-            {/* Rendered content */}
+            {/* Content */}
             <div className="flex-1 overflow-auto px-6 py-6">
-              <div
-                ref={previewRef}
-                className="mdcore-rendered prose prose-invert"
-                dangerouslySetInnerHTML={{ __html: selectedHtml }}
-              />
+              {selectedDocId ? (
+                <div
+                  ref={previewRef}
+                  className="mdcore-rendered prose prose-invert"
+                  dangerouslySetInnerHTML={{ __html: selectedHtml }}
+                />
+              ) : selectedNodeInfo && (
+                <div className="space-y-4">
+                  {/* Analysis panel */}
+                  {selectedNodeInfo.type === "analysis" && (
+                    <>
+                      {selectedNodeInfo.summary && (
+                        <div className="rounded-lg p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
+                          <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
+                        </div>
+                      )}
+                      {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedNodeInfo.themes.map((t, i) => (
+                              <span key={i} className="text-[11px] px-2.5 py-1 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>{t}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Insights</h4>
+                          <div className="space-y-2">
+                            {selectedNodeInfo.insights.map((ins, i) => (
+                              <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
+                                <span className="text-xs shrink-0" style={{ color: "var(--accent)" }}>→</span>
+                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Concept/Entity/Tag panel */}
+                  {(selectedNodeInfo.type === "concept" || selectedNodeInfo.type === "entity" || selectedNodeInfo.type === "tag") && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{
+                          background: selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.1)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.1)" : "var(--accent-dim)",
+                          color: selectedNodeInfo.type === "entity" ? "#4ade80" : selectedNodeInfo.type === "tag" ? "#a78bfa" : "var(--accent)",
+                        }}>{selectedNodeInfo.type}</span>
+                        {selectedNodeInfo.weight && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Importance</span>
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 10 }).map((_, i) => (
+                                <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border)" }} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedNodeInfo.connectedDocs && selectedNodeInfo.connectedDocs.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Appears in</h4>
+                          <div className="space-y-1">
+                            {selectedNodeInfo.connectedDocs.map((doc) => (
+                              <button key={doc.id} onClick={() => { const d = documents.find(dd => dd.id === doc.id); if (d) renderDocument(d); }}
+                                className="w-full text-left px-3 py-2 rounded-lg text-[11px] font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
+                                style={{ color: "var(--text-primary)", background: "var(--toggle-bg)" }}>
+                                <span style={{ color: "var(--accent)" }}>📄</span> {doc.title}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedNodeInfo.relationships && selectedNodeInfo.relationships.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Relationships</h4>
+                          <div className="space-y-1">
+                            {selectedNodeInfo.relationships.map((rel, i) => (
+                              <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px]" style={{ background: "var(--toggle-bg)" }}>
+                                <span style={{ color: "var(--accent)" }}>→</span>
+                                <span style={{ color: "var(--text-muted)" }}>{rel.label}</span>
+                                <span style={{ color: "var(--text-secondary)" }}>{rel.target}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Document info (shown alongside rendered content) */}
+                  {selectedNodeInfo.type === "document" && selectedNodeInfo.docStats && (
+                    <div className="flex flex-wrap gap-2 pb-3 mb-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{selectedNodeInfo.docStats.wordCount.toLocaleString()} words</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{selectedNodeInfo.docStats.readingTime} min read</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{selectedNodeInfo.docStats.sections} sections</span>
+                      {selectedNodeInfo.docStats.hasCode && <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>Code</span>}
+                      {selectedNodeInfo.connectedDocs && selectedNodeInfo.connectedDocs.length > 0 && (
+                        <div className="w-full mt-1 flex flex-wrap gap-1">
+                          {selectedNodeInfo.connectedDocs.map((c, i) => (
+                            <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{c.title}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
