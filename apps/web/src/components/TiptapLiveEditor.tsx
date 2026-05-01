@@ -219,7 +219,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             heading: { levels: [1, 2, 3, 4, 5, 6] },
           }),
           CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
-          Table.configure({ resizable: true }),
+          Table.configure({ resizable: true, allowTableNodeSelection: true }),
           TableRow,
           TableCell,
           TableHeader,

@@ -1672,18 +1672,33 @@ textarea::selection {
   font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
 }
 .tiptap table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   margin: 0.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .tiptap th, .tiptap td {
-  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   text-align: left;
+}
+.tiptap th:last-child, .tiptap td:last-child {
+  border-right: none;
+}
+.tiptap tr:last-child td {
+  border-bottom: none;
 }
 .tiptap th {
   background: var(--surface);
   font-weight: 600;
+}
+/* Prevent table inside table */
+.tiptap td table, .tiptap th table {
+  display: none;
 }
 .tiptap img {
   max-width: 100%;
