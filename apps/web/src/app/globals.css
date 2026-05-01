@@ -1699,16 +1699,15 @@ textarea::selection {
 .tiptap td p, .tiptap th p {
   margin: 0;
 }
-.tiptap .selectedCell::after {
+.tiptap .selectedCell {
   background: var(--accent-dim);
-  content: "";
-  left: 0; right: 0; top: 0; bottom: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
 }
+/* Remove ProseMirror default dashed cell selection outlines */
 .tiptap td, .tiptap th {
-  position: relative;
+  outline: none !important;
+}
+.tiptap .ProseMirror-selectednode {
+  outline: none !important;
 }
 /* Prevent table inside table */
 .tiptap td table, .tiptap th table {
