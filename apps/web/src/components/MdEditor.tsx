@@ -4896,6 +4896,10 @@ export default function MdEditor() {
         wysiwygDebounce.current = undefined;
       }
       wysiwygEditingRef.current = false;
+      // Suppress handleWysiwygInput for 300ms — doRender's innerHTML update
+      // triggers onInput which would reconvert old DOM to markdown
+      suppressInputRef.current = true;
+      setTimeout(() => { suppressInputRef.current = false; }, 300);
     };
 
     // Check for pasted images (handle multiple)
@@ -4988,6 +4992,8 @@ export default function MdEditor() {
       wysiwygDebounce.current = undefined;
     }
     wysiwygEditingRef.current = false;
+    suppressInputRef.current = true;
+    setTimeout(() => { suppressInputRef.current = false; }, 300);
   }, []);
 
   // Helper: find the outermost trapping block (blockquote, ul, ol, pre, table) from cursor
@@ -5156,6 +5162,8 @@ export default function MdEditor() {
   }, [findTrappingBlock, escapeTrappingBlock]);
 
   const handleWysiwygInput = useCallback(() => {
+    // Skip if suppressed (after paste/programmatic changes — prevents stale DOM reconversion)
+    if (suppressInputRef.current) return;
     wysiwygEditingRef.current = true;
     if (wysiwygDebounce.current) clearTimeout(wysiwygDebounce.current);
     wysiwygDebounce.current = setTimeout(() => {
@@ -5230,7 +5238,7 @@ export default function MdEditor() {
 
                 // Validate: the partial update should produce reasonable output
                 // If the new markdown is drastically shorter, something went wrong
-                if (newMd.length > md.length * 0.5 || md.length < 20) {
+                if (newMd.length > md.length * 0.8 || md.length < 20) {
                   setMarkdown(newMd);
                   cmSetDoc(newMd);
                   didPartialUpdate = true;
@@ -6133,24 +6141,25 @@ ${clone.innerHTML}
   // ── Cursor-aware insertion ──
   // Saves WYSIWYG cursor position so inserts go where the user expects
   const insertPosRef = useRef<number>(-1);
+  // Suppress handleWysiwygInput after paste/programmatic changes
+  const suppressInputRef = useRef(false);
 
   const saveInsertPosition = useCallback(() => {
     const md = markdownRef.current;
 
-    // Check if cursor is in the WYSIWYG article (works in preview AND split modes)
+    // Check if cursor is in the WYSIWYG article
     const article = previewRef.current?.querySelector("article");
     const sel = window.getSelection();
     if (!article || !sel?.rangeCount || !article.contains(sel.getRangeAt(0).startContainer)) {
       // Cursor not in article — try CodeMirror cursor (source/split mode)
       if (editorContainerRef.current?.contains(document.activeElement)) {
-        // CM cursor: snap to end of current line for block insertion
         const cmPos = cmGetCursorPos();
         const lines = md.split("\n");
         let charCount = 0;
         for (let i = 0; i < lines.length; i++) {
           charCount += lines[i].length + 1;
           if (charCount > cmPos) {
-            insertPosRef.current = charCount; // end of current line
+            insertPosRef.current = charCount;
             return;
           }
         }
@@ -6159,42 +6168,65 @@ ${clone.innerHTML}
       return;
     }
 
-    const MARKER = "MDFYINSERT7X9K";
+    // ── Text-offset approach ──
+    // Instead of htmlToMarkdown round-trip (lossy, position mismatch),
+    // count the text offset from article start to cursor position,
+    // then find the corresponding line boundary in the original markdown.
     const range = sel.getRangeAt(0);
-    const markerNode = document.createTextNode(MARKER);
-    range.insertNode(markerNode);
 
-    // Clone article with marker, then immediately remove marker from live DOM
-    const clone = article.cloneNode(true) as HTMLElement;
-    markerNode.remove();
-    article.normalize();
+    // Count text characters from article start to cursor
+    const preRange = document.createRange();
+    preRange.setStart(article, 0);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    const textBefore = preRange.toString();
+    const textOffset = textBefore.length;
 
-    // Move marker out of ce-spacers in clone (spacers are stripped before Turndown)
-    clone.querySelectorAll(".ce-spacer").forEach(spacer => {
-      if (spacer.textContent?.includes(MARKER)) {
-        const txt = document.createTextNode(MARKER);
-        spacer.parentNode?.insertBefore(txt, spacer.nextSibling);
-      }
-      spacer.remove();
-    });
-    clone.querySelectorAll(".code-copy-btn, .code-header, .code-lang-label, .mermaid-edit-btn, .mermaid-toolbar, .ascii-render-btn, .ascii-toggle-btn").forEach(el => el.remove());
-    clone.querySelectorAll(".table-wrapper").forEach(wrapper => {
-      const table = wrapper.querySelector("table");
-      if (table) wrapper.replaceWith(table);
-    });
+    // Get total text length of article
+    const totalText = article.textContent || "";
 
-    const mdWithMarker = htmlToMarkdown(clone.innerHTML);
-    const markerIdx = mdWithMarker.indexOf(MARKER);
-
-    if (markerIdx !== -1) {
-      // Remove marker text to get clean position
-      const clean = mdWithMarker.slice(0, markerIdx) + mdWithMarker.slice(markerIdx + MARKER.length);
-      // Snap to end of current line (block-level insert boundary)
-      const nextNl = clean.indexOf("\n", markerIdx);
-      insertPosRef.current = nextNl !== -1 ? nextNl + 1 : clean.length;
-    } else {
+    if (totalText.length === 0 || textOffset >= totalText.length) {
+      // Cursor at end of article — insert at end of markdown
       insertPosRef.current = md.length;
+      return;
     }
+
+    if (textOffset === 0) {
+      // Cursor at beginning — insert at start
+      insertPosRef.current = 0;
+      return;
+    }
+
+    // Map text offset to markdown position via line-by-line text matching
+    // Strip markdown syntax to get plain text, and find the line where
+    // cumulative text length crosses the cursor offset
+    const lines = md.split("\n");
+    let mdPos = 0;
+    let textCount = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      // Strip markdown syntax to get approximate text content
+      const lineText = lines[i]
+        .replace(/^#{1,6}\s+/, "")     // headings
+        .replace(/^>\s?/gm, "")         // blockquote
+        .replace(/^[-*+]\s+/, "")       // unordered list
+        .replace(/^\d+\.\s+/, "")       // ordered list
+        .replace(/^- \[[ x]\]\s+/, "")  // task list
+        .replace(/\*\*|__/g, "")        // bold
+        .replace(/\*|_/g, "")           // italic
+        .replace(/~~|``/g, "")          // strikethrough/inline code
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1"); // links
+
+      textCount += lineText.length + 1; // +1 for newline
+      mdPos += lines[i].length + 1;
+
+      if (textCount >= textOffset) {
+        // Cursor is on or before this line — snap to end of this line
+        insertPosRef.current = mdPos;
+        return;
+      }
+    }
+
+    insertPosRef.current = md.length;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -6202,25 +6234,17 @@ ${clone.innerHTML}
     const md = markdownRef.current;
     let pos = insertPosRef.current;
 
-    if (pos < 0) {
-      // No saved position — append at end
+    if (pos < 0 || pos > md.length) {
+      // No valid position — append at end
       const suffix = md.endsWith("\n") ? "\n" : "\n\n";
       return md + suffix + content;
     }
 
-    // Clamp position to document length — saveInsertPosition calculates position
-    // from htmlToMarkdown reconversion which can differ in length from the original
-    if (pos > md.length) pos = md.length;
-
-    // If position is near the end (within last 5%), snap to a proper line boundary
-    // to avoid splitting the last paragraph
-    if (pos > md.length * 0.9) {
-      const lastNl = md.lastIndexOf("\n", pos);
-      const afterLastNl = md.slice(lastNl + 1).trim();
-      // If there's content after the last newline before pos, snap to end of that line
-      if (afterLastNl && lastNl >= 0) {
-        const nextNl = md.indexOf("\n", pos);
-        pos = nextNl !== -1 ? nextNl + 1 : md.length;
+    // Snap to a line boundary (don't split a line in the middle)
+    if (pos > 0 && pos < md.length) {
+      const nextNl = md.indexOf("\n", pos);
+      if (nextNl !== -1 && nextNl - pos < 200) {
+        pos = nextNl + 1; // snap to next line boundary
       }
     }
 
