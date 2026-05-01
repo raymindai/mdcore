@@ -180,6 +180,9 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
 // ─── Main Component ───
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
   function TiptapLiveEditor({ markdown, onChange, canEdit, narrowView, onPasteImage }, ref) {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
     const frontmatterRef = useRef("");
     const isSettingContent = useRef(false);
     const onChangeRef = useRef(onChange);
@@ -193,6 +196,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
 
     const editor = useEditor({
       immediatelyRender: false,
+      shouldRerenderOnTransaction: false,
       extensions: [
         StarterKit.configure({
           codeBlock: false,
@@ -322,7 +326,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       getEditor: () => editor,
     }), [editor, markdown]);
 
-    if (!editor) return null;
+    if (!editor || !mounted) return null;
 
     return (
       <div className="flex-1 overflow-auto relative" style={{ background: "var(--background)" }}>
