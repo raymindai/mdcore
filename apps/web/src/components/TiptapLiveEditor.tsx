@@ -60,6 +60,9 @@ export interface TiptapLiveEditorProps {
   canEdit: boolean;
   narrowView: boolean;
   onPasteImage?: (file: File) => Promise<string | null>;
+  onDoubleClickCode?: (lang: string, code: string) => void;
+  onDoubleClickMath?: (tex: string, mode: "inline" | "display") => void;
+  onDoubleClickMermaid?: (code: string) => void;
 }
 
 export interface TiptapLiveEditorHandle {
@@ -186,13 +189,19 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
 
 // ─── Inner Component (client-only, safe to use useEditor) ───
 const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
-  function TiptapLiveEditorInner({ markdown, onChange, canEdit, narrowView, onPasteImage }, ref) {
+  function TiptapLiveEditorInner({ markdown, onChange, canEdit, narrowView, onPasteImage, onDoubleClickCode, onDoubleClickMath, onDoubleClickMermaid }, ref) {
     const frontmatterRef = useRef("");
     const isSettingContent = useRef(false);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
     const onPasteImageRef = useRef(onPasteImage);
     onPasteImageRef.current = onPasteImage;
+    const onDblClickCodeRef = useRef(onDoubleClickCode);
+    onDblClickCodeRef.current = onDoubleClickCode;
+    const onDblClickMathRef = useRef(onDoubleClickMath);
+    onDblClickMathRef.current = onDoubleClickMath;
+    const onDblClickMermaidRef = useRef(onDoubleClickMermaid);
+    onDblClickMermaidRef.current = onDoubleClickMermaid;
 
     const { frontmatter: initialFm, body: initialBody } = extractFrontmatter(markdown);
     const initialBodyRef = useRef(initialBody);
@@ -233,6 +242,22 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
           attributes: {
             class: `mdcore-rendered focus:outline-none ${narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"}`,
             style: `cursor: ${canEdit ? "text" : "default"}; min-height: 100%;`,
+          },
+          handleDoubleClickOn: (view, pos, node) => {
+            // Code block → open code editor modal
+            if (node.type.name === "codeBlock") {
+              const lang = node.attrs.language || "";
+              const code = node.textContent || "";
+              if (lang === "mermaid" && onDblClickMermaidRef.current) {
+                onDblClickMermaidRef.current(code);
+                return true;
+              }
+              if (onDblClickCodeRef.current) {
+                onDblClickCodeRef.current(lang, code);
+                return true;
+              }
+            }
+            return false;
           },
           handlePaste: (view, event) => {
             // Image paste

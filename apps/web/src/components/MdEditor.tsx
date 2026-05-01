@@ -9051,6 +9051,33 @@ ${clone.innerHTML}
                   canEdit={canEdit}
                   narrowView={narrowView}
                   onPasteImage={uploadImage}
+                  onDoubleClickCode={(lang, code) => {
+                    // Open code editor modal (reuse existing modal system)
+                    // For now, create a simple prompt-based editor
+                    const newCode = prompt("Edit code:", code);
+                    if (newCode !== null && newCode !== code) {
+                      const ed = tiptapRef.current?.getEditor();
+                      if (ed) {
+                        // Find and replace the code block content
+                        const md = markdownRef.current;
+                        const fence = "```" + lang;
+                        const idx = md.indexOf(fence);
+                        if (idx !== -1) {
+                          const endFence = md.indexOf("\n```", idx + fence.length);
+                          if (endFence !== -1) {
+                            const newMd = md.slice(0, idx) + "```" + lang + "\n" + newCode + md.slice(endFence);
+                            handleTiptapChange(newMd);
+                            tiptapRef.current?.setMarkdown(newMd);
+                          }
+                        }
+                      }
+                    }
+                  }}
+                  onDoubleClickMermaid={(code) => {
+                    mermaidIsNewRef.current = false;
+                    setCanvasMermaid(code);
+                    setShowMermaidModal(true);
+                  }}
                 />
               )}
               </div>{/* end scrollable preview */}
