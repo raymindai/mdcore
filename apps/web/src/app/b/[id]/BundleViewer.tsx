@@ -46,9 +46,16 @@ export default function BundleViewer({
     type: string;
     label: string;
     weight?: number;
+    description?: string;
     summary?: string;
     themes?: string[];
     insights?: string[];
+    readingOrder?: string[];
+    readingOrderReason?: string;
+    keyTakeaways?: string[];
+    gaps?: string[];
+    connections?: Array<{ doc1: string; doc2: string; relationship: string }>;
+    documentSummary?: string;
     connectedDocs?: Array<{ id: string; title: string }>;
     relationships?: Array<{ label: string; target: string }>;
     docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
@@ -186,6 +193,7 @@ export default function BundleViewer({
   }, [documents, initialTitle]);
 
   // Regenerate AI analysis
+  const [regenerateKey, setRegenerateKey] = useState(0);
   const handleRegenerate = useCallback(async () => {
     setAiGraph(null);
     setIsAnalyzing(true);
@@ -199,8 +207,10 @@ export default function BundleViewer({
         body: JSON.stringify({ editToken }),
       });
       if (graphRes.ok) {
-        const graphData = await graphRes.json();
-        setAiGraph(graphData.graphData);
+        const data = await graphRes.json();
+        // Force fresh render with new key
+        setRegenerateKey(k => k + 1);
+        setAiGraph(data.graphData);
       }
     } catch { /* AI error */ }
     setIsAnalyzing(false);
@@ -229,6 +239,7 @@ export default function BundleViewer({
         setSelectedNodeInfo({
           type: "document",
           label: doc.title || "Untitled",
+          documentSummary: aiGraph?.documentSummaries?.[nodeId] || undefined,
           docStats: {
             wordCount: wc,
             readingTime: Math.max(1, Math.ceil(wc / 200)),
@@ -270,6 +281,7 @@ export default function BundleViewer({
         type: concept.type,
         label: concept.label,
         weight: concept.weight,
+        description: concept.description,
         connectedDocs: connectedDocs.map(d => ({ id: d.id, title: d.title || "Untitled" })),
         relationships,
       });
@@ -285,6 +297,11 @@ export default function BundleViewer({
         summary: aiGraph.summary,
         themes: aiGraph.themes,
         insights: aiGraph.insights,
+        readingOrder: aiGraph.readingOrder,
+        readingOrderReason: aiGraph.readingOrderReason,
+        keyTakeaways: aiGraph.keyTakeaways,
+        gaps: aiGraph.gaps,
+        connections: aiGraph.connections,
       });
       return;
     }
@@ -430,6 +447,7 @@ export default function BundleViewer({
         <div className="relative" style={{ flex: 1, height: "100%", borderRight: selectedDocId ? "1px solid var(--border)" : "none" }}>
           {documents.length > 0 ? (
             <BundleCanvas
+              key={regenerateKey}
               documents={documents}
               aiGraph={aiGraph}
               isAnalyzing={isAnalyzing}
@@ -500,14 +518,33 @@ export default function BundleViewer({
                 />
               ) : selectedNodeInfo && (
                 <div className="space-y-4">
-                  {/* Analysis panel */}
+                  {/* Analysis panel — full deep analysis */}
                   {selectedNodeInfo.type === "analysis" && (
                     <>
+                      {/* Executive Summary */}
                       {selectedNodeInfo.summary && (
-                        <div className="rounded-lg p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-                          <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
+                        <div className="rounded-lg p-4" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
+                          <p className="text-[12px] leading-[1.7]" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
                         </div>
                       )}
+
+                      {/* Key Takeaways */}
+                      {selectedNodeInfo.keyTakeaways && selectedNodeInfo.keyTakeaways.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Takeaways</h4>
+                          <div className="space-y-1.5">
+                            {selectedNodeInfo.keyTakeaways.map((t, i) => (
+                              <div key={i} className="flex gap-2 items-start">
+                                <span className="text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
+                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Themes */}
                       {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
                         <div>
                           <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
@@ -518,14 +555,77 @@ export default function BundleViewer({
                           </div>
                         </div>
                       )}
+
+                      {/* Insights */}
                       {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Insights</h4>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-Document Insights</h4>
                           <div className="space-y-2">
                             {selectedNodeInfo.insights.map((ins, i) => (
                               <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
                                 <span className="text-xs shrink-0" style={{ color: "var(--accent)" }}>→</span>
                                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reading Order */}
+                      {selectedNodeInfo.readingOrder && selectedNodeInfo.readingOrder.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended Reading Order</h4>
+                          <div className="space-y-1">
+                            {selectedNodeInfo.readingOrder.map((docId, i) => {
+                              const doc = documents.find(d => `doc:${d.id}` === docId);
+                              return doc ? (
+                                <button key={i} onClick={() => renderDocument(doc)}
+                                  className="w-full text-left px-3 py-2 rounded-lg text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
+                                  style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
+                                  <span className="text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
+                                  {doc.title || "Untitled"}
+                                </button>
+                              ) : null;
+                            })}
+                          </div>
+                          {selectedNodeInfo.readingOrderReason && (
+                            <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Document-to-Document Connections */}
+                      {selectedNodeInfo.connections && selectedNodeInfo.connections.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document Connections</h4>
+                          <div className="space-y-2">
+                            {selectedNodeInfo.connections.map((c, i) => {
+                              const d1 = documents.find(d => `doc:${d.id}` === c.doc1);
+                              const d2 = documents.find(d => `doc:${d.id}` === c.doc2);
+                              return (
+                                <div key={i} className="rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
+                                    <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>↔</span>
+                                    <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
+                                  </div>
+                                  <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Gaps */}
+                      {selectedNodeInfo.gaps && selectedNodeInfo.gaps.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps & Missing Perspectives</h4>
+                          <div className="space-y-1.5">
+                            {selectedNodeInfo.gaps.map((gap, i) => (
+                              <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)" }}>
+                                <span className="text-xs shrink-0" style={{ color: "#f87171" }}>!</span>
+                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{gap}</p>
                               </div>
                             ))}
                           </div>
@@ -537,32 +637,40 @@ export default function BundleViewer({
                   {/* Concept/Entity/Tag panel */}
                   {(selectedNodeInfo.type === "concept" || selectedNodeInfo.type === "entity" || selectedNodeInfo.type === "tag") && (
                     <>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{
-                          background: selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.1)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.1)" : "var(--accent-dim)",
-                          color: selectedNodeInfo.type === "entity" ? "#4ade80" : selectedNodeInfo.type === "tag" ? "#a78bfa" : "var(--accent)",
-                        }}>{selectedNodeInfo.type}</span>
+                      {/* Type badge + Importance */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs px-3 py-1 rounded-full font-semibold" style={{
+                          background: selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.12)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.12)" : "rgba(56,189,248,0.12)",
+                          color: selectedNodeInfo.type === "entity" ? "#4ade80" : selectedNodeInfo.type === "tag" ? "#a78bfa" : "#38bdf8",
+                          border: `1px solid ${selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.25)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.25)" : "rgba(56,189,248,0.25)"}`,
+                        }}>{selectedNodeInfo.type.charAt(0).toUpperCase() + selectedNodeInfo.type.slice(1)}</span>
                         {selectedNodeInfo.weight && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>Importance</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.weight}/10</span>
                             <div className="flex gap-0.5">
                               {Array.from({ length: 10 }).map((_, i) => (
-                                <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border)" }} />
+                                <div key={i} className="w-2 h-4 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border-dim)" }} />
                               ))}
                             </div>
                           </div>
                         )}
                       </div>
 
+                      {/* Description */}
+                      {selectedNodeInfo.description && (
+                        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{selectedNodeInfo.description}</p>
+                      )}
+
                       {selectedNodeInfo.connectedDocs && selectedNodeInfo.connectedDocs.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Appears in</h4>
-                          <div className="space-y-1">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Appears in {selectedNodeInfo.connectedDocs.length} document{selectedNodeInfo.connectedDocs.length > 1 ? "s" : ""}</h4>
+                          <div className="space-y-1.5">
                             {selectedNodeInfo.connectedDocs.map((doc) => (
                               <button key={doc.id} onClick={() => { const d = documents.find(dd => dd.id === doc.id); if (d) renderDocument(d); }}
-                                className="w-full text-left px-3 py-2 rounded-lg text-[11px] font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
+                                className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2.5"
                                 style={{ color: "var(--text-primary)", background: "var(--toggle-bg)" }}>
-                                <span style={{ color: "var(--accent)" }}>📄</span> {doc.title}
+                                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--accent)" }} />
+                                {doc.title}
                               </button>
                             ))}
                           </div>
@@ -571,13 +679,15 @@ export default function BundleViewer({
 
                       {selectedNodeInfo.relationships && selectedNodeInfo.relationships.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Relationships</h4>
-                          <div className="space-y-1">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Relationships</h4>
+                          <div className="space-y-1.5">
                             {selectedNodeInfo.relationships.map((rel, i) => (
-                              <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px]" style={{ background: "var(--toggle-bg)" }}>
-                                <span style={{ color: "var(--accent)" }}>→</span>
-                                <span style={{ color: "var(--text-muted)" }}>{rel.label}</span>
-                                <span style={{ color: "var(--text-secondary)" }}>{rel.target}</span>
+                              <div key={i} className="flex items-start gap-2.5 px-3 py-2 rounded-lg text-sm" style={{ background: "var(--toggle-bg)" }}>
+                                <span className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }}>→</span>
+                                <div>
+                                  <span className="font-medium" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
+                                  <span className="ml-1.5 text-xs" style={{ color: "var(--text-muted)" }}>{rel.label}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -587,6 +697,16 @@ export default function BundleViewer({
                   )}
 
                   {/* Document info (shown alongside rendered content) */}
+                  {selectedNodeInfo.type === "document" && (
+                    <div className="pb-3 mb-3 space-y-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                      {/* AI-generated document summary */}
+                      {selectedNodeInfo.documentSummary && (
+                        <p className="text-[11px] leading-relaxed px-3 py-2 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--text-primary)", border: "1px solid var(--accent)" }}>
+                          {selectedNodeInfo.documentSummary}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {selectedNodeInfo.type === "document" && selectedNodeInfo.docStats && (
                     <div className="flex flex-wrap gap-2 pb-3 mb-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                       <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{selectedNodeInfo.docStats.wordCount.toLocaleString()} words</span>

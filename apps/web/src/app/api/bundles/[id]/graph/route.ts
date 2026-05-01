@@ -4,45 +4,66 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-const EXTRACTION_PROMPT = `You are a knowledge graph extractor and document analyst. Given a collection of documents, do two things:
+const EXTRACTION_PROMPT = `You are an expert document analyst and knowledge graph builder. Analyze a collection of documents deeply and produce a comprehensive analysis.
 
-1. **Extract a knowledge graph** of key concepts, entities, and relationships
-2. **Analyze the bundle** to provide summary, themes, and insights
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON with this structure:
 {
   "nodes": [
-    { "id": "concept:unique-id", "label": "Display Name", "type": "concept|entity|tag", "weight": 1-10 }
+    { "id": "concept:unique-id", "label": "Display Name", "type": "concept|entity|tag", "weight": 1-10, "description": "One-sentence explanation of why this concept matters in context" }
   ],
   "edges": [
-    { "source": "node-id", "target": "node-id", "label": "brief relationship description", "weight": 1-5, "type": "shares_concept|related|references|contains" }
+    { "source": "node-id", "target": "node-id", "label": "brief relationship (2-4 words)", "weight": 1-5, "type": "shares_concept|related|references|contains" }
   ],
   "clusters": [
     { "id": "cluster-0", "label": "Cluster Name", "nodeIds": ["node-id-1"], "color": "#hex" }
   ],
-  "summary": "A 2-3 sentence summary of what this collection of documents covers as a whole.",
-  "themes": ["theme1", "theme2", "theme3"],
+  "summary": "3-4 sentence executive summary of what these documents collectively represent.",
+  "themes": ["theme1", "theme2", "theme3", "theme4"],
   "insights": [
-    "Key insight about how documents relate or complement each other",
-    "Gap or contradiction found across documents",
-    "Strategic observation from reading all documents together"
+    "Non-obvious insight from cross-document analysis",
+    "Strategic implication or pattern discovered",
+    "Gap, contradiction, or tension between documents",
+    "Actionable recommendation based on the analysis"
+  ],
+  "readingOrder": ["doc:id1", "doc:id2", "doc:id3"],
+  "readingOrderReason": "Why this order makes sense for understanding the full picture.",
+  "keyTakeaways": [
+    "The single most important point across all documents",
+    "Second most important takeaway",
+    "Third takeaway"
+  ],
+  "documentSummaries": {
+    "doc:id1": "One-sentence summary of this specific document's role in the bundle.",
+    "doc:id2": "One-sentence summary..."
+  },
+  "gaps": [
+    "Topic or question that these documents don't address but should",
+    "Missing perspective or data point"
+  ],
+  "connections": [
+    { "doc1": "doc:id1", "doc2": "doc:id2", "relationship": "How these two documents relate to each other specifically" }
   ]
 }
 
 CRITICAL RULES:
-- Include document nodes with type "document" and their original IDs prefixed with "doc:"
-- Concept nodes: "concept:" prefix. Entity nodes: "concept:" prefix but type "entity". Tag nodes: "concept:" prefix but type "tag"
-- Weight 1-10 for nodes (importance), 1-5 for edges (strength)
-- Edge labels should be SHORT (2-4 words) describing the relationship
-- Use these cluster colors: #fb923c, #60a5fa, #a78bfa, #4ade80, #f472b6, #2dd4bf
-- Extract 8-15 concept/entity/tag nodes (quality over quantity)
-- Only create edges for MEANINGFUL relationships (not obvious ones)
-- **EVERY concept/entity/tag node MUST have at least one edge connecting it to a document node (doc:xxx).** This is the most important rule. A concept without a document connection is useless. The edge should show WHICH document(s) the concept comes from or relates to.
-- Concept-to-concept edges are allowed IN ADDITION to document edges, but never as the only connection.
-- If a concept appears in multiple documents, create edges from each relevant document to that concept.
-- summary: what do these documents TOGETHER tell us?
-- themes: 3-5 overarching themes across all documents
-- insights: 2-4 non-obvious insights from cross-document analysis`;
+- Document nodes: type "document", IDs prefixed with "doc:" (use the exact IDs provided)
+- Concept/Entity/Tag nodes: IDs prefixed with "concept:"
+- **EVERY concept node MUST connect to at least one document node via an edge.** No orphan concepts.
+- Concept-to-concept edges are allowed IN ADDITION to document edges
+- If a concept appears in multiple documents, create edges from EACH relevant document
+- Weight 1-10 for nodes (importance in context), 1-5 for edges (relationship strength)
+- Edge labels: SHORT (2-4 words), describing the specific relationship
+- Cluster colors: #fb923c, #60a5fa, #a78bfa, #4ade80, #f472b6, #2dd4bf
+- Extract ALL meaningful concepts, entities, and tags — no arbitrary limit. Include everything that helps understand the documents. Use a good mix of all three types:
+  - "concept": abstract ideas, strategies, methodologies, principles
+  - "entity": specific technologies, products, companies, people, tools
+  - "tag": broad categories, topics, domains
+  Each must be meaningful and distinct — no near-duplicates
+- Insights should be NON-OBVIOUS — things a reader wouldn't notice without reading all documents together
+- readingOrder: suggest optimal reading sequence for someone new to this bundle
+- documentSummaries: one sentence per document explaining its role/contribution to the bundle
+- gaps: what's MISSING from this collection? What would make it more complete?
+- connections: direct document-to-document relationships with specific explanations`;
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { id } = await params;
@@ -245,7 +266,13 @@ function parseGraphJson(text: string) {
       summary: parsed.summary || null,
       themes: parsed.themes || [],
       insights: parsed.insights || [],
-      version: 1,
+      readingOrder: parsed.readingOrder || [],
+      readingOrderReason: parsed.readingOrderReason || null,
+      keyTakeaways: parsed.keyTakeaways || [],
+      documentSummaries: parsed.documentSummaries || {},
+      gaps: parsed.gaps || [],
+      connections: parsed.connections || [],
+      version: 2,
     };
   } catch {
     return null;
