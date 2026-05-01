@@ -37,6 +37,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { usePresence } from "@/lib/usePresence";
 import { useCollaboration } from "@/lib/useCollaboration";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
+import dynamic from "next/dynamic";
+import type { TiptapLiveEditorHandle } from "@/components/TiptapLiveEditor";
+const TiptapLiveEditor = dynamic(() => import("@/components/TiptapLiveEditor"), { ssr: false });
 import {
   createShareUrl,
   createShortUrl,
@@ -2257,6 +2260,7 @@ export default function MdEditor() {
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const previewRef = useRef<HTMLDivElement>(null);
+  const tiptapRef = useRef<TiptapLiveEditorHandle>(null);
   // ─── Image upload helper ───
   /** Compress image client-side before upload (max 2000px, 0.85 quality) */
   const compressImage = useCallback(async (file: File): Promise<File> => {
@@ -2617,12 +2621,14 @@ export default function MdEditor() {
           undoStack.current = [md];
           redoStack.current = [];
           doRenderRef.current(md);
+          tiptapRef.current?.setMarkdown(md);
           // Seed the conflict detection timestamp
           if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
           setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
         })
         .catch(() => {
           doRenderRef.current("");
+          tiptapRef.current?.setMarkdown("");
         })
         .finally(() => {
           if (activeTabIdRef.current === tab.id) setIsLoading(false);
@@ -2632,6 +2638,7 @@ export default function MdEditor() {
       undoStack.current = [tab.markdown];
       redoStack.current = [];
       doRenderRef.current(tab.markdown);
+      tiptapRef.current?.setMarkdown(tab.markdown);
     }
   }, []);
 
@@ -4861,7 +4868,11 @@ export default function MdEditor() {
       // Increase debounce for large documents to avoid lag
       const len = value.length;
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
-      debounceRef.current = setTimeout(() => doRender(value), debounceTime);
+      debounceRef.current = setTimeout(() => {
+        doRender(value);
+        // Sync to Tiptap when in split view (source → LIVE)
+        tiptapRef.current?.setMarkdown(value);
+      }, debounceTime);
     },
     [doRender, setMarkdown]
   );
@@ -4878,6 +4889,13 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // WYSIWYG: contentEditable preview → markdown source sync
+  // ── Tiptap LIVE editor onChange handler ──
+  const handleTiptapChange = useCallback((md: string) => {
+    setMarkdown(md);
+    cmSetDocRef.current?.(md);
+    // doRender is NOT called — Tiptap renders its own DOM
+  }, [setMarkdown]);
+
   const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -8985,7 +9003,6 @@ ${clone.innerHTML}
                 }
               }
             }}>
-              {canEdit && <FloatingToolbar containerRef={previewRef} />}
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
                   <MdfyLogo size={18} />
@@ -8993,46 +9010,14 @@ ${clone.innerHTML}
                     <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
                   </div>
                 </div>
-              ) : html ? (
-                <article
-                  ref={(el) => {
-                    // Use a proper hash to detect actual content changes
-                    const hash = String(html.length) + "-" + html.slice(0, 50) + html.slice(-50);
-                    if (el && el.getAttribute("data-html-hash") !== hash) {
-                      // Only update if change came from source (not from contentEditable editing)
-                      if (!wysiwygEditingRef.current) {
-                        el.innerHTML = html;
-                      }
-                      el.setAttribute("data-html-hash", hash);
-                    }
-                  }}
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  onKeyDown={canEdit ? handleWysiwygKeyDown : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView
-                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: canEdit ? "text" : "default" }}
-                />
               ) : (
-                <article
-                  contentEditable={canEdit}
-                  suppressContentEditableWarning
-                  onInput={canEdit ? handleWysiwygInput : undefined}
-                  onPaste={canEdit ? handleWysiwygPaste : undefined}
-                  onKeyDown={canEdit ? handleWysiwygKeyDown : undefined}
-                  className={`mdcore-rendered focus:outline-none ${
-                    narrowView
-                      ? "p-3 sm:p-6 mx-auto max-w-3xl"
-                      : "p-3 sm:p-6 max-w-none"
-                  }`}
-                  style={{ cursor: "text", minHeight: "100%" }}
-                  data-placeholder="true"
-                  dangerouslySetInnerHTML={{ __html: "" }}
+                <TiptapLiveEditor
+                  ref={tiptapRef}
+                  markdown={markdown}
+                  onChange={handleTiptapChange}
+                  canEdit={canEdit}
+                  narrowView={narrowView}
+                  onPasteImage={uploadImage}
                 />
               )}
               </div>{/* end scrollable preview */}

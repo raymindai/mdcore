@@ -20,6 +20,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.3",
+    "@tiptap/extension-bubble-menu": "^3.22.5",
     "@tiptap/extension-code-block-lowlight": "^3.20.5",
     "@tiptap/extension-image": "^3.20.5",
     "@tiptap/extension-link": "^3.20.5",
