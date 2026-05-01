@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  EditorContent,
-  type Editor,
-} from "@tiptap/react";
+import { type Editor } from "@tiptap/core";
 import { Editor as TiptapEditor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image as TiptapImage } from "@tiptap/extension-image";
@@ -306,12 +303,24 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       getEditor: () => editor,
     }), [editor, markdown]);
 
+    // Mount editor DOM into container ref
+    const containerRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      if (!editor || !containerRef.current) return;
+      const el = containerRef.current;
+      // Append ProseMirror DOM if not already mounted
+      if (!el.contains(editor.view.dom)) {
+        el.innerHTML = "";
+        el.appendChild(editor.view.dom);
+      }
+    }, [editor]);
+
     if (!editor) return null;
 
     return (
       <div className="flex-1 overflow-auto relative" style={{ background: "var(--background)" }}>
         {canEdit && <SelectionToolbar editor={editor} />}
-        <EditorContent editor={editor} />
+        <div ref={containerRef} />
       </div>
     );
   }
