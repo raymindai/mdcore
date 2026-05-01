@@ -212,7 +212,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
         Placeholder.configure({ placeholder: "Start writing..." }),
         TiptapMarkdown.configure({
           html: true,
-          transformPastedText: true,
+          transformPastedText: false,
           transformCopiedText: true,
         }),
       ],
@@ -224,19 +224,59 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
           style: `cursor: ${canEdit ? "text" : "default"}; min-height: 100%;`,
         },
         handlePaste: (view, event) => {
+          // 1. Image paste → upload
           const items = Array.from(event.clipboardData?.items || []);
           const imageItem = items.find((i) => i.type.startsWith("image/"));
           if (imageItem && onPasteImageRef.current) {
             event.preventDefault();
             const file = imageItem.getAsFile();
             if (!file) return true;
-            const ed = editor;
             onPasteImageRef.current(file).then((url) => {
-              if (url && ed) ed.chain().focus().setImage({ src: url }).run();
+              if (url) {
+                view.dispatch(view.state.tr.replaceSelectionWith(
+                  view.state.schema.nodes.image.create({ src: url })
+                ));
+              }
             });
             return true;
           }
-          return false; // let tiptap-markdown handle
+
+          // 2. Markdown text paste — parse and insert as structured content
+          const text = event.clipboardData?.getData("text/plain") || "";
+          const html = event.clipboardData?.getData("text/html") || "";
+
+          // If there's HTML from another app (not just browser's text/html wrapper),
+          // let Tiptap's default HTML paste handler deal with it
+          if (html && !html.startsWith("<meta") && html.includes("<")) {
+            return false;
+          }
+
+          // For plain text with markdown patterns, parse via tiptap-markdown
+          if (text && (text.includes("\n") || /^#{1,6}\s|^\*\*|^```|^- \[|^\d+\.\s|^>\s|^\|.*\||^[-*] /m.test(text))) {
+            event.preventDefault();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const parser = (view as any).state?.schema?.cached?.markdownParser ||
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (editor as any)?.storage?.markdown?.parser;
+            if (parser) {
+              try {
+                const doc = parser.parse(text);
+                if (doc?.content) {
+                  const tr = view.state.tr;
+                  tr.replaceSelection(doc.content);
+                  view.dispatch(tr);
+                  return true;
+                }
+              } catch { /* fall through to default */ }
+            }
+            // Fallback: insert as plain text
+            const tr = view.state.tr;
+            tr.insertText(text);
+            view.dispatch(tr);
+            return true;
+          }
+
+          return false; // let default handle simple text
         },
       },
       onUpdate: ({ editor: ed }) => {
