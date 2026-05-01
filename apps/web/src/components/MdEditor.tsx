@@ -1487,7 +1487,7 @@ function Tooltip({ children, text, position = "bottom" }: { children: React.Reac
 }
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
-function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload, onUndo, onRedo }: {
+function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload, onUndo, onRedo, getTiptapEditor }: {
   onInsert: (type: "code" | "math" | "mermaid") => void;
   onInsertTable: (cols: number, rows: number) => void;
   onInputPopup: (config: { label: string; onSubmit: (v: string) => void }) => void;
@@ -1496,6 +1496,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
   onImageUpload: () => void;
   onUndo: () => void;
   onRedo: () => void;
+  getTiptapEditor?: () => import("@tiptap/core").Editor | null;
 }) {
   const mod = typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "Cmd" : "Ctrl";
   const [active, setActive] = useState<Record<string, boolean>>({});
@@ -1518,41 +1519,37 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 
   useEffect(() => {
     const update = () => {
+      // Try Tiptap editor first
+      const ed = getTiptapEditor?.();
+      if (ed && ed.isFocused) {
+        setActive({
+          bold: ed.isActive("bold"),
+          italic: ed.isActive("italic"),
+          strikethrough: ed.isActive("strike"),
+          ul: ed.isActive("bulletList"),
+          ol: ed.isActive("orderedList"),
+          code: ed.isActive("code"),
+        });
+        if (ed.isActive("heading", { level: 1 })) setBlockType("h1");
+        else if (ed.isActive("heading", { level: 2 })) setBlockType("h2");
+        else if (ed.isActive("heading", { level: 3 })) setBlockType("h3");
+        else if (ed.isActive("blockquote")) setBlockType("blockquote");
+        else setBlockType("p");
+        return;
+      }
+      // Fallback: CM6 / other
       const sel = window.getSelection();
       if (!sel || !sel.anchorNode) return;
-      const el = sel.anchorNode instanceof HTMLElement ? sel.anchorNode : sel.anchorNode.parentElement;
-      if (!el?.closest("article.mdcore-rendered")) return;
-
-      setActive({
-        bold: document.queryCommandState("bold"),
-        italic: document.queryCommandState("italic"),
-        strikethrough: document.queryCommandState("strikeThrough"),
-        ul: document.queryCommandState("insertUnorderedList"),
-        ol: document.queryCommandState("insertOrderedList"),
-        code: !!el?.closest("code"),
-      });
-
-      const block = document.queryCommandValue("formatBlock").toLowerCase().replace(/[<>]/g, "");
-      if (block && /^h[1-6]$|^p$|^blockquote$/.test(block)) {
-        setBlockType(block);
-      } else {
-        const heading = el?.closest("h1,h2,h3,h4,h5,h6,blockquote,p,li");
-        if (heading) {
-          const tag = heading.tagName.toLowerCase();
-          setBlockType(tag === "li" ? "p" : tag);
-        }
-      }
     };
     document.addEventListener("selectionchange", update);
     return () => document.removeEventListener("selectionchange", update);
   }, []);
 
-  // Detect if focus is in SOURCE (CM6) or LIVE (contentEditable)
+  // Detect if focus is in SOURCE (CM6) or LIVE (Tiptap)
   const isInCM6 = () => !!document.activeElement?.closest(".cm-editor");
 
-  // Smart exec: routes to execCommand (Preview) or CM6 wrap (Source)
+  // Smart exec: routes to Tiptap (Live) or CM6 wrap (Source)
   const exec = (cmd: string, value?: string) => {
-    // Undo/Redo always uses app's undo stack, not browser's execCommand
     if (cmd === "undo") { onUndo(); return; }
     if (cmd === "redo") { onRedo(); return; }
     if (isInCM6()) {
@@ -1578,7 +1575,20 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
         }
       }
     } else {
-      document.execCommand(cmd, false, value);
+      // Route to Tiptap editor API
+      const ed = getTiptapEditor?.();
+      if (ed) {
+        const tiptapMap: Record<string, () => void> = {
+          bold: () => ed.chain().focus().toggleBold().run(),
+          italic: () => ed.chain().focus().toggleItalic().run(),
+          strikeThrough: () => ed.chain().focus().toggleStrike().run(),
+          insertUnorderedList: () => ed.chain().focus().toggleBulletList().run(),
+          insertOrderedList: () => ed.chain().focus().toggleOrderedList().run(),
+          createLink: () => value && ed.chain().focus().setLink({ href: value }).run(),
+        };
+        const action = tiptapMap[cmd];
+        if (action) action();
+      }
     }
   };
 
@@ -1591,7 +1601,18 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       const prefix = prefixMap[tag];
       if (prefix !== undefined) cmInsert(prefix);
     } else {
-      document.execCommand("formatBlock", false, tag);
+      // Route to Tiptap
+      const ed = getTiptapEditor?.();
+      if (ed) {
+        const levelMap: Record<string, number> = { h1: 1, h2: 2, h3: 3, h4: 4, h5: 5, h6: 6 };
+        if (levelMap[tag]) {
+          ed.chain().focus().toggleHeading({ level: levelMap[tag] as 1|2|3|4|5|6 }).run();
+        } else if (tag === "blockquote") {
+          ed.chain().focus().toggleBlockquote().run();
+        } else if (tag === "p") {
+          ed.chain().focus().setParagraph().run();
+        }
+      }
     }
   };
 
@@ -9012,6 +9033,7 @@ ${clone.innerHTML}
                 onImageUpload={() => imageFileRef.current?.click()}
                 onUndo={undo}
                 onRedo={redo}
+                getTiptapEditor={() => tiptapRef.current?.getEditor() ?? null}
               />
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
