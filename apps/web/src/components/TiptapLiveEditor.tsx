@@ -230,7 +230,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             transformCopiedText: true,
           }),
         ],
-        content: initialBodyRef.current,
+        content: initialBodyRef.current || "<p></p>",
         editable: canEdit,
         editorProps: {
           attributes: {
@@ -293,7 +293,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         const { frontmatter: fm, body } = extractFrontmatter(md);
         frontmatterRef.current = fm;
         isSettingContent.current = true;
-        editor.commands.setContent(body);
+        editor.commands.setContent(body || "<p></p>");
         isSettingContent.current = false;
       },
       getMarkdown: () => {
