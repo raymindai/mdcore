@@ -229,7 +229,10 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             heading: { levels: [1, 2, 3, 4, 5, 6] },
           }),
           CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
-          Table.configure({ resizable: false, allowTableNodeSelection: false }),
+          Table.configure({
+          resizable: false,
+          HTMLAttributes: { class: "tiptap-table" },
+        }),
           TableRow,
           TableCell,
           TableHeader,
