@@ -192,6 +192,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
     if (!frontmatterRef.current && initialFm) frontmatterRef.current = initialFm;
 
     const editor = useEditor({
+      immediatelyRender: false,
       extensions: [
         StarterKit.configure({
           codeBlock: false,
