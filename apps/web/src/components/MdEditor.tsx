@@ -2124,6 +2124,17 @@ export default function MdEditor() {
   const [imagesLoading, setImagesLoading] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
+  // Load images when panel is open (including on initial mount)
+  useEffect(() => {
+    if (!showImagePanel || !isAuthenticated) return;
+    if (userImages.length > 0) return; // already loaded
+    fetch("/api/upload/list", { headers: authHeaders })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { setUserImages(d.images || []); setImageQuota(d.quota); } })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showImagePanel, isAuthenticated]);
+
   const [aiProcessing, setAiProcessing] = useState<string | null>(null);
   const [showTranslatePicker, setShowTranslatePicker] = useState(false);
   const [aiChatInput, setAiChatInput] = useState("");
