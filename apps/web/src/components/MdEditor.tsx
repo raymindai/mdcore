@@ -2155,6 +2155,7 @@ export default function MdEditor() {
   const mathOriginalRef = useRef<string | null>(null); // original MD syntax for replacement
   const mathSourceIndexRef = useRef<number>(-1); // character offset of the math block in markdown
   const [showMathModal, setShowMathModal] = useState(false);
+  const [codeEditState, setCodeEditState] = useState<{ lang: string; code: string } | null>(null);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [sidebarClosing, setSidebarClosing] = useState(false);
   const closeSidebar = useCallback(() => {
@@ -9052,26 +9053,7 @@ ${clone.innerHTML}
                   narrowView={narrowView}
                   onPasteImage={uploadImage}
                   onDoubleClickCode={(lang, code) => {
-                    // Open code editor modal (reuse existing modal system)
-                    // For now, create a simple prompt-based editor
-                    const newCode = prompt("Edit code:", code);
-                    if (newCode !== null && newCode !== code) {
-                      const ed = tiptapRef.current?.getEditor();
-                      if (ed) {
-                        // Find and replace the code block content
-                        const md = markdownRef.current;
-                        const fence = "```" + lang;
-                        const idx = md.indexOf(fence);
-                        if (idx !== -1) {
-                          const endFence = md.indexOf("\n```", idx + fence.length);
-                          if (endFence !== -1) {
-                            const newMd = md.slice(0, idx) + "```" + lang + "\n" + newCode + md.slice(endFence);
-                            handleTiptapChange(newMd);
-                            tiptapRef.current?.setMarkdown(newMd);
-                          }
-                        }
-                      }
-                    }
+                    setCodeEditState({ lang, code });
                   }}
                   onDoubleClickMermaid={(code) => {
                     mermaidIsNewRef.current = false;
@@ -10843,6 +10825,73 @@ ${clone.innerHTML}
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Code Editor Modal (Tiptap double-click) */}
+      {codeEditState && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setCodeEditState(null)}>
+          <div className="w-[90%] max-w-[640px] max-h-[80vh] flex flex-col gap-3 rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <input
+                id="tiptap-code-lang"
+                type="text"
+                defaultValue={codeEditState.lang}
+                placeholder="language"
+                className="px-2.5 py-1 text-[13px] font-mono font-semibold uppercase tracking-wider rounded-md outline-none"
+                style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid transparent", width: 120 }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const textarea = document.getElementById("tiptap-code-textarea") as HTMLTextAreaElement;
+                    const langInput = document.getElementById("tiptap-code-lang") as HTMLInputElement;
+                    if (!textarea) return;
+                    const newCode = textarea.value;
+                    const newLang = langInput?.value?.trim() || "";
+                    const oldLang = codeEditState.lang;
+                    const oldCode = codeEditState.code;
+                    if (newCode !== oldCode || newLang !== oldLang) {
+                      const md = markdownRef.current;
+                      const fence = "```" + oldLang;
+                      const idx = md.indexOf(fence);
+                      if (idx !== -1) {
+                        const contentStart = md.indexOf("\n", idx) + 1;
+                        const endFence = md.indexOf("\n```", contentStart);
+                        if (endFence !== -1) {
+                          const newMd = md.slice(0, idx) + "```" + newLang + "\n" + newCode + md.slice(endFence);
+                          markdownRef.current = newMd;
+                          setMarkdownRaw(newMd);
+                          cmSetDocRef.current?.(newMd);
+                          tiptapRef.current?.setMarkdown(newMd);
+                          triggerAutoSave(newMd);
+                        }
+                      }
+                    }
+                    setCodeEditState(null);
+                  }}
+                  className="px-3 py-1 text-[11px] font-semibold rounded-md"
+                  style={{ background: "var(--accent)", color: "#000" }}
+                >Save</button>
+                <button onClick={() => setCodeEditState(null)} className="px-3 py-1 text-[11px] rounded-md" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+              </div>
+            </div>
+            <textarea
+              id="tiptap-code-textarea"
+              defaultValue={codeEditState.code}
+              className="flex-1 min-h-[200px] rounded-lg p-3 font-mono text-[13px] leading-relaxed resize-vertical outline-none"
+              style={{ background: "var(--background)", color: "var(--editor-text)", border: "1px solid var(--border)" }}
+              spellCheck={false}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setCodeEditState(null);
+                if (e.key === "s" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  (document.querySelector('[style*="var(--accent)"][class*="font-semibold"]') as HTMLButtonElement)?.click();
+                }
+              }}
+            />
           </div>
         </div>
       )}
