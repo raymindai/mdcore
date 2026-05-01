@@ -1705,6 +1705,12 @@ textarea::selection {
   height: auto;
   border-radius: 8px;
   margin: 0.5rem 0;
+  border: none;
+  outline: none;
+}
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .tiptap a {
   color: var(--accent);

@@ -5384,21 +5384,25 @@ export default function MdEditor() {
       setIsDragging(false);
       const files = Array.from(e.dataTransfer.files);
 
-      // Handle image file drops — upload and insert markdown
+      // Handle image file drops — upload and insert via Tiptap
       const imageFiles = files.filter(f => f.type.startsWith("image/"));
       if (imageFiles.length > 0) {
         if (imageFiles.length > 1) showToast(`Uploading ${imageFiles.length} images...`, "info");
-        // Save cursor position BEFORE async upload so we insert at the right place
-        saveInsertPosition();
         let failed = 0;
         for (const img of imageFiles) {
           const url = await uploadImage(img);
           if (url) {
-            const imgMd = `![${img.name}](${url})\n\n`;
-            const updated = insertBlockAtCursor(imgMd);
-            setMarkdown(updated);
-            doRender(updated);
-            cmSetDoc(updated);
+            const ed = tiptapRef.current?.getEditor();
+            if (ed) {
+              ed.chain().focus().setImage({ src: url, alt: img.name }).run();
+            } else {
+              const md = markdownRef.current;
+              const imgMd = `![${img.name}](${url})\n`;
+              const newMd = md + (md.endsWith("\n") ? "\n" : "\n\n") + imgMd;
+              setMarkdownRaw(newMd);
+              cmSetDocRef.current?.(newMd);
+              doRender(newMd);
+            }
           } else { failed++; }
         }
         if (failed > 0) showToast(`${failed} image${failed > 1 ? "s" : ""} failed to upload`, "error");
@@ -7348,23 +7352,22 @@ ${clone.innerHTML}
               const files = Array.from(e.target.files || []);
               if (files.length === 0) return;
               if (files.length > 1) showToast(`Uploading ${files.length} images...`, "info");
-              // Save cursor position before async uploads
-              saveInsertPosition();
               for (const file of files) {
-                const ts = Date.now();
-                const placeholder = `![Uploading ${file.name}-${ts}...]()\n`;
-                const withPlaceholder = insertBlockAtCursor(placeholder);
-                setMarkdown(withPlaceholder);
-                doRender(withPlaceholder);
-                cmSetDoc(withPlaceholder);
                 const url = await uploadImage(file);
-                const current = markdownForImageRef.current;
                 if (url) {
-                  const updated = current.replace(placeholder, `![${file.name}](${url})\n`);
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
-                } else {
-                  const updated = current.replace(placeholder, "");
-                  setMarkdown(updated); doRender(updated); cmSetDoc(updated);
+                  // Insert via Tiptap if editor available
+                  const ed = tiptapRef.current?.getEditor();
+                  if (ed) {
+                    ed.chain().focus().setImage({ src: url, alt: file.name }).run();
+                  } else {
+                    // Fallback: append to markdown
+                    const md = markdownRef.current;
+                    const imgMd = `![${file.name}](${url})\n`;
+                    const newMd = md + (md.endsWith("\n") ? "\n" : "\n\n") + imgMd;
+                    setMarkdownRaw(newMd);
+                    cmSetDocRef.current?.(newMd);
+                    doRender(newMd);
+                  }
                 }
               }
               e.target.value = "";
