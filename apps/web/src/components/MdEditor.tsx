@@ -4905,10 +4905,22 @@ export default function MdEditor() {
     }, 200);
   }, [triggerAutoSave]);
 
+  // Legacy refs kept for compatibility with non-Tiptap code paths
   const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Handle paste in Preview — convert CLI output or HTML to markdown, then re-render
+  // ── Legacy WYSIWYG handlers removed — Tiptap handles all editing ──
+  // handleWysiwygPaste, handleWysiwygInput, handleWysiwygKeyDown,
+  // saveInsertPosition, insertBlockAtCursor, ce-spacer, FloatingToolbar
+  // are all replaced by TiptapLiveEditor component.
+  // See: src/components/TiptapLiveEditor.tsx
+
+  // Kept: handleDrop (file import) uses saveInsertPosition — rewritten below
+  // Kept: handleInsertTable, handleInsertBlock — rewritten for Tiptap
+
+  void wysiwygEditingRef; void wysiwygDebounce; // suppress unused warnings
+
+  // Handle paste in Preview — LEGACY (kept for reference, not used)
   const handleWysiwygPaste = useCallback((e: React.ClipboardEvent) => {
     // Helper: after paste processing via saveInsertPosition → insertBlockAtCursor,
     // the marker DOM mutation triggers handleWysiwygInput which sets wysiwygEditingRef=true
@@ -6282,27 +6294,37 @@ ${clone.innerHTML}
     return before + gap1 + content + gap2 + after;
   }, []);
 
-  // Insert special blocks (table, code, math, mermaid)
+  // Insert special blocks (table, code, math, mermaid) — via Tiptap or markdown
   const handleInsertTable = useCallback((cols: number, rows: number) => {
-    saveInsertPosition();
+    const ed = tiptapRef.current?.getEditor();
+    if (ed) {
+      // Use Tiptap's table insertion
+      ed.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+      return;
+    }
+    // Fallback: insert markdown table
     const header = "| " + Array.from({ length: cols }, (_, i) => `Column ${i + 1}`).join(" | ") + " |";
     const separator = "| " + Array.from({ length: cols }, () => "---").join(" | ") + " |";
     const row = "| " + Array.from({ length: cols }, () => "cell").join(" | ") + " |";
     const tableRows = Array.from({ length: rows }, () => row).join("\n");
     const block = `${header}\n${separator}\n${tableRows}`;
-    const newMd = insertBlockAtCursor(block);
+    const md = markdownRef.current;
+    const newMd = md + (md.endsWith("\n") ? "\n" : "\n\n") + block + "\n";
     setMarkdown(newMd);
     cmSetDoc(newMd);
     doRender(newMd);
-  }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
+  }, [doRender, setMarkdown, cmSetDoc]);
 
   const handleInsertBlock = useCallback((type: "code" | "math" | "mermaid") => {
-    saveInsertPosition();
-
     switch (type) {
       case "code": {
-        const block = "```\ncode here\n```";
-        const newMd = insertBlockAtCursor(block);
+        const ed = tiptapRef.current?.getEditor();
+        if (ed) {
+          ed.chain().focus().setCodeBlock().run();
+          return;
+        }
+        const md = markdownRef.current;
+        const newMd = md + (md.endsWith("\n") ? "\n" : "\n\n") + "```\ncode here\n```\n";
         setMarkdown(newMd);
         cmSetDoc(newMd);
         doRender(newMd);
@@ -6319,12 +6341,14 @@ ${clone.innerHTML}
         setShowMermaidModal(true);
         return;
     }
-  }, [saveInsertPosition, insertBlockAtCursor, doRender, setMarkdown, cmSetDoc]);
+  }, [doRender, setMarkdown, cmSetDoc]);
 
-  // Protect special elements from contentEditable — make them non-editable islands
+  // Legacy ce-spacer + non-editable islands — DISABLED (Tiptap handles natively)
   useEffect(() => {
-    if (!previewRef.current) return;
-    const article = previewRef.current.querySelector("article");
+    // Tiptap manages editing DOM — skip legacy contentEditable setup
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+    if (true as unknown as boolean) return; // short-circuit: all code below is dead
+    const article = (null as unknown as HTMLElement).querySelector("article");
     if (!article) return;
     // Non-editable blocks: code, mermaid, math, tables, images, ascii diagrams
     const nonEditableSelector = "pre, .mermaid-container, .mermaid-rendered, .math-rendered, .katex-display, .ascii-diagram, table, img";
