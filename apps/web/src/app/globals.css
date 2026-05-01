@@ -1486,7 +1486,7 @@ textarea::selection {
     height: auto !important;
   }
 
-  .mdcore-rendered {
+  .mdcore-rendered, .tiptap {
     color: #333 !important;
     max-width: 100% !important;
     padding: 0 !important;
@@ -1495,7 +1495,7 @@ textarea::selection {
     line-height: 1.6 !important;
   }
 
-  .mdcore-rendered h1 {
+  .mdcore-rendered h1, .tiptap h1 {
     color: #111 !important;
     border-bottom-color: #ddd !important;
     font-size: 22pt !important;
