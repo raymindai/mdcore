@@ -182,7 +182,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
   function TiptapLiveEditor(props, ref) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
-    if (!mounted) return null;
+    if (typeof window === "undefined" || !mounted) return null;
     return <TiptapLiveEditorInner {...props} ref={ref} />;
   }
 );

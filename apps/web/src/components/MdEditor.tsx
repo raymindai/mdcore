@@ -37,9 +37,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { usePresence } from "@/lib/usePresence";
 import { useCollaboration } from "@/lib/useCollaboration";
 import { getAnonymousId, ensureAnonymousId, clearAnonymousId } from "@/lib/anonymous-id";
-import dynamic from "next/dynamic";
+import TiptapLiveEditor from "@/components/TiptapLiveEditor";
 import type { TiptapLiveEditorHandle } from "@/components/TiptapLiveEditor";
-const TiptapLiveEditor = dynamic(() => import("@/components/TiptapLiveEditor"), { ssr: false });
 import {
   createShareUrl,
   createShortUrl,
