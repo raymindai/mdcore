@@ -235,14 +235,14 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
           TableHeader,
           TaskList,
           TaskItem.configure({ nested: true }),
-          TiptapImage.configure({ inline: true, allowBase64: true }),
+          TiptapImage.configure({ inline: false, allowBase64: true }),
           TiptapLink.configure({
             openOnClick: false,
             HTMLAttributes: { rel: "noopener noreferrer nofollow" },
           }),
           Placeholder.configure({ placeholder: "Start writing..." }),
           TiptapMarkdown.configure({
-            html: true,
+            html: false,
             transformPastedText: false,
             transformCopiedText: true,
           }),
