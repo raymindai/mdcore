@@ -1699,15 +1699,13 @@ textarea::selection {
 .tiptap td p, .tiptap th p {
   margin: 0;
 }
+/* Table: suppress ALL outlines and selection artifacts */
+.tiptap table * {
+  outline: none !important;
+  box-shadow: none !important;
+}
 .tiptap .selectedCell {
-  background: var(--accent-dim);
-}
-/* Remove ProseMirror default dashed cell selection outlines */
-.tiptap td, .tiptap th {
-  outline: none !important;
-}
-.tiptap .ProseMirror-selectednode {
-  outline: none !important;
+  background: rgba(251, 146, 60, 0.08) !important;
 }
 /* Prevent table inside table */
 .tiptap td table, .tiptap th table {
