@@ -177,12 +177,19 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
   );
 }
 
-// ─── Main Component ───
+// ─── Mount guard — only render editor on client ───
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
-  function TiptapLiveEditor({ markdown, onChange, canEdit, narrowView, onPasteImage }, ref) {
+  function TiptapLiveEditor(props, ref) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
+    if (!mounted) return null;
+    return <TiptapLiveEditorInner {...props} ref={ref} />;
+  }
+);
 
+// ─── Inner Component (client-only, safe to use useEditor) ───
+const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
+  function TiptapLiveEditorInner({ markdown, onChange, canEdit, narrowView, onPasteImage }, ref) {
     const frontmatterRef = useRef("");
     const isSettingContent = useRef(false);
     const onChangeRef = useRef(onChange);
@@ -326,7 +333,7 @@ const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProp
       getEditor: () => editor,
     }), [editor, markdown]);
 
-    if (!editor || !mounted) return null;
+    if (!editor) return null;
 
     return (
       <div className="flex-1 overflow-auto relative" style={{ background: "var(--background)" }}>
