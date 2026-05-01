@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -37,6 +38,7 @@ export default function BundleViewer({
   layout?: string;
 }) {
   const [documents, setDocuments] = useState<BundleDocument[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [aiGraph, setAiGraph] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [editToken, setEditToken] = useState<string | null>(null);
@@ -474,42 +476,86 @@ export default function BundleViewer({
         {(selectedDocId || selectedNodeInfo) && (
           <div className="w-[45%] max-w-2xl flex flex-col overflow-hidden">
             {/* Panel header */}
-            <div className="shrink-0 flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--surface)" }}>
-              <div className="flex items-center gap-2">
-                {selectedDocId ? (
-                  <>
-                    <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
-                      {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
-                    </span>
-                    <button
-                      onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
-                      className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                      style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
-                    >
-                      Open
-                    </button>
-                  </>
-                ) : selectedNodeInfo && (
-                  <>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                      {selectedNodeInfo.type}
-                    </span>
-                    <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-                      {selectedNodeInfo.label}
-                    </span>
-                  </>
-                )}
+            <div className="shrink-0 px-5 py-3.5" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {selectedDocId ? (
+                    <>
+                      <div className="w-2 h-6 rounded-sm shrink-0" style={{ background: "var(--accent)" }} />
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-base font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                          {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
+                        </h2>
+                        {selectedNodeInfo?.docStats && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.docStats.wordCount.toLocaleString()} words</span>
+                            <span className="text-xs" style={{ color: "var(--text-faint)" }}>·</span>
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>~{selectedNodeInfo.docStats.readingTime} min</span>
+                            <span className="text-xs" style={{ color: "var(--text-faint)" }}>·</span>
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.docStats.sections} sections</span>
+                            {selectedNodeInfo.docStats.hasCode && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>Code</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
+                        className="text-xs px-3 py-1.5 rounded-lg shrink-0 transition-colors hover:bg-[var(--accent-dim)]"
+                        style={{ color: "var(--accent)", border: "1px solid var(--accent)" }}
+                      >
+                        Open
+                      </button>
+                    </>
+                  ) : selectedNodeInfo && (
+                    <>
+                      <div className="w-2 h-6 rounded-sm shrink-0" style={{
+                        background: selectedNodeInfo.type === "analysis" ? "#60a5fa"
+                          : selectedNodeInfo.type === "entity" ? "#4ade80"
+                          : selectedNodeInfo.type === "tag" ? "#a78bfa"
+                          : "#38bdf8"
+                      }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-bold truncate" style={{ color: "var(--text-primary)" }}>
+                            {selectedNodeInfo.label}
+                          </h2>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium" style={{
+                            background: selectedNodeInfo.type === "analysis" ? "rgba(96,165,250,0.12)"
+                              : selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.12)"
+                              : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.12)"
+                              : "rgba(56,189,248,0.12)",
+                            color: selectedNodeInfo.type === "analysis" ? "#60a5fa"
+                              : selectedNodeInfo.type === "entity" ? "#4ade80"
+                              : selectedNodeInfo.type === "tag" ? "#a78bfa"
+                              : "#38bdf8",
+                          }}>{selectedNodeInfo.type}</span>
+                        </div>
+                        {selectedNodeInfo.weight && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>Importance {selectedNodeInfo.weight}/10</span>
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 10 }).map((_, i) => (
+                                <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border-dim)" }} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setSelectedDocId(null); setSelectedHtml(""); setSelectedNodeInfo(null); }}
+                  className="p-1.5 rounded-lg transition-colors hover:bg-[var(--toggle-bg)] shrink-0 ml-2"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </div>
-              <button
-                onClick={() => { setSelectedDocId(null); setSelectedHtml(""); setSelectedNodeInfo(null); }}
-                className="p-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                style={{ color: "var(--text-faint)" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
             </div>
             {/* Content */}
-            <div className="flex-1 overflow-auto px-6 py-6">
+            <div className="flex-1 overflow-auto px-5 py-5">
               {selectedDocId ? (
                 <div
                   ref={previewRef}
@@ -517,14 +563,14 @@ export default function BundleViewer({
                   dangerouslySetInnerHTML={{ __html: selectedHtml }}
                 />
               ) : selectedNodeInfo && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* Analysis panel — full deep analysis */}
                   {selectedNodeInfo.type === "analysis" && (
                     <>
                       {/* Executive Summary */}
                       {selectedNodeInfo.summary && (
                         <div className="rounded-lg p-4" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
                           <p className="text-[12px] leading-[1.7]" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
                         </div>
                       )}
@@ -532,12 +578,12 @@ export default function BundleViewer({
                       {/* Key Takeaways */}
                       {selectedNodeInfo.keyTakeaways && selectedNodeInfo.keyTakeaways.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Takeaways</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Takeaways</h4>
                           <div className="space-y-1.5">
                             {selectedNodeInfo.keyTakeaways.map((t, i) => (
                               <div key={i} className="flex gap-2 items-start">
                                 <span className="text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
-                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
+                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
                               </div>
                             ))}
                           </div>
@@ -547,10 +593,10 @@ export default function BundleViewer({
                       {/* Themes */}
                       {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
                           <div className="flex flex-wrap gap-1.5">
                             {selectedNodeInfo.themes.map((t, i) => (
-                              <span key={i} className="text-[11px] px-2.5 py-1 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>{t}</span>
+                              <span key={i} className="text-xs px-3 py-1 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>{t}</span>
                             ))}
                           </div>
                         </div>
@@ -559,12 +605,12 @@ export default function BundleViewer({
                       {/* Insights */}
                       {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-Document Insights</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-Document Insights</h4>
                           <div className="space-y-2">
                             {selectedNodeInfo.insights.map((ins, i) => (
                               <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
                                 <span className="text-xs shrink-0" style={{ color: "var(--accent)" }}>→</span>
-                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
+                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
                               </div>
                             ))}
                           </div>
@@ -574,7 +620,7 @@ export default function BundleViewer({
                       {/* Reading Order */}
                       {selectedNodeInfo.readingOrder && selectedNodeInfo.readingOrder.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended Reading Order</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended Reading Order</h4>
                           <div className="space-y-1">
                             {selectedNodeInfo.readingOrder.map((docId, i) => {
                               const doc = documents.find(d => `doc:${d.id}` === docId);
@@ -597,7 +643,7 @@ export default function BundleViewer({
                       {/* Document-to-Document Connections */}
                       {selectedNodeInfo.connections && selectedNodeInfo.connections.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document Connections</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document Connections</h4>
                           <div className="space-y-2">
                             {selectedNodeInfo.connections.map((c, i) => {
                               const d1 = documents.find(d => `doc:${d.id}` === c.doc1);
@@ -620,12 +666,12 @@ export default function BundleViewer({
                       {/* Gaps */}
                       {selectedNodeInfo.gaps && selectedNodeInfo.gaps.length > 0 && (
                         <div>
-                          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps & Missing Perspectives</h4>
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps & Missing Perspectives</h4>
                           <div className="space-y-1.5">
                             {selectedNodeInfo.gaps.map((gap, i) => (
                               <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)" }}>
                                 <span className="text-xs shrink-0" style={{ color: "#f87171" }}>!</span>
-                                <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>{gap}</p>
+                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{gap}</p>
                               </div>
                             ))}
                           </div>
@@ -696,27 +742,18 @@ export default function BundleViewer({
                     </>
                   )}
 
-                  {/* Document info (shown alongside rendered content) */}
+                  {/* Document info */}
                   {selectedNodeInfo.type === "document" && (
-                    <div className="pb-3 mb-3 space-y-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                      {/* AI-generated document summary */}
+                    <div className="space-y-3 pb-4 mb-2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                       {selectedNodeInfo.documentSummary && (
-                        <p className="text-[11px] leading-relaxed px-3 py-2 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--text-primary)", border: "1px solid var(--accent)" }}>
+                        <p className="text-sm leading-relaxed px-4 py-3 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--text-primary)" }}>
                           {selectedNodeInfo.documentSummary}
                         </p>
                       )}
-                    </div>
-                  )}
-                  {selectedNodeInfo.type === "document" && selectedNodeInfo.docStats && (
-                    <div className="flex flex-wrap gap-2 pb-3 mb-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{selectedNodeInfo.docStats.wordCount.toLocaleString()} words</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{selectedNodeInfo.docStats.readingTime} min read</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{selectedNodeInfo.docStats.sections} sections</span>
-                      {selectedNodeInfo.docStats.hasCode && <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>Code</span>}
                       {selectedNodeInfo.connectedDocs && selectedNodeInfo.connectedDocs.length > 0 && (
-                        <div className="w-full mt-1 flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {selectedNodeInfo.connectedDocs.map((c, i) => (
-                            <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{c.title}</span>
+                            <span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.2)" }}>{c.title}</span>
                           ))}
                         </div>
                       )}

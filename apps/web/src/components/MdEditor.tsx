@@ -6200,12 +6200,28 @@ ${clone.innerHTML}
 
   const insertBlockAtCursor = useCallback((content: string): string => {
     const md = markdownRef.current;
-    const pos = insertPosRef.current;
+    let pos = insertPosRef.current;
 
     if (pos < 0) {
       // No saved position — append at end
       const suffix = md.endsWith("\n") ? "\n" : "\n\n";
       return md + suffix + content;
+    }
+
+    // Clamp position to document length — saveInsertPosition calculates position
+    // from htmlToMarkdown reconversion which can differ in length from the original
+    if (pos > md.length) pos = md.length;
+
+    // If position is near the end (within last 5%), snap to a proper line boundary
+    // to avoid splitting the last paragraph
+    if (pos > md.length * 0.9) {
+      const lastNl = md.lastIndexOf("\n", pos);
+      const afterLastNl = md.slice(lastNl + 1).trim();
+      // If there's content after the last newline before pos, snap to end of that line
+      if (afterLastNl && lastNl >= 0) {
+        const nextNl = md.indexOf("\n", pos);
+        pos = nextNl !== -1 ? nextNl + 1 : md.length;
+      }
     }
 
     const before = md.slice(0, pos);

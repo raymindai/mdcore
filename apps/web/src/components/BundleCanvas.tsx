@@ -413,8 +413,8 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
     return () => obs.disconnect();
   }, []);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([] as any[]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
 
   useEffect(() => {
     buildLayout(documents, aiGraph, selectedDocId, detail).then(({ nodes: n, edges: e }) => {
