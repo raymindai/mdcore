@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  useEditor,
   EditorContent,
   type Editor,
 } from "@tiptap/react";
+import { Editor as TiptapEditor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image as TiptapImage } from "@tiptap/extension-image";
 import { Link as TiptapLink } from "@tiptap/extension-link";
@@ -201,104 +201,77 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
     const initialBodyRef = useRef(initialBody);
     if (!frontmatterRef.current && initialFm) frontmatterRef.current = initialFm;
 
-    const editor = useEditor({
-      immediatelyRender: false,
-      shouldRerenderOnTransaction: false,
-      extensions: [
-        StarterKit.configure({
-          codeBlock: false,
-          heading: { levels: [1, 2, 3, 4, 5, 6] },
-        }),
-        CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
-        Table.configure({ resizable: true }),
-        TableRow,
-        TableCell,
-        TableHeader,
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        TiptapImage.configure({ inline: true, allowBase64: true }),
-        TiptapLink.configure({
-          openOnClick: false,
-          HTMLAttributes: { rel: "noopener noreferrer nofollow" },
-        }),
-        Placeholder.configure({ placeholder: "Start writing..." }),
-        TiptapMarkdown.configure({
-          html: true,
-          transformPastedText: false,
-          transformCopiedText: true,
-        }),
-      ],
-      content: initialBodyRef.current,
-      editable: canEdit,
-      editorProps: {
-        attributes: {
-          class: `mdcore-rendered focus:outline-none ${narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"}`,
-          style: `cursor: ${canEdit ? "text" : "default"}; min-height: 100%;`,
-        },
-        handlePaste: (view, event) => {
-          // 1. Image paste → upload
-          const items = Array.from(event.clipboardData?.items || []);
-          const imageItem = items.find((i) => i.type.startsWith("image/"));
-          if (imageItem && onPasteImageRef.current) {
-            event.preventDefault();
-            const file = imageItem.getAsFile();
-            if (!file) return true;
-            onPasteImageRef.current(file).then((url) => {
-              if (url) {
-                view.dispatch(view.state.tr.replaceSelectionWith(
-                  view.state.schema.nodes.image.create({ src: url })
-                ));
-              }
-            });
-            return true;
-          }
+    const [editor, setEditor] = useState<Editor | null>(null);
+    const editorRef = useRef<Editor | null>(null);
 
-          // 2. Markdown text paste — parse and insert as structured content
-          const text = event.clipboardData?.getData("text/plain") || "";
-          const html = event.clipboardData?.getData("text/html") || "";
-
-          // If there's HTML from another app (not just browser's text/html wrapper),
-          // let Tiptap's default HTML paste handler deal with it
-          if (html && !html.startsWith("<meta") && html.includes("<")) {
-            return false;
-          }
-
-          // For plain text with markdown patterns, parse via tiptap-markdown
-          if (text && (text.includes("\n") || /^#{1,6}\s|^\*\*|^```|^- \[|^\d+\.\s|^>\s|^\|.*\||^[-*] /m.test(text))) {
-            event.preventDefault();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const parser = (view as any).state?.schema?.cached?.markdownParser ||
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (editor as any)?.storage?.markdown?.parser;
-            if (parser) {
-              try {
-                const doc = parser.parse(text);
-                if (doc?.content) {
-                  const tr = view.state.tr;
-                  tr.replaceSelection(doc.content);
-                  view.dispatch(tr);
-                  return true;
+    useEffect(() => {
+      const ed = new TiptapEditor({
+        extensions: [
+          StarterKit.configure({
+            codeBlock: false,
+            heading: { levels: [1, 2, 3, 4, 5, 6] },
+          }),
+          CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+          Table.configure({ resizable: true }),
+          TableRow,
+          TableCell,
+          TableHeader,
+          TaskList,
+          TaskItem.configure({ nested: true }),
+          TiptapImage.configure({ inline: true, allowBase64: true }),
+          TiptapLink.configure({
+            openOnClick: false,
+            HTMLAttributes: { rel: "noopener noreferrer nofollow" },
+          }),
+          Placeholder.configure({ placeholder: "Start writing..." }),
+          TiptapMarkdown.configure({
+            html: true,
+            transformPastedText: false,
+            transformCopiedText: true,
+          }),
+        ],
+        content: initialBodyRef.current,
+        editable: canEdit,
+        editorProps: {
+          attributes: {
+            class: `mdcore-rendered focus:outline-none ${narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"}`,
+            style: `cursor: ${canEdit ? "text" : "default"}; min-height: 100%;`,
+          },
+          handlePaste: (view, event) => {
+            // Image paste
+            const items = Array.from(event.clipboardData?.items || []);
+            const imageItem = items.find((i) => i.type.startsWith("image/"));
+            if (imageItem && onPasteImageRef.current) {
+              event.preventDefault();
+              const file = imageItem.getAsFile();
+              if (!file) return true;
+              onPasteImageRef.current(file).then((url) => {
+                if (url) {
+                  view.dispatch(view.state.tr.replaceSelectionWith(
+                    view.state.schema.nodes.image.create({ src: url })
+                  ));
                 }
-              } catch { /* fall through to default */ }
+              });
+              return true;
             }
-            // Fallback: insert as plain text
-            const tr = view.state.tr;
-            tr.insertText(text);
-            view.dispatch(tr);
-            return true;
-          }
-
-          return false; // let default handle simple text
+            return false; // let tiptap handle text/HTML paste
+          },
         },
-      },
-      onUpdate: ({ editor: ed }) => {
-        if (isSettingContent.current) return;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bodyMd = (ed.storage as any).markdown?.getMarkdown?.() || "";
-        const fullMd = reattachFrontmatter(frontmatterRef.current, bodyMd);
-        onChangeRef.current(fullMd);
-      },
-    });
+        onUpdate: ({ editor: updatedEd }) => {
+          if (isSettingContent.current) return;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const bodyMd = (updatedEd.storage as any).markdown?.getMarkdown?.() || "";
+          const fullMd = reattachFrontmatter(frontmatterRef.current, bodyMd);
+          onChangeRef.current(fullMd);
+        },
+      });
+
+      editorRef.current = ed;
+      setEditor(ed);
+
+      return () => { ed.destroy(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => { if (editor) editor.setEditable(canEdit); }, [editor, canEdit]);
 
