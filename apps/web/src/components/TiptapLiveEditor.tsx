@@ -437,6 +437,25 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             pre.parentNode?.insertBefore(wrapper, pre.nextSibling);
           }).catch(() => { /* mermaid parse error — leave as code block */ });
         });
+
+        // ── Math double-click → edit modal ──
+        dom.querySelectorAll(".katex-display, .katex-inline").forEach((el) => {
+          if ((el as HTMLElement).dataset.mathClickBound) return;
+          (el as HTMLElement).dataset.mathClickBound = "1";
+          el.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Extract original LaTeX from the rendered element
+            const annotation = el.querySelector("annotation");
+            const tex = annotation?.textContent || el.textContent || "";
+            const mode = el.classList.contains("katex-display") ? "display" : "inline";
+            onDblClickMathRef.current?.(tex, mode as "inline" | "display");
+          });
+          (el as HTMLElement).style.cursor = "pointer";
+        });
+
+        // ── Image click → lightbox (MdEditor handles via previewRef) ──
+        // Images in Tiptap are already clickable via Tiptap's Image extension
       };
 
       // Run on initial mount

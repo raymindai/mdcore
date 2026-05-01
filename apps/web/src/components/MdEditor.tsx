@@ -9060,6 +9060,12 @@ ${clone.innerHTML}
                     setCanvasMermaid(code);
                     setShowMermaidModal(true);
                   }}
+                  onDoubleClickMath={(tex, mode) => {
+                    setInitialMath(tex);
+                    // Store original math syntax for replacement
+                    mathOriginalRef.current = mode === "display" ? `$$${tex}$$` : `$${tex}$`;
+                    setShowMathModal(true);
+                  }}
                 />
               )}
               </div>{/* end scrollable preview */}
