@@ -242,7 +242,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
           }),
           Placeholder.configure({ placeholder: "Start writing..." }),
           TiptapMarkdown.configure({
-            html: false,
+            html: true,
             transformPastedText: false,
             transformCopiedText: true,
           }),
