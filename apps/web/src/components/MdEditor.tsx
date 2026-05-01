@@ -4892,11 +4892,18 @@ export default function MdEditor() {
 
   // WYSIWYG: contentEditable preview → markdown source sync
   // ── Tiptap LIVE editor onChange handler ──
+  const tiptapDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleTiptapChange = useCallback((md: string) => {
-    setMarkdown(md);
-    cmSetDocRef.current?.(md);
-    // doRender is NOT called — Tiptap renders its own DOM
-  }, [setMarkdown]);
+    // Update markdown ref immediately for auto-save accuracy
+    markdownRef.current = md;
+    triggerAutoSave(md);
+    // Debounce React state + CM6 sync to avoid flicker
+    if (tiptapDebounceRef.current) clearTimeout(tiptapDebounceRef.current);
+    tiptapDebounceRef.current = setTimeout(() => {
+      setMarkdownRaw(md);
+      cmSetDocRef.current?.(md);
+    }, 200);
+  }, [triggerAutoSave]);
 
   const wysiwygEditingRef = useRef(false);
   const wysiwygDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
