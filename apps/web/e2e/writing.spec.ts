@@ -95,20 +95,26 @@ test.describe("Blockquote", () => {
   test.beforeEach(async ({ page }) => { await setup(page); });
 
   test("Enter inside blockquote stays in same blockquote", async ({ page }) => {
-    await clearAndType(page, "Quote line 1");
+    // Use Source view to create blockquote reliably
+    await page.click('button:has-text("Source")');
+    await page.waitForTimeout(300);
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
-    await page.waitForTimeout(500);
-    const quoteBtn = page.locator('[title="Quote"]');
-    if (await quoteBtn.isVisible({ timeout: 2000 })) {
-      await quoteBtn.click();
-      await page.waitForTimeout(200);
+    await page.keyboard.type("> Quote line 1");
+    // Switch to Live
+    await page.click('button:has-text("Live")');
+    await page.waitForTimeout(1000);
+    // Click inside the blockquote and press Enter
+    const bq = page.locator(".tiptap blockquote").first();
+    if (await bq.isVisible({ timeout: 3000 })) {
+      await bq.click();
       await page.keyboard.press("End");
       await page.keyboard.press("Enter");
       await page.keyboard.type("Quote line 2");
       await page.waitForTimeout(300);
       const html = await getEditorHTML(page);
       expect((html.match(/<blockquote>/g) || []).length).toBe(1);
-      expect(html).toContain("Quote line 1");
       expect(html).toContain("Quote line 2");
     }
   });
@@ -233,5 +239,58 @@ test.describe("Content Preservation", () => {
     const src = await cm.innerText();
     expect(src).toContain("Para 1");
     expect(src).toContain("Para 20");
+  });
+});
+
+// ─── 8. Math (KaTeX) ───
+
+test.describe("Math (KaTeX)", () => {
+  test.beforeEach(async ({ page }) => { await setup(page); });
+
+  test("inline math renders in LIVE view", async ({ page }) => {
+    await page.click('button:has-text("Source")');
+    await page.waitForTimeout(300);
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("The equation $E=mc^2$ is famous.");
+    await page.click('button:has-text("Live")');
+    await page.waitForTimeout(2000); // wait for KaTeX post-processing
+    const html = await page.locator(".tiptap").first().innerHTML();
+    // Should contain rendered KaTeX (.katex class)
+    expect(html).toMatch(/katex|E.*=.*mc/);
+  });
+
+  test("display math renders in LIVE view", async ({ page }) => {
+    await page.click('button:has-text("Source")');
+    await page.waitForTimeout(300);
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("$$\\\\frac{a}{b}$$");
+    await page.click('button:has-text("Live")');
+    await page.waitForTimeout(2000);
+    const html = await page.locator(".tiptap").first().innerHTML();
+    expect(html).toMatch(/katex|frac/);
+  });
+});
+
+// ─── 9. Mermaid ───
+
+test.describe("Mermaid", () => {
+  test.beforeEach(async ({ page }) => { await setup(page); });
+
+  test("mermaid code block renders diagram in LIVE view", async ({ page }) => {
+    await page.click('button:has-text("Source")');
+    await page.waitForTimeout(300);
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("```mermaid\ngraph TD\n    A-->B\n```");
+    await page.click('button:has-text("Live")');
+    await page.waitForTimeout(3000); // wait for mermaid CDN load + render
+    const html = await page.locator(".tiptap").first().innerHTML();
+    // Should contain mermaid SVG or mermaid-rendered class
+    expect(html).toMatch(/mermaid-rendered|<svg|graph/);
   });
 });

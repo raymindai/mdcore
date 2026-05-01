@@ -23,6 +23,7 @@ import {
   useState,
 } from "react";
 import { common, createLowlight } from "lowlight";
+import katex from "katex";
 import {
   Bold,
   Italic,
@@ -333,12 +334,139 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
     useEffect(() => {
       if (!editor || !containerRef.current) return;
       const el = containerRef.current;
-      // Append ProseMirror DOM if not already mounted
       if (!el.contains(editor.view.dom)) {
         el.innerHTML = "";
         el.appendChild(editor.view.dom);
       }
     }, [editor]);
+
+    // ── Post-render: KaTeX math + Mermaid diagrams ──
+    // Process the Tiptap DOM after every update to render math and mermaid
+    const postProcessTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+    useEffect(() => {
+      if (!editor) return;
+
+      const processDOM = () => {
+        const dom = editor.view.dom;
+        if (!dom) return;
+
+        // ── KaTeX: find $...$ and $$...$$ in text nodes ──
+        // Process inline math: $...$
+        // Process display math: $$...$$
+        dom.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6").forEach((el) => {
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          const textNodes: Text[] = [];
+          let node: Text | null;
+          while ((node = walker.nextNode() as Text | null)) {
+            if (node.textContent?.includes("$")) textNodes.push(node);
+          }
+          for (const textNode of textNodes) {
+            const text = textNode.textContent || "";
+            // Skip if already processed (parent is .katex)
+            if (textNode.parentElement?.classList.contains("katex") ||
+                textNode.parentElement?.closest(".katex")) continue;
+
+            // Display math: $$...$$
+            const displayMatch = text.match(/\$\$([^$]+)\$\$/);
+            if (displayMatch) {
+              try {
+                if (katex?.renderToString) {
+                  const rendered = katex.renderToString(displayMatch[1].trim(), { displayMode: true, throwOnError: false, strict: false });
+                  const wrapper = document.createElement("div");
+                  wrapper.className = "katex-display";
+                  wrapper.setAttribute("contenteditable", "false");
+                  wrapper.innerHTML = rendered;
+                  const before = text.slice(0, displayMatch.index!);
+                  const after = text.slice(displayMatch.index! + displayMatch[0].length);
+                  if (before) textNode.parentNode?.insertBefore(document.createTextNode(before), textNode);
+                  textNode.parentNode?.insertBefore(wrapper, textNode);
+                  if (after) textNode.parentNode?.insertBefore(document.createTextNode(after), textNode);
+                  textNode.remove();
+                }
+              } catch { /* skip */ }
+              continue;
+            }
+
+            // Inline math: $...$  (not $$)
+            const inlineMatch = text.match(/(?<!\$)\$([^$\n]+)\$(?!\$)/);
+            if (inlineMatch) {
+              try {
+                if (katex?.renderToString) {
+                  const rendered = katex.renderToString(inlineMatch[1].trim(), { displayMode: false, throwOnError: false, strict: false });
+                  const wrapper = document.createElement("span");
+                  wrapper.className = "katex-inline";
+                  wrapper.setAttribute("contenteditable", "false");
+                  wrapper.innerHTML = rendered;
+                  const before = text.slice(0, inlineMatch.index!);
+                  const after = text.slice(inlineMatch.index! + inlineMatch[0].length);
+                  if (before) textNode.parentNode?.insertBefore(document.createTextNode(before), textNode);
+                  textNode.parentNode?.insertBefore(wrapper, textNode);
+                  if (after) textNode.parentNode?.insertBefore(document.createTextNode(after), textNode);
+                  textNode.remove();
+                }
+              } catch { /* skip */ }
+            }
+          }
+        });
+
+        // ── Mermaid: render code blocks with language "mermaid" ──
+        dom.querySelectorAll('pre').forEach((pre) => {
+          // CodeBlockLowlight uses data-language attribute
+          const lang = pre.getAttribute("data-language") || pre.querySelector("code")?.className?.match(/language-(\w+)/)?.[1];
+          if (lang !== "mermaid") return;
+          // Skip if already rendered
+          if (pre.querySelector(".mermaid-rendered")) return;
+          if (pre.getAttribute("data-mermaid-processed")) return;
+          pre.setAttribute("data-mermaid-processed", "1");
+
+          const code = pre.textContent || "";
+          if (!code.trim()) return;
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mermaid = (window as any).mermaid;
+          if (!mermaid) return;
+
+          const mermaidId = `tiptap-mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          mermaid.render(mermaidId, code).then(({ svg }: { svg: string }) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "mermaid-rendered";
+            wrapper.setAttribute("contenteditable", "false");
+            wrapper.innerHTML = svg;
+            wrapper.style.cssText = "text-align:center;margin:0.5rem 0;";
+            pre.style.display = "none";
+            pre.parentNode?.insertBefore(wrapper, pre.nextSibling);
+          }).catch(() => { /* mermaid parse error — leave as code block */ });
+        });
+      };
+
+      // Run on initial mount
+      processDOM();
+
+      // Run after every editor update (debounced)
+      const handler = () => {
+        if (postProcessTimerRef.current) clearTimeout(postProcessTimerRef.current);
+        postProcessTimerRef.current = setTimeout(processDOM, 300);
+      };
+      editor.on("update", handler);
+
+      return () => { editor.off("update", handler); };
+    }, [editor]);
+
+    // KaTeX CSS is imported globally via globals.css (@import "katex/dist/katex.min.css")
+
+    // Load Mermaid JS if not already loaded
+    useEffect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).mermaid) return;
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+      script.async = true;
+      script.onload = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).mermaid?.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+      };
+      document.head.appendChild(script);
+    }, []);
 
     if (!editor) return null;
 
