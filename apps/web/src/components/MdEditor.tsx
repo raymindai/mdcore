@@ -1585,6 +1585,10 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
           insertUnorderedList: () => ed.chain().focus().toggleBulletList().run(),
           insertOrderedList: () => ed.chain().focus().toggleOrderedList().run(),
           createLink: () => value && ed.chain().focus().setLink({ href: value }).run(),
+          insertHorizontalRule: () => ed.chain().focus().setHorizontalRule().run(),
+          removeFormat: () => ed.chain().focus().unsetAllMarks().clearNodes().run(),
+          indent: () => ed.chain().focus().sinkListItem("listItem").run(),
+          outdent: () => ed.chain().focus().liftListItem("listItem").run(),
         };
         const action = tiptapMap[cmd];
         if (action) action();
@@ -1620,9 +1624,8 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
     if (isInCM6()) {
       cmWrap("`");
     } else {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
-      try { sel.getRangeAt(0).surroundContents(document.createElement("code")); } catch { /* */ }
+      const ed = getTiptapEditor?.();
+      if (ed) { ed.chain().focus().toggleCode().run(); return; }
     }
   };
 
@@ -1696,7 +1699,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
           preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>1. First item</div><div style={{ color: "var(--text-muted)" }}>2. Second item</div></div>}>
           <ListOrdered size={I} />
         </TBtn>
-        <TBtn tip="Task list → - [ ] item" onClick={() => { if (isInCM6()) { cmInsert("- [ ] "); } else { exec("insertUnorderedList"); } }}
+        <TBtn tip="Task list → - [ ] item" onClick={() => { if (isInCM6()) { cmInsert("- [ ] "); } else { const ed = getTiptapEditor?.(); if (ed) ed.chain().focus().toggleTaskList().run(); } }}
           preview={<div style={{ fontSize: 12 }}><div style={{ color: "var(--text-muted)" }}>☐ To do item</div><div style={{ color: "var(--accent)" }}>☑ Done item</div></div>}>
           <svg width={I} height={I} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="2" y="2" width="5" height="5" rx="1"/><path d="M3.5 4.5l1 1 2-2" strokeLinecap="round"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="3" width="5" height="2" rx="0.5" fill="currentColor"/><rect x="9" y="10" width="5" height="2" rx="0.5" fill="currentColor"/></svg>
         </TBtn>

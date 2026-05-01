@@ -172,6 +172,16 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
           <div style={{ width: 1, height: 16, background: "var(--border-dim)", margin: "0 2px" }} />
           <button onClick={() => { if (editor.isActive("link")) { editor.chain().focus().unsetLink().run(); } else { setShowLinkInput(true); setLinkUrl(editor.getAttributes("link").href || ""); } }} style={btn(editor.isActive("link"))} title="Link (⌘K)"><LinkIcon width={14} height={14} /></button>
           <button onClick={() => editor.chain().focus().setHorizontalRule().run()} style={btn(false)} title="Horizontal rule"><Minus width={14} height={14} /></button>
+          <div style={{ width: 1, height: 16, background: "var(--border-dim)", margin: "0 2px" }} />
+          <button onClick={() => editor.chain().focus().sinkListItem("listItem").run()} style={btn(false)} title="Indent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 6H11M21 12H11M21 18H11M3 8l4 4-4 4"/></svg>
+          </button>
+          <button onClick={() => editor.chain().focus().liftListItem("listItem").run()} style={btn(false)} title="Outdent">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 6H11M21 12H11M21 18H11M7 8l-4 4 4 4"/></svg>
+          </button>
+          <button onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} style={btn(false)} title="Clear formatting">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+          </button>
         </>
       )}
     </div>
