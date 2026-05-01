@@ -2863,6 +2863,9 @@ export default function MdEditor() {
 
     loadTab(newTab);
     setTitle(tabTitle);
+    // Switch to LIVE view when creating a new document (exit Home screen)
+    setShowOnboarding(false);
+    if (viewMode !== "preview" && viewMode !== "split") setViewMode("preview");
 
     // Auto-create on server (ensure anonymous ID for non-logged-in users)
     const anonId = user?.id ? undefined : ensureAnonymousId();
