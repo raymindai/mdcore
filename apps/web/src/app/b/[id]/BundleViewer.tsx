@@ -68,6 +68,7 @@ export default function BundleViewer({
   const [passwordError, setPasswordError] = useState(false);
   const [unlocked, setUnlocked] = useState(!isProtected);
   const [copied, setCopied] = useState(false);
+  const [canvasHoveredNode, setCanvasHoveredNode] = useState<string | null>(null);
   const [contextCopied, setContextCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -418,7 +419,7 @@ export default function BundleViewer({
             ) : (
               <h1 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{initialTitle || "Untitled Bundle"}</h1>
             )}
-            {description && <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{description}</p>}
+            {description && <p className="text-xs" style={{ color: "var(--text-muted)" }}>{description}</p>}
           </div>
         </div>
 
@@ -454,6 +455,7 @@ export default function BundleViewer({
               aiGraph={aiGraph}
               isAnalyzing={isAnalyzing}
               selectedDocId={selectedDocId}
+              hoveredNodeId={canvasHoveredNode}
               onDocumentClick={handleNodeClick}
               onCopyContext={handleCopyContext}
               onRegenerate={handleRegenerate}
@@ -474,74 +476,40 @@ export default function BundleViewer({
 
         {/* Side Panel — Document content OR Node info */}
         {(selectedDocId || selectedNodeInfo) && (
-          <div className="w-[45%] max-w-2xl flex flex-col overflow-hidden">
+          <div className="w-[45%] max-w-2xl flex flex-col overflow-hidden" style={{ borderLeft: "1px solid var(--border)" }}>
             {/* Panel header */}
-            <div className="shrink-0 px-5 py-3.5" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+            <div className="shrink-0 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {selectedDocId ? (
                     <>
-                      <div className="w-2 h-6 rounded-sm shrink-0" style={{ background: "var(--accent)" }} />
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-base font-bold truncate" style={{ color: "var(--text-primary)" }}>
-                          {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
-                        </h2>
-                        {selectedNodeInfo?.docStats && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.docStats.wordCount.toLocaleString()} words</span>
-                            <span className="text-xs" style={{ color: "var(--text-faint)" }}>·</span>
-                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>~{selectedNodeInfo.docStats.readingTime} min</span>
-                            <span className="text-xs" style={{ color: "var(--text-faint)" }}>·</span>
-                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.docStats.sections} sections</span>
-                            {selectedNodeInfo.docStats.hasCode && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>Code</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <span className="text-sm shrink-0" style={{ color: "var(--accent)" }}>■</span>
+                      <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                        {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
+                      </span>
                       <button
                         onClick={() => window.open(`/d/${selectedDocId}`, "_blank")}
-                        className="text-xs px-3 py-1.5 rounded-lg shrink-0 transition-colors hover:bg-[var(--accent-dim)]"
-                        style={{ color: "var(--accent)", border: "1px solid var(--accent)" }}
+                        className="text-xs px-2 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}
                       >
                         Open
                       </button>
                     </>
                   ) : selectedNodeInfo && (
                     <>
-                      <div className="w-2 h-6 rounded-sm shrink-0" style={{
-                        background: selectedNodeInfo.type === "analysis" ? "#60a5fa"
+                      <span className="text-sm shrink-0" style={{
+                        color: selectedNodeInfo.type === "analysis" ? "#60a5fa"
                           : selectedNodeInfo.type === "entity" ? "#4ade80"
                           : selectedNodeInfo.type === "tag" ? "#a78bfa"
                           : "#38bdf8"
-                      }} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-base font-bold truncate" style={{ color: "var(--text-primary)" }}>
-                            {selectedNodeInfo.label}
-                          </h2>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium" style={{
-                            background: selectedNodeInfo.type === "analysis" ? "rgba(96,165,250,0.12)"
-                              : selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.12)"
-                              : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.12)"
-                              : "rgba(56,189,248,0.12)",
-                            color: selectedNodeInfo.type === "analysis" ? "#60a5fa"
-                              : selectedNodeInfo.type === "entity" ? "#4ade80"
-                              : selectedNodeInfo.type === "tag" ? "#a78bfa"
-                              : "#38bdf8",
-                          }}>{selectedNodeInfo.type}</span>
-                        </div>
-                        {selectedNodeInfo.weight && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs" style={{ color: "var(--text-muted)" }}>Importance {selectedNodeInfo.weight}/10</span>
-                            <div className="flex gap-0.5">
-                              {Array.from({ length: 10 }).map((_, i) => (
-                                <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border-dim)" }} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      }}>{selectedNodeInfo.type === "analysis" ? "◈" : selectedNodeInfo.type === "entity" ? "◆" : selectedNodeInfo.type === "tag" ? "#" : "○"}</span>
+                      <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                        {selectedNodeInfo.label}
+                      </span>
+                      <span className="text-xs px-1.5 py-0.5 rounded shrink-0" style={{
+                        background: selectedNodeInfo.type === "analysis" ? "rgba(96,165,250,0.12)" : selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.12)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.12)" : "rgba(56,189,248,0.12)",
+                        color: selectedNodeInfo.type === "analysis" ? "#60a5fa" : selectedNodeInfo.type === "entity" ? "#4ade80" : selectedNodeInfo.type === "tag" ? "#a78bfa" : "#38bdf8",
+                      }}>{selectedNodeInfo.type}</span>
                     </>
                   )}
                 </div>
@@ -582,7 +550,7 @@ export default function BundleViewer({
                           <div className="space-y-1.5">
                             {selectedNodeInfo.keyTakeaways.map((t, i) => (
                               <div key={i} className="flex gap-2 items-start">
-                                <span className="text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
+                                <span className="text-xs font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
                                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
                               </div>
                             ))}
@@ -626,16 +594,18 @@ export default function BundleViewer({
                               const doc = documents.find(d => `doc:${d.id}` === docId);
                               return doc ? (
                                 <button key={i} onClick={() => renderDocument(doc)}
-                                  className="w-full text-left px-3 py-2 rounded-lg text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
+                                  onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
+                                  onMouseLeave={() => setCanvasHoveredNode(null)}
+                                  className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
                                   style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
-                                  <span className="text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
+                                  <span className="text-xs font-bold w-4 h-4 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
                                   {doc.title || "Untitled"}
                                 </button>
                               ) : null;
                             })}
                           </div>
                           {selectedNodeInfo.readingOrderReason && (
-                            <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
+                            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
                           )}
                         </div>
                       )}
@@ -651,11 +621,11 @@ export default function BundleViewer({
                               return (
                                 <div key={i} className="rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
                                   <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
-                                    <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>↔</span>
-                                    <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
+                                    <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
+                                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>↔</span>
+                                    <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
                                   </div>
-                                  <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
+                                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
                                 </div>
                               );
                             })}
@@ -683,26 +653,7 @@ export default function BundleViewer({
                   {/* Concept/Entity/Tag panel */}
                   {(selectedNodeInfo.type === "concept" || selectedNodeInfo.type === "entity" || selectedNodeInfo.type === "tag") && (
                     <>
-                      {/* Type badge + Importance */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs px-3 py-1 rounded-full font-semibold" style={{
-                          background: selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.12)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.12)" : "rgba(56,189,248,0.12)",
-                          color: selectedNodeInfo.type === "entity" ? "#4ade80" : selectedNodeInfo.type === "tag" ? "#a78bfa" : "#38bdf8",
-                          border: `1px solid ${selectedNodeInfo.type === "entity" ? "rgba(74,222,128,0.25)" : selectedNodeInfo.type === "tag" ? "rgba(167,139,250,0.25)" : "rgba(56,189,248,0.25)"}`,
-                        }}>{selectedNodeInfo.type.charAt(0).toUpperCase() + selectedNodeInfo.type.slice(1)}</span>
-                        {selectedNodeInfo.weight && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.weight}/10</span>
-                            <div className="flex gap-0.5">
-                              {Array.from({ length: 10 }).map((_, i) => (
-                                <div key={i} className="w-2 h-4 rounded-sm" style={{ background: i < selectedNodeInfo.weight! ? "var(--accent)" : "var(--border-dim)" }} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Description */}
+                      {/* Description — no duplicate badge/importance, header has it */}
                       {selectedNodeInfo.description && (
                         <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{selectedNodeInfo.description}</p>
                       )}
@@ -712,7 +663,10 @@ export default function BundleViewer({
                           <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Appears in {selectedNodeInfo.connectedDocs.length} document{selectedNodeInfo.connectedDocs.length > 1 ? "s" : ""}</h4>
                           <div className="space-y-1.5">
                             {selectedNodeInfo.connectedDocs.map((doc) => (
-                              <button key={doc.id} onClick={() => { const d = documents.find(dd => dd.id === doc.id); if (d) renderDocument(d); }}
+                              <button key={doc.id}
+                                onClick={() => { const d = documents.find(dd => dd.id === doc.id); if (d) renderDocument(d); }}
+                                onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
+                                onMouseLeave={() => setCanvasHoveredNode(null)}
                                 className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2.5"
                                 style={{ color: "var(--text-primary)", background: "var(--toggle-bg)" }}>
                                 <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--accent)" }} />
@@ -769,7 +723,7 @@ export default function BundleViewer({
       {/* Badge */}
       {showBadge && !selectedDocId && (
         <div className="absolute bottom-3 right-3 z-20">
-          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer" className="text-[9px] px-2 py-1 rounded transition-colors hover:underline" style={{ color: "var(--text-faint)", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}>
+          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer" className="text-xs px-2 py-1 rounded transition-colors hover:underline" style={{ color: "var(--text-faint)", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}>
             Published with mdfy.app
           </a>
         </div>

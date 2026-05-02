@@ -55,6 +55,7 @@ interface BundleCanvasProps {
   documents: BundleDocument[];
   aiGraph?: AIGraphData | null;
   isAnalyzing?: boolean;
+  hoveredNodeId?: string | null;
   selectedDocId?: string | null;
   onDocumentClick?: (docId: string) => void;
   onCopyContext?: () => void;
@@ -396,7 +397,7 @@ const nodeTypes: NodeTypes = {
 
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onDocumentClick, onCopyContext, onRegenerate, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [detail, setDetail] = useState<DetailLevel>(aiGraph ? 5 : 1);
@@ -480,16 +481,18 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
     if (!connectedSet) {
       return nodes.map(n => ({
         ...n,
-        style: { "--hover-glow": `${getNodeGlowColor(n)}40` } as any,
+        className: hoveredNodeId === n.id ? "bundle-node-ext-hover" : "",
+        style: { "--hover-glow": `${getNodeGlowColor(n)}40`, "--pulse-color": getNodeGlowColor(n) } as any,
       }));
     }
     return nodes.map(n => {
       const color = getNodeGlowColor(n);
       const isFocused = n.id === focusedNode;
       const isConnected = connectedSet.has(n.id);
+      const isExtHover = hoveredNodeId === n.id;
       return {
         ...n,
-        className: `${isConnected ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""}`,
+        className: `${isConnected ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""} ${isExtHover ? "bundle-node-ext-hover" : ""}`,
         style: { "--pulse-color": color, "--hover-glow": `${color}40` } as any,
       };
     });
@@ -514,6 +517,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
         .bundle-node-dim { opacity: 0.12 !important; transition: opacity 0.2s; }
         .bundle-node-active { opacity: 1 !important; transition: opacity 0.2s; }
         .bundle-node-focused { filter: drop-shadow(0 0 8px var(--pulse-color, #fb923c)55); }
+        .bundle-node-ext-hover { filter: drop-shadow(0 0 12px var(--pulse-color, #fb923c)88); transform: scale(1.03); transition: filter 0.2s, transform 0.2s; }
         @keyframes bundleDotFlow { to { stroke-dashoffset: -18; } }
         .bundle-dot-overlay { stroke-dasharray: 0.01 6; stroke-linecap: round; animation: bundleDotFlow 2s linear infinite; }
         .react-flow__node:hover > div { box-shadow: 0 0 16px var(--hover-glow, rgba(251,146,60,0.25)) !important; transition: box-shadow 0.2s; }
@@ -540,7 +544,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
             return TYPE_COLORS[(n.data as any)?.type]?.border || "#38bdf8";
           }}
           maskColor={theme === "dark" ? "rgba(9,9,11,0.8)" : "rgba(250,249,247,0.8)"}
-          style={{ background: theme === "dark" ? "#18181b" : "#f4f4f5", border: "1px solid var(--border)", borderRadius: 10, width: 160, height: 100 }} />
+          style={{ background: theme === "dark" ? "#18181b" : "#f4f4f5", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", width: 160, height: 100 }} />
       </ReactFlow>
 
       {/* Top bar */}
@@ -571,7 +575,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
         )}
       </div>
 
-      {/* Legend — top right */}
+      {/* Legend — bottom left */}
       {(() => {
         const types = new Set<string>();
         nodes.forEach(n => { if (n.type) types.add(n.type); });
@@ -586,7 +590,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, onD
           if (ct.has("tag")) items.push({ icon: "#", label: "Tags", color: TYPE_COLORS.tag.border });
         }
         return items.length > 0 ? (
-          <div className="absolute top-3 right-3 z-20 flex items-center gap-2.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             {items.map((item, i) => (
               <div key={i} className="flex items-center gap-1">
                 <span className="text-[10px]" style={{ color: item.color }}>{item.icon}</span>
