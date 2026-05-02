@@ -1,19 +1,10 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
+// @ts-nocheck
 "use client";
 
-import { type Editor } from "@tiptap/core";
-import { Editor as TiptapEditor } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
-import { Image as TiptapImage } from "@tiptap/extension-image";
-import { Link as TiptapLink } from "@tiptap/extension-link";
-import { Table } from "@tiptap/extension-table";
-import { TableRow } from "@tiptap/extension-table-row";
-import { TableCell } from "@tiptap/extension-table-cell";
-import { TableHeader } from "@tiptap/extension-table-header";
-import { TaskList } from "@tiptap/extension-task-list";
-import { TaskItem } from "@tiptap/extension-task-item";
-import { Placeholder } from "@tiptap/extension-placeholder";
-import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
-import { Markdown as TiptapMarkdown } from "tiptap-markdown";
+// All @tiptap imports are dynamic (inside useEffect) to avoid SSR detection.
+// Only the type is imported at module level.
+import type { Editor } from "@tiptap/core";
 import {
   useCallback,
   useEffect,
@@ -24,30 +15,7 @@ import {
 } from "react";
 import { common, createLowlight } from "lowlight";
 import katex from "katex";
-import { Extension } from "@tiptap/core";
-
-// Strip <thead>/<tbody> from markdown-it table HTML so Tiptap Table extension can parse rows directly
-const TableHtmlFix = Extension.create({
-  name: "tableHtmlFix",
-  addStorage() {
-    return {
-      markdown: {
-        parse: {
-          updateDOM(element: HTMLElement) {
-            element.querySelectorAll("table").forEach(table => {
-              table.querySelectorAll("thead, tbody, tfoot").forEach(wrapper => {
-                while (wrapper.firstChild) {
-                  table.insertBefore(wrapper.firstChild, wrapper);
-                }
-                wrapper.remove();
-              });
-            });
-          },
-        },
-      },
-    };
-  },
-});
+// TableHtmlFix — created lazily inside useEffect to avoid SSR module loading
 import {
   Bold,
   Italic,
@@ -246,6 +214,44 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
     const editorRef = useRef<Editor | null>(null);
 
     useEffect(() => {
+      /* eslint-disable @typescript-eslint/no-require-imports */
+      // Dynamic imports — all @tiptap modules loaded only on client to avoid SSR
+      const { Editor: TiptapEditor, Extension } = require("@tiptap/core");
+      const { default: StarterKit } = require("@tiptap/starter-kit");
+      const { Image: TiptapImage } = require("@tiptap/extension-image");
+      const { Link: TiptapLink } = require("@tiptap/extension-link");
+      const { Table } = require("@tiptap/extension-table");
+      const { TableRow } = require("@tiptap/extension-table-row");
+      const { TableCell } = require("@tiptap/extension-table-cell");
+      const { TableHeader } = require("@tiptap/extension-table-header");
+      const { TaskList } = require("@tiptap/extension-task-list");
+      const { TaskItem } = require("@tiptap/extension-task-item");
+      const { Placeholder } = require("@tiptap/extension-placeholder");
+      const { CodeBlockLowlight } = require("@tiptap/extension-code-block-lowlight");
+      const { Markdown: TiptapMarkdown } = require("tiptap-markdown");
+
+      const TableHtmlFix = Extension.create({
+        name: "tableHtmlFix",
+        addStorage() {
+          return {
+            markdown: {
+              parse: {
+                updateDOM(element: HTMLElement) {
+                  element.querySelectorAll("table").forEach((table: Element) => {
+                    table.querySelectorAll("thead, tbody, tfoot").forEach((wrapper: Element) => {
+                      while (wrapper.firstChild) {
+                        table.insertBefore(wrapper.firstChild, wrapper);
+                      }
+                      wrapper.remove();
+                    });
+                  });
+                },
+              },
+            },
+          };
+        },
+      });
+
       const ed = new TiptapEditor({
         extensions: [
           StarterKit.configure({
@@ -282,7 +288,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             class: `mdcore-rendered focus:outline-none ${narrowView ? "p-3 sm:p-6 mx-auto max-w-3xl" : "p-3 sm:p-6 max-w-none"}`,
             style: `cursor: ${canEdit ? "text" : "default"}; min-height: 100%;`,
           },
-          handleDoubleClickOn: (view, pos, node) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          handleDoubleClickOn: (view: any, pos: any, node: any) => {
             // Code block → open code editor modal
             if (node.type.name === "codeBlock") {
               const lang = node.attrs.language || "";
@@ -298,10 +305,11 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             }
             return false;
           },
-          handlePaste: (view, event) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          handlePaste: (view: any, event: any) => {
             // Image paste
-            const items = Array.from(event.clipboardData?.items || []);
-            const imageItem = items.find((i) => i.type.startsWith("image/"));
+            const items = Array.from(event.clipboardData?.items || []) as DataTransferItem[];
+            const imageItem = items.find((i: DataTransferItem) => i.type.startsWith("image/"));
             if (imageItem && onPasteImageRef.current) {
               event.preventDefault();
               const file = imageItem.getAsFile();
