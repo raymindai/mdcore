@@ -2,9 +2,19 @@
 // @ts-nocheck
 "use client";
 
-// All @tiptap imports are dynamic (inside useEffect) to avoid SSR detection.
-// Only the type is imported at module level.
-import type { Editor } from "@tiptap/core";
+import { type Editor, Editor as TiptapEditor, Extension } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import { Image as TiptapImage } from "@tiptap/extension-image";
+import { Link as TiptapLink } from "@tiptap/extension-link";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TaskList } from "@tiptap/extension-task-list";
+import { TaskItem } from "@tiptap/extension-task-item";
+import { Placeholder } from "@tiptap/extension-placeholder";
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { Markdown as TiptapMarkdown } from "tiptap-markdown";
 import {
   useCallback,
   useEffect,
@@ -214,22 +224,6 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
     const editorRef = useRef<Editor | null>(null);
 
     useEffect(() => {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      // Dynamic imports — all @tiptap modules loaded only on client to avoid SSR
-      const { Editor: TiptapEditor, Extension } = require("@tiptap/core");
-      const { default: StarterKit } = require("@tiptap/starter-kit");
-      const { Image: TiptapImage } = require("@tiptap/extension-image");
-      const { Link: TiptapLink } = require("@tiptap/extension-link");
-      const { Table } = require("@tiptap/extension-table");
-      const { TableRow } = require("@tiptap/extension-table-row");
-      const { TableCell } = require("@tiptap/extension-table-cell");
-      const { TableHeader } = require("@tiptap/extension-table-header");
-      const { TaskList } = require("@tiptap/extension-task-list");
-      const { TaskItem } = require("@tiptap/extension-task-item");
-      const { Placeholder } = require("@tiptap/extension-placeholder");
-      const { CodeBlockLowlight } = require("@tiptap/extension-code-block-lowlight");
-      const { Markdown: TiptapMarkdown } = require("tiptap-markdown");
-
       const TableHtmlFix = Extension.create({
         name: "tableHtmlFix",
         addStorage() {
