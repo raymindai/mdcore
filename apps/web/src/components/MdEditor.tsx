@@ -4939,17 +4939,21 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // ── Tiptap LIVE editor onChange handler ──
-  // No debounce. Immediate sync: Tiptap → markdown state + CM6.
-  // CM6 → Tiptap sync happens ONLY on view switch (never during editing).
-  const tiptapSyncingRef = useRef(false); // guard to prevent CM6 onChange → tiptapRef.setMarkdown
+  // Minimal: update ref + auto-save. NO React state update, NO CM6 sync during editing.
+  // CM6 sync happens only on view switch (Source→Live or via debounce for split).
+  const tiptapSyncingRef = useRef(false);
+  const tiptapSyncTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleTiptapChange = useCallback((md: string) => {
     markdownRef.current = md;
     triggerAutoSave(md);
-    setMarkdownRaw(md);
-    // Sync to CM6 (for split view) — flag prevents circular update
-    tiptapSyncingRef.current = true;
-    cmSetDocRef.current?.(md);
-    tiptapSyncingRef.current = false;
+    // Debounced CM6 sync (for split view) — long delay to not interfere with editing
+    if (tiptapSyncTimer.current) clearTimeout(tiptapSyncTimer.current);
+    tiptapSyncTimer.current = setTimeout(() => {
+      tiptapSyncingRef.current = true;
+      setMarkdownRaw(md);
+      cmSetDocRef.current?.(md);
+      tiptapSyncingRef.current = false;
+    }, 1000);
   }, [triggerAutoSave]);
 
   // Legacy refs kept for compatibility with non-Tiptap code paths
