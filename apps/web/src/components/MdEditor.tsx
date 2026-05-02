@@ -9059,21 +9059,11 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
               // Clear source→preview highlight when clicking in Live
               clearHighlight();
-              // Click on empty space below content → focus article and place cursor at end
-              if (e.target === e.currentTarget) {
-                const article = e.currentTarget.querySelector("article");
-                if (article) {
-                  article.focus();
-                  // Place cursor at end of content
-                  const sel = window.getSelection();
-                  if (sel) {
-                    const range = document.createRange();
-                    range.selectNodeContents(article);
-                    range.collapse(false);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                  }
-                }
+              // Click on empty space below content → focus Tiptap editor
+              // BUT don't interfere if click was inside the editor (table cells, etc.)
+              const target = e.target as HTMLElement;
+              if (e.target === e.currentTarget && !target.closest(".tiptap")) {
+                tiptapRef.current?.focus();
               }
             }}>
               {isLoading ? (
