@@ -1625,19 +1625,51 @@ textarea::selection {
   gap: 0.35rem;
   margin: 0.25rem 0;
 }
+.tiptap ul[data-type="taskList"] > li {
+  align-items: flex-start;
+}
 .tiptap ul[data-type="taskList"] > li > label {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   margin: 0;
-  padding: 0;
+  padding-top: 0.35em; /* aligns checkbox with first text line */
 }
 .tiptap ul[data-type="taskList"] > li > label input[type="checkbox"] {
   width: 14px;
   height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  max-width: 14px;
+  max-height: 14px;
   margin: 0;
-  accent-color: var(--accent);
+  padding: 0;
+  flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
   cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+.tiptap ul[data-type="taskList"] > li > label input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tiptap ul[data-type="taskList"] > li > label input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid #000;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
 }
 .tiptap ul[data-type="taskList"] > li > div {
   flex: 1;
