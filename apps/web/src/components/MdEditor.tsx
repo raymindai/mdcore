@@ -2096,6 +2096,15 @@ export default function MdEditor() {
     "idle" | "sharing" | "copied" | "error"
   >("idle");
   const [viewMode, setViewMode] = useState<ViewMode>("preview");
+  // Sync markdown to Tiptap when switching FROM Source to Live/Split
+  const prevViewModeRef = useRef<ViewMode>("preview");
+  useEffect(() => {
+    const prev = prevViewModeRef.current;
+    prevViewModeRef.current = viewMode;
+    if (prev === "editor" && (viewMode === "preview" || viewMode === "split")) {
+      tiptapRef.current?.setMarkdown(markdownRef.current);
+    }
+  }, [viewMode]);
   const [isSharedDoc, setIsSharedDoc] = useState(false); // opened from URL — read-only unless owner
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -4908,11 +4917,9 @@ export default function MdEditor() {
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
       debounceRef.current = setTimeout(() => {
         doRender(value);
-        // Sync to Tiptap ONLY if change originated from CM6 user typing (not from Tiptap→CM6 sync)
-        if (tiptapUpdateCounter.current > 0) {
-          // This CM6 change was from Tiptap → skip setMarkdown to avoid circular update
-          tiptapUpdateCounter.current--;
-        } else {
+        // Tiptap sync: only if user is actively typing in CM6 (not from Tiptap→CM6 sync)
+        // AND only in split view where both editors are visible
+        if (!tiptapSyncingRef.current && viewMode === "split") {
           tiptapRef.current?.setMarkdown(value);
         }
       }, debounceTime);
@@ -4932,18 +4939,17 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // ── Tiptap LIVE editor onChange handler ──
-  const tiptapDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Counter: incremented when Tiptap originates a change, decremented when handleChange processes it
-  const tiptapUpdateCounter = useRef(0);
+  // No debounce. Immediate sync: Tiptap → markdown state + CM6.
+  // CM6 → Tiptap sync happens ONLY on view switch (never during editing).
+  const tiptapSyncingRef = useRef(false); // guard to prevent CM6 onChange → tiptapRef.setMarkdown
   const handleTiptapChange = useCallback((md: string) => {
     markdownRef.current = md;
     triggerAutoSave(md);
-    if (tiptapDebounceRef.current) clearTimeout(tiptapDebounceRef.current);
-    tiptapDebounceRef.current = setTimeout(() => {
-      setMarkdownRaw(md);
-      tiptapUpdateCounter.current++;
-      cmSetDocRef.current?.(md);
-    }, 200);
+    setMarkdownRaw(md);
+    // Sync to CM6 (for split view) — flag prevents circular update
+    tiptapSyncingRef.current = true;
+    cmSetDocRef.current?.(md);
+    tiptapSyncingRef.current = false;
   }, [triggerAutoSave]);
 
   // Legacy refs kept for compatibility with non-Tiptap code paths
