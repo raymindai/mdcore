@@ -222,10 +222,13 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
 
     const [editor, setEditor] = useState<Editor | null>(null);
     const editorRef = useRef<Editor | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+      if (!containerRef.current) return;
 
       const ed = new TiptapEditor({
+        element: containerRef.current,
         extensions: [
           StarterKit.configure({
             codeBlock: false,
@@ -368,16 +371,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       getEditor: () => editor,
     }), [editor, markdown]);
 
-    // Mount editor DOM into container ref
-    const containerRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-      if (!editor || !containerRef.current) return;
-      const el = containerRef.current;
-      if (!el.contains(editor.view.dom)) {
-        el.innerHTML = "";
-        el.appendChild(editor.view.dom);
-      }
-    }, [editor]);
+    // Editor is mounted directly into containerRef via `element` option
 
     // ── Post-render: KaTeX math + Mermaid diagrams ──
     // Process the Tiptap DOM after every update to render math and mermaid
