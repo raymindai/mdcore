@@ -387,8 +387,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       if (!editor) return;
 
       const processDOM = () => {
+        if (!editor.view?.dom) return;
         const dom = editor.view.dom;
-        if (!dom) return;
 
         // ── KaTeX: find $...$ and $$...$$ in text nodes ──
         // Process inline math: $...$
