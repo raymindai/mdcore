@@ -24,6 +24,30 @@ import {
 } from "react";
 import { common, createLowlight } from "lowlight";
 import katex from "katex";
+import { Extension } from "@tiptap/core";
+
+// Strip <thead>/<tbody> from markdown-it table HTML so Tiptap Table extension can parse rows directly
+const TableHtmlFix = Extension.create({
+  name: "tableHtmlFix",
+  addStorage() {
+    return {
+      markdown: {
+        parse: {
+          updateDOM(element: HTMLElement) {
+            element.querySelectorAll("table").forEach(table => {
+              table.querySelectorAll("thead, tbody, tfoot").forEach(wrapper => {
+                while (wrapper.firstChild) {
+                  table.insertBefore(wrapper.firstChild, wrapper);
+                }
+                wrapper.remove();
+              });
+            });
+          },
+        },
+      },
+    };
+  },
+});
 import {
   Bold,
   Italic,
@@ -249,6 +273,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             transformPastedText: false,
             transformCopiedText: true,
           }),
+          TableHtmlFix,
         ],
         content: initialBodyRef.current || "<p></p>",
         editable: canEdit,
