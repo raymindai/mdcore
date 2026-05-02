@@ -25,7 +25,7 @@ import {
 } from "react";
 import { common, createLowlight } from "lowlight";
 import katex from "katex";
-// Table fix: thead/tbody stripping is done after setContent (see setMarkdown handle + initial content setup)
+// Table fix: custom tiptap-markdown extension that strips <thead>/<tbody> during parsing
 import {
   Bold,
   Italic,
@@ -311,23 +311,22 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       editorRef.current = ed;
       setEditor(ed);
 
-      // Set initial content
+      // Patch markdown-it to NOT emit <thead>/<tbody> — these break ProseMirror Table parsing
+      try {
+        const mdParser = (ed.storage as any).markdown?.parser;
+        if (mdParser?.md?.renderer?.rules) {
+          const noop = () => "";
+          mdParser.md.renderer.rules.thead_open = noop;
+          mdParser.md.renderer.rules.thead_close = noop;
+          mdParser.md.renderer.rules.tbody_open = noop;
+          mdParser.md.renderer.rules.tbody_close = noop;
+        }
+      } catch { /* no parser yet */ }
+
+      // Set initial content (now without <thead>/<tbody> thanks to patched renderer)
       if (initialBodyRef.current) {
         isSettingContent.current = true;
         ed.commands.setContent(initialBodyRef.current);
-        // Two-pass fix: strip <thead>/<tbody> and re-parse as HTML
-        try {
-          const h = ed.getHTML();
-          if (h.includes("<thead") || h.includes("<tbody")) {
-            ed.commands.setContent(
-              h.replace(/<thead[^>]*>|<\/thead>/gi, "")
-               .replace(/<tbody[^>]*>|<\/tbody>/gi, "")
-               .replace(/<tfoot[^>]*>|<\/tfoot>/gi, ""),
-              false,
-              { preserveWhitespace: true }
-            );
-          }
-        } catch { /* view not ready */ }
         isSettingContent.current = false;
       }
 
@@ -355,20 +354,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         const { frontmatter: fm, body } = extractFrontmatter(md);
         frontmatterRef.current = fm;
         isSettingContent.current = true;
-        // First pass: let tiptap-markdown parse markdown → HTML → ProseMirror
+        // markdown-it renderer is patched (no <thead>/<tbody>)
         editor.commands.setContent(body || "<p></p>");
-        // Second pass: if tables exist with thead/tbody (from markdown-it),
-        // strip them and re-parse as HTML so Tiptap Table extension can handle them
-        try {
-          const currentHtml = editor.getHTML();
-          if (currentHtml.includes("<thead") || currentHtml.includes("<tbody")) {
-            const cleanHtml = currentHtml
-              .replace(/<thead[^>]*>|<\/thead>/gi, "")
-              .replace(/<tbody[^>]*>|<\/tbody>/gi, "")
-              .replace(/<tfoot[^>]*>|<\/tfoot>/gi, "");
-            editor.commands.setContent(cleanHtml, false, { preserveWhitespace: true });
-          }
-        } catch { /* editor not ready */ }
         isSettingContent.current = false;
       },
       getMarkdown: () => {
