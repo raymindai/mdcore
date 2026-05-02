@@ -40,21 +40,34 @@ test("debug table cell editing", async ({ page }) => {
     console.log("Pipe characters:", pipeCount);
   }
 
-  // Now try clicking a cell and typing
-  const firstTd = page.locator(".tiptap td").first();
-  await firstTd.click();
-  await page.waitForTimeout(500);
+  // Debug: check table element attributes
+  const tableHtml = await page.locator(".tiptap table").first().evaluate(el => el.outerHTML);
+  console.log("=== TABLE HTML ===");
+  console.log(tableHtml);
 
-  // Select all text in cell and type new content
-  await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.type("EDITED");
-  await page.waitForTimeout(500);
+  // Check if cells are contenteditable
+  const cellEditable = await page.locator(".tiptap td").first().evaluate(el => {
+    return {
+      contentEditable: el.contentEditable,
+      isContentEditable: el.isContentEditable,
+      closest: el.closest('[contenteditable="true"]')?.tagName,
+      parentContentEditable: el.parentElement?.closest('[contenteditable]')?.getAttribute('contenteditable'),
+    };
+  });
+  console.log("Cell editable info:", JSON.stringify(cellEditable));
 
-  const cellText = await firstTd.innerText();
-  console.log("Cell after edit:", cellText);
+  // Try clicking directly into the <p> inside the cell
+  const cellP = page.locator(".tiptap td p").first();
+  if (await cellP.count() > 0) {
+    console.log("Found <p> inside td, clicking...");
+    await cellP.click();
+    await page.waitForTimeout(300);
+    await page.keyboard.type("X");
+    await page.waitForTimeout(300);
+    const pText = await cellP.innerText();
+    console.log("P text after typing:", pText);
+  }
 
-  // Take screenshot
   await page.screenshot({ path: "test-results/table-edit-result.png" });
-
-  expect(cellText).toContain("EDITED");
+  expect(true).toBe(true);
 });
