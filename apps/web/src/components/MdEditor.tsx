@@ -4908,8 +4908,11 @@ export default function MdEditor() {
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
       debounceRef.current = setTimeout(() => {
         doRender(value);
-        // Sync to Tiptap ONLY if change originated from CM6 (not from Tiptap→CM6 sync)
-        if (!tiptapOriginatedRef.current) {
+        // Sync to Tiptap ONLY if change originated from CM6 user typing (not from Tiptap→CM6 sync)
+        if (tiptapUpdateCounter.current > 0) {
+          // This CM6 change was from Tiptap → skip setMarkdown to avoid circular update
+          tiptapUpdateCounter.current--;
+        } else {
           tiptapRef.current?.setMarkdown(value);
         }
       }, debounceTime);
@@ -4930,19 +4933,16 @@ export default function MdEditor() {
 
   // ── Tiptap LIVE editor onChange handler ──
   const tiptapDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Guard: prevent Tiptap→CM6→Tiptap circular update
-  const tiptapOriginatedRef = useRef(false);
+  // Counter: incremented when Tiptap originates a change, decremented when handleChange processes it
+  const tiptapUpdateCounter = useRef(0);
   const handleTiptapChange = useCallback((md: string) => {
     markdownRef.current = md;
     triggerAutoSave(md);
     if (tiptapDebounceRef.current) clearTimeout(tiptapDebounceRef.current);
     tiptapDebounceRef.current = setTimeout(() => {
       setMarkdownRaw(md);
-      // Set flag BEFORE cmSetDoc so handleChange knows to skip tiptapRef.setMarkdown
-      tiptapOriginatedRef.current = true;
+      tiptapUpdateCounter.current++;
       cmSetDocRef.current?.(md);
-      // Reset flag after a tick (CM6 onChange fires synchronously)
-      setTimeout(() => { tiptapOriginatedRef.current = false; }, 50);
     }, 200);
   }, [triggerAutoSave]);
 
