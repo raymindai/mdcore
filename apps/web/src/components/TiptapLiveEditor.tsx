@@ -394,6 +394,14 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       if (!editor) return;
 
       const processDOM = () => {
+        // IMPORTANT: Do NOT modify ProseMirror-managed DOM directly.
+        // Modifying text nodes (e.g. replacing with KaTeX) breaks ProseMirror's
+        // internal state tracking, causing table cell editing and other
+        // interactions to fail.
+        // Math + Mermaid rendering should be done via custom NodeViews instead.
+        // For now, skip DOM post-processing entirely.
+        return;
+
         let dom: HTMLElement;
         try { dom = editor.view.dom; } catch { return; }
         if (!dom) return;
