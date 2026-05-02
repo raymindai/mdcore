@@ -2627,10 +2627,10 @@ export default function MdEditor() {
     setViewCount(0);
     setAllowedEmailsState([]);
     setAllowedEditorsState([]);
-    // Fetch view count for cloud docs
+    // Fetch view count for cloud docs (suppress 500 errors in console)
     if (tab.cloudId && (tab.permission === "mine" || !tab.permission)) {
-      fetch(`/api/docs/${tab.cloudId}`, { method: "HEAD" })
-        .then(r => { const vc = r.headers.get("x-view-count"); if (vc) setViewCount(parseInt(vc) || 0); })
+      fetch(`/api/docs/${tab.cloudId}`, { method: "HEAD", headers: { "x-no-view-count": "1" } })
+        .then(r => { if (r.ok) { const vc = r.headers.get("x-view-count"); if (vc) setViewCount(parseInt(vc) || 0); } })
         .catch(() => {});
     }
     setShowViewerShareModal(false);
