@@ -4,7 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type AIAction = "polish" | "summary" | "tldr" | "translate" | "chat";
+type AIAction = "polish" | "summary" | "tldr" | "translate" | "chat" | "beautify";
 
 // ─── AI Model Config (cached from site_config table) ───
 const DEFAULT_PRIMARY_MODEL = "gemini-3-flash-preview";
@@ -57,6 +57,28 @@ const PROMPTS: Record<Exclude<AIAction, "chat" | "translate">, string> = {
 - 2-4 sentences that capture the key points
 - Written in the same language as the original
 - Output ONLY the summary text as a single paragraph — no headings, no wrapping, no explanations`,
+
+  beautify: `You are an expert technical illustrator. Take the input (which may be ASCII art, a rough diagram, or a plain code block) and redraw it as a polished Mermaid diagram.
+
+ALWAYS output a Mermaid diagram inside a single \`\`\`mermaid fence. Pick the diagram type that best fits the content:
+- Process / system / relationship → \`graph LR\` or \`graph TD\` flowchart with subgraphs
+- Hierarchy → \`graph TD\` with subgraphs
+- Decision logic → \`graph TD\` with diamond decision nodes
+- Sequence of steps between actors → \`sequenceDiagram\`
+- State machine → \`stateDiagram-v2\`
+- Class / data model → \`classDiagram\` or \`erDiagram\`
+
+When producing Mermaid:
+- Use subgraphs to group related nodes
+- Add classDef styles for visual variety (use orange #fb923c for the key/important nodes, and zinc shades #27272a/#3f3f46 for supporting ones, with white #fafafa text)
+- Use shape syntax: \`A["Process"]\`, \`B(("Start/End"))\`, \`C{"Decision"}\`, \`D[/"Input"/]\`, \`E[("Database")]\`
+- **CRITICAL: ALWAYS wrap every node label in double quotes** — \`A["any text"]\` not \`A[any text]\`. This prevents parse errors when labels contain \`{ } ( ) / \\ | : . , < > # @ %\` or whitespace. NEVER write \`G[mdfy.app/{id}]\` — write \`G["mdfy.app/{id}"]\`.
+- Add edge labels where they clarify relationships: \`A -->|"label"| B\` (also quoted)
+- Use only ASCII characters in node IDs (left of the bracket): A, B1, node_x — never spaces or punctuation
+- Choose direction (LR or TD) that fits the content best
+- Keep node text concise
+
+Output ONLY the final Markdown — no commentary, no explanations, no surrounding prose.`,
 
   tldr: `You are an expert at creating TL;DR sections. Create a TL;DR for the following Markdown document:
 - 2-5 bullet points covering the most important takeaways
@@ -127,7 +149,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "action and markdown are required" }, { status: 400 });
   }
 
-  const validActions: AIAction[] = ["polish", "summary", "tldr", "translate", "chat"];
+  const validActions: AIAction[] = ["polish", "summary", "tldr", "translate", "chat", "beautify"];
   if (!validActions.includes(action)) {
     return NextResponse.json({ error: `Invalid action: ${action}` }, { status: 400 });
   }
@@ -161,7 +183,7 @@ ${action === "chat" ? "Modified document:" : action === "polish" || action === "
 
   // Resolve model from site_config (cached 5 min)
   const models = await getAIModels();
-  const modelName = (action === "chat" || action === "polish" || action === "translate") ? models.primary : models.lite;
+  const modelName = (action === "chat" || action === "polish" || action === "translate" || action === "beautify") ? models.primary : models.lite;
 
   const callGemini = async (attempt: number): Promise<Response> => {
     const res = await fetch(

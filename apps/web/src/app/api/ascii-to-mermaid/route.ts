@@ -31,7 +31,9 @@ RULES:
 - For flowcharts with decisions, use "graph TD" with diamond nodes for conditions.
 - For sequence diagrams, use "sequenceDiagram".
 - For each node, include ALL text associated with it. If a node has sub-labels below it (like "Browser" with "mdfy.app" below), combine them: A["Browser<br/>mdfy.app"]
-- Use descriptive node IDs (e.g., A, B, C or short names).
+- Use descriptive node IDs (left of the bracket): A, B1, node_x. **IDs must be ASCII letters/digits/underscores only — no spaces, no punctuation, no slashes, no dots.**
+- **CRITICAL: ALWAYS wrap node labels in double quotes**: \`A["any text"]\` not \`A[any text]\`. This prevents parse errors on labels containing \`{ } ( ) / | : . , < > # @ %\` or whitespace. NEVER write \`G[mdfy.app/{id}]\` — write \`G["mdfy.app/{id}"]\`.
+- Edge labels also quoted: \`A -->|"label"| B\`.
 - Preserve the exact connection structure — which nodes connect to which.
 - If the diagram has colored or highlighted text, ignore the styling — just preserve the text.
 
@@ -44,7 +46,7 @@ EXAMPLE INPUT:
 
 EXAMPLE OUTPUT:
 graph TD
-    Root --> A["A<br/>x"]
+    Root["Root"] --> A["A<br/>x"]
     Root --> B["B<br/>y"]
 
 Diagram to convert:

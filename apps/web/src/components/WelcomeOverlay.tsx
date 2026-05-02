@@ -159,7 +159,7 @@ export default function WelcomeOverlay() {
               <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>
                 <span style={{ color: "var(--accent)" }}>md</span>
                 <span style={{ color: "var(--text-primary)" }}>fy</span>
-                <span style={{ color: "var(--text-faint)" }}>.cc</span>
+                <span style={{ color: "var(--text-faint)" }}>.app</span>
               </span>
             </div>
           )}

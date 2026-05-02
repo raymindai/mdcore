@@ -2,7 +2,7 @@
 // @ts-nocheck
 "use client";
 
-import { type Editor, Editor as TiptapEditor } from "@tiptap/core";
+import { type Editor, Editor as TiptapEditor, Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image as TiptapImage } from "@tiptap/extension-image";
 import { Link as TiptapLink } from "@tiptap/extension-link";
@@ -14,7 +14,10 @@ import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { Markdown as TiptapMarkdown } from "tiptap-markdown";
+import markdownItFootnote from "markdown-it-footnote";
 import {
   useCallback,
   useEffect,
@@ -40,9 +43,594 @@ import {
   Link as LinkIcon,
   Minus,
   CheckSquare,
+  Trash2,
 } from "lucide-react";
 
 const lowlight = createLowlight(common);
+
+// ─── Custom CodeBlock NodeView: language label + copy button + mermaid render ───
+const CustomCodeBlock = CodeBlockLowlight.extend({
+  addNodeView() {
+    return (props: any) => {
+      try {
+        return buildCodeBlockNodeView(props);
+      } catch (err) {
+        // If NodeView throws, fall back to a basic visible wrapper so the user
+        // sees content + sees that something went wrong (instead of vanishing).
+        // eslint-disable-next-line no-console
+        console.error("[CustomCodeBlock NodeView] error:", err);
+        const wrapper = document.createElement("div");
+        wrapper.className = "tiptap-codeblock-wrapper";
+        wrapper.setAttribute("data-error", String((err as Error).message || err));
+        const errLine = document.createElement("div");
+        errLine.style.cssText = "padding:8px 12px;font-size:11px;color:var(--accent);background:var(--accent-dim);border-bottom:1px solid var(--border-dim);";
+        errLine.textContent = `Code block render error: ${(err as Error).message || err}`;
+        wrapper.appendChild(errLine);
+        const pre = document.createElement("pre");
+        pre.style.cssText = "margin:0;padding:12px;background:var(--background);";
+        const code = document.createElement("code");
+        pre.appendChild(code);
+        wrapper.appendChild(pre);
+        return { dom: wrapper, contentDOM: code };
+      }
+    };
+  },
+});
+
+function buildCodeBlockNodeView({ node, HTMLAttributes, getPos, editor }: any) {
+      const lang = (node.attrs.language || "").toLowerCase();
+      const wrapper = document.createElement("div");
+      wrapper.className = "tiptap-codeblock-wrapper";
+      wrapper.setAttribute("data-language", lang);
+
+      // Header: lang badge + copy button
+      const header = document.createElement("div");
+      header.className = "tiptap-codeblock-header";
+      header.contentEditable = "false";
+
+      const langLabel = document.createElement("span");
+      langLabel.className = "tiptap-codeblock-lang";
+      langLabel.textContent = lang || "text";
+
+      const headerActions = document.createElement("div");
+      headerActions.style.display = "flex";
+      headerActions.style.alignItems = "center";
+      headerActions.style.gap = "6px";
+
+      // ─── ASCII detection: table vs tree vs diagram ───
+      const BOX_CHARS = /[┌┐└┘│─├┤┬┴┼╌═║╔╗╚╝╠╣╦╩╬┊┈]/g;
+      type AsciiKind = null | "table" | "tree" | "diagram";
+      const detectAsciiKind = (text: string): AsciiKind => {
+        if (lang === "mermaid") return null;
+        const matches = text.match(BOX_CHARS);
+        if (!matches || matches.length < 5) return null;
+        const tableJoiners = (text.match(/[┬┴╦╩┼╬]/g) || []).length;
+        const verticals = (text.match(/[│║]/g) || []).length;
+        if (tableJoiners >= 2 && verticals >= 4) return "table";
+        if (/[├└][─━]/.test(text)) return "tree";
+        return "diagram";
+      };
+
+      // Convert an ASCII table (┌─┬─┐ │ │ ├─┼─┤ └─┴─┘) into a markdown table
+      const asciiTableToMd = (text: string): string | null => {
+        const lines = text.split("\n").filter((l) => l.trim().length > 0);
+        // Keep only rows that contain a vertical bar (data rows)
+        const dataRows = lines.filter((l) => /[│║]/.test(l) && !/^[\s┌┐└┘├┤┬┴┼─━═╦╩╠╣╔╗╚╝╬]+$/.test(l));
+        if (dataRows.length < 1) return null;
+        const splitRow = (l: string) =>
+          l
+            .split(/[│║]/)
+            .slice(1, -1)
+            .map((c) => c.trim());
+        const cells = dataRows.map(splitRow);
+        const cols = Math.max(...cells.map((r) => r.length));
+        if (cols < 2) return null;
+        const norm = cells.map((r) => {
+          const padded = [...r];
+          while (padded.length < cols) padded.push("");
+          return padded;
+        });
+        const header = norm[0];
+        const body = norm.slice(1);
+        const sep = new Array(cols).fill("---");
+        const fmt = (row: string[]) => "| " + row.map((c) => c || " ").join(" | ") + " |";
+        return [fmt(header), fmt(sep), ...body.map(fmt)].join("\n");
+      };
+
+      // ─── Convert dropdown — user picks the target format ───
+      // Wrapper exists so we can hide both button and menu together via display:none
+      const convertWrap = document.createElement("div");
+      convertWrap.style.display = "none";
+
+      const convertBtn = document.createElement("button");
+      convertBtn.className = "tiptap-codeblock-copy";
+      convertBtn.type = "button";
+      convertBtn.textContent = "Convert ▾";
+      convertWrap.appendChild(convertBtn);
+
+      // Menu is portaled to <body> with position:fixed so the wrapper's
+      // overflow:hidden (for rounded corners) doesn't clip it.
+      const menu = document.createElement("div");
+      menu.style.cssText = `
+        position: fixed; z-index: 99999;
+        min-width: 200px; padding: 4px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        display: none; flex-direction: column; gap: 1px;
+      `;
+
+      const updateConvertVisibility = () => {
+        const txt = node.textContent || "";
+        const kind = detectAsciiKind(txt);
+        convertWrap.style.display = kind ? "" : "none";
+      };
+      updateConvertVisibility();
+
+      // Replace this code block with a chunk of *markdown*. Markdown is parsed
+      // through tiptap-markdown's md instance into HTML, then inserted. Without
+      // this, raw markdown text would appear as plain characters because
+      // Tiptap's insertContentAt does not parse markdown.
+      const replaceBlock = (mdContent: string) => {
+        const pos = typeof getPos === "function" ? getPos() : null;
+        if (pos == null) return false;
+        const nodeSize = node.nodeSize;
+        let html = mdContent;
+        try {
+          const mdParser = (editor.storage as any).markdown?.parser;
+          if (mdParser?.md?.render) html = mdParser.md.render(mdContent);
+        } catch { /* fall back to raw string */ }
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: pos, to: pos + nodeSize })
+          .insertContentAt(pos, html)
+          .run();
+        return true;
+      };
+
+      // Conversion overlay — full-block opaque overlay with spinner during
+      // AI conversion. Far more visible than a thin status strip.
+      let overlayEl: HTMLDivElement | null = null;
+      let converting = false;
+      const setConverting = (on: boolean) => {
+        converting = on;
+        if (on) {
+          convertBtn.setAttribute("disabled", "true");
+          convertBtn.style.opacity = "0.5";
+          convertBtn.style.cursor = "wait";
+          copyBtn.setAttribute("disabled", "true");
+          copyBtn.style.opacity = "0.5";
+        } else {
+          convertBtn.removeAttribute("disabled");
+          convertBtn.style.opacity = "";
+          convertBtn.style.cursor = "";
+          copyBtn.removeAttribute("disabled");
+          copyBtn.style.opacity = "";
+        }
+      };
+      const showStatus = (text: string, kind: "info" | "error" | "loading" = "info") => {
+        if (!overlayEl) {
+          overlayEl = document.createElement("div");
+          overlayEl.contentEditable = "false";
+          overlayEl.style.cssText = `
+            position: absolute; inset: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 12px;
+            backdrop-filter: blur(2px);
+            pointer-events: all;
+          `;
+          // Wrapper is position:relative (set via CSS). overlay covers it.
+          wrapper.appendChild(overlayEl);
+        }
+        const isError = kind === "error";
+        overlayEl.style.background = isError
+          ? "rgba(251, 146, 60, 0.18)"
+          : "rgba(0, 0, 0, 0.55)";
+        overlayEl.innerHTML = "";
+        if (kind === "loading") {
+          const spin = document.createElement("div");
+          spin.className = "tiptap-spinner-large";
+          overlayEl.appendChild(spin);
+        }
+        const t = document.createElement("div");
+        t.textContent = text;
+        t.style.cssText = `
+          font-family: ui-monospace, monospace;
+          font-size: 12px; font-weight: 600;
+          color: ${isError ? "var(--accent)" : "var(--text-primary)"};
+          text-align: center; padding: 0 16px;
+          max-width: 90%;
+        `;
+        overlayEl.appendChild(t);
+      };
+      const clearStatus = () => {
+        if (overlayEl?.parentNode) overlayEl.parentNode.removeChild(overlayEl);
+        overlayEl = null;
+      };
+
+      const convertToTable = () => {
+        const ascii = node.textContent || "";
+        const md = asciiTableToMd(ascii);
+        if (md && replaceBlock(md)) return;
+        showStatus("Couldn't parse as a table — the content doesn't look like a grid.", "error");
+        setTimeout(clearStatus, 2500);
+      };
+
+      const convertToList = () => {
+        const ascii = node.textContent || "";
+        const lines = ascii.split("\n");
+        const md = lines
+          .map((l) => {
+            const m = l.match(/^([\s│├└─━┊┈]*)(.+?)$/);
+            if (!m) return null;
+            const prefix = m[1];
+            const label = m[2].replace(/^[─━]+\s*/, "").trim();
+            if (!label) return null;
+            const depth = Math.max(0, Math.floor(prefix.replace(/[├└─━┊┈]/g, "").length / 2));
+            return `${"  ".repeat(depth)}- ${label}`;
+          })
+          .filter(Boolean)
+          .join("\n");
+        if (md.trim() && replaceBlock(md)) return;
+        showStatus("Couldn't parse as a list — no recognizable tree branches.", "error");
+        setTimeout(clearStatus, 2500);
+      };
+
+      const convertToParagraph = () => {
+        const ascii = node.textContent || "";
+        const cleaned = ascii
+          .split("\n")
+          .map((l) => l.replace(BOX_CHARS, "").trim())
+          .filter((l) => l.length > 0)
+          .join("\n\n");
+        if (cleaned && replaceBlock(cleaned)) return;
+        showStatus("Nothing to extract.", "error");
+        setTimeout(clearStatus, 2500);
+      };
+
+      const convertToMermaid = async () => {
+        const ascii = node.textContent || "";
+        if (!ascii.trim() || converting) return;
+        setConverting(true);
+        showStatus("Converting to Mermaid via AI…", "loading");
+        try {
+          const res = await fetch("/api/ascii-to-mermaid", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ascii }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const mermaid = (data?.mermaid || "").trim();
+          if (!mermaid) throw new Error("empty response");
+          if (!replaceBlock("```mermaid\n" + mermaid + "\n```\n")) {
+            throw new Error("couldn't insert");
+          }
+        } catch (err) {
+          showStatus(`Mermaid conversion failed: ${(err as Error).message}`, "error");
+          setTimeout(clearStatus, 3500);
+        } finally {
+          setConverting(false);
+        }
+      };
+
+      const flashError = (msg: string) => {
+        const orig = convertBtn.textContent;
+        convertBtn.textContent = msg;
+        setTimeout(() => { convertBtn.textContent = orig || "Convert ▾"; }, 1500);
+      };
+
+      const closeMenu = () => {
+        menu.style.display = "none";
+        if (menu.parentNode) menu.parentNode.removeChild(menu);
+        document.removeEventListener("mousedown", onDocClick);
+        window.removeEventListener("resize", reposition);
+        window.removeEventListener("scroll", reposition, true);
+      };
+      const reposition = () => {
+        const r = convertBtn.getBoundingClientRect();
+        const w = 200;
+        menu.style.top = `${r.bottom + 4}px`;
+        menu.style.left = `${Math.max(8, r.right - w)}px`;
+      };
+      const onDocClick = (e: MouseEvent) => {
+        if (!menu.contains(e.target as Node) && !convertBtn.contains(e.target as Node)) closeMenu();
+      };
+
+      const addItem = (label: string, hint: string, fn: () => void | Promise<void>) => {
+        const item = document.createElement("div");
+        item.setAttribute("role", "button");
+        item.style.cssText = `
+          background: transparent; cursor: pointer;
+          padding: 6px 10px; border-radius: 4px;
+          color: var(--text-secondary); font-size: 11px;
+          display: flex; flex-direction: column; gap: 1px;
+          user-select: none;
+        `;
+        item.innerHTML = `<span style="font-weight:600;pointer-events:none">${label}</span><span style="color:var(--text-faint);font-size:10px;pointer-events:none">${hint}</span>`;
+        item.addEventListener("mouseenter", () => { item.style.background = "var(--accent-dim)"; });
+        item.addEventListener("mouseleave", () => { item.style.background = "transparent"; });
+        let fired = false;
+        const run = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (fired) return;
+          fired = true;
+          // eslint-disable-next-line no-console
+          console.log("[Convert dropdown] item clicked:", label);
+          closeMenu();
+          // Show overlay immediately so user sees instant feedback
+          showStatus(`Starting: ${label}…`, "loading");
+          Promise.resolve().then(async () => {
+            try {
+              await fn();
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error(`[Convert: ${label}] failed:`, err);
+              showStatus(`${label} failed: ${(err as Error).message || err}`, "error");
+              setTimeout(clearStatus, 4000);
+              setConverting(false);
+            }
+          });
+        };
+        item.addEventListener("mousedown", run);
+        // Also bind click as a safety net in case mousedown is intercepted somewhere
+        item.addEventListener("click", run);
+        menu.appendChild(item);
+      };
+
+      const beautifyWithAI = async () => {
+        const ascii = node.textContent || "";
+        if (!ascii.trim() || converting) return;
+        setConverting(true);
+        showStatus("Beautifying with AI…", "loading");
+        try {
+          const res = await fetch("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "beautify", markdown: ascii }),
+          });
+          if (!res.ok) {
+            let msg = `HTTP ${res.status}`;
+            try { const j = await res.json(); if (j?.error) msg = j.error; } catch {}
+            throw new Error(msg);
+          }
+          const data = await res.json();
+          const result = (data?.result || "").trim();
+          if (!result) throw new Error("AI returned empty");
+          if (!replaceBlock(result)) throw new Error("couldn't insert");
+        } catch (err) {
+          showStatus(`Beautify failed: ${(err as Error).message}`, "error");
+          setTimeout(clearStatus, 3500);
+        } finally {
+          setConverting(false);
+        }
+      };
+
+      addItem("Table", "Box-drawn grid → markdown table", convertToTable);
+      addItem("List", "Tree branches → nested bullets", convertToList);
+      addItem("Paragraph", "Strip box chars, keep text", convertToParagraph);
+      const sep = document.createElement("div");
+      sep.style.cssText = "height:1px;background:var(--border-dim);margin:3px 0;";
+      menu.appendChild(sep);
+      addItem("✨ Render as Mermaid chart (AI)", "AI redraws this as a styled Mermaid diagram", beautifyWithAI);
+
+      convertBtn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (converting) return;
+        const opening = !menu.parentNode;
+        if (opening) {
+          document.body.appendChild(menu);
+          menu.style.display = "flex";
+          reposition();
+          setTimeout(() => {
+            document.addEventListener("mousedown", onDocClick);
+            window.addEventListener("resize", reposition);
+            window.addEventListener("scroll", reposition, true);
+          }, 0);
+        } else {
+          closeMenu();
+        }
+      });
+
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "tiptap-codeblock-copy";
+      copyBtn.type = "button";
+      copyBtn.textContent = "Copy";
+      copyBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const code = node.textContent || "";
+        navigator.clipboard?.writeText(code).then(() => {
+          copyBtn.textContent = "Copied";
+          setTimeout(() => { copyBtn.textContent = "Copy"; }, 1200);
+        });
+      });
+
+      headerActions.appendChild(convertWrap);
+      headerActions.appendChild(copyBtn);
+      header.appendChild(langLabel);
+      header.appendChild(headerActions);
+      wrapper.appendChild(header);
+
+      // Body: gutter (line numbers) + pre/code
+      const body = document.createElement("div");
+      body.className = "tiptap-codeblock-body";
+
+      const gutter = document.createElement("div");
+      gutter.className = "tiptap-codeblock-gutter";
+      gutter.contentEditable = "false";
+
+      const pre = document.createElement("pre");
+      Object.entries(HTMLAttributes || {}).forEach(([k, v]) => pre.setAttribute(k, String(v)));
+      const code = document.createElement("code");
+      if (lang) code.className = `language-${lang}`;
+      pre.appendChild(code);
+
+      body.appendChild(gutter);
+      body.appendChild(pre);
+      wrapper.appendChild(body);
+
+      const renderGutter = () => {
+        const text = node.textContent || "";
+        // Always show at least 1 line; count newlines + 1
+        const lines = Math.max(1, text.split("\n").length);
+        if (gutter.childElementCount === lines) return;
+        // Rebuild only when count changes — minimal DOM work
+        const frag = document.createDocumentFragment();
+        for (let i = 1; i <= lines; i++) {
+          const ln = document.createElement("span");
+          ln.className = "tiptap-codeblock-lineno";
+          ln.textContent = String(i);
+          frag.appendChild(ln);
+        }
+        gutter.replaceChildren(frag);
+      };
+      renderGutter();
+
+      let mermaidContainer: HTMLDivElement | null = null;
+      let renderToken = 0;
+      const ensureContainer = () => {
+        if (!mermaidContainer) {
+          mermaidContainer = document.createElement("div");
+          mermaidContainer.className = "tiptap-mermaid-render";
+          mermaidContainer.contentEditable = "false";
+          wrapper.appendChild(mermaidContainer);
+        }
+      };
+      const renderMermaid = () => {
+        const src = (node.textContent || "").trim();
+        if (!src) return;
+        ensureContainer();
+        const myToken = ++renderToken;
+        const tryRender = (attempt = 0) => {
+          const m = (window as any).mermaid;
+          if (!m || typeof m.render !== "function") {
+            if (attempt < 40) {
+              if (mermaidContainer && attempt === 0) {
+                mermaidContainer.innerHTML = `<div style="color:var(--text-faint);font-size:11px;padding:8px;">Loading diagram…</div>`;
+              }
+              setTimeout(() => tryRender(attempt + 1), 150);
+            } else if (mermaidContainer) {
+              mermaidContainer.innerHTML = `<div style="color:var(--accent);font-size:11px;padding:8px;">Mermaid failed to load</div>`;
+            }
+            return;
+          }
+          const id = `mmd-${Math.random().toString(36).slice(2, 8)}`;
+          try {
+            const result = m.render(id, src);
+            // v10+ returns Promise; older may be sync
+            Promise.resolve(result)
+              .then((r: any) => {
+                if (myToken !== renderToken) return; // stale
+                const svg = typeof r === "string" ? r : r?.svg || "";
+                if (mermaidContainer) mermaidContainer.innerHTML = svg;
+              })
+              .catch((err: unknown) => {
+                if (myToken !== renderToken) return;
+                if (mermaidContainer) mermaidContainer.innerHTML = `<div style="color:var(--accent);font-size:11px;padding:8px;white-space:pre-wrap;">Mermaid error: ${String((err as Error)?.message || err)}</div>`;
+              });
+          } catch (err) {
+            if (mermaidContainer) mermaidContainer.innerHTML = `<div style="color:var(--accent);font-size:11px;padding:8px;white-space:pre-wrap;">Mermaid error: ${String((err as Error)?.message || err)}</div>`;
+          }
+        };
+        tryRender();
+      };
+
+      if (lang === "mermaid") {
+        body.style.display = "none";
+        renderMermaid();
+      }
+
+      let mermaidUpdateTimer: ReturnType<typeof setTimeout> | undefined;
+      return {
+        dom: wrapper,
+        contentDOM: code,
+        // CRITICAL: Tell ProseMirror to ignore DOM mutations outside contentDOM.
+        // Without this, every gutter / overlay / header change makes PM reparse
+        // and destroy our NodeView state — which is why the conversion overlay
+        // and line-number updates were vanishing instantly.
+        ignoreMutation(mutation: any) {
+          if (mutation.type === "selection") return false;
+          if (!code.contains(mutation.target as Node)) return true;
+          return false;
+        },
+        update(updatedNode: any) {
+          if (updatedNode.type.name !== node.type.name) return false;
+          const newLang = (updatedNode.attrs.language || "").toLowerCase();
+          if (newLang !== lang) return false; // recreate node view on lang change
+          node = updatedNode;
+          if (newLang === "mermaid") {
+            if (mermaidUpdateTimer) clearTimeout(mermaidUpdateTimer);
+            mermaidUpdateTimer = setTimeout(renderMermaid, 400);
+          } else {
+            renderGutter();
+            updateConvertVisibility();
+          }
+          return true;
+        },
+      };
+}
+
+// ─── Math decoration plugin: render $...$ and $$...$$ as KaTeX widgets ───
+function createMathPlugin() {
+  const key = new PluginKey("mdfy-math");
+  const buildDecorations = (doc: any) => {
+    const decos: any[] = [];
+    doc.descendants((node: any, pos: number) => {
+      if (!node.isText || !node.text) return;
+      const text = node.text;
+      // Display math $$...$$ first
+      const displayRe = /\$\$([^$\n]+)\$\$/g;
+      let m: RegExpExecArray | null;
+      const consumed: Array<[number, number]> = [];
+      while ((m = displayRe.exec(text))) {
+        const from = pos + m.index;
+        const to = from + m[0].length;
+        consumed.push([m.index, m.index + m[0].length]);
+        const widget = document.createElement("span");
+        widget.className = "tiptap-math-display";
+        widget.contentEditable = "false";
+        try {
+          widget.innerHTML = katex.renderToString(m[1].trim(), { displayMode: true, throwOnError: false, strict: false });
+        } catch { widget.textContent = m[0]; }
+        decos.push(Decoration.widget(to, widget, { side: 1, ignoreSelection: true }));
+        decos.push(Decoration.inline(from, to, { class: "tiptap-math-source" }));
+      }
+      // Inline math $...$ — skip ranges already taken by display
+      const inlineRe = /(?<!\$)\$([^$\n]+?)\$(?!\$)/g;
+      while ((m = inlineRe.exec(text))) {
+        const start = m.index;
+        const end = start + m[0].length;
+        if (consumed.some(([a, b]) => start < b && end > a)) continue;
+        const from = pos + start;
+        const to = pos + end;
+        const widget = document.createElement("span");
+        widget.className = "tiptap-math-inline";
+        widget.contentEditable = "false";
+        try {
+          widget.innerHTML = katex.renderToString(m[1].trim(), { displayMode: false, throwOnError: false, strict: false });
+        } catch { widget.textContent = m[0]; }
+        decos.push(Decoration.widget(to, widget, { side: 1, ignoreSelection: true }));
+        decos.push(Decoration.inline(from, to, { class: "tiptap-math-source" }));
+      }
+    });
+    return DecorationSet.create(doc, decos);
+  };
+  return new Plugin({
+    key,
+    state: {
+      init: (_: any, { doc }: any) => buildDecorations(doc),
+      apply: (tr: any, old: any) => tr.docChanged ? buildDecorations(tr.doc) : old,
+    },
+    props: { decorations(state: any) { return this.getState(state); } },
+  });
+}
+
+const MathExtension = Extension.create({
+  name: "mdfyMath",
+  addProseMirrorPlugins() { return [createMathPlugin()]; },
+});
 
 // ─── Frontmatter ───
 function extractFrontmatter(md: string): { frontmatter: string; body: string } {
@@ -190,6 +778,90 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
   );
 }
 
+// ─── Table Menu — floating toolbar shown when cursor is in a table cell ───
+function TableMenu({ editor }: { editor: Editor }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    const update = () => {
+      if (!editor.isActive("table") || !editor.isFocused) {
+        setPos(null);
+        return;
+      }
+      const { from } = editor.state.selection;
+      const dap = editor.view.domAtPos(from);
+      const node = dap.node as HTMLElement;
+      const tableEl = (node.nodeType === 3 ? node.parentElement : node)?.closest("table");
+      if (!tableEl) { setPos(null); return; }
+      const tableRect = tableEl.getBoundingClientRect();
+      const editorRect = editor.view.dom.closest(".overflow-auto")?.getBoundingClientRect();
+      if (!editorRect) return;
+      setPos({
+        top: tableRect.top - editorRect.top - 36,
+        left: tableRect.left - editorRect.left,
+      });
+    };
+
+    editor.on("selectionUpdate", update);
+    editor.on("transaction", update);
+    editor.on("focus", update);
+    editor.on("blur", () => setTimeout(() => { if (!editor.isFocused) setPos(null); }, 100));
+    return () => {
+      editor.off("selectionUpdate", update);
+      editor.off("transaction", update);
+      editor.off("focus", update);
+    };
+  }, [editor]);
+
+  if (!pos) return null;
+
+  const btnStyle = {
+    background: "transparent",
+    color: "var(--text-secondary)",
+    border: "none",
+    borderRadius: 4,
+    padding: "3px 8px",
+    cursor: "pointer" as const,
+    fontSize: 11,
+    fontWeight: 500,
+    display: "flex" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    whiteSpace: "nowrap" as const,
+  };
+  const sep = <div style={{ width: 1, height: 14, background: "var(--border-dim)", margin: "0 1px" }} />;
+
+  return (
+    <div
+      className="absolute z-[9998] flex items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-xl"
+      style={{
+        top: Math.max(4, pos.top),
+        left: Math.max(8, pos.left),
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+        pointerEvents: "auto",
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      <button onClick={() => editor.chain().focus().addRowBefore().run()} style={btnStyle} title="Insert row above">↑+ Row</button>
+      <button onClick={() => editor.chain().focus().addRowAfter().run()} style={btnStyle} title="Insert row below">↓+ Row</button>
+      {sep}
+      <button onClick={() => editor.chain().focus().addColumnBefore().run()} style={btnStyle} title="Insert column left">←+ Col</button>
+      <button onClick={() => editor.chain().focus().addColumnAfter().run()} style={btnStyle} title="Insert column right">+→ Col</button>
+      {sep}
+      <button onClick={() => editor.chain().focus().deleteRow().run()} style={btnStyle} title="Delete row">− Row</button>
+      <button onClick={() => editor.chain().focus().deleteColumn().run()} style={btnStyle} title="Delete column">− Col</button>
+      {sep}
+      <button onClick={() => editor.chain().focus().toggleHeaderRow().run()} style={btnStyle} title="Toggle header row">Header</button>
+      {sep}
+      <button onClick={() => editor.chain().focus().deleteTable().run()} style={{ ...btnStyle, color: "var(--accent)" }} title="Delete table">
+        <Trash2 width={12} height={12} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Mount guard — only render editor on client ───
 const TiptapLiveEditor = forwardRef<TiptapLiveEditorHandle, TiptapLiveEditorProps>(
   function TiptapLiveEditor(props, ref) {
@@ -235,7 +907,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             link: false, // using separate TiptapLink with custom config
             heading: { levels: [1, 2, 3, 4, 5, 6] },
           }),
-          CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+          CustomCodeBlock.configure({ lowlight, defaultLanguage: null }),
+          MathExtension,
           Table.configure({
           resizable: false,
           HTMLAttributes: { class: "tiptap-table" },
@@ -266,18 +939,28 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           handleDoubleClickOn: (view: any, pos: any, node: any) => {
-            // Code block → open code editor modal
-            if (node.type.name === "codeBlock") {
-              const lang = node.attrs.language || "";
+            // Mermaid only opens the canvas modal. Other code blocks edit inline.
+            if (node.type.name === "codeBlock" && (node.attrs.language || "").toLowerCase() === "mermaid") {
               const code = node.textContent || "";
-              if (lang === "mermaid" && onDblClickMermaidRef.current) {
+              if (onDblClickMermaidRef.current) {
                 onDblClickMermaidRef.current(code);
                 return true;
               }
-              if (onDblClickCodeRef.current) {
-                onDblClickCodeRef.current(lang, code);
-                return true;
-              }
+            }
+            return false;
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          handleClick: (view: any, _pos: any, event: any) => {
+            const a = (event.target as HTMLElement)?.closest?.("a") as HTMLAnchorElement | null;
+            if (!a) return false;
+            const href = a.getAttribute("href") || "";
+            // Footnote ref/backref → scroll within editor instead of navigating
+            if (href.startsWith("#") && (a.classList.contains("footnote-ref") || a.classList.contains("footnote-backref") || a.closest(".footnote-ref"))) {
+              event.preventDefault();
+              const id = href.slice(1);
+              const target = view.dom.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+              if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+              return true;
             }
             return false;
           },
@@ -314,7 +997,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       editorRef.current = ed;
       setEditor(ed);
 
-      // Patch markdown-it to NOT emit <thead>/<tbody> — these break ProseMirror Table parsing
+      // Patch markdown-it: drop <thead>/<tbody> (break PM Table parsing) + add footnotes
       try {
         const mdParser = (ed.storage as any).markdown?.parser;
         if (mdParser?.md?.renderer?.rules) {
@@ -323,6 +1006,9 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
           mdParser.md.renderer.rules.thead_close = noop;
           mdParser.md.renderer.rules.tbody_open = noop;
           mdParser.md.renderer.rules.tbody_close = noop;
+        }
+        if (mdParser?.md) {
+          mdParser.md.use(markdownItFootnote);
         }
       } catch { /* no parser yet */ }
 
@@ -516,23 +1202,75 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
 
     // KaTeX CSS is imported globally via globals.css (@import "katex/dist/katex.min.css")
 
-    // Load Mermaid JS if not already loaded
+    // Load Mermaid JS if not already loaded + apply mdcore theme variables
     useEffect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((window as any).mermaid) return;
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
-      script.async = true;
-      script.onload = () => {
+      const isDark = () =>
+        typeof document !== "undefined" &&
+        document.documentElement.getAttribute("data-theme") !== "light";
+
+      const initMermaid = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).mermaid?.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+        const m = (window as any).mermaid;
+        if (!m) return;
+        const dark = isDark();
+        m.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: dark ? "dark" : "default",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontSize: 14,
+          flowchart: { padding: 16, nodeSpacing: 30, rankSpacing: 40, htmlLabels: true, curve: "basis" },
+          themeVariables: dark
+            ? {
+                background: "transparent",
+                primaryColor: "#222230",
+                primaryTextColor: "#ededf0",
+                primaryBorderColor: "#fb923c",
+                lineColor: "#fb923c",
+                secondaryColor: "#1a1a24",
+                tertiaryColor: "#1a1a24",
+                noteBkgColor: "#2a1f12",
+                noteTextColor: "#fdba74",
+                noteBorderColor: "#fb923c",
+                edgeLabelBackground: "#1a1a24",
+              }
+            : {
+                background: "transparent",
+                primaryColor: "#ffffff",
+                primaryTextColor: "#1a1a2e",
+                primaryBorderColor: "#fb923c",
+                lineColor: "#fb923c",
+                secondaryColor: "#fff7ed",
+                tertiaryColor: "#fff7ed",
+                noteBkgColor: "#fff7ed",
+                noteTextColor: "#9a3412",
+                noteBorderColor: "#fb923c",
+                edgeLabelBackground: "#ffffff",
+              },
+        });
       };
-      document.head.appendChild(script);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).mermaid) {
+        initMermaid();
+      } else {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+        script.async = true;
+        script.onload = initMermaid;
+        document.head.appendChild(script);
+      }
+
+      // Re-initialize when theme toggles
+      const obs = new MutationObserver(() => initMermaid());
+      obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      return () => obs.disconnect();
     }, []);
 
     return (
       <div className="flex-1 overflow-auto relative" style={{ background: "var(--background)" }}>
         {editor && canEdit && <SelectionToolbar editor={editor} />}
+        {editor && canEdit && <TableMenu editor={editor} />}
         <div ref={containerRef} />
       </div>
     );

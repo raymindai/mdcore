@@ -1685,6 +1685,7 @@ textarea::selection {
   border-right: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   text-align: left;
+  box-sizing: border-box;
 }
 .tiptap th:last-child, .tiptap td:last-child {
   border-right: none;
@@ -1695,6 +1696,157 @@ textarea::selection {
 .tiptap th {
   background: var(--surface);
   font-weight: 600;
+}
+/* ── Tiptap code block (custom NodeView) ── */
+.tiptap-codeblock-wrapper {
+  position: relative;
+  margin: 0.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.tiptap-codeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: var(--toggle-bg);
+  border-bottom: 1px solid var(--border-dim);
+  font-size: 11px;
+  user-select: none;
+}
+.tiptap-codeblock-lang {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}
+.tiptap-codeblock-copy {
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.tiptap-codeblock-copy:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.tiptap-codeblock-body {
+  display: flex;
+  align-items: stretch;
+  background: var(--background);
+  font-family: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.tiptap-codeblock-gutter {
+  flex-shrink: 0;
+  padding: 12px 8px 12px 12px;
+  background: var(--toggle-bg);
+  border-right: 1px solid var(--border-dim);
+  color: var(--text-faint);
+  text-align: right;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+}
+.tiptap-codeblock-lineno {
+  display: block;
+  min-width: 1.5em;
+  font-size: 12px;
+  line-height: 1.55;
+  opacity: 0.6;
+}
+.tiptap-codeblock-wrapper > .tiptap-codeblock-body > pre {
+  flex: 1;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+}
+.tiptap-codeblock-wrapper > .tiptap-codeblock-body > pre > code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-family: inherit;
+}
+/* ── Conversion progress spinner ── */
+.tiptap-spinner-large {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(251, 146, 60, 0.25);
+  border-top-color: var(--accent);
+  animation: tiptap-spin 0.7s linear infinite;
+}
+@keyframes tiptap-spin {
+  to { transform: rotate(360deg); }
+}
+
+.tiptap-mermaid-render {
+  padding: 12px;
+  background: var(--background);
+  text-align: center;
+  border-top: 1px solid var(--border-dim);
+}
+.tiptap-mermaid-render svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ── Footnotes (markdown-it-footnote → HTML preserved by tiptap-markdown) ── */
+.tiptap .footnote-ref {
+  font-size: 0.75em;
+  vertical-align: super;
+  color: var(--accent);
+  text-decoration: none;
+  margin: 0 1px;
+}
+.tiptap .footnotes {
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875em;
+  color: var(--text-secondary);
+}
+.tiptap .footnotes hr { display: none; }
+.tiptap .footnotes ol { padding-left: 1.5rem; }
+.tiptap .footnote-backref { color: var(--accent); text-decoration: none; margin-left: 4px; }
+
+/* ── Tiptap math (KaTeX decorations) ── */
+.tiptap-math-source {
+  display: none;
+}
+.tiptap-math-display {
+  display: block;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+.tiptap-math-inline {
+  display: inline-block;
+}
+
+/* Alternating row backgrounds — Tiptap has no <tbody>, rows are direct table children */
+.tiptap table > tr:nth-child(even) td,
+.tiptap table > tbody > tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.015);
+}
+[data-theme="light"] .tiptap table > tr:nth-child(even) td,
+[data-theme="light"] .tiptap table > tbody > tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.015);
 }
 .tiptap td p, .tiptap th p {
   margin: 0;
@@ -1754,28 +1906,10 @@ textarea::selection {
 }
 
 /* ========================================
-   Suppress browser native table/object controls in contentEditable
+   Legacy contentEditable table/img suppression — REMOVED.
+   Tiptap (ProseMirror) manages tables natively; the old
+   user-modify: read-only rule was making cells uneditable.
    ======================================== */
-[contenteditable] table,
-[contenteditable] table *,
-[contenteditable] img {
-  -webkit-user-modify: read-only !important;
-  -moz-user-modify: read-only !important;
-}
-/* Hide ALL browser-injected table controls */
-[contenteditable] table td::after,
-[contenteditable] table th::after,
-[contenteditable] table td::before,
-[contenteditable] table th::before {
-  display: none !important;
-  content: none !important;
-}
-/* Chrome injects absolute-positioned divs for table column/row handles */
-[contenteditable] > div[style*="position: absolute"],
-[contenteditable] div[data-column],
-[contenteditable] div[data-row] {
-  display: none !important;
-}
 /* Prevent selection highlight on non-editable islands */
 [contenteditable="false"] {
   -webkit-user-select: none;

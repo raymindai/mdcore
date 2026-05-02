@@ -1802,6 +1802,8 @@ export default function MdEditor() {
   const autoSave = useAutoSave({ debounceMs: 2500 });
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
+  const [showNewMenu, setShowNewMenu] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
   const [authEmailInput, setAuthEmailInput] = useState("");
   const [authEmailSent, setAuthEmailSent] = useState(false);
   const [folders, setFolders] = useState<Folder[]>(() => {
@@ -2021,7 +2023,7 @@ export default function MdEditor() {
       autoSave.scheduleSave({
         cloudId: currentTab.cloudId,
         markdown: val,
-        title: currentTab.title,
+        title: extractTitleFromMd(val) || currentTab.title,
         userId: user?.id,
         userEmail: user?.email,
         anonymousId,
@@ -2957,6 +2959,23 @@ export default function MdEditor() {
   const addTab = useCallback(() => {
     setShowTemplatePicker(true);
   }, []);
+
+  // Duplicate the current read-only tab into a new editable tab.
+  const duplicateCurrentTabAsEditable = useCallback(() => {
+    const src = tabs.find((t) => t.id === activeTabIdRef.current);
+    if (!src) return;
+    const md = markdownRef.current || src.markdown || "";
+    const newId = `tab-copy-${Date.now()}`;
+    const newTab = {
+      id: newId,
+      title: `${src.title || "Untitled"} (copy)`,
+      markdown: md,
+      readonly: false,
+      permission: "mine" as const,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    queueMicrotask(() => loadTab(newTab));
+  }, [tabs, loadTab]);
 
   const _closeTab = useCallback((tabId: string) => {
     if (tabs.length <= 1) return;
@@ -4569,7 +4588,12 @@ export default function MdEditor() {
   }, [html, viewMode]);
 
   // Interactive editing: checkbox toggle + table cell edit
+  // DISABLED for Tiptap LIVE view — Tiptap manages cell/checkbox interactions natively.
+  // Mutating Tiptap's DOM (e.g. replacing cell content with <input>) corrupts ProseMirror
+  // state and breaks typing in cells. Only run for non-Tiptap surfaces (none currently).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useEffect(() => {
+    if (true) return; // see comment above
     if (!previewRef.current || isLoading) return;
 
     const preview = previewRef.current;
@@ -4904,13 +4928,16 @@ export default function MdEditor() {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
       }
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+        setShowNewMenu(false);
+      }
       setShowEditModeMenu(false);
     };
-    if (showMenu || showExportMenu || showEditModeMenu) {
+    if (showMenu || showExportMenu || showEditModeMenu || showNewMenu) {
       document.addEventListener("mousedown", handler);
       return () => document.removeEventListener("mousedown", handler);
     }
-  }, [showMenu, showExportMenu, showEditModeMenu]);
+  }, [showMenu, showExportMenu, showEditModeMenu, showNewMenu]);
 
   // Guard to skip cmSetDoc when the change originated from CM6 itself
   const cmUpdateRef = useRef(false);
@@ -4947,11 +4974,29 @@ export default function MdEditor() {
   }, [markdown, cmSetDoc]);
 
   // ── Tiptap LIVE editor onChange handler ──
-  // Update ref + auto-save only. NO React state, NO CM6 sync, NO doRender.
-  // CM6 sync happens ONLY on view switch (Source→Live).
+  // Must update React state too — otherwise line ~3904 (markdownRef.current = markdown)
+  // overwrites the ref on the next render, erasing typed content before save/tab switch.
   const handleTiptapChange = useCallback((md: string) => {
     markdownRef.current = md;
+    setMarkdownRaw(md);
     triggerAutoSave(md);
+    // Sync derived title (H1) into header + sidebar tab list
+    const derived = extractTitleFromMd(md);
+    if (derived) {
+      setTitle((prev) => (prev === derived ? prev : derived));
+      setTabs((prev) => {
+        const id = activeTabIdRef.current;
+        let changed = false;
+        const next = prev.map((t) => {
+          if (t.id === id && !t.readonly && t.title !== derived) {
+            changed = true;
+            return { ...t, title: derived };
+          }
+          return t;
+        });
+        return changed ? next : prev;
+      });
+    }
   }, [triggerAutoSave]);
 
   // Legacy refs kept for compatibility with non-Tiptap code paths
@@ -8520,15 +8565,68 @@ ${clone.innerHTML}
               <PanelLeft width={14} height={14} />
             </button>
           </Tooltip>
-          <Tooltip text="New document" position="right">
-            <button
-              onClick={addTab}
-              className="p-1 rounded transition-colors"
-              style={{ color: "var(--text-muted)" }}
-            >
-              <Plus width={14} height={14} />
-            </button>
-          </Tooltip>
+          <div ref={newMenuRef} className="relative">
+            <Tooltip text="New document" position="right">
+              <button
+                onClick={() => setShowNewMenu(v => !v)}
+                className="p-1 rounded transition-colors"
+                style={{ color: showNewMenu ? "var(--accent)" : "var(--text-muted)", background: showNewMenu ? "var(--accent-dim)" : "transparent" }}
+              >
+                <Plus width={14} height={14} />
+              </button>
+            </Tooltip>
+            {showNewMenu && (
+              <div
+                className="absolute z-[200] py-1 rounded-lg shadow-xl"
+                style={{
+                  top: 0,
+                  left: "calc(100% + 6px)",
+                  minWidth: 180,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                }}
+              >
+                <button
+                  onClick={() => { setShowNewMenu(false); addTab(); }}
+                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <Plus width={12} height={12} /> Blank document
+                </button>
+                <button
+                  onClick={() => { setShowNewMenu(false); setShowTemplatePicker(true); }}
+                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <Layers width={12} height={12} /> From template
+                </button>
+                <button
+                  onClick={() => { setShowNewMenu(false); importFileRef.current?.click(); }}
+                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <Upload width={12} height={12} /> Import file…
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowNewMenu(false);
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) {
+                        addTab();
+                        setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100);
+                      }
+                    } catch { /* clipboard permission denied */ }
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  <FileText width={12} height={12} /> From clipboard
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex-1" />
           <div className="pb-2">
             <Tooltip text={isAuthenticated ? profile?.display_name || user?.email : "Sign in"} position="right">
@@ -9068,6 +9166,29 @@ ${clone.innerHTML}
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
+            {activeTab?.readonly && (
+              <div
+                className="flex items-center justify-between gap-3 px-3 py-2 text-[11px]"
+                style={{
+                  background: "var(--accent-dim)",
+                  borderTop: "1px solid var(--border-dim)",
+                  borderBottom: "1px solid var(--border-dim)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>Read-only example</span>
+                  <span style={{ color: "var(--text-muted)" }}>— duplicate it to make your own copy.</span>
+                </div>
+                <button
+                  onClick={duplicateCurrentTabAsEditable}
+                  className="px-2.5 py-1 rounded font-mono text-[10px] font-semibold"
+                  style={{ background: "var(--accent)", color: "#000", border: "none", cursor: "pointer" }}
+                >
+                  Duplicate to edit
+                </button>
+              </div>
+            )}
             <div className="flex-1 flex min-h-0">
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && (
@@ -9079,7 +9200,7 @@ ${clone.innerHTML}
                   ref={tiptapRef}
                   markdown={markdown}
                   onChange={handleTiptapChange}
-                  canEdit={canEdit}
+                  canEdit={canEdit && !activeTab?.readonly}
                   narrowView={narrowView}
                   onPasteImage={uploadImage}
                   onDoubleClickCode={(lang, code) => {
@@ -9876,6 +9997,21 @@ ${clone.innerHTML}
             const targetTab = tabs.find(t => t.id === docContextMenu.tabId);
             const isSharedWithMe = targetTab?.permission === "readonly" || targetTab?.permission === "editable";
             return isExample ? [
+              { label: "Duplicate to my MDs", action: () => {
+                if (targetTab) {
+                  const id = `tab-${tabIdCounter++}`;
+                  const t = `${targetTab.title} (copy)`;
+                  setTabs(prev => [...prev, { id, title: t, markdown: targetTab.markdown, permission: "mine", shared: false, isDraft: true }]);
+                  autoSave.createDocument({ markdown: targetTab.markdown, title: t, userId: user?.id, anonymousId: !user?.id ? ensureAnonymousId() : undefined }).then(result => {
+                    if (result) {
+                      setTabs(prev => prev.map(x => x.id === id ? { ...x, cloudId: result.id, editToken: result.editToken } : x));
+                      queueMicrotask(() => switchTab(id));
+                    } else {
+                      switchTab(id);
+                    }
+                  });
+                }
+              }},
               { label: "Download .md", action: () => {
                 if (targetTab) {
                   const blob = new Blob([targetTab.markdown], { type: "text/markdown" });
