@@ -4916,9 +4916,11 @@ export default function MdEditor() {
       const len = value.length;
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
       debounceRef.current = setTimeout(() => {
-        doRender(value);
+        // Only doRender when NOT syncing from Tiptap (doRender sets isLoading which unmounts Tiptap!)
+        if (!tiptapSyncingRef.current) {
+          doRender(value);
+        }
         // Tiptap sync: only if user is actively typing in CM6 (not from Tiptap→CM6 sync)
-        // AND only in split view where both editors are visible
         if (!tiptapSyncingRef.current && viewMode === "split") {
           tiptapRef.current?.setMarkdown(value);
         }
@@ -9081,14 +9083,11 @@ ${clone.innerHTML}
                 tiptapRef.current?.focus();
               }
             }}>
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "var(--background)" }}>
                   <MdfyLogo size={18} />
-                  <div className="w-20 h-0.5 rounded-full overflow-hidden" style={{ background: "var(--border-dim)" }}>
-                    <div className="h-full rounded-full" style={{ background: "var(--accent)", animation: "loadbar 1.2s ease-in-out infinite" }} />
-                  </div>
                 </div>
-              ) : (
+              )}
                 <TiptapLiveEditor
                   ref={tiptapRef}
                   markdown={markdown}
@@ -9111,7 +9110,6 @@ ${clone.innerHTML}
                     setShowMathModal(true);
                   }}
                 />
-              )}
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
               {showAIPanel && canEdit && (
