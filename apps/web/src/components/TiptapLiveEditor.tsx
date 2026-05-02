@@ -311,23 +311,23 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       editorRef.current = ed;
       setEditor(ed);
 
-      // Set initial content after editor is ready — use setContent which
-      // goes through tiptap-markdown parser. Then fix table structure.
+      // Set initial content
       if (initialBodyRef.current) {
         isSettingContent.current = true;
         ed.commands.setContent(initialBodyRef.current);
-        // Fix tables: tiptap-markdown → markdown-it produces <thead>/<tbody>
-        // which Tiptap Table can't parse. Re-set content with stripped wrappers.
+        // Two-pass fix: strip <thead>/<tbody> and re-parse as HTML
         try {
-          const dom = ed.view.dom;
-          const tables = dom.querySelectorAll("table");
-          if (tables.length > 0) {
-            // Get HTML, strip thead/tbody, re-set
-            let html = ed.getHTML();
-            html = html.replace(/<thead>|<\/thead>|<tbody>|<\/tbody>|<tfoot>|<\/tfoot>/g, "");
-            ed.commands.setContent(html);
+          const h = ed.getHTML();
+          if (h.includes("<thead") || h.includes("<tbody")) {
+            ed.commands.setContent(
+              h.replace(/<thead[^>]*>|<\/thead>/gi, "")
+               .replace(/<tbody[^>]*>|<\/tbody>/gi, "")
+               .replace(/<tfoot[^>]*>|<\/tfoot>/gi, ""),
+              false,
+              { preserveWhitespace: true }
+            );
           }
-        } catch { /* view not ready yet */ }
+        } catch { /* view not ready */ }
         isSettingContent.current = false;
       }
 
@@ -355,15 +355,20 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         const { frontmatter: fm, body } = extractFrontmatter(md);
         frontmatterRef.current = fm;
         isSettingContent.current = true;
+        // First pass: let tiptap-markdown parse markdown → HTML → ProseMirror
         editor.commands.setContent(body || "<p></p>");
-        // Fix table structure (strip thead/tbody from markdown-it output)
+        // Second pass: if tables exist with thead/tbody (from markdown-it),
+        // strip them and re-parse as HTML so Tiptap Table extension can handle them
         try {
-          let html = editor.getHTML();
-          if (html.includes("<thead>") || html.includes("<tbody>")) {
-            html = html.replace(/<thead>|<\/thead>|<tbody>|<\/tbody>|<tfoot>|<\/tfoot>/g, "");
-            editor.commands.setContent(html);
+          const currentHtml = editor.getHTML();
+          if (currentHtml.includes("<thead") || currentHtml.includes("<tbody")) {
+            const cleanHtml = currentHtml
+              .replace(/<thead[^>]*>|<\/thead>/gi, "")
+              .replace(/<tbody[^>]*>|<\/tbody>/gi, "")
+              .replace(/<tfoot[^>]*>|<\/tfoot>/gi, "");
+            editor.commands.setContent(cleanHtml, false, { preserveWhitespace: true });
           }
-        } catch { /* ignore */ }
+        } catch { /* editor not ready */ }
         isSettingContent.current = false;
       },
       getMarkdown: () => {
