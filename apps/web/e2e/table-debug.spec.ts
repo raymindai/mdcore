@@ -40,33 +40,53 @@ test("debug table cell editing", async ({ page }) => {
     console.log("Pipe characters:", pipeCount);
   }
 
-  // Debug: check table element attributes
-  const tableHtml = await page.locator(".tiptap table").first().evaluate(el => el.outerHTML);
-  console.log("=== TABLE HTML ===");
-  console.log(tableHtml);
+  // Full debug of table structure
+  const debug = await page.evaluate(() => {
+    const tiptap = document.querySelector(".tiptap") as HTMLElement;
+    if (!tiptap) return { error: "no .tiptap" };
 
-  // Check if cells are contenteditable
-  const cellEditable = await page.locator(".tiptap td").first().evaluate(el => {
+    const table = tiptap.querySelector("table");
+    if (!table) return { error: "no table", html: tiptap.innerHTML.slice(0, 500) };
+
     return {
-      contentEditable: el.contentEditable,
-      isContentEditable: el.isContentEditable,
-      closest: el.closest('[contenteditable="true"]')?.tagName,
-      parentContentEditable: el.parentElement?.closest('[contenteditable]')?.getAttribute('contenteditable'),
+      tableOuterHTML: table.outerHTML,
+      tableContentEditable: table.contentEditable,
+      tableIsContentEditable: table.isContentEditable,
+      hasThead: !!table.querySelector("thead"),
+      hasTbody: !!table.querySelector("tbody"),
+      tdCount: table.querySelectorAll("td").length,
+      thCount: table.querySelectorAll("th").length,
+      firstTdContentEditable: table.querySelector("td")?.contentEditable,
+      firstTdIsContentEditable: table.querySelector("td")?.isContentEditable,
+      // Check ProseMirror node type
+      proseMirrorClasses: Array.from(table.classList),
+      tableParent: table.parentElement?.tagName,
+      tableParentClasses: Array.from(table.parentElement?.classList || []),
     };
   });
-  console.log("Cell editable info:", JSON.stringify(cellEditable));
+  console.log("=== TABLE DEBUG ===");
+  console.log(JSON.stringify(debug, null, 2));
 
-  // Try clicking directly into the <p> inside the cell
-  const cellP = page.locator(".tiptap td p").first();
-  if (await cellP.count() > 0) {
-    console.log("Found <p> inside td, clicking...");
-    await cellP.click();
-    await page.waitForTimeout(300);
-    await page.keyboard.type("X");
-    await page.waitForTimeout(300);
-    const pText = await cellP.innerText();
-    console.log("P text after typing:", pText);
-  }
+  // Try focusing cell via JavaScript
+  const editResult = await page.evaluate(() => {
+    const td = document.querySelector(".tiptap td") as HTMLElement;
+    if (!td) return "no td";
+    td.click();
+    td.focus();
+    // Try to place cursor
+    const range = document.createRange();
+    const sel = window.getSelection();
+    const p = td.querySelector("p");
+    if (p) {
+      range.selectNodeContents(p);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      return "cursor placed in p, isContentEditable=" + p.isContentEditable;
+    }
+    return "no p in td";
+  });
+  console.log("Edit attempt:", editResult);
 
   await page.screenshot({ path: "test-results/table-edit-result.png" });
   expect(true).toBe(true);
