@@ -9069,16 +9069,7 @@ ${clone.innerHTML}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
             <div className="flex-1 flex min-h-0">
-            <div className="flex-1 overflow-auto relative" ref={previewRef} onClick={(e) => {
-              // Clear source→preview highlight when clicking in Live
-              clearHighlight();
-              // Click on empty space below content → focus Tiptap editor
-              // BUT don't interfere if click was inside the editor (table cells, etc.)
-              const target = e.target as HTMLElement;
-              if (e.target === e.currentTarget && !target.closest(".tiptap")) {
-                tiptapRef.current?.focus();
-              }
-            }}>
+            <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "var(--background)" }}>
                   <MdfyLogo size={18} />
