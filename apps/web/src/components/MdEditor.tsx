@@ -12,6 +12,8 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
+import BundleEmbed from "@/components/BundleEmbed";
+import BundleChat from "@/components/BundleChat";
 import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
 import DocStatusIcon from "@/components/DocStatusIcon";
@@ -1338,6 +1340,8 @@ interface Tab {
   id: string;
   title: string;
   markdown: string;
+  kind?: "doc" | "bundle";  // tab type — defaults to "doc"
+  bundleId?: string;        // for bundle tabs — Supabase bundle id
   folderId?: string;       // null = root level
   cloudId?: string;        // Supabase document id
   editToken?: string;      // for token-based ownership
@@ -1812,6 +1816,10 @@ export default function MdEditor() {
     return INITIAL_FOLDERS;
   });
   const [showMyDocs, setShowMyDocs] = useState(true);
+  const [showMyBundles, setShowMyBundles] = useState(true);
+  const [bundleView, setBundleView] = useState<"canvas" | "list">("canvas");
+  const [showBundleChat, setShowBundleChat] = useState(false);
+  const [activeBundleDocIds, setActiveBundleDocIds] = useState<Set<string>>(new Set());
   const [showSharedDocs, setShowSharedDocs] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("mdfy-show-shared") === "true";
@@ -1826,6 +1834,7 @@ export default function MdEditor() {
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
   const [_serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
+  const [bundles, setBundles] = useState<Array<{ id: string; title: string; description: string | null; documentCount: number; updated_at: string; is_draft: boolean }>>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
@@ -1916,6 +1925,25 @@ export default function MdEditor() {
   const sidebarItemRectsRef = useRef<Map<string, DOMRect>>(new Map());
   activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+
+  // Track active bundle's document IDs for sidebar highlighting
+  useEffect(() => {
+    if (activeTab?.kind === "bundle" && activeTab.bundleId) {
+      const headers: Record<string, string> = {};
+      const anonId = localStorage.getItem("mdfy-anonymous-id");
+      if (anonId) headers["x-anonymous-id"] = anonId;
+      fetch(`/api/bundles/${activeTab.bundleId}`, { headers })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.documents) {
+            setActiveBundleDocIds(new Set(data.documents.map((d: { id: string }) => d.id)));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setActiveBundleDocIds(new Set());
+    }
+  }, [activeTab?.kind, activeTab?.bundleId]);
 
   const initialMd = activeTab?.markdown || SAMPLE_WELCOME;
   const [markdown, setMarkdownRaw] = useState(initialMd);
@@ -2629,9 +2657,18 @@ export default function MdEditor() {
   doRenderRef.current = doRender;
 
   // ─── Tab management ───
+  // Guard: while a tab switch is in flight, Tiptap may still hold the previous tab's
+  // content. Any onUpdate that fires in this window would mis-attribute the old content
+  // to the new tab's cloudId via triggerAutoSave, overwriting the new tab on the server.
+  const tabSwitchInFlightRef = useRef(false);
+
   const loadTab = useCallback((tab: Tab) => {
     // Clear any placeholder overlay when loading a real document
     setEditorPlaceholder(null);
+    // Hold off Tiptap onUpdate-driven autosave until this tab's content is actually loaded
+    // into the editor. Pending saves scheduled for the previous tab keep their original
+    // cloudId/markdown args, so we don't cancel them — they will save to the correct doc.
+    tabSwitchInFlightRef.current = true;
     // Update ref IMMEDIATELY so doRender uses correct tab ID
     activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
@@ -2686,7 +2723,17 @@ export default function MdEditor() {
           tiptapRef.current?.setMarkdown("");
         })
         .finally(() => {
-          if (activeTabIdRef.current === tab.id) setIsLoading(false);
+          // Only clear the autosave guard if THIS load is still the active one.
+          // If the user clicked away to a different tab, that newer loadTab will
+          // own the flag and clear it on its own completion.
+          if (activeTabIdRef.current === tab.id) {
+            setIsLoading(false);
+            queueMicrotask(() => {
+              if (activeTabIdRef.current === tab.id) {
+                tabSwitchInFlightRef.current = false;
+              }
+            });
+          }
         });
     } else {
       setMarkdownRaw(tab.markdown);
@@ -2694,6 +2741,11 @@ export default function MdEditor() {
       redoStack.current = [];
       doRenderRef.current(tab.markdown);
       tiptapRef.current?.setMarkdown(tab.markdown);
+      queueMicrotask(() => {
+        if (activeTabIdRef.current === tab.id) {
+          tabSwitchInFlightRef.current = false;
+        }
+      });
     }
   }, []);
 
@@ -2731,8 +2783,8 @@ export default function MdEditor() {
         queueMicrotask(() => {
           loadTab(target);
           if (!fromPopstate) {
-            const url = target.cloudId ? `/${target.cloudId}` : "/";
-            window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null }, "", url);
+            const url = target.kind === "bundle" && target.bundleId ? `/b/${target.bundleId}` : (target.cloudId ? `/${target.cloudId}` : "/");
+            window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null, mdfyBundleId: target.bundleId || null }, "", url);
           }
         });
       }
@@ -2799,7 +2851,7 @@ export default function MdEditor() {
 
   // Multi-select: compute visible doc order for shift-range
   const visibleMyDocIds = useMemo(() => {
-    const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable");
+    const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle");
     const myTabs = docFilter === "all" ? allMyTabs
       : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
       : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
@@ -2827,6 +2879,8 @@ export default function MdEditor() {
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
     setShowOnboarding(false);
+    setActiveBundleDocIds(new Set()); // clear bundle highlight when selecting MD
+    setShowBundleChat(false); // close bundle chat if open
     if (e.metaKey || e.ctrlKey) {
       setSelectedTabIds(prev => { const next = new Set(prev); if (next.has(tabId)) next.delete(tabId); else next.add(tabId); return next; });
       lastClickedTabIdRef.current = tabId;
@@ -2839,7 +2893,15 @@ export default function MdEditor() {
     } else {
       setSelectedTabIds(new Set());
       lastClickedTabIdRef.current = tabId;
-      if (tabId !== activeTabId) switchTab(tabId);
+      if (tabId !== activeTabId) {
+        // IMPORTANT: do NOT pre-update activeTabIdRef here. switchTab uses
+        // activeTabIdRef.current to identify which tab the *current* markdown
+        // belongs to so it can persist it. If we flip the ref to the new tab
+        // first, switchTab will write the previous doc's content into the new
+        // tab's slot — corrupting it locally, and the next autosave will then
+        // PATCH the cloud doc with the wrong markdown + title.
+        switchTab(tabId);
+      }
     }
   }, [visibleMyDocIds, activeTabId, switchTab]);
 
@@ -3787,6 +3849,11 @@ export default function MdEditor() {
         }
       })
       .catch(() => {});
+    // Fetch user's bundles
+    fetch("/api/bundles", { headers: authHeaders })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.bundles) setBundles(data.bundles); })
+      .catch(() => {});
     // Fetch user's own documents from server
     fetch("/api/user/documents", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
@@ -4647,6 +4714,10 @@ export default function MdEditor() {
   // Must update React state too — otherwise line ~3904 (markdownRef.current = markdown)
   // overwrites the ref on the next render, erasing typed content before save/tab switch.
   const handleTiptapChange = useCallback((md: string) => {
+    // Drop onUpdate events that fire during a tab switch — Tiptap may still be
+    // holding the previous tab's content, and saving it now would PATCH the
+    // newly-active tab's cloudId with the wrong document.
+    if (tabSwitchInFlightRef.current) return;
     markdownRef.current = md;
     setMarkdownRaw(md);
     triggerAutoSave(md);
@@ -6207,7 +6278,7 @@ ${clone.innerHTML}
 
   // Memoize sidebar filter computations to avoid re-filtering on every render
   const memoAllMyTabs = useMemo(() =>
-    tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable"),
+    tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle"),
     [tabs]
   );
 
@@ -6375,8 +6446,30 @@ ${clone.innerHTML}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
           </button>
-          {/* Live / Split / Source */}
-          {([
+          {/* View buttons — different for bundle tabs vs doc tabs */}
+          {activeTab?.kind === "bundle" ? (
+            <>
+              {/* Bundle: Canvas / List */}
+              {([
+                { mode: "canvas" as const, label: "Canvas", shortcut: "1", icon: <Layers width={13} height={13} /> },
+                { mode: "list" as const, label: "List", shortcut: "2", icon: <List width={13} height={13} /> },
+              ]).map(({ mode, label, shortcut, icon }) => {
+              const active = !showOnboarding && bundleView === mode;
+              return (
+                <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); }} title={`${label} (Alt+${shortcut})`}
+                  className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
+                  style={{
+                    background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
+                    color: active ? "var(--accent)" : "var(--text-muted)",
+                  }}>
+                  {icon}
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              );
+            })}
+            </>
+          ) : (
+          ([
             { mode: "preview" as ViewMode, label: "Live", shortcut: "1", icon: (
               <Eye width={13} height={13} />
             )},
@@ -6408,15 +6501,29 @@ ${clone.innerHTML}
                 <span className="hidden sm:inline">{label}</span>
               </button>
             );
-          })}
+          })
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
 
-          {/* Presence indicators — other editors on this document */}
-          {otherEditors.length > 0 && (
+          {/* Chat button — bundle tabs only */}
+          {activeTab?.kind === "bundle" && (
+            <button
+              onClick={() => setShowBundleChat(v => !v)}
+              title="Chat with bundle"
+              className="px-2 h-6 rounded-md transition-colors text-[10px] font-medium flex items-center gap-1.5"
+              style={{ background: showBundleChat ? "var(--accent-dim)" : "var(--toggle-bg)", color: showBundleChat ? "var(--accent)" : "var(--text-muted)" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span className="hidden sm:inline">Chat</span>
+            </button>
+          )}
+
+          {/* Presence indicators — other editors on this document (docs only) */}
+          {activeTab?.kind !== "bundle" && otherEditors.length > 0 && (
             <div className="flex items-center -space-x-1.5 mr-1">
               {otherEditors.slice(0, 5).map((editor) => (
                 <div key={editor.userId} className="relative group/presence">
@@ -6956,7 +7063,7 @@ ${clone.innerHTML}
                   <PanelLeft width={14} height={14} />
                 </button>
               </Tooltip>
-              <span style={{ color: "var(--accent)" }}>FILES</span>
+              <span style={{ color: "var(--accent)" }}>LIBRARY</span>
               <button
                 id="sidebar-refresh-btn"
                 onClick={() => {
@@ -7146,6 +7253,57 @@ ${clone.innerHTML}
             setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
+            {/* ── Section: MD BUNDLES (above MDs) ── */}
+            {bundles.length > 0 && (
+              <div className={`shrink-0 ${showMyBundles ? "flex flex-col" : ""}`} style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                <div
+                  className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
+                  onClick={() => setShowMyBundles(!showMyBundles)}
+                >
+                  <span className="flex-1 text-[11px] font-medium" style={{ color: showMyBundles ? "var(--accent)" : "var(--text-muted)" }}>MD Bundles</span>
+                  <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
+                </div>
+                {showMyBundles && (
+                  <div className="overflow-auto pb-1.5 px-1">
+                    {bundles.map(b => {
+                      const existingTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                      const isActive = existingTab && activeTabId === existingTab.id;
+                      return (
+                        <button
+                          key={b.id}
+                          onClick={() => {
+                            setShowOnboarding(false);
+                            setSelectedTabIds(new Set());
+                            if (existingTab) {
+                              // Same fix as handleDocClick: do NOT pre-update activeTabIdRef.
+                              // switchTab needs the previous tab id to persist its current markdown.
+                              switchTab(existingTab.id);
+                            } else {
+                              const newId = `bundle-${b.id}-${Date.now()}`;
+                              const newTab: Tab = {
+                                id: newId, kind: "bundle", bundleId: b.id,
+                                title: b.title || "Untitled Bundle", markdown: "",
+                              };
+                              // Add the new bundle tab to state (no activeTabId pre-flip);
+                              // switchTab will read currentTabId = previous tab and persist its md correctly.
+                              flushSync(() => { setTabs(prev => [...prev, newTab]); });
+                              switchTab(newId);
+                            }
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center gap-2 transition-colors hover:bg-[var(--accent-dim)]"
+                          style={{ background: isActive ? "var(--accent-dim)" : "transparent" }}
+                        >
+                          <Layers width={11} height={11} style={{ color: isActive ? "var(--accent)" : "var(--text-faint)", flexShrink: 0 }} />
+                          <span className="text-[11px] font-medium truncate flex-1" style={{ color: isActive ? "var(--accent)" : "var(--text-secondary)" }}>{b.title || "Untitled Bundle"}</span>
+                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>{b.documentCount}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
               const allMyTabs = memoAllMyTabs;
@@ -7154,12 +7312,12 @@ ${clone.innerHTML}
               const _privateCount = memoPrivateCount;
               const _sharedCount = memoSharedCount;
               return (
-                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""} pt-1.5`}>
+                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""}`}>
                   <div
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
                     onClick={() => { setShowMyDocs(!showMyDocs); }}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>My MDs</span>
+                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>MDs</span>
                     {showMyDocs && (
                       <>
                         <button
@@ -7290,7 +7448,10 @@ ${clone.innerHTML}
                         });
                         const visibleRootTabs = showAllDocs || allRootTabs.length <= MAX_VISIBLE_DOCS ? allRootTabs : allRootTabs.slice(0, MAX_VISIBLE_DOCS);
                         return (<>
-                      {visibleRootTabs.map((tab) => (
+                      {visibleRootTabs.map((tab) => {
+                        const inActiveBundle = activeBundleDocIds.size > 0 && !!tab.cloudId && activeBundleDocIds.has(tab.cloudId);
+                        const isSelected = selectedTabIds.has(tab.id) || tab.id === activeTabId || inActiveBundle;
+                        return (
                         <div
                           key={tab.id}
                           data-sidebar-tab-id={tab.id}
@@ -7299,8 +7460,8 @@ ${clone.innerHTML}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-all duration-200 relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
                           style={{
-                            background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                            color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                            background: isSelected ? "var(--accent-dim)" : "transparent",
+                            color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
                             opacity: dragTabId === tab.id ? 0.4 : 1,
                             outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
                             outlineOffset: "-1px",
@@ -7318,7 +7479,8 @@ ${clone.innerHTML}
                             <MoreHorizontal width={14} height={14} />
                           </button>
                         </div>
-                      ))}
+                        );
+                      })}
                       {allRootTabs.length > MAX_VISIBLE_DOCS && !showAllDocs && (
                         <button
                           onClick={() => setShowAllDocs(true)}
@@ -7345,6 +7507,8 @@ ${clone.innerHTML}
                         return sortMode === "oldest" ? ai - bi : bi - ai;
                       }).map(folder => {
                         const folderTabs = myTabs.filter(t => t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
+                        const folderHasBundleDoc = activeBundleDocIds.size > 0 && folderTabs.some(t => t.cloudId && activeBundleDocIds.has(t.cloudId));
+                        const folderDimmed = activeBundleDocIds.size > 0 && !folderHasBundleDoc;
                         return (
                           <div key={folder.id} className="mt-0.5">
                             <div
@@ -7352,7 +7516,7 @@ ${clone.innerHTML}
                               onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
                               onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
                               className={`flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                              style={{ color: "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
+                              style={{ color: folderHasBundleDoc ? "var(--accent)" : "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
                               onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
                               onDragOver={(e) => { e.preventDefault(); if (dragTabId || dragFolderId) setDragOverTarget(folder.id); }}
                               onDragLeave={() => setDragOverTarget(null)}
@@ -7419,7 +7583,10 @@ ${clone.innerHTML}
                                   const at = a.lastOpenedAt || 0;
                                   const bt = b.lastOpenedAt || 0;
                                   return sortMode === "newest" ? bt - at : at - bt;
-                                }).map((tab) => (
+                                }).map((tab) => {
+                                  const inActiveBundleChild = activeBundleDocIds.size > 0 && !!tab.cloudId && activeBundleDocIds.has(tab.cloudId);
+                                  const isSelectedChild = selectedTabIds.has(tab.id) || tab.id === activeTabId || inActiveBundleChild;
+                                  return (
                                   <div
                                     key={tab.id}
                                     data-sidebar-tab-id={tab.id}
@@ -7428,8 +7595,8 @@ ${clone.innerHTML}
                                     onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative"
                                     style={{
-                                      background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                                      color: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                                      background: isSelectedChild ? "var(--accent-dim)" : "transparent",
+                                      color: isSelectedChild ? "var(--text-primary)" : "var(--text-secondary)",
                                       opacity: dragTabId === tab.id ? 0.4 : 1,
                                       outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
                                       outlineOffset: "-1px",
@@ -7447,7 +7614,8 @@ ${clone.innerHTML}
                                       <MoreHorizontal width={14} height={14} />
                                     </button>
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -8616,7 +8784,7 @@ ${clone.innerHTML}
             <div
               data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: activeTab?.kind === "bundle" ? "none" : undefined }}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
@@ -8859,7 +9027,65 @@ ${clone.innerHTML}
                 </button>
               </div>
             )}
-            <div className="flex-1 flex min-h-0">
+            <div className="flex-1 flex min-h-0 relative">
+            {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && (
+              <div className="absolute inset-0 z-10 flex" style={{ background: "var(--background)" }}>
+                <div className="flex-1 min-w-0">
+                  <BundleEmbed
+                    bundleId={activeTab.bundleId}
+                    view={bundleView}
+                    onOpenDoc={(docId) => {
+                      const existing = tabs.find(t => t.cloudId === docId);
+                      if (existing) { switchTab(existing.id); return; }
+                      fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                        if (!d) return;
+                        const newId = `doc-${docId}-${Date.now()}`;
+                        const newTab: Tab = {
+                          id: newId, kind: "doc",
+                          title: d.title || "Untitled",
+                          markdown: d.markdown || "",
+                          cloudId: docId,
+                          isDraft: d.is_draft,
+                          shared: !d.isOwner,
+                          readonly: !d.isOwner && d.editMode !== "public",
+                        };
+                        setTabs(prev => [...prev, newTab]);
+                        switchTab(newId);
+                      }).catch(() => {});
+                    }}
+                  />
+                </div>
+                {showBundleChat && (
+                  <div className="shrink-0" style={{ width: "min(380px, 50%)" }}>
+                    <BundleChat
+                      bundleId={activeTab.bundleId}
+                      bundleTitle={activeTab.title}
+                      documentCount={bundles.find(b => b.id === activeTab.bundleId)?.documentCount}
+                      onClose={() => setShowBundleChat(false)}
+                      onCitationClick={(docId) => {
+                        const existing = tabs.find(t => t.cloudId === docId);
+                        if (existing) { switchTab(existing.id); return; }
+                        fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                          if (!d) return;
+                          const newId = `doc-${docId}-${Date.now()}`;
+                          const newTab: Tab = {
+                            id: newId, kind: "doc",
+                            title: d.title || "Untitled",
+                            markdown: d.markdown || "",
+                            cloudId: docId,
+                            isDraft: d.is_draft,
+                            shared: !d.isOwner,
+                            readonly: !d.isOwner && d.editMode !== "public",
+                          };
+                          setTabs(prev => [...prev, newTab]);
+                          switchTab(newId);
+                        }).catch(() => {});
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "var(--background)" }}>
@@ -11117,8 +11343,16 @@ ${clone.innerHTML}
                     }
                     const data = await res.json();
                     setShowBundleCreator(false);
-                    // Open bundle in new tab
-                    window.open(`/b/${data.id}`, "_blank");
+                    // Open bundle as tab inside editor
+                    const newId = `bundle-${data.id}-${Date.now()}`;
+                    const newTab: Tab = {
+                      id: newId, kind: "bundle", bundleId: data.id,
+                      title: title, markdown: "",
+                    };
+                    setTabs(prev => [...prev, newTab]);
+                    switchTab(newId);
+                    // Refresh bundles list
+                    fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => { if (d?.bundles) setBundles(d.bundles); }).catch(() => {});
                     showToast("Bundle created!", "success");
                   } catch {
                     showToast("Failed to create bundle", "error");
