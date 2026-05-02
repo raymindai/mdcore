@@ -2,7 +2,7 @@
 // @ts-nocheck
 "use client";
 
-import { type Editor, Editor as TiptapEditor, Extension } from "@tiptap/core";
+import { type Editor, Editor as TiptapEditor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image as TiptapImage } from "@tiptap/extension-image";
 import { Link as TiptapLink } from "@tiptap/extension-link";
@@ -25,7 +25,7 @@ import {
 } from "react";
 import { common, createLowlight } from "lowlight";
 import katex from "katex";
-// TableHtmlFix — created lazily inside useEffect to avoid SSR module loading
+// Table fix: thead/tbody stripping is done after setContent (see setMarkdown handle + initial content setup)
 import {
   Bold,
   Italic,
@@ -224,27 +224,6 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
     const editorRef = useRef<Editor | null>(null);
 
     useEffect(() => {
-      const TableHtmlFix = Extension.create({
-        name: "tableHtmlFix",
-        addStorage() {
-          return {
-            markdown: {
-              parse: {
-                updateDOM(element: HTMLElement) {
-                  element.querySelectorAll("table").forEach((table: Element) => {
-                    table.querySelectorAll("thead, tbody, tfoot").forEach((wrapper: Element) => {
-                      while (wrapper.firstChild) {
-                        table.insertBefore(wrapper.firstChild, wrapper);
-                      }
-                      wrapper.remove();
-                    });
-                  });
-                },
-              },
-            },
-          };
-        },
-      });
 
       const ed = new TiptapEditor({
         extensions: [
@@ -274,9 +253,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
             transformPastedText: false,
             transformCopiedText: true,
           }),
-          TableHtmlFix,
         ],
-        content: initialBodyRef.current || "<p></p>",
+        content: "<p></p>",
         editable: canEdit,
         editorProps: {
           attributes: {
@@ -333,6 +311,26 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       editorRef.current = ed;
       setEditor(ed);
 
+      // Set initial content after editor is ready — use setContent which
+      // goes through tiptap-markdown parser. Then fix table structure.
+      if (initialBodyRef.current) {
+        isSettingContent.current = true;
+        ed.commands.setContent(initialBodyRef.current);
+        // Fix tables: tiptap-markdown → markdown-it produces <thead>/<tbody>
+        // which Tiptap Table can't parse. Re-set content with stripped wrappers.
+        try {
+          const dom = ed.view.dom;
+          const tables = dom.querySelectorAll("table");
+          if (tables.length > 0) {
+            // Get HTML, strip thead/tbody, re-set
+            let html = ed.getHTML();
+            html = html.replace(/<thead>|<\/thead>|<tbody>|<\/tbody>|<tfoot>|<\/tfoot>/g, "");
+            ed.commands.setContent(html);
+          }
+        } catch { /* view not ready yet */ }
+        isSettingContent.current = false;
+      }
+
       return () => { ed.destroy(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -358,6 +356,14 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         frontmatterRef.current = fm;
         isSettingContent.current = true;
         editor.commands.setContent(body || "<p></p>");
+        // Fix table structure (strip thead/tbody from markdown-it output)
+        try {
+          let html = editor.getHTML();
+          if (html.includes("<thead>") || html.includes("<tbody>")) {
+            html = html.replace(/<thead>|<\/thead>|<tbody>|<\/tbody>|<tfoot>|<\/tfoot>/g, "");
+            editor.commands.setContent(html);
+          }
+        } catch { /* ignore */ }
         isSettingContent.current = false;
       },
       getMarkdown: () => {
