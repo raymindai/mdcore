@@ -37,6 +37,9 @@ export default function DocumentViewer({
   const [passwordError, setPasswordError] = useState(false);
   const [narrowView, setNarrowView] = useState(true);
   const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
+  // Defer the access gate UNTIL client-side auth check finishes — otherwise
+  // owners see "You need access" flash for ~500ms before the redirect to /
+  const [authChecked, setAuthChecked] = useState(!isRestricted);
   const [copied, setCopied] = useState(false);
   const [accessRevoked, setAccessRevoked] = useState(false);
   const [updateToast, setUpdateToast] = useState(false);
@@ -61,7 +64,8 @@ export default function DocumentViewer({
 
         const doc = await res.json();
 
-        // Owner → open in editor instead of viewer
+        // Owner → open in editor instead of viewer (don't flip authChecked,
+        // we're navigating away)
         if (doc.isOwner) {
           window.location.replace(`/?from=${id}`);
           return;
@@ -75,6 +79,7 @@ export default function DocumentViewer({
           setIsLoading(true);
         }
       } catch { /* no session or not authorized */ }
+      finally { setAuthChecked(true); }
     })();
   }, [id, isRestricted, unlocked]);
 
@@ -424,6 +429,12 @@ export default function DocumentViewer({
               Create your own
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
             </Link>
+          </div>
+        ) : isRestricted && !unlocked && !authChecked ? (
+          // Auth check still in flight — show neutral loading state instead of
+          // flashing the "You need access" gate to owners about to be redirected.
+          <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
+            <MdfyLogo size={28} />
           </div>
         ) : isRestricted && !unlocked ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 px-6" style={{ maxWidth: 440, margin: "0 auto" }}>
