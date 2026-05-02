@@ -250,6 +250,7 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         extensions: [
           StarterKit.configure({
             codeBlock: false,
+            link: false, // using separate TiptapLink with custom config
             heading: { levels: [1, 2, 3, 4, 5, 6] },
           }),
           CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
