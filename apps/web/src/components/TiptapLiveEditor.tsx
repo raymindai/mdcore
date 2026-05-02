@@ -530,11 +530,9 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       document.head.appendChild(script);
     }, []);
 
-    if (!editor) return null;
-
     return (
       <div className="flex-1 overflow-auto relative" style={{ background: "var(--background)" }}>
-        {canEdit && <SelectionToolbar editor={editor} />}
+        {editor && canEdit && <SelectionToolbar editor={editor} />}
         <div ref={containerRef} />
       </div>
     );
