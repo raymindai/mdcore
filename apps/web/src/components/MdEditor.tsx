@@ -4908,8 +4908,10 @@ export default function MdEditor() {
       const debounceTime = len > 200000 ? 1000 : len > 100000 ? 750 : len > 50000 ? 500 : len > 20000 ? 300 : 150;
       debounceRef.current = setTimeout(() => {
         doRender(value);
-        // Sync to Tiptap when in split view (source → LIVE)
-        tiptapRef.current?.setMarkdown(value);
+        // Sync to Tiptap ONLY if change originated from CM6 (not from Tiptap→CM6 sync)
+        if (!tiptapOriginatedRef.current) {
+          tiptapRef.current?.setMarkdown(value);
+        }
       }, debounceTime);
     },
     [doRender, setMarkdown]
@@ -4926,18 +4928,21 @@ export default function MdEditor() {
     cmSetDoc(markdown);
   }, [markdown, cmSetDoc]);
 
-  // WYSIWYG: contentEditable preview → markdown source sync
   // ── Tiptap LIVE editor onChange handler ──
   const tiptapDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Guard: prevent Tiptap→CM6→Tiptap circular update
+  const tiptapOriginatedRef = useRef(false);
   const handleTiptapChange = useCallback((md: string) => {
-    // Update markdown ref immediately for auto-save accuracy
     markdownRef.current = md;
     triggerAutoSave(md);
-    // Debounce React state + CM6 sync to avoid flicker
     if (tiptapDebounceRef.current) clearTimeout(tiptapDebounceRef.current);
     tiptapDebounceRef.current = setTimeout(() => {
       setMarkdownRaw(md);
+      // Set flag BEFORE cmSetDoc so handleChange knows to skip tiptapRef.setMarkdown
+      tiptapOriginatedRef.current = true;
       cmSetDocRef.current?.(md);
+      // Reset flag after a tick (CM6 onChange fires synchronously)
+      setTimeout(() => { tiptapOriginatedRef.current = false; }, 50);
     }, 200);
   }, [triggerAutoSave]);
 
