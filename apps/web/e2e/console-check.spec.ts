@@ -18,7 +18,7 @@ test("capture all console errors and warnings", async ({ page }) => {
   await page.waitForTimeout(8000);
 
   console.log("\n=== ERRORS (" + errors.length + ") ===");
-  errors.forEach(e => console.log("ERR:", e.slice(0, 200)));
+  errors.forEach(e => console.log("ERR:", e.slice(0, 500)));
   console.log("\n=== WARNINGS (" + warnings.length + ") ===");
-  warnings.forEach(w => console.log("WARN:", w.slice(0, 200)));
+  warnings.forEach(w => console.log("WARN:", w.slice(0, 500)));
 });
