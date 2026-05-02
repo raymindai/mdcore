@@ -387,8 +387,9 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       if (!editor) return;
 
       const processDOM = () => {
-        if (!editor.view?.dom) return;
-        const dom = editor.view.dom;
+        let dom: HTMLElement;
+        try { dom = editor.view.dom; } catch { return; }
+        if (!dom) return;
 
         // ── KaTeX: find $...$ and $$...$$ in text nodes ──
         // Process inline math: $...$
@@ -499,7 +500,8 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
       };
 
       // Run on initial mount
-      processDOM();
+      // Delay initial processDOM until editor is fully mounted
+      setTimeout(processDOM, 500);
 
       // Run after every editor update (debounced)
       const handler = () => {
