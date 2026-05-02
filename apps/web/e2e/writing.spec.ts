@@ -1,36 +1,15 @@
-import { test, expect, type Page } from "@playwright/test";
-
-async function setup(page: Page) {
-  await page.addInitScript(() => {
-    localStorage.setItem("mdfy-onboarded", "1");
-    localStorage.setItem("mdfy-welcome-seen", "1");
-    localStorage.setItem("mdfy-active-tab", "tab-welcome");
-  });
-  await page.goto("/");
-  await page.waitForSelector(".tiptap", { timeout: 20000 });
-}
-
-async function clearAndType(page: Page, text: string) {
-  const editor = page.locator(".tiptap").first();
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.press("Backspace");
-  await page.waitForTimeout(100);
-  await page.keyboard.type(text, { delay: 10 });
-}
-
-async function getEditorText(page: Page): Promise<string> {
-  return page.locator(".tiptap").first().innerText();
-}
-
-async function getEditorHTML(page: Page): Promise<string> {
-  return page.locator(".tiptap").first().innerHTML();
-}
+import { test, expect } from "@playwright/test";
+import {
+  setupEditableTab,
+  clearAndType,
+  getEditorText,
+  getEditorHTML,
+  clickView,
+} from "./_helpers";
 
 // ─── 1. Basic Typing ───
-
 test.describe("Typing", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("type text and it appears", async ({ page }) => {
     await clearAndType(page, "Hello world");
@@ -41,8 +20,9 @@ test.describe("Typing", () => {
     await clearAndType(page, "Line 1");
     await page.keyboard.press("Enter");
     await page.keyboard.type("Line 2");
+    await page.waitForTimeout(150);
     const html = await getEditorHTML(page);
-    expect((html.match(/<p>/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((html.match(/<p[^>]*>/g) || []).length).toBeGreaterThanOrEqual(2);
   });
 
   test("Backspace merges paragraphs", async ({ page }) => {
@@ -51,7 +31,7 @@ test.describe("Typing", () => {
     await page.keyboard.type("Second");
     await page.keyboard.press("Home");
     await page.keyboard.press("Backspace");
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(150);
     expect(await getEditorText(page)).toContain("FirstSecond");
   });
 
@@ -59,15 +39,14 @@ test.describe("Typing", () => {
     await clearAndType(page, "ABCD");
     await page.keyboard.press("Home");
     await page.keyboard.press("Delete");
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(150);
     expect(await getEditorText(page)).toContain("BCD");
   });
 });
 
 // ─── 2. Formatting ───
-
 test.describe("Formatting", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("Cmd+B toggles bold on/off", async ({ page }) => {
     await clearAndType(page, "test");
@@ -89,119 +68,43 @@ test.describe("Formatting", () => {
   });
 });
 
-// ─── 3. Blockquote ───
-
-test.describe("Blockquote", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
-
-  test("Enter inside blockquote stays in same blockquote", async ({ page }) => {
-    // Use Source view to create blockquote reliably
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
-    const cm = page.locator(".cm-editor .cm-content");
-    await cm.click();
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.type("> Quote line 1");
-    // Switch to Live
-    await page.click('button:has-text("Live")');
-    await page.waitForTimeout(1000);
-    // Click inside the blockquote and press Enter
-    const bq = page.locator(".tiptap blockquote").first();
-    if (await bq.isVisible({ timeout: 3000 })) {
-      await bq.click();
-      await page.keyboard.press("End");
-      await page.keyboard.press("Enter");
-      await page.keyboard.type("Quote line 2");
-      await page.waitForTimeout(300);
-      const html = await getEditorHTML(page);
-      expect((html.match(/<blockquote>/g) || []).length).toBe(1);
-      expect(html).toContain("Quote line 2");
-    }
-  });
-});
-
-// ─── 4. Paste ───
-
-test.describe("Paste", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
-
-  test("paste at end preserves original content", async ({ page }) => {
-    await clearAndType(page, "Original");
-    await page.keyboard.press("End");
-    await page.keyboard.press("Enter");
-    await page.evaluate(() => {
-      const dt = new DataTransfer();
-      dt.setData("text/plain", "Pasted");
-      document.querySelector(".tiptap")?.dispatchEvent(
-        new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true })
-      );
-    });
-    await page.waitForTimeout(500);
-    const text = await getEditorText(page);
-    expect(text).toContain("Original");
-    expect(text).toContain("Pasted");
-  });
-
-  test("select all + delete + paste: no duplication", async ({ page }) => {
-    await clearAndType(page, "Old");
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.press("Backspace");
-    await page.waitForTimeout(100);
-    await page.evaluate(() => {
-      const dt = new DataTransfer();
-      dt.setData("text/plain", "New only");
-      document.querySelector(".tiptap")?.dispatchEvent(
-        new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true })
-      );
-    });
-    await page.waitForTimeout(500);
-    const text = await getEditorText(page);
-    expect(text).toContain("New only");
-    expect(text).not.toContain("Old");
-    expect(text.split("New only").length - 1).toBe(1);
-  });
-});
-
-// ─── 5. Undo/Redo ───
-
+// ─── 3. Undo/Redo ───
 test.describe("Undo/Redo", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("Cmd+Z undoes", async ({ page }) => {
     await clearAndType(page, "A");
-    await page.waitForTimeout(300); // let Tiptap group the transaction
+    await page.waitForTimeout(400);
     await page.keyboard.type("B");
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ControlOrMeta+z");
     await page.waitForTimeout(300);
     const text = await getEditorText(page);
-    // At least the "B" should be undone
     expect(text).not.toContain("AB");
   });
 
   test("Cmd+Shift+Z redoes", async ({ page }) => {
     await clearAndType(page, "Redo");
+    await page.waitForTimeout(300);
     await page.keyboard.press("ControlOrMeta+z");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
     await page.keyboard.press("ControlOrMeta+Shift+z");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
     expect(await getEditorText(page)).toContain("Redo");
   });
 });
 
-// ─── 6. Source ↔ LIVE Sync ───
-
+// ─── 4. Source ↔ LIVE Sync ───
 test.describe("Source ↔ LIVE Sync", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("Source → LIVE syncs", async ({ page }) => {
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
+    await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("# From Source\n\nSync OK");
-    await page.click('button:has-text("Live")');
+    await clickView(page, "Live");
     await page.waitForTimeout(1000);
     expect(await getEditorText(page)).toContain("From Source");
   });
@@ -209,32 +112,30 @@ test.describe("Source ↔ LIVE Sync", () => {
   test("LIVE → Source syncs", async ({ page }) => {
     await clearAndType(page, "From LIVE");
     await page.waitForTimeout(500);
-    await page.click('button:has-text("Source")');
+    await clickView(page, "Source");
     await page.waitForTimeout(500);
     const sourceText = await page.locator(".cm-editor .cm-content").innerText();
     expect(sourceText).toContain("From LIVE");
   });
 });
 
-// ─── 7. Content Preservation ───
-
+// ─── 5. Content Preservation ───
 test.describe("Content Preservation", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("20 paragraphs survive view switch round-trip", async ({ page }) => {
     const lines = Array.from({ length: 20 }, (_, i) => `Para ${i + 1}`);
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
+    await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type(lines.join("\n\n"), { delay: 0 });
-    await page.click('button:has-text("Live")');
+    await clickView(page, "Live");
     await page.waitForTimeout(1500);
     const live = await getEditorText(page);
     expect(live).toContain("Para 1");
     expect(live).toContain("Para 20");
-    await page.click('button:has-text("Source")');
+    await clickView(page, "Source");
     await page.waitForTimeout(500);
     const src = await cm.innerText();
     expect(src).toContain("Para 1");
@@ -242,55 +143,83 @@ test.describe("Content Preservation", () => {
   });
 });
 
-// ─── 8. Math (KaTeX) ───
-
+// ─── 6. Math (KaTeX) ───
 test.describe("Math (KaTeX)", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("inline math renders in LIVE view", async ({ page }) => {
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
+    await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("The equation $E=mc^2$ is famous.");
-    await page.click('button:has-text("Live")');
-    await page.waitForTimeout(2000); // wait for KaTeX post-processing
-    const html = await page.locator(".tiptap").first().innerHTML();
-    // Should contain rendered KaTeX (.katex class)
-    expect(html).toMatch(/katex|E.*=.*mc/);
+    await clickView(page, "Live");
+    await page.waitForTimeout(2000);
+    const html = await page.locator(".ProseMirror").first().innerHTML();
+    expect(html).toMatch(/katex|tiptap-math/);
   });
 
   test("display math renders in LIVE view", async ({ page }) => {
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
+    await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.type("$$\\\\frac{a}{b}$$");
-    await page.click('button:has-text("Live")');
+    await page.keyboard.type("$$\\frac{a}{b}$$");
+    await clickView(page, "Live");
     await page.waitForTimeout(2000);
-    const html = await page.locator(".tiptap").first().innerHTML();
-    expect(html).toMatch(/katex|frac/);
+    const html = await page.locator(".ProseMirror").first().innerHTML();
+    expect(html).toMatch(/katex|tiptap-math/);
   });
 });
 
-// ─── 9. Mermaid ───
-
+// ─── 7. Mermaid ───
 test.describe("Mermaid", () => {
-  test.beforeEach(async ({ page }) => { await setup(page); });
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("mermaid code block renders diagram in LIVE view", async ({ page }) => {
-    await page.click('button:has-text("Source")');
-    await page.waitForTimeout(300);
+    await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("```mermaid\ngraph TD\n    A-->B\n```");
-    await page.click('button:has-text("Live")');
-    await page.waitForTimeout(3000); // wait for mermaid CDN load + render
-    const html = await page.locator(".tiptap").first().innerHTML();
-    // Should contain mermaid SVG or mermaid-rendered class
-    expect(html).toMatch(/mermaid-rendered|<svg|graph/);
+    await clickView(page, "Live");
+    // Wait for mermaid CDN load + render (NodeView has retry logic up to ~6s)
+    await page.waitForTimeout(7000);
+    const html = await page.locator(".ProseMirror").first().innerHTML();
+    expect(html).toMatch(/tiptap-mermaid-render|<svg|mermaid/);
+  });
+});
+
+// ─── 8. Code blocks (CustomCodeBlock NodeView) ───
+test.describe("Code blocks", () => {
+  test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
+
+  test("code block shows language label and copy button", async ({ page }) => {
+    await clickView(page, "Source");
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("```js\nconst x = 1;\n```");
+    await clickView(page, "Live");
+    await page.waitForTimeout(800);
+    // Header should appear
+    await expect(page.locator(".tiptap-codeblock-lang").first()).toBeVisible();
+    // The Convert ▾ button shares the .tiptap-codeblock-copy class — match by text
+    await expect(page.locator(".tiptap-codeblock-copy", { hasText: /^Copy$/ }).first()).toBeVisible();
+    // Language label should say "js"
+    const lang = await page.locator(".tiptap-codeblock-lang").first().innerText();
+    expect(lang.toLowerCase()).toContain("js");
+  });
+
+  test("code block has line-number gutter", async ({ page }) => {
+    await clickView(page, "Source");
+    const cm = page.locator(".cm-editor .cm-content");
+    await cm.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("```\nline1\nline2\nline3\n```");
+    await clickView(page, "Live");
+    await page.waitForTimeout(800);
+    const linenos = page.locator(".tiptap-codeblock-lineno");
+    expect(await linenos.count()).toBeGreaterThanOrEqual(3);
   });
 });

@@ -1,24 +1,30 @@
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { setupEditableTab } from "./_helpers";
 
-test("capture all console errors and warnings", async ({ page }) => {
+/**
+ * Catch any uncaught console errors / page errors during a normal editor load.
+ * Filters out known-benign warnings (Next.js HMR, dev-mode WASM async/await,
+ * 401s on auth-required endpoints when not signed in).
+ */
+test("no uncaught errors on editor load", async ({ page }) => {
   const errors: string[] = [];
-  const warnings: string[] = [];
-  page.on("console", msg => {
+  page.on("console", (msg) => {
     if (msg.type() === "error") errors.push(msg.text());
-    if (msg.type() === "warning") warnings.push(msg.text());
   });
-  page.on("pageerror", err => errors.push("PAGE_ERROR: " + err.message));
+  page.on("pageerror", (err) => errors.push("PAGE_ERROR: " + err.message));
 
-  await page.addInitScript(() => {
-    localStorage.setItem("mdfy-onboarded", "1");
-    localStorage.setItem("mdfy-welcome-seen", "1");
-    localStorage.setItem("mdfy-active-tab", "tab-welcome");
+  await setupEditableTab(page);
+  await page.waitForTimeout(2000);
+
+  const fatal = errors.filter((e) => {
+    if (/401|Unauthorized/i.test(e)) return false; // not signed in
+    if (/asyncWebAssembly|async\/await/i.test(e)) return false; // dev-mode WASM warning
+    if (/Failed to load resource.*api\/user\/folders/i.test(e)) return false;
+    return true;
   });
-  await page.goto("/");
-  await page.waitForTimeout(8000);
 
-  console.log("\n=== ERRORS (" + errors.length + ") ===");
-  errors.forEach(e => console.log("ERR:", e.slice(0, 500)));
-  console.log("\n=== WARNINGS (" + warnings.length + ") ===");
-  warnings.forEach(w => console.log("WARN:", w.slice(0, 500)));
+  if (fatal.length) {
+    console.log("UNEXPECTED ERRORS:\n" + fatal.map((e) => "  - " + e).join("\n"));
+  }
+  expect(fatal).toEqual([]);
 });
