@@ -5264,8 +5264,8 @@ export default function MdEditor() {
               //    active tab so editor can show "deleted" placeholder)
               //  - cloudId present and deleted_at set → soft-deleted, mark
               //    `deleted: true` so it appears in Trash (don't strip from state)
-              const serverDocsById = new Map<string, { deleted_at?: string | null }>(
-                data.documents.map((d: { id: string; deleted_at?: string | null }) => [d.id, d])
+              const serverDocsById = new Map<string, { deleted_at?: string | null; updated_at?: string }>(
+                data.documents.map((d: { id: string; deleted_at?: string | null; updated_at?: string }) => [d.id, d])
               );
               const filtered = updated.flatMap(t => {
                 if (!t.cloudId) return [t];
@@ -5276,7 +5276,21 @@ export default function MdEditor() {
                 }
                 const isSoftDeleted = !!serverDoc.deleted_at;
                 if (isSoftDeleted && !t.deleted) return [{ ...t, deleted: true, deletedAt: new Date(serverDoc.deleted_at!).getTime() }];
-                if (!isSoftDeleted && t.deleted) return [{ ...t, deleted: false, deletedAt: undefined }];
+                // Auto-restore only when the server actually saw a row update *after*
+                // we marked it deleted locally. Otherwise this races with our own
+                // pending soft-delete: realtime fires for an unrelated update,
+                // server still has deleted_at=null, and we'd incorrectly revive
+                // a tab the user just trashed. Compare server.updated_at to
+                // local deletedAt — if server is older, the soft-delete just
+                // hasn't propagated yet; keep local deleted state.
+                if (!isSoftDeleted && t.deleted) {
+                  const serverUpdated = serverDoc.updated_at ? new Date(serverDoc.updated_at).getTime() : 0;
+                  const localDeletedAt = t.deletedAt || 0;
+                  if (serverUpdated > localDeletedAt) {
+                    return [{ ...t, deleted: false, deletedAt: undefined }];
+                  }
+                  return [t];
+                }
                 return [t];
               });
               return [...filtered, ...newTabs];
@@ -6878,11 +6892,25 @@ ${html}
 
   // Delete document
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(false);
-  // Soft delete document on server (move to trash — fire-and-forget)
-  const softDeleteOnServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
-    if (!tab.cloudId) return;
+  // Soft delete document on server. Returns a promise so callers can revert
+  // optimistic local state if the server rejects the request — without that,
+  // the realtime sync would later observe deleted_at=null on the server and
+  // (correctly) treat the tab as still alive, leaving the user staring at a
+  // doc they just "deleted".
+  const softDeleteOnServer = useCallback(async (tab: { cloudId?: string; editToken?: string; id?: string }): Promise<boolean> => {
+    if (!tab.cloudId) return true;
     const token = tab.editToken || getEditToken(tab.cloudId);
-    softDeleteDocument(tab.cloudId, { userId: user?.id, editToken: token || undefined }).catch(() => {});
+    try {
+      await softDeleteDocument(tab.cloudId, { userId: user?.id, editToken: token || undefined });
+      return true;
+    } catch {
+      // Revert optimistic deletion locally and tell the user.
+      if (tab.id) {
+        setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t));
+      }
+      showToast("Couldn't move to Trash — server refused", "error");
+      return false;
+    }
   }, [user?.id]);
   // Hard delete document from server (permanent — fire-and-forget)
   const hardDeleteOnServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
@@ -12197,11 +12225,24 @@ ${clone.innerHTML}
                 </div>
                 <div className="flex gap-1 px-2 pb-1">
                   <button onClick={() => setFolderContextMenu(null)} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
-                  <button onClick={() => {
-                    setTabs(prev => prev.map(t => t.folderId === folderContextMenu.folderId ? { ...t, folderId: undefined } : t));
-                    setFolders(prev => prev.filter(f => f.id !== folderContextMenu.folderId));
-                    fetch("/api/user/folders", { method: "DELETE", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId }) }).catch(() => {});
+                  <button onClick={async () => {
+                    const folderId = folderContextMenu.folderId;
+                    const prevTabs = tabs;
+                    const prevFolders = folders;
+                    setTabs(prev => prev.map(t => t.folderId === folderId ? { ...t, folderId: undefined } : t));
+                    setFolders(prev => prev.filter(f => f.id !== folderId));
                     setFolderContextMenu(null);
+                    try {
+                      const res = await fetch("/api/user/folders", { method: "DELETE", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderId }) });
+                      if (!res.ok) throw new Error(await res.text().catch(() => "delete failed"));
+                    } catch {
+                      // Revert: server still has the folder, the next folder fetch
+                      // would re-add it anyway, but reverting now keeps the UI
+                      // consistent and avoids a confusing flash.
+                      setTabs(prevTabs);
+                      setFolders(prevFolders);
+                      showToast("Couldn't delete folder — server refused", "error");
+                    }
                   }} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
                 </div>
               </>
