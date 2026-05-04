@@ -433,8 +433,13 @@ export default function DocumentViewer({
         ) : isRestricted && !unlocked && !authChecked ? (
           // Auth check still in flight — show neutral loading state instead of
           // flashing the "You need access" gate to owners about to be redirected.
-          <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
-            <MdfyLogo size={28} />
+          <div className="flex flex-col items-center justify-center h-full gap-3">
+            <svg width="24" height="24" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}>
+              <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/>
+            </svg>
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+              Loading...
+            </span>
           </div>
         ) : isRestricted && !unlocked ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 px-6" style={{ maxWidth: 440, margin: "0 auto" }}>
