@@ -6912,31 +6912,41 @@ ${html}
       return false;
     }
   }, [user?.id]);
-  // Hard delete document from server (permanent — fire-and-forget)
-  const hardDeleteOnServer = useCallback((tab: { cloudId?: string; editToken?: string }) => {
-    if (!tab.cloudId) return;
-    const token = tab.editToken || getEditToken(tab.cloudId);
-    if (!token) return;
-    deleteDocument(tab.cloudId, token, { userId: user?.id }).catch(() => {});
+  // Hard delete document from server (permanent). Returns a promise so
+  // callers (Empty Trash, per-row Delete) can await and react to failure.
+  // Falls back to userId-based ownership when no editToken is in localStorage —
+  // cloud-fetched tabs never have a local token, but the server's DELETE
+  // route accepts user_id matching as authorization. Previous fire-and-forget
+  // version bailed silently without a token, so trashing items that came in
+  // via realtime sync never actually deleted them server-side; the next
+  // sync re-added them and the user saw "Empty Trash did nothing."
+  const hardDeleteOnServer = useCallback(async (tab: { cloudId?: string; editToken?: string }): Promise<boolean> => {
+    if (!tab.cloudId) return true;
+    const token = tab.editToken || getEditToken(tab.cloudId) || undefined;
+    try {
+      await deleteDocument(tab.cloudId, { userId: user?.id, editToken: token });
+      return true;
+    } catch {
+      return false;
+    }
   }, [user?.id]);
 
   const handleDelete = useCallback(async () => {
     if (!docId) return;
     if (!confirmDeleteDoc) { setConfirmDeleteDoc(true); return; }
-    const token = getEditToken(docId);
-    if (!token) return;
+    const token = getEditToken(docId) || undefined;
     try {
-      await deleteDocument(docId, token);
+      await deleteDocument(docId, { userId: user?.id, editToken: token });
       setDocId(null);
       setIsOwner(false);
       window.history.replaceState(null, "", "/");
     } catch {
-      // ignore
+      showToast("Couldn't delete — server refused", "error");
     }
     setConfirmDeleteDoc(false);
     setShowMenu(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId]);
+  }, [docId, user?.id]);
 
   // Clear
   const handleClear = useCallback(() => {
@@ -9619,10 +9629,20 @@ ${clone.innerHTML}
                             title="Restore this document">
                             Restore
                           </button>
-                          <button onClick={() => {
-                            // Only hard-delete on server for MY docs — shared docs just remove from local list
-                            if (!tab.permission || tab.permission === "mine") hardDeleteOnServer(tab);
-                            setTabs(prev => prev.filter(t => t.id !== tab.id));
+                          <button onClick={async () => {
+                            const isMine = !tab.permission || tab.permission === "mine";
+                            // Shared docs that the user just dismissed have no server-side delete —
+                            // remove from local list only.
+                            if (!isMine) {
+                              setTabs(prev => prev.filter(t => t.id !== tab.id));
+                              return;
+                            }
+                            const ok = await hardDeleteOnServer(tab);
+                            if (ok) {
+                              setTabs(prev => prev.filter(t => t.id !== tab.id));
+                            } else {
+                              showToast("Couldn't delete — server refused", "error");
+                            }
                           }}
                             className="text-caption opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}
                             title={(!tab.permission || tab.permission === "mine") ? "Delete permanently" : "Remove from list"}>
@@ -9632,14 +9652,24 @@ ${clone.innerHTML}
                       ))}
                       {trashTabs.length > 0 && (
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             const btn = e.currentTarget;
                             if (btn.dataset.confirm === "true") {
-                              tabs.filter(t => t.deleted && t.cloudId && (!t.permission || t.permission === "mine")).forEach(t => hardDeleteOnServer(t));
-                              setTabs(prev => prev.filter(t => !t.deleted));
                               btn.dataset.confirm = "";
-                              btn.textContent = "Empty Trash";
+                              btn.textContent = "Emptying…";
                               btn.style.color = "var(--text-faint)";
+                              const targets = tabs.filter(t => t.deleted && t.cloudId && (!t.permission || t.permission === "mine"));
+                              const sharedTargets = tabs.filter(t => t.deleted && (t.permission === "readonly" || t.permission === "editable"));
+                              const results = await Promise.all(targets.map(t => hardDeleteOnServer(t)));
+                              const successIds = new Set(targets.filter((_, i) => results[i]).map(t => t.id));
+                              const failedCount = results.filter(r => !r).length;
+                              // Drop only the rows the server confirmed deleted, plus any
+                              // shared-doc dismissals which never hit the server.
+                              setTabs(prev => prev.filter(t => !successIds.has(t.id) && !sharedTargets.some(s => s.id === t.id)));
+                              if (failedCount > 0) {
+                                showToast(`${failedCount} item${failedCount === 1 ? "" : "s"} couldn't be deleted`, "error");
+                              }
+                              btn.textContent = "Empty Trash";
                             } else {
                               btn.dataset.confirm = "true";
                               btn.textContent = `Delete ${trashTabs.length} permanently?`;

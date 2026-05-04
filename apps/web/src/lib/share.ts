@@ -189,19 +189,30 @@ export async function changeEditMode(id: string, userId: string, editMode: strin
 
 export async function deleteDocument(
   id: string,
-  editToken: string,
+  editTokenOrOptions?: string | { userId?: string; anonymousId?: string; editToken?: string },
   options?: { userId?: string; anonymousId?: string }
 ): Promise<void> {
+  // Backward-compatible signature: previous callers passed (id, editToken, options).
+  // Cloud-fetched docs don't have a local editToken — server accepts userId
+  // ownership too, so editToken should never be required by the wrapper.
+  let editToken: string | undefined;
+  let userId: string | undefined;
+  let anonymousId: string | undefined;
+  if (typeof editTokenOrOptions === "string") {
+    editToken = editTokenOrOptions;
+    userId = options?.userId;
+    anonymousId = options?.anonymousId;
+  } else if (editTokenOrOptions) {
+    editToken = editTokenOrOptions.editToken;
+    userId = editTokenOrOptions.userId;
+    anonymousId = editTokenOrOptions.anonymousId;
+  }
   const res = await fetch(`/api/docs/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      editToken,
-      userId: options?.userId,
-      anonymousId: options?.anonymousId,
-    }),
+    body: JSON.stringify({ editToken, userId, anonymousId }),
   });
-  if (!res.ok) throw new Error("Failed to delete document");
+  if (!res.ok) throw new Error(`Failed to delete document: ${res.status}`);
 }
 
 // ─── Soft delete & restore ───
