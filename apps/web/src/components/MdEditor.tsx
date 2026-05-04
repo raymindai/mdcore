@@ -8661,7 +8661,7 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
+                    <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
                     <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
                   </div>
                   {showRecent && (
@@ -8715,7 +8715,7 @@ ${clone.innerHTML}
                         className={`shrink-0 transition-transform ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                         style={{ transform: showMyBundles ? "rotate(0deg)" : "rotate(-90deg)" }}
                       />
-                      <span className={`flex-1 text-caption font-medium transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
+                      <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
                       {showMyBundles && bundleFolders.length > 0 && (
                         <Tooltip text={anyBundleFolderExpanded ? "Collapse all bundle folders" : "Expand all bundle folders"}>
                           <button
@@ -8963,7 +8963,7 @@ ${clone.innerHTML}
                           className={`shrink-0 transition-transform ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                           style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                         />
-                        <span className={`flex-1 text-caption font-medium transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
+                        <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
                         {showMyDocs && myFolders.length > 0 && (
                           <Tooltip text={anyMyFolderExpanded ? "Collapse all folders" : "Expand all folders"}>
                             <button
@@ -9247,7 +9247,7 @@ ${clone.innerHTML}
                     className={`shrink-0 transition-transform ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                     style={{ transform: showConcepts ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
-                  <span className={`flex-1 text-caption font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
+                  <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
                   <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{conceptIndex.concepts.length}</span>
                 </div>
                 {showConcepts && (() => {
@@ -9379,7 +9379,7 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-medium transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
+                    <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
                     <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
                   </div>
                   {showSharedDocs && (
@@ -9568,7 +9568,7 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-medium transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
+                    <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
                     <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
@@ -9648,7 +9648,7 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
+                    <span className={`flex-1 text-caption font-mono uppercase tracking-wider transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
                     <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
                   </div>
                   {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">

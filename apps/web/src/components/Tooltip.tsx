@@ -74,7 +74,11 @@ export default function Tooltip({
       // wrapper is content-height and any `h-full` button inside only fills
       // that smaller box — so hover backgrounds appear chopped at top/bottom.
       // For non-flex parents, alignSelf is silently ignored.
-      style={{ display: "inline-flex", alignSelf: "stretch" }}
+      // alignItems:center keeps fixed-height children (most icons/buttons)
+      // vertically centered inside the stretched wrapper instead of pinning
+      // them to the top — which is what happened in section headers where the
+      // h-5 expand/collapse-all button visibly hugged the top of the h-7 row.
+      style={{ display: "inline-flex", alignSelf: "stretch", alignItems: "center" }}
     >
       {children}
       {show && typeof document !== "undefined" && createPortal(
