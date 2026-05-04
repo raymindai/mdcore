@@ -127,27 +127,35 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
 
       beliefs: [
         {
-          title: "Markdown is the right primitive for AI-era knowledge.",
-          body: "Not Notion blocks. Not proprietary formats. Plain markdown \u2014 what LLMs speak, what humans read.",
+          title: "Markdown is the right primitive.",
+          body: "Not Notion blocks. Not proprietary formats. Plain markdown \u2014 what LLMs speak natively, what humans can read without a viewer.",
         },
         {
           title: "URLs are the right interface.",
-          body: "Not SDKs. Not vendor lock-in. A URL \u2014 pastable, fetchable, openable by any human, by any AI.",
+          body: "Not SDKs. Not vendor APIs. A URL \u2014 pastable, fetchable, openable by any human, by any AI, on any platform.",
         },
         {
-          title: "Memory is something you author, not something extracted.",
-          body: "mdfy lets you write it, edit it, decide what stays.",
+          title: "Memory is something you author.",
+          body: "Not something extracted from your conversations behind your back. You write it. You edit it. You decide what stays.",
+        },
+        {
+          title: "AI is a collaborator, not just a tool.",
+          body: "Ask AI to bundle docs about a topic. Review what it picked. Edit annotations. Save. Human + AI building knowledge together \u2014 not AI building knowledge for you in a black box.",
+        },
+        {
+          title: "Knowledge has scopes \u2014 Document, Bundle, Hub.",
+          body: "Same URL primitive at three scales. A single answer is a Document URL. A themed collection is a Bundle URL. Your entire knowledge is a Hub URL.",
         },
         {
           title: "Memory should be deployable.",
-          body: "Storage isn\u2019t the goal. A memory you can\u2019t paste back into an AI as context isn\u2019t doing the work memory is supposed to do.",
+          body: "Storage isn't the goal. A memory you can't paste back into an AI as context isn't doing the work memory is supposed to do. Every URL fetches as clean markdown context.",
         },
         {
           title: "Open by default.",
-          body: "mdcore is open source. The Bundle spec will be published openly. Open formats are how durable infrastructure gets built.",
+          body: "mdcore is open source. The Bundle Spec is published openly. Open formats are how durable infrastructure gets built.",
         },
       ],
-      beliefsHeading: "The five beliefs",
+      beliefsHeading: "The seven beliefs",
 
       whyNowHeading: "Why now",
       whyNow: [
@@ -281,27 +289,35 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
 
       beliefs: [
         {
-          title: "\uB9C8\uD06C\uB2E4\uC6B4\uC740 \uC5D4\uC9C4\uC774\uC9C0 \uC778\uD130\uD398\uC774\uC2A4\uAC00 \uC544\uB2C8\uB2E4.",
-          body: "\uC0AC\uC6A9\uC790\uB294 \uB9C8\uD06C\uB2E4\uC6B4\uC744 \uBAB0\uB77C\uB3C4 \uB429\uB2C8\uB2E4.",
+          title: "\uB9C8\uD06C\uB2E4\uC6B4\uC774 \uC62C\uBC14\uB978 primitive\uB2E4.",
+          body: "Notion \uBE14\uB85D\uB3C4, \uB3C5\uC810 \uD3EC\uB9F7\uB3C4 \uC544\uB2D9\uB2C8\uB2E4. \uADF8\uB0E5 \uB9C8\uD06C\uB2E4\uC6B4 \u2014 LLM\uC774 native\uB85C \uB9D0\uD558\uACE0, \uC0AC\uB78C\uC774 \uBDF0\uC5B4 \uC5C6\uC774 \uC77D\uC744 \uC218 \uC788\uB294 \uD615\uC2DD.",
         },
         {
-          title: "\uBB38\uC11C\uB294 \uD30C\uC77C\uC774 \uC544\uB2C8\uB77C URL\uC774\uB2E4.",
-          body: "Web-native document. \uB9CC\uB4DC\uB294 \uC21C\uAC04 \uC8FC\uC18C\uAC00 \uC0DD\uAE34\uB2E4.",
+          title: "URL\uC774 \uC62C\uBC14\uB978 \uC778\uD130\uD398\uC774\uC2A4\uB2E4.",
+          body: "SDK\uB3C4, \uBCA4\uB354 API\uB3C4 \uC544\uB2D9\uB2C8\uB2E4. URL \u2014 \uB204\uAD6C\uB4E0, \uC5B4\uB5A4 AI\uB4E0, \uC5B4\uB514\uC11C\uB4E0 paste\uD558\uACE0 fetch\uD558\uACE0 \uC5F4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
         },
         {
-          title: "\uD06C\uB85C\uC2A4 AI\uAC00 \uAD6C\uC870\uC801 \uD574\uC790\uB2E4.",
-          body: "AI \uD68C\uC0AC\uAC00 \uC808\uB300 \uBCF5\uC81C \uBABB\uD558\uB294 \uD3EC\uC9C0\uC158.",
+          title: "\uBA54\uBAA8\uB9AC\uB294 \uB2F9\uC2E0\uC774 \uC791\uC131\uD558\uB294 \uAC83\uC774\uB2E4.",
+          body: "\uB300\uD654 \uB4A4\uC5D0\uC11C \uC790\uB3D9 \uCD94\uCD9C\uB418\uB294 \uAC83\uC774 \uC544\uB2D9\uB2C8\uB2E4. \uB2F9\uC2E0\uC774 \uC501\uB2C8\uB2E4. \uD3B8\uC9D1\uD569\uB2C8\uB2E4. \uBB34\uC5C7\uC744 \uB0A8\uAE38\uC9C0 \uACB0\uC815\uD569\uB2C8\uB2E4.",
         },
         {
-          title: "Zero friction.",
-          body: "\uB85C\uADF8\uC778 \uC5C6\uC774, 3\uCD08 \uC548\uC5D0 \uAC00\uCE58 \uC804\uB2EC.",
+          title: "AI\uB294 \uB3C4\uAD6C\uAC00 \uC544\uB2C8\uB77C collaborator\uB2E4.",
+          body: "AI\uC5D0\uAC8C \uC8FC\uC81C \uAD00\uB828 docs\uB97C \uBB36\uC5B4 \uB2EC\uB77C\uACE0 \uC694\uCCAD\uD558\uC138\uC694. \uACB0\uACFC \uAC80\uD1A0. annotation \uD3B8\uC9D1. \uC800\uC7A5. Human + AI\uAC00 \uD568\uAED8 \uC9C0\uC2DD\uC744 \uB9CC\uB4ED\uB2C8\uB2E4 \u2014 AI \uD63C\uC790 \uBE14\uB799\uBC15\uC2A4\uC5D0\uC11C \uB9CC\uB4DC\uB294 \uAC8C \uC544\uB2D9\uB2C8\uB2E4.",
         },
         {
-          title: "Build in public.",
-          body: "1\uC778+AI \uD300 \uC790\uCCB4\uAC00 \uB9C8\uCF00\uD305.",
+          title: "\uC9C0\uC2DD\uC740 \uC2A4\uCF54\uD504\uAC00 \uC788\uB2E4 \u2014 Document, Bundle, Hub.",
+          body: "\uAC19\uC740 URL primitive, \uC138 \uAC00\uC9C0 \uC2A4\uCF00\uC77C. \uD55C \uB2F5\uBCC0\uC740 Document URL. \uC8FC\uC81C\uBCC4 \uCEEC\uB809\uC158\uC740 Bundle URL. \uC804\uCCB4 \uC9C0\uC2DD\uC740 Hub URL.",
+        },
+        {
+          title: "\uBA54\uBAA8\uB9AC\uB294 deployable\uD574\uC57C \uD55C\uB2E4.",
+          body: "\uC800\uC7A5\uC774 \uBAA9\uC801\uC774 \uC544\uB2D9\uB2C8\uB2E4. AI\uC5D0 \uCEE8\uD14D\uC2A4\uD2B8\uB85C \uB2E4\uC2DC paste \uBABB\uD558\uB294 \uBA54\uBAA8\uB9AC\uB294 \uBA54\uBAA8\uB9AC \uC5ED\uD560\uC744 \uBABB\uD569\uB2C8\uB2E4. \uBAA8\uB4E0 URL\uC774 \uAE68\uB057\uD55C markdown \uCEE8\uD14D\uC2A4\uD2B8\uB85C fetch\uB429\uB2C8\uB2E4.",
+        },
+        {
+          title: "Open by default.",
+          body: "mdcore\uB294 \uC624\uD508\uC18C\uC2A4. Bundle Spec\uC740 \uACF5\uAC1C \uD45C\uC900. Open format\uC774 durable\uD55C \uC778\uD504\uB77C\uB97C \uB9CC\uB4DC\uB294 \uBC29\uC2DD\uC785\uB2C8\uB2E4.",
         },
       ],
-      beliefsHeading: "\uB2E4\uC12F \uAC00\uC9C0 \uBFF0\uC74C",
+      beliefsHeading: "\uC77C\uACF1 \uAC00\uC9C0 belief",
 
       whyNowHeading: "\uC99D \uC9C0\uAE08\uC778\uAC00",
       whyNow: [
