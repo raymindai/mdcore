@@ -3,6 +3,18 @@
 @import "highlight.js/styles/github-dark.min.css";
 
 /* ========================================
+   Typography utility classes
+   The new design system caps text sizes at 4 (caption / body / heading /
+   display) — see docs/DESIGN-TOKENS.md. These classes are usable directly
+   in Tailwind (`className="text-caption"`) and serve as the migration
+   target for the ~550 inline `text-[Npx]` literals.
+   ======================================== */
+.text-caption  { font-size: var(--text-caption); line-height: 1.4; }
+.text-body     { font-size: var(--text-body); line-height: 1.5; }
+.text-heading  { font-size: var(--text-heading); line-height: 1.4; font-weight: 600; }
+.text-display  { font-size: var(--text-display); line-height: 1.2; font-weight: 700; }
+
+/* ========================================
    Theme: Dark (default)
    ======================================== */
 :root,
@@ -39,6 +51,59 @@
   --toggle-bg: rgba(39, 39, 42, 0.5);
   --toggle-active: #3f3f46;
   --drag-bg: rgba(9, 9, 11, 0.9);
+
+  /* ── Design tokens (sprint 2026-05) — see docs/DESIGN-TOKENS.md ──
+     These are the new vocabulary; existing vars above are kept as
+     aliases until each surface is migrated phase-by-phase. */
+
+  /* Semantic palette — 5 colors only */
+  --color-cool: #60a5fa;
+  --color-cool-dim: rgba(96, 165, 250, 0.12);
+  --color-warm: #fbbf24;
+  --color-warm-dim: rgba(251, 191, 36, 0.12);
+  --color-success: #4ade80;
+  --color-success-dim: rgba(74, 222, 128, 0.12);
+  --color-danger: #ef4444;
+  --color-danger-dim: rgba(239, 68, 68, 0.12);
+  --color-neutral: #94a3b8;
+  --color-neutral-dim: rgba(148, 163, 184, 0.12);
+
+  /* Bg + text shorthand (parallel to existing names, will replace) */
+  --bg-base: var(--background);
+  --bg-elevated: var(--surface);
+  --bg-overlay: rgba(9, 9, 11, 0.95);
+
+  /* Spacing — 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 9999px;
+
+  /* Type scale (4 sizes) */
+  --text-caption: 11px;
+  --text-body: 12px;
+  --text-heading: 14px;
+  --text-display: 20px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.10);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.50);
+
+  /* Animation */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
+  --ease-default: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* ========================================
@@ -77,6 +142,24 @@
   --toggle-bg: #e4e4e7;
   --toggle-active: #d4d4d8;
   --drag-bg: rgba(255, 255, 255, 0.9);
+
+  /* Semantic palette — light variants (slightly darker for AA contrast) */
+  --color-cool: #3b82f6;
+  --color-cool-dim: rgba(59, 130, 246, 0.10);
+  --color-warm: #d97706;
+  --color-warm-dim: rgba(217, 119, 6, 0.10);
+  --color-success: #16a34a;
+  --color-success-dim: rgba(22, 163, 74, 0.10);
+  --color-danger: #dc2626;
+  --color-danger-dim: rgba(220, 38, 38, 0.10);
+  --color-neutral: #64748b;
+  --color-neutral-dim: rgba(100, 116, 139, 0.10);
+
+  --bg-base: var(--background);
+  --bg-elevated: var(--surface);
+  --bg-overlay: rgba(255, 255, 255, 0.95);
+
+  /* Spacing/radius/type/shadows/animation are theme-invariant — defined in :root */
 }
 
 /* ========================================
