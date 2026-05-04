@@ -8707,7 +8707,7 @@ ${clone.innerHTML}
                       style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
                     <span className={`flex-1 text-caption font-mono transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
-                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
+                    <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
                   </div>
                   {showRecent && (
                     recentTabs.length === 0 ? (
@@ -8779,7 +8779,7 @@ ${clone.innerHTML}
                           </button>
                         </Tooltip>
                       )}
-                      <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
+                      <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
                     </div>
                   );
                 })()}
@@ -9027,7 +9027,7 @@ ${clone.innerHTML}
                             </button>
                           </Tooltip>
                         )}
-                        <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>
+                        <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>
                       </div>
                     );
                   })()}
@@ -9293,7 +9293,7 @@ ${clone.innerHTML}
                     style={{ transform: showConcepts ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
                   <span className={`flex-1 text-caption font-mono transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
-                  <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{conceptIndex.concepts.length}</span>
+                  <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{conceptIndex.concepts.length}</span>
                 </div>
                 {showConcepts && (() => {
                   const crossLinked = conceptIndex.concepts.filter(c => c.docCount >= 2);
@@ -9425,7 +9425,7 @@ ${clone.innerHTML}
                       style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
                     <span className={`flex-1 text-caption font-mono transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
-                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
+                    <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
                   </div>
                   {showSharedDocs && (
                     <div className="overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9614,7 +9614,7 @@ ${clone.innerHTML}
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
                     <span className={`flex-1 text-caption font-mono transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
-                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
+                    <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9694,7 +9694,7 @@ ${clone.innerHTML}
                       style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
                     />
                     <span className={`flex-1 text-caption font-mono transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
-                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
+                    <span className="text-caption font-mono tabular-nums px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
                   </div>
                   {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
                     {exampleTabs.map(tab => (
