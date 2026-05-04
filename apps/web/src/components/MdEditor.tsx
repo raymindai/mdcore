@@ -8466,10 +8466,14 @@ ${clone.innerHTML}
             </div>
           </div>
           {/* Search row — always visible under Library header. ⌘K focuses.
-              Owns its own bottom border so the section list below starts on a
-              clean line and the input box pops against the row. */}
-          <div className="px-2 pb-1.5 flex items-center gap-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-1.5 flex-1 px-2 rounded" style={{ background: "var(--toggle-bg)", border: `1px solid ${sidebarSearch ? "var(--accent)" : "var(--border-dim)"}` }}>
+              Sits on the sidebar's --background; sticky section headers below
+              use --surface so the visual rhythm goes:
+                background (sidebar wall, search row) → surface (section header).
+              Search input box itself stays unfilled (transparent) so it doesn't
+              collide with --surface section headers — only its border defines
+              the control. */}
+          <div className="px-2 pb-1.5 flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 px-2 rounded" style={{ background: "transparent", border: `1px solid ${sidebarSearch ? "var(--accent)" : "var(--border-dim)"}` }}>
               <Search width={11} height={11} className="shrink-0" style={{ color: sidebarSearch ? "var(--accent)" : "var(--text-faint)" }} />
               <input
                 ref={sidebarSearchInputRef}
