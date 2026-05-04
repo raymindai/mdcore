@@ -92,6 +92,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       images: [ogImageUrl],
     },
+    // Advertise the raw-markdown alternate so AI fetchers (and curious
+    // crawlers) can find the LLM-friendly representation directly. The
+    // browser still loads the rich page; AI tools that follow alternate
+    // links pick up text/markdown without any extra config.
+    alternates: noIndex ? undefined : {
+      canonical: `https://mdfy.app/${id}`,
+      types: {
+        "text/markdown": `https://mdfy.app/${id}.md`,
+      },
+    },
   };
 }
 
