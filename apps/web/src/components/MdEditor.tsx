@@ -8706,8 +8706,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-mono transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
-                    <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{recentTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{recentTabs.length}</span>
                   </div>
                   {showRecent && (
                     recentTabs.length === 0 ? (
@@ -8760,7 +8760,7 @@ ${clone.innerHTML}
                         className={`shrink-0 transition-transform ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                         style={{ transform: showMyBundles ? "rotate(0deg)" : "rotate(-90deg)" }}
                       />
-                      <span className={`flex-1 text-caption font-mono transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
+                      <span className={`flex-1 text-caption font-medium transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
                       {showMyBundles && bundleFolders.length > 0 && (
                         <Tooltip text={anyBundleFolderExpanded ? "Collapse all bundle folders" : "Expand all bundle folders"}>
                           <button
@@ -8779,7 +8779,7 @@ ${clone.innerHTML}
                           </button>
                         </Tooltip>
                       )}
-                      <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{bundles.length}</span>
+                      <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{bundles.length}</span>
                     </div>
                   );
                 })()}
@@ -8827,7 +8827,7 @@ ${clone.innerHTML}
                         if (!bundle) return null;
                         return (
                           <Tooltip text={`${bundle.documentCount} document${bundle.documentCount === 1 ? "" : "s"} in this bundle`}>
-                            <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>
+                            <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>
                               {bundle.documentCount}
                             </span>
                           </Tooltip>
@@ -9008,7 +9008,7 @@ ${clone.innerHTML}
                           className={`shrink-0 transition-transform ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                           style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                         />
-                        <span className={`flex-1 text-caption font-mono transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
+                        <span className={`flex-1 text-caption font-medium transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
                         {showMyDocs && myFolders.length > 0 && (
                           <Tooltip text={anyMyFolderExpanded ? "Collapse all folders" : "Expand all folders"}>
                             <button
@@ -9027,7 +9027,7 @@ ${clone.innerHTML}
                             </button>
                           </Tooltip>
                         )}
-                        <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{myTabCount}</span>
+                        <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{myTabCount}</span>
                       </div>
                     );
                   })()}
@@ -9050,7 +9050,7 @@ ${clone.innerHTML}
                               key={f}
                               onClick={() => { setDocFilter(f); localStorage.setItem("mdfy-doc-filter", f); }}
                               title={tips[f]}
-                              className="flex-1 text-caption font-mono py-1 rounded transition-colors"
+                              className="flex-1 text-caption py-1 rounded transition-colors"
                               style={{
                                 background: isActive ? "var(--accent-dim)" : "transparent",
                                 color: isActive ? "var(--accent)" : "var(--text-faint)",
@@ -9292,8 +9292,8 @@ ${clone.innerHTML}
                     className={`shrink-0 transition-transform ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                     style={{ transform: showConcepts ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
-                  <span className={`flex-1 text-caption font-mono transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
-                  <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{conceptIndex.concepts.length}</span>
+                  <span className={`flex-1 text-caption font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
+                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{conceptIndex.concepts.length}</span>
                 </div>
                 {showConcepts && (() => {
                   const crossLinked = conceptIndex.concepts.filter(c => c.docCount >= 2);
@@ -9424,8 +9424,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-mono transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
-                    <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{totalShared}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{totalShared}</span>
                   </div>
                   {showSharedDocs && (
                     <div className="overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9613,8 +9613,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-mono transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
-                    <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{trashTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9693,8 +9693,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
                     />
-                    <span className={`flex-1 text-caption font-mono transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
-                    <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{exampleTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{exampleTabs.length}</span>
                   </div>
                   {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
                     {exampleTabs.map(tab => (
