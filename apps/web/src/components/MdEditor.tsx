@@ -1964,7 +1964,10 @@ function BundleCreatorModal({
     });
   };
 
-  const canCreate = selectedIds.length >= 2 && !creating;
+  // 1+ docs is enough — a single-doc bundle is a valid v6 starting point
+  // (user can grow it later with add-documents). Server-side
+  // /api/bundles already accepts documentIds.length >= 1.
+  const canCreate = selectedIds.length >= 1 && !creating;
 
   return (
     <div
@@ -1979,7 +1982,7 @@ function BundleCreatorModal({
       >
         <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
-          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle, or ask AI to suggest from your hub.</p>
+          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick documents to bundle, or ask AI to suggest from your hub.</p>
         </div>
         {/* AI Bundle Generation strip — describe what you want, AI picks from hub. */}
         <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
