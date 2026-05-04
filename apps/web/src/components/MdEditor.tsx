@@ -8670,12 +8670,26 @@ ${clone.innerHTML}
             setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
-            {/* ── Section: RECENT (top) — last 7 visited tabs, separate from main tree ── */}
+            {/* ── Section: RECENT (top) — last 7 visited tabs, separate from main tree ──
+                Dedupe by title+kind: when the user has duplicate cloud rows
+                with the same title (e.g. several copies of the same bundle
+                accumulated from older sync sessions), Recent would otherwise
+                show six identical lines, which makes the section useless as a
+                "what was I just working on" surface. The full canonical list
+                still lives in the MDs / MD Bundles sections below — Recent
+                only collapses the visual repetition. */}
             {(() => {
-              const recentTabs = recentTabIds
-                .map(id => tabs.find(t => t.id === id && !t.deleted))
-                .filter((t): t is Tab => !!t)
-                .slice(0, 7);
+              const seenKeys = new Set<string>();
+              const recentTabs: Tab[] = [];
+              for (const id of recentTabIds) {
+                const t = tabs.find(tab => tab.id === id && !tab.deleted);
+                if (!t) continue;
+                const key = `${t.kind || "doc"}::${(t.title || "Untitled").trim().toLowerCase()}`;
+                if (seenKeys.has(key)) continue;
+                seenKeys.add(key);
+                recentTabs.push(t);
+                if (recentTabs.length >= 7) break;
+              }
               return (
                 <div className="shrink-0">
                   <div
@@ -10343,12 +10357,21 @@ ${clone.innerHTML}
                 )}
 
                 {/* Recent files — same data source as sidebar Recent (recentTabIds).
-                    Includes bundle tabs since they're regular tabs with kind="bundle". */}
+                    Includes bundle tabs since they're regular tabs with kind="bundle".
+                    Dedupes by title+kind so duplicate cloud rows don't fill up
+                    the Recent strip with identical lines. */}
                 {(() => {
-                  const recent = recentTabIds
-                    .map(id => tabs.find(t => t.id === id && !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER))
-                    .filter((t): t is Tab => !!t)
-                    .slice(0, 5);
+                  const seenKeys = new Set<string>();
+                  const recent: Tab[] = [];
+                  for (const id of recentTabIds) {
+                    const t = tabs.find(tab => tab.id === id && !tab.deleted && !tab.readonly && tab.ownerEmail !== EXAMPLE_OWNER);
+                    if (!t) continue;
+                    const key = `${t.kind || "doc"}::${(t.title || "Untitled").trim().toLowerCase()}`;
+                    if (seenKeys.has(key)) continue;
+                    seenKeys.add(key);
+                    recent.push(t);
+                    if (recent.length >= 5) break;
+                  }
                   if (recent.length === 0) return null;
                   return (
                     <div className="mb-6">
