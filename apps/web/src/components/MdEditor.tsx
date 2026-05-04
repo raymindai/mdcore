@@ -8465,8 +8465,10 @@ ${clone.innerHTML}
               </Tooltip>
             </div>
           </div>
-          {/* Search row — always visible under Library header. ⌘K focuses. */}
-          <div className="px-2 pb-1.5 flex items-center gap-1.5">
+          {/* Search row — always visible under Library header. ⌘K focuses.
+              Owns its own bottom border so the section list below starts on a
+              clean line and the input box pops against the row. */}
+          <div className="px-2 pb-1.5 flex items-center gap-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
             <div className="flex items-center gap-1.5 flex-1 px-2 rounded" style={{ background: "var(--toggle-bg)", border: `1px solid ${sidebarSearch ? "var(--accent)" : "var(--border-dim)"}` }}>
               <Search width={11} height={11} className="shrink-0" style={{ color: sidebarSearch ? "var(--accent)" : "var(--text-faint)" }} />
               <input
@@ -8647,7 +8649,7 @@ ${clone.innerHTML}
                   <div
                     data-section-id="recent"
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => setShowRecent(!showRecent)}
                   >
                     <ChevronDown
@@ -8701,7 +8703,7 @@ ${clone.innerHTML}
                     <div
                       data-section-id="bundles"
                       className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                      style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                      style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                       onClick={() => setShowMyBundles(!showMyBundles)}
                     >
                       <ChevronDown
@@ -8949,7 +8951,7 @@ ${clone.innerHTML}
                       <div
                         data-section-id="mds"
                         className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                        style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                        style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                         onClick={() => { setShowMyDocs(!showMyDocs); }}
                       >
                         <ChevronDown
@@ -9231,18 +9233,18 @@ ${clone.innerHTML}
             {isAuthenticated && conceptIndex && conceptIndex.concepts.length > 0 && (
               <div className="shrink-0 flex flex-col">
                 <div
-                  className="group/sec flex items-center px-2 py-1 cursor-pointer select-none"
+                  data-section-id="concepts"
+                  className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                  style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                   onClick={() => setShowConcepts(prev => !prev)}
                 >
-                  <button className="p-0.5 rounded hover:bg-[var(--toggle-bg)] transition-colors mr-1" style={{ color: "var(--text-faint)" }}>
-                    {showConcepts ? <ChevronDown width={11} height={11} /> : <ChevronRight width={11} height={11} />}
-                  </button>
-                  <span className={`flex-1 text-caption font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>
-                    Concepts
-                  </span>
-                  <span className="text-caption tabular-nums shrink-0" style={{ color: "var(--text-faint)" }}>
-                    {conceptIndex.concepts.length}
-                  </span>
+                  <ChevronDown
+                    width={10} height={10}
+                    className={`shrink-0 transition-transform ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                    style={{ transform: showConcepts ? "rotate(0deg)" : "rotate(-90deg)" }}
+                  />
+                  <span className={`flex-1 text-caption font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Concepts</span>
+                  <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{conceptIndex.concepts.length}</span>
                 </div>
                 {showConcepts && (() => {
                   const crossLinked = conceptIndex.concepts.filter(c => c.docCount >= 2);
@@ -9365,7 +9367,7 @@ ${clone.innerHTML}
                   <div
                     data-section-id="shared"
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => { const next = !showSharedDocs; setShowSharedDocs(next); localStorage.setItem("mdfy-show-shared", String(next)); }}
                   >
                     <ChevronDown
@@ -9554,7 +9556,7 @@ ${clone.innerHTML}
                   <div
                     data-section-id="trash"
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => { const next = !showTrash; setShowTrash(next); localStorage.setItem("mdfy-show-trash", String(next)); }}
                   >
                     <ChevronDown
@@ -9634,7 +9636,7 @@ ${clone.innerHTML}
                   <div
                     data-section-id="guides"
                     className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
                   >
                     <ChevronDown
