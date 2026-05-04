@@ -292,7 +292,7 @@ function RawModeLayout({
   const dragging = useRef<"sep1" | "sep2" | null>(null);
 
   const Header = ({ label }: { label: string }) => (
-    <div className="flex items-center px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+    <div className="flex items-center px-3 py-1.5 text-caption font-mono uppercase tracking-wider shrink-0"
       style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
       {label}
     </div>
@@ -404,7 +404,7 @@ function FlowchartLayout({
   const dragging = useRef<"sep1" | "sep2" | null>(null);
 
   const Header = ({ label, extra }: { label: string; extra?: React.ReactNode }) => (
-    <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider shrink-0"
+    <div className="flex items-center justify-between px-3 py-1.5 text-caption font-mono uppercase tracking-wider shrink-0"
       style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
       <span>{label}</span>
       {extra}
@@ -450,7 +450,7 @@ function FlowchartLayout({
     <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border)" }}>
       {(["LR", "TD"] as Direction[]).map((d) => (
         <button key={d} onClick={() => setDirection(d)}
-          className="px-2.5 py-1 text-[11px] font-mono font-semibold"
+          className="px-2.5 py-1 text-caption font-mono font-semibold"
           style={{ background: direction === d ? "var(--accent-dim)" : "transparent", color: direction === d ? "var(--accent)" : "var(--text-faint)" }}>
           {d === "LR" ? (<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display:"inline",verticalAlign:"middle"}}><path d="M3 8h10M10 5l3 3-3 3"/></svg>) : (<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display:"inline",verticalAlign:"middle"}}><path d="M8 3v10M5 10l3 3 3-3"/></svg>)}
         </button>
@@ -929,12 +929,12 @@ function MdCanvas({
         style={{ borderBottom: "1px solid var(--border-dim)" }}
       >
         <div className="flex items-center gap-2">
-          <span className="font-mono uppercase tracking-wider text-[11px]" style={{ color: "var(--accent)" }}>
+          <span className="font-mono uppercase tracking-wider text-caption" style={{ color: "var(--accent)" }}>
             Mermaid Diagrams
           </span>
           <button
             onClick={() => setShowGuide(!showGuide)}
-            className="px-2 rounded-md font-mono text-[11px] leading-[24px]"
+            className="px-2 rounded-md font-mono text-caption leading-[24px]"
             style={{
               height: 24,
               background: showGuide ? "var(--accent-dim)" : "var(--toggle-bg)",
@@ -962,7 +962,7 @@ function MdCanvas({
           {nodes.length > 0 && (
             <button
               onClick={() => { setNodes([]); setEdges([]); setSelectedId(null); nextId = 1; }}
-              className="px-2 py-1 rounded-md font-mono text-[11px]"
+              className="px-2 py-1 rounded-md font-mono text-caption"
               style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)" }}
             >
               Clear
@@ -971,7 +971,7 @@ function MdCanvas({
           {onCancel && (
             <button
               onClick={onCancel}
-              className="px-3 py-1 rounded-md font-mono text-[11px]"
+              className="px-3 py-1 rounded-md font-mono text-caption"
               style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             >
               Cancel
@@ -980,7 +980,7 @@ function MdCanvas({
           <button
             onClick={handleGenerate}
             disabled={nodes.length === 0 && !rawCodeMode}
-            className="px-3 py-1 rounded-md font-mono text-[11px] font-semibold"
+            className="px-3 py-1 rounded-md font-mono text-caption font-semibold"
             style={{
               background: (nodes.length > 0 || rawCodeMode) ? "var(--accent)" : "var(--toggle-bg)",
               color: (nodes.length > 0 || rawCodeMode) ? "#000" : "var(--text-muted)",
@@ -1015,7 +1015,7 @@ function MdCanvas({
                   setRawCodeMode(true);
                 }
               }}
-              className="px-2 py-1 rounded-md text-[11px] transition-colors whitespace-nowrap shrink-0"
+              className="px-2 py-1 rounded-md text-caption transition-colors whitespace-nowrap shrink-0"
               style={{
                 background: currentType === dt.id ? "var(--accent-dim)" : "var(--toggle-bg)",
                 color: currentType === dt.id ? "var(--accent)" : "var(--text-muted)",
@@ -1043,14 +1043,14 @@ function MdCanvas({
           <div className="flex flex-col gap-1">
             <button
               onClick={handleImport}
-              className="px-3 py-1 rounded text-[11px] font-mono"
+              className="px-3 py-1 rounded text-caption font-mono"
               style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
             >
               Load
             </button>
             <button
               onClick={() => { setShowImport(false); setImportCode(""); }}
-              className="px-3 py-1 rounded text-[11px] font-mono"
+              className="px-3 py-1 rounded text-caption font-mono"
               style={{ color: "var(--text-muted)" }}
             >
               Cancel
@@ -1285,12 +1285,12 @@ function MdCanvas({
                     if (e.key === "Enter" || e.key === "Escape") setEditingEdge(null);
                   }}
                   placeholder="label"
-                  className="px-2 py-1.5 text-[11px] font-mono rounded outline-none w-28"
+                  className="px-2 py-1.5 text-caption font-mono rounded outline-none w-28"
                   style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                 />
                 <button
                   onMouseDown={(e) => { e.preventDefault(); deleteEdge(editingEdge); }}
-                  className="px-1.5 py-1.5 rounded text-[11px] font-bold"
+                  className="px-1.5 py-1.5 rounded text-caption font-bold"
                   style={{ background: "rgba(239,68,68,0.2)", color: "#ef4444" }}
                 >
                   ×
@@ -1298,7 +1298,7 @@ function MdCanvas({
               </div>
               {/* Style + Direction row */}
               <div className="flex gap-1">
-                <span className="text-[9px] py-1" style={{ color: "var(--text-faint)" }}>Line:</span>
+                <span className="text-caption py-1" style={{ color: "var(--text-faint)" }}>Line:</span>
                 {(["solid", "dotted", "thick"] as const).map((s) => (
                   <button
                     key={s}
@@ -1306,7 +1306,7 @@ function MdCanvas({
                       e.preventDefault();
                       setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, style: s } : ed));
                     }}
-                    className="px-2 py-1 rounded text-[11px]"
+                    className="px-2 py-1 rounded text-caption"
                     style={{
                       background: (edge.style || "solid") === s ? "var(--accent)" : "var(--background)",
                       color: (edge.style || "solid") === s ? "#000" : "var(--text-secondary)",
@@ -1316,7 +1316,7 @@ function MdCanvas({
                     {s === "solid" ? "━" : s === "dotted" ? "┄" : "┃"}
                   </button>
                 ))}
-                <span className="text-[9px] py-1 ml-1" style={{ color: "var(--text-faint)" }}>Dir:</span>
+                <span className="text-caption py-1 ml-1" style={{ color: "var(--text-faint)" }}>Dir:</span>
                 {(["forward", "both", "none"] as const).map((d) => (
                   <button
                     key={d}
@@ -1324,7 +1324,7 @@ function MdCanvas({
                       e.preventDefault();
                       setEdges((prev) => prev.map((ed, idx) => idx === editingEdge ? { ...ed, direction: d } : ed));
                     }}
-                    className="px-2 py-1 rounded text-[11px]"
+                    className="px-2 py-1 rounded text-caption"
                     style={{
                       background: (edge.direction || "forward") === d ? "var(--accent)" : "var(--background)",
                       color: (edge.direction || "forward") === d ? "#000" : "var(--text-secondary)",

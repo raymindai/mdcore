@@ -1504,7 +1504,7 @@ function InlineInput({ label, defaultValue, onSubmit, onCancel, position }: {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <label className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{label}</label>
+        <label className="text-caption font-mono" style={{ color: "var(--text-muted)" }}>{label}</label>
         <input
           ref={inputRef}
           value={value}
@@ -1518,8 +1518,8 @@ function InlineInput({ label, defaultValue, onSubmit, onCancel, position }: {
           placeholder={label}
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1 text-[11px] rounded-md" style={{ color: "var(--text-muted)", background: "var(--toggle-bg)" }}>Cancel</button>
-          <button onClick={() => value.trim() && onSubmit(value.trim())} className="px-3 py-1 text-[11px] rounded-md font-medium" style={{ background: "var(--accent)", color: "#000" }}>OK</button>
+          <button onClick={onCancel} className="px-3 py-1 text-caption rounded-md" style={{ color: "var(--text-muted)", background: "var(--toggle-bg)" }}>Cancel</button>
+          <button onClick={() => value.trim() && onSubmit(value.trim())} className="px-3 py-1 text-caption rounded-md font-medium" style={{ background: "var(--accent)", color: "#000" }}>OK</button>
         </div>
       </div>
     </div>
@@ -1550,11 +1550,11 @@ function TBtn({ tip, preview, active, onClick, children }: {
       >
         {preview ? (
           <>
-            <div className="mb-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>{tip}</div>
+            <div className="mb-1.5 text-caption" style={{ color: "var(--text-muted)" }}>{tip}</div>
             <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 6 }}>{preview}</div>
           </>
         ) : (
-          <span className="text-[10px]">{tip}</span>
+          <span className="text-caption">{tip}</span>
         )}
       </div>
     </div>
@@ -1730,41 +1730,41 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip="Heading 1 — # text" active={blockType==="h1"} onClick={() => fmtBlock("h1")}
           preview={<div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.025em" }}>Heading 1</div>}>
-          <span className="text-[10px] font-bold">H1</span></TBtn>
+          <span className="text-caption font-bold">H1</span></TBtn>
         <TBtn tip="Heading 2 — ## text" active={blockType==="h2"} onClick={() => fmtBlock("h2")}
           preview={<div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 2</div>}>
-          <span className="text-[10px] font-bold">H2</span></TBtn>
+          <span className="text-caption font-bold">H2</span></TBtn>
         <TBtn tip="Heading 3 — ### text" active={blockType==="h3"} onClick={() => fmtBlock("h3")}
           preview={<div style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 3</div>}>
-          <span className="text-[10px] font-semibold">H3</span></TBtn>
+          <span className="text-caption font-semibold">H3</span></TBtn>
         <TBtn tip="Heading 4 — #### text" active={blockType==="h4"} onClick={() => fmtBlock("h4")}
           preview={<div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>Heading 4</div>}>
-          <span className="text-[10px]">H4</span></TBtn>
+          <span className="text-caption">H4</span></TBtn>
         <TBtn tip="Heading 5 — ##### text" active={blockType==="h5"} onClick={() => fmtBlock("h5")}
           preview={<div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-muted)" }}>Heading 5</div>}>
-          <span className="text-[10px]">H5</span></TBtn>
+          <span className="text-caption">H5</span></TBtn>
         <TBtn tip="Heading 6 — ###### text" active={blockType==="h6"} onClick={() => fmtBlock("h6")}
           preview={<div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.025em" }}>Heading 6</div>}>
-          <span className="text-[10px]">H6</span></TBtn>
+          <span className="text-caption">H6</span></TBtn>
         <TBtn tip="Paragraph — normal text" active={blockType==="p"} onClick={() => fmtBlock("p")}
           preview={<div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Normal paragraph text</div>}>
-          <span className="text-[10px]">P</span></TBtn>
+          <span className="text-caption">P</span></TBtn>
       </div>
       {sep}
       {/* Text style */}
       <div className="flex items-center gap-0.5 shrink-0">
         <TBtn tip={`Bold (${mod}+B) → **text**`} active={active.bold} onClick={() => exec("bold")}
           preview={<span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: 13 }}>Bold text</span>}>
-          <span className="font-bold text-[12px]">B</span></TBtn>
+          <span className="font-bold text-body">B</span></TBtn>
         <TBtn tip={`Italic (${mod}+I) → *text*`} active={active.italic} onClick={() => exec("italic")}
           preview={<span style={{ fontStyle: "italic", color: "var(--text-secondary)", fontSize: 13 }}>Italic text</span>}>
-          <span className="italic text-[12px]">I</span></TBtn>
+          <span className="italic text-body">I</span></TBtn>
         <TBtn tip="Strikethrough → ~~text~~" active={active.strikethrough} onClick={() => exec("strikeThrough")}
           preview={<span style={{ textDecoration: "line-through", color: "var(--text-muted)", fontSize: 13 }}>Strikethrough</span>}>
-          <span className="line-through text-[12px]">S</span></TBtn>
+          <span className="line-through text-body">S</span></TBtn>
         <TBtn tip="Inline code → `code`" active={active.code} onClick={wrapCode}
           preview={<code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, background: "var(--border)", padding: "2px 6px", borderRadius: 4, color: "var(--accent)" }}>inline code</code>}>
-          <span className="font-mono text-[10px]">{`</>`}</span></TBtn>
+          <span className="font-mono text-caption">{`</>`}</span></TBtn>
       </div>
       {sep}
       {/* Lists */}
@@ -1823,7 +1823,7 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
           <div className="absolute top-full left-0 mt-1 p-2 rounded-lg shadow-xl z-[9998]"
             style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}
             onMouseDown={(e) => e.preventDefault()}>
-            <div className="text-[10px] mb-1.5 text-center" style={{ color: "var(--text-muted)" }}>
+            <div className="text-caption mb-1.5 text-center" style={{ color: "var(--text-muted)" }}>
               {tableHover.col > 0 ? `${tableHover.col} x ${tableHover.row}` : "Select size"}
             </div>
             <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
@@ -1931,10 +1931,10 @@ function BundleCreatorModal({
       >
         <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
-          <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle. Drag order via arrows.</p>
+          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle. Drag order via arrows.</p>
         </div>
         <div className="px-5 py-4 shrink-0">
-          <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
+          <label className="text-caption font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
           <input
             type="text"
             value={title}
@@ -1947,13 +1947,13 @@ function BundleCreatorModal({
         </div>
         <div className="px-5 shrink-0">
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
+            <label className="text-caption font-medium" style={{ color: "var(--text-secondary)" }}>
               Documents <span style={{ color: "var(--text-faint)" }}>({selectedIds.length} selected)</span>
             </label>
             {selectedIds.length > 0 && (
               <button
                 onClick={() => setSelectedIds([])}
-                className="text-[10px] px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                className="text-caption px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                 style={{ color: "var(--text-faint)" }}
               >
                 Clear
@@ -1965,13 +1965,13 @@ function BundleCreatorModal({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search documents..."
-            className="w-full px-3 py-1.5 rounded-md text-[12px] outline-none mb-2"
+            className="w-full px-3 py-1.5 rounded-md text-body outline-none mb-2"
             style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
           />
         </div>
         <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto">
           {filteredDocs.length === 0 ? (
-            <div className="text-[11px] text-center py-6" style={{ color: "var(--text-faint)" }}>
+            <div className="text-caption text-center py-6" style={{ color: "var(--text-faint)" }}>
               {search ? "No documents match." : "No documents available. Save a doc to the cloud first."}
             </div>
           ) : (
@@ -1983,7 +1983,7 @@ function BundleCreatorModal({
                   <div
                     key={doc.id}
                     onClick={() => toggle(doc.id)}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-caption cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
                     style={{
                       background: isSelected ? "var(--accent-dim)" : "var(--background)",
                       color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
@@ -2000,7 +2000,7 @@ function BundleCreatorModal({
                       {isSelected && <Check width={10} height={10} style={{ color: "#fff" }} />}
                     </div>
                     {isSelected && (
-                      <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--accent)" }}>{order + 1}</span>
+                      <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>{order + 1}</span>
                     )}
                     <span className="flex-1 truncate">{doc.title}</span>
                     {isSelected && (
@@ -2034,7 +2034,7 @@ function BundleCreatorModal({
         <div className="px-5 py-3 flex justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors hover:bg-[var(--toggle-bg)]"
+            className="px-3 py-1.5 rounded-md text-caption font-medium transition-colors hover:bg-[var(--toggle-bg)]"
             style={{ color: "var(--text-muted)" }}
           >
             Cancel
@@ -2050,7 +2050,7 @@ function BundleCreatorModal({
               }
             }}
             disabled={!canCreate}
-            className="px-4 py-1.5 rounded-md text-[11px] font-medium transition-opacity"
+            className="px-4 py-1.5 rounded-md text-caption font-medium transition-opacity"
             style={{
               background: "var(--accent)",
               color: "#fff",
@@ -2270,14 +2270,14 @@ function BundleShareModal({
         >
           <div className="px-5 pt-5 pb-3">
             <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Make Bundle Private</h2>
-            <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>
               Bundle will be unpublished. Pick which documents inside should also revert to private.
             </p>
           </div>
           <div className="px-5 pb-3 flex-1 min-h-0 overflow-auto">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>{revertDocIds.size} of {docs.length} selected</span>
-              <div className="flex gap-1.5 text-[10px]">
+              <span className="text-caption font-medium" style={{ color: "var(--text-muted)" }}>{revertDocIds.size} of {docs.length} selected</span>
+              <div className="flex gap-1.5 text-caption">
                 <button onClick={() => setRevertDocIds(new Set(docs.map(d => d.id)))} className="px-1.5 py-0.5 rounded hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>All</button>
                 <button onClick={() => setRevertDocIds(new Set())} className="px-1.5 py-0.5 rounded hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>None</button>
               </div>
@@ -2296,7 +2296,7 @@ function BundleShareModal({
                   <div
                     key={d.id}
                     onClick={() => toggleRevert(d.id)}
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-caption cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
                     style={{
                       background: isSelected ? "var(--accent-dim)" : "var(--background)",
                       color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
@@ -2314,7 +2314,7 @@ function BundleShareModal({
                       {isSelected && <Check width={10} height={10} style={{ color: "#fff" }} />}
                     </div>
                     <span className="flex-1 truncate">{d.title || "Untitled"}</span>
-                    <span className="shrink-0 text-[9px]" style={{ color: status.color }}>{status.label}</span>
+                    <span className="shrink-0 text-caption" style={{ color: status.color }}>{status.label}</span>
                   </div>
                 );
               })}
@@ -2323,7 +2323,7 @@ function BundleShareModal({
           <div className="flex items-center justify-end gap-2 px-5 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
             <button
               onClick={() => setShowRevertPicker(false)}
-              className="px-3 py-1.5 rounded-md text-[11px] font-medium hover:bg-[var(--toggle-bg)]"
+              className="px-3 py-1.5 rounded-md text-caption font-medium hover:bg-[var(--toggle-bg)]"
               style={{ color: "var(--text-muted)" }}
             >
               Cancel
@@ -2331,7 +2331,7 @@ function BundleShareModal({
             <button
               onClick={submitRevert}
               disabled={reverting}
-              className="px-4 py-1.5 rounded-md text-[11px] font-medium"
+              className="px-4 py-1.5 rounded-md text-caption font-medium"
               style={{ background: "#ef4444", color: "#fff", opacity: reverting ? 0.5 : 1 }}
             >
               {reverting ? "Working..." : "Make Private"}
@@ -2347,18 +2347,18 @@ function BundleShareModal({
       <div className="flex items-start gap-2">
         <ShieldAlert width={14} height={14} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-medium" style={{ color: "var(--text-primary)" }}>
+          <p className="text-caption font-medium" style={{ color: "var(--text-primary)" }}>
             {loading
               ? "Loading bundle documents..."
               : `${docs.length} document${docs.length === 1 ? "" : "s"} share this bundle's access`}
           </p>
-          <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>
             Anything you change here also applies to every document inside. Each doc is also reachable directly at /d/&lt;id&gt;.
           </p>
           {!loading && docs.length > 0 && (
             <ul className="mt-1.5 space-y-0.5 max-h-24 overflow-auto">
               {docs.map(d => (
-                <li key={d.id} className="text-[10px] truncate" style={{ color: "var(--text-secondary)" }}>• {d.title || "Untitled"}</li>
+                <li key={d.id} className="text-caption truncate" style={{ color: "var(--text-secondary)" }}>• {d.title || "Untitled"}</li>
               ))}
             </ul>
           )}
@@ -7490,7 +7490,7 @@ ${clone.innerHTML}
             void copied; void _setCopied;
             return (<>
               <button
-                className="text-[10px] font-mono shrink-0 transition-all hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
+                className="text-caption font-mono shrink-0 transition-all hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                 style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
                 title={`Copy https://mdfy.app/${cid}`}
                 onClick={async (e) => {
@@ -7512,7 +7512,7 @@ ${clone.innerHTML}
               </button>
               {viewCount > 0 && (
                 <span
-                  className="text-[10px] shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
+                  className="text-caption shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                   style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
                   title={`${viewCount} total ${viewCount === 1 ? "view" : "views"}`}
                 >
@@ -7530,7 +7530,7 @@ ${clone.innerHTML}
             if (perm === "readonly") return (
               <div className="inline-flex items-center gap-1.5">
                 <span
-                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
+                  className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
                   style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
                   title="View only — duplicate to edit"
                 >
@@ -7562,7 +7562,7 @@ ${clone.innerHTML}
                       }
                     });
                   }}
-                  className="text-[10px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
+                  className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
                   style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
                   title="Duplicate to edit"
                 >
@@ -7575,7 +7575,7 @@ ${clone.innerHTML}
           })()}
           </span>
           {/* Save status — animated icon + label */}
-          <span className="hidden lg:inline-flex items-center gap-1 text-[10px] shrink-0">
+          <span className="hidden lg:inline-flex items-center gap-1 text-caption shrink-0">
             {autoSave.isSaving && (
               <>
                 <Loader2 width={10} height={10} className="animate-spin" style={{ color: "var(--text-faint)" }} />
@@ -7680,7 +7680,7 @@ ${clone.innerHTML}
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
-            className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
+            className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
             style={{
               background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
               color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
@@ -7700,7 +7700,7 @@ ${clone.innerHTML}
               const active = !showOnboarding && bundleView === mode;
               return (
                 <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); }} title={`${label} (Alt+${shortcut})`}
-                  className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
+                  className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                   style={{
                     background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
                     color: active ? "var(--accent)" : "var(--text-muted)",
@@ -7732,7 +7732,7 @@ ${clone.innerHTML}
                 onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); } }}
                 disabled={disabled}
                 title={`${label} (Alt+${shortcut})`}
-                className="flex items-center gap-1 px-2 h-6 text-[10px] font-medium transition-colors"
+                className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                 style={{
                   background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
                   color: active ? "var(--accent)" : "var(--text-muted)",
@@ -7771,13 +7771,13 @@ ${clone.innerHTML}
                     />
                   ) : null}
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-caption font-bold shrink-0${editor.avatarUrl ? " hidden" : ""}`}
                     style={{ background: `hsl(${editor.email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 60%, 50%)`, color: "#fff", outline: "2px solid var(--background)" }}
                     title={editor.displayName || editor.email}
                   >
                     {(editor.displayName || editor.email || "?")[0].toUpperCase()}
                   </div>
-                  <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
+                  <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover/presence:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                     <div className="font-medium" style={{ color: "var(--text-primary)" }}>{editor.displayName || "Unknown"}</div>
                     <div style={{ color: "var(--text-muted)" }}>{editor.email}</div>
@@ -7786,7 +7786,7 @@ ${clone.innerHTML}
                 </div>
               ))}
               {otherEditors.length > 5 && (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold shrink-0"
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-caption font-bold shrink-0"
                   style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", outline: "2px solid var(--background)" }}>
                   +{otherEditors.length - 5}
                 </div>
@@ -7797,7 +7797,7 @@ ${clone.innerHTML}
           {/* Theme toggle — hidden on mobile, in menu instead */}
           <button
             onClick={toggleTheme}
-            className="px-2 h-6 rounded-md transition-colors text-[11px] hidden sm:flex items-center"
+            className="px-2 h-6 rounded-md transition-colors text-caption hidden sm:flex items-center"
             style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
@@ -7825,7 +7825,7 @@ ${clone.innerHTML}
                 >
                   <Bell width={13} height={13} />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ background: "var(--accent)", color: "#000" }}>
+                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-caption font-bold" style={{ background: "var(--accent)", color: "#000" }}>
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
@@ -7835,11 +7835,11 @@ ${clone.innerHTML}
                     className="absolute top-full right-0 mt-1 w-72 max-h-80 overflow-auto rounded-lg shadow-xl z-[9999]"
                     style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
                   >
-                    <div className="px-3 py-2 text-[10px] font-semibold" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
+                    <div className="px-3 py-2 text-caption font-semibold" style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)" }}>
                       Notifications
                     </div>
                     {notifications.length === 0 ? (
-                      <div className="px-3 py-4 text-center text-[11px]" style={{ color: "var(--text-faint)" }}>No notifications</div>
+                      <div className="px-3 py-4 text-center text-caption" style={{ color: "var(--text-faint)" }}>No notifications</div>
                     ) : (
                       notifications.map((n) => (
                         <button
@@ -7893,10 +7893,10 @@ ${clone.innerHTML}
                         >
                           <img src={dicebearUrl(n.fromUserName || "user", 24)} alt="" className="w-6 h-6 rounded-full shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[11px] leading-relaxed" style={{ color: n.read ? "var(--text-muted)" : "var(--text-primary)" }}>
+                            <p className="text-caption leading-relaxed" style={{ color: n.read ? "var(--text-muted)" : "var(--text-primary)" }}>
                               <span className="font-medium">{n.fromUserName}</span> {n.message}
                             </p>
-                            <p className="text-[9px] mt-0.5" style={{ color: "var(--text-faint)" }}>
+                            <p className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>
                               {new Date(n.createdAt).toLocaleDateString()} {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
@@ -7915,7 +7915,7 @@ ${clone.innerHTML}
               <button
                 onClick={handleShare}
                 disabled={shareState === "sharing"}
-                className="px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1.5"
+                className="px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1.5"
                 title={`Share (${mod}+S)`}
                 style={{
                   background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
@@ -7929,7 +7929,7 @@ ${clone.innerHTML}
                 )}
                 <span className="hidden lg:inline">{shareButtonLabel}</span>
               </button>
-              <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+              <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                 {(() => {
                   const ct = tabs.find(t => t.id === activeTabId);
@@ -7970,7 +7970,7 @@ ${clone.innerHTML}
                   <button
                     onClick={() => { if (!enabled) return; setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); setShowOutlinePanel(false); }}
                     disabled={!enabled}
-                    className="px-2 h-6 rounded-md transition-colors flex items-center gap-1.5 text-[10px] font-medium"
+                    className="px-2 h-6 rounded-md transition-colors flex items-center gap-1.5 text-caption font-medium"
                     style={{
                       background: !enabled ? "var(--toggle-bg)" : (showAIPanel || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)"),
                       color: !enabled ? "var(--text-faint)" : (showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-muted)"),
@@ -8098,14 +8098,14 @@ ${clone.innerHTML}
                       <>
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         <div className="px-3 py-1.5">
-                          <div className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
+                          <div className="text-caption font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
                           {/* Rotate edit token */}
                           {confirmRotateToken ? (
                             <div className="py-1.5">
-                              <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>This will invalidate all existing edit links.</p>
+                              <p className="text-caption mb-2" style={{ color: "var(--text-muted)" }}>This will invalidate all existing edit links.</p>
                               <div className="flex gap-1">
-                                <button onClick={() => setConfirmRotateToken(false)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
-                                <button onClick={handleRotateToken} disabled={rotatingToken} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                                <button onClick={() => setConfirmRotateToken(false)} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                                <button onClick={handleRotateToken} disabled={rotatingToken} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
                                   {rotatingToken ? "Rotating..." : "Confirm"}
                                 </button>
                               </div>
@@ -8123,10 +8123,10 @@ ${clone.innerHTML}
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         {confirmDeleteDoc ? (
                           <div className="px-3 py-2">
-                            <p className="text-[10px] mb-2" style={{ color: "var(--text-muted)" }}>Delete this shared document?</p>
+                            <p className="text-caption mb-2" style={{ color: "var(--text-muted)" }}>Delete this shared document?</p>
                             <div className="flex gap-1">
-                              <button onClick={() => setConfirmDeleteDoc(false)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
-                              <button onClick={handleDelete} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
+                              <button onClick={() => setConfirmDeleteDoc(false)} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                              <button onClick={handleDelete} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
                             </div>
                           </div>
                         ) : (
@@ -8154,7 +8154,7 @@ ${clone.innerHTML}
         {(title || (() => { const ct = tabs.find(t => t.id === activeTabId); return ct?.permission === "readonly"; })()) && (
           <div className="flex sm:hidden items-center gap-2 px-3 pb-1.5 min-w-0">
             {title && (
-              <span className="text-[11px] truncate flex-1 min-w-0" style={{ color: "var(--text-muted)" }}>
+              <span className="text-caption truncate flex-1 min-w-0" style={{ color: "var(--text-muted)" }}>
                 {title}
               </span>
             )}
@@ -8164,7 +8164,7 @@ ${clone.innerHTML}
               if (!cid) return null;
               return (
                 <button
-                  className="text-[8px] font-mono px-1 py-0.5 rounded shrink-0"
+                  className="text-caption font-mono px-1 py-0.5 rounded shrink-0"
                   style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                   title="Click to copy document URL"
                   onClick={async () => { try { await navigator.clipboard.writeText(`https://mdfy.app/${cid}`); showToast("URL copied", "success"); } catch {} }}
@@ -8174,16 +8174,16 @@ ${clone.innerHTML}
               );
             })()}
             {autoSave.isSaving && (
-              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
+              <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>Saving...</span>
             )}
             {autoSave.error && !autoSave.isSaving && (
-              <span className="text-[9px] font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
+              <span className="text-caption font-mono shrink-0" style={{ color: "#ef4444" }}>{autoSave.error}</span>
             )}
             {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
-              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
+              <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>
             )}
             {docId && isOwner && viewCount > 0 && (
-              <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+              <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
                 {viewCount} {viewCount === 1 ? "view" : "views"}
               </span>
             )}
@@ -8193,7 +8193,7 @@ ${clone.innerHTML}
               if (perm === "readonly") return (
                 <div className="inline-flex items-center gap-1">
                   <span
-                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
+                    className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
                     style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
                     title="View only — duplicate to edit"
                   >
@@ -8225,7 +8225,7 @@ ${clone.innerHTML}
                         }
                       });
                     }}
-                    className="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
+                    className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
                     style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
                     title="Duplicate to edit"
                   >
@@ -8252,7 +8252,7 @@ ${clone.innerHTML}
           <div className="flex gap-2">
             <button
               onClick={handleFormatAiConversation}
-              className="px-2.5 py-1 rounded font-mono text-[11px]"
+              className="px-2.5 py-1 rounded font-mono text-caption"
               style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}
               title="Format AI conversation as a clean document"
             >
@@ -8260,7 +8260,7 @@ ${clone.innerHTML}
             </button>
             <button
               onClick={() => setShowAiBanner(false)}
-              className="px-2 py-1 rounded font-mono text-[11px]"
+              className="px-2 py-1 rounded font-mono text-caption"
               style={{ color: "var(--text-muted)" }}
               title="Dismiss this suggestion"
             >
@@ -8310,7 +8310,7 @@ ${clone.innerHTML}
           {/* Header — toggle button + LIBRARY + actions; search row expands below when toggled */}
           <div className="shrink-0 select-none" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <div
-            className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono"
+            className="flex items-center justify-between px-2 py-1.5 text-caption font-mono"
             style={{ color: "var(--text-muted)", cursor: "default" }}
           >
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -8344,7 +8344,7 @@ ${clone.innerHTML}
                       <button
                         key={key}
                         onClick={(e) => { e.stopPropagation(); setSortMode(key); setShowSortMenu(false); }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                        className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)]"
                         style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
                       >
                         {label}
@@ -8394,11 +8394,11 @@ ${clone.innerHTML}
                   <div className="absolute top-full right-0 mt-1 w-44 rounded-lg shadow-xl py-1 z-[9998]"
                     style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
                     <button onClick={() => { setShowLibraryNewMenu(false); addTab(); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
                       <FileIcon width={11} height={11} /> New document
                     </button>
                     <button onClick={() => { setShowLibraryNewMenu(false); setShowMyBundles(true); setBundleCreatorDocs([]); setShowBundleCreator(true); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
                       <Layers width={11} height={11} /> New bundle
                     </button>
                     <button onClick={() => {
@@ -8408,12 +8408,12 @@ ${clone.innerHTML}
                       fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
                       setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
                     }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
                       <FolderPlus width={11} height={11} /> New folder
                     </button>
                     <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
                     <button onClick={() => { setShowLibraryNewMenu(false); importFileRef.current?.click(); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
                       <Download width={11} height={11} /> Import files…
                     </button>
                   </div>
@@ -8472,12 +8472,12 @@ ${clone.innerHTML}
                 onChange={(e) => setSidebarSearch(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Escape") { setSidebarSearch(""); (e.currentTarget as HTMLInputElement).blur(); } }}
                 placeholder="Search…"
-                className="w-full text-[11px] py-1 bg-transparent outline-none"
+                className="w-full text-caption py-1 bg-transparent outline-none"
                 style={{ color: "var(--text-secondary)", border: "none" }}
               />
               {sidebarSearch ? (
                 <>
-                  <span className="shrink-0 text-[9px] tabular-nums" style={{ color: "var(--text-faint)" }}>
+                  <span className="shrink-0 text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
                     {searchMatchCount}
                   </span>
                   <button
@@ -8491,7 +8491,7 @@ ${clone.innerHTML}
                 </>
               ) : (
                 <kbd
-                  className="shrink-0 inline-flex items-center justify-center text-[9px] font-mono px-1 h-4 rounded leading-none"
+                  className="shrink-0 inline-flex items-center justify-center text-caption font-mono px-1 h-4 rounded leading-none"
                   style={{ color: "var(--text-faint)", background: "var(--background)", border: "1px solid var(--border-dim)", letterSpacing: "0.02em" }}
                   title="Press to focus search"
                 >⌘K</kbd>
@@ -8583,14 +8583,14 @@ ${clone.innerHTML}
           />
           {/* Help panel — global, under FILES header */}
           {showSidebarHelp && (
-            <div className="shrink-0 mx-2 mt-1.5 mb-1.5 p-2.5 rounded-md text-[10px] space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
-              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
+            <div className="shrink-0 mx-2 mt-1.5 mb-1.5 p-2.5 rounded-md text-caption space-y-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+              <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Filters</div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--accent)", fontFamily: "'SF Mono', monospace" }}>ALL</span><span style={{ color: "var(--text-muted)" }}>All your documents</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>PRIVATE</span><span style={{ color: "var(--text-muted)" }}>Not shared with anyone (includes synced)</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SHARED</span><span style={{ color: "var(--text-muted)" }}>Shared with others</span></div>
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Desktop, CLI, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
-              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
+              <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
               <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private / Draft</span></div>
               <div className="flex items-center gap-2"><CircleCheck width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Synced (VS Code, Desktop, CLI, MCP)</span></div>
               <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared (anyone with link)</span></div>
@@ -8604,7 +8604,7 @@ ${clone.innerHTML}
                 <span style={{ color: "var(--text-muted)" }}>Shared + Synced</span>
               </div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
-              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Bundle Icons</div>
+              <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Bundle Icons</div>
               <div className="flex items-center gap-2"><Layers width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private bundle</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 14, height: 12 }}>
@@ -8651,12 +8651,12 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
-                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
+                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
                   </div>
                   {showRecent && (
                     recentTabs.length === 0 ? (
-                      <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>No recently opened documents</div>
+                      <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>No recently opened documents</div>
                     ) : (
                       <div className="pl-2 pr-2 pb-1 space-y-0.5">
                         {recentTabs.map(tab => (
@@ -8668,7 +8668,7 @@ ${clone.innerHTML}
                             title={tab.title || "Untitled"}
                           >
                             {tab.kind === "bundle" ? renderBundleStatusIcon(tab.bundleId, 13) : <DocStatusIcon tab={tab} isActive={false} />}
-                            <span className="truncate flex-1 text-[12px]">{tab.title || "Untitled"}</span>
+                            <span className="truncate flex-1 text-body">{tab.title || "Untitled"}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== tab.id)); }}
                               className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
@@ -8705,7 +8705,7 @@ ${clone.innerHTML}
                         className={`shrink-0 transition-transform ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                         style={{ transform: showMyBundles ? "rotate(0deg)" : "rotate(-90deg)" }}
                       />
-                      <span className={`flex-1 text-[11px] font-medium transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
+                      <span className={`flex-1 text-caption font-medium transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
                       {showMyBundles && bundleFolders.length > 0 && (
                         <Tooltip text={anyBundleFolderExpanded ? "Collapse all bundle folders" : "Expand all bundle folders"}>
                           <button
@@ -8724,12 +8724,12 @@ ${clone.innerHTML}
                           </button>
                         </Tooltip>
                       )}
-                      <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
+                      <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
                     </div>
                   );
                 })()}
                 {showMyBundles && bundles.length === 0 && folders.filter(f => f.section === "bundles").length === 0 && (
-                  <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                  <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>
                     No bundles yet
                   </div>
                 )}
@@ -8772,7 +8772,7 @@ ${clone.innerHTML}
                         if (!bundle) return null;
                         return (
                           <Tooltip text={`${bundle.documentCount} document${bundle.documentCount === 1 ? "" : "s"} in this bundle`}>
-                            <span className="text-[9px]" style={{ color: "var(--text-faint)", opacity: 0.7 }}>
+                            <span className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.7 }}>
                               {bundle.documentCount}
                             </span>
                           </Tooltip>
@@ -8953,7 +8953,7 @@ ${clone.innerHTML}
                           className={`shrink-0 transition-transform ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                           style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                         />
-                        <span className={`flex-1 text-[11px] font-medium transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
+                        <span className={`flex-1 text-caption font-medium transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
                         {showMyDocs && myFolders.length > 0 && (
                           <Tooltip text={anyMyFolderExpanded ? "Collapse all folders" : "Expand all folders"}>
                             <button
@@ -8972,7 +8972,7 @@ ${clone.innerHTML}
                             </button>
                           </Tooltip>
                         )}
-                        <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>
+                        <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>
                       </div>
                     );
                   })()}
@@ -8995,7 +8995,7 @@ ${clone.innerHTML}
                               key={f}
                               onClick={() => { setDocFilter(f); localStorage.setItem("mdfy-doc-filter", f); }}
                               title={tips[f]}
-                              className="flex-1 text-[10px] py-1 rounded transition-colors"
+                              className="flex-1 text-caption py-1 rounded transition-colors"
                               style={{
                                 background: isActive ? "var(--accent-dim)" : "transparent",
                                 color: isActive ? "var(--accent)" : "var(--text-faint)",
@@ -9039,7 +9039,7 @@ ${clone.innerHTML}
                           <DocStatusIcon tab={tab} isActive={isActive} />
                         )}
                         renderTabMeta={(tab) => tab.lastOpenedAt ? (
-                          <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>
+                          <span className="text-caption font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>
                             {relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}
                           </span>
                         ) : null}
@@ -9152,7 +9152,7 @@ ${clone.innerHTML}
                           removed to avoid two competing drop zones. */}
 
                       {myTabs.length === 0 && (
-                        <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                        <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>
                           {docFilter === "all" ? "No documents yet" :
                            docFilter === "synced" ? (!isAuthenticated ? "Sign in to see synced docs" : "No synced documents") :
                            docFilter === "private" ? "No private documents" :
@@ -9165,7 +9165,7 @@ ${clone.innerHTML}
                       {sidebarSearch.length >= 3 && (
                         <>
                           {isCloudSearching && (
-                            <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                            <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>
                               <span className="inline-block animate-spin mr-1.5" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
                               Searching cloud...
                             </div>
@@ -9176,7 +9176,7 @@ ${clone.innerHTML}
                             if (uniqueResults.length === 0) return null;
                             return (
                               <>
-                                <div className="px-3 pt-2 pb-1 text-[9px] font-semibold uppercase" style={{ color: "var(--text-faint)", letterSpacing: "0.5px" }}>
+                                <div className="px-3 pt-2 pb-1 text-caption font-semibold uppercase" style={{ color: "var(--text-faint)", letterSpacing: "0.5px" }}>
                                   Cloud results ({uniqueResults.length})
                                 </div>
                                 {uniqueResults.map(r => {
@@ -9201,8 +9201,8 @@ ${clone.innerHTML}
                                     >
                                       <Search width={11} height={11} className="shrink-0" style={{ color: "var(--accent)" }} />
                                       <div className="flex-1 min-w-0">
-                                        <div className="text-[11px] font-medium truncate" style={{ color: "var(--text-primary)" }}>{r.title}</div>
-                                        <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{snippet || ago}</div>
+                                        <div className="text-caption font-medium truncate" style={{ color: "var(--text-primary)" }}>{r.title}</div>
+                                        <div className="text-caption truncate" style={{ color: "var(--text-faint)" }}>{snippet || ago}</div>
                                       </div>
                                     </div>
                                   );
@@ -9233,10 +9233,10 @@ ${clone.innerHTML}
                   <button className="p-0.5 rounded hover:bg-[var(--toggle-bg)] transition-colors mr-1" style={{ color: "var(--text-faint)" }}>
                     {showConcepts ? <ChevronDown width={11} height={11} /> : <ChevronRight width={11} height={11} />}
                   </button>
-                  <span className={`flex-1 text-[11px] font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>
+                  <span className={`flex-1 text-caption font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>
                     Concepts
                   </span>
-                  <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--text-faint)" }}>
+                  <span className="text-caption tabular-nums shrink-0" style={{ color: "var(--text-faint)" }}>
                     {conceptIndex.concepts.length}
                   </span>
                 </div>
@@ -9248,19 +9248,19 @@ ${clone.innerHTML}
                         <button
                           key={c.id}
                           onClick={() => setOpenedConceptId(c.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1 text-[11px] cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
+                          className="w-full flex items-center gap-2 px-2 py-1 text-caption cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <span aria-hidden className="shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: isCross ? "var(--accent)" : "var(--text-faint)" }} />
                           <span className="flex-1 truncate text-left">{c.label}</span>
-                          <span className="text-[9px] tabular-nums shrink-0" style={{ color: isCross ? "var(--accent)" : "var(--text-faint)" }}>
+                          <span className="text-caption tabular-nums shrink-0" style={{ color: isCross ? "var(--accent)" : "var(--text-faint)" }}>
                             {c.docCount}
                           </span>
                         </button>
                       );
                     })}
                     {conceptIndex.concepts.length > 30 && (
-                      <div className="px-2 py-1 text-[9px]" style={{ color: "var(--text-faint)" }}>
+                      <div className="px-2 py-1 text-caption" style={{ color: "var(--text-faint)" }}>
                         +{conceptIndex.concepts.length - 30} more
                       </div>
                     )}
@@ -9269,7 +9269,7 @@ ${clone.innerHTML}
               </div>
             )}
             {isAuthenticated && conceptsLoading && !conceptIndex && (
-              <div className="px-2 py-1 text-[10px]" style={{ color: "var(--text-faint)" }}>Loading concepts…</div>
+              <div className="px-2 py-1 text-caption" style={{ color: "var(--text-faint)" }}>Loading concepts…</div>
             )}
 
             {/* ── Section 2: SHARED WITH ME ── */}
@@ -9336,8 +9336,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
-                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
+                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
                   </div>
                   {showSharedDocs && (
                     <div className="overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9366,7 +9366,7 @@ ${clone.innerHTML}
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{tab.title || "Untitled"}</span>
                             {showSharedOwner && tab.ownerEmail && (
-                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
+                              <span className="truncate block text-caption" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
                             )}
                           </div>
                           {tab.cloudId && unreadDocIds.has(tab.cloudId) && (
@@ -9399,7 +9399,7 @@ ${clone.innerHTML}
                                 <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
                               )}
                               <span className="truncate flex-1">{folder.name}</span>
-                              <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
+                              <span className="text-caption opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0">{folderTabs.length}</span>
                             </div>
                             {!folder.collapsed && (
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
@@ -9418,7 +9418,7 @@ ${clone.innerHTML}
                                     <div className="flex-1 min-w-0">
                                       <span className="truncate block">{tab.title || "Untitled"}</span>
                                       {showSharedOwner && tab.ownerEmail && (
-                                        <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
+                                        <span className="truncate block text-caption" style={{ color: "var(--text-faint)" }}>{tab.ownerEmail}</span>
                                       )}
                                     </div>
                                   </div>
@@ -9472,7 +9472,7 @@ ${clone.innerHTML}
                           <div className="flex-1 min-w-0">
                             <span className="truncate block">{doc.title || "Untitled"}</span>
                             {showSharedOwner && ((doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName) && (
-                              <span className="truncate block text-[9px]" style={{ color: "var(--text-faint)" }}>{(doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName}</span>
+                              <span className="truncate block text-caption" style={{ color: "var(--text-faint)" }}>{(doc as { ownerEmail?: string }).ownerEmail || (doc as { ownerName?: string }).ownerName}</span>
                             )}
                           </div>
                           {unreadDocIds.has(doc.id) && (
@@ -9483,7 +9483,7 @@ ${clone.innerHTML}
                       {/* Drop zone for removing from shared folder */}
                       {dragTabId && (
                         <div
-                          className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
+                          className="mx-2 mt-2 px-3 py-2 rounded-md text-caption text-center transition-colors"
                           style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "shared-root" ? "var(--accent-dim)" : "transparent" }}
                           onDragOver={(e) => { e.preventDefault(); setDragOverTarget("shared-root"); }}
                           onDragLeave={() => setDragOverTarget(null)}
@@ -9498,7 +9498,7 @@ ${clone.innerHTML}
                         </div>
                       )}
                       {totalShared === 0 && (
-                        <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                        <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>
                           {!isAuthenticated ? "Sign in to see shared docs" : "No shared documents"}
                         </div>
                       )}
@@ -9525,8 +9525,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
-                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
-                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
+                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
                     <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
@@ -9541,7 +9541,7 @@ ${clone.innerHTML}
                             }
                             setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t));
                           }}
-                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}
+                            className="text-caption opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}
                             title="Restore this document">
                             Restore
                           </button>
@@ -9550,7 +9550,7 @@ ${clone.innerHTML}
                             if (!tab.permission || tab.permission === "mine") hardDeleteOnServer(tab);
                             setTabs(prev => prev.filter(t => t.id !== tab.id));
                           }}
-                            className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}
+                            className="text-caption opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}
                             title={(!tab.permission || tab.permission === "mine") ? "Delete permanently" : "Remove from list"}>
                             {(!tab.permission || tab.permission === "mine") ? "Delete" : "Remove"}
                           </button>
@@ -9573,7 +9573,7 @@ ${clone.innerHTML}
                               setTimeout(() => { btn.dataset.confirm = ""; btn.textContent = "Empty Trash"; btn.style.color = "var(--text-faint)"; }, 3000);
                             }
                           }}
-                          className="w-full text-[9px] px-2 py-1 rounded-md transition-colors text-center mt-1"
+                          className="w-full text-caption px-2 py-1 rounded-md transition-colors text-center mt-1"
                           style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
                           title="Permanently delete all trashed documents"
                         >
@@ -9581,7 +9581,7 @@ ${clone.innerHTML}
                         </button>
                       )}
                       {trashTabs.length === 0 && (
-                        <div className="px-2.5 py-2 text-[11px]" style={{ color: "var(--text-faint)" }}>Trash is empty</div>
+                        <div className="px-2.5 py-2 text-caption" style={{ color: "var(--text-faint)" }}>Trash is empty</div>
                       )}
                     </div>
                   )}
@@ -9605,8 +9605,8 @@ ${clone.innerHTML}
                       className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
                       style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
                     />
-                    <span className={`flex-1 text-[11px] font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
-                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
+                    <span className={`flex-1 text-caption font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
+                    <span className="text-caption px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
                   </div>
                   {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
                     {exampleTabs.map(tab => (
@@ -9644,7 +9644,7 @@ ${clone.innerHTML}
             ];
             return (
               <div className="shrink-0 flex items-center gap-1 px-2 py-1.5 overflow-x-auto" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-                <span className="shrink-0 text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)", letterSpacing: "0.05em" }}>↓</span>
+                <span className="shrink-0 text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)", letterSpacing: "0.05em" }}>↓</span>
                 {navItems.filter(s => belowViewportSections.has(s.id)).map(s => (
                   <Tooltip key={s.id} text={`Jump to ${s.label}`}>
                     <button
@@ -9653,12 +9653,12 @@ ${clone.innerHTML}
                         const target = root?.querySelector(`[data-section-id="${s.id}"]`) as HTMLElement | null;
                         if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
-                      className="shrink-0 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full transition-colors hover:bg-[var(--accent-dim)]"
+                      className="shrink-0 inline-flex items-center gap-1 text-caption px-2 py-0.5 rounded-full transition-colors hover:bg-[var(--accent-dim)]"
                       style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
                     >
                       <span>{s.label}</span>
                       {s.count > 0 && (
-                        <span className="text-[9px] tabular-nums" style={{ color: "var(--text-faint)" }}>{s.count}</span>
+                        <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>{s.count}</span>
                       )}
                     </button>
                   </Tooltip>
@@ -9672,8 +9672,8 @@ ${clone.innerHTML}
             <div className="shrink-0 px-3 py-2.5" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
               {/* Header: count + clear */}
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{selectedTabIds.size} document{selectedTabIds.size > 1 ? "s" : ""} selected</span>
-                <button onClick={() => setSelectedTabIds(new Set())} className="text-[10px] px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }} title="Clear selection">
+                <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>{selectedTabIds.size} document{selectedTabIds.size > 1 ? "s" : ""} selected</span>
+                <button onClick={() => setSelectedTabIds(new Set())} className="text-caption px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }} title="Clear selection">
                   Clear
                 </button>
               </div>
@@ -9681,18 +9681,18 @@ ${clone.innerHTML}
               <div className="flex gap-1.5">
                 {folders.filter(f => !f.section || f.section === "my").length > 0 && (
                   <div className="relative group/move flex-1">
-                    <button className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }} title="Move to folder">
+                    <button className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md text-caption font-medium transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }} title="Move to folder">
                       <Folder width={11} height={11} /><span>Move</span><ChevronDown width={8} height={8} />
                     </button>
                     <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg py-1 hidden group-hover/move:block" style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", zIndex: 9999 }}>
                       {folders.filter(f => !f.section || f.section === "my").map(f => (
                         <button key={f.id} onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: f.id } : t)); setSelectedTabIds(new Set()); }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                          className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                           <Folder width={11} height={11} style={{ color: "var(--text-faint)" }} />{f.name}
                         </button>
                       ))}
                       <button onClick={() => { setTabs(prev => prev.map(t => selectedTabIds.has(t.id) ? { ...t, folderId: undefined } : t)); setSelectedTabIds(new Set()); }}
-                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-dim)" }}>
+                        className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2" style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-dim)" }}>
                         <FileIcon width={11} height={11} style={{ color: "var(--text-faint)" }} />Root
                       </button>
                     </div>
@@ -9711,7 +9711,7 @@ ${clone.innerHTML}
                   setTabs(prev => prev.map(t => ids.has(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
                   if (ids.has(activeTabId)) { const rem = tabs.filter(t => !t.deleted && !ids.has(t.id)); if (rem.length) switchTab(rem[0].id); }
                   setSelectedTabIds(new Set());
-                }} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors ${confirmTrash ? "bg-[#ef4444]" : ""}`}
+                }} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-caption font-medium transition-colors ${confirmTrash ? "bg-[#ef4444]" : ""}`}
                   style={{ color: confirmTrash ? "#fff" : "#ef4444", border: confirmTrash ? "1px solid #ef4444" : "1px solid rgba(239,68,68,0.3)" }}
                   title="Move to Trash">
                   <Trash2 width={11} height={11} /><span>{confirmTrash ? "Confirm?" : "Trash"}</span>
@@ -9723,7 +9723,7 @@ ${clone.innerHTML}
           {/* Account section at bottom */}
           <div className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
             {authLoading ? (
-              <div className="flex items-center gap-2 px-2 py-1.5 text-[11px]" style={{ color: "var(--text-faint)" }}>
+              <div className="flex items-center gap-2 px-2 py-1.5 text-caption" style={{ color: "var(--text-faint)" }}>
                 <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
               </div>
             ) : isAuthenticated ? (
@@ -9735,8 +9735,8 @@ ${clone.innerHTML}
                 >
                   <img src={resolveAvatar(profile, user, 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0 text-left">
-                    <div className="text-[11px] truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
-                    <div className="text-[9px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
+                    <div className="text-caption truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || user?.email?.split("@")[0]}</div>
+                    <div className="text-caption truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
                   </div>
                   <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)" }} />
                 </button>
@@ -9750,32 +9750,32 @@ ${clone.innerHTML}
                         <div className="flex items-center gap-2.5">
                           <img src={resolveAvatar(profile, user, 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-[12px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || "User"}</div>
-                            <div className="text-[10px] truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
+                            <div className="text-body font-semibold truncate" style={{ color: "var(--text-primary)" }}>{profile?.display_name || "User"}</div>
+                            <div className="text-caption truncate" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
                           </div>
                         </div>
                       </div>
                       {/* Plan info */}
                       <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-medium" style={{ color: "var(--text-faint)" }}>Plan</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                          <span className="text-caption font-medium" style={{ color: "var(--text-faint)" }}>Plan</span>
+                          <span className="text-caption px-1.5 py-0.5 rounded font-mono font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
                             {(profile?.plan || "free").toUpperCase()}
                           </span>
                         </div>
                         {(!profile?.plan || profile.plan === "free") && (
                           <>
-                            <div className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>
+                            <div className="text-caption mb-2" style={{ color: "var(--text-faint)" }}>
                               Unlimited documents, free forever.
                             </div>
                             <button
                               onClick={() => { setShowAuthMenu(false); /* TODO: open pricing */ }}
-                              className="w-full py-1.5 rounded-md text-[10px] font-semibold transition-colors"
+                              className="w-full py-1.5 rounded-md text-caption font-semibold transition-colors"
                               style={{ background: "var(--accent)", color: "#000" }}
                             >
                               Upgrade to Pro
                             </button>
-                            <div className="mt-1.5 text-[9px] space-y-0.5" style={{ color: "var(--text-faint)" }}>
+                            <div className="mt-1.5 text-caption space-y-0.5" style={{ color: "var(--text-faint)" }}>
                               <div>Pro includes:</div>
                               <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Custom domains</div>
                               <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Analytics</div>
@@ -9785,7 +9785,7 @@ ${clone.innerHTML}
                           </>
                         )}
                         {profile?.plan === "pro" && (
-                          <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>
+                          <div className="text-caption" style={{ color: "var(--text-faint)" }}>
                             Full access to all features.
                           </div>
                         )}
@@ -9794,7 +9794,7 @@ ${clone.innerHTML}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <button
                           onClick={() => { setShowExamples(!showExamples); }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <BookOpen width={12} height={12} />
@@ -9806,7 +9806,7 @@ ${clone.innerHTML}
                         </button>
                         <button
                           onClick={() => setSidebarMode(m => m === "simple" ? "detailed" : "simple")}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <List width={12} height={12} />
@@ -9822,7 +9822,7 @@ ${clone.innerHTML}
                         {/* Skin Theme — flyout */}
                         <div className="relative group/skin">
                           <button
-                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             <span className="flex items-center gap-2">
@@ -9833,7 +9833,7 @@ ${clone.innerHTML}
                           </button>
                           <div className="absolute left-full bottom-0 pl-2 hidden group-hover/skin:block z-[9999]"><div className="w-40 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
+                            <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
                             {COLOR_SCHEMES.map(s => (
                               <button
                                 key={s.name}
@@ -9843,8 +9843,8 @@ ${clone.innerHTML}
                               >
                                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview, outline: colorScheme === s.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
                                 <span>
-                                  <span className="text-[11px] block" style={{ fontWeight: colorScheme === s.name ? 600 : 400 }}>{s.label}</span>
-                                  <span className="text-[8px] block" style={{ color: "var(--text-faint)" }}>{s.desc}</span>
+                                  <span className="text-caption block" style={{ fontWeight: colorScheme === s.name ? 600 : 400 }}>{s.label}</span>
+                                  <span className="text-caption block" style={{ color: "var(--text-faint)" }}>{s.desc}</span>
                                 </span>
                               </button>
                             ))}
@@ -9853,7 +9853,7 @@ ${clone.innerHTML}
                         {/* Key Color — flyout */}
                         <div className="relative group/keycolor">
                           <button
-                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             <span className="flex items-center gap-2">
@@ -9864,12 +9864,12 @@ ${clone.innerHTML}
                           </button>
                           <div className="absolute left-full bottom-0 pl-2 hidden group-hover/keycolor:block z-[9999]"><div className="w-32 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
                             style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-[9px] font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                            <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
                             {ACCENT_COLORS.map(c => (
                               <button
                                 key={c.name}
                                 onClick={() => { setAccentColor(c.name); }}
-                                className="w-full flex items-center gap-2 px-3 py-1 text-[11px] transition-colors hover:bg-[var(--menu-hover)] text-left"
+                                className="w-full flex items-center gap-2 px-3 py-1 text-caption transition-colors hover:bg-[var(--menu-hover)] text-left"
                                 style={{
                                   color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
                                   fontWeight: accentColor === c.name ? 600 : 400,
@@ -9886,7 +9886,7 @@ ${clone.innerHTML}
                       <div className="py-1">
                         <button
                           onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <User width={12} height={12} />
@@ -9909,7 +9909,7 @@ ${clone.innerHTML}
                             window.history.replaceState(null, "", "/");
                             try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
                           }}
-                          className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                          className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
                           <LogOut width={12} height={12} />
@@ -10227,44 +10227,44 @@ ${clone.innerHTML}
                     sidebar section + filter. */}
                 {isAuthenticated && conceptIndex && conceptIndex.stats.totalDocs > 0 && (
                   <div className="mb-6 rounded-xl px-4 py-3" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}>
-                    <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
+                    <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
                       Your knowledge
                     </div>
                     <div className="flex items-center gap-4 flex-wrap">
                       <div className="flex flex-col">
-                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalDocs}</span>
-                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>docs</span>
+                        <span className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalDocs}</span>
+                        <span className="text-caption" style={{ color: "var(--text-faint)" }}>docs</span>
                       </div>
                       <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
                       <button
                         onClick={() => { setShowSidebar(true); setShowConcepts(true); }}
                         className="flex flex-col text-left transition-opacity hover:opacity-80"
                       >
-                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalConcepts}</span>
-                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>concepts</span>
+                        <span className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalConcepts}</span>
+                        <span className="text-caption" style={{ color: "var(--text-faint)" }}>concepts</span>
                       </button>
                       <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
                       <button
                         onClick={() => { setShowSidebar(true); setShowConcepts(true); }}
                         className="flex flex-col text-left transition-opacity hover:opacity-80"
                       >
-                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--accent)" }}>{conceptIndex.stats.crossLinkedConcepts}</span>
-                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>cross-linked</span>
+                        <span className="text-display font-bold tabular-nums" style={{ color: "var(--accent)" }}>{conceptIndex.stats.crossLinkedConcepts}</span>
+                        <span className="text-caption" style={{ color: "var(--text-faint)" }}>cross-linked</span>
                       </button>
                       {conceptIndex.stats.decomposedDocs < conceptIndex.stats.totalDocs && (
                         <>
                           <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
                           <div className="flex flex-col" title="Docs that have been AI-decomposed contribute concepts to your library.">
-                            <span className="text-[12px] font-medium tabular-nums" style={{ color: "var(--text-muted)" }}>
+                            <span className="text-body font-medium tabular-nums" style={{ color: "var(--text-muted)" }}>
                               {conceptIndex.stats.decomposedDocs} / {conceptIndex.stats.totalDocs}
                             </span>
-                            <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>analyzed</span>
+                            <span className="text-caption" style={{ color: "var(--text-faint)" }}>analyzed</span>
                           </div>
                         </>
                       )}
                     </div>
                     {conceptIndex.stats.crossLinkedConcepts > 0 && (
-                      <div className="mt-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      <div className="mt-2 text-caption" style={{ color: "var(--text-muted)" }}>
                         {conceptIndex.stats.crossLinkedConcepts} {conceptIndex.stats.crossLinkedConcepts === 1 ? "concept connects" : "concepts connect"} multiple docs in your library.
                       </div>
                     )}
@@ -10282,10 +10282,10 @@ ${clone.innerHTML}
                   return (
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
-                        <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>Recent</div>
+                        <div className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>Recent</div>
                         <button
                           onClick={() => { setRecentTabIds([]); }}
-                          className="text-[10px] cursor-pointer"
+                          className="text-caption cursor-pointer"
                           style={{ color: "var(--text-faint)", background: "none", border: "none", padding: "2px 6px", opacity: 0.6 }}
                         >
                           Clear
@@ -10294,7 +10294,7 @@ ${clone.innerHTML}
                       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                         {recent.map((t, i) => (
                           <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-[13px] text-left cursor-pointer"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-body text-left cursor-pointer"
                             style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
@@ -10309,7 +10309,7 @@ ${clone.innerHTML}
 
                 {/* Create — 3 column grid like About page */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Create</div>
+                  <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Create</div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "New Document", desc: "Blank page", kbd: "", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
@@ -10322,9 +10322,9 @@ ${clone.innerHTML}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
                         <div className="mb-2" style={{ color: item.color }}>{item.icon}</div>
-                        <div className="text-[12px] font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{item.label}</div>
-                        <div className="text-[10px]" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
-                        {item.kbd && <kbd className="text-[9px] font-mono mt-2 px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
+                        <div className="text-body font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                        <div className="text-caption" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                        {item.kbd && <kbd className="text-caption font-mono mt-2 px-1.5 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</kbd>}
                       </button>
                     ))}
                   </div>
@@ -10339,17 +10339,17 @@ ${clone.innerHTML}
                   onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; e.currentTarget.style.background = "var(--surface)"; }}
                   onDrop={(e) => { e.preventDefault(); setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
                   onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); }}>
-                  <p className="text-[13px] font-medium">Drop files here to open</p>
-                  <p className="text-[10px] mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
+                  <p className="text-body font-medium">Drop files here to open</p>
+                  <p className="text-caption mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
                 </div>
 
                 {/* Examples — 2 column grid */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Guides & Examples</div>
+                  <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Guides & Examples</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] text-left cursor-pointer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-body text-left cursor-pointer"
                         style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
@@ -10361,7 +10361,7 @@ ${clone.innerHTML}
                 </div>
                 {/* Explore + Plugins — 2 column grid */}
                 <div className="mb-6">
-                  <div className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Explore</div>
+                  <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Explore</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {([
                       { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c", icon: <Zap width={14} height={14} /> },
@@ -10376,8 +10376,8 @@ ${clone.innerHTML}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
                         <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
                         <div>
-                          <div className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
-                          <div className="text-[10px] mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                          <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                          <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
                         </div>
                       </a>
                     ))}
@@ -10388,7 +10388,7 @@ ${clone.innerHTML}
                 <div className="text-center mt-2 mb-4">
                   <button
                     onClick={() => { localStorage.removeItem("mdfy-welcome-seen"); window.location.reload(); }}
-                    className="text-[11px] cursor-pointer"
+                    className="text-caption cursor-pointer"
                     style={{ color: "var(--text-faint)", background: "none", border: "none", padding: "4px 8px", opacity: 0.6 }}
                   >
                     Replay welcome tour
@@ -10399,7 +10399,7 @@ ${clone.innerHTML}
           ) : (<>
             <div
               data-print-hide
-              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: activeTab?.kind === "bundle" ? "none" : undefined }}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
@@ -10416,18 +10416,18 @@ ${clone.innerHTML}
                   </button>
                   {/* Hint for new users — subtle ring + expanded tooltip */}
                   {!showToolbar && !toolbarHintDismissed && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-40 p-2 rounded-lg text-[10px] leading-relaxed z-[9998]"
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-40 p-2 rounded-lg text-caption leading-relaxed z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--accent)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
                       <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 3 }}>Formatting Tools</p>
                       <p style={{ color: "var(--text-muted)", marginBottom: 6 }}>Click to enable bold, headings, lists, and more.</p>
                       <button
                         onClick={(e) => { e.stopPropagation(); setToolbarHintDismissed(true); try { localStorage.setItem("mdfy-toolbar-hint-dismissed", "1"); } catch {} }}
-                        className="text-[9px]" style={{ color: "var(--text-faint)" }}>Dismiss</button>
+                        className="text-caption" style={{ color: "var(--text-faint)" }}>Dismiss</button>
                     </div>
                   )}
                   {/* Regular hover tooltip (when hint is dismissed) */}
                   {toolbarHintDismissed && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                       <p style={{ color: showToolbar ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Formatting Toolbar {showToolbar ? "ON" : "OFF"}</p>
                       <p>Bold, italic, headings, lists, links, and more.</p>
@@ -10446,7 +10446,7 @@ ${clone.innerHTML}
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 4v8M14 4v8M1 8h14" strokeLinecap="round"/><path d="M5 6L3 8l2 2M11 6l2 2-2 2" strokeLinecap="round"/></svg>
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                     <p style={{ color: !narrowView ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Wide View {!narrowView ? "ON" : "OFF"}</p>
                     <p>Default: narrow, book-like reading width. Click to expand to full width.</p>
@@ -10464,9 +10464,9 @@ ${clone.innerHTML}
                       title="Version history"
                     >
                       <Clock width={11} height={11} />
-                      {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-[7px] flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
+                      {versions.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full text-caption flex items-center justify-center" style={{ background: "var(--accent)", color: "#000", fontWeight: 700 }}>{versions.length}</span>}
                     </button>
-                    <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                       <p style={{ color: showHistory ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Version History</p>
                       <p>{versions.length > 0 ? `${versions.length} version${versions.length > 1 ? "s" : ""} saved. Click to browse and restore.` : "Save history appears after sharing your document."}</p>
@@ -10484,7 +10484,7 @@ ${clone.innerHTML}
                     <List width={13} height={13} />
                   </button>
                   {!showOutlinePanel && (
-                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       Outline
                     </div>
@@ -10500,12 +10500,12 @@ ${clone.innerHTML}
                     title="AI tools"
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
-                    {aiProcessing ? <span className="text-[9px] hidden sm:inline">
+                    {aiProcessing ? <span className="text-caption hidden sm:inline">
                       {(({ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" } as Record<string, string>)[aiProcessing as string]) || "Processing"}...
-                    </span> : <span className="hidden sm:inline text-[10px]">AI</span>}
+                    </span> : <span className="hidden sm:inline text-caption">AI</span>}
                   </button>
                   {!showAIPanel && !aiProcessing && (
-                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       AI Tools
                     </div>
@@ -10535,7 +10535,7 @@ ${clone.innerHTML}
                     <ImageIcon width={11} height={11} />
                   </button>
                   {!showImagePanel && (
-                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       My Images
                     </div>
@@ -10553,7 +10553,7 @@ ${clone.innerHTML}
                     <Upload width={11} height={11} />
                   </button>
                   {!showExportMenu && (
-                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                    <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                       style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       Export (download, print, copy)
                     </div>
@@ -10562,42 +10562,42 @@ ${clone.innerHTML}
                     <div className="absolute top-full right-0 mt-1 w-56 rounded-lg shadow-xl py-1 z-[9999]"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {/* Download section */}
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Download</div>
-                      <button onClick={() => { handleDownloadMd(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <div className="px-3 py-1 text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Download</div>
+                      <button onClick={() => { handleDownloadMd(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <FileText width={12} height={12} />
                         Markdown (.md)
                       </button>
-                      <button onClick={handleDownloadHtml} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <button onClick={handleDownloadHtml} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <Code width={12} height={12} />
                         HTML (.html)
                       </button>
-                      <button onClick={handleDownloadTxt} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <button onClick={handleDownloadTxt} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <FileText width={12} height={12} />
                         Plain Text (.txt)
                       </button>
                       <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
                       {/* Print section */}
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Print</div>
-                      <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <div className="px-3 py-1 text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Print</div>
+                      <button onClick={() => { handleExportPdf(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><rect x="1" y="5" width="14" height="7" rx="1"/><path d="M4 5V2h8v3M4 9h8v5H4z"/></svg>
                         PDF / Print
                       </button>
                       <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
                       {/* Copy as section */}
-                      <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy to Clipboard</div>
-                      <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <div className="px-3 py-1 text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Copy to Clipboard</div>
+                      <button onClick={() => { handleCopyHtml(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <Code width={12} height={12} />
                         Raw HTML
                       </button>
-                      <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <button onClick={() => { handleCopyRichText(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <FileText width={12} height={12} />
                         Rich Text (Docs / Email)
                       </button>
-                      <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <button onClick={() => { handleCopySlack(); setShowExportMenu(false); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 9.5a1.5 1.5 0 110-3H5v1.5A1.5 1.5 0 013.5 9.5zm3 0A1.5 1.5 0 015 8V3.5a1.5 1.5 0 113 0V8a1.5 1.5 0 01-1.5 1.5zm6-3a1.5 1.5 0 110 3H11V8a1.5 1.5 0 011.5-1.5zm-3 0A1.5 1.5 0 0111 8v4.5a1.5 1.5 0 11-3 0V8a1.5 1.5 0 011.5-1.5z"/></svg>
                         Slack (mrkdwn)
                       </button>
-                      <button onClick={() => { handleCopyPlainText(); }} className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                      <button onClick={() => { handleCopyPlainText(); }} className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
                         <FileText width={12} height={12} />
                         Plain Text
                       </button>
@@ -10625,7 +10625,7 @@ ${clone.innerHTML}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
             {activeTab?.readonly && (
               <div
-                className="flex items-center justify-between gap-3 px-3 py-2 text-[11px]"
+                className="flex items-center justify-between gap-3 px-3 py-2 text-caption"
                 style={{
                   background: "var(--accent-dim)",
                   borderTop: "1px solid var(--border-dim)",
@@ -10639,7 +10639,7 @@ ${clone.innerHTML}
                 </div>
                 <button
                   onClick={duplicateCurrentTabAsEditable}
-                  className="px-2.5 py-1 rounded font-mono text-[10px] font-semibold"
+                  className="px-2.5 py-1 rounded font-mono text-caption font-semibold"
                   style={{ background: "var(--accent)", color: "#000", border: "none", cursor: "pointer" }}
                 >
                   Duplicate to edit
@@ -10719,7 +10719,7 @@ ${clone.innerHTML}
             {activeTab?.kind !== "bundle" && !showOnboarding && relatedConcepts.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 flex-wrap shrink-0"
                 style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}>
-                <span className="text-[9px] font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-faint)" }}>
+                <span className="text-caption font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-faint)" }}>
                   Related concepts
                 </span>
                 {relatedConcepts.map(c => {
@@ -10728,7 +10728,7 @@ ${clone.innerHTML}
                     <button
                       key={c.id}
                       onClick={() => setOpenedConceptId(c.id)}
-                      className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-colors hover:bg-[var(--menu-hover)]"
+                      className="text-caption px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-colors hover:bg-[var(--menu-hover)]"
                       style={{ background: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
                       title={`${c.label} appears in ${otherDocCount} ${otherDocCount === 1 ? "doc" : "docs"} across your library`}
                     >
@@ -10812,7 +10812,7 @@ ${clone.innerHTML}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
                       <span style={{ color: "var(--accent)" }}>{mode.icon}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{mode.label}</span>
+                      <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>{mode.label}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {aiChatHistory.length > 0 && (
@@ -10828,7 +10828,7 @@ ${clone.innerHTML}
                       {undoStack.current.length > 1 && (
                         <button
                           onClick={() => { undo(); setAiChatHistory(prev => [...prev, { role: "ai", text: "Reverted to previous version." }]); }}
-                          className="flex items-center gap-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                          className="flex items-center gap-1 px-1.5 h-5 rounded text-caption font-medium transition-colors hover:bg-[var(--menu-hover)]"
                           style={{ color: "var(--text-muted)" }}
                           title="Undo last AI change"
                         >
@@ -10881,12 +10881,12 @@ ${clone.innerHTML}
                           <button
                             onClick={() => item.action === "translate" ? setShowTranslatePicker(prev => !prev) : handleAIAction(item.action)}
                             disabled={!!aiProcessing}
-                            className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                            className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-md text-caption transition-colors hover:bg-[var(--menu-hover)]"
                             style={{ color: "var(--text-secondary)", background: "var(--toggle-bg)" }}>
                             {item.icon}
                             {item.label}
                           </button>
-                          <div className="absolute top-full left-0 mt-1 w-48 p-2 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover/ai:opacity-100 transition-opacity z-[9999]"
+                          <div className="absolute top-full left-0 mt-1 w-48 p-2 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover/ai:opacity-100 transition-opacity z-[9999]"
                             style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                             <p style={{ color: "var(--text-primary)", fontWeight: 600, marginBottom: 3 }}>{item.label}</p>
                             <p>{item.desc}</p>
@@ -10902,7 +10902,7 @@ ${clone.innerHTML}
                           ["Русский", "Russian"], ["العربية", "Arabic"], ["हिन्दी", "Hindi"], ["Tiếng Việt", "Vietnamese"],
                         ].map(([label, lang]) => (
                           <button key={lang} onClick={() => handleAIAction("translate", { language: lang })}
-                            className="px-2 py-1.5 text-[10px] rounded transition-colors hover:bg-[var(--menu-hover)]"
+                            className="px-2 py-1.5 text-caption rounded transition-colors hover:bg-[var(--menu-hover)]"
                             style={{ color: "var(--text-muted)" }}>
                             {label}
                           </button>
@@ -10915,15 +10915,15 @@ ${clone.innerHTML}
                     {aiChatHistory.length === 0 && !aiProcessing && (
                       <div className="text-center py-8">
                         <Sparkles width={24} height={24} className="mx-auto mb-3" style={{ color: "var(--border)", opacity: 0.5 }} />
-                        <p className="text-[11px] mb-1" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
-                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo;</p>
-                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Add a conclusion&rdquo;</p>
-                        <p className="text-[10px]" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Rewrite in a formal tone&rdquo;</p>
+                        <p className="text-caption mb-1" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
+                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo;</p>
+                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Add a conclusion&rdquo;</p>
+                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Rewrite in a formal tone&rdquo;</p>
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
                       <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
+                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
                           style={{
                             background: msg.role === "user" ? "var(--accent-dim)" : "var(--toggle-bg)",
                             color: msg.role === "user" ? "var(--accent)" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
@@ -10935,7 +10935,7 @@ ${clone.innerHTML}
                                 undo();
                                 setAiChatHistory(prev => prev.map((m, j) => j === i ? { ...m, canUndo: false, text: m.text + " (undone)" } : m));
                               }}
-                              className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors hover:opacity-80"
+                              className="ml-2 px-1.5 py-0.5 rounded text-caption font-medium transition-colors hover:opacity-80"
                               style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
                             >
                               Undo
@@ -10946,7 +10946,7 @@ ${clone.innerHTML}
                     ))}
                     {aiProcessing && (
                       <div className="flex justify-start">
-                        <div className="px-3 py-2 rounded-lg text-[11px] flex items-center gap-2"
+                        <div className="px-3 py-2 rounded-lg text-caption flex items-center gap-2"
                           style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
                           <Loader2 width={10} height={10} className="animate-spin" />
                           {{ polish: "Polishing document...", summary: "Writing summary...", tldr: "Extracting key points...", translate: "Translating...", chat: "Thinking..." }[aiProcessing] || "Processing..."}
@@ -10974,7 +10974,7 @@ ${clone.innerHTML}
                         maxLength={500}
                         disabled={!!aiProcessing}
                         autoFocus
-                        className="flex-1 text-[11px] bg-transparent"
+                        className="flex-1 text-caption bg-transparent"
                         style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
                       />
                       <button
@@ -11009,7 +11009,7 @@ ${clone.innerHTML}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
                       <List width={12} height={12} style={{ color: "var(--accent)" }} />
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>Outline</span>
+                      <span className="text-caption font-semibold" style={{ color: "var(--text-primary)" }}>Outline</span>
                     </div>
                     <button onClick={() => setShowOutlinePanel(false)} className="p-0.5 rounded hover:bg-[var(--menu-hover)] transition-colors" title="Close outline">
                       <X width={12} height={12} style={{ color: "var(--text-faint)" }} />
@@ -11074,8 +11074,8 @@ ${clone.innerHTML}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
                       <ImageIcon width={12} height={12} style={{ color: "var(--accent)" }} />
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>My Images</span>
-                      {userImages.length > 0 && <span className="text-[9px] px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{userImages.length}</span>}
+                      <span className="text-caption font-semibold" style={{ color: "var(--text-primary)" }}>My Images</span>
+                      {userImages.length > 0 && <span className="text-caption px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{userImages.length}</span>}
                     </div>
                     <button onClick={() => setShowImagePanel(false)} className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }} title="Close image panel">
                       <X width={10} height={10} />
@@ -11084,7 +11084,7 @@ ${clone.innerHTML}
                   {/* Quota bar */}
                   {imageQuota && (
                     <div className="px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                      <div className="flex items-center justify-between text-[9px] mb-1" style={{ color: "var(--text-faint)" }}>
+                      <div className="flex items-center justify-between text-caption mb-1" style={{ color: "var(--text-faint)" }}>
                         <span>{Math.round(imageQuota.used / 1024 / 1024)}MB used</span>
                         <span>{Math.round(imageQuota.total / 1024 / 1024)}MB total</span>
                       </div>
@@ -11098,13 +11098,13 @@ ${clone.innerHTML}
                     {imagesLoading ? (
                       <div className="text-center py-8">
                         <Loader2 width={16} height={16} className="mx-auto animate-spin" style={{ color: "var(--text-faint)" }} />
-                        <p className="text-[10px] mt-2" style={{ color: "var(--text-faint)" }}>Loading images...</p>
+                        <p className="text-caption mt-2" style={{ color: "var(--text-faint)" }}>Loading images...</p>
                       </div>
                     ) : userImages.length === 0 ? (
                       <div className="text-center py-8">
                         <ImageIcon width={24} height={24} className="mx-auto mb-2" style={{ color: "var(--border)", opacity: 0.5 }} />
-                        <p className="text-[11px]" style={{ color: "var(--text-faint)" }}>No images yet</p>
-                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>Paste or drag images into your document</p>
+                        <p className="text-caption" style={{ color: "var(--text-faint)" }}>No images yet</p>
+                        <p className="text-caption mt-1" style={{ color: "var(--text-faint)", opacity: 0.6 }}>Paste or drag images into your document</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-1.5">
@@ -11112,7 +11112,7 @@ ${clone.innerHTML}
                           <div key={img.name} className="group relative rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                             {/* Top bar: name */}
                             <div className="flex items-center px-1.5 py-1" style={{ background: "var(--toggle-bg)" }}>
-                              <span className="text-[8px] truncate" style={{ color: "var(--text-muted)" }}>{img.name}</span>
+                              <span className="text-caption truncate" style={{ color: "var(--text-muted)" }}>{img.name}</span>
                             </div>
                             {/* Image — click to preview in lightbox */}
                             <div className="cursor-pointer" onClick={() => setLightboxImage(img.url)}>
@@ -11131,11 +11131,11 @@ ${clone.innerHTML}
                                 doRender(newMd);
                                 cmSetDocRef.current?.(newMd);
                                 showToast("Image inserted", "success");
-                              }} className="flex-1 py-1 rounded text-[9px] font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }} title="Insert image into document">
+                              }} className="flex-1 py-1 rounded text-caption font-semibold transition-colors hover:opacity-90" style={{ background: "var(--accent)", color: "#000" }} title="Insert image into document">
                                 Insert
                               </button>
                               <button onClick={() => { navigator.clipboard.writeText(img.url); showToast("URL copied", "success"); }}
-                                className="px-2 py-1 rounded text-[9px] transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }} title="Copy URL">
+                                className="px-2 py-1 rounded text-caption transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }} title="Copy URL">
                                 <Copy width={12} height={12} />
                               </button>
                               <button onClick={async () => {
@@ -11149,7 +11149,7 @@ ${clone.innerHTML}
                                     showToast("Image deleted", "success");
                                   } else { showToast("Failed to delete", "error"); }
                                 } catch { showToast("Failed to delete", "error"); }
-                              }} className="px-2 py-1 rounded text-[9px] transition-colors hover:bg-[rgba(239,68,68,0.1)]" style={{ color: "var(--text-faint)" }} title="Delete">
+                              }} className="px-2 py-1 rounded text-caption transition-colors hover:bg-[rgba(239,68,68,0.1)]" style={{ color: "var(--text-faint)" }} title="Delete">
                                 <Trash2 width={12} height={12} />
                               </button>
                             </div>
@@ -11175,9 +11175,9 @@ ${clone.innerHTML}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
                       <Clock width={12} height={12} style={{ color: "var(--accent)" }} />
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>Version History</span>
+                      <span className="text-caption font-semibold" style={{ color: "var(--text-primary)" }}>Version History</span>
                       {versions.length > 0 && (
-                        <span className="text-[9px] px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{versions.length}</span>
+                        <span className="text-caption px-1 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{versions.length}</span>
                       )}
                     </div>
                     <button
@@ -11197,8 +11197,8 @@ ${clone.innerHTML}
                     ) : versions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                         <Clock width={24} height={24} strokeWidth={1} style={{ color: "var(--text-faint)", marginBottom: 8 }} />
-                        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>No versions yet</p>
-                        <p className="text-[10px] mt-1" style={{ color: "var(--text-faint)" }}>Versions are created each time you update the document.</p>
+                        <p className="text-caption" style={{ color: "var(--text-muted)" }}>No versions yet</p>
+                        <p className="text-caption mt-1" style={{ color: "var(--text-faint)" }}>Versions are created each time you update the document.</p>
                       </div>
                     ) : (
                       <div className="py-1">
@@ -11217,30 +11217,30 @@ ${clone.innerHTML}
                             >
                               <div className="flex items-center justify-between mb-0.5">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[11px] font-semibold" style={{ color: isPreviewing ? "var(--accent)" : "var(--text-primary)" }}>
+                                  <span className="text-caption font-semibold" style={{ color: isPreviewing ? "var(--accent)" : "var(--text-primary)" }}>
                                     v{v.version_number}
                                   </span>
                                   {isCurrent && (
-                                    <span className="text-[8px] px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Current</span>
+                                    <span className="text-caption px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>Current</span>
                                   )}
                                   {isPreviewing && (
-                                    <span className="text-[8px] px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}>Previewing</span>
+                                    <span className="text-caption px-1 py-0.5 rounded font-semibold uppercase" style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}>Previewing</span>
                                   )}
                                 </div>
-                                <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{relativeTime(v.created_at)}</span>
+                                <span className="text-caption" style={{ color: "var(--text-faint)" }}>{relativeTime(v.created_at)}</span>
                               </div>
                               {v.change_summary && (
-                                <p className="text-[10px] mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{v.change_summary}</p>
+                                <p className="text-caption mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{v.change_summary}</p>
                               )}
                               {v.title && (
-                                <p className="text-[10px] mt-0.5 truncate" style={{ color: "var(--text-faint)" }}>{v.title}</p>
+                                <p className="text-caption mt-0.5 truncate" style={{ color: "var(--text-faint)" }}>{v.title}</p>
                               )}
                               {/* Restore button — not shown on current version */}
                               {!isCurrent && isOwner && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleRestoreVersion(v.id); }}
                                   disabled={restoringVersion === v.id}
-                                  className="mt-1.5 flex items-center gap-1 h-5 px-2 rounded text-[10px] font-medium transition-colors"
+                                  className="mt-1.5 flex items-center gap-1 h-5 px-2 rounded text-caption font-medium transition-colors"
                                   style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
                                 >
                                   {restoringVersion === v.id ? (
@@ -11287,7 +11287,7 @@ ${clone.innerHTML}
           style={{ display: viewMode === "preview" ? "none" : undefined, minWidth: viewMode === "split" && !isMobile ? 280 : undefined, overflow: viewMode === "split" && isMobile ? "hidden" : undefined }}
         >
             <div
-              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-[11px] font-mono uppercase tracking-normal select-none"
+              className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
@@ -11306,11 +11306,11 @@ ${clone.innerHTML}
                       <div className="fixed inset-0 z-[9998]" onClick={() => setShowFlavorMenu(false)} />
                       <div className="absolute top-full left-0 mt-1 w-56 rounded-lg shadow-xl py-1 z-[9999]"
                         style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                        <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
+                        <div className="px-3 py-1 text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
                           Current: {{ gfm: "GitHub Flavored", commonmark: "CommonMark", obsidian: "Obsidian", mdx: "MDX", pandoc: "Pandoc" }[flavor] || flavor}
                         </div>
                         <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                        <div className="px-3 py-1 text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Convert to</div>
+                        <div className="px-3 py-1 text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Convert to</div>
                         {[
                           { id: "gfm", name: "GFM (GitHub)", desc: "Tables, task lists, strikethrough, autolinks" },
                           { id: "commonmark", name: "CommonMark", desc: "Standard Markdown — maximum compatibility" },
@@ -11363,11 +11363,11 @@ ${clone.innerHTML}
                               cmSetDoc(converted);
                               doRender(converted);
                             }}
-                            className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)]"
                             style={{ color: "var(--text-secondary)" }}
                           >
                             <div style={{ color: "var(--text-primary)" }}>{target.name}</div>
-                            <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>{target.desc}</div>
+                            <div className="text-caption" style={{ color: "var(--text-faint)" }}>{target.desc}</div>
                           </button>
                         ))}
                       </div>
@@ -11377,7 +11377,7 @@ ${clone.innerHTML}
                 {Object.entries(flavorDetails).filter(([,v])=>v).map(([key]) => (
                   <div key={key} className="relative group hidden sm:block">
                     <span className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--badge-muted-bg)", color: "var(--badge-muted-color)" }}>+{key}</span>
-                    <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                    <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
                       {key === "math" ? "Math equations detected (KaTeX)" : key === "mermaid" ? "Mermaid diagrams detected" : key === "wikilinks" ? "Wiki-style links detected" : key === "jsx" ? "JSX/MDX syntax detected" : `${key} detected`}
                     </div>
                   </div>
@@ -11394,7 +11394,7 @@ ${clone.innerHTML}
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 4v8M14 4v8M1 8h14" strokeLinecap="round"/><path d="M5 6L3 8l2 2M11 6l2 2-2 2" strokeLinecap="round"/></svg>
                   </button>
-                  <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+                  <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
                     <p style={{ color: !narrowSource ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Wide View {!narrowSource ? "ON" : "OFF"}</p>
                     <p>Default: narrow, comfortable editing width. Click to expand.</p>
@@ -11409,7 +11409,7 @@ ${clone.innerHTML}
                   >
                     <Copy width={11} height={11} />
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Copy raw Markdown</div>
                 </div>
                 {/* Download .md */}
                 <div className="relative group">
@@ -11420,7 +11420,7 @@ ${clone.innerHTML}
                   >
                     <Download width={11} height={11} />
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>Download as .md file</div>
                 </div>
               </div>
             </div>
@@ -11451,14 +11451,14 @@ ${clone.innerHTML}
 
       {/* Footer — Left: Help + links, Right: stats + badges */}
       <footer
-        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
+        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-caption font-mono"
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
         {/* Left: Alpha badge + Help + navigation */}
         <div className="flex items-center gap-2 sm:gap-4">
           <Tooltip text="mdfy.app is in alpha — features can change and bugs are expected. Send feedback to hi@raymind.ai." position="top">
             <span
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase shrink-0"
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold tracking-wider uppercase shrink-0"
               style={{
                 color: "var(--accent)",
                 background: "var(--accent-dim)",
@@ -11487,7 +11487,7 @@ ${clone.innerHTML}
             <div data-help-tooltip className="absolute bottom-full left-0 mb-1 w-72 max-w-[90vw] p-3 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
               <p className="font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Keyboard Shortcuts</p>
-              <div className="space-y-1 text-[10px]">
+              <div className="space-y-1 text-caption">
                 {[
                   [`${mod}+B`, "Bold"],
                   [`${mod}+I`, "Italic"],
@@ -11516,10 +11516,10 @@ ${clone.innerHTML}
                   <span key={f} className="px-1 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9 }}>{f}</span>
                 ))}
               </div>
-              <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Drag & drop or use IMPORT in sidebar</p>
+              <p className="text-caption" style={{ color: "var(--text-faint)" }}>Drag & drop or use IMPORT in sidebar</p>
               <div className="my-2" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <p className="font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>Export</p>
-              <div className="space-y-0.5 text-[10px]">
+              <div className="space-y-0.5 text-caption">
                 {[
                   ["Download", "MD, HTML, TXT"],
                   ["Print", "PDF"],
@@ -11576,7 +11576,7 @@ ${clone.innerHTML}
           {/* Flavor badges moved to SOURCE MD header */}
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
               Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
             </div>
@@ -11586,7 +11586,7 @@ ${clone.innerHTML}
               <Zap width={10} height={10} fill="currentColor" stroke="none" />
               {renderTime.toFixed(0)}ms
             </span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
               WASM engine render time
             </div>
@@ -11834,14 +11834,14 @@ ${clone.innerHTML}
               <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
                 Sign in to <span style={{ color: "var(--accent)" }}>mdfy</span>.app
               </h2>
-              <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Save, sync, and publish your documents</p>
+              <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Save, sync, and publish your documents</p>
             </div>
 
             {/* OAuth buttons */}
             <div className="px-6 space-y-2">
               <button
                 onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-colors hover:brightness-110"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-body font-medium transition-colors hover:brightness-110"
                 style={{ background: "#4285F4", color: "#fff" }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -11849,7 +11849,7 @@ ${clone.innerHTML}
               </button>
               <button
                 onClick={() => { signInWithGitHub(); setShowAuthMenu(false); }}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-colors hover:brightness-110"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-body font-medium transition-colors hover:brightness-110"
                 style={{ background: "#24292f", color: "#fff" }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016.02 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.21.7.82.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -11860,14 +11860,14 @@ ${clone.innerHTML}
             {/* Divider */}
             <div className="flex items-center gap-3 px-6 my-3">
               <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
-              <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>OR</span>
+              <span className="text-caption" style={{ color: "var(--text-faint)" }}>OR</span>
               <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
             </div>
 
             {/* Email */}
             <div className="px-6 mb-4">
               {authEmailSent ? (
-                <div className="text-[12px] text-center py-3 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                <div className="text-body text-center py-3 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
                   Check your email for the login link
                 </div>
               ) : (
@@ -11883,7 +11883,7 @@ ${clone.innerHTML}
                         if (!error) setAuthEmailSent(true);
                       }
                     }}
-                    className="flex-1 px-3 py-2 rounded-lg text-[12px] outline-none"
+                    className="flex-1 px-3 py-2 rounded-lg text-body outline-none"
                     style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
                   />
                   <button
@@ -11893,7 +11893,7 @@ ${clone.innerHTML}
                         if (!error) setAuthEmailSent(true);
                       }
                     }}
-                    className="px-3 py-2 rounded-lg text-[11px] font-medium transition-colors"
+                    className="px-3 py-2 rounded-lg text-caption font-medium transition-colors"
                     style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
                   >
                     Send Link
@@ -11910,8 +11910,8 @@ ${clone.innerHTML}
               <div className="grid grid-cols-3 gap-2">
                 {/* Without account */}
                 <div className="rounded-lg p-3" style={{ border: "1px solid var(--border-dim)", opacity: 0.6 }}>
-                  <div className="text-[10px] font-bold mb-2" style={{ color: "var(--text-faint)" }}>No Account</div>
-                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-faint)" }}>
+                  <div className="text-caption font-bold mb-2" style={{ color: "var(--text-faint)" }}>No Account</div>
+                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-faint)" }}>
                     <li className="flex items-start gap-1"><span>+</span>Instant rendering</li>
                     <li className="flex items-start gap-1"><span>+</span>Import / Export</li>
                     <li className="flex items-start gap-1"><span>+</span>Share via hash URL</li>
@@ -11923,10 +11923,10 @@ ${clone.innerHTML}
                 {/* Beta tier — everyone with an account, while we're testing */}
                 <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent-dim)" }}>
                   <div className="flex items-center gap-1 mb-2">
-                    <span className="text-[10px] font-bold" style={{ color: "var(--text-primary)" }}>Beta</span>
-                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>FREE NOW</span>
+                    <span className="text-caption font-bold" style={{ color: "var(--text-primary)" }}>Beta</span>
+                    <span className="text-caption px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>FREE NOW</span>
                   </div>
-                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
+                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-muted)" }}>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Unlimited documents</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Documents never expire</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
@@ -11939,10 +11939,10 @@ ${clone.innerHTML}
                 {/* Pro tier — kicks in after beta */}
                 <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent)" }}>
                   <div className="flex items-center gap-1 mb-2">
-                    <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>Pro</span>
-                    <span className="text-[8px] px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>AFTER BETA</span>
+                    <span className="text-caption font-bold" style={{ color: "var(--accent)" }}>Pro</span>
+                    <span className="text-caption px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>AFTER BETA</span>
                   </div>
-                  <ul className="space-y-1.5 text-[9px]" style={{ color: "var(--text-muted)" }}>
+                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-muted)" }}>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Everything in Beta</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No badge</li>
                     <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Custom domain</li>
@@ -11956,7 +11956,7 @@ ${clone.innerHTML}
 
             {/* Footer */}
             <div className="px-6 pb-5 text-center">
-              <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>
+              <p className="text-caption" style={{ color: "var(--text-faint)" }}>
                 Free during beta. No credit card required.
               </p>
             </div>
@@ -11969,14 +11969,14 @@ ${clone.innerHTML}
           <div className="rounded-xl p-5 w-80" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}><span style={{ color: "var(--accent)" }}>mdfy</span> this document?</span>
-              <span className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+              <span className="text-caption font-mono" style={{ color: "var(--text-muted)" }}>
                 {(mdfyPrompt.text.length / 1024).toFixed(0)} KB
               </span>
             </div>
-            <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
+            <p className="text-caption mb-2" style={{ color: "var(--text-muted)" }}>
               This file was imported as raw text — all formatting (headings, lists, tables, emphasis) was lost during extraction.
             </p>
-            <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+            <p className="text-caption mb-4" style={{ color: "var(--text-muted)" }}>
               <strong style={{ color: "var(--accent)" }}>mdfy</strong> uses AI to detect the original structure and rebuild it as clean Markdown — headings, bullet points, tables, code blocks, and more.
               {mdfyPrompt.text.length > 200_000 && (
                 <span style={{ color: "var(--text-faint)" }}> Large documents may take 30–60 seconds.</span>
@@ -11986,7 +11986,7 @@ ${clone.innerHTML}
               <button
                 disabled={mdfyLoading}
                 onClick={() => setMdfyPrompt(null)}
-                className="flex-1 px-3 py-2 rounded-md text-[11px] font-medium transition-colors"
+                className="flex-1 px-3 py-2 rounded-md text-caption font-medium transition-colors"
                 style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
               >
                 Keep Raw
@@ -12019,7 +12019,7 @@ ${clone.innerHTML}
                   setMdfyLoading(false);
                   setMdfyPrompt(null);
                 }}
-                className="flex-1 px-3 py-2 rounded-md text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 px-3 py-2 rounded-md text-caption font-medium transition-colors flex items-center justify-center gap-1.5"
                 style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
               >
                 {mdfyLoading ? (
@@ -12149,17 +12149,17 @@ ${clone.innerHTML}
             ))}
             {folderContextMenu.confirmDelete && (
               <>
-                <div className="px-3 py-1.5 text-[10px]" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
+                <div className="px-3 py-1.5 text-caption" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
                   Documents will be moved to root.
                 </div>
                 <div className="flex gap-1 px-2 pb-1">
-                  <button onClick={() => setFolderContextMenu(null)} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                  <button onClick={() => setFolderContextMenu(null)} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
                   <button onClick={() => {
                     setTabs(prev => prev.map(t => t.folderId === folderContextMenu.folderId ? { ...t, folderId: undefined } : t));
                     setFolders(prev => prev.filter(f => f.id !== folderContextMenu.folderId));
                     fetch("/api/user/folders", { method: "DELETE", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId }) }).catch(() => {});
                     setFolderContextMenu(null);
-                  }} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
+                  }} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>Delete</button>
                 </div>
               </>
             )}
@@ -12248,11 +12248,11 @@ ${clone.innerHTML}
               ))}
               {bundleContextMenu.confirmDelete && (
                 <>
-                  <div className="px-3 py-1.5 text-[10px]" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
+                  <div className="px-3 py-1.5 text-caption" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
                     Documents are not deleted. Bundle only.
                   </div>
                   <div className="flex gap-1 px-2 pb-1">
-                    <button onClick={closeMenu} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                    <button onClick={closeMenu} className="flex-1 px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
                     <button
                       onClick={() => {
                         // Optimistic local removal
@@ -12276,7 +12276,7 @@ ${clone.innerHTML}
                         }).catch(() => { refreshBundles(); });
                         closeMenu();
                       }}
-                      className="flex-1 px-2 py-1 rounded text-[10px]"
+                      className="flex-1 px-2 py-1 rounded text-caption"
                       style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
                     >
                       Delete
@@ -12438,7 +12438,7 @@ ${clone.innerHTML}
                 Your changes could not be saved automatically.
               </p>
               {autoSave.conflict.serverUpdatedAt && (
-                <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>
+                <p className="text-caption mt-2" style={{ color: "var(--text-muted)" }}>
                   Server version saved at: {new Date(autoSave.conflict.serverUpdatedAt).toLocaleString()}
                 </p>
               )}
@@ -12542,14 +12542,14 @@ ${clone.innerHTML}
                   <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
                     {tabs.find(t => t.id === activeTabId)?.ownerEmail || "Document owner"}
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>Owner</p>
+                  <p className="text-caption" style={{ color: "var(--text-faint)" }}>Owner</p>
                 </div>
               </div>
             </div>
 
             {/* Your access */}
             <div className="px-5 pb-4">
-              <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>Your access</label>
+              <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>Your access</label>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text-faint)" strokeWidth="1.3" strokeLinecap="round">
                   <rect x="4" y="8" width="8" height="6" rx="1.5"/><path d="M6 8V5.5a2 2 0 114 0V8"/>
@@ -12924,7 +12924,7 @@ ${clone.innerHTML}
                 type="text"
                 defaultValue={codeEditState.lang}
                 placeholder="language"
-                className="px-2.5 py-1 text-[13px] font-mono font-semibold uppercase tracking-wider rounded-md outline-none"
+                className="px-2.5 py-1 text-body font-mono font-semibold uppercase tracking-wider rounded-md outline-none"
                 style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid transparent", width: 120 }}
               />
               <div className="flex gap-2">
@@ -12956,16 +12956,16 @@ ${clone.innerHTML}
                     }
                     setCodeEditState(null);
                   }}
-                  className="px-3 py-1 text-[11px] font-semibold rounded-md"
+                  className="px-3 py-1 text-caption font-semibold rounded-md"
                   style={{ background: "var(--accent)", color: "#000" }}
                 >Save</button>
-                <button onClick={() => setCodeEditState(null)} className="px-3 py-1 text-[11px] rounded-md" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                <button onClick={() => setCodeEditState(null)} className="px-3 py-1 text-caption rounded-md" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
               </div>
             </div>
             <textarea
               id="tiptap-code-textarea"
               defaultValue={codeEditState.code}
-              className="flex-1 min-h-[200px] rounded-lg p-3 font-mono text-[13px] leading-relaxed resize-vertical outline-none"
+              className="flex-1 min-h-[200px] rounded-lg p-3 font-mono text-body leading-relaxed resize-vertical outline-none"
               style={{ background: "var(--background)", color: "var(--editor-text)", border: "1px solid var(--border)" }}
               spellCheck={false}
               autoFocus
@@ -13060,7 +13060,7 @@ ${clone.innerHTML}
             <div className="mb-6">
               <MdfyLogo size={32} />
             </div>
-            <p className="text-[13px] mb-8" style={{ color: "var(--text-muted)" }}>
+            <p className="text-body mb-8" style={{ color: "var(--text-muted)" }}>
               The Markdown Hub
             </p>
 
@@ -13074,11 +13074,11 @@ ${clone.innerHTML}
                 <button
                   key={item.label}
                   onClick={item.action}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] transition-colors hover:bg-[var(--menu-hover)]"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-body transition-colors hover:bg-[var(--menu-hover)]"
                   style={{ color: "var(--text-secondary)", background: "var(--surface)", border: "1px solid var(--border-dim)" }}
                 >
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.shortcut && <kbd className="text-[10px] font-mono" style={{ color: "var(--text-faint)" }}>{item.shortcut}</kbd>}
+                  {item.shortcut && <kbd className="text-caption font-mono" style={{ color: "var(--text-faint)" }}>{item.shortcut}</kbd>}
                 </button>
               ))}
             </div>
@@ -13095,16 +13095,16 @@ ${clone.innerHTML}
                 // Let the main drop handler in MdEditor handle the file
               }}
             >
-              <p className="text-[12px]">Drop files here to open</p>
-              <p className="text-[10px] mt-1" style={{ opacity: 0.6 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, TXT</p>
+              <p className="text-body">Drop files here to open</p>
+              <p className="text-caption mt-1" style={{ opacity: 0.6 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV, TXT</p>
             </div>
 
             {/* Plugins */}
             <div className="mb-6">
-              <p className="text-[10px] mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
+              <p className="text-caption mb-2" style={{ color: "var(--text-faint)" }}>Also available on</p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 {["Chrome", "VS Code", "Mac", "CLI", "MCP", "GitHub"].map((ch) => (
-                  <span key={ch} className="px-2 py-1 rounded text-[9px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
+                  <span key={ch} className="px-2 py-1 rounded text-caption" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>{ch}</span>
                 ))}
               </div>
             </div>
@@ -13112,7 +13112,7 @@ ${clone.innerHTML}
             {/* Skip */}
             <button
               onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} }}
-              className="text-[11px] transition-colors"
+              className="text-caption transition-colors"
               style={{ color: "var(--text-faint)" }}
             >
               Skip
@@ -13162,7 +13162,7 @@ ${clone.innerHTML}
             className="max-w-[90vw] max-h-[85vh] rounded-lg cursor-default"
             style={{ objectFit: "contain", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
           {/* Image info bar */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-[11px]"
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-caption"
             style={{ background: "rgba(0,0,0,0.6)", color: "#ccc" }}
             onClick={(e) => e.stopPropagation()}>
             {userImages.find(i => i.url === lightboxImage)?.name || ""}
@@ -13235,12 +13235,12 @@ ${clone.innerHTML}
               </div>
               <div className="max-h-80 overflow-y-auto py-1">
                 {filtered.length === 0 && cmdSearchResults.length === 0 && !isCmdSearching ? (
-                  <div className="px-4 py-3 text-[12px]" style={{ color: "var(--text-faint)" }}>No matching commands</div>
+                  <div className="px-4 py-3 text-body" style={{ color: "var(--text-faint)" }}>No matching commands</div>
                 ) : (<>
                   {filtered.map((cmd, i) => (
                     <button
                       key={cmd.label}
-                      className={`w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 && !cmdSearchResults.length ? "bg-[var(--menu-hover)]" : ""}`}
+                      className={`w-full text-left px-4 py-2 text-body transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 && !cmdSearchResults.length ? "bg-[var(--menu-hover)]" : ""}`}
                       style={{ color: "var(--text-primary)" }}
                       onClick={() => { cmd.action(); setShowCommandPalette(false); setCmdSearch(""); }}
                     >
@@ -13250,20 +13250,20 @@ ${clone.innerHTML}
                   {cmdSearch.length >= 3 && (
                     <>
                       {isCmdSearching && (
-                        <div className="px-4 py-2 text-[11px] flex items-center gap-2" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none" }}>
+                        <div className="px-4 py-2 text-caption flex items-center gap-2" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none" }}>
                           <span className="inline-block animate-spin" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
                           Searching documents...
                         </div>
                       )}
                       {!isCmdSearching && cmdSearchResults.length > 0 && (
                         <>
-                          <div className="px-4 py-1.5 text-[9px] font-semibold uppercase" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none", letterSpacing: "0.5px" }}>
+                          <div className="px-4 py-1.5 text-caption font-semibold uppercase" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none", letterSpacing: "0.5px" }}>
                             Documents ({cmdSearchResults.length})
                           </div>
                           {cmdSearchResults.map(r => (
                             <button
                               key={r.id}
-                              className="w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                              className="w-full text-left px-4 py-2 text-body transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                               style={{ color: "var(--text-primary)" }}
                               onClick={() => {
                                 const tabId = `cloud-${r.id}`;
@@ -13281,7 +13281,7 @@ ${clone.innerHTML}
                             >
                               <Search width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
                               <span className="truncate">{r.title}</span>
-                              <span className="ml-auto text-[10px] shrink-0" style={{ color: "var(--text-faint)" }}>{(r.snippet || "").slice(0, 40)}</span>
+                              <span className="ml-auto text-caption shrink-0" style={{ color: "var(--text-faint)" }}>{(r.snippet || "").slice(0, 40)}</span>
                             </button>
                           ))}
                         </>
@@ -13290,7 +13290,7 @@ ${clone.innerHTML}
                   )}
                 </>)}
               </div>
-              <div className="px-4 py-2 text-[10px]" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
+              <div className="px-4 py-2 text-caption" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
                 Press Enter to run, Esc to dismiss
               </div>
             </div>

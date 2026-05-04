@@ -58,10 +58,10 @@ const S = {
 function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: "var(--text-faint)" }}>
+      <div className="text-caption font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: "var(--text-faint)" }}>
         {title}
         {count !== undefined && (
-          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono" style={{ background: "var(--surface)", color: "var(--text-muted)" }}>{count}</span>
+          <span className="px-1.5 py-0.5 rounded-md text-caption font-mono" style={{ background: "var(--surface)", color: "var(--text-muted)" }}>{count}</span>
         )}
       </div>
       {children}
@@ -81,7 +81,7 @@ function Card({ children, index, style }: { children: React.ReactNode; index?: n
   return (
     <div className="p-3 flex gap-2.5 items-center" style={{ ...S.card, ...style }}>
       {index !== undefined && (
-        <span className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold"
+        <span className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-caption font-bold"
           style={{ background: COLORS[index % COLORS.length] + "22", color: COLORS[index % COLORS.length] }}>
           {index + 1}
         </span>
@@ -113,7 +113,7 @@ export function DiagramTypeSelector({ onSelect }: { onSelect: (template: string)
               <div className="flex items-center gap-1">
                 <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{dt.label}</span>
                 {(dt as { beta?: boolean }).beta && (
-                  <span className="text-[8px] px-1 py-0.5 rounded font-mono" style={{ color: "var(--text-faint)", background: "var(--surface)" }}>beta</span>
+                  <span className="text-caption px-1 py-0.5 rounded font-mono" style={{ color: "var(--text-faint)", background: "var(--surface)" }}>beta</span>
                 )}
               </div>
             </button>
@@ -156,7 +156,7 @@ function PieEditor({ code, onChange }: EditorProps) {
         <div className="flex rounded-xl overflow-hidden h-7 mb-3" style={{ border: "1px solid var(--border)" }}>
           {items.map((item, i) => (
             <div key={i} className="relative group" style={{ width: `${(item.value / total) * 100}%`, background: COLORS[i % COLORS.length], minWidth: 4, transition: "width 0.2s" }}>
-              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute inset-0 flex items-center justify-center text-caption font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity">
                 {Math.round((item.value / total) * 100)}%
               </span>
             </div>
@@ -174,7 +174,7 @@ function PieEditor({ code, onChange }: EditorProps) {
                 className="w-20" style={{ accentColor: COLORS[i % COLORS.length] }} />
               <input type="number" value={item.value} onChange={(e) => { items[i] = { ...items[i], value: parseInt(e.target.value) || 0 }; rebuild(title, [...items]); }}
                 className="w-14 px-2 py-1 text-xs rounded-md outline-none text-right font-mono" style={S.inputCSS} />
-              <span className="text-[10px] font-mono w-10 text-right font-semibold" style={{ color: COLORS[i % COLORS.length] }}>
+              <span className="text-caption font-mono w-10 text-right font-semibold" style={{ color: COLORS[i % COLORS.length] }}>
                 {Math.round((item.value / total) * 100)}%
               </span>
               <Del onClick={() => rebuild(title, items.filter((_, j) => j !== i))} />
@@ -247,7 +247,7 @@ function SequenceEditor({ code, onChange }: EditorProps) {
             return (
               <div key={i} className="p-3 space-y-2" style={S.card}>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono w-5 text-center shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
+                  <span className="text-caption font-mono w-5 text-center shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
                   <select value={m.from} onChange={(e) => { const n = [...messages]; n[i] = { ...n[i], from: e.target.value }; rebuild(participants, n); }}
                     className={`min-w-[70px] flex-1 ${S.input} text-xs font-semibold`} style={{ ...S.inputCSS, maxWidth: 120 }}>
                     {participants.map(p => <option key={p} value={p}>{p}</option>)}
@@ -255,7 +255,7 @@ function SequenceEditor({ code, onChange }: EditorProps) {
                   <div className="flex gap-0.5 shrink-0">
                     {arrows.map(a => (
                       <button key={a.value} onMouseDown={(e) => { e.preventDefault(); const n = [...messages]; n[i] = { ...n[i], arrow: a.value }; rebuild(participants, n); }}
-                        className="px-1 py-1 rounded text-[9px] font-mono" title={a.label}
+                        className="px-1 py-1 rounded text-caption font-mono" title={a.label}
                         style={{ background: m.arrow === a.value ? "var(--accent)" : "var(--surface)", color: m.arrow === a.value ? "#000" : "var(--text-muted)", border: "1px solid var(--border)" }}>
                         {a.icon}
                       </button>
@@ -330,7 +330,7 @@ function GenericListEditor({ code, onChange, config }: EditorProps & {
                       <div key={f.key} className="flex gap-0.5">
                         {[1,2,3,4,5].map(r => (
                           <button key={r} onMouseDown={() => { sections[si].items[ii].fields[f.key] = String(r); update(title, [...sections]); }}
-                            className="w-5 h-5 rounded-full text-[9px] font-bold"
+                            className="w-5 h-5 rounded-full text-caption font-bold"
                             style={{ background: parseInt(item.fields[f.key] || "3") >= r ? ratingColor(r) : "var(--surface)", color: parseInt(item.fields[f.key] || "3") >= r ? "#000" : "var(--text-faint)", border: "1px solid var(--border)" }}>
                             {r}
                           </button>
@@ -350,7 +350,7 @@ function GenericListEditor({ code, onChange, config }: EditorProps & {
                 config.itemFields.forEach(f => { defaults[f.key] = ""; });
                 sec.items.push({ fields: defaults });
                 update(title, [...sections]);
-              }} className="ml-3 text-[10px] px-3 py-1.5 rounded-lg" style={S.accentBtn}>+ {config.itemLabel}</button>
+              }} className="ml-3 text-caption px-3 py-1.5 rounded-lg" style={S.accentBtn}>+ {config.itemLabel}</button>
             </div>
           ))}
         </div>
@@ -398,14 +398,14 @@ function EntityRelEditor({ code, onChange, config }: EditorProps & {
               </div>
               {ent.attrs.map((attr, ai) => (
                 <div key={ai} className="flex gap-2 ml-2 items-center">
-                  <span className="text-[9px] font-mono" style={{ color: COLORS[ei % COLORS.length] }}>•</span>
+                  <span className="text-caption font-mono" style={{ color: COLORS[ei % COLORS.length] }}>•</span>
                   <input value={attr} onChange={(e) => { entities[ei].attrs[ai] = e.target.value; update([...entities], rels); }}
                     className="flex-1 text-xs font-mono bg-transparent outline-none" style={{ color: "var(--text-secondary)" }} />
                   <Del onClick={() => { entities[ei].attrs.splice(ai, 1); update([...entities], rels); }} />
                 </div>
               ))}
               <button onClick={() => { ent.attrs.push(""); update([...entities], rels); }}
-                className="ml-2 text-[10px] px-2 py-1 rounded" style={S.accentBtn}>+ {config.attrLabel}</button>
+                className="ml-2 text-caption px-2 py-1 rounded" style={S.accentBtn}>+ {config.attrLabel}</button>
             </div>
           ))}
         </div>
@@ -550,9 +550,9 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
                 <input value={item.text} onChange={(e) => { items[i].text = e.target.value; rebuild([...items]); }}
                   className="flex-1 bg-transparent outline-none text-sm" style={{ color: "var(--text-primary)" }} />
                 <button onMouseDown={() => { if (item.indent > 0) { items[i].indent--; rebuild([...items]); } }}
-                  className="text-[10px] px-1.5 py-1 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)", border: "1px solid var(--border)" }}>◀</button>
+                  className="text-caption px-1.5 py-1 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)", border: "1px solid var(--border)" }}>◀</button>
                 <button onMouseDown={() => { items[i].indent++; rebuild([...items]); }}
-                  className="text-[10px] px-1.5 py-1 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)", border: "1px solid var(--border)" }}>▶</button>
+                  className="text-caption px-1.5 py-1 rounded" style={{ color: "var(--text-muted)", background: "var(--surface)", border: "1px solid var(--border)" }}>▶</button>
                 <Del onClick={() => rebuild(items.filter((_, j) => j !== i))} />
               </div>
             ))}
@@ -611,7 +611,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
                     </div>
                   ))}
                   <button onClick={() => { ev.items.push("Event"); rebuild(); }}
-                    className="ml-3 text-[10px] px-2 py-1 rounded" style={S.accentBtn}>+ Event</button>
+                    className="ml-3 text-caption px-2 py-1 rounded" style={S.accentBtn}>+ Event</button>
                 </div>
               ))}
             </div>
@@ -773,10 +773,10 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
                 <Card key={i} index={i}>
                   <input value={p.name} onChange={(e) => { points[i].name = e.target.value; rebuild(); }}
                     className="flex-1 text-xs bg-transparent outline-none" style={{ color: "var(--text-primary)" }} />
-                  <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>x:</span>
+                  <span className="text-caption" style={{ color: "var(--text-faint)" }}>x:</span>
                   <input type="number" step="0.1" min="0" max="1" value={p.x} onChange={(e) => { points[i].x = parseFloat(e.target.value) || 0; rebuild(); }}
                     className="w-14 text-xs font-mono rounded px-1 py-0.5 outline-none" style={S.inputCSS} />
-                  <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>y:</span>
+                  <span className="text-caption" style={{ color: "var(--text-faint)" }}>y:</span>
                   <input type="number" step="0.1" min="0" max="1" value={p.y} onChange={(e) => { points[i].y = parseFloat(e.target.value) || 0; rebuild(); }}
                     className="w-14 text-xs font-mono rounded px-1 py-0.5 outline-none" style={S.inputCSS} />
                   <Del onClick={() => { points.splice(i, 1); rebuild(); }} />
@@ -809,7 +809,7 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
           <Section title="X-Axis">
             <div className="flex gap-1 flex-wrap">{xVals.map((v, i) => (
               <input key={i} value={v} onChange={(e) => { xVals[i] = e.target.value; rebuild(); }} className="w-16 text-xs font-mono rounded px-2 py-1 outline-none" style={S.inputCSS} />
-            ))}<button onClick={() => { xVals.push(""); rebuild(); }} className="text-[10px] px-2 py-1 rounded" style={S.accentBtn}>+</button></div>
+            ))}<button onClick={() => { xVals.push(""); rebuild(); }} className="text-caption px-2 py-1 rounded" style={S.accentBtn}>+</button></div>
           </Section>
           <Section title="Series" count={series.length}>
             <div className="space-y-2">{series.map((l, li) => (
@@ -838,11 +838,11 @@ export function DiagramFormEditor({ code, onChange }: EditorProps) {
         <div className="flex flex-col flex-1">
           <div className="p-5">
             <Section title="Mermaid Code">
-              <p className="text-[11px] mb-3" style={{ color: "var(--text-faint)" }}>Edit directly. Changes reflect in preview.</p>
+              <p className="text-caption mb-3" style={{ color: "var(--text-faint)" }}>Edit directly. Changes reflect in preview.</p>
             </Section>
           </div>
           <textarea value={code} onChange={(e) => onChange(e.target.value)}
-            className="flex-1 px-5 pb-5 bg-transparent font-mono text-[13px] resize-none outline-none leading-relaxed"
+            className="flex-1 px-5 pb-5 bg-transparent font-mono text-body resize-none outline-none leading-relaxed"
             style={{ color: "var(--editor-text)" }} spellCheck={false} />
         </div>
       );

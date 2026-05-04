@@ -748,7 +748,7 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") applyLink(); if (e.key === "Escape") { setShowLinkInput(false); setLinkUrl(""); } }}
             placeholder="https://..."
-            className="text-[11px] px-2 py-1 rounded outline-none"
+            className="text-caption px-2 py-1 rounded outline-none"
             style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border)", width: 180 }}
             autoFocus
           />

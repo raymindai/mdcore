@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "
 import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
 import { Lock, Link2, X } from "lucide-react";
+import { Button, ModalShell } from "@/components/ui";
 
 interface ShareModalProps {
   docId: string;
@@ -62,14 +63,10 @@ function ShareModal({
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+  }, []);
 
   const saveAccess = useCallback(async (newEmails: string[], newEditors: string[]) => {
     setSaving(true);
@@ -149,35 +146,50 @@ function ShareModal({
     setTimeout(() => setCopied(false), 2000);
   }, [docId, shareUrlOverride]);
 
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-      onClick={onClose}
-    >
-      <div
-        ref={modalRef}
-        className="w-full max-w-lg rounded-xl shadow-2xl"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", maxHeight: "80vh", overflow: "auto" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            {headerTitle || `Share${title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}`}
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-md flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <X width={14} height={14} />
-          </button>
-        </div>
+  const dialogTitle = headerTitle || `Share${title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}`;
 
+  return (
+    <ModalShell
+      open
+      onClose={onClose}
+      size="md"
+      title={dialogTitle}
+      headerExtras={saving ? (
+        <span className="text-caption font-mono" style={{ color: "var(--text-faint)" }}>Saving…</span>
+      ) : null}
+      footer={
+        <div className="flex items-center w-full" style={{ gap: "var(--space-2)" }}>
+          {onMakePrivate && (
+            <Button
+              variant="danger"
+              size="sm"
+              leadingIcon={<Lock width={12} height={12} />}
+              onClick={() => {
+                if (!confirm("Make this document private? This will remove all sharing settings and revoke access for everyone.")) return;
+                onMakePrivate();
+              }}
+            >
+              Make Private
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            leadingIcon={<Link2 width={14} height={14} />}
+            onClick={handleCopyLink}
+            style={copied ? { color: "var(--color-success)" } : undefined}
+          >
+            {copied ? "Link copied!" : "Copy link"}
+          </Button>
+          <span style={{ flex: 1 }} />
+          <Button variant="primary" size="md" onClick={onClose}>Done</Button>
+        </div>
+      }
+    >
+      <div>
         {/* Add people */}
-        <div className="px-5 pb-4">
-          <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
+        <div className="pb-4">
+          <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Share with people
           </label>
           <div className="flex gap-2">
@@ -200,25 +212,22 @@ function ShareModal({
                 color: "var(--text-primary)",
               }}
             />
-            <button
+            <Button
+              variant={emailInput.trim() ? "primary" : "secondary"}
+              size="md"
               onClick={() => emailInput.trim() && addEmail(emailInput)}
               disabled={!emailInput.trim() || saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: emailInput.trim() ? "var(--accent)" : "var(--toggle-bg)",
-                color: emailInput.trim() ? "#000" : "var(--text-faint)",
-                opacity: saving ? 0.5 : 1,
-              }}
+              loading={saving}
             >
               Add
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* People with access */}
         {(emails.length > 0 || true) && (
-          <div className="px-5 pb-4">
-            <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
+          <div className="pb-4">
+            <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
               People with access
             </label>
             <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -228,16 +237,16 @@ function ShareModal({
                 style={{ borderBottom: emails.length > 0 ? "1px solid var(--border-dim)" : "none" }}
               >
                 <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-caption font-bold shrink-0"
                   style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
                 >
                   {(ownerName || ownerEmail)[0]?.toUpperCase() || "O"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{ownerName || ownerEmail}</p>
-                  {ownerName && <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{ownerEmail}</p>}
+                  {ownerName && <p className="text-caption truncate" style={{ color: "var(--text-muted)" }}>{ownerEmail}</p>}
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
+                <span className="text-caption font-mono px-2 py-0.5 rounded" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
                   Owner
                 </span>
               </div>
@@ -250,16 +259,16 @@ function ShareModal({
                   style={{ borderBottom: "1px solid var(--border-dim)" }}
                 >
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-caption font-bold shrink-0"
+                    style={{ background: "var(--color-cool-dim)", color: "var(--color-cool)" }}
                   >
                     {email[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
-                    <p className="text-[9px]" style={{ color: "var(--text-faint)" }}>Can view only</p>
+                    <p className="text-caption" style={{ color: "var(--text-faint)" }}>Can view only</p>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
+                  <span className="text-caption font-mono px-2 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
                     Viewer
                   </span>
                   <button
@@ -278,12 +287,12 @@ function ShareModal({
 
         {/* Optional banner slot — bundle share uses this for cascade warning */}
         {banner && (
-          <div className="px-5 pb-4">{banner}</div>
+          <div className="pb-4">{banner}</div>
         )}
 
         {/* General access — toggle between Restricted and Anyone with link */}
-        <div className="px-5 pb-4">
-          <label className="text-[11px] font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
+        <div className="pb-4">
+          <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             General access
           </label>
           <div className="flex flex-col gap-1.5">
@@ -311,7 +320,7 @@ function ShareModal({
                   <span className="shrink-0" style={{ color: selected ? "var(--accent)" : "var(--text-faint)" }}>{opt.icon}</span>
                   <div className="flex-1">
                     <p className="text-xs font-medium" style={{ color: selected ? "var(--text-primary)" : "var(--text-muted)" }}>{opt.label}</p>
-                    <p className="text-[10px]" style={{ color: "var(--text-faint)" }}>{opt.desc}</p>
+                    <p className="text-caption" style={{ color: "var(--text-faint)" }}>{opt.desc}</p>
                   </div>
                 </button>
               );
@@ -319,50 +328,8 @@ function ShareModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderTop: "1px solid var(--border-dim)" }}
-        >
-          {onMakePrivate && (
-            <button
-              onClick={() => {
-                if (!confirm("Make this document private? This will remove all sharing settings and revoke access for everyone.")) return;
-                onMakePrivate();
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[rgba(239,68,68,0.1)]"
-              style={{ color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
-            >
-              <Lock width={12} height={12} />
-              Make Private
-            </button>
-          )}
-          <button
-            onClick={handleCopyLink}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: copied ? "#4ade80" : "var(--text-secondary)" }}
-          >
-            <Link2 width={14} height={14} />
-            {copied ? "Link copied!" : "Copy link"}
-          </button>
-          <span style={{ flex: 1 }} />
-          <button
-            onClick={onClose}
-            className="px-5 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ background: "var(--accent)", color: "#000" }}
-          >
-            Done
-          </button>
-        </div>
-
-        {/* Saving indicator */}
-        {saving && (
-          <div className="absolute top-3 right-12 text-[10px] font-mono" style={{ color: "var(--text-faint)" }}>
-            Saving...
-          </div>
-        )}
       </div>
-    </div>
+    </ModalShell>
   );
 }
 

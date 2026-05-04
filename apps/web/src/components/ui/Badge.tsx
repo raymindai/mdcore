@@ -26,7 +26,7 @@ const VARIANT: Record<Variant, { bg: string; color: string; border: string }> = 
 };
 
 const SIZE: Record<Size, string> = {
-  xs: "px-1 py-0 text-[10px]",  // count badges (numeric only — kept smaller)
+  xs: "px-1 py-0 text-caption leading-none",
   sm: "px-1.5 py-0.5 text-caption",
 };
 

@@ -152,7 +152,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
           {QUICK_ACTIONS.map((q, i) => (
             <button key={i} onClick={() => sendMessage(q.question)}
               disabled={isStreaming}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] transition-colors hover:bg-[var(--accent-dim)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-caption transition-colors hover:bg-[var(--accent-dim)] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
               {q.icon}
               <span>{q.label}</span>
@@ -188,7 +188,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
 
       {/* Input — visually matches Document Assistant input exactly:
           same wrapper padding, same inner box (toggle-bg + border-dim, rounded-lg,
-          px-3 py-2, gap-1.5), same text-[11px], same paper-plane Send icon. */}
+          px-3 py-2, gap-1.5), same text-caption, same paper-plane Send icon. */}
       <form onSubmit={onSubmit} className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
           <input
@@ -206,7 +206,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
             maxLength={500}
             disabled={isStreaming}
             autoFocus
-            className="flex-1 text-[11px] bg-transparent"
+            className="flex-1 text-caption bg-transparent"
             style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
           />
           {messages.length > 0 && (
@@ -255,7 +255,7 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
         <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: "var(--accent-dim)" }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg>
         </div>
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>AI</span>
+        <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>AI</span>
       </div>
       <div className="text-sm leading-relaxed pl-6" style={{ color: "var(--text-primary)" }}>
         <RenderedMarkdown content={message.content} docMap={message.docMap} onCitationClick={onCitationClick} />
@@ -292,7 +292,7 @@ function RenderedMarkdown({ content, docMap, onCitationClick }: { content: strin
           const doc = docMap[seg.docNum];
           return (
             <button key={i} onClick={() => onCitationClick?.(doc.id)} title={doc.title}
-              className="inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-colors hover:brightness-125 align-baseline"
+              className="inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0.5 rounded text-caption font-mono font-semibold transition-colors hover:brightness-125 align-baseline"
               style={{ background: "var(--accent-dim)", color: "var(--accent)", verticalAlign: "baseline" }}>
               {seg.docNum}
             </button>

@@ -539,7 +539,7 @@ export default function BundleViewer({
                       {selectedNodeInfo.summary && (
                         <div className="rounded-lg p-4" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
                           <h4 className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
-                          <p className="text-[12px] leading-[1.7]" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
+                          <p className="text-body leading-[1.7]" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
                         </div>
                       )}
 

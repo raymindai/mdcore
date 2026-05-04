@@ -436,20 +436,20 @@ function SummaryNode({ data }: { data: any }) {
 
       <div className="px-3 py-2 flex items-center gap-2" style={{ background: "rgba(96,165,250,0.08)", borderBottom: "1px solid var(--border-dim)" }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        <span className="text-[11px] font-semibold" style={{ color: "#60a5fa" }}>Bundle Analysis</span>
-        <span className="text-[9px] ml-auto px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
+        <span className="text-caption font-semibold" style={{ color: "#60a5fa" }}>Bundle Analysis</span>
+        <span className="text-caption ml-auto px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
           {data.docCount} docs · {data.totalWords.toLocaleString()} words
         </span>
       </div>
 
       <div className="px-3 py-2.5 space-y-2">
         {data.summary && (
-          <p className="text-[10px] leading-[1.6]" style={{ color: "var(--text-secondary)" }}>{data.summary}</p>
+          <p className="text-caption leading-[1.6]" style={{ color: "var(--text-secondary)" }}>{data.summary}</p>
         )}
         {data.insights?.length > 0 && (
           <div className="space-y-1">
             {data.insights.slice(0, 3).map((ins: string, i: number) => (
-              <div key={i} className="text-[9px] leading-[1.5] flex gap-1.5" style={{ color: "var(--text-muted)" }}>
+              <div key={i} className="text-caption leading-[1.5] flex gap-1.5" style={{ color: "var(--text-muted)" }}>
                 <span style={{ color: "#60a5fa", flexShrink: 0 }}>→</span>
                 <span>{ins}</span>
               </div>
@@ -470,7 +470,7 @@ function ThemeTagNode({ data }: { data: any }) {
     }}>
       <Handle type="target" position={Position.Left} style={{ background: "#60a5fa", width: 5, height: 5, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: "#60a5fa", width: 5, height: 5, border: "none" }} />
-      <span className="text-[10px] font-medium" style={{ color: "#60a5fa" }}>{data.label}</span>
+      <span className="text-caption font-medium" style={{ color: "#60a5fa" }}>{data.label}</span>
     </div>
   );
 }
@@ -489,18 +489,18 @@ function DocumentCardNode({ data }: { data: any }) {
       <Handle type="source" position={Position.Right} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
 
       <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-        <span className="text-[11px] font-mono font-bold w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "var(--accent)", color: "#000", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>{data.index}</span>
-        <span className="text-[13px] font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
+        <span className="text-caption font-mono font-bold w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "var(--accent)", color: "#000", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>{data.index}</span>
+        <span className="text-body font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
       </div>
 
       <div className="px-3 py-2">
-        <p className="text-[10px] leading-[1.5] line-clamp-2" style={{ color: "var(--text-muted)" }}>{data.preview || "Empty"}</p>
+        <p className="text-caption leading-[1.5] line-clamp-2" style={{ color: "var(--text-muted)" }}>{data.preview || "Empty"}</p>
       </div>
 
       <div className="px-3 py-1.5 flex items-center gap-1.5 flex-wrap" style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{data.wordCount.toLocaleString()} words</span>
-        <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{data.readingTime}m</span>
-        {data.hasCode && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>Code</span>}
+        <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{data.wordCount.toLocaleString()} words</span>
+        <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{data.readingTime}m</span>
+        {data.hasCode && <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>Code</span>}
       </div>
     </div>
   );
@@ -518,7 +518,7 @@ function ConceptTagNode({ data }: { data: any }) {
       <Handle type="target" position={Position.Left} style={{ background: style.border, width: 5, height: 5, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: style.border, width: 5, height: 5, border: "none" }} />
       <Icon width={9} height={9} style={{ color: style.text, opacity: 0.7, flexShrink: 0 }} />
-      <span className="text-[10px] font-medium truncate" style={{ color: style.text }}>{data.label}</span>
+      <span className="text-caption font-medium truncate" style={{ color: style.text }}>{data.label}</span>
     </div>
   );
 }
@@ -530,7 +530,7 @@ function EdgeLabelNode({ data }: { data: any }) {
     <div className="flex items-center justify-center" style={{ minWidth: 40 }}>
       <Handle type="target" position={Position.Left} style={{ background: "transparent", width: 1, height: 1, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: "transparent", width: 1, height: 1, border: "none" }} />
-      <span className="text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{ color: data.color || "var(--text-faint)", background: "var(--surface)", border: `1px solid ${data.color || "var(--border)"}30` }}>
+      <span className="text-caption px-1.5 py-0.5 rounded whitespace-nowrap" style={{ color: data.color || "var(--text-faint)", background: "var(--surface)", border: `1px solid ${data.color || "var(--border)"}30` }}>
         {data.label}
       </span>
     </div>
@@ -572,8 +572,8 @@ function SectionRootNode({ data }: { data: any }) {
       <Handle type="target" position={Position.Left} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
       <Handle type="source" position={Position.Right} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
       <Layers width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
-      <span className="text-[12px] font-bold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
-      <span className="text-[9px] px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>
+      <span className="text-body font-bold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
+      <span className="text-caption px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>
         {data.sectionCount}
       </span>
     </div>
@@ -599,11 +599,11 @@ function SectionNode({ data }: { data: any }) {
         <div style={{ width: 3, background: levelTint, flexShrink: 0 }} />
         <div className="px-3 py-2 flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[8px] font-bold tabular-nums uppercase tracking-wider" style={{ color: levelTint }}>{levelLabel}</span>
-            <span className="text-[11px] font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{s.heading || "(preamble)"}</span>
+            <span className="text-caption font-bold tabular-nums uppercase tracking-wider" style={{ color: levelTint }}>{levelLabel}</span>
+            <span className="text-caption font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{s.heading || "(preamble)"}</span>
             <Pencil width={9} height={9} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
           </div>
-          <p className="text-[10px] leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>
+          <p className="text-caption leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>
             {data.preview || <span style={{ fontStyle: "italic", color: "var(--text-faint)" }}>(empty)</span>}
           </p>
         </div>
@@ -629,16 +629,16 @@ function ChunkNode({ data }: { data: any }) {
       <Handle type="source" position={Position.Right} style={{ background: palette.border, width: 6, height: 6, border: "none" }} />
       <div className="px-3 py-2" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
         <div className="flex items-center gap-1.5">
-          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
-          <span className="text-[11px] font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+          <span className="text-caption font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
+          <span className="text-caption font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{c.label}</span>
           {c.found === false && (
-            <span className="text-[7px] font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
+            <span className="text-caption font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
           )}
           <Pencil width={9} height={9} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
         </div>
       </div>
       <div className="px-3 py-2">
-        <p className="text-[10px] leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>{truncated || <span style={{ fontStyle: "italic" }}>(no content)</span>}</p>
+        <p className="text-caption leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>{truncated || <span style={{ fontStyle: "italic" }}>(no content)</span>}</p>
       </div>
     </div>
   );
@@ -1090,7 +1090,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
     >
       {dropActive && (
         <div className="absolute inset-0 z-[50] pointer-events-none flex items-center justify-center" style={{ background: "rgba(251,146,60,0.06)", border: "2px dashed var(--accent)", borderRadius: 8 }}>
-          <div className="px-4 py-2 rounded-lg text-[12px] font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
+          <div className="px-4 py-2 rounded-lg text-body font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
             Drop to add to bundle
           </div>
         </div>
@@ -1321,7 +1321,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
       {/* Decompose error (floats below the top-left toolbar so it never
           collides with the action chips) */}
       {expandedDocId && decomposeError && (
-        <div className="absolute top-12 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px]"
+        <div className="absolute top-12 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-caption"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid #ef4444", color: "#ef4444", maxWidth: "min(420px, 60%)" }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           {decomposeError}
@@ -1337,7 +1337,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
             style={{ background: "var(--surface)", border: "1px solid var(--border)", maxWidth: "60vw" }}>
             <button
               onClick={() => onChangeChunkTypeFilter(null)}
-              className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+              className="px-2 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
               style={{
                 color: chunkTypeFilter === null ? "var(--accent)" : "var(--text-faint)",
                 background: chunkTypeFilter === null ? "var(--accent-dim)" : "transparent",
@@ -1350,7 +1350,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
                 <button
                   key={t}
                   onClick={() => onChangeChunkTypeFilter(active ? null : t)}
-                  className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+                  className="px-2 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
                   style={{
                     color: active ? palette.text : "var(--text-faint)",
                     background: active ? `${palette.border}22` : "transparent",
@@ -1407,7 +1407,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           {onOpenDoc && (
             <button
               onClick={() => { onOpenDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
               style={{ color: "var(--text-secondary)" }}
             >
               <ExternalLink width={11} height={11} /> Open
@@ -1416,7 +1416,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           {onDecomposeDoc && (
             <button
               onClick={() => { onDecomposeDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
               style={{ color: "var(--text-secondary)" }}
             >
               <Layers width={11} height={11} /> Decompose into sections
@@ -1425,7 +1425,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           {onRemoveDoc && (
             <button
               onClick={() => { onRemoveDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
               style={{ color: "#ef4444" }}
             >
               <Trash2 width={11} height={11} /> Remove from bundle

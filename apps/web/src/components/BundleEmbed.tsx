@@ -1052,21 +1052,21 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
             >
               <button
                 onClick={() => { setEditingSection({ docId: sectionCtxMenu.docId, section: sectionCtxMenu.section }); setSectionCtxMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
                 style={{ color: "var(--text-secondary)" }}
               >
                 Edit section
               </button>
               <button
                 onClick={() => { insertSectionAfter(sectionCtxMenu.docId, sectionCtxMenu.section.id); setSectionCtxMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
                 style={{ color: "var(--text-secondary)" }}
               >
                 Add section after
               </button>
               <button
                 onClick={() => { removeSection(sectionCtxMenu.docId, sectionCtxMenu.section.id); setSectionCtxMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
                 style={{ color: "#ef4444" }}
               >
                 Delete section
@@ -1088,14 +1088,14 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
             >
               <button
                 onClick={() => { setEditingChunk({ docId: chunkCtxMenu.docId, chunk: chunkCtxMenu.chunk }); setChunkCtxMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
                 style={{ color: "var(--text-secondary)" }}
               >
                 Edit chunk
               </button>
               <button
                 onClick={() => { removeChunkFromDoc(chunkCtxMenu.docId, chunkCtxMenu.chunk); setChunkCtxMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+                className="w-full text-left px-3 py-1.5 text-caption flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
                 style={{ color: "#ef4444" }}
               >
                 Delete chunk from source
@@ -1209,13 +1209,13 @@ function DiscoveriesReopenButton({ onClick, count }: { onClick: () => void; coun
   return (
     <button
       onClick={onClick}
-      className="absolute top-3 right-[180px] z-[35] flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110"
+      className="absolute top-3 right-[180px] z-[35] flex items-center gap-1.5 h-8 px-3 rounded-lg text-caption font-semibold transition-all hover:brightness-110"
       style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", color: "var(--accent)" }}
     >
       <Sparkles width={11} height={11} />
       <span>Discoveries</span>
       {count > 0 && (
-        <span className="text-[9px] px-1 py-0 rounded font-mono tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>{count}</span>
+        <span className="text-caption px-1 py-0 rounded font-mono tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>{count}</span>
       )}
     </button>
   );
@@ -1274,7 +1274,7 @@ function DiscoveriesPanel({
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Sparkles width={13} height={13} style={{ color: "var(--accent)" }} />
           <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Discoveries</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
+          <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
             {decomposedCount} / {totalDocs} analyzed
           </span>
         </div>
@@ -1297,7 +1297,7 @@ function DiscoveriesPanel({
             <>
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: "var(--accent)" }} />
-                <span className="text-[11px]" style={{ color: "var(--accent)" }}>
+                <span className="text-caption" style={{ color: "var(--accent)" }}>
                   Analyzing {isBulkRunning.done} / {isBulkRunning.total}…
                 </span>
               </div>
@@ -1307,13 +1307,13 @@ function DiscoveriesPanel({
             </>
           ) : (
             <>
-              <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+              <span className="text-caption" style={{ color: "var(--text-secondary)" }}>
                 {decomposedCount === 0
                   ? "Analyze every doc to surface cross-doc insights."
                   : `${totalDocs - decomposedCount} doc${totalDocs - decomposedCount === 1 ? "" : "s"} unanalyzed.`}
               </span>
               <button onClick={onRun}
-                className="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors hover:brightness-110 shrink-0"
+                className="px-2.5 py-1 rounded-md text-caption font-semibold transition-colors hover:brightness-110 shrink-0"
                 style={{ background: "var(--accent)", color: "#000" }}>
                 Run discovery
               </button>
@@ -1325,7 +1325,7 @@ function DiscoveriesPanel({
       {/* Content */}
       <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
         {!hasAny && !isBulkRunning && (
-          <div className="text-[12px] text-center py-8 leading-relaxed" style={{ color: "var(--text-faint)" }}>
+          <div className="text-body text-center py-8 leading-relaxed" style={{ color: "var(--text-faint)" }}>
             {decomposedCount === 0
               ? "Run discovery to extract tensions, questions, action items, and cross-doc threads from your bundle."
               : "Nothing surfaced yet. Try analyzing more documents."}
@@ -1532,7 +1532,7 @@ function BundleIntentBlock({ intent, canEdit, onSave }: {
 
   return (
     <div className="shrink-0 px-4 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}>
-      <div className="text-[9px] font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--text-faint)" }}>
+      <div className="text-caption font-semibold uppercase tracking-wider mb-1" style={{ color: "var(--text-faint)" }}>
         Intent
       </div>
       {editing && canEdit ? (
@@ -1544,13 +1544,13 @@ function BundleIntentBlock({ intent, canEdit, onSave }: {
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(intent); setEditing(false); } }}
           placeholder="What question is this bundle here to answer?"
-          className="w-full text-[12px] px-2 py-1 rounded outline-none"
+          className="w-full text-body px-2 py-1 rounded outline-none"
           style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--accent)" }}
         />
       ) : (
         <button
           onClick={() => canEdit && setEditing(true)}
-          className="block w-full text-left text-[12px] leading-snug rounded px-2 py-1 transition-colors hover:bg-[var(--menu-hover)]"
+          className="block w-full text-left text-body leading-snug rounded px-2 py-1 transition-colors hover:bg-[var(--menu-hover)]"
           style={{
             color: intent ? "var(--text-primary)" : "var(--text-faint)",
             cursor: canEdit ? "text" : "default",
@@ -1760,28 +1760,28 @@ function ChunkBulkBar({ count, onClear, onCopy, onExtract, onExtractKeep, onDele
   return (
     <div className="flex items-center gap-1 px-1 py-1 rounded-lg shadow-xl"
       style={{ background: "var(--surface)", border: "1px solid var(--accent)", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
-      <span className="text-[11px] font-semibold px-2 py-1 rounded-md"
+      <span className="text-caption font-semibold px-2 py-1 rounded-md"
         style={{ color: "var(--accent)", background: "var(--accent-dim)" }}>
         {count} selected
       </span>
       <div style={{ width: 1, height: 18, background: "var(--border-dim)" }} />
       <Tooltip text="Copy selected chunks to clipboard" position="bottom">
         <button onClick={onCopy}
-          className="px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+          className="px-2 py-1 text-caption rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
           style={{ color: "var(--text-secondary)" }}>
           Copy
         </button>
       </Tooltip>
       <Tooltip text="Move selected chunks into a new document (removes from source)" position="bottom">
         <button onClick={onExtract}
-          className="px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+          className="px-2 py-1 text-caption rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
           style={{ color: "var(--text-secondary)" }}>
           Extract → new doc
         </button>
       </Tooltip>
       <Tooltip text="Copy selected chunks into a new document (keeps in source)" position="bottom">
         <button onClick={onExtractKeep}
-          className="px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+          className="px-2 py-1 text-caption rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
           style={{ color: "var(--text-secondary)" }}>
           Branch → new doc
         </button>
@@ -1789,7 +1789,7 @@ function ChunkBulkBar({ count, onClear, onCopy, onExtract, onExtractKeep, onDele
       <div style={{ width: 1, height: 18, background: "var(--border-dim)" }} />
       <Tooltip text="Delete selected chunks from source" position="bottom">
         <button onClick={onDelete}
-          className="px-2 py-1 text-[11px] rounded-md transition-colors hover:bg-[rgba(239,68,68,0.12)]"
+          className="px-2 py-1 text-caption rounded-md transition-colors hover:bg-[rgba(239,68,68,0.12)]"
           style={{ color: "#ef4444" }}>
           Delete
         </button>
@@ -2291,7 +2291,7 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="px-3 pt-1.5 pb-2 text-[11px] font-medium transition-colors relative"
+              className="px-3 pt-1.5 pb-2 text-caption font-medium transition-colors relative"
               style={{
                 color: active ? "var(--text-primary)" : "var(--text-faint)",
                 background: "transparent",
@@ -2314,7 +2314,7 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
           {info.docContent ? (
             <div className="mdcore-rendered prose prose-invert" dangerouslySetInnerHTML={{ __html: info.docContent }} />
           ) : (
-            <div className="text-[12px] text-center py-8" style={{ color: "var(--text-faint)" }}>
+            <div className="text-body text-center py-8" style={{ color: "var(--text-faint)" }}>
               No content rendered.
             </div>
           )}
@@ -2324,7 +2324,7 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
         <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
           {info.docStats && (
             <div>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>About</h4>
+              <h4 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>About</h4>
               <div className="flex flex-wrap gap-2">
                 <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{info.docStats.wordCount.toLocaleString()} words</span>
                 <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{info.docStats.readingTime} min</span>
@@ -2335,13 +2335,13 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
           )}
           {info.documentSummary && (
             <div className="rounded-lg p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>AI Summary</h4>
+              <h4 className="text-caption font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>AI Summary</h4>
               <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{info.documentSummary}</p>
             </div>
           )}
           {info.connectedDocs && info.connectedDocs.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Related Concepts</h4>
+              <h4 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Related Concepts</h4>
               <div className="flex flex-wrap gap-1.5">
                 {info.connectedDocs.map((c: { id: string; title: string }) => (
                   <span key={c.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.2)" }}>{c.title}</span>
@@ -2350,7 +2350,7 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
             </div>
           )}
           {!info.docStats && !info.documentSummary && (!info.connectedDocs || info.connectedDocs.length === 0) && (
-            <div className="text-[12px] text-center py-8" style={{ color: "var(--text-faint)" }}>
+            <div className="text-body text-center py-8" style={{ color: "var(--text-faint)" }}>
               No insights yet. Run Analyze to generate.
             </div>
           )}
@@ -2372,7 +2372,7 @@ function DecomposeListPane({ bridge }: { bridge: DecomposeBridge }) {
       <div className="flex-1 flex items-center justify-center" style={{ color: "var(--text-faint)" }}>
         <div className="flex flex-col items-center gap-2">
           <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-          <span className="text-[11px]">Analyzing document…</span>
+          <span className="text-caption">Analyzing document…</span>
         </div>
       </div>
     );
@@ -2431,7 +2431,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search chunks…"
-          className="flex-1 text-[11px] px-2 py-1 rounded-md outline-none"
+          className="flex-1 text-caption px-2 py-1 rounded-md outline-none"
           style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
         />
         <Tooltip text="Add a new chunk" position="bottom">
@@ -2455,7 +2455,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
         <div className="shrink-0 px-3 py-1.5 flex items-center gap-1 flex-wrap" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <button
             onClick={() => setFilter(null)}
-            className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+            className="px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
             style={{
               color: filter === null ? "var(--accent)" : "var(--text-faint)",
               background: filter === null ? "var(--accent-dim)" : "transparent",
@@ -2469,7 +2469,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
               <button
                 key={t}
                 onClick={() => setFilter(active ? null : t)}
-                className="px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+                className="px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
                 style={{
                   color: active ? palette.text : "var(--text-faint)",
                   background: active ? `${palette.border}22` : "transparent",
@@ -2502,13 +2502,13 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
                 border: `1px solid ${palette.border}30`,
               }}>
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
-                  <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
-                  <span className="text-[11px] font-semibold truncate flex-1 cursor-pointer" style={{ color: "var(--text-primary)" }}
+                  <span className="text-caption font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
+                  <span className="text-caption font-semibold truncate flex-1 cursor-pointer" style={{ color: "var(--text-primary)" }}
                     onClick={() => bridge.onEditChunk(c)}>
                     {c.label}
                   </span>
                   {c.found === false && (
-                    <span className="text-[7px] font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
+                    <span className="text-caption font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
                   )}
                   <div className="flex items-center gap-0.5 opacity-0 group-hover/chunk:opacity-100 transition-opacity">
                     <Tooltip text="Move up" position="top">
@@ -2548,7 +2548,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
                     </Tooltip>
                   </div>
                 </div>
-                <p className="px-2.5 py-2 text-[10px] leading-[1.5] cursor-pointer" style={{ color: "var(--text-muted)" }}
+                <p className="px-2.5 py-2 text-caption leading-[1.5] cursor-pointer" style={{ color: "var(--text-muted)" }}
                   onClick={() => bridge.onEditChunk(c)}>
                   {c.content.length > 200 ? c.content.slice(0, 199).trim() + "…" : c.content}
                 </p>
@@ -2559,7 +2559,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
         )}
       </div>
       {/* Footer summary */}
-      <div className="shrink-0 px-3 py-1.5 text-[9px] flex items-center justify-between" style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-faint)" }}>
+      <div className="shrink-0 px-3 py-1.5 text-caption flex items-center justify-between" style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-faint)" }}>
         <span>{decomp.chunks.length} chunk{decomp.chunks.length === 1 ? "" : "s"} · {decomp.edges.length} relation{decomp.edges.length === 1 ? "" : "s"}</span>
         {void SIDEBAR_CHUNK_TYPES /* keep tree-shaking happy */}
       </div>
@@ -2625,12 +2625,12 @@ function BundleListView({ documents, onOpenDoc }: { documents: BundleDocument[];
       {/* TOC sidebar */}
       <div className="shrink-0 w-56 overflow-auto" style={{ borderRight: "1px solid var(--border-dim)" }}>
         <div className="px-3 py-3">
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Contents</h3>
+          <h3 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Contents</h3>
           {documents.map((doc, i) => (
             <button key={doc.id} onClick={() => scrollToDoc(doc.id)}
               className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center gap-2 transition-colors hover:bg-[var(--toggle-bg)] mb-0.5"
               style={{ background: activeDocId === doc.id ? "var(--accent-dim)" : "transparent" }}>
-              <span className="text-[9px] font-mono w-4 shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
+              <span className="text-caption font-mono w-4 shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
               <span className="text-xs truncate flex-1" style={{ color: activeDocId === doc.id ? "var(--accent)" : "var(--text-secondary)", fontWeight: activeDocId === doc.id ? 600 : 400 }}>{doc.title || "Untitled"}</span>
             </button>
           ))}
@@ -2643,10 +2643,10 @@ function BundleListView({ documents, onOpenDoc }: { documents: BundleDocument[];
           {documents.map((doc, i) => (
             <div key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-[10px] font-mono w-6 h-6 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
+                <span className="text-caption font-mono w-6 h-6 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
                 <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{doc.title || "Untitled"}</h2>
                 {onOpenDoc && (
-                  <button onClick={() => onOpenDoc(doc.id)} className="ml-auto text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>
+                  <button onClick={() => onOpenDoc(doc.id)} className="ml-auto text-caption px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>
                     Open
                   </button>
                 )}

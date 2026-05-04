@@ -363,7 +363,7 @@ const TabRow = memo(function TabRow(p: TabRowProps) {
       )}
       {p.renderTabIcon(p.tab, p.isActive)}
       <div className="truncate flex-1 min-w-0">
-        <span className="truncate block text-[12px]">{p.tab.title || "Untitled"}</span>
+        <span className="truncate block text-body">{p.tab.title || "Untitled"}</span>
         {p.sidebarMode === "detailed" && p.renderTabMeta?.(p.tab)}
       </div>
       {p.renderTabBadge && (
@@ -563,7 +563,7 @@ function FolderNode(props: FolderNodeProps) {
             tabIndex={-1}
           >
             {folder.emoji ? (
-              <span className="text-[13px] leading-none">{folder.emoji}</span>
+              <span className="text-body leading-none">{folder.emoji}</span>
             ) : expanded ? (
               <FolderOpen width={14} height={14} style={{ color: "var(--text-faint)" }} />
             ) : (
@@ -575,7 +575,7 @@ function FolderNode(props: FolderNodeProps) {
         {/* Right cluster — wrap count + action buttons with same gap-1.5 used
             inside TabRow so trailing counts line up at exactly the same x. */}
         <div className="shrink-0 flex items-center gap-1.5">
-          <span className="text-[9px] text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.5, minWidth: 20 }}>
+          <span className="text-caption text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.5, minWidth: 20 }}>
             {totalCount}
           </span>
           <div className="flex items-center gap-0.5 overflow-hidden transition-all duration-150 w-0 group-hover/folder:w-auto">
@@ -746,7 +746,7 @@ export default function SidebarFolderTree(props: SidebarFolderTreeProps) {
       {/* Visible "Move to root" drop slot — only while dragging a non-root item */}
       {showRootSlot && (
         <div
-          className="mx-1 mt-2 mb-1 px-3 py-2 rounded-md text-[10px] text-center select-none"
+          className="mx-1 mt-2 mb-1 px-3 py-2 rounded-md text-caption text-center select-none"
           style={{
             border: `1px dashed ${rootHover ? "var(--accent)" : "var(--border)"}`,
             color: rootHover ? "var(--accent)" : "var(--text-faint)",

@@ -305,7 +305,7 @@ export default function DocumentViewer({
     return () => clearInterval(interval);
   }, [id, unlocked, isProtected, isExpired]);
 
-  const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1";
+  const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1";
 
   return (
     <div
@@ -396,7 +396,7 @@ export default function DocumentViewer({
           {/* Primary CTA — open in editor */}
           <Link
             href={`/?from=${id}`}
-            className="px-2 h-6 rounded-md font-mono transition-colors text-[10px] font-medium flex items-center gap-1.5"
+            className="px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1.5"
             style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
             onClick={() => {
               if (passwordInput) {
@@ -569,12 +569,12 @@ export default function DocumentViewer({
       {/* Viral badge (Free tier only, hidden for Pro) — actionable CTA, not just attribution */}
       {showBadge && (
         <div className="flex justify-center gap-2 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <span className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono"
+          <span className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-mono"
             style={{ color: "var(--text-muted)" }}>
             Published with <span style={{ color: "var(--accent)", fontWeight: 600 }}>mdfy</span>.app
           </span>
           <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-mono transition-all hover:scale-105"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-caption font-mono transition-all hover:scale-105"
             style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}>
             Make your own
             <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
@@ -584,7 +584,7 @@ export default function DocumentViewer({
 
       {/* Footer */}
       <footer
-        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
+        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-caption font-mono"
         style={{
           borderTop: "1px solid var(--border-dim)",
           color: "var(--text-muted)",
@@ -603,7 +603,7 @@ export default function DocumentViewer({
           <span className="hidden sm:inline">{markdown.split("\n").length.toLocaleString()} lines</span>
           <div className="relative group hidden sm:block">
             <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
+            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
               Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
             </div>
@@ -614,7 +614,7 @@ export default function DocumentViewer({
       {/* Update toast */}
       {updateToast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-[12px] font-medium animate-[fade-in-up_0.2s_ease]"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-body font-medium animate-[fade-in-up_0.2s_ease]"
           style={{
             background: "var(--surface)",
             border: "1px solid var(--accent)",

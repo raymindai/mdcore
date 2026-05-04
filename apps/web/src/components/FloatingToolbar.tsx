@@ -121,19 +121,19 @@ function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
       {sep}
 
       {/* Headings */}
-      <button className={`${b} ${blockType === "h1" ? on : ""}`} onClick={() => fmtBlock("h1")} title="Heading 1"><span className="text-[10px] font-bold">H1</span></button>
-      <button className={`${b} ${blockType === "h2" ? on : ""}`} onClick={() => fmtBlock("h2")} title="Heading 2"><span className="text-[10px] font-bold">H2</span></button>
-      <button className={`${b} ${blockType === "h3" ? on : ""}`} onClick={() => fmtBlock("h3")} title="Heading 3"><span className="text-[10px] font-semibold">H3</span></button>
-      <button className={`${b} ${blockType === "h4" ? on : ""}`} onClick={() => fmtBlock("h4")} title="Heading 4"><span className="text-[10px]">H4</span></button>
-      <button className={`${b} ${blockType === "h5" ? on : ""}`} onClick={() => fmtBlock("h5")} title="Heading 5"><span className="text-[10px]">H5</span></button>
-      <button className={`${b} ${blockType === "h6" ? on : ""}`} onClick={() => fmtBlock("h6")} title="Heading 6"><span className="text-[10px]">H6</span></button>
-      <button className={`${b} ${blockType === "p" ? on : ""}`} onClick={() => fmtBlock("p")} title="Paragraph"><span className="text-[10px]">P</span></button>
+      <button className={`${b} ${blockType === "h1" ? on : ""}`} onClick={() => fmtBlock("h1")} title="Heading 1"><span className="text-caption font-bold">H1</span></button>
+      <button className={`${b} ${blockType === "h2" ? on : ""}`} onClick={() => fmtBlock("h2")} title="Heading 2"><span className="text-caption font-bold">H2</span></button>
+      <button className={`${b} ${blockType === "h3" ? on : ""}`} onClick={() => fmtBlock("h3")} title="Heading 3"><span className="text-caption font-semibold">H3</span></button>
+      <button className={`${b} ${blockType === "h4" ? on : ""}`} onClick={() => fmtBlock("h4")} title="Heading 4"><span className="text-caption">H4</span></button>
+      <button className={`${b} ${blockType === "h5" ? on : ""}`} onClick={() => fmtBlock("h5")} title="Heading 5"><span className="text-caption">H5</span></button>
+      <button className={`${b} ${blockType === "h6" ? on : ""}`} onClick={() => fmtBlock("h6")} title="Heading 6"><span className="text-caption">H6</span></button>
+      <button className={`${b} ${blockType === "p" ? on : ""}`} onClick={() => fmtBlock("p")} title="Paragraph"><span className="text-caption">P</span></button>
       {sep}
 
       {/* Inline */}
-      <button className={`${b} ${active.bold ? on : ""}`} onClick={() => exec("bold")} title="Bold"><span className="font-bold text-[12px]">B</span></button>
-      <button className={`${b} ${active.italic ? on : ""}`} onClick={() => exec("italic")} title="Italic"><span className="italic text-[12px]">I</span></button>
-      <button className={`${b} ${active.strikethrough ? on : ""}`} onClick={() => exec("strikeThrough")} title="Strikethrough"><span className="line-through text-[12px]">S</span></button>
+      <button className={`${b} ${active.bold ? on : ""}`} onClick={() => exec("bold")} title="Bold"><span className="font-bold text-body">B</span></button>
+      <button className={`${b} ${active.italic ? on : ""}`} onClick={() => exec("italic")} title="Italic"><span className="italic text-body">I</span></button>
+      <button className={`${b} ${active.strikethrough ? on : ""}`} onClick={() => exec("strikeThrough")} title="Strikethrough"><span className="line-through text-body">S</span></button>
       <button className={`${b} ${active.code ? on : ""}`} title="Inline code" onClick={() => {
         const sel = window.getSelection();
         if (sel && !sel.isCollapsed && sel.rangeCount) {
@@ -141,7 +141,7 @@ function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
         }
         updateToolbar();
         containerRef.current?.focus();
-      }}><span className="font-mono text-[10px]">{`</>`}</span></button>
+      }}><span className="font-mono text-caption">{`</>`}</span></button>
       {sep}
 
       {/* Lists */}
@@ -185,7 +185,7 @@ function FloatingToolbar({ containerRef }: FloatingToolbarProps) {
       {inputPopup && (
         <div className="fixed inset-0 z-[9999]" onClick={() => setInputPopup(null)} onMouseDown={(e) => e.stopPropagation()}>
           <div className="absolute rounded-lg shadow-xl p-3 flex flex-col gap-2" style={{ left: Math.max(140, Math.min(pos.x, typeof window !== "undefined" ? window.innerWidth - 140 : pos.x)), top: Math.max(8, pos.y - 80), transform: "translate(-50%, -100%)", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", minWidth: 260 }} onClick={(e) => e.stopPropagation()}>
-            <label className="text-[11px] font-mono" style={{ color: "var(--text-muted)" }}>{inputPopup.label}</label>
+            <label className="text-caption font-mono" style={{ color: "var(--text-muted)" }}>{inputPopup.label}</label>
             <input autoFocus className="px-3 py-1.5 rounded-md text-sm outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} placeholder={inputPopup.label}
               onKeyDown={(e) => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value.trim(); if (v) inputPopup.onSubmit(v); } if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setInputPopup(null); } }} />
           </div>
