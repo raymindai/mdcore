@@ -1870,18 +1870,65 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
 function BundleCreatorModal({
   allDocs,
   initiallySelected,
+  authHeaders,
   onClose,
   onCreate,
 }: {
   allDocs: Array<{ id: string; title: string; lastOpenedAt?: number }>;
   initiallySelected: Array<{ id: string; title: string }>;
+  authHeaders: Record<string, string>;
   onClose: () => void;
-  onCreate: (args: { title: string; docIds: string[] }) => void | Promise<void>;
+  onCreate: (args: { title: string; description?: string; docIds: string[]; annotationByDocId?: Record<string, string> }) => void | Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>(() => initiallySelected.map(d => d.id));
   const [creating, setCreating] = useState(false);
+
+  // AI Bundle Generation state
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiAnnotations, setAiAnnotations] = useState<Record<string, string>>({});
+
+  const askAI = useCallback(async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiGenerating) return;
+    setAiError(null);
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/bundles/ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      const suggestion = data?.suggestion;
+      if (!suggestion) throw new Error("Empty response");
+      // Apply suggestion: fill title, replace selection with AI's picks (in
+      // ranked order), surface annotations + description.
+      if (suggestion.title) setTitle(suggestion.title);
+      setAiDescription(suggestion.description || "");
+      const picks: string[] = Array.isArray(suggestion.documents) ? suggestion.documents.map((d: { id: string }) => d.id) : [];
+      setSelectedIds(picks);
+      const ann: Record<string, string> = {};
+      if (Array.isArray(suggestion.documents)) {
+        for (const d of suggestion.documents as Array<{ id: string; annotation?: string }>) {
+          if (d?.id && d.annotation) ann[d.id] = d.annotation;
+        }
+      }
+      setAiAnnotations(ann);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt, aiGenerating, authHeaders]);
 
   // Sort: selected first (preserving selection order), then unselected by recent
   const sortedDocs = useMemo(() => {
@@ -1932,7 +1979,44 @@ function BundleCreatorModal({
       >
         <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
-          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle. Drag order via arrows.</p>
+          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle, or ask AI to suggest from your hub.</p>
+        </div>
+        {/* AI Bundle Generation strip — describe what you want, AI picks from hub. */}
+        <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <label className="text-caption font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+            <span style={{ color: "var(--accent)" }}>✨ Ask AI</span> <span style={{ color: "var(--text-faint)" }}>(optional)</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !aiGenerating) askAI(); }}
+              placeholder="e.g. notes on LLM memory architecture"
+              className="flex-1 px-3 py-1.5 rounded-md text-body outline-none"
+              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+              disabled={aiGenerating}
+            />
+            <button
+              onClick={askAI}
+              disabled={!aiPrompt.trim() || aiGenerating}
+              className="px-3 py-1.5 rounded-md text-caption font-medium shrink-0 transition-opacity"
+              style={{
+                background: "var(--accent)",
+                color: "#000",
+                opacity: !aiPrompt.trim() || aiGenerating ? 0.4 : 1,
+                cursor: !aiPrompt.trim() || aiGenerating ? "not-allowed" : "pointer",
+              }}
+            >
+              {aiGenerating ? "Thinking…" : "Ask AI"}
+            </button>
+          </div>
+          {aiError && (
+            <p className="text-caption mt-2" style={{ color: "var(--color-danger)" }}>{aiError}</p>
+          )}
+          {aiDescription && !aiError && (
+            <p className="text-caption mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiDescription}</p>
+          )}
         </div>
         <div className="px-5 py-4 shrink-0">
           <label className="text-caption font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
@@ -2003,7 +2087,14 @@ function BundleCreatorModal({
                     {isSelected && (
                       <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>{order + 1}</span>
                     )}
-                    <span className="flex-1 truncate">{doc.title}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate">{doc.title}</div>
+                      {isSelected && aiAnnotations[doc.id] && (
+                        <div className="text-caption truncate mt-0.5" style={{ color: "var(--accent)", opacity: 0.85 }}>
+                          ✨ {aiAnnotations[doc.id]}
+                        </div>
+                      )}
+                    </div>
                     {isSelected && (
                       <div className="flex gap-0.5 shrink-0">
                         <button
@@ -2045,7 +2136,12 @@ function BundleCreatorModal({
               if (!canCreate) return;
               setCreating(true);
               try {
-                await onCreate({ title: title.trim() || "Untitled Bundle", docIds: selectedIds });
+                await onCreate({
+                  title: title.trim() || "Untitled Bundle",
+                  description: aiDescription.trim() || undefined,
+                  docIds: selectedIds,
+                  annotationByDocId: Object.keys(aiAnnotations).length > 0 ? aiAnnotations : undefined,
+                });
               } finally {
                 setCreating(false);
               }
@@ -13533,25 +13629,40 @@ ${clone.innerHTML}
         <BundleCreatorModal
           allDocs={tabs.filter(t => t.cloudId && !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle").map(t => ({ id: t.cloudId!, title: t.title || "Untitled", lastOpenedAt: t.lastOpenedAt }))}
           initiallySelected={bundleCreatorDocs}
+          authHeaders={authHeaders}
           onClose={() => { setShowBundleCreator(false); setBundleCreatorDocs([]); setPendingNewBundleFolderId(null); }}
-          onCreate={async ({ title, docIds }) => {
+          onCreate={async ({ title, description, docIds, annotationByDocId }) => {
             try {
               const targetFolderId = pendingNewBundleFolderId;
               const res = await fetch("/api/bundles", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...authHeaders },
-                body: JSON.stringify({ title, documentIds: docIds, isDraft: true, folderId: targetFolderId || undefined }),
+                body: JSON.stringify({ title, description, documentIds: docIds, isDraft: true, folderId: targetFolderId || undefined }),
               });
               if (!res.ok) {
                 showToast("Failed to create bundle", "error");
                 return;
               }
               const data = await res.json();
+              const bundleId: string = data.id;
+              // Persist any AI-suggested annotations onto bundle_documents.
+              // Fire-and-forget — annotations are nice-to-have; the bundle
+              // exists either way.
+              if (annotationByDocId && Object.keys(annotationByDocId).length > 0 && bundleId) {
+                fetch(`/api/bundles/${bundleId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json", ...authHeaders },
+                  body: JSON.stringify({
+                    action: "set-annotations",
+                    annotations: annotationByDocId,
+                  }),
+                }).catch(() => { /* annotations are best-effort */ });
+              }
               setShowBundleCreator(false);
               setBundleCreatorDocs([]);
               setPendingNewBundleFolderId(null);
-              const newId = `bundle-${data.id}-${Date.now()}`;
-              const newTab: Tab = { id: newId, kind: "bundle", bundleId: data.id, title, markdown: "" };
+              const newId = `bundle-${bundleId}-${Date.now()}`;
+              const newTab: Tab = { id: newId, kind: "bundle", bundleId, title, markdown: "" };
               flushSync(() => { setTabs(prev => [...prev, newTab]); });
               switchTab(newId);
               fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => { if (d?.bundles) setBundles(d.bundles); }).catch(() => {});

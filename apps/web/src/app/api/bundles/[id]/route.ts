@@ -273,6 +273,37 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true });
   }
 
+  // ─── Action: set-annotations ───
+  // Body: { annotations: { [documentId]: string } }
+  // Updates the per-doc annotation column on bundle_documents. Used by
+  // AI Bundle Generation to attach the model's "why this doc belongs"
+  // line to each picked doc, and by future inline editing UX.
+  if (body.action === "set-annotations") {
+    const annotations = (body as { annotations?: Record<string, unknown> }).annotations;
+    if (!annotations || typeof annotations !== "object") {
+      return NextResponse.json({ error: "annotations object required" }, { status: 400 });
+    }
+    const entries = Object.entries(annotations).filter(([, v]) => typeof v === "string");
+    if (entries.length === 0) return NextResponse.json({ ok: true });
+    // Update each row individually — Supabase doesn't support bulk
+    // conditional updates without an RPC, and the typical AI suggestion
+    // is ≤10 docs per bundle so the loop cost is negligible.
+    const errors: string[] = [];
+    for (const [docId, annotation] of entries) {
+      const { error: updErr } = await supabase
+        .from("bundle_documents")
+        .update({ annotation: (annotation as string).slice(0, 500) })
+        .eq("bundle_id", id)
+        .eq("document_id", docId);
+      if (updErr) errors.push(`${docId}: ${updErr.message}`);
+    }
+    if (errors.length > 0) {
+      return NextResponse.json({ error: `partial failure: ${errors.join("; ")}` }, { status: 500 });
+    }
+    await supabase.from("bundles").update({ updated_at: new Date().toISOString() }).eq("id", id);
+    return NextResponse.json({ ok: true });
+  }
+
   // ─── Action: remove-documents ───
   if (body.action === "remove-documents") {
     if (!Array.isArray(body.documentIds) || body.documentIds.length === 0) {
