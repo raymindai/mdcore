@@ -4897,21 +4897,6 @@ export default function MdEditor() {
       .then(data => {
         if (!data?.bundles) return;
         setBundles(data.bundles);
-        // Sync local bundle Tab.title against the server's current title.
-        // Without this, renaming a bundle (or any title change made via
-        // another channel) leaves the local tab stuck on the old name —
-        // visible to the user as Recent showing a stale draft title while
-        // the sidebar's MD Bundles section displays the fresh server title
-        // for the same bundle row.
-        const titleByBundleId = new Map<string, string>(
-          data.bundles.map((b: { id: string; title?: string }) => [b.id, b.title || "Untitled Bundle"])
-        );
-        setTabs(prev => prev.map(t => {
-          if (t.kind !== "bundle" || !t.bundleId) return t;
-          const fresh = titleByBundleId.get(t.bundleId);
-          if (!fresh || fresh === t.title) return t;
-          return { ...t, title: fresh };
-        }));
       })
       .catch(() => {});
     // Fetch user's own documents from server
@@ -7579,58 +7564,10 @@ ${clone.innerHTML}
               )}
             </>);
           })()}
-          {/* Permission badge — desktop only in row 1 */}
-          <span className="hidden lg:inline-flex items-center">
-          {(() => {
-            const ct = tabs.find(t => t.id === activeTabId);
-            const perm = ct?.permission;
-            if (perm === "readonly") return (
-              <div className="inline-flex items-center gap-1.5">
-                <span
-                  className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                  title="View only — duplicate to edit"
-                >
-                  VIEW&nbsp;ONLY
-                </span>
-                <button
-                  onClick={() => {
-                    const id = `tab-${Date.now()}`;
-                    const origMd = markdownRef.current;
-                    const t = title ? `${title} (copy)` : "Untitled (copy)";
-                    const md = origMd.replace(/^(#\s+.+)$/m, `# ${t}`);
-                    const newTab: Tab = { id, title: t, markdown: md, permission: "mine", shared: false, isDraft: true };
-                    setTabs(prev => [...prev, newTab]);
-                    setIsSharedDoc(false);
-                    setIsOwner(true);
-                    setDocEditMode("owner");
-                    loadTab(newTab);
-                    autoSave.createDocument({
-                      markdown: md, title: t, userId: user?.id,
-                      anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                    }).then(result => {
-                      if (result) {
-                        setTabs(prev => {
-                          const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
-                          return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
-                        });
-                        setDocId(result.id);
-                        window.history.replaceState(null, "", `/${result.id}`);
-                      }
-                    });
-                  }}
-                  className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
-                  title="Duplicate to edit"
-                >
-                  <Copy width={10} height={10} />
-                  Duplicate
-                </button>
-              </div>
-            );
-            return null;
-          })()}
-          </span>
+          {/* Read-only / view-only state is now surfaced via the prominent
+              banner above the document content (see line ~10745) — the
+              inline header badge here was redundant and cluttered the
+              top toolbar. */}
           {/* Save status — animated icon + label */}
           <span className="hidden lg:inline-flex items-center gap-1 text-caption shrink-0">
             {autoSave.isSaving && (
@@ -8244,55 +8181,9 @@ ${clone.innerHTML}
                 {viewCount} {viewCount === 1 ? "view" : "views"}
               </span>
             )}
-            {(() => {
-              const ct = tabs.find(t => t.id === activeTabId);
-              const perm = ct?.permission;
-              if (perm === "readonly") return (
-                <div className="inline-flex items-center gap-1">
-                  <span
-                    className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 whitespace-nowrap"
-                    style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
-                    title="View only — duplicate to edit"
-                  >
-                    VIEW&nbsp;ONLY
-                  </span>
-                  <button
-                    onClick={() => {
-                      const id = `tab-${Date.now()}`;
-                      const origMd = markdownRef.current;
-                      const t2 = title ? `${title} (copy)` : "Untitled (copy)";
-                      const md = origMd.replace(/^(#\s+.+)$/m, `# ${t2}`);
-                      const newTab: Tab = { id, title: t2, markdown: md, permission: "mine", shared: false, isDraft: true };
-                      setTabs(prev => [...prev, newTab]);
-                      setIsSharedDoc(false);
-                      setIsOwner(true);
-                      setDocEditMode("owner");
-                      loadTab(newTab);
-                      autoSave.createDocument({
-                        markdown: md, title: t2, userId: user?.id,
-                        anonymousId: !user?.id ? ensureAnonymousId() : undefined,
-                      }).then(result => {
-                        if (result) {
-                          setTabs(prev => {
-                            const withoutDup = prev.filter(tab => !(tab.cloudId === result.id && tab.id !== id));
-                            return withoutDup.map(tab => tab.id === id ? { ...tab, cloudId: result.id, editToken: result.editToken } : tab);
-                          });
-                          setDocId(result.id);
-                          window.history.replaceState(null, "", `/${result.id}`);
-                        }
-                      });
-                    }}
-                    className="text-caption px-1.5 py-0.5 rounded font-mono shrink-0 flex items-center gap-1 transition-colors whitespace-nowrap hover:bg-[var(--menu-hover)]"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}
-                    title="Duplicate to edit"
-                  >
-                    <Copy width={9} height={9} />
-                    Duplicate
-                  </button>
-                </div>
-              );
-              return null;
-            })()}
+            {/* Mobile-row VIEW ONLY badge removed — banner above the
+                document content now surfaces this state for both example
+                tabs and shared view-only docs. */}
           </div>
         )}
       </header>
@@ -10742,7 +10633,7 @@ ${clone.innerHTML}
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
-            {activeTab?.readonly && (
+            {(activeTab?.readonly || activeTab?.permission === "readonly") && (
               <div
                 className="flex items-center justify-between gap-3 px-3 py-2 text-caption"
                 style={{
@@ -10753,8 +10644,17 @@ ${clone.innerHTML}
                 }}
               >
                 <div className="flex items-center gap-1.5">
-                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>Read-only example</span>
-                  <span style={{ color: "var(--text-muted)" }}>— duplicate it to make your own copy.</span>
+                  {activeTab?.readonly ? (
+                    <>
+                      <span style={{ color: "var(--accent)", fontWeight: 600 }}>Read-only example</span>
+                      <span style={{ color: "var(--text-muted)" }}>— duplicate it to make your own copy.</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ color: "var(--accent)", fontWeight: 600 }}>View only</span>
+                      <span style={{ color: "var(--text-muted)" }}>— this document was shared with you. Duplicate to edit your own copy.</span>
+                    </>
+                  )}
                 </div>
                 <button
                   onClick={duplicateCurrentTabAsEditable}
