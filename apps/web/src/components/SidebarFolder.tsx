@@ -331,14 +331,26 @@ const TabRow = memo(function TabRow(p: TabRowProps) {
         p.setDragTabId(null);
         setZone(null);
       }}
-      className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer group/tab text-xs transition-colors relative ${p.isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
+      // Three selection states get visually distinct treatments:
+      //  - isActive: this row is the active tab → full accent-dim fill
+      //  - bundle-member (isSelected && !isActive && !isMultiSelected):
+      //      this doc belongs to the currently-active bundle. Show an
+      //      inset left stripe + faint tint so the user can tell it apart
+      //      from "this is the doc I'm reading" — same color cue, lower
+      //      visual weight.
+      //  - isMultiSelected: bulk-selected → 1px outline (existing)
+      className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer group/tab text-xs transition-colors relative ${p.isActive ? "bg-[var(--accent-dim)]" : (p.isSelected && !p.isMultiSelected ? "" : "hover:bg-[var(--toggle-bg)]")}`}
       style={{
         paddingLeft: p.paddingLeft,
         paddingRight: p.paddingRight,
-        color: p.isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+        color: p.isActive ? "var(--text-primary)" : (p.isSelected ? "var(--text-secondary)" : "var(--text-secondary)"),
         opacity: 1,
         outline: p.isMultiSelected ? "1px solid var(--accent)" : "none",
         outlineOffset: "-1px",
+        // Bundle-member stripe: only when selected via active-bundle membership
+        // (not via multi-select or being the active tab itself).
+        background: !p.isActive && p.isSelected && !p.isMultiSelected ? "color-mix(in srgb, var(--accent-dim) 40%, transparent)" : undefined,
+        boxShadow: !p.isActive && p.isSelected && !p.isMultiSelected ? "inset 2px 0 0 var(--accent)" : undefined,
       }}
       onClick={p.onClick}
       onContextMenu={p.onContextMenu}
