@@ -363,11 +363,14 @@ const TabRow = memo(function TabRow(p: TabRowProps) {
       )}
       {p.renderTabIcon(p.tab, p.isActive)}
       <div className="truncate flex-1 min-w-0">
-        <span className="truncate block text-body">{p.tab.title || "Untitled"}</span>
+        <span className="truncate block text-body font-mono">{p.tab.title || "Untitled"}</span>
         {p.sidebarMode === "detailed" && p.renderTabMeta?.(p.tab)}
       </div>
       {p.renderTabBadge && (
-        <span className="shrink-0 text-right tabular-nums group-hover/tab:hidden" style={{ minWidth: 20 }}>{p.renderTabBadge(p.tab)}</span>
+        // marginRight aligns the trailing count's right edge with the
+        // section header counts above (section headers sit inside `px-3`,
+        // these rows use paddingRight=6, so add 6px more to land at -12px).
+        <span className="shrink-0 text-right tabular-nums font-mono group-hover/tab:hidden" style={{ minWidth: 20, marginRight: 6 }}>{p.renderTabBadge(p.tab)}</span>
       )}
       <Tooltip text="More options (rename, share, delete…)">
         <button
@@ -571,11 +574,11 @@ function FolderNode(props: FolderNodeProps) {
             )}
           </button>
         </Tooltip>
-        <span className="truncate flex-1">{folder.name}</span>
+        <span className="truncate flex-1 font-mono">{folder.name}</span>
         {/* Right cluster — wrap count + action buttons with same gap-1.5 used
             inside TabRow so trailing counts line up at exactly the same x. */}
         <div className="shrink-0 flex items-center gap-1.5">
-          <span className="text-caption text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.5, minWidth: 20 }}>
+          <span className="text-caption font-mono text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.6, minWidth: 20, marginRight: 6 }}>
             {totalCount}
           </span>
           <div className="flex items-center gap-0.5 overflow-hidden transition-all duration-150 w-0 group-hover/folder:w-auto">

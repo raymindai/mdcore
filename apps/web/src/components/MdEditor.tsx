@@ -8827,7 +8827,7 @@ ${clone.innerHTML}
                         if (!bundle) return null;
                         return (
                           <Tooltip text={`${bundle.documentCount} document${bundle.documentCount === 1 ? "" : "s"} in this bundle`}>
-                            <span className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.7 }}>
+                            <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>
                               {bundle.documentCount}
                             </span>
                           </Tooltip>
@@ -10736,7 +10736,7 @@ ${clone.innerHTML}
                 </div>
                 <button
                   onClick={duplicateCurrentTabAsEditable}
-                  className="px-2.5 py-1 rounded font-mono text-caption font-semibold"
+                  className="px-2.5 py-1 rounded text-caption font-semibold"
                   style={{ background: "var(--accent)", color: "#000", border: "none", cursor: "pointer" }}
                 >
                   Duplicate to edit
