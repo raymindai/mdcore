@@ -4897,6 +4897,21 @@ export default function MdEditor() {
       .then(data => {
         if (!data?.bundles) return;
         setBundles(data.bundles);
+        // Sync local bundle Tab.title against the server's current title.
+        // Without this, renaming a bundle (or any title change made via
+        // another channel) leaves the local tab stuck on the old name —
+        // visible to the user as Recent showing a stale draft title while
+        // the sidebar's MD Bundles section displays the fresh server title
+        // for the same bundle row.
+        const titleByBundleId = new Map<string, string>(
+          data.bundles.map((b: { id: string; title?: string }) => [b.id, b.title || "Untitled Bundle"])
+        );
+        setTabs(prev => prev.map(t => {
+          if (t.kind !== "bundle" || !t.bundleId) return t;
+          const fresh = titleByBundleId.get(t.bundleId);
+          if (!fresh || fresh === t.title) return t;
+          return { ...t, title: fresh };
+        }));
       })
       .catch(() => {});
     // Fetch user's own documents from server
