@@ -8659,15 +8659,27 @@ ${clone.innerHTML}
                     ) : (
                       <div className="pl-2 pr-2 pb-1 space-y-0.5">
                         {recentTabs.map(tab => (
+                          // For bundle tabs, ALWAYS resolve display title from
+                          // the live bundles[] array via bundleId lookup —
+                          // local Tab.title can be stale (was baked in when
+                          // the tab was first created), and trying to keep
+                          // it synced via setTabs effects has been racy in
+                          // practice. Reading b.title at render time is
+                          // single-source-of-truth.
+                          (() => {
+                            const displayTitle = tab.kind === "bundle" && tab.bundleId
+                              ? (bundles.find(b => b.id === tab.bundleId)?.title || tab.title || "Untitled")
+                              : (tab.title || "Untitled");
+                            return (
                           <div
                             key={`recent-${tab.id}`}
                             className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
                             style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                             onClick={(e) => handleDocClick(tab.id, e)}
-                            title={tab.title || "Untitled"}
+                            title={displayTitle}
                           >
                             {tab.kind === "bundle" ? renderBundleStatusIcon(tab.bundleId, 13) : <DocStatusIcon tab={tab} isActive={false} />}
-                            <span className="truncate flex-1 text-body">{tab.title || "Untitled"}</span>
+                            <span className="truncate flex-1 text-body">{displayTitle}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== tab.id)); }}
                               className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
@@ -8677,6 +8689,8 @@ ${clone.innerHTML}
                               <X width={9} height={9} />
                             </button>
                           </div>
+                            );
+                          })()
                         ))}
                       </div>
                     )
@@ -10351,16 +10365,21 @@ ${clone.innerHTML}
                         </button>
                       </div>
                       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                        {recent.map((t, i) => (
+                        {recent.map((t, i) => {
+                          const displayTitle = t.kind === "bundle" && t.bundleId
+                            ? (bundles.find(b => b.id === t.bundleId)?.title || t.title || "Untitled")
+                            : (t.title || "Untitled");
+                          return (
                           <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
                             className="w-full flex items-center gap-3 px-4 py-3 text-body text-left cursor-pointer"
                             style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
                             {t.kind === "bundle" ? renderBundleStatusIcon(t.bundleId, 14) : <DocStatusIcon tab={t} isActive={false} />}
-                            <span className="flex-1 truncate">{t.title || "Untitled"}</span>
+                            <span className="flex-1 truncate">{displayTitle}</span>
                           </button>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
