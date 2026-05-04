@@ -43,3 +43,11 @@ npm-debug.log*
 # They are pre-built from packages/engine/ via wasm-pack.
 # Rebuild with: npm run build:wasm (from apps/web/)
 .vercel
+
+# Supabase CLI scratch
+**/supabase/.temp/
+
+# Playwright test artifacts (regenerated)
+test-results/
+apps/web/test-results/
+

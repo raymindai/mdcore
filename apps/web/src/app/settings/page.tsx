@@ -28,9 +28,57 @@ export default function SettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
+  // Hub URL state
+  const [hubSlug, setHubSlug] = useState("");
+  const [hubPublic, setHubPublic] = useState(false);
+  const [hubDescription, setHubDescription] = useState("");
+  const [hubSaving, setHubSaving] = useState(false);
+  const [hubError, setHubError] = useState<string | null>(null);
+  const [hubSaved, setHubSaved] = useState(false);
+
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
+    const p = profile as { hub_slug?: string | null; hub_public?: boolean; hub_description?: string | null } | null;
+    if (p?.hub_slug) setHubSlug(p.hub_slug);
+    if (typeof p?.hub_public === "boolean") setHubPublic(p.hub_public);
+    if (p?.hub_description) setHubDescription(p.hub_description);
   }, [profile]);
+
+  const handleSaveHub = useCallback(async () => {
+    if (!user) return;
+    setHubError(null);
+
+    // Validate slug format if user is opting in.
+    const slug = hubSlug.trim().toLowerCase();
+    if (hubPublic && !/^[a-z0-9_-]{3,32}$/.test(slug)) {
+      setHubError("Slug must be 3-32 chars (lowercase letters, digits, hyphens, underscores).");
+      return;
+    }
+
+    setHubSaving(true);
+    try {
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("client unavailable");
+      const { error } = await supabase.from("profiles").update({
+        hub_slug: slug || null,
+        hub_public: hubPublic,
+        hub_description: hubDescription.trim() || null,
+      }).eq("id", user.id);
+      if (error) {
+        // Most common case: slug uniqueness violation (23505).
+        if (error.code === "23505") setHubError("That slug is already taken — pick another.");
+        else setHubError(error.message);
+        return;
+      }
+      setHubSaved(true);
+      setTimeout(() => setHubSaved(false), 2000);
+    } catch (err) {
+      setHubError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setHubSaving(false);
+    }
+  }, [user, hubSlug, hubPublic, hubDescription]);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("mdfy-theme") : null;
@@ -150,6 +198,86 @@ export default function SettingsPage() {
             >
               {saving ? "Saving..." : saved ? "Saved" : "Save"}
             </button>
+          </div>
+        </div>
+
+        {/* Hub URL — opt-in public knowledge hub */}
+        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+            Knowledge Hub
+          </label>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+            A single URL pointing to all your public docs and bundles — paste it into any AI to deploy your entire hub as context. Disabled by default.
+          </p>
+          <label className="flex items-center gap-2 mb-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hubPublic}
+              onChange={e => setHubPublic(e.target.checked)}
+              className="w-4 h-4"
+              style={{ accentColor: "var(--accent)" }}
+            />
+            <span className="text-sm" style={{ color: "var(--text-primary)" }}>Make my hub public</span>
+          </label>
+          {hubPublic && (
+            <>
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-faint)" }}>
+                  Slug (3–32 chars, lowercase, hyphens/underscores allowed)
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs px-2 py-2 rounded-lg" style={{ color: "var(--text-faint)", background: "var(--input-bg, var(--surface))", border: "1px solid var(--border)" }}>
+                    mdfy.app/hub/
+                  </span>
+                  <input
+                    type="text"
+                    value={hubSlug}
+                    onChange={e => setHubSlug(e.target.value.toLowerCase())}
+                    placeholder="your-handle"
+                    maxLength={32}
+                    className="flex-1 px-3 py-2 rounded-lg text-sm outline-none font-mono"
+                    style={{ background: "var(--input-bg, var(--surface))", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                  />
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-faint)" }}>
+                  Description (optional, shown on hub page)
+                </label>
+                <textarea
+                  value={hubDescription}
+                  onChange={e => setHubDescription(e.target.value)}
+                  placeholder="Building knowledge in public — capture, bundle, deploy."
+                  rows={2}
+                  maxLength={280}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+                  style={{ background: "var(--input-bg, var(--surface))", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                />
+              </div>
+            </>
+          )}
+          {hubError && (
+            <p className="text-caption mb-2" style={{ color: "var(--color-danger, #ef4444)" }}>{hubError}</p>
+          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSaveHub}
+              disabled={hubSaving}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{ background: "var(--accent)", color: "#000", opacity: hubSaving ? 0.6 : 1 }}
+            >
+              {hubSaving ? "Saving..." : hubSaved ? "Saved" : "Save"}
+            </button>
+            {hubPublic && hubSlug && /^[a-z0-9_-]{3,32}$/.test(hubSlug) && (
+              <Link
+                href={`/hub/${hubSlug}`}
+                className="text-xs underline"
+                style={{ color: "var(--accent)" }}
+                target="_blank"
+              >
+                View at mdfy.app/hub/{hubSlug} →
+              </Link>
+            )}
           </div>
         </div>
 

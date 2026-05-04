@@ -8,6 +8,9 @@ interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   plan: string;
+  hub_slug?: string | null;
+  hub_public?: boolean;
+  hub_description?: string | null;
 }
 
 interface AuthState {
@@ -25,7 +28,7 @@ function fetchProfile(
   if (!supabase) return;
   supabase
     .from("profiles")
-    .select("display_name, avatar_url, plan")
+    .select("display_name, avatar_url, plan, hub_slug, hub_public, hub_description")
     .eq("id", userId)
     .single()
     .then((res: { data: Profile | null }) => {
