@@ -19,6 +19,7 @@ import FolderEmojiPicker from "@/components/FolderEmojiPicker";
 import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
 import Tooltip from "@/components/Tooltip";
+import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -12640,123 +12641,103 @@ ${clone.innerHTML}
         const c = conceptIndex.concepts.find(x => x.id === openedConceptId);
         if (!c) return null;
         const close = () => setOpenedConceptId(null);
+        const def = conceptDefinitions[c.id];
         return (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={close}>
-            <div
-              className="rounded-xl overflow-hidden flex flex-col"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(720px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.docCount >= 2 ? "var(--accent)" : "var(--text-faint)" }} />
-                  <span className="text-[14px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{c.label}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-mono" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
-                    {c.docCount} {c.docCount === 1 ? "doc" : "docs"} · {c.occurrenceCount} mentions
-                  </span>
-                  {c.types.map(t => (
-                    <span key={t} className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{t}</span>
-                  ))}
+          <ModalShell
+            open
+            onClose={close}
+            size="lg"
+            title={
+              <span className="inline-flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.docCount >= 2 ? "var(--accent)" : "var(--text-faint)" }} />
+                <span className="truncate">{c.label}</span>
+              </span>
+            }
+            subtitle={`${c.docCount} ${c.docCount === 1 ? "doc" : "docs"} · ${c.occurrenceCount} mentions`}
+            headerExtras={
+              <div className="flex items-center gap-1">
+                {c.types.map(t => <Badge key={t} variant="accent" uppercase>{t}</Badge>)}
+              </div>
+            }
+          >
+            <div className="space-y-3">
+              {/* AI canonical definition — synthesized from all occurrences */}
+              <div className="rounded-md" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", padding: "var(--space-3)" }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-2)" }}>
+                  <h4 className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>What it means here</h4>
+                  {!def && (
+                    <Button variant="primary" size="xs" onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}>
+                      Define with AI
+                    </Button>
+                  )}
+                  {def && !def.loading && def.text && (
+                    <button
+                      onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
+                      className="text-caption hover:underline"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      Re-define
+                    </button>
+                  )}
                 </div>
-                <button onClick={close} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-                  <X width={14} height={14} />
+                {def?.loading && (
+                  <div className="text-caption flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                    Synthesizing definition…
+                  </div>
+                )}
+                {def?.error && (
+                  <div className="text-caption" style={{ color: "var(--color-danger)" }}>Error: {def.error}</div>
+                )}
+                {def?.text && (
+                  <p className="text-body leading-relaxed" style={{ color: "var(--text-primary)" }}>{def.text}</p>
+                )}
+                {!def && (
+                  <p className="text-caption leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    Generate a one-paragraph synthesis of how this concept is used across your library.
+                  </p>
+                )}
+              </div>
+              {/* Occurrences */}
+              {c.occurrences.map((occ, i) => (
+                <button
+                  key={`${occ.docId}-${occ.chunkId}-${i}`}
+                  onClick={() => {
+                    const existing = tabs.find(t => t.cloudId === occ.docId);
+                    if (existing) {
+                      switchTab(existing.id);
+                    } else {
+                      fetch(`/api/docs/${occ.docId}`, { headers: authHeadersRef.current })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                          if (!d) return;
+                          const newId = `doc-${occ.docId}-${Date.now()}`;
+                          const newTab: Tab = {
+                            id: newId, kind: "doc", cloudId: occ.docId,
+                            title: d.title || occ.docTitle || "Untitled",
+                            markdown: d.markdown || "", isDraft: d.is_draft, permission: "mine",
+                          };
+                          setTabs(prev => [...prev, newTab]);
+                          switchTab(newId);
+                        })
+                        .catch(() => {});
+                    }
+                    close();
+                  }}
+                  className="w-full text-left rounded-md transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)" }}
+                >
+                  <div className="flex items-center gap-2" style={{ marginBottom: "var(--space-1)" }}>
+                    <Badge variant="accent" uppercase>{occ.chunkType}</Badge>
+                    <span className="text-caption font-semibold truncate" style={{ color: "var(--text-primary)" }}>{occ.docTitle}</span>
+                  </div>
+                  {occ.snippet && (
+                    <p className="text-caption leading-relaxed line-clamp-3" style={{ color: "var(--text-secondary)" }}>{occ.snippet}</p>
+                  )}
                 </button>
-              </div>
-              <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
-                {/* AI canonical definition — synthesized from all occurrences,
-                    explains what THIS concept means in this user's library. */}
-                {(() => {
-                  const def = conceptDefinitions[c.id];
-                  return (
-                    <div className="rounded-lg p-3 mb-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>What it means here</h4>
-                        {!def && (
-                          <button
-                            onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded hover:brightness-110 transition-all"
-                            style={{ background: "var(--accent)", color: "#000" }}
-                          >
-                            ✨ Define with AI
-                          </button>
-                        )}
-                        {def && !def.loading && def.text && (
-                          <button
-                            onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
-                            className="text-[10px] hover:underline"
-                            style={{ color: "var(--accent)" }}
-                          >
-                            Re-define
-                          </button>
-                        )}
-                      </div>
-                      {def?.loading && (
-                        <div className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
-                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                          Synthesizing definition…
-                        </div>
-                      )}
-                      {def?.error && (
-                        <div className="text-[11px]" style={{ color: "#ef4444" }}>Error: {def.error}</div>
-                      )}
-                      {def?.text && (
-                        <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-primary)" }}>{def.text}</p>
-                      )}
-                      {!def && (
-                        <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                          Generate a one-paragraph synthesis of how this concept is used across your library.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-                {c.occurrences.map((occ, i) => (
-                  <button
-                    key={`${occ.docId}-${occ.chunkId}-${i}`}
-                    onClick={() => {
-                      // Open the source doc in a tab
-                      const existing = tabs.find(t => t.cloudId === occ.docId);
-                      if (existing) {
-                        switchTab(existing.id);
-                      } else {
-                        fetch(`/api/docs/${occ.docId}`, { headers: authHeadersRef.current })
-                          .then(r => r.ok ? r.json() : null)
-                          .then(d => {
-                            if (!d) return;
-                            const newId = `doc-${occ.docId}-${Date.now()}`;
-                            const newTab: Tab = {
-                              id: newId,
-                              kind: "doc",
-                              cloudId: occ.docId,
-                              title: d.title || occ.docTitle || "Untitled",
-                              markdown: d.markdown || "",
-                              isDraft: d.is_draft,
-                              permission: "mine",
-                            };
-                            setTabs(prev => [...prev, newTab]);
-                            switchTab(newId);
-                          })
-                          .catch(() => {});
-                      }
-                      close();
-                    }}
-                    className="w-full text-left rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)]"
-                    style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                        {occ.chunkType}
-                      </span>
-                      <span className="text-[11px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{occ.docTitle}</span>
-                    </div>
-                    {occ.snippet && (
-                      <p className="text-[11px] leading-relaxed line-clamp-3" style={{ color: "var(--text-secondary)" }}>{occ.snippet}</p>
-                    )}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          </div>
+          </ModalShell>
         );
       })()}
 

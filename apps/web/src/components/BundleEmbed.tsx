@@ -7,6 +7,7 @@ import { postProcessHtml } from "@/lib/postprocess";
 import { parseSections, assembleSections, type Section } from "@/lib/parse-sections";
 import { aggregateDiscoveries, type ChunkRef, type TensionItem, type ThreadItem } from "@/lib/discoveries";
 import Tooltip from "@/components/Tooltip";
+import { Button, Chip, Badge, ModalShell } from "@/components/ui";
 import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, X as XIcon } from "lucide-react";
 
 // Mirror of the AI route's response shape — kept inline to avoid a public type.
@@ -1597,78 +1598,68 @@ function SectionEditor({ docId, section, onClose, onSave }: {
   const [level, setLevel] = useState(section.level);
   const [saving, setSaving] = useState(false);
   const dirty = heading !== section.heading || body !== section.body || level !== section.level;
-  // Suppress unused-var warning for docId — kept in the prop signature for
-  // future "save under different doc" extensions.
-  void docId;
+  void docId; // future: save under different doc
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
-      <div
-        className="rounded-xl overflow-hidden flex flex-col"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(720px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Edit section</span>
-            {section.level > 0 ? (
-              <select
-                value={level}
-                onChange={(e) => setLevel(Number(e.target.value))}
-                className="text-[10px] px-1.5 py-0.5 rounded outline-none"
-                style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
-              >
-                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>H{n}</option>)}
-              </select>
-            ) : (
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>Preamble</span>
-            )}
-          </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="px-4 py-3 flex-1 overflow-auto flex flex-col gap-3 min-h-0">
-          {section.level > 0 && (
-            <input
-              type="text"
-              value={heading}
-              onChange={(e) => setHeading(e.target.value)}
-              placeholder="Heading"
-              className="text-[14px] font-semibold px-3 py-2 rounded-md outline-none"
-              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-            />
-          )}
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Section content (markdown)…"
-            spellCheck={false}
-            className="text-[12px] px-3 py-2 rounded-md outline-none resize-none flex-1"
-            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 240 }}
-          />
-        </div>
-        <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>Cancel</button>
-          <button
+    <ModalShell
+      open
+      onClose={onClose}
+      size="lg"
+      title="Edit section"
+      headerExtras={
+        section.level > 0 ? (
+          <select
+            value={level}
+            onChange={(e) => setLevel(Number(e.target.value))}
+            className="text-caption rounded outline-none"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", border: "1px solid var(--border-dim)", padding: "2px var(--space-2)" }}
+          >
+            {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>H{n}</option>)}
+          </select>
+        ) : (
+          <Badge>Preamble</Badge>
+        )
+      }
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!dirty || saving}
+            loading={saving}
             onClick={async () => {
               if (!dirty || saving) return;
               setSaving(true);
               await onSave({ ...section, heading: heading.trim(), body, level });
               setSaving(false);
             }}
-            disabled={!dirty || saving}
-            className="px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-            style={{
-              background: dirty && !saving ? "var(--accent)" : "var(--toggle-bg)",
-              color: dirty && !saving ? "#000" : "var(--text-faint)",
-              cursor: dirty && !saving ? "pointer" : "default",
-            }}
           >
             {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 min-h-0">
+        {section.level > 0 && (
+          <input
+            type="text"
+            value={heading}
+            onChange={(e) => setHeading(e.target.value)}
+            placeholder="Heading"
+            className="text-heading rounded-md outline-none"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)" }}
+          />
+        )}
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Section content (markdown)…"
+          spellCheck={false}
+          className="text-body rounded-md outline-none resize-none flex-1"
+          style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 240 }}
+        />
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -1683,77 +1674,71 @@ function ChunkEditor({ chunk, onClose, onSave }: {
   const [saving, setSaving] = useState(false);
   const dirty = content !== chunk.content || label !== chunk.label;
   const typeColor: Record<string, string> = {
-    concept: "#38bdf8", claim: "#fb923c", example: "#4ade80", definition: "#60a5fa",
-    task: "#fbbf24", question: "#a78bfa", context: "#94a3b8", evidence: "#f472b6",
-  };
-  const color = typeColor[chunk.type] || "#94a3b8";
+    concept: "cool", claim: "accent", example: "success", definition: "cool",
+    task: "warm", question: "warm", context: "default", evidence: "accent",
+  } as const;
+  const variant = (typeColor[chunk.type as keyof typeof typeColor] || "default") as "cool" | "accent" | "success" | "warm" | "default";
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
-      <div
-        className="rounded-xl overflow-hidden flex flex-col"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(720px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Edit chunk</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold" style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>{chunk.type}</span>
-            {chunk.found === false && (
-              <Tooltip text="Source text drifted — edits cannot be located in the document. Re-run Decompose first." position="bottom">
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>Stale</span>
-              </Tooltip>
-            )}
-          </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
+    <ModalShell
+      open
+      onClose={onClose}
+      size="lg"
+      title="Edit chunk"
+      headerExtras={
+        <div className="flex items-center gap-1">
+          <Badge variant={variant === "default" ? "default" : variant} uppercase>{chunk.type}</Badge>
+          {chunk.found === false && (
+            <Tooltip text="Source text drifted — edits cannot be located in the document. Re-run Decompose first." position="bottom">
+              <Badge variant="danger">Stale</Badge>
+            </Tooltip>
+          )}
         </div>
-        <div className="px-4 py-3 flex-1 overflow-auto flex flex-col gap-3 min-h-0">
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-faint)" }}>Label</label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Short title (3-5 words)"
-              className="w-full text-[13px] font-semibold px-3 py-2 rounded-md outline-none"
-              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-            />
-          </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-faint)" }}>Content (verbatim from doc)</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Chunk content…"
-              spellCheck={false}
-              className="text-[12px] px-3 py-2 rounded-md outline-none resize-none flex-1"
-              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 220 }}
-            />
-          </div>
-        </div>
-        <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>Cancel</button>
-          <button
+      }
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!dirty || saving}
+            loading={saving}
             onClick={async () => {
               if (!dirty || saving) return;
               setSaving(true);
               await onSave(content, label.trim());
               setSaving(false);
             }}
-            disabled={!dirty || saving}
-            className="px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-            style={{
-              background: dirty && !saving ? "var(--accent)" : "var(--toggle-bg)",
-              color: dirty && !saving ? "#000" : "var(--text-faint)",
-              cursor: dirty && !saving ? "pointer" : "default",
-            }}
           >
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 min-h-0">
+        <div>
+          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Label</label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Short title (3-5 words)"
+            className="w-full text-body font-semibold rounded-md outline-none"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)" }}
+          />
+        </div>
+        <div className="flex-1 flex flex-col min-h-0">
+          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Content (verbatim from doc)</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Chunk content…"
+            spellCheck={false}
+            className="text-body rounded-md outline-none resize-none flex-1"
+            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 220 }}
+          />
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -1826,68 +1811,60 @@ function AddChunkModal({ onClose, onCreate }: {
   const [creating, setCreating] = useState(false);
   const valid = label.trim().length > 0 && content.trim().length > 0;
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
-      <div
-        className="rounded-xl overflow-hidden flex flex-col"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(640px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Add new chunk</span>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="px-4 py-3 flex-1 overflow-auto flex flex-col gap-3 min-h-0">
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-faint)" }}>Label</label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Short title (3-5 words)"
-              autoFocus
-              className="w-full text-[13px] font-semibold px-3 py-2 rounded-md outline-none"
-              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-            />
-          </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-faint)" }}>Content</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What does this chunk say? Markdown is fine."
-              spellCheck={false}
-              className="text-[12px] px-3 py-2 rounded-md outline-none resize-none flex-1"
-              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 200 }}
-            />
-            <p className="text-[10px] mt-1.5" style={{ color: "var(--text-faint)" }}>
-              The chunk will be appended to the source document and re-classified by AI on the next decompose run.
-            </p>
-          </div>
-        </div>
-        <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>Cancel</button>
-          <button
+    <ModalShell
+      open
+      onClose={onClose}
+      size="md"
+      title="Add new chunk"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!valid || creating}
+            loading={creating}
             onClick={async () => {
               if (!valid || creating) return;
               setCreating(true);
               await onCreate(label.trim(), content.trim());
               setCreating(false);
             }}
-            disabled={!valid || creating}
-            className="px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-            style={{
-              background: valid && !creating ? "var(--accent)" : "var(--toggle-bg)",
-              color: valid && !creating ? "#000" : "var(--text-faint)",
-              cursor: valid && !creating ? "pointer" : "default",
-            }}
           >
             {creating ? "Adding…" : "Add chunk"}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 min-h-0">
+        <div>
+          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Label</label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Short title (3-5 words)"
+            autoFocus
+            className="w-full text-body font-semibold rounded-md outline-none"
+            style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)" }}
+          />
+        </div>
+        <div className="flex-1 flex flex-col min-h-0">
+          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Content</label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What does this chunk say? Markdown is fine."
+            spellCheck={false}
+            className="text-body rounded-md outline-none resize-none flex-1"
+            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 200 }}
+          />
+          <p className="text-caption" style={{ color: "var(--text-faint)", marginTop: "var(--space-2)" }}>
+            The chunk will be appended to the source document and re-classified by AI on the next decompose run.
+          </p>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 // expose chunk type list for the toolbar/filter (used elsewhere)
@@ -1909,52 +1886,37 @@ function SynthesisModal({ kind, isLoading, markdown, onClose, onSaveAsDoc, onCop
     brief: "Narrative essay tying the bundle together.",
   };
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={onClose}>
-      <div
-        className="rounded-xl overflow-hidden flex flex-col"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(820px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <div className="flex items-center gap-2">
-            <Sparkles width={14} height={14} style={{ color: "var(--accent)" }} />
-            <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>{titles[kind] || "Synthesis"}</span>
-            <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{subs[kind] || ""}</span>
-          </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-auto px-6 py-5">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: "var(--text-faint)" }}>
-              <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
-              <span className="text-[11px]">AI is synthesizing the bundle…</span>
-              <span className="text-[10px]">This usually takes 5-15 seconds.</span>
-            </div>
-          ) : (
-            <pre className="text-[12px] leading-[1.6] whitespace-pre-wrap font-sans" style={{ color: "var(--text-primary)" }}>{markdown}</pre>
-          )}
-        </div>
-        <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>Close</button>
-          <button onClick={onCopy} disabled={isLoading || !markdown}
-            className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
-            style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)", opacity: isLoading || !markdown ? 0.4 : 1 }}>
-            Copy
-          </button>
-          <button onClick={onSaveAsDoc} disabled={isLoading || !markdown}
-            className="px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-            style={{
-              background: !isLoading && markdown ? "var(--accent)" : "var(--toggle-bg)",
-              color: !isLoading && markdown ? "#000" : "var(--text-faint)",
-              cursor: !isLoading && markdown ? "pointer" : "default",
-            }}>
+    <ModalShell
+      open
+      onClose={onClose}
+      size="lg"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Sparkles width={14} height={14} style={{ color: "var(--accent)" }} />
+          {titles[kind] || "Synthesis"}
+        </span>
+      }
+      subtitle={subs[kind]}
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+          <Button variant="secondary" size="sm" disabled={isLoading || !markdown} onClick={onCopy}>Copy</Button>
+          <Button variant="primary" size="sm" disabled={isLoading || !markdown} onClick={onSaveAsDoc}>
             Save as document
-          </button>
+          </Button>
+        </>
+      }
+    >
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: "var(--text-faint)" }}>
+          <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--accent)" }} />
+          <span className="text-caption">AI is synthesizing the bundle…</span>
+          <span className="text-caption">This usually takes 5-15 seconds.</span>
         </div>
-      </div>
-    </div>
+      ) : (
+        <pre className="text-body whitespace-pre-wrap font-sans" style={{ color: "var(--text-primary)", lineHeight: 1.6 }}>{markdown}</pre>
+      )}
+    </ModalShell>
   );
 }
 
@@ -2009,78 +1971,69 @@ function AddDocsPicker({ existingIds, onClose, onAdd, authHeaders }: { existingI
     : docs;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(480px, 90vw)", maxHeight: "70vh" }} onClick={(e) => e.stopPropagation()}>
-        <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Add documents to bundle</span>
-          <button onClick={onClose} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div className="px-4 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search documents…"
-            className="w-full text-[12px] px-2 py-1.5 rounded-md outline-none"
-            style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)", color: "var(--text-primary)" }}
-          />
-        </div>
-        <div className="flex-1 overflow-auto">
-          {loading ? (
-            <div className="px-4 py-8 text-center text-[12px]" style={{ color: "var(--text-faint)" }}>Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[12px]" style={{ color: "var(--text-faint)" }}>
-              {docs.length === 0 ? "No other documents available." : "No documents match your search."}
-            </div>
-          ) : (
-            <div className="py-1">
-              {filtered.map(d => {
-                const checked = selected.has(d.id);
-                return (
-                  <button
-                    key={d.id}
-                    onClick={() => {
-                      setSelected(prev => {
-                        const next = new Set(prev);
-                        if (next.has(d.id)) next.delete(d.id); else next.add(d.id);
-                        return next;
-                      });
-                    }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-[12px] transition-colors hover:bg-[var(--menu-hover)]"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    <span className="shrink-0 w-4 h-4 rounded border flex items-center justify-center" style={{
-                      background: checked ? "var(--accent)" : "transparent",
-                      borderColor: checked ? "var(--accent)" : "var(--border)",
-                    }}>
-                      {checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                    </span>
-                    <span className="flex-1 truncate">{d.title || "Untitled"}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <div className="px-4 py-3 flex items-center justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <button onClick={onClose} className="px-3 py-1.5 text-[11px] rounded-md transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-muted)" }}>Cancel</button>
-          <button
-            onClick={() => onAdd(Array.from(selected))}
+    <ModalShell
+      open
+      onClose={onClose}
+      size="sm"
+      title="Add documents to bundle"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="sm"
             disabled={selected.size === 0}
-            className="px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-            style={{
-              background: selected.size > 0 ? "var(--accent)" : "var(--toggle-bg)",
-              color: selected.size > 0 ? "#000" : "var(--text-faint)",
-              cursor: selected.size > 0 ? "pointer" : "default",
-            }}
+            onClick={() => onAdd(Array.from(selected))}
           >
             Add {selected.size > 0 ? `(${selected.size})` : ""}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      <input
+        type="text"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Search documents…"
+        className="w-full text-body rounded-md outline-none"
+        style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)", color: "var(--text-primary)", padding: "var(--space-1) var(--space-2)", marginBottom: "var(--space-3)" }}
+      />
+      {loading ? (
+        <div className="text-center text-body" style={{ color: "var(--text-faint)", padding: "var(--space-8) 0" }}>Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center text-body" style={{ color: "var(--text-faint)", padding: "var(--space-8) 0" }}>
+          {docs.length === 0 ? "No other documents available." : "No documents match your search."}
         </div>
-      </div>
-    </div>
+      ) : (
+        <div className="flex flex-col gap-0.5">
+          {filtered.map(d => {
+            const checked = selected.has(d.id);
+            return (
+              <button
+                key={d.id}
+                onClick={() => {
+                  setSelected(prev => {
+                    const next = new Set(prev);
+                    if (next.has(d.id)) next.delete(d.id); else next.add(d.id);
+                    return next;
+                  });
+                }}
+                className="w-full flex items-center text-left text-body transition-colors hover:bg-[var(--menu-hover)] rounded"
+                style={{ color: "var(--text-secondary)", gap: "var(--space-2)", padding: "var(--space-2) var(--space-2)" }}
+              >
+                <span className="shrink-0 w-4 h-4 rounded border flex items-center justify-center" style={{
+                  background: checked ? "var(--accent)" : "transparent",
+                  borderColor: checked ? "var(--accent)" : "var(--border)",
+                }}>
+                  {checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                </span>
+                <span className="flex-1 truncate">{d.title || "Untitled"}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </ModalShell>
   );
 }
 
