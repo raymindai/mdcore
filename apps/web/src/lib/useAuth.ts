@@ -109,8 +109,40 @@ export function useAuth() {
   const signInWithEmail = useCallback(
     async (email: string) => {
       if (!supabase) return { error: "Supabase not configured" };
+      const normalized = email.trim().toLowerCase();
+
+      // Demo-account fast path — yc@mdfy.app and similar allowlisted
+      // emails skip the magic-link round-trip and sign in immediately
+      // via /api/auth/demo-signin. Returns { instant: true } so the UI
+      // can navigate straight in without showing "check your email."
+      if (normalized === "yc@mdfy.app") {
+        try {
+          const res = await fetch("/api/auth/demo-signin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalized }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            return { error: err.error || `Demo sign-in failed (${res.status})` };
+          }
+          const data = await res.json();
+          if (!data.access_token || !data.refresh_token) {
+            return { error: "Demo sign-in returned no session" };
+          }
+          const { error: setErr } = await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          });
+          if (setErr) return { error: setErr.message };
+          return { error: null, instant: true };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : "Demo sign-in error" };
+        }
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: normalized,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       return { error: error?.message || null };

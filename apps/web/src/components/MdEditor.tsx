@@ -12264,8 +12264,15 @@ ${clone.innerHTML}
                     onChange={(e) => setAuthEmailInput(e.target.value)}
                     onKeyDown={async (e) => {
                       if (e.key === "Enter" && authEmailInput.trim()) {
-                        const { error } = await signInWithEmail(authEmailInput.trim());
-                        if (!error) setAuthEmailSent(true);
+                        const result = await signInWithEmail(authEmailInput.trim());
+                        if (!result.error) {
+                          // Demo accounts sign in instantly (no email step);
+                          // every other email still gets the "check your inbox"
+                          // confirmation card.
+                          const instant = (result as { instant?: boolean }).instant;
+                          if (!instant) setAuthEmailSent(true);
+                          else setShowAuthMenu(false);
+                        }
                       }
                     }}
                     className="flex-1 px-3 py-2 rounded-lg text-body outline-none"
@@ -12274,8 +12281,12 @@ ${clone.innerHTML}
                   <button
                     onClick={async () => {
                       if (authEmailInput.trim()) {
-                        const { error } = await signInWithEmail(authEmailInput.trim());
-                        if (!error) setAuthEmailSent(true);
+                        const result = await signInWithEmail(authEmailInput.trim());
+                        if (!result.error) {
+                          const instant = (result as { instant?: boolean }).instant;
+                          if (!instant) setAuthEmailSent(true);
+                          else setShowAuthMenu(false);
+                        }
                       }
                     }}
                     className="px-3 py-2 rounded-lg text-caption font-medium transition-colors"
