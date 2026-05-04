@@ -7663,21 +7663,26 @@ ${clone.innerHTML}
           >
             <MdfyLogo size={18} />
           </h1>
-          {/* Document ID badge + view count — refined chip group */}
+          {/* Document / Bundle ID badge + view count — refined chip group.
+              For doc tabs: shows /{cloudId} → mdfy.app/{cloudId}.
+              For bundle tabs: shows /b/{bundleId} → mdfy.app/b/{bundleId}. */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
-            const cid = ct?.cloudId || docId;
+            const isBundle = ct?.kind === "bundle" && !!ct?.bundleId;
+            const cid = isBundle ? ct!.bundleId! : (ct?.cloudId || docId);
             if (!cid) return null;
-            const [copied, _setCopied] = [false, () => {}]; // visual cue handled inline below
-            void copied; void _setCopied;
+            const path = isBundle ? `b/${cid}` : cid;
+            const fullUrl = `https://mdfy.app/${path}`;
+            const labelPrefix = isBundle ? "/b/" : "/";
+            const labelId = cid;
             return (<>
               <button
                 className="text-caption font-mono shrink-0 transition-all hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                 style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
-                title={`Copy https://mdfy.app/${cid}`}
+                title={`Copy ${fullUrl}`}
                 onClick={async (e) => {
                   try {
-                    await navigator.clipboard.writeText(`https://mdfy.app/${cid}`);
+                    await navigator.clipboard.writeText(fullUrl);
                     const btn = e.currentTarget;
                     btn.style.color = "var(--accent)";
                     btn.style.borderColor = "var(--accent)";
@@ -7688,11 +7693,11 @@ ${clone.innerHTML}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
               >
-                <span style={{ color: "var(--text-faint)", fontSize: 9 }}>/</span>
-                <span style={{ letterSpacing: "0.02em" }}>{cid}</span>
+                <span style={{ color: "var(--text-faint)", fontSize: 9 }}>{labelPrefix}</span>
+                <span style={{ letterSpacing: "0.02em" }}>{labelId}</span>
                 <Copy width={9} height={9} style={{ opacity: 0.55 }} />
               </button>
-              {viewCount > 0 && (
+              {!isBundle && viewCount > 0 && (
                 <span
                   className="text-caption shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                   style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
