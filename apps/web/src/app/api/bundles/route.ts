@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     userEmail?: string;
     anonymousId?: string;
     isDraft?: boolean;
+    folderId?: string | null;
   };
   try {
     body = await req.json();
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { title, description, documentIds, password, anonymousId, isDraft } = body;
+  const { title, description, documentIds, password, anonymousId, isDraft, folderId } = body;
   let { userId } = body;
 
   // Verify JWT
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       user_id: userId || null,
       anonymous_id: (!userId && anonymousId) ? anonymousId : null,
       is_draft: isDraft ?? true,
+      folder_id: folderId || null,
     });
     if (!error) { insertError = null; break; }
     if (error.code === "23505") { insertError = error; continue; }
@@ -138,7 +140,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("bundles")
-    .select("id, title, description, is_draft, view_count, layout, created_at, updated_at")
+    .select("id, title, description, is_draft, password_hash, allowed_emails, edit_mode, view_count, layout, folder_id, created_at, updated_at")
     .order("updated_at", { ascending: false })
     .limit(100);
 
@@ -168,10 +170,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const bundles = (data || []).map(b => ({
-    ...b,
-    documentCount: docCounts[b.id] || 0,
-  }));
+  const bundles = (data || []).map(b => {
+    const { password_hash, allowed_emails, ...rest } = b as { password_hash?: string | null; allowed_emails?: string[] | null } & Record<string, unknown>;
+    const allowedCount = Array.isArray(allowed_emails) ? allowed_emails.length : 0;
+    return {
+      ...rest,
+      has_password: !!password_hash,
+      allowed_emails_count: allowedCount,
+      documentCount: docCounts[b.id] || 0,
+    };
+  });
 
   return NextResponse.json({ bundles });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 interface AutoSaveOptions {
   debounceMs?: number;
@@ -39,6 +40,26 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
   const pendingRef = useRef<Parameters<typeof scheduleSave>[0] | null>(null);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 3;
+  // Tracks whether we already attempted a Supabase session refresh for the
+  // current 403. Prevents an infinite refresh→403→refresh loop if the user is
+  // genuinely signed out or lacks permission on the doc.
+  const refreshedThisRoundRef = useRef(false);
+
+  /**
+   * Try to refresh the Supabase session and return the new access token.
+   * Returns null if refresh is not possible (no client / no session / failed).
+   */
+  const refreshSupabaseSession = useCallback(async (): Promise<string | null> => {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return null;
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error || !data?.session?.access_token) return null;
+      return data.session.access_token;
+    } catch {
+      return null;
+    }
+  }, []);
 
   /**
    * Create a new document on the server.
@@ -123,11 +144,40 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
             patchBody.expectedUpdatedAt = lastServerUpdatedAtRef.current;
           }
 
-          const res = await fetch(`/api/docs/${args.cloudId}`, {
+          // Attach Authorization header from current Supabase session so the
+          // server-side verifyAuthToken() can identify the user even if the
+          // page was opened a long time ago.
+          let bearer: string | null = null;
+          try {
+            const supabase = getSupabaseBrowserClient();
+            if (supabase) {
+              const { data } = await supabase.auth.getSession();
+              bearer = data?.session?.access_token ?? null;
+            }
+          } catch { /* ignore */ }
+
+          const doFetch = (token: string | null) => fetch(`/api/docs/${args.cloudId}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify(patchBody),
           });
+
+          let res = await doFetch(bearer);
+
+          // Auto-recover from expired token: if 403 and we haven't already
+          // refreshed for this attempt, force a session refresh and retry once.
+          if (res.status === 403 && !refreshedThisRoundRef.current) {
+            refreshedThisRoundRef.current = true;
+            const fresh = await refreshSupabaseSession();
+            if (fresh) {
+              res = await doFetch(fresh);
+            }
+          }
+          // Reset the refresh guard on any non-403 (success, conflict, other err)
+          if (res.status !== 403) refreshedThisRoundRef.current = false;
 
           if (res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -150,7 +200,7 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
               },
             }));
           } else if (res.status === 403) {
-            // Permission error — likely session expired or owner mismatch
+            // Refresh already attempted; user is genuinely signed out.
             setState((s) => ({ ...s, isSaving: false, error: "Session expired. Refresh to continue editing." }));
           } else {
             const err = await res.json().catch(() => ({}));

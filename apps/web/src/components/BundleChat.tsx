@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ScrollText, CheckSquare, Scale, HelpCircle, RotateCcw } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -16,11 +17,12 @@ interface BundleChatProps {
   onClose?: () => void;
 }
 
-const SUGGESTED_QUESTIONS = [
-  { label: "Summarize this bundle", icon: "📋", question: "Give me a clear, structured summary of what this bundle contains as a whole." },
-  { label: "Find action items", icon: "✓", question: "Extract all action items, tasks, or recommendations mentioned across the documents. Format as a checklist." },
-  { label: "Key tensions & contradictions", icon: "⚖", question: "What tensions, contradictions, or conflicting viewpoints exist between these documents?" },
-  { label: "What's missing?", icon: "❓", question: "What important topics, perspectives, or information are missing from this bundle?" },
+// Quick action prompts shown as a 2x2 grid (matches Document Assistant pattern)
+const QUICK_ACTIONS = [
+  { label: "Summarize", icon: <ScrollText width={11} height={11} style={{ color: "var(--accent)" }} />, question: "Give me a clear, structured summary of what this bundle contains as a whole." },
+  { label: "Action items", icon: <CheckSquare width={11} height={11} style={{ color: "#60a5fa" }} />, question: "Extract all action items, tasks, or recommendations mentioned across the documents. Format as a checklist." },
+  { label: "Tensions", icon: <Scale width={11} height={11} style={{ color: "#fbbf24" }} />, question: "What tensions, contradictions, or conflicting viewpoints exist between these documents?" },
+  { label: "What's missing", icon: <HelpCircle width={11} height={11} style={{ color: "#a78bfa" }} />, question: "What important topics, perspectives, or information are missing from this bundle?" },
 ];
 
 export default function BundleChat({ bundleId, bundleTitle, documentCount, onCitationClick, onClose }: BundleChatProps) {
@@ -29,7 +31,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load chat history from localStorage
   useEffect(() => {
@@ -134,12 +136,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
     sendMessage(input);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
-    }
-  };
+  // Kept for potential future textarea use; the input is now single-line.
 
   const clearChat = () => {
     if (!confirm("Clear chat history?")) return;
@@ -148,49 +145,31 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "var(--surface)", borderLeft: "1px solid var(--border)" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Chat with Bundle</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {messages.length > 0 && (
-            <button onClick={clearChat} title="Clear history" className="p-1.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    <div className="flex flex-col h-full">
+      {/* Quick actions — 2x2 grid, mirrors Document Assistant style */}
+      <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+        <div className="grid grid-cols-2 gap-1">
+          {QUICK_ACTIONS.map((q, i) => (
+            <button key={i} onClick={() => sendMessage(q.question)}
+              disabled={isStreaming}
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] transition-colors hover:bg-[var(--accent-dim)] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
+              {q.icon}
+              <span>{q.label}</span>
             </button>
-          )}
-          {onClose && (
-            <button onClick={onClose} className="p-1.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages / empty state */}
       <div className="flex-1 overflow-auto px-4 py-4">
         {messages.length === 0 ? (
-          <div className="space-y-4">
-            <div className="text-center py-4">
-              <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--accent-dim)" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-              </div>
-              <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{bundleTitle || "This bundle"}</h3>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>{documentCount} document{documentCount !== 1 ? "s" : ""} loaded · Ask anything</p>
+          <div className="text-center py-6">
+            <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--accent-dim)" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Suggested</p>
-              {SUGGESTED_QUESTIONS.map((q, i) => (
-                <button key={i} onClick={() => sendMessage(q.question)}
-                  className="w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-2.5 transition-colors hover:bg-[var(--accent-dim)]"
-                  style={{ background: "var(--toggle-bg)" }}>
-                  <span className="text-base shrink-0" style={{ marginTop: 1 }}>{q.icon}</span>
-                  <span className="text-xs" style={{ color: "var(--text-primary)" }}>{q.label}</span>
-                </button>
-              ))}
-            </div>
+            <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{bundleTitle || "This bundle"}</h3>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{documentCount} document{documentCount !== 1 ? "s" : ""} loaded · Ask anything</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -207,35 +186,48 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
         )}
       </div>
 
-      {/* Input */}
-      <form onSubmit={onSubmit} className="shrink-0 p-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <div className="flex items-end gap-2 rounded-xl p-2" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
-          <textarea
+      {/* Input — visually matches Document Assistant input exactly:
+          same wrapper padding, same inner box (toggle-bg + border-dim, rounded-lg,
+          px-3 py-2, gap-1.5), same text-[11px], same paper-plane Send icon. */}
+      <form onSubmit={onSubmit} className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+          <input
             ref={inputRef}
+            type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !(e.nativeEvent as unknown as { isComposing?: boolean }).isComposing && input.trim() && !isStreaming) {
+                e.preventDefault();
+                onSubmit(e as unknown as React.FormEvent);
+              }
+            }}
             placeholder="Ask anything about this bundle..."
-            rows={1}
+            maxLength={500}
             disabled={isStreaming}
-            className="flex-1 resize-none outline-none bg-transparent text-sm"
-            style={{ color: "var(--text-primary)", maxHeight: 120, minHeight: 20 }}
+            autoFocus
+            className="flex-1 text-[11px] bg-transparent"
+            style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
           />
+          {messages.length > 0 && (
+            <button type="button" onClick={clearChat}
+              className="shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
+              style={{ color: "var(--text-faint)" }}
+              title="Clear chat history">
+              <RotateCcw width={9} height={9} />
+            </button>
+          )}
           <button type="submit" disabled={!input.trim() || isStreaming}
-            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-            style={{
-              background: input.trim() && !isStreaming ? "var(--accent)" : "var(--toggle-bg)",
-              color: input.trim() && !isStreaming ? "#fff" : "var(--text-faint)",
-              cursor: input.trim() && !isStreaming ? "pointer" : "default",
-            }}>
+            className="shrink-0 p-1.5 rounded-md transition-colors"
+            style={{ background: input.trim() && !isStreaming ? "var(--accent)" : "transparent", color: input.trim() && !isStreaming ? "#000" : "var(--text-faint)" }}
+            title="Send">
             {isStreaming ? (
-              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin block" />
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2L2 8.5l5 2L9.5 16z"/><path d="M14 2L7 10.5"/></svg>
             )}
           </button>
         </div>
-        <p className="text-[10px] mt-1.5 px-1" style={{ color: "var(--text-faint)" }}>Enter to send · Shift+Enter for newline</p>
       </form>
     </div>
   );

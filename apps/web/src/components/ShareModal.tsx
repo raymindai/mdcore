@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, memo } from "react";
-import { setAllowedEmails, changeEditMode, copyToClipboard } from "@/lib/share";
+import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "react";
+import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
 import { Lock, Link2, X } from "lucide-react";
 
@@ -19,6 +19,16 @@ interface ShareModalProps {
   onAllowedEmailsChange: (emails: string[]) => void;
   onAllowedEditorsChange?: (editors: string[]) => void;
   onMakePrivate?: () => void;
+  // Optional overrides — used by bundle share to cascade access onto included docs
+  // and to substitute the bundle URL for "Copy link". Defaults preserve doc behavior.
+  setAllowedEmailsOverride?: (id: string, userId: string, emails: string[], editors: string[]) => Promise<{ allowedEmails: string[]; allowedEditors: string[] }>;
+  changeEditModeOverride?: (id: string, userId: string, mode: "owner" | "view" | "public") => Promise<void>;
+  shareUrlOverride?: string;
+  // Banner rendered between "People with access" and "General access" — used by bundle
+  // share to surface the cascade warning and per-doc list.
+  banner?: ReactNode;
+  // Title for the dialog header. Defaults to `Share "<title>"`.
+  headerTitle?: string;
 }
 
 function ShareModal({
@@ -35,7 +45,14 @@ function ShareModal({
   onAllowedEmailsChange,
   onAllowedEditorsChange,
   onMakePrivate,
+  setAllowedEmailsOverride,
+  changeEditModeOverride,
+  shareUrlOverride,
+  banner,
+  headerTitle,
 }: ShareModalProps) {
+  const setAllowedEmailsFn = setAllowedEmailsOverride || defaultSetAllowedEmails;
+  const changeEditModeFn = changeEditModeOverride || defaultChangeEditMode;
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
   const [editors, setEditors] = useState<string[]>(initialAllowedEditors);
@@ -57,7 +74,7 @@ function ShareModal({
   const saveAccess = useCallback(async (newEmails: string[], newEditors: string[]) => {
     setSaving(true);
     try {
-      const result = await setAllowedEmails(docId, userId, newEmails, newEditors);
+      const result = await setAllowedEmailsFn(docId, userId, newEmails, newEditors);
       setEmails(result.allowedEmails);
       setEditors(result.allowedEditors);
       onAllowedEmailsChange(result.allowedEmails);
@@ -108,7 +125,7 @@ function ShareModal({
     if (updatedEmails.length === 0 && generalAccess !== "restricted") {
       setGeneralAccess("restricted");
       try {
-        await changeEditMode(docId, userId, "owner");
+        await changeEditModeFn(docId, userId, "owner");
         onEditModeChange("owner");
       } catch {}
     }
@@ -119,18 +136,18 @@ function ShareModal({
     setGeneralAccess(mode);
     const editMode = mode === "anyone-view" ? "view" : "owner";
     try {
-      await changeEditMode(docId, userId, editMode);
+      await changeEditModeFn(docId, userId, editMode as "owner" | "view" | "public");
       onEditModeChange(editMode as "owner" | "view" | "public");
       showToast(mode === "restricted" ? "Access restricted" : "Anyone can view", "success");
     } catch { showToast("Failed to change access", "error"); }
   }, [docId, userId, onEditModeChange]);
 
   const handleCopyLink = useCallback(async () => {
-    const url = `${window.location.origin}/${docId}`;
+    const url = shareUrlOverride || `${window.location.origin}/${docId}`;
     await copyToClipboard(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [docId]);
+  }, [docId, shareUrlOverride]);
 
   return (
     <div
@@ -147,7 +164,7 @@ function ShareModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            Share{title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}
+            {headerTitle || `Share${title ? ` "${title.length > 30 ? title.slice(0, 30) + "..." : title}"` : ""}`}
           </h2>
           <button
             onClick={onClose}
@@ -257,6 +274,11 @@ function ShareModal({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Optional banner slot — bundle share uses this for cascade warning */}
+        {banner && (
+          <div className="px-5 pb-4">{banner}</div>
         )}
 
         {/* General access — toggle between Restricted and Anyone with link */}

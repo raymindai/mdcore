@@ -28,12 +28,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Pass ?includeDeleted=1 to also receive soft-deleted docs (so the sidebar's
+  // Trash section can show them). Without this flag the realtime sync would
+  // strip locally-marked-deleted tabs from state and Trash would always be empty.
+  const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
+
   let query = supabase
     .from("documents")
-    .select("id, title, created_at, updated_at, view_count, is_draft, edit_mode, allowed_emails, source, folder_id")
-    .is("deleted_at", null)
+    .select("id, title, created_at, updated_at, deleted_at, view_count, is_draft, edit_mode, allowed_emails, source, folder_id, sort_order")
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .limit(200);
+  if (!includeDeleted) query = query.is("deleted_at", null);
 
   if (userId) {
     query = query.eq("user_id", userId);

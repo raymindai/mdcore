@@ -1,5 +1,6 @@
 import { render, detectFlavor } from "./wasm/mdcore_engine";
 import type { RenderResult as WasmRenderResult } from "./wasm/mdcore_engine";
+import { normalizeMarkdown } from "./normalize-markdown";
 
 export interface FlavorInfo {
   primary: "gfm" | "obsidian" | "mdx" | "pandoc" | "commonmark";
@@ -27,9 +28,15 @@ export async function renderMarkdown(markdown: string): Promise<{
   toc: TocEntry[];
   flavor: FlavorInfo;
 }> {
+  // Normalize structurally-malformed markdown before rendering.
+  // Common pattern from AI/MCP-generated docs: multiple H1s, headings wrapped
+  // in inline code (` # `text` `), and rows of one-line inline-code "paragraphs"
+  // that should have been a fenced code block.
+  const normalized = normalizeMarkdown(markdown);
+
   let result: WasmRenderResult;
   try {
-    result = render(markdown);
+    result = render(normalized);
   } catch (err) {
     console.error("WASM render failed:", err);
     throw new Error("Failed to render markdown. The engine encountered an error.");

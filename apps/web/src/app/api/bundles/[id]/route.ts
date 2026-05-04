@@ -93,16 +93,27 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const docIds = (bundleDocs || []).map(d => d.document_id);
 
-  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string }> = [];
+  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string; is_draft: boolean; edit_mode: string; allowed_emails_count: number }> = [];
   if (docIds.length > 0) {
     const { data: docs } = await supabase
       .from("documents")
-      .select("id, title, markdown, created_at, updated_at")
+      .select("id, title, markdown, created_at, updated_at, is_draft, edit_mode, allowed_emails")
       .in("id", docIds)
       .is("deleted_at", null);
 
-    // Maintain sort order from bundle_documents
-    const docsMap = new Map((docs || []).map(d => [d.id, d]));
+    // Maintain sort order from bundle_documents; expose only owner-relevant share metadata
+    const docsMap = new Map(
+      (docs || []).map(d => [d.id, {
+        id: d.id,
+        title: d.title,
+        markdown: d.markdown,
+        created_at: d.created_at,
+        updated_at: d.updated_at,
+        is_draft: d.is_draft !== false,
+        edit_mode: d.edit_mode || "owner",
+        allowed_emails_count: Array.isArray(d.allowed_emails) ? d.allowed_emails.length : 0,
+      }])
+    );
     documents = docIds.map(docId => docsMap.get(docId)).filter(Boolean) as typeof documents;
   }
 
@@ -140,6 +151,11 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     documentIds?: string[];
     isDraft?: boolean;
     graphData?: unknown;
+    folderId?: string | null;
+    allowedEmails?: string[];
+    allowedEditors?: string[];
+    editMode?: string;
+    intent?: string | null;
   };
   try {
     body = await req.json();
@@ -186,9 +202,50 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   // ─── Action: unpublish ───
   if (body.action === "unpublish") {
-    const { error } = await supabase.from("bundles").update({ is_draft: true, updated_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase.from("bundles").update({
+      is_draft: true,
+      allowed_emails: [],
+      allowed_editors: [],
+      edit_mode: "owner",
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to unpublish" }, { status: 500 });
     return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: set-allowed-emails ───
+  if (body.action === "set-allowed-emails") {
+    const { error } = await supabase.from("bundles").update({
+      allowed_emails: Array.isArray(body.allowedEmails) ? body.allowedEmails : [],
+      allowed_editors: Array.isArray(body.allowedEditors) ? body.allowedEditors : [],
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to update sharing" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: change-edit-mode ───
+  if (body.action === "change-edit-mode") {
+    if (!body.editMode) return NextResponse.json({ error: "editMode required" }, { status: 400 });
+    const { error } = await supabase.from("bundles").update({
+      edit_mode: body.editMode,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to change edit mode" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: set-intent ───
+  // Bundle intent is the North Star for AI analysis. Stored as plain text;
+  // empty string / null clears it (bundle reverts to whole-bundle analysis).
+  if (body.action === "set-intent") {
+    const next = (body.intent ?? "").toString().trim();
+    const { error } = await supabase.from("bundles").update({
+      intent: next || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to update intent" }, { status: 500 });
+    return NextResponse.json({ ok: true, intent: next || null });
   }
 
   // ─── Action: add-documents ───
@@ -248,12 +305,26 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true });
   }
 
+  // ─── Action: move-to-folder (mirrors documents API) ───
+  if (body.action === "move-to-folder") {
+    const folderId: string | null = (body as { folderId?: string | null }).folderId ?? null;
+    const { error } = await supabase
+      .from("bundles")
+      .update({ folder_id: folderId, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to move bundle" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   // ─── Default: update metadata ───
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.title !== undefined) updates.title = body.title;
   if (body.description !== undefined) updates.description = body.description;
   if (body.layout !== undefined) updates.layout = body.layout;
   if (body.isDraft !== undefined) updates.is_draft = body.isDraft;
+  if ((body as { folderId?: string | null }).folderId !== undefined) {
+    updates.folder_id = (body as { folderId?: string | null }).folderId || null;
+  }
 
   const { error } = await supabase.from("bundles").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });

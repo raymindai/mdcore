@@ -47,6 +47,16 @@ import {
 } from "lucide-react";
 
 const lowlight = createLowlight(common);
+// `common` registers `latex` but not `tex`. AI/MCP-generated docs frequently use
+// ```tex which causes lowlight to throw `Unknown language: tex is not registered`
+// during setContent. Alias common math typesetting names to `latex` so they
+// highlight reasonably instead of crashing the editor on tab switch.
+try {
+  if (lowlight.registered("latex")) {
+    if (!lowlight.registered("tex")) lowlight.registerAlias("latex", "tex");
+    if (!lowlight.registered("bibtex")) lowlight.registerAlias("latex", "bibtex");
+  }
+} catch { /* ignore */ }
 
 // ─── Custom CodeBlock NodeView: language label + copy button + mermaid render ───
 const CustomCodeBlock = CodeBlockLowlight.extend({

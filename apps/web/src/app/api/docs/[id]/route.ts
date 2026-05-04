@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token, deleted_at, source")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token, deleted_at, source, compile_kind, compile_from, compiled_at")
     .eq("id", id)
     .single();
 
@@ -184,6 +184,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     isDraft?: boolean;
     source?: string;
     folderId?: string | null;
+    sortOrder?: number;
     expectedUpdatedAt?: string;
   };
   try {
@@ -449,11 +450,25 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Verify ownership
     const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
     if (!doc || doc.user_id !== requesterId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const { error } = await supabase
-      .from("documents")
-      .update({ folder_id: body.folderId || null, updated_at: new Date().toISOString() })
-      .eq("id", id);
+    const updates: { folder_id: string | null; updated_at: string; sort_order?: number } = {
+      folder_id: body.folderId || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof body.sortOrder === "number") updates.sort_order = body.sortOrder;
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to move" }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: set-sort-order ───
+  if (body.action === "set-sort-order") {
+    const requesterId = verified?.userId || req.headers.get("x-user-id");
+    if (!requesterId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
+    if (!doc || doc.user_id !== requesterId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (typeof body.sortOrder !== "number") return NextResponse.json({ error: "sortOrder required" }, { status: 400 });
+    const { error } = await supabase.from("documents").update({ sort_order: body.sortOrder }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to update sort_order" }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 

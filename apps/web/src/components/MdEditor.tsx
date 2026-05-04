@@ -14,8 +14,11 @@ import {
 import MdCanvas from "@/components/MdCanvas";
 import BundleEmbed from "@/components/BundleEmbed";
 import BundleChat from "@/components/BundleChat";
+import SidebarFolderTree from "@/components/SidebarFolder";
+import FolderEmojiPicker from "@/components/FolderEmojiPicker";
 import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
+import Tooltip from "@/components/Tooltip";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -26,11 +29,12 @@ import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-impor
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import {
   Undo2, Redo2, List, ListOrdered, Indent, Outdent, Quote, Minus, Link,
-  Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, Pencil, Copy, Eye,
+  Image as ImageIcon, RemoveFormatting, Table, Code, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Pencil, Copy, Eye,
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe,
+  ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
@@ -1182,6 +1186,98 @@ const SAMPLE_QUICKLOOK = `# QuickLook Preview
 - No background processes — lightweight QuickLook extension
 `;
 
+const SAMPLE_BUNDLES = `# Bundles, Discoveries, Compile & Concepts
+
+Beyond single docs, mdfy lets you cluster related documents into a **Bundle** and treat them as a single thinking surface. The bundle isn't a folder — it actively analyzes its contents, surfaces what they collectively say, and lets you compile new artifacts out of them.
+
+## Bundles: from folder to thinking surface
+
+Select multiple docs in the sidebar, choose **Bundle**, and you get a bundle URL like \`mdfy.app/b/xxxx\`. Open it and the docs render as nodes on a **Knowledge Constellation** — a 3D-style force-directed graph that shows how documents and their concepts interconnect.
+
+Bundle viewer modes:
+- **Canvas** — the spatial constellation, drag/zoom/pan, click nodes to inspect
+- **List** — sequential reading view with table of contents
+
+## Intent: the North Star of a bundle
+
+A bundle isn't just *what* you collected — it's *why*. At the top of the Discoveries panel you can set the **Intent**:
+
+> *"Decide our SNS launch strategy"*
+
+The intent feeds into every AI prompt — bundle-level analysis weights themes/insights/gaps by relevance to your question, per-doc decomposition labels chunks by their importance to the intent. Without intent, AI gives generic summaries. With intent, it gives you decision-grade output.
+
+## Discoveries: the bundle talks first
+
+Open any bundle and the right panel shows **Discoveries** — what the bundle wants to tell you. Sections that surface automatically once you click "Run discovery":
+
+| Section | What it surfaces |
+|---------|------------------|
+| 🔥 Tensions | Chunks that contradict each other across docs |
+| 💡 Insights | Non-obvious patterns the AI noticed reading them together |
+| ❓ Open Questions | Unresolved questions raised in the source material |
+| ❓ Gaps | What this collection doesn't cover but should |
+| 🔗 Connections | Doc-to-doc relationships ("doc-A frames what doc-B critiques") |
+| 🌿 Threads | Concepts that recur across multiple docs |
+
+Click any item → the canvas flies to the relevant chunk and pulses it. Tensions get an **✨ Resolve with AI** button that generates a reconciliation paragraph in place.
+
+## Decompose: split a doc into semantic chunks
+
+Right-click a document node on the canvas → **Decompose into sections**. The AI breaks the document into typed chunks — \`concept\` (cyan), \`claim\` (orange), \`example\` (green), \`definition\` (blue), \`task\` (yellow), \`question\` (purple), \`evidence\` (pink), \`context\` (gray) — each connected by typed relationships (\`supports\`, \`elaborates\`, \`contradicts\`, \`exemplifies\`).
+
+Inside the decomposed view you can:
+- **Edit** chunk content inline (verbatim find-and-replace into source doc)
+- **Cmd-click** multiple chunks → bulk Copy / Extract → new doc / Branch → new doc / Delete
+- **Drag** a chunk onto another to reorder its position in the source doc
+- **Add chunk** — append a new chunk that gets re-classified on next analyze
+
+Or use the **sidebar Decompose tab** — same data, vertical list editor for focused doc work without the constellation.
+
+## Compile: synthesis becomes a permanent artifact
+
+From the canvas top toolbar, hit **✨ Memo / FAQ / Brief** to synthesize the entire bundle into a coherent output:
+
+- **Memo** — 1-page decision-ready memo (Headline, TL;DR, Key findings, Tensions, Gaps, Recommendations)
+- **FAQ** — 5–10 synthesized questions and answers across docs
+- **Brief** — 400-600 word narrative essay tying the bundle together
+
+Click **Save as document** and the result becomes a *compiled entry*: a normal doc that **remembers its source bundle** and intent. Compiled docs get a **\`✨ Compiled · Memo\`** badge in the editor header and a **\`↻ Recompile\`** button — when source docs change, one click regenerates the synthesis with the latest content.
+
+This is the Karpathy-style "compile knowledge once, query forever" loop, applied to your bundle.
+
+## Concepts: the cross-doc index
+
+In the left sidebar, the **Concepts** section shows every concept that appears in your decomposed docs. Concepts in 2+ docs (cross-linked) get an **orange dot**; single-doc concepts get a faded dot.
+
+Click any concept → drawer with all citations across your library:
+
+\`\`\`
+AI Memory Ownership · 4 docs · 7 mentions
+  ┌─ "mdfy.cc V2"               [concept] excerpt…
+  ├─ "Bundle Strategy Brief"    [definition] excerpt…
+  └─ "Launch Plan"              [concept] excerpt…
+\`\`\`
+
+Click any citation → opens the source doc as a tab. This is your personal knowledge graph — it grows automatically as you add and decompose docs. No manual wiki maintenance needed.
+
+The home screen shows compounding stats:
+
+> **64 docs · 47 concepts · 23 cross-linked**
+>
+> 23 concepts connect multiple docs in your library.
+
+## Workflow recap
+
+1. Drop or write docs → **Library** grows
+2. Group related docs into a **Bundle** → set its **Intent**
+3. **Run discovery** → AI surfaces tensions, insights, gaps, connections
+4. Click chunks to **decompose**, edit, recombine
+5. **Compile** Memo / FAQ / Brief → save as a compiled doc
+6. **Concepts** auto-index across the library → cross-doc references emerge
+
+The bundle is no longer a folder. It's a thinking partner that reads what you've gathered and tells you what it sees.
+`;
+
 const EXAMPLE_OWNER = "master@mdfy.app";
 const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
@@ -1189,6 +1285,7 @@ const INITIAL_FOLDERS: Folder[] = [];
 
 const EXAMPLE_TABS: Tab[] = [
   { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-bundles", title: extractTitleFromMd(SAMPLE_BUNDLES), markdown: SAMPLE_BUNDLES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
@@ -1333,8 +1430,19 @@ interface Folder {
   id: string;
   name: string;
   collapsed: boolean;
-  section?: "my" | "shared"; // which section this folder belongs to
+  section?: "my" | "shared" | "bundles"; // which section this folder belongs to
+  parentId?: string | null;  // null/undefined = root level; otherwise nested under another folder
+  emoji?: string;            // optional folder emoji prefix
+  sortOrder?: number;        // manual sort_order from server (used in custom mode)
 }
+
+// Module-level stable filter functions for SidebarFolderTree's rootFolderFilter prop.
+// MUST be stable across renders — if the function identity changes each render the
+// tree's useMemo (which depends on this filter) invalidates, rebuilding the tree
+// and reconciling root tab DOM nodes. That reconciliation cancels in-flight HTML5
+// drags (Chrome aborts the drag if the dragged element is replaced mid-drag).
+const FOLDER_FILTER_MY = (f: { section?: string }) => !f.section || f.section === "my";
+const FOLDER_FILTER_BUNDLES = (f: { section?: string }) => f.section === "bundles";
 
 interface Tab {
   id: string;
@@ -1359,6 +1467,17 @@ interface Tab {
   ownerEmail?: string;     // owner's email (for shared docs)
   source?: string;         // origin: "vscode" | "chrome" | null
   lastOpenedAt?: number;   // timestamp of last open
+  sortOrder?: number;      // manual sort order within folder (used when sortMode="custom")
+  // Compile metadata — set when this doc was generated by bundle synthesis
+  // (memo / faq / brief). The editor surfaces a badge + Recompile button.
+  compileKind?: "memo" | "faq" | "brief";
+  compileFrom?: { bundleId?: string; docIds?: string[]; intent?: string | null };
+  compiledAt?: string;
+  // True when this tab was added programmatically (synthesis / extract / etc.)
+  // and the user hasn't opened it yet. Drives the pulsing orange dot in the
+  // sidebar — cleared the first time the tab is activated. Persisted across
+  // refreshes so the dot survives until the user actually clicks.
+  unread?: boolean;
 }
 
 let tabIdCounter = Date.now();
@@ -1442,53 +1561,7 @@ function TBtn({ tip, preview, active, onClick, children }: {
 }
 
 // ─── Portal-based Tooltip (never clipped by overflow) ───
-function Tooltip({ children, text, position = "bottom" }: { children: React.ReactNode; text: React.ReactNode; position?: "bottom" | "right" | "top" }) {
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const [show, setShow] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
-
-  const handleMouseEnter = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    if (position === "bottom") {
-      setCoords({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
-    } else if (position === "right") {
-      setCoords({ top: rect.top + rect.height / 2, left: rect.right + 6 });
-    } else if (position === "top") {
-      setCoords({ top: rect.top - 6, left: rect.left + rect.width / 2 });
-    }
-    setShow(true);
-  };
-
-  return (
-    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} style={{ display: "inline-flex" }}>
-      {children}
-      {show && typeof document !== "undefined" && createPortal(
-        <div style={{
-          position: "fixed",
-          top: coords.top,
-          left: coords.left,
-          transform: position === "bottom" ? "translateX(-50%)" : position === "top" ? "translate(-50%, -100%)" : "translateY(-50%)",
-          zIndex: 99999,
-          padding: "6px 10px",
-          borderRadius: 6,
-          fontSize: 11,
-          fontWeight: 500,
-          color: "var(--text-secondary)",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          pointerEvents: "none" as const,
-          whiteSpace: "nowrap" as const,
-          maxWidth: 280,
-        }}>
-          {text}
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
+// Tooltip is now in /components/Tooltip.tsx so SidebarFolder + others can use it
 
 // ─── WYSIWYG Fixed Toolbar (Markdown-compatible only) ───
 function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInsert, onImageUpload, onUndo, onRedo, getTiptapEditor }: {
@@ -1792,6 +1865,535 @@ function WysiwygToolbar({ onInsert, onInsertTable, onInputPopup, cmWrap, cmInser
   );
 }
 
+function BundleCreatorModal({
+  allDocs,
+  initiallySelected,
+  onClose,
+  onCreate,
+}: {
+  allDocs: Array<{ id: string; title: string; lastOpenedAt?: number }>;
+  initiallySelected: Array<{ id: string; title: string }>;
+  onClose: () => void;
+  onCreate: (args: { title: string; docIds: string[] }) => void | Promise<void>;
+}) {
+  const [title, setTitle] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => initiallySelected.map(d => d.id));
+  const [creating, setCreating] = useState(false);
+
+  // Sort: selected first (preserving selection order), then unselected by recent
+  const sortedDocs = useMemo(() => {
+    const selectedSet = new Set(selectedIds);
+    const selectedInOrder = selectedIds
+      .map(id => allDocs.find(d => d.id === id))
+      .filter((d): d is { id: string; title: string; lastOpenedAt?: number } => !!d);
+    const rest = allDocs
+      .filter(d => !selectedSet.has(d.id))
+      .sort((a, b) => (b.lastOpenedAt || 0) - (a.lastOpenedAt || 0));
+    return [...selectedInOrder, ...rest];
+  }, [allDocs, selectedIds]);
+
+  const filteredDocs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedDocs;
+    return sortedDocs.filter(d => d.title.toLowerCase().includes(q));
+  }, [sortedDocs, search]);
+
+  const toggle = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const move = (id: string, dir: -1 | 1) => {
+    setSelectedIds(prev => {
+      const idx = prev.indexOf(id);
+      if (idx < 0) return prev;
+      const next = idx + dir;
+      if (next < 0 || next >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[next]] = [copy[next], copy[idx]];
+      return copy;
+    });
+  };
+
+  const canCreate = selectedIds.length >= 2 && !creating;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-xl w-full max-w-md mx-4 overflow-hidden flex flex-col"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", maxHeight: "min(80vh, 640px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
+          <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Pick 2+ documents to bundle. Drag order via arrows.</p>
+        </div>
+        <div className="px-5 py-4 shrink-0">
+          <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="My Bundle"
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
+            autoFocus
+          />
+        </div>
+        <div className="px-5 shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
+              Documents <span style={{ color: "var(--text-faint)" }}>({selectedIds.length} selected)</span>
+            </label>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => setSelectedIds([])}
+                className="text-[10px] px-1.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search documents..."
+            className="w-full px-3 py-1.5 rounded-md text-[12px] outline-none mb-2"
+            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+          />
+        </div>
+        <div className="px-5 pb-4 flex-1 min-h-0 overflow-auto">
+          {filteredDocs.length === 0 ? (
+            <div className="text-[11px] text-center py-6" style={{ color: "var(--text-faint)" }}>
+              {search ? "No documents match." : "No documents available. Save a doc to the cloud first."}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {filteredDocs.map((doc) => {
+                const order = selectedIds.indexOf(doc.id);
+                const isSelected = order >= 0;
+                return (
+                  <div
+                    key={doc.id}
+                    onClick={() => toggle(doc.id)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
+                    style={{
+                      background: isSelected ? "var(--accent-dim)" : "var(--background)",
+                      color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+                      border: `1px solid ${isSelected ? "var(--accent-dim)" : "var(--border-dim)"}`,
+                    }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded shrink-0 flex items-center justify-center"
+                      style={{
+                        background: isSelected ? "var(--accent)" : "transparent",
+                        border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                      }}
+                    >
+                      {isSelected && <Check width={10} height={10} style={{ color: "#fff" }} />}
+                    </div>
+                    {isSelected && (
+                      <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--accent)" }}>{order + 1}</span>
+                    )}
+                    <span className="flex-1 truncate">{doc.title}</span>
+                    {isSelected && (
+                      <div className="flex gap-0.5 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); move(doc.id, -1); }}
+                          disabled={order === 0}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)] disabled:opacity-30"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Move up"
+                        >
+                          <ChevronUp width={11} height={11} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); move(doc.id, 1); }}
+                          disabled={order === selectedIds.length - 1}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)] disabled:opacity-30"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Move down"
+                        >
+                          <ChevronDown width={11} height={11} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-3 flex justify-end gap-2 shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors hover:bg-[var(--toggle-bg)]"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              if (!canCreate) return;
+              setCreating(true);
+              try {
+                await onCreate({ title: title.trim() || "Untitled Bundle", docIds: selectedIds });
+              } finally {
+                setCreating(false);
+              }
+            }}
+            disabled={!canCreate}
+            className="px-4 py-1.5 rounded-md text-[11px] font-medium transition-opacity"
+            style={{
+              background: "var(--accent)",
+              color: "#fff",
+              opacity: canCreate ? 1 : 0.4,
+              cursor: canCreate ? "pointer" : "not-allowed",
+            }}
+          >
+            {creating ? "Creating..." : "Create Bundle"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type BundleDocStatus = {
+  id: string;
+  title: string | null;
+  is_draft: boolean;
+  edit_mode: string;
+  allowed_emails_count: number;
+  allowed_emails?: string[];
+  allowed_editors?: string[];
+};
+
+/**
+ * BundleShareModal — wraps the same `ShareModal` used for individual documents.
+ * Shares all of ShareModal's UI (email chips, access modes, copy link, make private)
+ * but routes API calls through bundle adapters that:
+ *   1) Update the bundle's own state (publish flips is_draft).
+ *   2) Cascade allowed_emails / edit_mode onto every included document so each
+ *      doc is also accessible directly via /d/<id> with the same permissions.
+ * Renders a banner above "General access" listing the documents that will be affected.
+ */
+function BundleShareModal({
+  bundleId,
+  bundleTitle,
+  ownerEmail,
+  ownerName,
+  userId,
+  authHeaders,
+  onClose,
+  onBundleUpdated,
+}: {
+  bundleId: string;
+  bundleTitle: string;
+  ownerEmail: string;
+  ownerName?: string;
+  userId: string;
+  authHeaders: Record<string, string>;
+  onClose: () => void;
+  onBundleUpdated: (changes: { is_draft?: boolean; allowed_emails_count?: number }) => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [docs, setDocs] = useState<BundleDocStatus[]>([]);
+  const [editMode, setEditMode] = useState<string>("owner");
+  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
+  const [showRevertPicker, setShowRevertPicker] = useState(false);
+  const [revertDocIds, setRevertDocIds] = useState<Set<string>>(new Set());
+  const [reverting, setReverting] = useState(false);
+
+  // Load bundle + docs to derive current shared state
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/bundles/${bundleId}`, { headers: authHeaders })
+      .then(r => r.ok ? r.json() : null)
+      .then(async data => {
+        if (cancelled || !data?.documents) return;
+        const docList: BundleDocStatus[] = data.documents.map((d: BundleDocStatus) => ({
+          id: d.id,
+          title: d.title,
+          is_draft: d.is_draft !== false,
+          edit_mode: d.edit_mode || "owner",
+          allowed_emails_count: d.allowed_emails_count || 0,
+        }));
+        setDocs(docList);
+
+        // Derive bundle's effective edit mode from majority of published docs (or first doc).
+        const publishedDocs = docList.filter(d => !d.is_draft);
+        const sample = publishedDocs[0] || docList[0];
+        if (sample) setEditMode(sample.edit_mode || "owner");
+
+        // Fetch allowed_emails from the first published doc as the canonical list
+        if (sample && !sample.is_draft) {
+          try {
+            const docRes = await fetch(`/api/docs/${sample.id}`, { headers: authHeaders });
+            if (docRes.ok) {
+              const doc = await docRes.json();
+              if (Array.isArray(doc.allowedEmails)) setAllowedEmails(doc.allowedEmails);
+            }
+          } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [bundleId, authHeaders]);
+
+  // Adapter: persist allowed_emails on the bundle row AND cascade to every doc
+  // (so each doc is also accessible via /d/<id> with the same permissions).
+  const setAllowedEmailsAdapter = useCallback(async (
+    _id: string,
+    uid: string,
+    emails: string[],
+    editors: string[],
+  ) => {
+    await fetch(`/api/bundles/${bundleId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ userId: uid, action: "set-allowed-emails", allowedEmails: emails, allowedEditors: editors }),
+    }).catch(() => {});
+    await Promise.all(docs.map(d =>
+      fetch(`/api/docs/${d.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ userId: uid, action: "set-allowed-emails", allowedEmails: emails, allowedEditors: editors }),
+      }).catch(() => {})
+    ));
+    // Notify parent so it refetches bundles → sidebar icon updates immediately
+    // to reflect the new allowed_emails_count (gray → blue+avatar).
+    onBundleUpdated({});
+    setAllowedEmails(emails);
+    return { allowedEmails: emails, allowedEditors: editors };
+  }, [docs, bundleId, authHeaders, onBundleUpdated]);
+
+  // Adapter: cascade edit-mode change + ensure bundle is published when sharing,
+  // and publish each doc so it can also be opened directly.
+  const changeEditModeAdapter = useCallback(async (
+    _id: string,
+    uid: string,
+    mode: "owner" | "view" | "public",
+  ) => {
+    setEditMode(mode);
+    // Ensure bundle is published (so /b/<id> is reachable)
+    await fetch(`/api/bundles/${bundleId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ userId: uid, action: "publish" }),
+    }).catch(() => {});
+    // Persist edit_mode on the bundle row too
+    await fetch(`/api/bundles/${bundleId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ userId: uid, action: "change-edit-mode", editMode: mode }),
+    }).catch(() => {});
+    onBundleUpdated({ is_draft: false });
+    // Cascade publish + edit-mode onto every doc
+    await Promise.all(docs.map(async d => {
+      await fetch(`/api/docs/${d.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ userId: uid, action: "publish" }),
+      }).catch(() => {});
+      await fetch(`/api/docs/${d.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ userId: uid, action: "change-edit-mode", editMode: mode }),
+      }).catch(() => {});
+    }));
+  }, [docs, bundleId, authHeaders, onBundleUpdated]);
+
+  const handleMakePrivate = useCallback(() => {
+    // Open per-doc revert picker. Default-select every doc that's currently published.
+    setRevertDocIds(new Set(docs.filter(d => !d.is_draft).map(d => d.id)));
+    setShowRevertPicker(true);
+  }, [docs]);
+
+  const submitRevert = useCallback(async () => {
+    setReverting(true);
+    try {
+      // Always unpublish the bundle
+      await fetch(`/api/bundles/${bundleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ userId, action: "unpublish" }),
+      }).catch(() => {});
+      // Unpublish only the selected docs
+      const toRevert = docs.filter(d => revertDocIds.has(d.id));
+      await Promise.all(toRevert.map(d =>
+        fetch(`/api/docs/${d.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({ userId, action: "unpublish" }),
+        }).catch(() => {})
+      ));
+      onBundleUpdated({ is_draft: true });
+      showToast(
+        toRevert.length === 0
+          ? "Bundle unpublished. Documents kept as-is."
+          : `Bundle and ${toRevert.length} document${toRevert.length === 1 ? "" : "s"} reverted to private`,
+        "success"
+      );
+      onClose();
+    } finally {
+      setReverting(false);
+    }
+  }, [docs, revertDocIds, bundleId, userId, authHeaders, onBundleUpdated, onClose]);
+
+  if (showRevertPicker) {
+    const toggleRevert = (id: string) => {
+      setRevertDocIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    };
+    return (
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.7)" }}
+        onClick={() => setShowRevertPicker(false)}
+      >
+        <div
+          className="w-full max-w-md mx-4 rounded-xl shadow-2xl flex flex-col"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)", maxHeight: "80vh" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Make Bundle Private</h2>
+            <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
+              Bundle will be unpublished. Pick which documents inside should also revert to private.
+            </p>
+          </div>
+          <div className="px-5 pb-3 flex-1 min-h-0 overflow-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>{revertDocIds.size} of {docs.length} selected</span>
+              <div className="flex gap-1.5 text-[10px]">
+                <button onClick={() => setRevertDocIds(new Set(docs.map(d => d.id)))} className="px-1.5 py-0.5 rounded hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>All</button>
+                <button onClick={() => setRevertDocIds(new Set())} className="px-1.5 py-0.5 rounded hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)" }}>None</button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              {docs.map(d => {
+                const isSelected = revertDocIds.has(d.id);
+                const status = d.is_draft
+                  ? { label: "Already private", color: "var(--text-faint)" }
+                  : d.edit_mode === "view"
+                  ? { label: "Public link", color: "#4ade80" }
+                  : d.allowed_emails_count > 0
+                  ? { label: `Shared with ${d.allowed_emails_count}`, color: "#60a5fa" }
+                  : { label: "Published", color: "#4ade80" };
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => toggleRevert(d.id)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] cursor-pointer transition-colors hover:bg-[var(--accent-dim)]"
+                    style={{
+                      background: isSelected ? "var(--accent-dim)" : "var(--background)",
+                      color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+                      border: `1px solid ${isSelected ? "var(--accent-dim)" : "var(--border-dim)"}`,
+                      opacity: d.is_draft ? 0.6 : 1,
+                    }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded shrink-0 flex items-center justify-center"
+                      style={{
+                        background: isSelected ? "var(--accent)" : "transparent",
+                        border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                      }}
+                    >
+                      {isSelected && <Check width={10} height={10} style={{ color: "#fff" }} />}
+                    </div>
+                    <span className="flex-1 truncate">{d.title || "Untitled"}</span>
+                    <span className="shrink-0 text-[9px]" style={{ color: status.color }}>{status.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 px-5 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
+            <button
+              onClick={() => setShowRevertPicker(false)}
+              className="px-3 py-1.5 rounded-md text-[11px] font-medium hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitRevert}
+              disabled={reverting}
+              className="px-4 py-1.5 rounded-md text-[11px] font-medium"
+              style={{ background: "#ef4444", color: "#fff", opacity: reverting ? 0.5 : 1 }}
+            >
+              {reverting ? "Working..." : "Make Private"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const banner = (
+    <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+      <div className="flex items-start gap-2">
+        <ShieldAlert width={14} height={14} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-medium" style={{ color: "var(--text-primary)" }}>
+            {loading
+              ? "Loading bundle documents..."
+              : `${docs.length} document${docs.length === 1 ? "" : "s"} share this bundle's access`}
+          </p>
+          <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+            Anything you change here also applies to every document inside. Each doc is also reachable directly at /d/&lt;id&gt;.
+          </p>
+          {!loading && docs.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5 max-h-24 overflow-auto">
+              {docs.map(d => (
+                <li key={d.id} className="text-[10px] truncate" style={{ color: "var(--text-secondary)" }}>• {d.title || "Untitled"}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/b/${bundleId}` : `/b/${bundleId}`;
+
+  return (
+    <ShareModal
+      docId={bundleId}
+      title={bundleTitle}
+      headerTitle={`Share Bundle "${bundleTitle.length > 30 ? bundleTitle.slice(0, 30) + "..." : bundleTitle}"`}
+      userId={userId}
+      ownerEmail={ownerEmail}
+      ownerName={ownerName}
+      currentEditMode={editMode}
+      initialAllowedEmails={allowedEmails}
+      initialAllowedEditors={[]}
+      onClose={onClose}
+      onEditModeChange={(mode) => {
+        setEditMode(mode);
+        // is_draft change handled inside changeEditModeAdapter
+      }}
+      onAllowedEmailsChange={setAllowedEmails}
+      onMakePrivate={handleMakePrivate}
+      setAllowedEmailsOverride={setAllowedEmailsAdapter}
+      changeEditModeOverride={changeEditModeAdapter}
+      shareUrlOverride={shareUrl}
+      banner={banner}
+    />
+  );
+}
+
 export default function MdEditor() {
   const isMobile = useIsMobile();
   const isMac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
@@ -1828,13 +2430,46 @@ export default function MdEditor() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("mdfy-show-trash") === "true";
   });
-  const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number; section?: "my" | "bundles" } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  // Synchronous flag: true while ANY HTML5 drag is in progress in the sidebar.
+  // Server realtime updates and async fetches gate on this to avoid recreating
+  // tab DOM nodes mid-drag — Chrome cancels the drag the instant the dragged
+  // element is unmounted/reordered, which is why drag "stops working" once the
+  // user is logged in (realtime channel for documents fires constantly).
+  const isDraggingSidebarRef = useRef(false);
+  useEffect(() => {
+    const onStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-sidebar-tab-id], [data-sidebar-folder-id]")) {
+        isDraggingSidebarRef.current = true;
+      }
+    };
+    const onEnd = () => { isDraggingSidebarRef.current = false; };
+    document.addEventListener("dragstart", onStart, true);
+    document.addEventListener("dragend", onEnd, true);
+    return () => {
+      document.removeEventListener("dragstart", onStart, true);
+      document.removeEventListener("dragend", onEnd, true);
+    };
+  }, []);
   // Cloud docs section removed — all docs auto-save to cloud
   const [recentDocs, setRecentDocs] = useState<{ id: string; title: string; visitedAt: string; isOwner: boolean; editMode: string }[]>([]);
   const [_serverDocs, setServerDocs] = useState<{ id: string; title: string; createdAt: string }[]>([]);
-  const [bundles, setBundles] = useState<Array<{ id: string; title: string; description: string | null; documentCount: number; updated_at: string; is_draft: boolean }>>([]);
+  // Hydrate bundles from localStorage so the sidebar section renders on first paint
+  // (otherwise it pops in after the /api/bundles fetch resolves).
+  const [bundles, setBundles] = useState<Array<{ id: string; title: string; description: string | null; documentCount: number; updated_at: string; is_draft: boolean; has_password?: boolean; allowed_emails_count?: number; folder_id?: string | null }>>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("mdfy-bundles");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [showShareModal, setShowShareModal] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
@@ -1863,7 +2498,7 @@ export default function MdEditor() {
   // Diagram rendering mode removed — ASCII diagrams use "Convert to Mermaid" button per diagram
 
   // Tab system — persist to localStorage (version check to refresh samples)
-  const TABS_VERSION = "8";
+  const TABS_VERSION = "9";
   const [tabs, setTabs] = useState<Tab[]>(() => {
     if (typeof window === "undefined") return INITIAL_TABS;
     try {
@@ -1901,6 +2536,24 @@ export default function MdEditor() {
               }
               return t;
             });
+            // If there's no Supabase auth token in localStorage, the user is
+            // signed out — drop cloud-tied DOC tabs at hydration so they don't
+            // flash on screen before the auth-state effect cleans them up.
+            // Bundle tabs are kept because bundles also support anonymous
+            // ownership (anonymous_id), so an anonymous user's bundle Recent
+            // entries would otherwise vanish on every refresh.
+            const hasSupabaseSession = (() => {
+              try {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i) || "";
+                  if (key.startsWith("sb-") && key.endsWith("-auth-token")) return true;
+                }
+              } catch { /* ignore */ }
+              return false;
+            })();
+            if (!hasSupabaseSession) {
+              return cleaned.filter((t: Tab) => !t.cloudId);
+            }
             return cleaned;
           }
         }
@@ -1926,13 +2579,12 @@ export default function MdEditor() {
   activeTabIdRef.current = activeTabId;
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
-  // Track active bundle's document IDs for sidebar highlighting
+  // Track active bundle's document IDs for sidebar highlighting.
+  // Uses full authHeaders (Bearer token + anonymous id) so the server recognises
+  // the requester as owner — otherwise draft bundles 404 for their own owner.
   useEffect(() => {
     if (activeTab?.kind === "bundle" && activeTab.bundleId) {
-      const headers: Record<string, string> = {};
-      const anonId = localStorage.getItem("mdfy-anonymous-id");
-      if (anonId) headers["x-anonymous-id"] = anonId;
-      fetch(`/api/bundles/${activeTab.bundleId}`, { headers })
+      fetch(`/api/bundles/${activeTab.bundleId}`, { headers: authHeadersRef.current })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data?.documents) {
@@ -1944,6 +2596,13 @@ export default function MdEditor() {
       setActiveBundleDocIds(new Set());
     }
   }, [activeTab?.kind, activeTab?.bundleId]);
+
+  // Persist bundles to localStorage so the sidebar section is hydrated instantly on next load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try { localStorage.setItem("mdfy-bundles", JSON.stringify(bundles)); } catch { /* quota */ }
+  }, [bundles]);
+
 
   const initialMd = activeTab?.markdown || SAMPLE_WELCOME;
   const [markdown, setMarkdownRaw] = useState(initialMd);
@@ -2148,8 +2807,10 @@ export default function MdEditor() {
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showToolbar, setShowToolbar] = useState(false);
+  // Both panes default to narrow (book-like reading/editing width). The button
+  // toggles "Wide view" — active when narrow=false.
   const [narrowView, setNarrowView] = useState(true);
-  const [narrowSource, setNarrowSource] = useState(false);
+  const [narrowSource, setNarrowSource] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -2166,6 +2827,17 @@ export default function MdEditor() {
   });
   // Persist right panel state
   useEffect(() => { try { localStorage.setItem("mdfy-panel-ai", String(showAIPanel)); localStorage.setItem("mdfy-panel-outline", String(showOutlinePanel)); localStorage.setItem("mdfy-panel-image", String(showImagePanel)); } catch {} }, [showAIPanel, showOutlinePanel, showImagePanel]);
+  // Resizable Assistant (right) panel width — persisted, drag handle on left edge.
+  const [aiPanelWidth, setAiPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 360;
+    const saved = parseInt(localStorage.getItem("mdfy-ai-panel-width") || "");
+    return Number.isFinite(saved) && saved >= 280 && saved <= 720 ? saved : 360;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mdfy-ai-panel-width", String(aiPanelWidth));
+  }, [aiPanelWidth]);
+  const isDraggingAiPanel = useRef(false);
+  const aiPanelPendingWidthRef = useRef<number | null>(null);
 
   const [userImages, setUserImages] = useState<{ name: string; url: string; size: number; createdAt: string }[]>([]);
   const [imageQuota, setImageQuota] = useState<{ used: number; total: number; plan: string } | null>(null);
@@ -2188,6 +2860,15 @@ export default function MdEditor() {
   const [aiChatInput, setAiChatInput] = useState("");
   const [aiChatHistory, setAiChatHistory] = useState<{ role: "user" | "ai"; text: string; canUndo?: boolean }[]>([]);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  // When the user creates a new doc *inside* a specific folder (via folder hover "+"),
+  // we stash the folderId here so the template picker → addTabWithContent flow can
+  // assign the new doc's folderId once it lands. Cleared after consumed.
+  const [pendingNewDocFolderId, setPendingNewDocFolderId] = useState<string | null>(null);
+  // Same idea for bundles — set when user clicks "+" on a bundle folder so the
+  // bundle creator modal can drop the new bundle into that folder.
+  const [pendingNewBundleFolderId, setPendingNewBundleFolderId] = useState<string | null>(null);
+  // Folder id whose emoji is currently being edited via the picker modal
+  const [emojiPickerFolderId, setEmojiPickerFolderId] = useState<string | null>(null);
   const [inlineInput, setInlineInput] = useState<{ label: string; defaultValue?: string; onSubmit: (v: string) => void; position?: { x: number; y: number } } | null>(null);
   const [docId, setDocId] = useState<string | null>(null);
   // Presence: track other editors on the same document
@@ -2251,15 +2932,113 @@ export default function MdEditor() {
   }, [isMobile]);
   const [editorPlaceholder, setEditorPlaceholder] = useState<"sign-in" | "restricted" | "not-found" | "deleted" | null>(null);
   const [deletedDocId, setDeletedDocId] = useState<string | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 220;
+    const saved = parseInt(localStorage.getItem("mdfy-sidebar-width") || "");
+    return Number.isFinite(saved) && saved >= 220 && saved <= 600 ? saved : 220;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mdfy-sidebar-width", String(sidebarWidth));
+  }, [sidebarWidth]);
   const isDraggingSidebar = useRef(false);
+  const sidebarResizePendingWidthRef = useRef<number | null>(null);
+
+  // Document-level resize listeners. Bound on mousedown of either the sidebar
+  // or AI panel handle, removed on mouseup. Using window/document instead of
+  // the wrapper's onMouseMove fixes a subtle bug: when the cursor crossed over
+  // the BundleCanvas during a drag, ReactFlow's internal pointermove handlers
+  // would capture the event before our bubbling onMouseMove ran — sidebar and
+  // AI panel resizing would stall as soon as the cursor entered the canvas.
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const wrapper = document.querySelector('[data-resize-wrapper]') as HTMLElement | null;
+      if (!wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      if (isDraggingSidebar.current) {
+        const w = Math.max(220, Math.min(600, e.clientX - rect.left));
+        const el = wrapper.querySelector('[data-pane="sidebar"]') as HTMLElement | null;
+        if (el) el.style.width = `${w}px`;
+        sidebarResizePendingWidthRef.current = w;
+      } else if (isDraggingAiPanel.current) {
+        const w = Math.max(280, Math.min(720, rect.right - e.clientX));
+        const el = wrapper.querySelector('[data-pane="ai-panel"]') as HTMLElement | null;
+        if (el) el.style.width = `${w}px`;
+        aiPanelPendingWidthRef.current = w;
+      }
+    };
+    const onUp = () => {
+      if (isDraggingSidebar.current) {
+        isDraggingSidebar.current = false;
+        if (sidebarResizePendingWidthRef.current != null) {
+          setSidebarWidth(sidebarResizePendingWidthRef.current);
+          sidebarResizePendingWidthRef.current = null;
+        }
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+      if (isDraggingAiPanel.current) {
+        isDraggingAiPanel.current = false;
+        if (aiPanelPendingWidthRef.current != null) {
+          setAiPanelWidth(aiPanelPendingWidthRef.current);
+          aiPanelPendingWidthRef.current = null;
+        }
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   const importFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
+  const [bundleContextMenu, setBundleContextMenu] = useState<{ x: number; y: number; bundleId: string; confirmDelete?: boolean } | null>(null);
+  const [bundleShareModal, setBundleShareModal] = useState<{ bundleId: string } | null>(null);
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
+  const [sortMode, setSortMode] = useState<"az" | "za" | "custom">(() => {
+    if (typeof window === "undefined") return "az";
+    const saved = localStorage.getItem("mdfy-sort-mode");
+    return (saved === "az" || saved === "za" || saved === "custom") ? saved : "az";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mdfy-sort-mode", sortMode);
+  }, [sortMode]);
+  // Recently visited tabs (max 7, most-recent-first). Stored separately from
+  // `tabs` so clicking a tab does NOT re-sort the main tree (jumpy UX).
+  const [recentTabIds, setRecentTabIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("mdfy-recent-tabs");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return [];
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem("mdfy-recent-tabs", JSON.stringify(recentTabIds)); } catch { /* quota */ }
+    }
+  }, [recentTabIds]);
+  // Always reflect the active tab at the top of Recent — including on initial
+  // mount, history-driven navigation, or any non-click switch. Idempotent: skips
+  // when activeTabId is already first.
+  useEffect(() => {
+    if (!activeTabId) return;
+    if (isDraggingSidebarRef.current) return;
+    setRecentTabIds(prev => prev[0] === activeTabId ? prev : [activeTabId, ...prev.filter(id => id !== activeTabId)].slice(0, 7));
+  }, [activeTabId]);
+  const [showRecent, setShowRecent] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("mdfy-show-recent") !== "false";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("mdfy-show-recent", String(showRecent));
+  }, [showRecent]);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sharedSortMode, setSharedSortMode] = useState<"newest" | "oldest" | "az" | "za">("newest");
   const [docFilter, setDocFilter] = useState<"all" | "private" | "shared" | "synced">(() => {
@@ -2267,12 +3046,149 @@ export default function MdEditor() {
     return (localStorage.getItem("mdfy-doc-filter") as "all" | "private" | "shared" | "synced") || "all";
   });
   const [sidebarSearch, setSidebarSearch] = useState("");
+  const sidebarSearchInputRef = useRef<HTMLInputElement>(null);
+  // Scroll container for the sections list — used by IntersectionObserver to
+  // detect which section headers are currently OFF-screen (below viewport) so
+  // a small navigator can be shown at the bottom for jumping to them.
+  const sectionsScrollRef = useRef<HTMLDivElement>(null);
+  const [belowViewportSections, setBelowViewportSections] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const root = sectionsScrollRef.current;
+    if (!root) return;
+    const headers = Array.from(root.querySelectorAll<HTMLElement>("[data-section-id]"));
+    if (headers.length === 0) return;
+    const obs = new IntersectionObserver((entries) => {
+      setBelowViewportSections(prev => {
+        const next = new Set(prev);
+        for (const e of entries) {
+          const id = (e.target as HTMLElement).getAttribute("data-section-id");
+          if (!id) continue;
+          // "Below viewport" = not intersecting AND its top is below the root bottom
+          const bottom = (e.rootBounds?.bottom ?? 0);
+          const headerTop = e.boundingClientRect.top;
+          if (!e.isIntersecting && headerTop >= bottom) next.add(id);
+          else next.delete(id);
+        }
+        return next;
+      });
+    }, { root, threshold: 0 });
+    headers.forEach(h => obs.observe(h));
+    return () => obs.disconnect();
+  // Re-observe when section visibility (collapsed state of major toggles) changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showRecent, showMyBundles, showMyDocs, showSharedDocs, showTrash]);
+  // Debounced version used in heavy filter/sort paths. Raw `sidebarSearch` is
+  // only for the input element value; the rest of the tree filters off the
+  // debounced value so typing stays smooth even with 100+ tabs.
+  const [sidebarSearchDebounced, setSidebarSearchDebounced] = useState("");
+  useEffect(() => {
+    const q = sidebarSearch.trim();
+    if (!q) { setSidebarSearchDebounced(""); return; }
+    const t = setTimeout(() => setSidebarSearchDebounced(q), 200);
+    return () => clearTimeout(t);
+  }, [sidebarSearch]);
+  // ⌘K / Ctrl+K to focus the sidebar search input from anywhere in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        sidebarSearchInputRef.current?.focus();
+        sidebarSearchInputRef.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [cloudSearchResults, setCloudSearchResults] = useState<Array<{ id: string; title: string; snippet: string; isDraft: boolean; viewCount: number; source: string | null; updatedAt: string }>>([]);
   const [isCloudSearching, setIsCloudSearching] = useState(false);
   const cloudSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showAllDocs, setShowAllDocs] = useState(false);
   const [showSidebarHelp, setShowSidebarHelp] = useState(false);
   const [showSidebarSearch, setShowSidebarSearch] = useState(false);
+
+  // ─── Cross-doc concept index ("knowledge compounds") ───
+  // Aggregated from semantic_chunks across the user's docs by /api/user/concepts.
+  // Drives the Concepts sidebar section + concept detail drawer + home stats.
+  interface ConceptOccurrence { docId: string; docTitle: string; chunkId: string; chunkType: string; snippet: string }
+  interface ConceptEntry { id: string; label: string; types: string[]; occurrenceCount: number; docCount: number; occurrences: ConceptOccurrence[] }
+  const [conceptIndex, setConceptIndex] = useState<{
+    concepts: ConceptEntry[];
+    stats: { totalDocs: number; decomposedDocs: number; totalConcepts: number; crossLinkedConcepts: number };
+  } | null>(null);
+  const [conceptsLoading, setConceptsLoading] = useState(false);
+  const [openedConceptId, setOpenedConceptId] = useState<string | null>(null);
+  const [showConcepts, setShowConcepts] = useState(false);
+  // AI-synthesized canonical definitions for concepts. Cached in-memory by
+  // concept id — first request triggers AI, subsequent opens of the same
+  // drawer reuse the cached paragraph.
+  const [conceptDefinitions, setConceptDefinitions] = useState<Record<string, { loading: boolean; text?: string; error?: string }>>({});
+
+  const fetchConceptDefinition = useCallback(async (conceptId: string, label: string, occurrences: ConceptOccurrence[]) => {
+    setConceptDefinitions(prev => ({ ...prev, [conceptId]: { loading: true } }));
+    try {
+      const res = await fetch(`/api/user/concepts/${encodeURIComponent(conceptId)}/define`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeadersRef.current },
+        body: JSON.stringify({
+          label,
+          occurrences: occurrences.map(o => ({ docTitle: o.docTitle, snippet: o.snippet, chunkType: o.chunkType })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConceptDefinitions(prev => ({ ...prev, [conceptId]: { loading: false, text: data.definition || "" } }));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setConceptDefinitions(prev => ({ ...prev, [conceptId]: { loading: false, error: err.error || "Failed" } }));
+      }
+    } catch {
+      setConceptDefinitions(prev => ({ ...prev, [conceptId]: { loading: false, error: "Network error" } }));
+    }
+  }, []);
+
+  // Detect concepts mentioned in the active doc's text — auto-cross-link
+  // surface that doesn't require Tiptap-level decoration. We look at the
+  // current `markdown` (lowercased + normalized) and check which concept
+  // labels appear as substrings. Limited to top 80 most-cross-linked
+  // concepts to keep the per-keystroke check cheap.
+  const relatedConcepts = useMemo(() => {
+    if (!conceptIndex || !markdown) return [] as ConceptEntry[];
+    const text = markdown.toLowerCase();
+    const candidates = conceptIndex.concepts.slice(0, 80);
+    const found: ConceptEntry[] = [];
+    for (const c of candidates) {
+      const norm = c.label.toLowerCase();
+      if (norm.length < 3) continue;
+      if (text.includes(norm)) found.push(c);
+    }
+    // Don't show concepts that ONLY come from the current doc — prefer ones
+    // that link OUT to other docs.
+    const activeCloudId = tabs.find(t => t.id === activeTabId)?.cloudId;
+    return found
+      .filter(c => !activeCloudId || c.occurrences.some(o => o.docId !== activeCloudId))
+      .slice(0, 10);
+  }, [conceptIndex, markdown, tabs, activeTabId]);
+
+  const refreshConcepts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setConceptsLoading(true);
+    try {
+      const res = await fetch("/api/user/concepts", { headers: authHeadersRef.current });
+      if (res.ok) {
+        const data = await res.json();
+        setConceptIndex(data);
+      }
+    } catch { /* ignore */ }
+    finally { setConceptsLoading(false); }
+  }, [isAuthenticated]);
+
+  // Initial load + periodic refresh on doc/decomposition changes. Cheap query
+  // (just reads cached semantic_chunks JSONB) so refreshing is fine.
+  useEffect(() => {
+    if (!isAuthenticated) { setConceptIndex(null); return; }
+    refreshConcepts();
+  }, [isAuthenticated, refreshConcepts]);
+  const [showLibraryNewMenu, setShowLibraryNewMenu] = useState(false);
   const [showSharedOwner, setShowSharedOwner] = useState(false);
   const [sidebarMode, setSidebarModeRaw] = useState<"simple" | "detailed">(() => {
     if (typeof window !== "undefined") {
@@ -2665,6 +3581,10 @@ export default function MdEditor() {
   const loadTab = useCallback((tab: Tab) => {
     // Clear any placeholder overlay when loading a real document
     setEditorPlaceholder(null);
+    // Mark this tab as read — kills the orange pulse dot in the sidebar.
+    if (tab.unread) {
+      setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, unread: false } : t));
+    }
     // Hold off Tiptap onUpdate-driven autosave until this tab's content is actually loaded
     // into the editor. Pending saves scheduled for the previous tab keep their original
     // cloudId/markdown args, so we don't cancel them — they will save to the correct doc.
@@ -2716,7 +3636,14 @@ export default function MdEditor() {
           tiptapRef.current?.setMarkdown(md);
           // Seed the conflict detection timestamp
           if (doc.updated_at) autoSave.setLastServerUpdatedAt(doc.updated_at);
-          setTabs(prev => prev.map(x => x.id === tab.id ? { ...x, markdown: md, title: t } : x));
+          setTabs(prev => prev.map(x => x.id === tab.id ? {
+            ...x,
+            markdown: md,
+            title: t,
+            compileKind: doc.compile_kind || undefined,
+            compileFrom: doc.compile_from || undefined,
+            compiledAt: doc.compiled_at || undefined,
+          } : x));
         })
         .catch(() => {
           doRenderRef.current("");
@@ -2751,6 +3678,52 @@ export default function MdEditor() {
 
   // Track whether current navigation is from popstate (back/forward) to avoid pushing duplicate history entries
   const isPopstateRef = useRef(false);
+
+  // ─── Recompile a compiled doc (Memo / FAQ / Brief) from its source bundle ───
+  const [recompilingDocId, setRecompilingDocId] = useState<string | null>(null);
+  const recompileDoc = useCallback(async (docId: string) => {
+    setRecompilingDocId(docId);
+    try {
+      const res = await fetch(`/api/docs/${docId}/recompile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeadersRef.current },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTabs(prev => prev.map(t => t.cloudId === docId ? {
+          ...t,
+          markdown: data.markdown,
+          compiledAt: data.compiledAt,
+        } : t));
+        // If this is the active tab, refresh the editor viewport
+        if (activeTabIdRef.current && tabs.find(t => t.id === activeTabIdRef.current && t.cloudId === docId)) {
+          setMarkdownRaw(data.markdown);
+          markdownRef.current = data.markdown;
+          doRenderRef.current(data.markdown);
+          tiptapRef.current?.setMarkdown(data.markdown);
+        }
+        showToast("Recompiled with latest sources.", "info");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(`Recompile failed: ${err.error || "unknown"}`, "info");
+      }
+    } catch {
+      showToast("Recompile failed: network error", "info");
+    } finally {
+      setRecompilingDocId(null);
+    }
+  }, [tabs]);
+
+  // ─── Tab navigation history (in-app back/forward chevrons) ───
+  // Records the order of activated tabs (docs + bundles) the user has visited
+  // in this session. Decoupled from browser history so a back-click jumps to
+  // the previous tab regardless of URL state, and the chevrons enable/disable
+  // based on the user's actual visit history.
+  const navHistoryRef = useRef<string[]>([]);
+  const navIndexRef = useRef<number>(-1);
+  const isNavigatingHistoryRef = useRef(false);
+  const [navTick, setNavTick] = useState(0); // forces re-render when history changes
 
   const switchTab = useCallback((tabId: string) => {
     // Flush any pending WYSIWYG edits before switching
@@ -2788,49 +3761,56 @@ export default function MdEditor() {
           }
         });
       }
-      // Delay sort update with FLIP animation
-      setTimeout(() => {
-        // FLIP Step 1: Record current positions (relative to sidebar scroll container)
-        const rects = new Map<string, { top: number }>();
-        const sidebar = document.querySelector("[data-sidebar-scroll]");
-        const scrollTop = sidebar?.scrollTop || 0;
-        document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
-          const id = el.getAttribute("data-sidebar-tab-id");
-          if (id) rects.set(id, { top: el.getBoundingClientRect().top + scrollTop });
-        });
-
-        // FLIP Step 2: Synchronously update state so DOM is ready to measure
-        flushSync(() => {
-          setTabs(prev => prev.map(t => t.id === tabId ? { ...t, lastOpenedAt: Date.now() } : t));
-        });
-
-        // FLIP Step 3: Measure new positions and apply inverse transform
-        const newScrollTop = sidebar?.scrollTop || 0;
-        document.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]").forEach(el => {
-          const id = el.getAttribute("data-sidebar-tab-id");
-          if (!id) return;
-          const oldPos = rects.get(id);
-          if (!oldPos) return;
-          const newTop = el.getBoundingClientRect().top + newScrollTop;
-          const deltaY = oldPos.top - newTop;
-          if (Math.abs(deltaY) < 2) return;
-          // Apply inverse: item appears at old position
-          el.style.transform = `translateY(${deltaY}px)`;
-          el.style.transition = "none";
-          // Force reflow
-          el.offsetHeight; // eslint-disable-line @typescript-eslint/no-unused-expressions
-          // Animate to new position
-          el.style.transition = "transform 0.3s ease-out";
-          el.style.transform = "translateY(0)";
-          const cleanup = () => { el.style.transition = ""; el.style.transform = ""; };
-          el.addEventListener("transitionend", cleanup, { once: true });
-          // Safety cleanup in case transitionend doesn't fire
-          setTimeout(cleanup, 350);
-        });
-      }, 600);
+      // Don't update lastOpenedAt on tab click — that would re-sort the sidebar
+      // and make the clicked tab jump to a new position with no transition,
+      // which is jarring. The active highlight already tells the user which tab
+      // is current. lastOpenedAt is set on tab creation/initial load only.
       return saved;
     });
   }, [loadTab]);
+
+  // ─── Tab nav: back/forward chevrons ───
+  const goBack = useCallback(() => {
+    if (navIndexRef.current <= 0) return;
+    navIndexRef.current = navIndexRef.current - 1;
+    const tid = navHistoryRef.current[navIndexRef.current];
+    if (!tid) return;
+    isNavigatingHistoryRef.current = true;
+    setShowOnboarding(false);
+    switchTab(tid);
+    setNavTick(t => t + 1);
+    setTimeout(() => { isNavigatingHistoryRef.current = false; }, 0);
+  }, [switchTab]);
+
+  const goForward = useCallback(() => {
+    if (navIndexRef.current >= navHistoryRef.current.length - 1) return;
+    navIndexRef.current = navIndexRef.current + 1;
+    const tid = navHistoryRef.current[navIndexRef.current];
+    if (!tid) return;
+    isNavigatingHistoryRef.current = true;
+    setShowOnboarding(false);
+    switchTab(tid);
+    setNavTick(t => t + 1);
+    setTimeout(() => { isNavigatingHistoryRef.current = false; }, 0);
+  }, [switchTab]);
+
+  // Track activeTabId changes into nav history (skip when navigating via chevrons)
+  useEffect(() => {
+    if (!activeTabId) return;
+    if (isNavigatingHistoryRef.current) return;
+    // Truncate forward history when a fresh visit happens after back-navigation
+    if (navIndexRef.current < navHistoryRef.current.length - 1) {
+      navHistoryRef.current = navHistoryRef.current.slice(0, navIndexRef.current + 1);
+    }
+    if (navHistoryRef.current[navIndexRef.current] === activeTabId) return;
+    navHistoryRef.current.push(activeTabId);
+    navIndexRef.current = navHistoryRef.current.length - 1;
+    if (navHistoryRef.current.length > 50) {
+      navHistoryRef.current.shift();
+      navIndexRef.current--;
+    }
+    setNavTick(t => t + 1);
+  }, [activeTabId]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -2858,16 +3838,22 @@ export default function MdEditor() {
       : docFilter === "synced" ? allMyTabs.filter(t => t.source && ["vscode", "desktop", "cli", "mcp"].includes(t.source))
       : allMyTabs;
     const sortFn = (a: Tab, b: Tab) => {
-      if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
+      if (sortMode === "custom") return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
       if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-      const now = Date.now();
-      const at = a.lastOpenedAt || 0;
-      const bt = b.lastOpenedAt || 0;
-      return sortMode === "newest" ? bt - at : at - bt;
+      return (a.title || "").localeCompare(b.title || "");
     };
-    const rootIds = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id);
+    // Lowercase the search ONCE per render. Title-match short-circuits — body
+    // scan only runs if title misses, and body is capped at 3KB so a 100KB doc
+    // doesn't tank typing latency.
+    const q = sidebarSearchDebounced.toLowerCase();
+    const matches = (t: Tab) => {
+      if (!q) return true;
+      if ((t.title || "").toLowerCase().includes(q)) return true;
+      return (t.markdown || "").slice(0, 3000).toLowerCase().includes(q);
+    };
+    const rootIds = myTabs.filter(t => !t.folderId && matches(t)).sort(sortFn).map(t => t.id);
     const myFolderIds = folders.filter(f => !f.section || f.section === "my").filter(f => !f.collapsed).flatMap(f =>
-      tabs.filter(t => !t.deleted && t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort(sortFn).map(t => t.id)
+      tabs.filter(t => !t.deleted && t.folderId === f.id && matches(t)).sort(sortFn).map(t => t.id)
     );
     // Shared tabs (for shift-select across sections)
     const sharedRootIds = tabs.filter(t => !t.deleted && !t.folderId && (t.permission === "readonly" || t.permission === "editable") && !hiddenExampleIds.has(t.id)).map(t => t.id);
@@ -2875,7 +3861,7 @@ export default function MdEditor() {
       tabs.filter(t => !t.deleted && t.folderId === f.id && !hiddenExampleIds.has(t.id)).map(t => t.id)
     );
     return [...rootIds, ...myFolderIds, ...sharedRootIds, ...sharedFolderIds];
-  }, [tabs, docFilter, sortMode, sidebarSearch, folders, hiddenExampleIds]);
+  }, [tabs, docFilter, sortMode, sidebarSearchDebounced, folders, hiddenExampleIds]);
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
     setShowOnboarding(false);
@@ -2901,6 +3887,11 @@ export default function MdEditor() {
         // tab's slot — corrupting it locally, and the next autosave will then
         // PATCH the cloud doc with the wrong markdown + title.
         switchTab(tabId);
+        // Push to Recent (most-recent-first, max 7, dedup). Skip mid-drag so
+        // we don't recreate sidebar DOM nodes mid-flight.
+        if (!isDraggingSidebarRef.current) {
+          setRecentTabIds(prev => [tabId, ...prev.filter(id => id !== tabId)].slice(0, 7));
+        }
       }
     }
   }, [visibleMyDocIds, activeTabId, switchTab]);
@@ -2968,7 +3959,10 @@ export default function MdEditor() {
 
     const id = `tab-${tabIdCounter++}`;
     const tabTitle = extractTitleFromMd(initialMd) || "Untitled";
-    const newTab: Tab = { id, title: tabTitle, markdown: initialMd, isDraft: true, permission: "mine", lastOpenedAt: Date.now() };
+    // If a folder was targeted (via folder hover "+"), drop the new doc into it
+    const targetFolderId = pendingNewDocFolderId || undefined;
+    if (pendingNewDocFolderId) setPendingNewDocFolderId(null);
+    const newTab: Tab = { id, title: tabTitle, markdown: initialMd, isDraft: true, permission: "mine", lastOpenedAt: Date.now(), folderId: targetFolderId };
 
     setTabs((prev) => {
       const saved = prev.map((t) => {
@@ -3001,6 +3995,15 @@ export default function MdEditor() {
       setDocId(result.id);
       // Update URL without navigation
       window.history.replaceState(null, "", `/${result.id}`);
+      // If this doc was created inside a folder via the sidebar "+" action, persist
+      // its folder assignment to the server now that we have a cloudId.
+      if (targetFolderId) {
+        fetch(`/api/docs/${result.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeadersRef.current },
+          body: JSON.stringify({ action: "move-to-folder", folderId: targetFolderId }),
+        }).catch(() => {});
+      }
       // BUG 8 fix: If content changed during cloud creation window, trigger save
       const currentMd = markdownRef.current;
       if (currentMd !== initialMd) {
@@ -3446,14 +4449,38 @@ export default function MdEditor() {
     });
   }, [html, isLoading]);
 
-  // Track auth state changes: notify user when session expires silently
+  // Track auth state changes: notify user when session expires silently AND
+  // purge cached server data so a signed-out user doesn't see another account's
+  // cloud docs / bundles / folders / recent list.
+  //
+  // Purge ONLY when transitioning from signed-in (mdfy-was-logged-in) to
+  // signed-out. Pure anonymous sessions (never signed in) must keep their
+  // bundles + recent list — those are tied to anonymous_id on the server, not
+  // to a user account, and would otherwise vanish on every refresh.
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && user === null) {
-      // User was previously logged in but is now logged out
+    if (authLoading) return;
+    if (!isAuthenticated && user === null) {
       const wasLoggedIn = localStorage.getItem("mdfy-was-logged-in");
       if (wasLoggedIn) {
         showToast("You've been signed out. Sign in again to sync.", "info");
         localStorage.removeItem("mdfy-was-logged-in");
+        setTabs(prev => prev.some(t => t.cloudId || t.kind === "bundle")
+          ? prev.filter(t => !t.cloudId && t.kind !== "bundle")
+          : prev);
+        setBundles(prev => prev.length === 0 ? prev : []);
+        setFolders(prev => {
+          const filtered = prev.filter(f => f.id === EXAMPLES_FOLDER_ID);
+          return filtered.length === prev.length ? prev : filtered;
+        });
+        setRecentTabIds(prev => prev.length === 0 ? prev : []);
+        setServerDocs(prev => prev.length === 0 ? prev : []);
+        setRecentDocs(prev => prev.length === 0 ? prev : []);
+        setNotifications(prev => prev.length === 0 ? prev : []);
+        setUnreadCount(prev => prev === 0 ? prev : 0);
+        try {
+          localStorage.removeItem("mdfy-recent-tabs");
+          localStorage.removeItem("mdfy-bundles");
+        } catch { /* ignore */ }
       }
     }
     if (isAuthenticated && user) {
@@ -3849,13 +4876,26 @@ export default function MdEditor() {
         }
       })
       .catch(() => {});
-    // Fetch user's bundles
+    // Fetch user's bundles. Also reconciles tab state — closes any open bundle
+    // tab whose id is no longer on the server.
+    // IMPORTANT: do NOT drop bundle tabs whose bundleId isn't returned here.
+    // /api/bundles only lists bundles owned by `user_id` (or `anonymous_id`),
+    // but a user may legitimately have open bundle tabs that aren't in that
+    // list — e.g. bundles created while anonymous but still accessible by
+    // editToken, or bundles shared via `allowed_emails`. Filtering against
+    // `liveIds` here was wiping those tabs after every refresh, which made
+    // bundles vanish from Recent while docs (which aren't filtered this way)
+    // persisted. Stale-deleted bundles are caught by the per-bundle GET on
+    // tab open (404 → tab can be closed there), not here.
     fetch("/api/bundles", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
-      .then(data => { if (data?.bundles) setBundles(data.bundles); })
+      .then(data => {
+        if (!data?.bundles) return;
+        setBundles(data.bundles);
+      })
       .catch(() => {});
     // Fetch user's own documents from server
-    fetch("/api/user/documents", { headers: authHeaders })
+    fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.documents) {
@@ -3924,7 +4964,7 @@ export default function MdEditor() {
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
             const newTabs = data.documents
               .filter((d: { id: string }) => !existingCloudIds.has(d.id))
-              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string; updated_at?: string; created_at?: string }) => ({
+              .map((d: { id: string; title?: string; source?: string; is_draft?: boolean; folder_id?: string; sort_order?: number; deleted_at?: string | null; updated_at?: string; created_at?: string }) => ({
                 id: `cloud-${d.id}`,
                 title: d.title || "Untitled",
                 markdown: "",
@@ -3932,7 +4972,10 @@ export default function MdEditor() {
                 isDraft: d.is_draft !== false,
                 source: d.source || undefined,
                 folderId: d.folder_id || undefined,
+                sortOrder: d.sort_order ?? 0,
                 permission: "mine" as const,
+                deleted: !!d.deleted_at,
+                deletedAt: d.deleted_at ? new Date(d.deleted_at).getTime() : undefined,
                 lastOpenedAt: d.updated_at ? new Date(d.updated_at).getTime() : d.created_at ? new Date(d.created_at).getTime() : Date.now(),
               }));
             return [...updated, ...newTabs];
@@ -3946,8 +4989,9 @@ export default function MdEditor() {
       .then(data => {
         if (data?.folders) {
           setFolders(prev => {
-            const serverFolders = data.folders.map((f: { id: string; name: string; section?: string; collapsed?: boolean; sort_order?: number }) => ({
+            const serverFolders = data.folders.map((f: { id: string; name: string; section?: string; collapsed?: boolean; sort_order?: number; parent_id?: string | null; emoji?: string | null }) => ({
               id: f.id, name: f.name, collapsed: f.collapsed || false, section: (f.section || "my") as "my" | "shared",
+              parentId: f.parent_id || null, emoji: f.emoji || undefined, sortOrder: f.sort_order ?? 0,
             }));
             // Merge server folders (server wins on conflict), drop legacy Examples folder
             const serverIds = new Set(serverFolders.map((f: { id: string }) => f.id));
@@ -4020,6 +5064,9 @@ export default function MdEditor() {
           // Skip if this update was triggered by our own save (within 3s window)
           const now = Date.now();
           if (now - realtimeLastSaveRef.current < 3000) return;
+          // Don't blow away tabs DOM mid-drag — Chrome cancels HTML5 drag
+          // the moment the dragged element is unmounted/reordered.
+          if (isDraggingSidebarRef.current) return;
 
           const newData = payload.new;
 
@@ -4132,8 +5179,12 @@ export default function MdEditor() {
           // Debounce: coalesce rapid updates into a single fetch
           if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(async () => {
+          // Don't blow away the sidebar DOM mid-drag — Chrome cancels HTML5 drag
+          // the moment the dragged element is unmounted/reordered. Bail; the next
+          // postgres_changes event (or the user's own drop completing) will re-trigger.
+          if (isDraggingSidebarRef.current) return;
           try {
-            const res = await fetch("/api/user/documents", { headers: authHeadersRef.current });
+            const res = await fetch("/api/user/documents?includeDeleted=1", { headers: authHeadersRef.current });
             if (!res.ok) return;
             const data = await res.json();
             if (!data?.documents) return;
@@ -4203,12 +5254,25 @@ export default function MdEditor() {
                   permission: "mine" as const,
                   lastOpenedAt: d.updated_at ? new Date(d.updated_at).getTime() : d.created_at ? new Date(d.created_at).getTime() : Date.now(),
                 }));
-              // Remove tabs for deleted server docs
-              const serverDocIds = new Set(data.documents.map((d: { id: string }) => d.id));
-              const filtered = updated.filter(t => {
-                if (!t.cloudId) return true; // keep local-only tabs
-                if (t.id === activeTabIdRef.current) return true; // keep active tab
-                return serverDocIds.has(t.cloudId);
+              // Reflect server delete state on local tabs:
+              //  - cloudId not in server response → hard-deleted, remove (keep
+              //    active tab so editor can show "deleted" placeholder)
+              //  - cloudId present and deleted_at set → soft-deleted, mark
+              //    `deleted: true` so it appears in Trash (don't strip from state)
+              const serverDocsById = new Map<string, { deleted_at?: string | null }>(
+                data.documents.map((d: { id: string; deleted_at?: string | null }) => [d.id, d])
+              );
+              const filtered = updated.flatMap(t => {
+                if (!t.cloudId) return [t];
+                const serverDoc = serverDocsById.get(t.cloudId);
+                if (!serverDoc) {
+                  if (t.id === activeTabIdRef.current) return [t];
+                  return [];
+                }
+                const isSoftDeleted = !!serverDoc.deleted_at;
+                if (isSoftDeleted && !t.deleted) return [{ ...t, deleted: true, deletedAt: new Date(serverDoc.deleted_at!).getTime() }];
+                if (!isSoftDeleted && t.deleted) return [{ ...t, deleted: false, deletedAt: undefined }];
+                return [t];
               });
               return [...filtered, ...newTabs];
             });
@@ -5193,6 +6257,10 @@ export default function MdEditor() {
   // File drop handler
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
+      // Skip page-level drop handler for internal sidebar drags. Sidebar drops
+      // are handled by the per-folder onDrop handlers; bubbling here can shadow
+      // them. Only handle when external files (real File objects) are dropped.
+      if (!e.dataTransfer.files.length) return;
       e.preventDefault();
       setIsDragging(false);
       const files = Array.from(e.dataTransfer.files);
@@ -5266,14 +6334,19 @@ export default function MdEditor() {
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    // Only preventDefault for EXTERNAL file drags. For sidebar internal drags,
+    // letting the page wrapper accept the drop means dropEffect ends up "none"
+    // (we never set it to "move") and the user's drop on a real sidebar target
+    // gets shadowed by the page's drop handler. Skip when sidebar drag is in
+    // progress so only the per-folder drop targets handle the drop.
+    if (isDraggingSidebarRef.current) return;
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
-    // Only show file drop overlay for external file drags, not internal sidebar drags
-    if (e.dataTransfer.types.includes("Files") && !dragTabId && !dragFolderId) {
-      setIsDragging(true);
-    }
-  }, [dragTabId, dragFolderId]);
+    setIsDragging(true);
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (isDraggingSidebarRef.current) return;
     e.preventDefault();
     setIsDragging(false);
   }, []);
@@ -5529,11 +6602,19 @@ export default function MdEditor() {
   }, []);
 
   const handleShare = useCallback(async () => {
+    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
+
+    // Bundle: same ShareModal flow as docs, with cascade adapters
+    if (currentTab?.kind === "bundle" && currentTab.bundleId) {
+      if (!isAuthenticated) { showToast("Sign in to share bundles", "info"); return; }
+      setBundleShareModal({ bundleId: currentTab.bundleId });
+      return;
+    }
+
     if (!markdown.trim()) { showToast("Write something first", "info"); return; }
     if (!isAuthenticated) { showToast("Sign in to share documents", "info"); return; }
 
     // If doc already has a cloudId and user is owner, open share modal
-    const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     const cid = currentTab?.cloudId || docId;
 
     const isMine = !currentTab?.permission || currentTab.permission === "mine";
@@ -6304,6 +7385,63 @@ ${clone.innerHTML}
   const memoPrivateCount = useMemo(() => memoAllMyTabs.filter(t => t.isDraft !== false).length, [memoAllMyTabs]);
   const memoSharedCount = useMemo(() => memoAllMyTabs.filter(t => t.isDraft === false).length, [memoAllMyTabs]);
 
+  // Count of items matching the sidebar search across docs + bundles. Shown
+  // as a small badge inside the search input. Title-match short-circuits.
+  const searchMatchCount = useMemo(() => {
+    const q = sidebarSearchDebounced.toLowerCase();
+    if (!q) return 0;
+    const tabHit = (t: { title?: string; markdown?: string }) =>
+      (t.title || "").toLowerCase().includes(q) || (t.markdown || "").slice(0, 3000).toLowerCase().includes(q);
+    let n = 0;
+    for (const t of tabs) {
+      if (t.deleted) continue;
+      if (tabHit(t)) n++;
+    }
+    for (const b of bundles) {
+      if ((b.title || "").toLowerCase().includes(q) || (b.description || "").toLowerCase().includes(q)) n++;
+    }
+    return n;
+  }, [tabs, bundles, sidebarSearchDebounced]);
+
+  // Bundle status icon — same visual semantics across MD Bundles section, sidebar
+  // Recent, and home-screen Recent. NEVER reflects selection (active) state.
+  const renderBundleStatusIcon = useCallback((bundleId: string | undefined, size: number = 14) => {
+    if (!bundleId) return null;
+    const bundle = bundles.find(b => b.id === bundleId);
+    const isPublished = bundle?.is_draft === false;
+    const sharedWithCount = bundle?.allowed_emails_count ?? 0;
+    const isRestricted = sharedWithCount > 0;
+    const hasPassword = bundle?.has_password === true;
+    const isPublic = isPublished && !isRestricted;
+    const iconColor = isRestricted ? "#60a5fa" : isPublic ? "#4ade80" : "var(--text-faint)";
+    const overlay = Math.max(7, Math.round(size * 0.55));
+    const tipText = isRestricted
+      ? `Shared with ${sharedWithCount} ${sharedWithCount === 1 ? "person" : "people"}${hasPassword ? " · password-protected" : ""}`
+      : hasPassword
+        ? "Public link · password-protected"
+        : isPublic
+          ? "Public — anyone with the link can view"
+          : "Private bundle — only you can see this";
+    return (
+      <Tooltip text={tipText}>
+        <span className="relative shrink-0 flex items-center justify-center" style={{ width: size + 4, height: size + 2 }}>
+          <Layers width={size} height={size} style={{ color: iconColor }} />
+          {isRestricted && (
+            <span className="absolute flex items-center justify-center rounded-full" style={{ right: -2, bottom: -2, width: overlay + 1, height: overlay + 1, background: "#60a5fa", border: "1.5px solid var(--background)" }}>
+              <User width={Math.max(4, overlay - 4)} height={Math.max(4, overlay - 4)} style={{ color: "#fff" }} />
+            </span>
+          )}
+          {!isRestricted && hasPassword && (
+            <Lock width={overlay} height={overlay} className="absolute" style={{ color: "#f59e0b", right: -1, bottom: -1, background: "var(--background)", borderRadius: 4, padding: 1 }} />
+          )}
+          {!isRestricted && isPublic && !hasPassword && (
+            <Globe width={overlay} height={overlay} className="absolute" style={{ color: "#4ade80", right: -1, bottom: -1, background: "var(--background)", borderRadius: 4, padding: 1 }} />
+          )}
+        </span>
+      </Tooltip>
+    );
+  }, [bundles]);
+
   return (
     <div
       className="flex flex-col overflow-hidden"
@@ -6334,7 +7472,7 @@ ${clone.innerHTML}
       >
         {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
         <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
@@ -6342,29 +7480,43 @@ ${clone.innerHTML}
           >
             <MdfyLogo size={18} />
           </h1>
-          {/* Permanent URL badge — click to copy */}
+          {/* Document ID badge + view count — refined chip group */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             const cid = ct?.cloudId || docId;
             if (!cid) return null;
-            const shortUrl = `mdfy.app/${cid}`;
+            const [copied, _setCopied] = [false, () => {}]; // visual cue handled inline below
+            void copied; void _setCopied;
             return (<>
               <button
-                className="text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 transition-colors hover:bg-[var(--accent-dim)] hidden lg:inline-block"
-                style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}
-                title="Click to copy document URL"
-                onClick={async () => {
+                className="text-[10px] font-mono shrink-0 transition-all hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
+                style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                title={`Copy https://mdfy.app/${cid}`}
+                onClick={async (e) => {
                   try {
-                    await navigator.clipboard.writeText(`https://${shortUrl}`);
+                    await navigator.clipboard.writeText(`https://mdfy.app/${cid}`);
+                    const btn = e.currentTarget;
+                    btn.style.color = "var(--accent)";
+                    btn.style.borderColor = "var(--accent)";
+                    setTimeout(() => { btn.style.color = "var(--text-muted)"; btn.style.borderColor = "var(--border-dim)"; }, 800);
                     showToast("URL copied", "success");
                   } catch { /* ignore */ }
                 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
               >
-                {shortUrl}
+                <span style={{ color: "var(--text-faint)", fontSize: 9 }}>/</span>
+                <span style={{ letterSpacing: "0.02em" }}>{cid}</span>
+                <Copy width={9} height={9} style={{ opacity: 0.55 }} />
               </button>
               {viewCount > 0 && (
-                <span className="text-[8px] font-mono px-1.5 py-0.5 rounded shrink-0 hidden lg:inline-block" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
-                  {viewCount} {viewCount === 1 ? "view" : "views"}
+                <span
+                  className="text-[10px] shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
+                  style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                  title={`${viewCount} total ${viewCount === 1 ? "view" : "views"}`}
+                >
+                  <Eye width={10} height={10} />
+                  <span className="tabular-nums">{viewCount}</span>
                 </span>
               )}
             </>);
@@ -6421,19 +7573,115 @@ ${clone.innerHTML}
             return null;
           })()}
           </span>
-          {/* Save status — after permission badge */}
-          <span className="hidden lg:inline text-[10px] font-mono shrink-0">
-          {autoSave.isSaving && <span style={{ color: "var(--text-faint)" }}>Saving...</span>}
-          {autoSave.error && !autoSave.isSaving && <span style={{ color: "#ef4444" }}>{autoSave.error}</span>}
-          {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && <span style={{ color: "var(--text-faint)", opacity: 0.5 }}>Saved</span>}
+          {/* Save status — animated icon + label */}
+          <span className="hidden lg:inline-flex items-center gap-1 text-[10px] shrink-0">
+            {autoSave.isSaving && (
+              <>
+                <Loader2 width={10} height={10} className="animate-spin" style={{ color: "var(--text-faint)" }} />
+                <span style={{ color: "var(--text-faint)" }}>Saving</span>
+              </>
+            )}
+            {autoSave.error && !autoSave.isSaving && (
+              <>
+                <ShieldAlert width={11} height={11} style={{ color: "#ef4444" }} />
+                <span style={{ color: "#ef4444" }}>{autoSave.error}</span>
+              </>
+            )}
+            {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
+              <>
+                <CircleCheck width={11} height={11} style={{ color: "#22c55e" }} />
+                <span style={{ color: "var(--text-faint)" }}>Saved</span>
+              </>
+            )}
           </span>
+          {/* Compiled-from-bundle badge + Recompile button. Only shown when
+              the active doc has compile metadata. The "outdated" signal needs
+              source updated_at, which we don't load here yet — Recompile is
+              always available as a manual refresh; we'll wire stale detection
+              once cross-bundle source freshness flows in. */}
+          {(() => {
+            const ct = tabs.find(t => t.id === activeTabId);
+            if (!ct?.compileKind || !ct.cloudId) return null;
+            const labels: Record<string, string> = { memo: "Memo", faq: "FAQ", brief: "Brief" };
+            const sourceCount = ct.compileFrom?.docIds?.length || 0;
+            const isRecompiling = recompilingDocId === ct.cloudId;
+            return (
+              <div className="hidden lg:inline-flex items-center gap-1.5">
+                <Tooltip text={`Compiled from ${sourceCount} source${sourceCount === 1 ? "" : "s"}${ct.compiledAt ? ` · ${new Date(ct.compiledAt).toLocaleString()}` : ""}`} position="bottom">
+                  <span className="inline-flex items-center gap-1 px-1.5 h-5 rounded text-[10px] font-mono shrink-0 whitespace-nowrap"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent)" }}>
+                    <Sparkles width={10} height={10} />
+                    Compiled · {labels[ct.compileKind] || ct.compileKind}
+                  </span>
+                </Tooltip>
+                <Tooltip text="Re-run synthesis with latest source content" position="bottom">
+                  <button
+                    onClick={() => ct.cloudId && recompileDoc(ct.cloudId)}
+                    disabled={isRecompiling}
+                    className="inline-flex items-center gap-1 px-1.5 h-5 rounded text-[10px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                    style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}
+                  >
+                    {isRecompiling ? (
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                    ) : (
+                      <RotateCcw width={9} height={9} />
+                    )}
+                    {isRecompiling ? "Recompiling…" : "Recompile"}
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Center: Home + Layout mode switcher — absolute center relative to window */}
+        {/* Center cluster: [Back/Forward] gap [Home + view modes] — both groups absolute-centered as one unit */}
         <div
-          className="flex items-center rounded-lg overflow-hidden shrink-0 pointer-events-auto"
-          style={{ border: "1px solid var(--border-dim)", position: "absolute", left: "50%", transform: "translateX(-50%)" }}
+          className="flex items-center gap-1.5 shrink-0 pointer-events-auto"
+          style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
+          {/* Back / Forward — own group, separate from Home */}
+          {(() => {
+            void navTick; // re-evaluate on history tick
+            const canBack = navIndexRef.current > 0;
+            const canForward = navIndexRef.current >= 0 && navIndexRef.current < navHistoryRef.current.length - 1;
+            return (
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                <Tooltip text="Back" position="bottom">
+                  <button
+                    onClick={goBack}
+                    disabled={!canBack}
+                    className="flex items-center justify-center w-7 h-6 transition-colors"
+                    style={{
+                      background: "var(--toggle-bg)",
+                      color: canBack ? "var(--text-muted)" : "var(--text-faint)",
+                      opacity: canBack ? 1 : 0.35,
+                      cursor: canBack ? "pointer" : "default",
+                    }}
+                  >
+                    <ChevronLeft width={13} height={13} />
+                  </button>
+                </Tooltip>
+                <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+                <Tooltip text="Forward" position="bottom">
+                  <button
+                    onClick={goForward}
+                    disabled={!canForward}
+                    className="flex items-center justify-center w-7 h-6 transition-colors"
+                    style={{
+                      background: "var(--toggle-bg)",
+                      color: canForward ? "var(--text-muted)" : "var(--text-faint)",
+                      opacity: canForward ? 1 : 0.35,
+                      cursor: canForward ? "pointer" : "default",
+                    }}
+                  >
+                    <ChevronRight width={13} height={13} />
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })()}
+          {/* Home + view modes — own group */}
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
@@ -6503,24 +7751,14 @@ ${clone.innerHTML}
             );
           })
           )}
-        </div>
+          </div>{/* end Home + view modes group */}
+        </div>{/* end center cluster */}
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
 
           {/* AI Render moved to LIVE panel header */}
-
-          {/* Chat button — bundle tabs only */}
-          {activeTab?.kind === "bundle" && (
-            <button
-              onClick={() => setShowBundleChat(v => !v)}
-              title="Chat with bundle"
-              className="px-2 h-6 rounded-md transition-colors text-[10px] font-medium flex items-center gap-1.5"
-              style={{ background: showBundleChat ? "var(--accent-dim)" : "var(--toggle-bg)", color: showBundleChat ? "var(--accent)" : "var(--text-muted)" }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              <span className="hidden sm:inline">Chat</span>
-            </button>
-          )}
+          {/* Bundle Chat button removed — unified into the right-side Assistant
+              panel (activated via the AI button). */}
 
           {/* Presence indicators — other editors on this document (docs only) */}
           {activeTab?.kind !== "bundle" && otherEditors.length > 0 && (
@@ -6722,7 +7960,36 @@ ${clone.innerHTML}
                 })()}
               </div>
             </div>
-            <div className="relative" ref={menuRef}>
+            {/* Universal Assistant button — always visible, but disabled
+                when there's no doc/bundle being viewed (start screen, or no
+                editable doc/bundle). Hover shows contextual tooltip. */}
+            {(() => {
+              const isBundle = activeTab?.kind === "bundle" && !!activeTab.bundleId;
+              const isDoc = !!activeTab && activeTab.kind !== "bundle" && canEdit && !showOnboarding;
+              const enabled = !showOnboarding && (isBundle || isDoc);
+              const tip = enabled
+                ? `${isBundle ? "Bundle Assistant" : "Document Assistant"} — chat, AI tools`
+                : "Open a document or bundle to use the Assistant";
+              return (
+                <Tooltip text={tip}>
+                  <button
+                    onClick={() => { if (!enabled) return; setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); setShowOutlinePanel(false); }}
+                    disabled={!enabled}
+                    className="px-2 h-6 rounded-md transition-colors flex items-center gap-1.5 text-[10px] font-medium"
+                    style={{
+                      background: !enabled ? "var(--toggle-bg)" : (showAIPanel || aiProcessing ? "var(--accent-dim)" : "var(--toggle-bg)"),
+                      color: !enabled ? "var(--text-faint)" : (showAIPanel || aiProcessing ? "var(--accent)" : "var(--text-muted)"),
+                      opacity: !enabled ? 0.45 : 1,
+                      cursor: !enabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : (isBundle ? <Layers width={11} height={11} /> : <Sparkles width={11} height={11} />)}
+                    <span className="hidden sm:inline">AI</span>
+                  </button>
+                </Tooltip>
+              );
+            })()}
+            <div className="relative" ref={menuRef} style={{ display: "none" }}>
               <button
                 onClick={() => setShowMenu(!showMenu)}
                 className="px-1.5 h-6 rounded-md transition-colors flex items-center"
@@ -7008,21 +8275,14 @@ ${clone.innerHTML}
         </div>
       )}
 
-      {/* Main content wrapper (sidebar + editor/render) */}
+      {/* Main content wrapper (sidebar + editor/render). Resize listeners are
+          attached to the window via useEffect so they survive the cursor
+          crossing over child components (e.g. ReactFlow) that capture
+          pointermove for their own panning. */}
       <div
+        data-resize-wrapper
         className="flex flex-1 min-h-0 overflow-hidden"
-        onMouseMove={(e) => {
-          if (isDraggingSidebar.current) {
-            const wrapper = e.currentTarget;
-            const rect = wrapper.getBoundingClientRect();
-            const w = Math.max(160, Math.min(400, e.clientX - rect.left));
-            setSidebarWidth(w);
-            const el = wrapper.querySelector('[data-pane="sidebar"]') as HTMLElement;
-            if (el) el.style.width = `${w}px`;
-          }
-        }}
-        onMouseUp={() => { isDraggingSidebar.current = false; }}
-        onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); if (sidebarContextMenu) setSidebarContextMenu(null); }}
+        onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); if (sidebarContextMenu) setSidebarContextMenu(null); if (bundleContextMenu) setBundleContextMenu(null); }}
       >
 
       {/* Sidebar */}
@@ -7037,7 +8297,7 @@ ${clone.innerHTML}
           />
         )}
         <div
-          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
+          className={`flex flex-col shrink-0 relative ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
@@ -7045,100 +8305,204 @@ ${clone.innerHTML}
             background: "var(--background)",
             borderRight: "1px solid var(--border-dim)",
             transition: isMobile ? "transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)" : "width 0.15s ease",
+            // Layering: sidebar floats above the canvas with a soft right-edge
+            // shadow so the canvas reads as "underneath" the sidebar.
+            zIndex: isMobile ? 201 : 10,
+            boxShadow: isMobile ? undefined : "2px 0 8px rgba(0,0,0,0.18)",
             ...(isMobile ? { transform: sidebarClosing ? "translateX(-100%)" : "translateX(0)" } : {}),
           }}
         >
-          {/* Header — toggle button + MD FILES + New */}
+          {/* Header — toggle button + LIBRARY + actions; search row expands below when toggled */}
+          <div className="shrink-0 select-none" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <div
-            className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono shrink-0 select-none"
-            style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default" }}
+            className="flex items-center justify-between px-2 py-1.5 text-[11px] font-mono"
+            style={{ color: "var(--text-muted)", cursor: "default" }}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <Tooltip text="Close sidebar">
                 <button
                   onClick={() => closeSidebar()}
-                  className="p-1 rounded transition-colors"
+                  className="p-1 rounded transition-colors shrink-0"
                   style={{ color: "var(--accent)" }}
                 >
                   <PanelLeft width={14} height={14} />
                 </button>
               </Tooltip>
-              <span style={{ color: "var(--accent)" }}>LIBRARY</span>
-              <button
-                id="sidebar-refresh-btn"
-                onClick={() => {
-                  const btn = document.getElementById("sidebar-refresh-btn");
-                  if (btn) { btn.classList.add("animate-spin"); setTimeout(() => btn.classList.remove("animate-spin"), 600); }
-                  if (user?.id) {
-                    fetch("/api/user/documents", { headers: authHeaders })
-                      .then(res => res.ok ? res.json() : null)
-                      .then(data => {
-                        if (data?.documents) {
-                          setServerDocs(data.documents);
-                          const sm = new Map(data.documents.map((d: { id: string; source?: string }) => [d.id, d.source]));
-                          setTabs(prev => {
-                            const ids = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
-                            const nw = data.documents.filter((d: { id: string }) => !ids.has(d.id)).map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
-                              id: `cloud-${d.id}`, title: d.title || "Untitled", markdown: "", cloudId: d.id, isDraft: d.is_draft !== false, source: d.source || undefined, permission: "mine" as const,
-                            }));
-                            return [...prev.map(t => t.cloudId ? { ...t, source: (sm.get(t.cloudId) as string) || undefined } : t), ...nw];
-                          });
-                        }
-                      }).catch(() => {});
-                  }
-                }}
-                className="w-4 h-4 rounded flex items-center justify-center transition-colors"
-                style={{ color: "var(--text-faint)" }}
-                title="Refresh"
-              >
-                <RefreshCw width={10} height={10} />
-              </button>
-              <button
-                onClick={() => setShowSidebarHelp(!showSidebarHelp)}
-                className="w-4 h-4 rounded flex items-center justify-center transition-all"
-                style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-muted)", opacity: showSidebarHelp ? 1 : 0.6 }}
-                title="What do the icons and filters mean?"
-              >
-                <HelpCircle width={12} height={12} />
-              </button>
+              <span style={{ color: "var(--accent)" }} className="shrink-0">LIBRARY</span>
             </div>
-            <div className="flex items-stretch gap-1">
-              <Tooltip text={
-                <div style={{ whiteSpace: "normal", maxWidth: 220 }}>
-                  <p style={{ color: "var(--accent)", fontWeight: 600, marginBottom: 4, fontSize: 10 }}>Import Files</p>
-                  <p style={{ marginBottom: 4, fontSize: 10 }}>Select multiple files at once. Supported formats:</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
-                    {["MD", "PDF", "DOCX", "PPTX", "XLSX", "HTML", "CSV", "LaTeX", "RST", "RTF", "JSON", "XML", "TXT"].map(f => (
-                      <span key={f} style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 9, padding: "1px 4px", borderRadius: 3, fontFamily: "monospace" }}>{f}</span>
+            <div className="flex items-stretch gap-0.5 shrink-0">
+              <div className="relative">
+                <Tooltip text={`Sort: ${{ az: "A → Z", za: "Z → A", custom: "Custom" }[sortMode]}`}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowSortMenu(prev => !prev); }}
+                    className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    <ArrowUpDown width={11} height={11} />
+                  </button>
+                </Tooltip>
+                {showSortMenu && (<>
+                  <div className="fixed inset-0 z-[9997]" onClick={(e) => { e.stopPropagation(); setShowSortMenu(false); }} />
+                  <div className="absolute top-full right-0 mt-1 w-36 rounded-lg shadow-xl py-1 z-[9998]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                    {([["az", "A → Z"], ["za", "Z → A"], ["custom", "Custom"]] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={(e) => { e.stopPropagation(); setSortMode(key); setShowSortMenu(false); }}
+                        className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
+                        style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
+                      >
+                        {label}
+                      </button>
                     ))}
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 9, color: "var(--text-faint)", lineHeight: 1.4 }}>
-                    <div>PDF: max 4MB</div>
-                    <div>PPTX / XLSX / Office: max 10MB</div>
-                    <div>Text formats: no limit</div>
-                    <div>AI structuring (mdfy): up to 30K chars</div>
+                </>)}
+              </div>
+              {(() => {
+                const allFolders = folders;
+                const anyOpen = allFolders.some(f => !f.collapsed) || showRecent || showMyBundles || showMyDocs || showSharedDocs || showTrash;
+                return (
+                  <Tooltip text={anyOpen ? "Collapse all sections + folders" : "Expand all sections + folders"}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (anyOpen) {
+                          setShowRecent(false); setShowMyBundles(false); setShowMyDocs(false); setShowSharedDocs(false); setShowTrash(false);
+                          setFolders(prev => prev.map(f => ({ ...f, collapsed: true })));
+                          allFolders.forEach(f => { if (!f.collapsed) fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, collapsed: true }) }).catch(() => {}); });
+                        } else {
+                          setShowRecent(true); setShowMyBundles(true); setShowMyDocs(true); setShowSharedDocs(true); setShowTrash(true);
+                          setFolders(prev => prev.map(f => ({ ...f, collapsed: false })));
+                          allFolders.forEach(f => { if (f.collapsed) fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, collapsed: false }) }).catch(() => {}); });
+                        }
+                      }}
+                      className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{ color: "var(--text-faint)" }}
+                    >
+                      {anyOpen ? <ChevronsDownUp width={12} height={12} /> : <ChevronsUpDown width={12} height={12} />}
+                    </button>
+                  </Tooltip>
+                );
+              })()}
+              <div className="relative">
+                <Tooltip text="Create new…">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowLibraryNewMenu(prev => !prev); }}
+                    className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                    style={{ color: "var(--text-faint)" }}
+                  >
+                    <Plus width={12} height={12} />
+                  </button>
+                </Tooltip>
+                {showLibraryNewMenu && (<>
+                  <div className="fixed inset-0 z-[9997]" onClick={() => setShowLibraryNewMenu(false)} />
+                  <div className="absolute top-full right-0 mt-1 w-44 rounded-lg shadow-xl py-1 z-[9998]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                    <button onClick={() => { setShowLibraryNewMenu(false); addTab(); }}
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      <FileIcon width={11} height={11} /> New document
+                    </button>
+                    <button onClick={() => { setShowLibraryNewMenu(false); setShowMyBundles(true); setBundleCreatorDocs([]); setShowBundleCreator(true); }}
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      <Layers width={11} height={11} /> New bundle
+                    </button>
+                    <button onClick={() => {
+                      setShowLibraryNewMenu(false);
+                      const id = `folder-${Date.now()}`;
+                      setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "my" }]);
+                      fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
+                      setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
+                    }}
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      <FolderPlus width={11} height={11} /> New folder
+                    </button>
+                    <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                    <button onClick={() => { setShowLibraryNewMenu(false); importFileRef.current?.click(); }}
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-[11px] hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                      <Download width={11} height={11} /> Import files…
+                    </button>
                   </div>
-                  <p style={{ marginTop: 4, fontSize: 9, color: "var(--text-faint)" }}>Or drag & drop files anywhere</p>
-                </div>
-              }>
+                </>)}
+              </div>
+              <Tooltip text="Refresh from server">
                 <button
-                  onClick={() => importFileRef.current?.click()}
-                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                  id="sidebar-refresh-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const btn = document.getElementById("sidebar-refresh-btn");
+                    if (btn) { btn.classList.add("animate-spin"); setTimeout(() => btn.classList.remove("animate-spin"), 600); }
+                    if (user?.id) {
+                      fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                          if (data?.documents) {
+                            setServerDocs(data.documents);
+                            const sm = new Map(data.documents.map((d: { id: string; source?: string }) => [d.id, d.source]));
+                            setTabs(prev => {
+                              const ids = new Set(prev.filter(t => t.cloudId).map(t => t.cloudId!));
+                              const nw = data.documents.filter((d: { id: string }) => !ids.has(d.id)).map((d: { id: string; title?: string; source?: string; is_draft?: boolean }) => ({
+                                id: `cloud-${d.id}`, title: d.title || "Untitled", markdown: "", cloudId: d.id, isDraft: d.is_draft !== false, source: d.source || undefined, permission: "mine" as const,
+                              }));
+                              return [...prev.map(t => t.cloudId ? { ...t, source: (sm.get(t.cloudId) as string) || undefined } : t), ...nw];
+                            });
+                          }
+                        }).catch(() => {});
+                    }
+                  }}
+                  className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-faint)" }}
                 >
-                  <Download width={10} height={10} />
+                  <RefreshCw width={11} height={11} />
                 </button>
               </Tooltip>
-              <Tooltip text="Create a new blank document">
+              <Tooltip text="What do the icons and filters mean?">
                 <button
-                  onClick={addTab}
-                  className="flex items-center gap-1 h-6 px-1.5 rounded-md transition-colors text-[10px]"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                  onClick={(e) => { e.stopPropagation(); setShowSidebarHelp(prev => !prev); }}
+                  className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: showSidebarHelp ? "var(--accent)" : "var(--text-faint)" }}
                 >
-                  <Plus width={10} height={10} />
+                  <HelpCircle width={12} height={12} />
                 </button>
               </Tooltip>
             </div>
+          </div>
+          {/* Search row — always visible under Library header. ⌘K focuses. */}
+          <div className="px-2 pb-1.5 flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-1 px-2 rounded" style={{ background: "var(--toggle-bg)", border: `1px solid ${sidebarSearch ? "var(--accent)" : "var(--border-dim)"}` }}>
+              <Search width={11} height={11} className="shrink-0" style={{ color: sidebarSearch ? "var(--accent)" : "var(--text-faint)" }} />
+              <input
+                ref={sidebarSearchInputRef}
+                type="text"
+                value={sidebarSearch}
+                onChange={(e) => setSidebarSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") { setSidebarSearch(""); (e.currentTarget as HTMLInputElement).blur(); } }}
+                placeholder="Search…"
+                className="w-full text-[11px] py-1 bg-transparent outline-none"
+                style={{ color: "var(--text-secondary)", border: "none" }}
+              />
+              {sidebarSearch ? (
+                <>
+                  <span className="shrink-0 text-[9px] tabular-nums" style={{ color: "var(--text-faint)" }}>
+                    {searchMatchCount}
+                  </span>
+                  <button
+                    onClick={() => setSidebarSearch("")}
+                    className="shrink-0 w-4 h-4 rounded flex items-center justify-center hover:bg-[var(--border-dim)]"
+                    style={{ color: "var(--text-faint)" }}
+                    title="Clear (Esc)"
+                  >
+                    <X width={9} height={9} />
+                  </button>
+                </>
+              ) : (
+                <kbd
+                  className="shrink-0 inline-flex items-center justify-center text-[9px] font-mono px-1 h-4 rounded leading-none"
+                  style={{ color: "var(--text-faint)", background: "var(--background)", border: "1px solid var(--border-dim)", letterSpacing: "0.02em" }}
+                  title="Press to focus search"
+                >⌘K</kbd>
+              )}
+            </div>
+          </div>
           </div>
           {/* Hidden file input for import */}
           <input
@@ -7244,65 +8608,328 @@ ${clone.innerHTML}
                 </div>
                 <span style={{ color: "var(--text-muted)" }}>Shared + Synced</span>
               </div>
+              <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
+              <div className="font-semibold text-[9px] uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Bundle Icons</div>
+              <div className="flex items-center gap-2"><Layers width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private bundle</span></div>
+              <div className="flex items-center gap-2">
+                <div className="relative shrink-0" style={{ width: 14, height: 12 }}>
+                  <Layers width={12} height={12} style={{ color: "#4ade80" }} />
+                  <Globe width={7} height={7} className="absolute" style={{ color: "#4ade80", right: -1, bottom: -2, background: "var(--toggle-bg)", borderRadius: 3 }} />
+                </div>
+                <span style={{ color: "var(--text-muted)" }}>Published bundle (anyone with link)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative shrink-0" style={{ width: 14, height: 12 }}>
+                  <Layers width={12} height={12} style={{ color: "#4ade80" }} />
+                  <Lock width={7} height={7} className="absolute" style={{ color: "#f59e0b", right: -1, bottom: -2, background: "var(--toggle-bg)", borderRadius: 3 }} />
+                </div>
+                <span style={{ color: "var(--text-muted)" }}>Password-protected bundle</span>
+              </div>
             </div>
           )}
-          {/* Document list — 3 permanent sections, accordion layout */}
-          <div className="flex-1 flex flex-col min-h-0" onContextMenu={(e) => {
+          {/* Document list — sections stack naturally; whole list scrolls if it
+              exceeds viewport. Avoids the previous "empty space in the middle"
+              issue where expanded sections used flex-1 even when their content
+              was short, pushing collapsed headers far below. */}
+          <div ref={sectionsScrollRef} className="flex-1 flex flex-col min-h-0 overflow-y-auto sidebar-scroll" onContextMenu={(e) => {
             e.preventDefault();
             setDocContextMenu(null);
             setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
-            {/* ── Section: MD BUNDLES (above MDs) ── */}
-            {bundles.length > 0 && (
-              <div className={`shrink-0 ${showMyBundles ? "flex flex-col" : ""}`} style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                <div
-                  className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                  onClick={() => setShowMyBundles(!showMyBundles)}
-                >
-                  <span className="flex-1 text-[11px] font-medium" style={{ color: showMyBundles ? "var(--accent)" : "var(--text-muted)" }}>MD Bundles</span>
-                  <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
+            {/* ── Section: RECENT (top) — last 7 visited tabs, separate from main tree ── */}
+            {(() => {
+              const recentTabs = recentTabIds
+                .map(id => tabs.find(t => t.id === id && !t.deleted))
+                .filter((t): t is Tab => !!t)
+                .slice(0, 7);
+              return (
+                <div className="shrink-0">
+                  <div
+                    data-section-id="recent"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    onClick={() => setShowRecent(!showRecent)}
+                  >
+                    <ChevronDown
+                      width={10} height={10}
+                      className={`shrink-0 transition-transform ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                      style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
+                    />
+                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
+                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{recentTabs.length}</span>
+                  </div>
+                  {showRecent && (
+                    recentTabs.length === 0 ? (
+                      <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>No recently opened documents</div>
+                    ) : (
+                      <div className="pl-2 pr-2 pb-1 space-y-0.5">
+                        {recentTabs.map(tab => (
+                          <div
+                            key={`recent-${tab.id}`}
+                            className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                            style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
+                            onClick={(e) => handleDocClick(tab.id, e)}
+                            title={tab.title || "Untitled"}
+                          >
+                            {tab.kind === "bundle" ? renderBundleStatusIcon(tab.bundleId, 13) : <DocStatusIcon tab={tab} isActive={false} />}
+                            <span className="truncate flex-1 text-[12px]">{tab.title || "Untitled"}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== tab.id)); }}
+                              className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
+                              style={{ color: "var(--text-faint)" }}
+                              title="Remove from recent"
+                            >
+                              <X width={9} height={9} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
                 </div>
-                {showMyBundles && (
-                  <div className="overflow-auto pb-1.5 px-1">
-                    {bundles.map(b => {
-                      const existingTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
-                      const isActive = existingTab && activeTabId === existingTab.id;
-                      return (
-                        <button
-                          key={b.id}
-                          onClick={() => {
-                            setShowOnboarding(false);
-                            setSelectedTabIds(new Set());
-                            if (existingTab) {
-                              // Same fix as handleDocClick: do NOT pre-update activeTabIdRef.
-                              // switchTab needs the previous tab id to persist its current markdown.
-                              switchTab(existingTab.id);
-                            } else {
-                              const newId = `bundle-${b.id}-${Date.now()}`;
-                              const newTab: Tab = {
-                                id: newId, kind: "bundle", bundleId: b.id,
-                                title: b.title || "Untitled Bundle", markdown: "",
-                              };
-                              // Add the new bundle tab to state (no activeTabId pre-flip);
-                              // switchTab will read currentTabId = previous tab and persist its md correctly.
-                              flushSync(() => { setTabs(prev => [...prev, newTab]); });
-                              switchTab(newId);
-                            }
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center gap-2 transition-colors hover:bg-[var(--accent-dim)]"
-                          style={{ background: isActive ? "var(--accent-dim)" : "transparent" }}
-                        >
-                          <Layers width={11} height={11} style={{ color: isActive ? "var(--accent)" : "var(--text-faint)", flexShrink: 0 }} />
-                          <span className="text-[11px] font-medium truncate flex-1" style={{ color: isActive ? "var(--accent)" : "var(--text-secondary)" }}>{b.title || "Untitled Bundle"}</span>
-                          <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>{b.documentCount}</span>
-                        </button>
-                      );
-                    })}
+              );
+            })()}
+            {/* ── Section: MD BUNDLES (above MDs) ── */}
+            <div
+              className="shrink-0 flex flex-col"
+              onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu(null); setFolderContextMenu(null); setBundleContextMenu(null); setSidebarContextMenu({ x: e.clientX, y: e.clientY, section: "bundles" }); }}
+            >
+                {(() => {
+                  const bundleFolders = folders.filter(f => f.section === "bundles");
+                  const anyBundleFolderExpanded = bundleFolders.some(f => !f.collapsed);
+                  return (
+                    <div
+                      data-section-id="bundles"
+                      className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                      style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                      onClick={() => setShowMyBundles(!showMyBundles)}
+                    >
+                      <ChevronDown
+                        width={10} height={10}
+                        className={`shrink-0 transition-transform ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                        style={{ transform: showMyBundles ? "rotate(0deg)" : "rotate(-90deg)" }}
+                      />
+                      <span className={`flex-1 text-[11px] font-medium transition-colors ${showMyBundles ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MD Bundles</span>
+                      {showMyBundles && bundleFolders.length > 0 && (
+                        <Tooltip text={anyBundleFolderExpanded ? "Collapse all bundle folders" : "Expand all bundle folders"}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const next = anyBundleFolderExpanded;
+                              setFolders(prev => prev.map(f => f.section === "bundles" ? { ...f, collapsed: next } : f));
+                              bundleFolders.forEach(f => {
+                                if (f.collapsed !== next) fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, collapsed: next }) }).catch(() => {});
+                              });
+                            }}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            {anyBundleFolderExpanded ? <ChevronsDownUp width={12} height={12} /> : <ChevronsUpDown width={12} height={12} />}
+                          </button>
+                        </Tooltip>
+                      )}
+                      <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{bundles.length}</span>
+                    </div>
+                  );
+                })()}
+                {showMyBundles && bundles.length === 0 && folders.filter(f => f.section === "bundles").length === 0 && (
+                  <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                    No bundles yet
+                  </div>
+                )}
+                {showMyBundles && (bundles.length > 0 || folders.filter(f => f.section === "bundles").length > 0) && (
+                  <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                    {/* Bundles share the same SidebarFolderTree component as docs, with
+                        bundle-specific handlers. Folders with section="bundles" group bundles. */}
+                    <SidebarFolderTree
+                      folders={folders}
+                      tabs={bundles.map(b => {
+                        const existingTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                        return {
+                          id: `bundle-item-${b.id}`,
+                          title: b.title || "Untitled Bundle",
+                          folderId: b.folder_id || undefined,
+                          // Stash bundle id + active state via cloudId/lastOpenedAt for downstream lookups
+                          cloudId: b.id,
+                          lastOpenedAt: existingTab && activeTabId === existingTab.id ? Date.now() : undefined,
+                          kind: "bundle" as const,
+                        };
+                      })}
+                      rootFolderFilter={FOLDER_FILTER_BUNDLES}
+                      activeTabId={(() => {
+                        const activeBundleTab = tabs.find(t => t.kind === "bundle" && t.id === activeTabId);
+                        return activeBundleTab ? `bundle-item-${activeBundleTab.bundleId}` : undefined;
+                      })()}
+                      selectedTabIds={new Set()}
+                      activeBundleDocIds={new Set()}
+                      sidebarSearch={sidebarSearchDebounced}
+                      sortMode={sortMode}
+                      sidebarMode={sidebarMode}
+                      docFilter={"all"}
+                      dragTabId={dragTabId}
+                      dragFolderId={dragFolderId}
+                      setDragTabId={setDragTabId}
+                      setDragFolderId={setDragFolderId}
+                      renderTabIcon={(item) => renderBundleStatusIcon(item.cloudId, 14)}
+                      renderTabBadge={(item) => {
+                        const bundle = bundles.find(b => b.id === item.cloudId);
+                        if (!bundle) return null;
+                        return (
+                          <Tooltip text={`${bundle.documentCount} document${bundle.documentCount === 1 ? "" : "s"} in this bundle`}>
+                            <span className="text-[9px]" style={{ color: "var(--text-faint)", opacity: 0.7 }}>
+                              {bundle.documentCount}
+                            </span>
+                          </Tooltip>
+                        );
+                      }}
+                      handlers={{
+                        onToggleCollapsed: (folderId) => {
+                          const target = folders.find(f => f.id === folderId);
+                          const next = !target?.collapsed;
+                          setFolders(prev => prev.map(f => f.id === folderId ? { ...f, collapsed: next } : f));
+                          fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderId, collapsed: next }) }).catch(() => {});
+                        },
+                        onRename: (folderId, currentName) => {
+                          setInlineInput({
+                            label: "Folder name",
+                            defaultValue: currentName,
+                            onSubmit: (name) => {
+                              setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name } : f));
+                              fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderId, name }) }).catch(() => {});
+                              setInlineInput(null);
+                            },
+                          });
+                        },
+                        onCreateDocInFolder: (folderId) => {
+                          // For bundles section, "+" creates a new bundle inside this folder
+                          setBundleCreatorDocs([]);
+                          setShowBundleCreator(true);
+                          setPendingNewBundleFolderId(folderId);
+                        },
+                        onCreateSubfolder: (parentId) => {
+                          const id = `folder-${Date.now()}`;
+                          setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "bundles", parentId }]);
+                          fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "bundles", parentId }) }).catch(() => {});
+                          setInlineInput({
+                            label: "Folder name",
+                            defaultValue: "New Folder",
+                            onSubmit: (name) => {
+                              setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+                              fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {});
+                              setInlineInput(null);
+                            },
+                          });
+                        },
+                        onOpenContextMenu: (folderId, x, y) => setFolderContextMenu({ x, y, folderId }),
+                        onTabClick: (itemId) => {
+                          // itemId is "bundle-item-<bundleId>" — extract real bundle id
+                          const bundleId = itemId.replace(/^bundle-item-/, "");
+                          const b = bundles.find(x => x.id === bundleId);
+                          if (!b) return;
+                          setShowOnboarding(false);
+                          setSelectedTabIds(new Set());
+                          const existingTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                          let openedTabId: string;
+                          if (existingTab) {
+                            openedTabId = existingTab.id;
+                            switchTab(existingTab.id);
+                          } else {
+                            // First-click path: insert the bundle tab AND make it
+                            // active in the same synchronous flush. Without setting
+                            // activeTabId here, switchTab would only commit it via a
+                            // queueMicrotask, leaving an intermediate render where
+                            // activeTab still resolves to the previous doc — the
+                            // bundle viewer's `activeTab.kind === "bundle"` gate
+                            // fails for that frame and the canvas appears not to load.
+                            openedTabId = `bundle-${b.id}-${Date.now()}`;
+                            const newTab: Tab = { id: openedTabId, kind: "bundle", bundleId: b.id, title: b.title || "Untitled Bundle", markdown: "" };
+                            activeTabIdRef.current = openedTabId;
+                            flushSync(() => {
+                              setTabs(prev => [...prev, newTab]);
+                              setActiveTabId(openedTabId);
+                            });
+                            switchTab(openedTabId);
+                            // Persist the new bundle tab IMMEDIATELY (bypass the
+                            // 500ms persist debounce). When the click navigates
+                            // pushState → /b/X and the user then refreshes, the
+                            // browser reloads /b/[id] which never mounts MdEditor
+                            // and never gets a chance to flush. Without this eager
+                            // save, the bundle tab is missing from mdfy-tabs and
+                            // the corresponding entry in mdfy-recent-tabs would
+                            // resolve to a missing tab → Recent appears empty.
+                            try {
+                              const saved = localStorage.getItem("mdfy-tabs");
+                              const arr = saved ? JSON.parse(saved) : [];
+                              if (Array.isArray(arr) && !arr.some((t: { id: string }) => t.id === newTab.id)) {
+                                arr.push(newTab);
+                                localStorage.setItem("mdfy-tabs", JSON.stringify(arr));
+                              }
+                              localStorage.setItem("mdfy-active-tab", openedTabId);
+                            } catch { /* quota / parse — fallback to debounced save */ }
+                          }
+                          // Push to Recent (shared with sidebar Recent + Home Recent).
+                          // Also persist immediately so a refresh on /b/X doesn't lose it.
+                          if (!isDraggingSidebarRef.current) {
+                            setRecentTabIds(prev => {
+                              const next = [openedTabId, ...prev.filter(id => id !== openedTabId)].slice(0, 7);
+                              try { localStorage.setItem("mdfy-recent-tabs", JSON.stringify(next)); } catch { /* ignore */ }
+                              return next;
+                            });
+                          }
+                        },
+                        onTabContextMenu: (itemId, x, y) => {
+                          const bundleId = itemId.replace(/^bundle-item-/, "");
+                          setBundleContextMenu({ x, y, bundleId });
+                        },
+                        onTabKebab: (itemId, rect) => {
+                          const bundleId = itemId.replace(/^bundle-item-/, "");
+                          setBundleContextMenu({ x: rect.right, y: rect.bottom, bundleId });
+                        },
+                        onDropTabIntoFolder: (itemId, folderId) => {
+                          const bundleId = itemId.replace(/^bundle-item-/, "");
+                          setBundles(prev => prev.map(b => b.id === bundleId ? { ...b, folder_id: folderId } : b));
+                          fetch(`/api/bundles/${bundleId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json", ...authHeaders },
+                            body: JSON.stringify({
+                              userId: user?.id,
+                              anonymousId: !user?.id ? getAnonymousId() : undefined,
+                              action: "move-to-folder",
+                              folderId,
+                            }),
+                          }).catch(() => {});
+                        },
+                        onDropFolderIntoFolder: (movedFolderId, newParentId) => {
+                          setFolders(prev => prev.map(f => f.id === movedFolderId ? { ...f, parentId: newParentId } : f));
+                          fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: movedFolderId, parentId: newParentId }) }).catch(() => {});
+                        },
+                        onChangeEmoji: (folderId) => setEmojiPickerFolderId(folderId),
+                        onReorderFolder: (movedId, siblingId, position) => {
+                          // Re-parent moved folder to sibling's parent, then reorder among siblings
+                          const sibling = folders.find(f => f.id === siblingId);
+                          const newParent = sibling?.parentId ?? null;
+                          setFolders(prev => {
+                            const next = prev.map(f => f.id === movedId ? { ...f, parentId: newParent } : f);
+                            const movedIdx = next.findIndex(f => f.id === movedId);
+                            if (movedIdx < 0) return next;
+                            const [moved] = next.splice(movedIdx, 1);
+                            const sibIdx = next.findIndex(f => f.id === siblingId);
+                            if (sibIdx < 0) return [...next, moved];
+                            next.splice(position === "before" ? sibIdx : sibIdx + 1, 0, moved);
+                            // Persist new parent + sort_order for affected folders
+                            fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: movedId, parentId: newParent }) }).catch(() => {});
+                            next.forEach((f, i) => {
+                              fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, sortOrder: i }) }).catch(() => {});
+                            });
+                            return next;
+                          });
+                        },
+                      }}
+                    />
                   </div>
                 )}
               </div>
-            )}
 
             {/* ── Section 1: MY DOCUMENTS ── */}
             {(() => {
@@ -7312,345 +8939,230 @@ ${clone.innerHTML}
               const _privateCount = memoPrivateCount;
               const _sharedCount = memoSharedCount;
               return (
-                <div className={`flex flex-col ${showMyDocs ? "flex-1 min-h-0" : ""}`}>
-                  <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => { setShowMyDocs(!showMyDocs); }}
-                  >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showMyDocs ? "var(--accent)" : "var(--text-muted)" }}>MDs</span>
-                    {showMyDocs && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setShowSidebarSearch(!showSidebarSearch); if (showSidebarSearch) setSidebarSearch(""); }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: showSidebarSearch || sidebarSearch ? "var(--accent)" : "var(--text-faint)" }}
-                          title="Search documents"
-                        >
-                          <Search width={10} height={10} />
-                        </button>
-                        <div className="relative">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setShowSortMenu(prev => !prev); }}
-                            className="h-5 px-1.5 rounded flex items-center gap-1 transition-colors hover:bg-[var(--toggle-bg)]"
-                            style={{ color: "var(--text-faint)", fontSize: 9 }}
-                            title={`Sort: ${sortMode}`}
-                          >
-                            <ArrowUpDown width={9} height={9} />
-                            <span className="hidden sm:inline" style={{ fontFamily: "var(--font-geist-mono, monospace)", letterSpacing: "0.3px" }}>
-                              {{ newest: "New", oldest: "Old", az: "A-Z", za: "Z-A" }[sortMode]}
-                            </span>
-                          </button>
-                          {showSortMenu && (<>
-                            <div className="fixed inset-0 z-[9997]" onClick={(e) => { e.stopPropagation(); setShowSortMenu(false); }} />
-                            <div className="absolute top-full right-0 mt-1 w-28 rounded-lg shadow-xl py-1 z-[9998]"
-                              style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
-                              {([["newest", "Newest first"], ["oldest", "Oldest first"], ["az", "A → Z"], ["za", "Z → A"]] as const).map(([key, label]) => (
-                                <button
-                                  key={key}
-                                  onClick={(e) => { e.stopPropagation(); setSortMode(key); setShowSortMenu(false); }}
-                                  className="w-full text-left px-3 py-1.5 text-[11px] transition-colors hover:bg-[var(--menu-hover)]"
-                                  style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </>)}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const id = `folder-${Date.now()}`;
-                            setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-                            fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
-                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
-                          }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--text-faint)" }}
-                          title="New folder"
-                        >
-                          <FolderPlus width={10} height={10} />
-                        </button>
-                      </>
-                    )}
-                    {!showMyDocs && myTabCount > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>}
-                  </div>
+                <div
+                  className="shrink-0 flex flex-col"
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu(null); setFolderContextMenu(null); setBundleContextMenu(null); setSidebarContextMenu({ x: e.clientX, y: e.clientY, section: "my" }); }}
+                >
+                  {(() => {
+                    const myFolders = folders.filter(f => !f.section || f.section === "my");
+                    const anyMyFolderExpanded = myFolders.some(f => !f.collapsed);
+                    return (
+                      <div
+                        data-section-id="mds"
+                        className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                        style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                        onClick={() => { setShowMyDocs(!showMyDocs); }}
+                      >
+                        <ChevronDown
+                          width={10} height={10}
+                          className={`shrink-0 transition-transform ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                          style={{ transform: showMyDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
+                        />
+                        <span className={`flex-1 text-[11px] font-medium transition-colors ${showMyDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>MDs</span>
+                        {showMyDocs && myFolders.length > 0 && (
+                          <Tooltip text={anyMyFolderExpanded ? "Collapse all folders" : "Expand all folders"}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const next = anyMyFolderExpanded;
+                                setFolders(prev => prev.map(f => (!f.section || f.section === "my") ? { ...f, collapsed: next } : f));
+                                myFolders.forEach(f => {
+                                  if (f.collapsed !== next) fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, collapsed: next }) }).catch(() => {});
+                                });
+                              }}
+                              className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                              style={{ color: "var(--text-faint)" }}
+                            >
+                              {anyMyFolderExpanded ? <ChevronsDownUp width={12} height={12} /> : <ChevronsUpDown width={12} height={12} />}
+                            </button>
+                          </Tooltip>
+                        )}
+                        <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{myTabCount}</span>
+                      </div>
+                    );
+                  })()}
                   {showMyDocs && (
                     <>
-                    {/* Grouped tab filter — fixed */}
-                    <div className="shrink-0 space-y-0.5 pt-1 pb-0 pl-2 pr-2">
-                      <div className="flex items-center gap-1.5 px-1 pb-1.5">
-                        <div className="flex flex-1 rounded-md overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                          {(["all", "private", "shared", "synced"] as const).map((f) => {
-                            const tips: Record<string, string> = {
-                              all: "Show all documents",
-                              private: "Only visible to you",
-                              shared: "Shared via public URL",
-                              synced: "Synced from VS Code",
-                            };
-                            const labels: Record<string, string> = { all: "ALL", private: "PRIVATE", shared: "SHARED", synced: "SYNCED" };
-                            return (
+                    {/* Filter pills — compact chips, active filled with accent-dim */}
+                    <div className="shrink-0 px-2 pt-1.5 pb-1">
+                      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md w-full" style={{ background: "var(--background)" }}>
+                        {(["all", "private", "shared", "synced"] as const).map((f) => {
+                          const tips: Record<string, string> = {
+                            all: "Show all documents",
+                            private: "Only visible to you",
+                            shared: "Shared via public URL",
+                            synced: "Synced from VS Code, Desktop, CLI, MCP",
+                          };
+                          const labels: Record<string, string> = { all: "All", private: "Private", shared: "Shared", synced: "Synced" };
+                          const isActive = docFilter === f;
+                          return (
                             <button
                               key={f}
                               onClick={() => { setDocFilter(f); localStorage.setItem("mdfy-doc-filter", f); }}
                               title={tips[f]}
-                              className="flex-1 text-[9px] font-semibold py-1 transition-colors"
+                              className="flex-1 text-[10px] py-1 rounded transition-colors"
                               style={{
-                                fontFamily: "'SF Mono', 'Fira Code', monospace",
-                                color: docFilter === f ? "var(--accent)" : "var(--text-faint)",
-                                background: docFilter === f ? "var(--accent-dim)" : "transparent",
+                                background: isActive ? "var(--accent-dim)" : "transparent",
+                                color: isActive ? "var(--accent)" : "var(--text-faint)",
+                                fontWeight: isActive ? 600 : 500,
                               }}
+                              onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; } }}
+                              onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; } }}
                             >
                               {labels[f]}
                             </button>
-                            );
-                          })}
-                        </div>
+                          );
+                        })}
                       </div>
-                      {/* Search — toggle with icon */}
-                      {(sidebarSearch || showSidebarSearch) && (
-                        <div className="flex items-center gap-1.5 mx-1 mb-1.5 px-2 rounded" style={{ background: "var(--toggle-bg)" }}>
-                          <Search width={12} height={12} className="shrink-0" style={{ color: "var(--text-faint)" }} />
-                          <input
-                            type="text"
-                            placeholder="Search..."
-                            value={sidebarSearch}
-                            onChange={(e) => setSidebarSearch(e.target.value)}
-                            onBlur={() => { setTimeout(() => { if (!sidebarSearch) setShowSidebarSearch(false); }, 150); }}
-                            autoFocus
-                            className="w-full text-[11px] py-1.5 bg-transparent"
-                            style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
-                          />
-                          {sidebarSearch && (
-                            <button
-                              onClick={() => { setSidebarSearch(""); setShowSidebarSearch(false); }}
-                              className="shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-[var(--border-dim)]"
-                              style={{ color: "var(--text-faint)" }}
-                            >
-                              <X width={10} height={10} />
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                     {/* Document list — scrollable */}
-                    <div data-sidebar-scroll className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
-                      {/* Root-level documents (no folder, mine only) */}
-                      {(() => {
-                        const MAX_VISIBLE_DOCS = 100;
-                        const now = Date.now();
-                        const allRootTabs = myTabs.filter(t => !t.folderId && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase()))).sort((a, b) => {
-                          if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
-                          if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                          const at = a.lastOpenedAt || now;
-                          const bt = b.lastOpenedAt || now;
-                          return sortMode === "newest" ? bt - at : at - bt;
-                        });
-                        const visibleRootTabs = showAllDocs || allRootTabs.length <= MAX_VISIBLE_DOCS ? allRootTabs : allRootTabs.slice(0, MAX_VISIBLE_DOCS);
-                        return (<>
-                      {visibleRootTabs.map((tab) => {
-                        const inActiveBundle = activeBundleDocIds.size > 0 && !!tab.cloudId && activeBundleDocIds.has(tab.cloudId);
-                        const isSelected = selectedTabIds.has(tab.id) || tab.id === activeTabId || inActiveBundle;
-                        return (
-                        <div
-                          key={tab.id}
-                          data-sidebar-tab-id={tab.id}
-                          draggable={tab.ownerEmail !== EXAMPLE_OWNER}
-                          onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }}
-                          onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-all duration-200 relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                          style={{
-                            background: isSelected ? "var(--accent-dim)" : "transparent",
-                            color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
-                            opacity: dragTabId === tab.id ? 0.4 : 1,
-                            outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
-                            outlineOffset: "-1px",
-                          }}
-                          onClick={(e) => handleDocClick(tab.id, e)}
-                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                        >
-                          <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
-                          <div className="truncate flex-1 min-w-0">
-                            <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                            {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                            className="shrink-0 rounded flex items-center justify-center w-0 group-hover:w-[18px] overflow-hidden transition-all duration-150" style={{ color: "var(--text-muted)", padding: "0" }} title="Document options">
-                            <MoreHorizontal width={14} height={14} />
-                          </button>
-                        </div>
-                        );
-                      })}
-                      {allRootTabs.length > MAX_VISIBLE_DOCS && !showAllDocs && (
-                        <button
-                          onClick={() => setShowAllDocs(true)}
-                          className="w-full text-center py-1.5 text-[10px] font-mono rounded-md transition-colors hover:bg-[var(--accent-dim)]"
-                          style={{ color: "var(--accent)" }}
-                        >
-                          Show {allRootTabs.length - MAX_VISIBLE_DOCS} more...
-                        </button>
-                      )}
-                      </>);
-                      })()}
+                    {/* overflow-y-auto only — earlier we had blamed overflow-x-hidden
+                        for cancelling HTML5 drag, but the real cause was state
+                        mutations during drag (now gated). Horizontal scroll on the
+                        sidebar is unwanted: long titles already truncate. */}
+                    <div data-sidebar-scroll className="overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
+                      {/* Root tabs + folders rendered through SidebarFolderTree below — same component as MD Bundles + Shared sections for unified UX. */}
 
-                      {/* Folders */}
-                      {[...folders].filter(f => !f.section || f.section === "my").filter(f => {
-                        // Hide empty folders when search or filter is active
-                        const hasDocs = myTabs.some(t => t.folderId === f.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
-                        if (sidebarSearch && !hasDocs) return false;
-                        if (docFilter !== "all" && !hasDocs) return false;
-                        return true;
-                      }).sort((a, b) => {
-                        if (sortMode === "az") return a.name.localeCompare(b.name);
-                        if (sortMode === "za") return b.name.localeCompare(a.name);
-                        const ai = folders.indexOf(a), bi = folders.indexOf(b);
-                        return sortMode === "oldest" ? ai - bi : bi - ai;
-                      }).map(folder => {
-                        const folderTabs = myTabs.filter(t => t.folderId === folder.id && (!sidebarSearch || (t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) || (t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())));
-                        const folderHasBundleDoc = activeBundleDocIds.size > 0 && folderTabs.some(t => t.cloudId && activeBundleDocIds.has(t.cloudId));
-                        const folderDimmed = activeBundleDocIds.size > 0 && !folderHasBundleDoc;
-                        return (
-                          <div key={folder.id} className="mt-0.5">
-                            <div
-                              draggable
-                              onDragStart={(e) => { setDragFolderId(folder.id); e.dataTransfer.effectAllowed = "move"; }}
-                              onDragEnd={() => { setDragFolderId(null); setDragOverTarget(null); }}
-                              className={`flex items-center gap-1 px-0.5 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group ${dragOverTarget === folder.id ? "ring-1 ring-[var(--accent)]" : ""}`}
-                              style={{ color: folderHasBundleDoc ? "var(--accent)" : "var(--text-muted)", background: dragOverTarget === folder.id ? "var(--accent-dim)" : "transparent", opacity: dragFolderId === folder.id ? 0.4 : 1 }}
-                              onClick={() => setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, collapsed: !f.collapsed } : f))}
-                              onDragOver={(e) => { e.preventDefault(); if (dragTabId || dragFolderId) setDragOverTarget(folder.id); }}
-                              onDragLeave={() => setDragOverTarget(null)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                if (dragTabId) {
-                                  setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: folder.id } : t));
+                      {/* Folders — recursive nested tree (Obsidian/Notion-style) */}
+                      <SidebarFolderTree
+                        folders={folders}
+                        tabs={myTabs}
+                        rootFolderFilter={FOLDER_FILTER_MY}
+                        includeRootTabs={true}
+                        activeTabId={activeTabId}
+                        selectedTabIds={selectedTabIds}
+                        activeBundleDocIds={activeBundleDocIds}
+                        sidebarSearch={sidebarSearchDebounced}
+                        sortMode={sortMode}
+                        sidebarMode={sidebarMode}
+                        docFilter={docFilter}
+                        dragTabId={dragTabId}
+                        dragFolderId={dragFolderId}
+                        setDragTabId={setDragTabId}
+                        setDragFolderId={setDragFolderId}
+                        renderTabIcon={(tab, isActive) => (
+                          <DocStatusIcon tab={tab} isActive={isActive} />
+                        )}
+                        renderTabMeta={(tab) => tab.lastOpenedAt ? (
+                          <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>
+                            {relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}
+                          </span>
+                        ) : null}
+                        handlers={{
+                          onToggleCollapsed: (folderId) => {
+                            const target = folders.find(f => f.id === folderId);
+                            const next = !target?.collapsed;
+                            setFolders(prev => prev.map(f => f.id === folderId ? { ...f, collapsed: next } : f));
+                            fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderId, collapsed: next }) }).catch(() => {});
+                          },
+                          onRename: (folderId, currentName) => {
+                            setInlineInput({
+                              label: "Folder name",
+                              defaultValue: currentName,
+                              onSubmit: (name) => {
+                                setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name } : f));
+                                fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderId, name }) }).catch(() => {});
+                                setInlineInput(null);
+                              },
+                            });
+                          },
+                          onCreateDocInFolder: (folderId) => {
+                            setPendingNewDocFolderId(folderId);
+                            setShowTemplatePicker(true);
+                          },
+                          onCreateSubfolder: (parentId) => {
+                            const id = `folder-${Date.now()}`;
+                            setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "my", parentId }]);
+                            fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my", parentId }) }).catch(() => {});
+                            setInlineInput({
+                              label: "Folder name",
+                              defaultValue: "New Folder",
+                              onSubmit: (name) => {
+                                setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f));
+                                fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {});
+                                setInlineInput(null);
+                              },
+                            });
+                          },
+                          onOpenContextMenu: (folderId, x, y) => setFolderContextMenu({ x, y, folderId }),
+                          onTabClick: handleDocClick,
+                          onTabContextMenu: (tabId, x, y) => setDocContextMenu({ x, y, tabId }),
+                          onTabKebab: (tabId, rect) => setDocContextMenu({ x: rect.right, y: rect.bottom, tabId }),
+                          onDropTabIntoFolder: (tabId, folderId) => {
+                            setTabs(prev => prev.map(t => t.id === tabId ? { ...t, folderId: folderId || undefined } : t));
+                          },
+                          onDropFolderIntoFolder: (movedFolderId, newParentId) => {
+                            setFolders(prev => prev.map(f => f.id === movedFolderId ? { ...f, parentId: newParentId } : f));
+                            fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: movedFolderId, parentId: newParentId }) }).catch(() => {});
+                          },
+                          onChangeEmoji: (folderId) => setEmojiPickerFolderId(folderId),
+                          onReorderFolder: (movedId, siblingId, position) => {
+                            const sibling = folders.find(f => f.id === siblingId);
+                            const newParent = sibling?.parentId ?? null;
+                            setFolders(prev => {
+                              const next = prev.map(f => f.id === movedId ? { ...f, parentId: newParent } : f);
+                              const movedIdx = next.findIndex(f => f.id === movedId);
+                              if (movedIdx < 0) return next;
+                              const [moved] = next.splice(movedIdx, 1);
+                              const sibIdx = next.findIndex(f => f.id === siblingId);
+                              if (sibIdx < 0) return [...next, moved];
+                              next.splice(position === "before" ? sibIdx : sibIdx + 1, 0, moved);
+                              fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: movedId, parentId: newParent }) }).catch(() => {});
+                              next.forEach((f, i) => {
+                                fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, sortOrder: i }) }).catch(() => {});
+                              });
+                              return next;
+                            });
+                          },
+                          onReorderTab: (movedTabId, siblingTabId, position) => {
+                            // Reorder tabs in the sibling's folder. Computes new sort_order
+                            // values via simple "midpoint of neighbors" — re-numbers all
+                            // siblings 0..N for stability and persists each.
+                            const sibling = tabs.find(t => t.id === siblingTabId);
+                            if (!sibling) return;
+                            const targetFolderId = sibling.folderId;
+                            setTabs(prev => {
+                              // Move the tab into sibling's folder if needed
+                              const next = prev.map(t => t.id === movedTabId ? { ...t, folderId: targetFolderId } : t);
+                              // Get all tabs in target folder, sorted by current sortOrder/title
+                              const inFolder = next.filter(t => !t.deleted && t.folderId === targetFolderId && t.permission !== "readonly" && t.permission !== "editable")
+                                .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.title || "").localeCompare(b.title || ""));
+                              // Take moved out, splice at sibling position
+                              const filtered = inFolder.filter(t => t.id !== movedTabId);
+                              const sibIdx = filtered.findIndex(t => t.id === siblingTabId);
+                              if (sibIdx < 0) return next;
+                              const moved = inFolder.find(t => t.id === movedTabId);
+                              if (!moved) return next;
+                              filtered.splice(position === "before" ? sibIdx : sibIdx + 1, 0, moved);
+                              // Renumber 0..N and persist
+                              const sortMap = new Map(filtered.map((t, i) => [t.id, i]));
+                              filtered.forEach((t, i) => {
+                                if (t.cloudId) {
+                                  fetch(`/api/docs/${t.cloudId}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json", ...authHeadersRef.current },
+                                    body: JSON.stringify({ action: "set-sort-order", sortOrder: i }),
+                                  }).catch(() => {});
                                 }
-                                if (dragFolderId && dragFolderId !== folder.id) {
-                                  // Reorder: move dragged folder before this one
-                                  setFolders(prev => {
-                                    const dragged = prev.find(f => f.id === dragFolderId);
-                                    if (!dragged) return prev;
-                                    const without = prev.filter(f => f.id !== dragFolderId);
-                                    const targetIdx = without.findIndex(f => f.id === folder.id);
-                                    without.splice(targetIdx, 0, dragged);
-                                    // Sync sort_order to server
-                                    without.forEach((f, i) => {
-                                      if (f.id !== "folder-shared-examples") {
-                                        fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: f.id, sortOrder: i }) }).catch(() => {});
-                                      }
-                                    });
-                                    return without;
-                                  });
-                                }
-                                setDragTabId(null);
-                                setDragFolderId(null);
-                                setDragOverTarget(null);
-                              }}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setFolderContextMenu({ x: e.clientX, y: e.clientY, folderId: folder.id });
-                              }}
-                            >
-                              <ChevronDown width={8} height={8} className="shrink-0 -mr-1"
-                                style={{ transform: folder.collapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
-                              {folder.collapsed ? (
-                                <Folder width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
-                              ) : (
-                                <FolderOpen width={14} height={14} className="shrink-0" style={{ color: "var(--text-faint)" }} />
-                              )}
-                              <span className="truncate flex-1">{folder.name}</span>
-                              <span className="text-[9px] opacity-50 group-hover:opacity-0 transition-opacity ml-auto shrink-0 w-4 text-right">{folderTabs.length}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
-                                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  setFolderContextMenu({ x: rect.right, y: rect.bottom, folderId: folder.id });
-                                }}
-                                className="shrink-0 rounded opacity-0 group-hover:opacity-100 transition-opacity -ml-4"
-                                style={{ color: "var(--text-muted)", padding: "2px", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center" }}
-                                title="Folder options"
-                              >
-                                <MoreHorizontal width={14} height={14} />
-                              </button>
-                            </div>
-                            {!folder.collapsed && (
-                              <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
-                                {[...folderTabs].sort((a, b) => {
-                                  if (sortMode === "az") return (a.title || "").localeCompare(b.title || "");
-                                  if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
-                                  const at = a.lastOpenedAt || 0;
-                                  const bt = b.lastOpenedAt || 0;
-                                  return sortMode === "newest" ? bt - at : at - bt;
-                                }).map((tab) => {
-                                  const inActiveBundleChild = activeBundleDocIds.size > 0 && !!tab.cloudId && activeBundleDocIds.has(tab.cloudId);
-                                  const isSelectedChild = selectedTabIds.has(tab.id) || tab.id === activeTabId || inActiveBundleChild;
-                                  return (
-                                  <div
-                                    key={tab.id}
-                                    data-sidebar-tab-id={tab.id}
-                                    draggable
-                                    onDragStart={() => setDragTabId(tab.id)}
-                                    onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative"
-                                    style={{
-                                      background: isSelectedChild ? "var(--accent-dim)" : "transparent",
-                                      color: isSelectedChild ? "var(--text-primary)" : "var(--text-secondary)",
-                                      opacity: dragTabId === tab.id ? 0.4 : 1,
-                                      outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
-                                      outlineOffset: "-1px",
-                                    }}
-                                    onClick={(e) => handleDocClick(tab.id, e)}
-                                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                                  >
-                                    <DocStatusIcon tab={tab} isActive={tab.id === activeTabId} />
-                                    <div className="truncate flex-1 min-w-0">
-                                      <span className="truncate block text-[12px]">{tab.title || "Untitled"}</span>
-                                      {sidebarMode === "detailed" && tab.lastOpenedAt && <span className="text-[9px] font-mono" style={{ color: "var(--text-faint)", opacity: 0.5 }}>{relativeTime(new Date(tab.lastOpenedAt).toISOString())}{(tab.viewCount ?? 0) > 0 && ` \u00b7 ${tab.viewCount}`}</span>}
-                                    </div>
-                                    <button onClick={(e) => { e.stopPropagation(); const rect = (e.target as HTMLElement).getBoundingClientRect(); setDocContextMenu({ x: rect.right, y: rect.bottom, tabId: tab.id }); }}
-                                      className="shrink-0 rounded flex items-center justify-center w-0 group-hover:w-[18px] overflow-hidden transition-all duration-150" style={{ color: "var(--text-muted)", padding: "0" }} title="Document options">
-                                      <MoreHorizontal width={14} height={14} />
-                                    </button>
-                                  </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              });
+                              return next.map(t => sortMap.has(t.id) ? { ...t, sortOrder: sortMap.get(t.id)! } : t);
+                            });
+                          },
+                        }}
+                      />
 
-                      {/* Drop zone for removing from folder (root drop) */}
-                      {dragTabId && (
-                        <div
-                          className="mx-2 mt-2 px-3 py-2 rounded-md text-[10px] text-center transition-colors"
-                          style={{ border: "1px dashed var(--border)", color: "var(--text-faint)", background: dragOverTarget === "root" ? "var(--accent-dim)" : "transparent" }}
-                          onDragOver={(e) => { e.preventDefault(); setDragOverTarget("root"); }}
-                          onDragLeave={() => setDragOverTarget(null)}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (dragTabId) setTabs(prev => prev.map(t => t.id === dragTabId ? { ...t, folderId: undefined } : t));
-                            setDragTabId(null);
-                            setDragOverTarget(null);
-                          }}
-                        >
-                          Move to root
-                        </div>
-                      )}
+                      {/* Root-drop is now handled by SidebarFolderTree's built-in
+                          "Drop here to move to top level" slot — supports both tabs and
+                          folders, dragged from any depth. The previous tab-only box was
+                          removed to avoid two competing drop zones. */}
 
                       {myTabs.length === 0 && (
-                        <div className="px-3 py-4 text-center text-[11px]" style={{ color: "var(--text-faint)" }}>
-                          {docFilter === "all" ? "No documents yet. Create one with the + button above." :
-                           docFilter === "synced" ? (
-                             !isAuthenticated
-                               ? "Sign in to see synced documents."
-                               : "No synced documents. Sync from VS Code, Desktop app, CLI, or MCP to see them here."
-                           ) :
-                           docFilter === "private" ? "No private documents." :
-                           docFilter === "shared" ? (!isAuthenticated ? "Sign in to share documents." : "No shared documents.") :
-                           "No documents found."}
+                        <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                          {docFilter === "all" ? "No documents yet" :
+                           docFilter === "synced" ? (!isAuthenticated ? "Sign in to see synced docs" : "No synced documents") :
+                           docFilter === "private" ? "No private documents" :
+                           docFilter === "shared" ? (!isAuthenticated ? "Sign in to share docs" : "No shared documents") :
+                           "No documents found"}
                         </div>
                       )}
 
@@ -7712,6 +9224,59 @@ ${clone.innerHTML}
               );
             })()}
 
+            {/* ── Section: CONCEPTS — cross-doc index ──
+                The bundle-vs-doc layer was the previous frame. This is the
+                user-vs-library layer: every concept-type chunk extracted
+                across all your decomposed docs surfaces here, with cross-
+                doc occurrence counts. Click → drawer with all citations. */}
+            {isAuthenticated && conceptIndex && conceptIndex.concepts.length > 0 && (
+              <div className="shrink-0 flex flex-col">
+                <div
+                  className="group/sec flex items-center px-2 py-1 cursor-pointer select-none"
+                  onClick={() => setShowConcepts(prev => !prev)}
+                >
+                  <button className="p-0.5 rounded hover:bg-[var(--toggle-bg)] transition-colors mr-1" style={{ color: "var(--text-faint)" }}>
+                    {showConcepts ? <ChevronDown width={11} height={11} /> : <ChevronRight width={11} height={11} />}
+                  </button>
+                  <span className={`flex-1 text-[11px] font-medium transition-colors ${showConcepts ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>
+                    Concepts
+                  </span>
+                  <span className="text-[9px] tabular-nums shrink-0" style={{ color: "var(--text-faint)" }}>
+                    {conceptIndex.concepts.length}
+                  </span>
+                </div>
+                {showConcepts && (
+                  <div className="pb-2">
+                    {conceptIndex.concepts.slice(0, 30).map(c => {
+                      const isCross = c.docCount >= 2;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setOpenedConceptId(c.id)}
+                          className="w-full flex items-center gap-2 px-2 py-1 text-[11px] cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <span aria-hidden className="shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: isCross ? "var(--accent)" : "var(--text-faint)" }} />
+                          <span className="flex-1 truncate text-left">{c.label}</span>
+                          <span className="text-[9px] tabular-nums shrink-0" style={{ color: isCross ? "var(--accent)" : "var(--text-faint)" }}>
+                            {c.docCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {conceptIndex.concepts.length > 30 && (
+                      <div className="px-2 py-1 text-[9px]" style={{ color: "var(--text-faint)" }}>
+                        +{conceptIndex.concepts.length - 30} more
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {isAuthenticated && conceptsLoading && !conceptIndex && (
+              <div className="px-2 py-1 text-[10px]" style={{ color: "var(--text-faint)" }}>Loading concepts…</div>
+            )}
+
             {/* ── Section 2: SHARED WITH ME ── */}
             {(() => {
               // Shared tabs: exclude examples (they have their own section)
@@ -7719,7 +9284,10 @@ ${clone.innerHTML}
                 if (t.deleted || t.folderId) return false;
                 if (t.ownerEmail === EXAMPLE_OWNER) return false;
                 if (t.permission !== "readonly" && t.permission !== "editable") return false;
-                if (sidebarSearch && !(t.title || "").toLowerCase().includes(sidebarSearch.toLowerCase()) && !(t.markdown || "").toLowerCase().includes(sidebarSearch.toLowerCase())) return false;
+                if (sidebarSearchDebounced) {
+                  const q = sidebarSearchDebounced.toLowerCase();
+                  if (!(t.title || "").toLowerCase().includes(q) && !(t.markdown || "").slice(0, 3000).toLowerCase().includes(q)) return false;
+                }
                 if (!isAuthenticated) return false;
                 return true;
               });
@@ -7738,67 +9306,59 @@ ${clone.innerHTML}
               // Unread notification document IDs — for orange dot indicator
               const unreadDocIds = new Set(notifications.filter(n => !n.read && n.documentId).map(n => n.documentId));
               // Merge recentDocs + notification-based shared docs (exclude my own + already-open/deleted)
-              const extraShared = recentDocs.filter(d => !allCloudIds.has(d.id) && !myCloudIds.has(d.id));
+              // Dedupe recentDocs by id first — server may return same doc twice
+              // (e.g., visited under two contexts) which collides React keys.
+              const recentSeen = new Set<string>();
+              const extraShared = recentDocs.filter(d => {
+                if (allCloudIds.has(d.id) || myCloudIds.has(d.id)) return false;
+                if (recentSeen.has(d.id)) return false;
+                recentSeen.add(d.id);
+                return true;
+              });
+              const notifSeen = new Set<string>();
               const notifDocs = notifications
-                .filter(n => n.type === "share" && n.documentId && !allCloudIds.has(n.documentId) && !myCloudIds.has(n.documentId) && !extraShared.some(d => d.id === n.documentId))
+                .filter(n => {
+                  if (n.type !== "share" || !n.documentId) return false;
+                  if (allCloudIds.has(n.documentId) || myCloudIds.has(n.documentId)) return false;
+                  if (recentSeen.has(n.documentId)) return false;
+                  if (notifSeen.has(n.documentId)) return false;
+                  notifSeen.add(n.documentId);
+                  return true;
+                })
                 .map(n => ({ id: n.documentId, title: n.documentTitle, isOwner: false, editMode: "view", ownerName: n.fromUserName }));
               const allExtra = [...extraShared, ...notifDocs];
               const totalShared = dedupedSharedTabs.length + allExtra.length;
               return (<>
-                <div className={`shrink-0 ${showSharedDocs ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
+                <div className="shrink-0 flex flex-col">
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
+                    data-section-id="shared"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => { const next = !showSharedDocs; setShowSharedDocs(next); localStorage.setItem("mdfy-show-shared", String(next)); }}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showSharedDocs ? "var(--accent)" : "var(--text-muted)" }}>Shared with me</span>
-                    {showSharedDocs && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setShowSharedOwner(!showSharedOwner); }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: showSharedOwner ? "var(--accent)" : "var(--text-faint)" }}
-                          title={showSharedOwner ? "Hide owner emails" : "Show owner emails"}
-                        >
-                          <User width={10} height={10} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSharedSortMode(prev => prev === "newest" ? "oldest" : prev === "oldest" ? "az" : prev === "az" ? "za" : "newest"); }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--text-faint)" }}
-                          title={`Sort: ${sharedSortMode}`}
-                        >
-                          <ArrowUpDown width={10} height={10} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const id = `folder-${Date.now()}`;
-                            setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "shared" }]);
-                            fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "shared" }) }).catch(() => {});
-                            setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
-                          }}
-                          className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--text-faint)" }}
-                          title="New folder"
-                        >
-                          <FolderPlus width={10} height={10} />
-                        </button>
-                      </>
-                    )}
-                    {!showSharedDocs && totalShared > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>}
+                    <ChevronDown
+                      width={10} height={10}
+                      className={`shrink-0 transition-transform ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                      style={{ transform: showSharedDocs ? "rotate(0deg)" : "rotate(-90deg)" }}
+                    />
+                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showSharedDocs ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Shared with me</span>
+                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{totalShared}</span>
                   </div>
                   {showSharedDocs && (
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {/* Shared tabs already open — draggable to folders */}
                       {dedupedSharedTabs.map((tab) => (
                         <div
                           key={tab.id}
                           draggable
-                          onDragStart={() => setDragTabId(tab.id)}
+                          onDragStart={(e) => {
+                            setDragTabId(tab.id);
+                            e.dataTransfer.effectAllowed = "move";
+                            try { e.dataTransfer.setData("text/plain", tab.id); } catch { /* ignore */ }
+                          }}
                           onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""}`}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors relative ${dragOverTarget === tab.id ? "ring-1 ring-[var(--accent)]" : ""} ${tab.id === activeTabId ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
                           style={{
-                            background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
                             color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
                             opacity: dragTabId === tab.id ? 0.4 : 1,
                             outline: selectedTabIds.has(tab.id) ? "1px solid var(--accent)" : "none",
@@ -7849,7 +9409,7 @@ ${clone.innerHTML}
                             {!folder.collapsed && (
                               <div className="pl-3 pr-1 space-y-0.5 mt-0.5">
                                 {folderTabs.map(tab => (
-                                  <div key={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={() => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
+                                  <div key={tab.id} draggable={tab.ownerEmail !== EXAMPLE_OWNER} onDragStart={(e) => { if (tab.ownerEmail === EXAMPLE_OWNER) return; setDragTabId(tab.id); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", tab.id); } catch { /* ignore */ } }} onDragEnd={() => { setDragTabId(null); setDragOverTarget(null); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
                                     style={{
                                       background: selectedTabIds.has(tab.id) || tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
@@ -7943,8 +9503,8 @@ ${clone.innerHTML}
                         </div>
                       )}
                       {totalShared === 0 && (
-                        <div className="px-2.5 py-3 text-[11px] text-center" style={{ color: "var(--text-faint)" }}>
-                          {!isAuthenticated ? "Sign in to see documents shared with you." : "No shared documents"}
+                        <div className="px-3 py-2 text-[10px]" style={{ color: "var(--text-faint)" }}>
+                          {!isAuthenticated ? "Sign in to see shared docs" : "No shared documents"}
                         </div>
                       )}
                     </div>
@@ -7953,57 +9513,30 @@ ${clone.innerHTML}
               </>);
             })()}
 
-            {/* ── Section: EXAMPLES (hidden entirely when toggle is OFF) ── */}
-            {showExamples && (() => {
-              const exampleTabs = memoExampleTabs;
-              return (
-                <div className="shrink-0" style={{ borderTop: "1px solid var(--border-dim)" }}>
-                  <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
-                    onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
-                  >
-                    <BookOpen width={11} height={11} style={{ color: examplesCollapsed ? "var(--text-faint)" : "var(--accent)" }} />
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: examplesCollapsed ? "var(--text-muted)" : "var(--accent)" }}>Guides & Examples</span>
-                    {examplesCollapsed && exampleTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>}
-                  </div>
-                  {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
-                    {exampleTabs.map(tab => (
-                      <div
-                        key={tab.id}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors"
-                        style={{
-                          background: tab.id === activeTabId ? "var(--accent-dim)" : "transparent",
-                          color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
-                        }}
-                        onClick={(e) => handleDocClick(tab.id, e)}
-                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                      >
-                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                        <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                      </div>
-                    ))}
-                  </div>}
-                </div>
-              );
-            })()}
-
-            {/* ── Section 3: TRASH ── */}
+            {/* ── Section: TRASH (now ABOVE Guides) ── */}
             {(() => {
               // Trash: all deleted documents (mine + shared I removed from list)
               const trashTabs = memoTrashTabs;
               return (<>
-                <div className={`shrink-0 ${showTrash ? "flex-1 min-h-0 flex flex-col" : ""}`} style={{ borderTop: "1px solid var(--border-dim)" }}>
+                <div className="shrink-0 flex flex-col">
                   <div
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none shrink-0"
+                    data-section-id="trash"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
                     onClick={() => { const next = !showTrash; setShowTrash(next); localStorage.setItem("mdfy-show-trash", String(next)); }}
                   >
-                    <span className="flex-1 text-[11px] font-medium" style={{ color: showTrash ? "var(--accent)" : "var(--text-muted)" }}>Trash</span>
-                    {!showTrash && trashTabs.length > 0 && <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>}
+                    <ChevronDown
+                      width={10} height={10}
+                      className={`shrink-0 transition-transform ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                      style={{ transform: showTrash ? "rotate(0deg)" : "rotate(-90deg)" }}
+                    />
+                    <span className={`flex-1 text-[11px] font-medium transition-colors ${showTrash ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Trash</span>
+                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
                       {trashTabs.map(tab => (
-                        <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group" style={{ color: "var(--text-faint)" }}>
+                        <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group hover:bg-[var(--toggle-bg)] transition-colors" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
                           <button onClick={() => {
@@ -8060,7 +9593,84 @@ ${clone.innerHTML}
                 </div>
               </>);
             })()}
+
+            {/* ── Section: GUIDES & EXAMPLES (now BELOW Trash) ── */}
+            {showExamples && (() => {
+              const exampleTabs = memoExampleTabs;
+              return (
+                <div className="shrink-0">
+                  <div
+                    data-section-id="guides"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", position: "sticky", top: 0, zIndex: 10 }}
+                    onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
+                  >
+                    <ChevronDown
+                      width={10} height={10}
+                      className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                      style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+                    />
+                    <span className={`flex-1 text-[11px] font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
+                    <span className="text-[9px] px-1.5 rounded-full" style={{ color: "var(--text-faint)", background: "var(--border-dim)" }}>{exampleTabs.length}</span>
+                  </div>
+                  {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                    {exampleTabs.map(tab => (
+                      <div
+                        key={tab.id}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${tab.id === activeTabId ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
+                        style={{
+                          color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                        }}
+                        onClick={(e) => handleDocClick(tab.id, e)}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                      >
+                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                        <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Section navigator — sections that are off-screen below the viewport
+              get a small clickable label here so the user can jump back to them
+              without scrolling. Acts as a "bottom-sticky" preview of what's
+              still ahead. Hidden when nothing is below viewport. */}
+          {belowViewportSections.size > 0 && (() => {
+            const navItems: Array<{ id: string; label: string; count: number }> = [
+              { id: "recent", label: "Recent", count: recentTabIds.filter(id => tabs.find(t => t.id === id && !t.deleted)).length },
+              { id: "bundles", label: "Bundles", count: bundles.length },
+              { id: "mds", label: "MDs", count: memoAllMyTabs.length },
+              { id: "shared", label: "Shared", count: tabs.filter(t => !t.deleted && (t.permission === "readonly" || t.permission === "editable")).length },
+              { id: "trash", label: "Trash", count: memoTrashTabs.length },
+              { id: "guides", label: "Guides", count: memoExampleTabs.length },
+            ];
+            return (
+              <div className="shrink-0 flex items-center gap-1 px-2 py-1.5 overflow-x-auto" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
+                <span className="shrink-0 text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)", letterSpacing: "0.05em" }}>↓</span>
+                {navItems.filter(s => belowViewportSections.has(s.id)).map(s => (
+                  <Tooltip key={s.id} text={`Jump to ${s.label}`}>
+                    <button
+                      onClick={() => {
+                        const root = sectionsScrollRef.current;
+                        const target = root?.querySelector(`[data-section-id="${s.id}"]`) as HTMLElement | null;
+                        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full transition-colors hover:bg-[var(--accent-dim)]"
+                      style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                    >
+                      <span>{s.label}</span>
+                      {s.count > 0 && (
+                        <span className="text-[9px] tabular-nums" style={{ color: "var(--text-faint)" }}>{s.count}</span>
+                      )}
+                    </button>
+                  </Tooltip>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Multi-select action bar */}
           {selectedTabIds.size > 0 && (
@@ -8093,52 +9703,6 @@ ${clone.innerHTML}
                     </div>
                   </div>
                 )}
-                <button
-                  onClick={async () => {
-                    if (selectedTabIds.size < 2) return;
-                    const selectedTabs = tabs.filter(t => selectedTabIds.has(t.id));
-                    // Auto-publish local-only tabs to server first
-                    const docsForBundle: Array<{ id: string; title: string }> = [];
-                    for (const tab of selectedTabs) {
-                      if (tab.cloudId) {
-                        docsForBundle.push({ id: tab.cloudId, title: tab.title || "Untitled" });
-                      } else {
-                        // Save to server as draft
-                        try {
-                          const res = await fetch("/api/docs", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", ...authHeaders },
-                            body: JSON.stringify({ markdown: tab.markdown || "", title: tab.title || null, isDraft: true }),
-                          });
-                          if (res.ok) {
-                            const data = await res.json();
-                            // Update tab with cloudId
-                            setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, cloudId: data.id, editToken: data.editToken } : t));
-                            docsForBundle.push({ id: data.id, title: tab.title || "Untitled" });
-                          }
-                        } catch { /* skip failed uploads */ }
-                      }
-                    }
-                    if (docsForBundle.length < 2) {
-                      showToast("Failed to prepare documents for bundle", "error");
-                      return;
-                    }
-                    setBundleCreatorDocs(docsForBundle);
-                    setShowBundleCreator(true);
-                    setSelectedTabIds(new Set());
-                  }}
-                  disabled={selectedTabIds.size < 2}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[10px] font-medium transition-colors hover:bg-[var(--accent-dim)]"
-                  style={{
-                    color: selectedTabIds.size >= 2 ? "var(--accent)" : "var(--text-faint)",
-                    border: `1px solid ${selectedTabIds.size >= 2 ? "var(--accent-dim)" : "var(--border-dim)"}`,
-                    opacity: selectedTabIds.size >= 2 ? 1 : 0.5,
-                    cursor: selectedTabIds.size >= 2 ? "pointer" : "not-allowed",
-                  }}
-                  title={selectedTabIds.size >= 2 ? "Create Bundle" : "Select at least 2 documents"}
-                >
-                  <Layers width={11} height={11} /><span>Bundle</span>
-                </button>
                 <button onClick={() => {
                   if (!confirmTrash) {
                     setConfirmTrash(true);
@@ -8381,7 +9945,12 @@ ${clone.innerHTML}
             data-print-hide
             className="shrink-0 cursor-col-resize w-[5px]"
             style={{ background: "var(--border-dim)", position: "relative" }}
-            onMouseDown={(e) => { e.preventDefault(); isDraggingSidebar.current = true; }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              isDraggingSidebar.current = true;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
           >
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
           </div>
@@ -8654,20 +10223,73 @@ ${clone.innerHTML}
           >
           {showOnboarding ? (
             /* ─── Start Screen ─── */
-            <div className="flex-1 overflow-auto" style={{ background: "var(--background)" }}>
-              <div className="max-w-xl mx-auto px-5 py-8">
+            <div className="flex-1 overflow-y-auto flex flex-col" style={{ background: "var(--background)" }}>
+              <div className="w-full max-w-xl mx-auto my-auto px-5 py-8">
 
-                {/* Recent files */}
+                {/* Knowledge-compounds stats — reinforces that the library
+                    is a growing asset, not just a folder. Pulled from the
+                    cross-doc concept index. Click any stat → opens Concepts
+                    sidebar section + filter. */}
+                {isAuthenticated && conceptIndex && conceptIndex.stats.totalDocs > 0 && (
+                  <div className="mb-6 rounded-xl px-4 py-3" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}>
+                    <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
+                      Your knowledge
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex flex-col">
+                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalDocs}</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>docs</span>
+                      </div>
+                      <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
+                      <button
+                        onClick={() => { setShowSidebar(true); setShowConcepts(true); }}
+                        className="flex flex-col text-left transition-opacity hover:opacity-80"
+                      >
+                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{conceptIndex.stats.totalConcepts}</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>concepts</span>
+                      </button>
+                      <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
+                      <button
+                        onClick={() => { setShowSidebar(true); setShowConcepts(true); }}
+                        className="flex flex-col text-left transition-opacity hover:opacity-80"
+                      >
+                        <span className="text-[20px] font-bold tabular-nums" style={{ color: "var(--accent)" }}>{conceptIndex.stats.crossLinkedConcepts}</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>cross-linked</span>
+                      </button>
+                      {conceptIndex.stats.decomposedDocs < conceptIndex.stats.totalDocs && (
+                        <>
+                          <div className="w-px h-8" style={{ background: "var(--border-dim)" }} />
+                          <div className="flex flex-col" title="Docs that have been AI-decomposed contribute concepts to your library.">
+                            <span className="text-[12px] font-medium tabular-nums" style={{ color: "var(--text-muted)" }}>
+                              {conceptIndex.stats.decomposedDocs} / {conceptIndex.stats.totalDocs}
+                            </span>
+                            <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>analyzed</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {conceptIndex.stats.crossLinkedConcepts > 0 && (
+                      <div className="mt-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {conceptIndex.stats.crossLinkedConcepts} {conceptIndex.stats.crossLinkedConcepts === 1 ? "concept connects" : "concepts connect"} multiple docs in your library.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Recent files — same data source as sidebar Recent (recentTabIds).
+                    Includes bundle tabs since they're regular tabs with kind="bundle". */}
                 {(() => {
-                  const recent = tabs.filter(t => !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER)
-                    .sort((a, b) => (b.lastOpenedAt || 0) - (a.lastOpenedAt || 0)).slice(0, 5);
+                  const recent = recentTabIds
+                    .map(id => tabs.find(t => t.id === id && !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER))
+                    .filter((t): t is Tab => !!t)
+                    .slice(0, 5);
                   if (recent.length === 0) return null;
                   return (
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>Recent</div>
                         <button
-                          onClick={() => { setTabs(prev => prev.map(t => ({ ...t, lastOpenedAt: undefined }))); }}
+                          onClick={() => { setRecentTabIds([]); }}
                           className="text-[10px] cursor-pointer"
                           style={{ color: "var(--text-faint)", background: "none", border: "none", padding: "2px 6px", opacity: 0.6 }}
                         >
@@ -8681,9 +10303,8 @@ ${clone.innerHTML}
                             style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
-                            <DocStatusIcon tab={t} isActive={false} />
+                            {t.kind === "bundle" ? renderBundleStatusIcon(t.bundleId, 14) : <DocStatusIcon tab={t} isActive={false} />}
                             <span className="flex-1 truncate">{t.title || "Untitled"}</span>
-                            {t.lastOpenedAt && <span className="text-[9px] font-mono shrink-0" style={{ color: "var(--text-faint)" }}>{relativeTime(new Date(t.lastOpenedAt).toISOString())}</span>}
                           </button>
                         ))}
                       </div>
@@ -8818,20 +10439,22 @@ ${clone.innerHTML}
                     </div>
                   )}
                 </div>}
-                {/* Narrow view toggle */}
+                {/* Wide view toggle — narrow is the default; click to expand
+                    content to full width. State variable `narrowView` is kept
+                    (true = narrow / default), but the button represents "Wide". */}
                 <div className="relative group" style={{ display: isMobile || renderPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowView(!narrowView)}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
-                    style={{ background: narrowView ? "var(--accent-dim)" : "transparent", color: narrowView ? "var(--accent)" : "var(--text-faint)" }}
-                    title={`Narrow view ${narrowView ? "ON" : "OFF"}`}
+                    style={{ background: !narrowView ? "var(--accent-dim)" : "transparent", color: !narrowView ? "var(--accent)" : "var(--text-faint)" }}
+                    title={`Wide view ${!narrowView ? "ON" : "OFF"}`}
                   >
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 4v8M14 4v8M1 8h14" strokeLinecap="round"/><path d="M5 6L3 8l2 2M11 6l2 2-2 2" strokeLinecap="round"/></svg>
                   </button>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    <p style={{ color: narrowView ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Narrow View {narrowView ? "ON" : "OFF"}</p>
-                    <p>Limit content width for comfortable reading, like a book layout.</p>
+                    <p style={{ color: !narrowView ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Wide View {!narrowView ? "ON" : "OFF"}</p>
+                    <p>Default: narrow, book-like reading width. Click to expand to full width.</p>
                   </div>
                 </div>
                 {/* ASCII toggle removed — render button on each diagram instead */}
@@ -8872,8 +10495,9 @@ ${clone.innerHTML}
                     </div>
                   )}
                 </div>
-                {/* AI Actions dropdown — only for editable docs */}
-                {canEdit && <div className="relative group">
+                {/* Assistant button moved to top header right of Share — kept
+                    here as a no-op so layout offsets stay the same; hidden via CSS. */}
+                {false && (canEdit || activeTab?.kind === "bundle") && <div className="relative group">
                   <button
                     onClick={() => { setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); setShowOutlinePanel(false); }}
                     className="flex items-center justify-center h-6 px-2.5 rounded-md transition-colors gap-1.5"
@@ -8882,7 +10506,7 @@ ${clone.innerHTML}
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     {aiProcessing ? <span className="text-[9px] hidden sm:inline">
-                      {{ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" }[aiProcessing] || "Processing"}...
+                      {(({ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" } as Record<string, string>)[aiProcessing as string]) || "Processing"}...
                     </span> : <span className="hidden sm:inline text-[10px]">AI</span>}
                   </button>
                   {!showAIPanel && !aiProcessing && (
@@ -9029,11 +10653,46 @@ ${clone.innerHTML}
             )}
             <div className="flex-1 flex min-h-0 relative">
             {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && (
-              <div className="absolute inset-0 z-10 flex" style={{ background: "var(--background)" }}>
+              <div
+                className="absolute top-0 bottom-0 left-0 z-10 flex"
+                style={{
+                  // Leave room for the right-side Assistant panel when open so
+                  // the bundle viewer doesn't cover it. Other right panels
+                  // (Outline/Image) use fixed widths matching their actual layout.
+                  right: showAIPanel ? aiPanelWidth : (showOutlinePanel ? "min(260px, 40%)" : (showImagePanel ? 320 : 0)),
+                  background: "var(--background)",
+                }}
+              >
                 <div className="flex-1 min-w-0">
                   <BundleEmbed
                     bundleId={activeTab.bundleId}
                     view={bundleView}
+                    aiPanelOpen={showAIPanel}
+                    onSelectNodeInfo={() => setShowAIPanel(false)}
+                    authHeaders={authHeaders}
+                    onDocCreated={({ docId, title, markdown }) => {
+                      // Newly created doc from synthesis or extraction.
+                      // Append it to the user's tab list with unread:true so
+                      // the sidebar shows a pulsing orange dot until they
+                      // actually open it. Skip if a tab already exists for
+                      // this doc (extract path may also be the active doc).
+                      setTabs(prev => {
+                        if (prev.some(t => t.cloudId === docId)) return prev;
+                        const newTab: Tab = {
+                          id: `doc-${docId}-${Date.now()}`,
+                          kind: "doc",
+                          cloudId: docId,
+                          title: title || "Untitled",
+                          markdown: markdown || "",
+                          permission: "mine",
+                          isDraft: true,
+                          unread: true,
+                          lastOpenedAt: undefined,
+                        };
+                        return [...prev, newTab];
+                      });
+                      showToast(`Saved · ${title}`, "info");
+                    }}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }
@@ -9055,35 +10714,35 @@ ${clone.innerHTML}
                     }}
                   />
                 </div>
-                {showBundleChat && (
-                  <div className="shrink-0" style={{ width: "min(380px, 50%)" }}>
-                    <BundleChat
-                      bundleId={activeTab.bundleId}
-                      bundleTitle={activeTab.title}
-                      documentCount={bundles.find(b => b.id === activeTab.bundleId)?.documentCount}
-                      onClose={() => setShowBundleChat(false)}
-                      onCitationClick={(docId) => {
-                        const existing = tabs.find(t => t.cloudId === docId);
-                        if (existing) { switchTab(existing.id); return; }
-                        fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
-                          if (!d) return;
-                          const newId = `doc-${docId}-${Date.now()}`;
-                          const newTab: Tab = {
-                            id: newId, kind: "doc",
-                            title: d.title || "Untitled",
-                            markdown: d.markdown || "",
-                            cloudId: docId,
-                            isDraft: d.is_draft,
-                            shared: !d.isOwner,
-                            readonly: !d.isOwner && d.editMode !== "public",
-                          };
-                          setTabs(prev => [...prev, newTab]);
-                          switchTab(newId);
-                        }).catch(() => {});
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Bundle chat moved into unified Assistant panel (showAIPanel). */}
+              </div>
+            )}
+            {/* Related concepts strip — when the active doc mentions known
+                concepts that also appear in OTHER docs, surface a pill row
+                so the user can jump to the cross-doc context. Only shown for
+                regular doc tabs (not bundles, not onboarding). */}
+            {activeTab?.kind !== "bundle" && !showOnboarding && relatedConcepts.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 flex-wrap shrink-0"
+                style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}>
+                <span className="text-[9px] font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-faint)" }}>
+                  Related concepts
+                </span>
+                {relatedConcepts.map(c => {
+                  const otherDocCount = c.docCount;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setOpenedConceptId(c.id)}
+                      className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-colors hover:bg-[var(--menu-hover)]"
+                      style={{ background: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                      title={`${c.label} appears in ${otherDocCount} ${otherDocCount === 1 ? "doc" : "docs"} across your library`}
+                    >
+                      <span className="w-1 h-1 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                      {c.label}
+                      <span className="tabular-nums" style={{ color: "var(--text-faint)" }}>{otherDocCount}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
@@ -9116,21 +10775,49 @@ ${clone.innerHTML}
                 />
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
-              {showAIPanel && canEdit && (
+              {showAIPanel && (canEdit || activeTab?.kind === "bundle") && (() => {
+                // Mode definitions — extensible: add a new entry per future mode
+                // and the panel will display its label + icon automatically.
+                const isBundleMode = activeTab?.kind === "bundle";
+                const mode = isBundleMode
+                  ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Layers width={12} height={12} /> }
+                  : { id: "doc" as const, label: "Document Assistant", icon: <Sparkles width={12} height={12} /> };
+                return (
                 <div
-                  className="flex flex-col shrink-0"
+                  data-pane="ai-panel"
+                  className="flex shrink-0 relative"
                   style={{
-                    width: "min(340px, 50%)",
+                    width: aiPanelWidth,
+                    minWidth: 280,
+                    maxWidth: 720,
                     background: "var(--surface)",
                     borderLeft: "1px solid var(--border)",
+                    // Layering: AI panel floats above sidebar (z:10) and canvas
+                    // (default). Soft left-edge shadow gives it a "lifted" feel.
+                    zIndex: 20,
+                    boxShadow: "-2px 0 8px rgba(0,0,0,0.18)",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* AI Panel header */}
+                  {/* Resize handle — drag the left edge to widen/narrow */}
+                  <div
+                    className="absolute top-0 bottom-0 cursor-col-resize z-[100]"
+                    style={{ width: 5, left: -2, background: "var(--border-dim)" }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      isDraggingAiPanel.current = true;
+                      document.body.style.cursor = "col-resize";
+                      document.body.style.userSelect = "none";
+                    }}
+                  >
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                  {/* Mode indicator + actions header */}
                   <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="flex items-center gap-1.5">
-                      <Sparkles width={12} height={12} style={{ color: "var(--accent)" }} />
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>AI Tools</span>
+                      <span style={{ color: "var(--accent)" }}>{mode.icon}</span>
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{mode.label}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       {aiChatHistory.length > 0 && (
@@ -9164,6 +10851,28 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
+                  {/* Bundle mode → render BundleChat in place of doc tools */}
+                  {isBundleMode && activeTab?.bundleId && (
+                    <BundleChat
+                      bundleId={activeTab.bundleId}
+                      bundleTitle={activeTab.title}
+                      documentCount={bundles.find(b => b.id === activeTab?.bundleId)?.documentCount}
+                      onClose={() => setShowAIPanel(false)}
+                      onCitationClick={(docId) => {
+                        const existing = tabs.find(t => t.cloudId === docId);
+                        if (existing) { switchTab(existing.id); return; }
+                        fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                          if (!d) return;
+                          const newId = `doc-${docId}-${Date.now()}`;
+                          const newTab: Tab = { id: newId, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: docId, isDraft: d.is_draft };
+                          setTabs(prev => [...prev, newTab]);
+                          switchTab(newId);
+                        }).catch(() => {});
+                      }}
+                    />
+                  )}
+                  {/* Doc mode (default) — existing AI tools follow */}
+                  {!isBundleMode && (<>
                   {/* Quick actions with tooltips */}
                   <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="grid grid-cols-2 gap-1">
@@ -9291,8 +11000,10 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
+                  </>)}
+                  </div>
                 </div>
-              )}
+              ); })()}
               {/* ─── Outline Panel (side-by-side) ─── */}
               {showOutlinePanel && (
                 <div
@@ -9562,14 +11273,14 @@ ${clone.innerHTML}
         {viewMode === "split" && (
           <div
             data-print-hide
-            className={`shrink-0 ${isMobile ? "cursor-row-resize h-[6px] w-full" : "cursor-col-resize w-[6px]"}`}
+            className={`shrink-0 ${isMobile ? "cursor-row-resize h-[5px] w-full" : "cursor-col-resize w-[5px]"}`}
             style={{ background: "var(--border-dim)", position: "relative", zIndex: 5 }}
             onMouseDown={(e) => { e.preventDefault(); isDraggingSplit.current = true; }}
             onTouchStart={() => { isDraggingSplit.current = true; }}
           >
             <div
-              className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-1" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-8"}`}
-              style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.4 }}
+              className={`absolute ${isMobile ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-[3px]" : "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8"}`}
+              style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }}
             />
           </div>
         )}
@@ -9678,19 +11389,20 @@ ${clone.innerHTML}
                 ))}
               </div>
               <div className="flex items-center gap-1.5 normal-case shrink-0 flex-nowrap">
-                {/* Narrow view toggle — hidden when pane is already narrower than max-w-3xl (768px) */}
+                {/* Wide view toggle — narrow is default. */}
                 <div className="relative group" style={{ display: isMobile || editorPaneUnderNarrowWidth ? "none" : undefined }}>
                   <button
                     onClick={() => setNarrowSource(!narrowSource)}
                     className="flex items-center justify-center h-6 w-6 rounded-md transition-colors"
-                    style={{ background: narrowSource ? "var(--accent-dim)" : "transparent", color: narrowSource ? "var(--accent)" : "var(--text-faint)" }}
+                    style={{ background: !narrowSource ? "var(--accent-dim)" : "transparent", color: !narrowSource ? "var(--accent)" : "var(--text-faint)" }}
+                    title={`Wide view ${!narrowSource ? "ON" : "OFF"}`}
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M2 4v8M14 4v8M1 8h14" strokeLinecap="round"/><path d="M5 6L3 8l2 2M11 6l2 2-2 2" strokeLinecap="round"/></svg>
                   </button>
                   <div className="absolute top-full right-0 mt-1.5 w-44 p-2.5 rounded-lg text-[10px] leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
-                    <p style={{ color: narrowSource ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Narrow View {narrowSource ? "ON" : "OFF"}</p>
-                    <p>Limit content width for comfortable editing.</p>
+                    <p style={{ color: !narrowSource ? "var(--accent)" : "var(--text-primary)", fontWeight: 600, marginBottom: 4 }}>Wide View {!narrowSource ? "ON" : "OFF"}</p>
+                    <p>Default: narrow, comfortable editing width. Click to expand.</p>
                   </div>
                 </div>
                 {/* Copy MD */}
@@ -9747,8 +11459,21 @@ ${clone.innerHTML}
         className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-[10px] font-mono"
         style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-muted)" }}
       >
-        {/* Left: Help + navigation */}
+        {/* Left: Alpha badge + Help + navigation */}
         <div className="flex items-center gap-2 sm:gap-4">
+          <Tooltip text="mdfy.app is in alpha — features can change and bugs are expected. Send feedback to hi@raymind.ai." position="top">
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase shrink-0"
+              style={{
+                color: "var(--accent)",
+                background: "var(--accent-dim)",
+                border: "1px solid var(--accent)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Alpha
+            </span>
+          </Tooltip>
           <div className="relative group"
             onClick={(e) => {
               // Mobile: toggle help tooltip on tap (hover doesn't work on touch)
@@ -10032,10 +11757,12 @@ ${clone.innerHTML}
                 { label: "---", action: () => {} },
                 { label: "Move to", action: () => {}, submenu: [
                   ...folders.filter(f => !f.section || f.section === "my").map(f => ({
+                    id: `folder:${f.id}`,
                     label: f.name,
                     action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: f.id } : t)),
                   })),
                   ...(tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [{
+                    id: "folder:root",
                     label: "Root (no folder)",
                     action: () => setTabs(prev => prev.map(t => t.id === docContextMenu.tabId ? { ...t, folderId: undefined } : t)),
                   }] : []),
@@ -10055,7 +11782,7 @@ ${clone.innerHTML}
               ] : []),
             ];
           })().map((item, i) => {
-            const it = item as { label: string; action: () => void; danger?: boolean; submenu?: { label: string; action: () => void }[] };
+            const it = item as { label: string; action: () => void; danger?: boolean; submenu?: { id?: string; label: string; action: () => void }[] };
             if (it.label === "---") {
               return <div key={`sep-${i}`} className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />;
             }
@@ -10074,9 +11801,9 @@ ${clone.innerHTML}
                     style={{ left: "100%", background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)", ...(docContextMenu && docContextMenu.x > window.innerWidth - 400 ? { left: "auto", right: "100%", marginLeft: 0, marginRight: 4 } : {}) }}
                     ref={(el) => { if (el) { const r = el.getBoundingClientRect(); if (r.right > window.innerWidth) { el.style.left = "auto"; el.style.right = "100%"; el.style.marginLeft = "0"; el.style.marginRight = "4px"; } } }}
                   >
-                    {it.submenu.map(sub => (
+                    {it.submenu.map((sub, si) => (
                       <button
-                        key={sub.label}
+                        key={sub.id ?? `${sub.label}-${si}`}
                         onClick={() => { sub.action(); setDocContextMenu(null); }}
                         className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
                         style={{ color: "var(--text-secondary)" }}
@@ -10318,31 +12045,63 @@ ${clone.innerHTML}
       {sidebarContextMenu && (
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setSidebarContextMenu(null)} />
-          <div className="fixed rounded-lg shadow-xl py-1" style={{ left: Math.min(sidebarContextMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 200), top: Math.min(sidebarContextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 300), zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", width: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-            <button onClick={() => { addTab(); setSidebarContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Document</button>
-            <button onClick={() => {
-              const id = `folder-${Date.now()}`;
-              setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false }]);
-              fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
-              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
-              setSidebarContextMenu(null);
-            }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
-            <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-            <button onClick={() => {
-              const _t = Date.now();
-              const existingExampleIds = new Set(tabs.filter(tab => tab.ownerEmail === EXAMPLE_OWNER).map(tab => tab.id));
-              // Only restore examples that were deleted — never create duplicates
-              const missingExamples = EXAMPLE_TABS.filter(ex => !existingExampleIds.has(ex.id));
-              if (missingExamples.length > 0) {
-                setTabs(prev => [...prev, ...missingExamples]);
-              }
-              // Un-delete soft-deleted examples and clear any stale folderId
-              setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER ? { ...t, deleted: false, folderId: undefined } : t));
-              // Unhide all hidden examples and expand the section
-              setHiddenExampleIds(new Set());
-              setShowExamples(true);
-              setSidebarContextMenu(null);
-            }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Restore Examples</button>
+          <div
+            className="fixed rounded-lg shadow-xl py-1"
+            style={{ left: sidebarContextMenu.x, top: sidebarContextMenu.y, zIndex: 9999, background: "var(--menu-bg)", border: "1px solid var(--border)", width: 180, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+            ref={(el) => {
+              if (!el) return;
+              // Measure actual menu height/width then clamp inside viewport
+              const r = el.getBoundingClientRect();
+              const vw = typeof window !== "undefined" ? window.innerWidth : 9999;
+              const vh = typeof window !== "undefined" ? window.innerHeight : 9999;
+              if (r.right > vw) el.style.left = `${Math.max(4, vw - r.width - 4)}px`;
+              if (r.bottom > vh) el.style.top = `${Math.max(4, vh - r.height - 4)}px`;
+            }}
+          >
+            {sidebarContextMenu.section === "bundles" ? (
+              <>
+                <button onClick={() => {
+                  setShowMyBundles(true);
+                  setBundleCreatorDocs([]);
+                  setShowBundleCreator(true);
+                  setSidebarContextMenu(null);
+                }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Bundle</button>
+                <button onClick={() => {
+                  const id = `folder-${Date.now()}`;
+                  setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "bundles" }]);
+                  fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "bundles" }) }).catch(() => {});
+                  setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
+                  setSidebarContextMenu(null);
+                }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { addTab(); setSidebarContextMenu(null); }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Document</button>
+                <button onClick={() => {
+                  const id = `folder-${Date.now()}`;
+                  setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "my" }]);
+                  fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
+                  setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
+                  setSidebarContextMenu(null);
+                }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Folder</button>
+                <button onClick={() => {
+                  setShowMyBundles(true);
+                  setBundleCreatorDocs([]);
+                  setShowBundleCreator(true);
+                  setSidebarContextMenu(null);
+                }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>New Bundle</button>
+                <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                <button onClick={() => {
+                  const existingExampleIds = new Set(tabs.filter(tab => tab.ownerEmail === EXAMPLE_OWNER).map(tab => tab.id));
+                  const missingExamples = EXAMPLE_TABS.filter(ex => !existingExampleIds.has(ex.id));
+                  if (missingExamples.length > 0) setTabs(prev => [...prev, ...missingExamples]);
+                  setTabs(prev => prev.map(t => t.ownerEmail === EXAMPLE_OWNER ? { ...t, deleted: false, folderId: undefined } : t));
+                  setHiddenExampleIds(new Set());
+                  setShowExamples(true);
+                  setSidebarContextMenu(null);
+                }} className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>Restore Examples</button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -10372,6 +12131,9 @@ ${clone.innerHTML}
                   fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folder.id, name }) }).catch(() => {});
                   setInlineInput(null);
                 }});
+              }}] : []),
+              ...(folderContextMenu.folderId !== EXAMPLES_FOLDER_ID ? [{ label: "Change icon...", action: () => {
+                setEmojiPickerFolderId(folderContextMenu.folderId);
               }}] : []),
               { label: "Collapse / Expand", action: () => {
                 setFolders(prev => prev.map(f => f.id === folderContextMenu.folderId ? { ...f, collapsed: !f.collapsed } : f));
@@ -10409,6 +12171,159 @@ ${clone.innerHTML}
           </div>
         </>
       )}
+
+      {/* Bundle context menu */}
+      {bundleContextMenu && (() => {
+        const b = bundles.find(x => x.id === bundleContextMenu.bundleId);
+        if (!b) return null;
+        const closeMenu = () => setBundleContextMenu(null);
+        const refreshBundles = () => fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => { if (d?.bundles) setBundles(d.bundles); }).catch(() => {});
+        const ownerBody = (extra: Record<string, unknown> = {}) => ({
+          userId: user?.id,
+          anonymousId: !user?.id ? getAnonymousId() : undefined,
+          ...extra,
+        });
+        const items: Array<{ label: string; action: () => void; danger?: boolean; noClose?: boolean }> = [
+          { label: "Open", action: () => {
+            const existingTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+            if (existingTab) {
+              switchTab(existingTab.id);
+            } else {
+              const newId = `bundle-${b.id}-${Date.now()}`;
+              const newTab: Tab = { id: newId, kind: "bundle", bundleId: b.id, title: b.title || "Untitled Bundle", markdown: "" };
+              flushSync(() => { setTabs(prev => [...prev, newTab]); });
+              switchTab(newId);
+            }
+          }},
+          { label: "Open in new tab", action: () => {
+            window.open(`/b/${b.id}`, "_blank", "noopener");
+          }},
+          { label: "Rename", action: () => {
+            setInlineInput({
+              label: "Bundle name",
+              defaultValue: b.title || "",
+              onSubmit: (trimmed) => {
+                setBundles(prev => prev.map(x => x.id === b.id ? { ...x, title: trimmed } : x));
+                setTabs(prev => prev.map(t => (t.kind === "bundle" && t.bundleId === b.id) ? { ...t, title: trimmed } : t));
+                fetch(`/api/bundles/${b.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json", ...authHeaders },
+                  body: JSON.stringify(ownerBody({ title: trimmed })),
+                }).catch(() => {});
+                setInlineInput(null);
+              },
+            });
+          }},
+          { label: "Copy link", action: () => {
+            const url = `${window.location.origin}/b/${b.id}`;
+            copyToClipboard(url).then(() => showToast("Link copied!", "success")).catch(() => showToast("Copy failed", "error"));
+          }},
+          { label: "Share...", action: () => {
+            // Same ShareModal as docs, with bundle adapters that cascade to all included docs.
+            setBundleShareModal({ bundleId: b.id });
+          }},
+          { label: "Delete bundle", danger: true, noClose: true, action: () => {
+            setBundleContextMenu(prev => prev ? { ...prev, confirmDelete: true } : null);
+          }},
+        ];
+        return (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={closeMenu} />
+            <div
+              className="fixed rounded-lg shadow-xl py-1"
+              style={{
+                left: Math.min(bundleContextMenu.x, (typeof window !== "undefined" ? window.innerWidth : 9999) - 200),
+                top: Math.min(bundleContextMenu.y, (typeof window !== "undefined" ? window.innerHeight : 9999) - 300),
+                zIndex: 9999,
+                background: "var(--menu-bg)",
+                border: "1px solid var(--border)",
+                width: 180,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+              }}
+            >
+              {items.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => { item.action(); if (!item.noClose) closeMenu(); }}
+                  className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-[var(--menu-hover)]"
+                  style={{ color: item.danger ? "#ef4444" : "var(--text-secondary)" }}
+                >
+                  {item.label}
+                </button>
+              ))}
+              {bundleContextMenu.confirmDelete && (
+                <>
+                  <div className="px-3 py-1.5 text-[10px]" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
+                    Documents are not deleted. Bundle only.
+                  </div>
+                  <div className="flex gap-1 px-2 pb-1">
+                    <button onClick={closeMenu} className="flex-1 px-2 py-1 rounded text-[10px]" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}>Cancel</button>
+                    <button
+                      onClick={() => {
+                        // Optimistic local removal
+                        setBundles(prev => prev.filter(x => x.id !== b.id));
+                        // If a tab is open for this bundle, drop it
+                        setTabs(prev => prev.filter(t => !(t.kind === "bundle" && t.bundleId === b.id)));
+                        const openTab = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                        if (openTab && activeTabIdRef.current === openTab.id) {
+                          const remaining = tabs.filter(t => !t.deleted && t.id !== openTab.id);
+                          if (remaining.length) switchTab(remaining[0].id);
+                        }
+                        fetch(`/api/bundles/${b.id}`, {
+                          method: "DELETE",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify(ownerBody()),
+                        }).then(r => {
+                          if (!r.ok) {
+                            showToast("Failed to delete bundle", "error");
+                            refreshBundles();
+                          }
+                        }).catch(() => { refreshBundles(); });
+                        closeMenu();
+                      }}
+                      className="flex-1 px-2 py-1 rounded text-[10px]"
+                      style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Bundle Share modal — wraps the same ShareModal used for individual docs */}
+      {bundleShareModal && user && (() => {
+        const b = bundles.find(x => x.id === bundleShareModal.bundleId);
+        const bundleTitle = b?.title || "Untitled Bundle";
+        return (
+          <BundleShareModal
+            bundleId={bundleShareModal.bundleId}
+            bundleTitle={bundleTitle}
+            ownerEmail={user.email || ""}
+            ownerName={profile?.display_name || undefined}
+            userId={user.id}
+            authHeaders={authHeaders}
+            onClose={() => setBundleShareModal(null)}
+            onBundleUpdated={(changes) => {
+              if (typeof changes.is_draft === "boolean") {
+                setBundles(prev => prev.map(x => x.id === bundleShareModal.bundleId ? { ...x, is_draft: changes.is_draft! } : x));
+              }
+              // Refetch bundles so allowed_emails_count + has_password reflect the
+              // change immediately in the sidebar icon. Without this, the icon
+              // would stay green+globe even after sharing with specific people.
+              fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(data => {
+                if (data?.bundles) setBundles(data.bundles);
+              }).catch(() => {});
+              fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(data => {
+                if (data?.documents) setServerDocs(data.documents);
+              }).catch(() => {});
+            }}
+          />
+        );
+      })()}
 
       {/* Share Modal */}
       {showShareModal && (docId || tabs.find(t => t.id === activeTabId)?.cloudId) && user && (
@@ -10717,6 +12632,134 @@ ${clone.innerHTML}
         </div>
       )}
 
+      {/* Concept detail drawer — shows all occurrences of a concept across
+          docs. Click an occurrence → opens that doc as a tab. The drawer is
+          a full-screen overlay so it works regardless of which view the
+          user is in (canvas, doc, home). */}
+      {openedConceptId && conceptIndex && (() => {
+        const c = conceptIndex.concepts.find(x => x.id === openedConceptId);
+        if (!c) return null;
+        const close = () => setOpenedConceptId(null);
+        return (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }} onClick={close}>
+            <div
+              className="rounded-xl overflow-hidden flex flex-col"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", width: "min(720px, 92vw)", maxHeight: "84vh", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c.docCount >= 2 ? "var(--accent)" : "var(--text-faint)" }} />
+                  <span className="text-[14px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-mono" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
+                    {c.docCount} {c.docCount === 1 ? "doc" : "docs"} · {c.occurrenceCount} mentions
+                  </span>
+                  {c.types.map(t => (
+                    <span key={t} className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>{t}</span>
+                  ))}
+                </div>
+                <button onClick={close} className="p-1 rounded hover:bg-[var(--menu-hover)] transition-colors" style={{ color: "var(--text-faint)" }}>
+                  <X width={14} height={14} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
+                {/* AI canonical definition — synthesized from all occurrences,
+                    explains what THIS concept means in this user's library. */}
+                {(() => {
+                  const def = conceptDefinitions[c.id];
+                  return (
+                    <div className="rounded-lg p-3 mb-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>What it means here</h4>
+                        {!def && (
+                          <button
+                            onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded hover:brightness-110 transition-all"
+                            style={{ background: "var(--accent)", color: "#000" }}
+                          >
+                            ✨ Define with AI
+                          </button>
+                        )}
+                        {def && !def.loading && def.text && (
+                          <button
+                            onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
+                            className="text-[10px] hover:underline"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            Re-define
+                          </button>
+                        )}
+                      </div>
+                      {def?.loading && (
+                        <div className="text-[11px] flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                          Synthesizing definition…
+                        </div>
+                      )}
+                      {def?.error && (
+                        <div className="text-[11px]" style={{ color: "#ef4444" }}>Error: {def.error}</div>
+                      )}
+                      {def?.text && (
+                        <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-primary)" }}>{def.text}</p>
+                      )}
+                      {!def && (
+                        <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                          Generate a one-paragraph synthesis of how this concept is used across your library.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+                {c.occurrences.map((occ, i) => (
+                  <button
+                    key={`${occ.docId}-${occ.chunkId}-${i}`}
+                    onClick={() => {
+                      // Open the source doc in a tab
+                      const existing = tabs.find(t => t.cloudId === occ.docId);
+                      if (existing) {
+                        switchTab(existing.id);
+                      } else {
+                        fetch(`/api/docs/${occ.docId}`, { headers: authHeadersRef.current })
+                          .then(r => r.ok ? r.json() : null)
+                          .then(d => {
+                            if (!d) return;
+                            const newId = `doc-${occ.docId}-${Date.now()}`;
+                            const newTab: Tab = {
+                              id: newId,
+                              kind: "doc",
+                              cloudId: occ.docId,
+                              title: d.title || occ.docTitle || "Untitled",
+                              markdown: d.markdown || "",
+                              isDraft: d.is_draft,
+                              permission: "mine",
+                            };
+                            setTabs(prev => [...prev, newTab]);
+                            switchTab(newId);
+                          })
+                          .catch(() => {});
+                      }
+                      close();
+                    }}
+                    className="w-full text-left rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)]"
+                    style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                        {occ.chunkType}
+                      </span>
+                      <span className="text-[11px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{occ.docTitle}</span>
+                    </div>
+                    {occ.snippet && (
+                      <p className="text-[11px] leading-relaxed line-clamp-3" style={{ color: "var(--text-secondary)" }}>{occ.snippet}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Toast notifications */}
       <ToastContainer />
 
@@ -10830,8 +12873,8 @@ ${clone.innerHTML}
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center"
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowTemplatePicker(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape") setShowTemplatePicker(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowTemplatePicker(false); setPendingNewDocFolderId(null); } }}
+          onKeyDown={(e) => { if (e.key === "Escape") { setShowTemplatePicker(false); setPendingNewDocFolderId(null); } }}
           role="dialog"
           aria-modal="true"
           tabIndex={-1}
@@ -11280,92 +13323,60 @@ ${clone.innerHTML}
         );
       })()}
 
+      {/* Folder emoji picker */}
+      {emojiPickerFolderId && (() => {
+        const f = folders.find(x => x.id === emojiPickerFolderId);
+        if (!f) { setEmojiPickerFolderId(null); return null; }
+        return (
+          <FolderEmojiPicker
+            currentEmoji={f.emoji}
+            onClose={() => setEmojiPickerFolderId(null)}
+            onSelect={(emoji) => {
+              setFolders(prev => prev.map(fx => fx.id === f.id ? { ...fx, emoji: emoji || undefined } : fx));
+              fetch("/api/user/folders", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", ...authHeaders },
+                body: JSON.stringify({ id: f.id, emoji: emoji || null }),
+              }).catch(() => {});
+              setEmojiPickerFolderId(null);
+            }}
+          />
+        );
+      })()}
+
       {/* Bundle Creator Modal */}
-      {showBundleCreator && bundleCreatorDocs.length > 0 && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-          onClick={() => setShowBundleCreator(false)}
-        >
-          <div
-            className="rounded-xl w-full max-w-md mx-4 overflow-hidden"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Create Bundle</h3>
-              <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>{bundleCreatorDocs.length} documents selected</p>
-            </div>
-            <div className="px-5 py-4">
-              <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Bundle Title</label>
-              <input
-                id="bundle-title-input"
-                type="text"
-                defaultValue=""
-                placeholder="My Bundle"
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-4"
-                style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border)" }}
-                autoFocus
-              />
-              <label className="text-[11px] font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>Documents</label>
-              <div className="space-y-1 max-h-48 overflow-auto">
-                {bundleCreatorDocs.map((doc, i) => (
-                  <div key={doc.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px]" style={{ background: "var(--background)", color: "var(--text-secondary)" }}>
-                    <span style={{ color: "var(--text-faint)" }}>{i + 1}.</span>
-                    <span className="flex-1 truncate">{doc.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="px-5 py-3 flex justify-end gap-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
-              <button
-                onClick={() => setShowBundleCreator(false)}
-                className="px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors hover:bg-[var(--toggle-bg)]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  const titleInput = document.getElementById("bundle-title-input") as HTMLInputElement;
-                  const title = titleInput?.value?.trim() || "Untitled Bundle";
-                  const docIds = bundleCreatorDocs.map(d => d.id);
-                  try {
-                    const headers: Record<string, string> = { "Content-Type": "application/json", ...authHeaders };
-                    const res = await fetch("/api/bundles", {
-                      method: "POST",
-                      headers,
-                      body: JSON.stringify({ title, documentIds: docIds, isDraft: false }),
-                    });
-                    if (!res.ok) {
-                      showToast("Failed to create bundle", "error");
-                      return;
-                    }
-                    const data = await res.json();
-                    setShowBundleCreator(false);
-                    // Open bundle as tab inside editor
-                    const newId = `bundle-${data.id}-${Date.now()}`;
-                    const newTab: Tab = {
-                      id: newId, kind: "bundle", bundleId: data.id,
-                      title: title, markdown: "",
-                    };
-                    setTabs(prev => [...prev, newTab]);
-                    switchTab(newId);
-                    // Refresh bundles list
-                    fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => { if (d?.bundles) setBundles(d.bundles); }).catch(() => {});
-                    showToast("Bundle created!", "success");
-                  } catch {
-                    showToast("Failed to create bundle", "error");
-                  }
-                }}
-                className="px-4 py-1.5 rounded-md text-[11px] font-medium"
-                style={{ background: "var(--accent)", color: "#fff" }}
-              >
-                Create Bundle
-              </button>
-            </div>
-          </div>
-        </div>
+      {showBundleCreator && (
+        <BundleCreatorModal
+          allDocs={tabs.filter(t => t.cloudId && !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle").map(t => ({ id: t.cloudId!, title: t.title || "Untitled", lastOpenedAt: t.lastOpenedAt }))}
+          initiallySelected={bundleCreatorDocs}
+          onClose={() => { setShowBundleCreator(false); setBundleCreatorDocs([]); setPendingNewBundleFolderId(null); }}
+          onCreate={async ({ title, docIds }) => {
+            try {
+              const targetFolderId = pendingNewBundleFolderId;
+              const res = await fetch("/api/bundles", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders },
+                body: JSON.stringify({ title, documentIds: docIds, isDraft: true, folderId: targetFolderId || undefined }),
+              });
+              if (!res.ok) {
+                showToast("Failed to create bundle", "error");
+                return;
+              }
+              const data = await res.json();
+              setShowBundleCreator(false);
+              setBundleCreatorDocs([]);
+              setPendingNewBundleFolderId(null);
+              const newId = `bundle-${data.id}-${Date.now()}`;
+              const newTab: Tab = { id: newId, kind: "bundle", bundleId: data.id, title, markdown: "" };
+              flushSync(() => { setTabs(prev => [...prev, newTab]); });
+              switchTab(newId);
+              fetch("/api/bundles", { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => { if (d?.bundles) setBundles(d.bundles); }).catch(() => {});
+              showToast("Bundle created!", "success");
+            } catch {
+              showToast("Failed to create bundle", "error");
+            }
+          }}
+        />
       )}
     </div>
   );

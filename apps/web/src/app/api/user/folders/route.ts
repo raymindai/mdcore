@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("folders")
-    .select("id, name, section, sort_order, collapsed, created_at, updated_at")
+    .select("id, name, section, sort_order, collapsed, parent_id, emoji, created_at, updated_at")
     .eq("user_id", userId)
     .order("sort_order", { ascending: true });
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
 
   const body = await req.json();
-  const { id, name, section, sortOrder } = body;
+  const { id, name, section, sortOrder, parentId, emoji } = body;
 
   const { error } = await supabase.from("folders").insert({
     id: id || `folder-${Date.now()}`,
@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
     user_id: userId,
     section: section || "my",
     sort_order: sortOrder ?? 0,
+    parent_id: parentId || null,
+    emoji: emoji || null,
   });
 
   if (error) return NextResponse.json({ error: "Failed to create" }, { status: 500 });
@@ -79,6 +81,8 @@ export async function PATCH(req: NextRequest) {
   if (updates.section !== undefined) dbUpdates.section = updates.section;
   if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder;
   if (updates.collapsed !== undefined) dbUpdates.collapsed = updates.collapsed;
+  if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId || null;
+  if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji || null;
 
   const { error } = await supabase
     .from("folders")
@@ -102,7 +106,17 @@ export async function DELETE(req: NextRequest) {
   const { id } = body;
   if (!id) return NextResponse.json({ error: "Missing folder id" }, { status: 400 });
 
-  // Unset folder_id on documents in this folder
+  // Promote any subfolders up to this folder's parent (one level up).
+  const { data: deletedFolder } = await supabase
+    .from("folders")
+    .select("parent_id")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+  const newParent = deletedFolder?.parent_id || null;
+  await supabase.from("folders").update({ parent_id: newParent }).eq("parent_id", id).eq("user_id", userId);
+
+  // Unset folder_id on documents directly inside the deleted folder
   await supabase.from("documents").update({ folder_id: null }).eq("folder_id", id);
 
   const { error } = await supabase

@@ -1,0 +1,777 @@
+"use client";
+
+import { useState, useMemo, memo, type ReactNode } from "react";
+import { ChevronDown, Folder, FolderOpen, MoreHorizontal, FilePlus2, FolderPlus } from "lucide-react";
+import Tooltip from "@/components/Tooltip";
+
+// Synchronous drag state. React's state batching means the first dragover events
+// after dragstart see the OLD value of dragTabId/dragFolderId props (still null),
+// so the gate `if (!dragTabId && !dragFolderId) return;` early-returns without
+// preventDefault, and Chrome marks the element as "not a drop target" → drag ends
+// with dropEffect: "none" the moment the user releases. A module-level ref updates
+// synchronously inside the dragstart handler, so dragover handlers can read it
+// immediately without waiting for a React re-render.
+let _dragTabIdRef: string | null = null;
+let _dragFolderIdRef: string | null = null;
+// When the dragged tab is part of a multi-selection, this holds ALL the
+// selected tab ids (including the primary `_dragTabIdRef`). When it's a
+// single-tab drag, this is just `[_dragTabIdRef]`. Drop handlers iterate
+// this list to move all selected tabs together.
+let _dragTabIdsRef: string[] = [];
+
+export interface SidebarFolderItem {
+  id: string;
+  name: string;
+  collapsed: boolean;
+  parentId?: string | null;
+  emoji?: string;
+  section?: string;
+  sortOrder?: number;
+}
+
+export interface SidebarTabItem {
+  id: string;
+  title?: string;
+  cloudId?: string;
+  folderId?: string;
+  lastOpenedAt?: number;
+  viewCount?: number;
+  permission?: string;
+  isDraft?: boolean;
+  editMode?: string;
+  isRestricted?: boolean;
+  isSharedByMe?: boolean;
+  source?: string;
+  sharedWithCount?: number;
+  ownerEmail?: string;
+  sortOrder?: number;
+  // Distinguishes doc vs bundle so cross-section drops (e.g. dropping a doc
+  // into a bundle canvas) can filter to doc items only.
+  kind?: "doc" | "bundle";
+  // Newly added but not yet opened — drives the pulsing orange dot indicator.
+  unread?: boolean;
+}
+
+export interface SidebarFolderHandlers {
+  onToggleCollapsed: (folderId: string) => void;
+  onRename: (folderId: string, currentName: string) => void;
+  onCreateDocInFolder: (folderId: string) => void;
+  onCreateSubfolder: (folderId: string) => void;
+  onChangeEmoji: (folderId: string) => void;
+  onOpenContextMenu: (folderId: string, x: number, y: number) => void;
+  onTabClick: (tabId: string, e: React.MouseEvent) => void;
+  onTabContextMenu: (tabId: string, x: number, y: number) => void;
+  onTabKebab: (tabId: string, anchorRect: DOMRect) => void;
+  onDropTabIntoFolder: (tabId: string, folderId: string | null) => void;
+  onDropFolderIntoFolder: (movedFolderId: string, newParentId: string | null) => void;
+  // Reorder a folder before/after a sibling. siblingId is the anchor folder; position
+  // is "before" (new precedes sibling) or "after" (new follows sibling). Both folders
+  // must end up sharing the same parent — the caller decides whether to also re-parent.
+  onReorderFolder: (movedFolderId: string, siblingId: string, position: "before" | "after") => void;
+  // Reorder a tab before/after a sibling tab. Both end up in the sibling's folder.
+  // Only invoked when sortMode === "custom".
+  onReorderTab?: (movedTabId: string, siblingTabId: string, position: "before" | "after") => void;
+}
+
+export interface SidebarFolderTreeProps {
+  folders: SidebarFolderItem[];
+  tabs: SidebarTabItem[];
+  handlers: SidebarFolderHandlers;
+  activeTabId?: string;
+  selectedTabIds: Set<string>;
+  activeBundleDocIds: Set<string>;
+  sidebarSearch: string;
+  sortMode: "az" | "za" | "custom";
+  sidebarMode: string;
+  docFilter: "all" | "private" | "shared" | "synced";
+  dragTabId: string | null;
+  dragFolderId: string | null;
+  setDragTabId: (id: string | null) => void;
+  setDragFolderId: (id: string | null) => void;
+  renderTabIcon: (tab: SidebarTabItem, isActive: boolean) => ReactNode;
+  // Detailed mode meta — small text under the title, only shown when sidebarMode === "detailed"
+  renderTabMeta?: (tab: SidebarTabItem) => ReactNode;
+  // Always-visible right-side slot (between title and kebab). Hidden on hover so the
+  // kebab can take its place. Used by the bundles tree to show document count.
+  renderTabBadge?: (tab: SidebarTabItem) => ReactNode;
+  rootFolderFilter?: (folder: SidebarFolderItem) => boolean;
+  // When false, the tree skips rendering tabs that have no folderId — useful for
+  // sections (like "MDs") that render root-level docs in their own block above the tree.
+  // Defaults to true so callers like the bundles section see all items.
+  includeRootTabs?: boolean;
+}
+
+interface PrecomputedTree {
+  childrenByFolder: Map<string, SidebarFolderItem[]>;
+  rootFolders: SidebarFolderItem[];
+  tabsByFolder: Map<string, SidebarTabItem[]>;
+  // Tabs without folderId — rendered at the top level of the tree
+  rootTabs: SidebarTabItem[];
+  totalTabCount: Map<string, number>;
+  descendantsByFolder: Map<string, Set<string>>;
+  // Folders that are forced-expanded because the active search has descendant matches.
+  forceExpanded: Set<string>;
+  parentByFolder: Map<string, string | null>;
+}
+
+function buildTree(
+  folders: SidebarFolderItem[],
+  tabs: SidebarTabItem[],
+  search: string,
+  rootFilter?: (folder: SidebarFolderItem) => boolean,
+): PrecomputedTree {
+  const q = search.trim().toLowerCase();
+  const matches = (text: string) => !q || (text || "").toLowerCase().includes(q);
+
+  const filteredFolders = rootFilter ? folders.filter(rootFilter) : folders;
+  const idSet = new Set(filteredFolders.map(f => f.id));
+
+  const childrenByFolder = new Map<string, SidebarFolderItem[]>();
+  const parentByFolder = new Map<string, string | null>();
+  const rootFolders: SidebarFolderItem[] = [];
+  for (const f of filteredFolders) {
+    const p = f.parentId && idSet.has(f.parentId) ? f.parentId : null;
+    parentByFolder.set(f.id, p);
+    if (p) {
+      const arr = childrenByFolder.get(p) || [];
+      arr.push(f);
+      childrenByFolder.set(p, arr);
+    } else {
+      rootFolders.push(f);
+    }
+  }
+
+  const tabsByFolder = new Map<string, SidebarTabItem[]>();
+  const rootTabs: SidebarTabItem[] = [];
+  for (const t of tabs) {
+    if (!matches(t.title || "")) continue;
+    // A tab is "root" if it has no folderId or points to a folder that's not in this section
+    const folderInSection = t.folderId && idSet.has(t.folderId);
+    if (!folderInSection) {
+      rootTabs.push(t);
+      continue;
+    }
+    const arr = tabsByFolder.get(t.folderId!) || [];
+    arr.push(t);
+    tabsByFolder.set(t.folderId!, arr);
+  }
+
+  const totalTabCount = new Map<string, number>();
+  const descendantsByFolder = new Map<string, Set<string>>();
+  function visit(folder: SidebarFolderItem): { count: number; descendants: Set<string> } {
+    const cached = totalTabCount.get(folder.id);
+    if (cached !== undefined) {
+      return { count: cached, descendants: descendantsByFolder.get(folder.id) || new Set([folder.id]) };
+    }
+    let count = (tabsByFolder.get(folder.id) || []).length;
+    const descendants = new Set<string>([folder.id]);
+    const kids = childrenByFolder.get(folder.id) || [];
+    for (const child of kids) {
+      const sub = visit(child);
+      count += sub.count;
+      sub.descendants.forEach(d => descendants.add(d));
+    }
+    totalTabCount.set(folder.id, count);
+    descendantsByFolder.set(folder.id, descendants);
+    return { count, descendants };
+  }
+  for (const f of filteredFolders) visit(f);
+
+  // Force-expand any folder whose descendants contain a search match
+  const forceExpanded = new Set<string>();
+  if (q) {
+    for (const f of filteredFolders) {
+      if ((totalTabCount.get(f.id) || 0) > 0 || matches(f.name || "")) {
+        // Walk parents up
+        let cursor: string | null = f.id;
+        while (cursor) {
+          forceExpanded.add(cursor);
+          cursor = parentByFolder.get(cursor) ?? null;
+        }
+      }
+    }
+  }
+
+  return { childrenByFolder, rootFolders, tabsByFolder, rootTabs, totalTabCount, descendantsByFolder, forceExpanded, parentByFolder };
+}
+
+function sortTabs(tabs: SidebarTabItem[], sortMode: SidebarFolderTreeProps["sortMode"]): SidebarTabItem[] {
+  return [...tabs].sort((a, b) => {
+    if (sortMode === "custom") return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+    return (a.title || "").localeCompare(b.title || "");
+  });
+}
+
+function sortFolders(folders: SidebarFolderItem[], sortMode: SidebarFolderTreeProps["sortMode"], _original: SidebarFolderItem[]): SidebarFolderItem[] {
+  return [...folders].sort((a, b) => {
+    if (sortMode === "custom") return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    if (sortMode === "za") return b.name.localeCompare(a.name);
+    return a.name.localeCompare(b.name);
+  });
+}
+
+type DropZone = "above" | "into" | "below";
+
+function computeDropZone(e: React.DragEvent<HTMLElement>, allowAboveBelow: boolean): DropZone {
+  if (!allowAboveBelow) return "into";
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const h = rect.height || 1;
+  const t = y / h;
+  if (t < 0.25) return "above";
+  if (t > 0.75) return "below";
+  return "into";
+}
+
+interface TabRowProps {
+  tab: SidebarTabItem;
+  isSelected: boolean;
+  isMultiSelected: boolean;
+  isActive: boolean;
+  selectedTabIds: Set<string>;
+  paddingLeft: number;
+  paddingRight: number;
+  indentGuideLeft?: number;
+  sortMode: SidebarFolderTreeProps["sortMode"];
+  setDragTabId: (id: string | null) => void;
+  renderTabIcon: (tab: SidebarTabItem, isActive: boolean) => ReactNode;
+  renderTabMeta?: (tab: SidebarTabItem) => ReactNode;
+  renderTabBadge?: (tab: SidebarTabItem) => ReactNode;
+  sidebarMode: string;
+  onClick: (e: React.MouseEvent) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+  onKebab: (rect: DOMRect) => void;
+  onReorderTab?: SidebarFolderHandlers["onReorderTab"];
+}
+
+const TabRow = memo(function TabRow(p: TabRowProps) {
+  const [zone, setZone] = useState<"above" | "below" | null>(null);
+  const allowReorder = p.sortMode === "custom" && !!p.onReorderTab;
+  return (
+    <div
+      data-sidebar-tab-id={p.tab.id}
+      draggable
+      onDragStart={(e) => {
+        _dragTabIdRef = p.tab.id;
+        _dragFolderIdRef = null;
+        // If the dragged tab is part of a multi-selection, drag all selected
+        // together. Otherwise just this one tab.
+        const ids = (p.selectedTabIds.has(p.tab.id) && p.selectedTabIds.size > 1)
+          ? Array.from(p.selectedTabIds)
+          : [p.tab.id];
+        _dragTabIdsRef = ids;
+        // "copyMove" lets the bundle canvas treat the drop as a copy (add to
+        // bundle) while sidebar reorder targets still treat it as move. If we
+        // restrict to "move", the browser silently rejects "copy" dropEffect
+        // requested by the canvas dragover and the drop event never fires —
+        // leaving the canvas's drop overlay stuck on screen.
+        e.dataTransfer.effectAllowed = "copyMove";
+        // Cross-section drop payload: any non-bundle dragged tab also exposes
+        // its cloudId (= server document id) so a bundle canvas can read it on
+        // drop and add it to the bundle. Bundle items skip this so they can't
+        // be dropped onto another bundle as documents.
+        // Two MIME types so the receiver can prefer doc IDs (sync needed) and
+        // fall back to tab IDs for an "ineligible drop" UX hint.
+        if (p.tab.kind !== "bundle") {
+          try {
+            if (p.tab.cloudId) {
+              e.dataTransfer.setData("application/x-mdfy-doc-ids", JSON.stringify([p.tab.cloudId]));
+            }
+            e.dataTransfer.setData("application/x-mdfy-tab-ids", JSON.stringify([p.tab.id]));
+            // text/plain fallback — some browsers (Chrome's "protected drag")
+            // hide custom MIMEs from `types` during dragover, but always expose
+            // text/* types. This guarantees the dragover handler can match
+            // even before the drop fires.
+            if (p.tab.cloudId) {
+              e.dataTransfer.setData("text/plain", `mdfy-doc:${p.tab.cloudId}`);
+            }
+          } catch { /* ignore */ }
+        }
+        // Show "N items" badge on drag image when multi-select
+        if (ids.length > 1) {
+          try {
+            const ghost = document.createElement("div");
+            ghost.style.cssText = "position:absolute;top:-9999px;left:-9999px;padding:6px 10px;border-radius:6px;font:600 12px system-ui;background:var(--accent);color:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.4);";
+            ghost.textContent = `${ids.length} documents`;
+            document.body.appendChild(ghost);
+            e.dataTransfer.setDragImage(ghost, 10, 10);
+            setTimeout(() => ghost.remove(), 0);
+          } catch { /* ignore */ }
+        }
+        requestAnimationFrame(() => p.setDragTabId(p.tab.id));
+      }}
+      onDragEnd={() => {
+        _dragTabIdRef = null;
+        _dragTabIdsRef = [];
+        requestAnimationFrame(() => p.setDragTabId(null));
+        setZone(null);
+      }}
+      onDragOver={(e) => {
+        if (!allowReorder) return;
+        const draggedTabId = _dragTabIdRef;
+        if (!draggedTabId || draggedTabId === p.tab.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const t = (e.clientY - rect.top) / (rect.height || 1);
+        const next = t < 0.5 ? "above" : "below";
+        if (next !== zone) setZone(next);
+      }}
+      onDragLeave={() => setZone(null)}
+      onDrop={(e) => {
+        if (!allowReorder) return;
+        const draggedTabId = _dragTabIdRef;
+        if (!draggedTabId || draggedTabId === p.tab.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (p.onReorderTab && zone) p.onReorderTab(draggedTabId, p.tab.id, zone === "above" ? "before" : "after");
+        _dragTabIdRef = null;
+        p.setDragTabId(null);
+        setZone(null);
+      }}
+      className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer group/tab text-xs transition-colors relative ${p.isSelected ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
+      style={{
+        paddingLeft: p.paddingLeft,
+        paddingRight: p.paddingRight,
+        color: p.isSelected ? "var(--text-primary)" : "var(--text-secondary)",
+        opacity: 1,
+        outline: p.isMultiSelected ? "1px solid var(--accent)" : "none",
+        outlineOffset: "-1px",
+      }}
+      onClick={p.onClick}
+      onContextMenu={p.onContextMenu}
+    >
+      {zone === "above" && (
+        <div aria-hidden className="absolute left-1 right-1 -top-px h-0.5 rounded" style={{ background: "var(--accent)" }} />
+      )}
+      {zone === "below" && (
+        <div aria-hidden className="absolute left-1 right-1 -bottom-px h-0.5 rounded" style={{ background: "var(--accent)" }} />
+      )}
+      {p.indentGuideLeft !== undefined && (
+        <div aria-hidden className="absolute top-0 bottom-0" style={{ left: p.indentGuideLeft, width: 1, background: "var(--border-dim)" }} />
+      )}
+      {/* Unread indicator — newly added tab the user hasn't opened yet.
+          Cleared on first activation. Pulses orange to draw the eye in a
+          long sidebar list. Sits left of the tab icon so it's the first
+          thing the eye lands on. */}
+      {p.tab.unread && (
+        <span aria-label="New" title="New — not yet opened"
+          className="sidebar-unread-dot shrink-0 rounded-full"
+          style={{ width: 6, height: 6, background: "var(--accent)" }} />
+      )}
+      {p.renderTabIcon(p.tab, p.isActive)}
+      <div className="truncate flex-1 min-w-0">
+        <span className="truncate block text-[12px]">{p.tab.title || "Untitled"}</span>
+        {p.sidebarMode === "detailed" && p.renderTabMeta?.(p.tab)}
+      </div>
+      {p.renderTabBadge && (
+        <span className="shrink-0 text-right tabular-nums group-hover/tab:hidden" style={{ minWidth: 20 }}>{p.renderTabBadge(p.tab)}</span>
+      )}
+      <Tooltip text="More options (rename, share, delete…)">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            p.onKebab(rect);
+          }}
+          className="shrink-0 rounded flex items-center justify-center w-0 group-hover/tab:w-[22px] overflow-hidden transition-all duration-150 hover:bg-[var(--toggle-bg)]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          <MoreHorizontal width={15} height={15} />
+        </button>
+      </Tooltip>
+    </div>
+  );
+});
+
+interface FolderNodeProps {
+  folder: SidebarFolderItem;
+  depth: number;
+  tree: PrecomputedTree;
+  folders: SidebarFolderItem[];
+  handlers: SidebarFolderHandlers;
+  activeTabId?: string;
+  selectedTabIds: Set<string>;
+  activeBundleDocIds: Set<string>;
+  sidebarSearch: string;
+  sortMode: SidebarFolderTreeProps["sortMode"];
+  sidebarMode: string;
+  docFilter: SidebarFolderTreeProps["docFilter"];
+  dragTabId: string | null;
+  dragFolderId: string | null;
+  setDragTabId: (id: string | null) => void;
+  setDragFolderId: (id: string | null) => void;
+  renderTabIcon: (tab: SidebarTabItem, isActive: boolean) => ReactNode;
+  renderTabMeta?: (tab: SidebarTabItem) => ReactNode;
+  renderTabBadge?: (tab: SidebarTabItem) => ReactNode;
+}
+
+function FolderNode(props: FolderNodeProps) {
+  const {
+    folder,
+    depth,
+    tree,
+    folders,
+    handlers,
+    activeTabId,
+    selectedTabIds,
+    activeBundleDocIds,
+    sidebarSearch,
+    sortMode,
+    sidebarMode,
+    docFilter,
+    dragTabId,
+    dragFolderId,
+    setDragTabId,
+    setDragFolderId,
+    renderTabIcon,
+    renderTabMeta,
+    renderTabBadge,
+  } = props;
+
+  const [dropZone, setDropZone] = useState<DropZone | null>(null);
+
+  const subfolders = tree.childrenByFolder.get(folder.id) || [];
+  const folderTabs = tree.tabsByFolder.get(folder.id) || [];
+  const totalCount = tree.totalTabCount.get(folder.id) || 0;
+  const expanded = !folder.collapsed || tree.forceExpanded.has(folder.id);
+
+  if ((sidebarSearch || docFilter !== "all") && totalCount === 0) return null;
+
+  const folderHasBundleDoc = activeBundleDocIds.size > 0 && (() => {
+    if (folderTabs.some(t => t.cloudId && activeBundleDocIds.has(t.cloudId))) return true;
+    const descendants = tree.descendantsByFolder.get(folder.id) || new Set();
+    for (const dId of descendants) {
+      if (dId === folder.id) continue;
+      const ts = tree.tabsByFolder.get(dId) || [];
+      if (ts.some(t => t.cloudId && activeBundleDocIds.has(t.cloudId))) return true;
+    }
+    return false;
+  })();
+
+  const wouldCreateCycle = !!dragFolderId && (tree.descendantsByFolder.get(dragFolderId)?.has(folder.id) ?? false);
+
+  const sortedSubfolders = sortFolders(subfolders, sortMode, folders);
+  const sortedTabs = sortTabs(folderTabs, sortMode);
+
+  const indentLeft = depth * 12;
+
+  return (
+    <div className="mt-0.5">
+      <div
+        data-sidebar-folder-id={folder.id}
+        draggable
+        onDragStart={(e) => {
+          _dragFolderIdRef = folder.id;
+          _dragTabIdRef = null;
+          e.dataTransfer.effectAllowed = "move";
+          // Defer the React state update — calling setDragFolderId synchronously
+          // re-renders the entire MdEditor (~12K LoC) inside the dragstart handler,
+          // which can take 200ms+. Chrome cancels the drag if dragstart is too slow.
+          // The module-level ref above is the source of truth during the drag;
+          // the React state only drives "Move to root" UI which can wait one frame.
+          requestAnimationFrame(() => setDragFolderId(folder.id));
+        }}
+        onDragEnd={() => {
+          _dragFolderIdRef = null;
+          requestAnimationFrame(() => setDragFolderId(null));
+          setDropZone(null);
+        }}
+        className={`flex items-center gap-1 py-1 rounded-md cursor-pointer text-xs font-medium transition-colors group/folder relative ${dropZone === "into" && !wouldCreateCycle ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
+        style={{
+          paddingLeft: indentLeft + 2,
+          paddingRight: 6,
+          color: folderHasBundleDoc ? "var(--accent)" : "var(--text-muted)",
+          opacity: 1,
+          outline: dropZone === "into" && !wouldCreateCycle ? "1px solid var(--accent)" : "none",
+        }}
+        onClick={() => handlers.onToggleCollapsed(folder.id)}
+        onDoubleClick={(e) => { e.stopPropagation(); handlers.onRename(folder.id, folder.name); }}
+        onDragOver={(e) => {
+          // ALWAYS preventDefault — matches the old working pattern. Gating on
+          // ref/state and returning without preventDefault makes Chrome mark
+          // this element as a non-drop-target and cancels the drag.
+          e.preventDefault();
+          const tabId = _dragTabIdRef;
+          const folderId = _dragFolderIdRef;
+          if (!tabId && !folderId) return;
+          if (folderId === folder.id) return;
+          const allowAboveBelow = !!folderId;
+          const zone = computeDropZone(e, allowAboveBelow);
+          if (zone === "into" && wouldCreateCycle) return;
+          e.dataTransfer.dropEffect = "move";
+          if (zone !== dropZone) setDropZone(zone);
+        }}
+        onDragLeave={() => setDropZone(null)}
+        onDrop={(e) => {
+          e.preventDefault();
+          const tabIds = _dragTabIdsRef.length > 0 ? _dragTabIdsRef : (_dragTabIdRef ? [_dragTabIdRef] : (dragTabId ? [dragTabId] : []));
+          const folderId = _dragFolderIdRef ?? dragFolderId;
+          if (tabIds.length > 0) {
+            for (const tid of tabIds) handlers.onDropTabIntoFolder(tid, folder.id);
+          } else if (folderId && folderId !== folder.id) {
+            if (dropZone === "into" && !wouldCreateCycle) {
+              handlers.onDropFolderIntoFolder(folderId, folder.id);
+            } else if (dropZone === "above" || dropZone === "below") {
+              handlers.onReorderFolder(folderId, folder.id, dropZone === "above" ? "before" : "after");
+            }
+          }
+          _dragTabIdRef = null;
+          _dragTabIdsRef = [];
+          _dragFolderIdRef = null;
+          setDragTabId(null);
+          setDragFolderId(null);
+          setDropZone(null);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handlers.onOpenContextMenu(folder.id, e.clientX, e.clientY);
+        }}
+      >
+        {/* Drop indicator lines */}
+        {dropZone === "above" && (
+          <div aria-hidden className="absolute left-1 right-1 -top-px h-0.5 rounded" style={{ background: "var(--accent)" }} />
+        )}
+        {dropZone === "below" && (
+          <div aria-hidden className="absolute left-1 right-1 -bottom-px h-0.5 rounded" style={{ background: "var(--accent)" }} />
+        )}
+        {/* Indent guide */}
+        {depth > 0 && (
+          <div
+            aria-hidden
+            className="absolute top-0 bottom-0"
+            style={{ left: indentLeft - 6, width: 1, background: "var(--border-dim)" }}
+          />
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); handlers.onToggleCollapsed(folder.id); }}
+          className="shrink-0 flex items-center justify-center transition-transform"
+          style={{ width: 12, height: 12, color: "var(--text-faint)", transform: expanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+          tabIndex={-1}
+        >
+          <ChevronDown width={10} height={10} />
+        </button>
+        {/* Folder icon / emoji — clicking opens emoji picker */}
+        <Tooltip text="Change folder icon">
+          <button
+            onClick={(e) => { e.stopPropagation(); handlers.onChangeEmoji(folder.id); }}
+            className="shrink-0 flex items-center justify-center hover:bg-[var(--toggle-bg)] rounded"
+            style={{ width: 18, height: 18 }}
+            tabIndex={-1}
+          >
+            {folder.emoji ? (
+              <span className="text-[13px] leading-none">{folder.emoji}</span>
+            ) : expanded ? (
+              <FolderOpen width={14} height={14} style={{ color: "var(--text-faint)" }} />
+            ) : (
+              <Folder width={14} height={14} style={{ color: "var(--text-faint)" }} />
+            )}
+          </button>
+        </Tooltip>
+        <span className="truncate flex-1">{folder.name}</span>
+        {/* Right cluster — wrap count + action buttons with same gap-1.5 used
+            inside TabRow so trailing counts line up at exactly the same x. */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          <span className="text-[9px] text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.5, minWidth: 20 }}>
+            {totalCount}
+          </span>
+          <div className="flex items-center gap-0.5 overflow-hidden transition-all duration-150 w-0 group-hover/folder:w-auto">
+            <Tooltip text="New document in this folder">
+              <button
+                onClick={(e) => { e.stopPropagation(); handlers.onCreateDocInFolder(folder.id); }}
+                className="rounded flex items-center justify-center w-5 h-5 hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                <FilePlus2 width={13} height={13} />
+              </button>
+            </Tooltip>
+            <Tooltip text="New subfolder">
+              <button
+                onClick={(e) => { e.stopPropagation(); handlers.onCreateSubfolder(folder.id); }}
+                className="rounded flex items-center justify-center w-5 h-5 hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                <FolderPlus width={13} height={13} />
+              </button>
+            </Tooltip>
+            <Tooltip text="Folder options (rename, delete, move…)">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  handlers.onOpenContextMenu(folder.id, rect.right, rect.bottom);
+                }}
+                className="rounded flex items-center justify-center w-5 h-5 hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-faint)" }}
+              >
+                <MoreHorizontal width={13} height={13} />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+
+      {/* Children render only when expanded. We previously wrapped this in an
+          animated `overflow: hidden` container, but that broke HTML5 drag for
+          all descendants (Chrome treats nested draggable items inside a clipped
+          ancestor as un-draggable). Conditional render restores drag at the
+          cost of the collapse animation — animation comes back in a Phase 3
+          using View Transitions or per-item slide instead of clip. */}
+      {expanded && (
+        <>
+          {sortedSubfolders.map(sub => (
+            <FolderNode key={sub.id} {...props} folder={sub} depth={depth + 1} />
+          ))}
+          {sortedTabs.map(tab => {
+            const inActiveBundle = activeBundleDocIds.size > 0 && !!tab.cloudId && activeBundleDocIds.has(tab.cloudId);
+            const isSelected = selectedTabIds.has(tab.id) || tab.id === activeTabId || inActiveBundle;
+            const tabIndent = (depth + 1) * 12;
+            return (
+              <TabRow
+                key={tab.id}
+                tab={tab}
+                isSelected={isSelected}
+                isMultiSelected={selectedTabIds.has(tab.id)}
+                isActive={tab.id === activeTabId}
+                selectedTabIds={selectedTabIds}
+                paddingLeft={tabIndent + 4}
+                paddingRight={6}
+                indentGuideLeft={tabIndent - 6}
+                sortMode={sortMode}
+                setDragTabId={setDragTabId}
+                renderTabIcon={renderTabIcon}
+                renderTabMeta={renderTabMeta}
+                renderTabBadge={renderTabBadge}
+                sidebarMode={sidebarMode}
+                onClick={(e) => handlers.onTabClick(tab.id, e)}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handlers.onTabContextMenu(tab.id, e.clientX, e.clientY); }}
+                onKebab={(rect) => handlers.onTabKebab(tab.id, rect)}
+                onReorderTab={handlers.onReorderTab}
+              />
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function SidebarFolderTree(props: SidebarFolderTreeProps) {
+  const { folders, tabs, sidebarSearch, sortMode, rootFolderFilter } = props;
+
+  const tree = useMemo(
+    () => buildTree(folders, tabs, sidebarSearch, rootFolderFilter),
+    [folders, tabs, sidebarSearch, rootFolderFilter],
+  );
+
+  const sortedRoots = useMemo(
+    () => sortFolders(tree.rootFolders, sortMode, folders),
+    [tree.rootFolders, sortMode, folders],
+  );
+
+  // Explicit, visible "Move to root" drop slot at the bottom of the tree. Shows
+  // only while something is being dragged and the dragged item isn't already at root.
+  const [rootHover, setRootHover] = useState(false);
+  const draggingTab = !!props.dragTabId;
+  const draggingFolder = !!props.dragFolderId;
+  const draggedTab = draggingTab ? props.tabs.find(t => t.id === props.dragTabId) : null;
+  const draggedFolder = draggingFolder ? props.folders.find(f => f.id === props.dragFolderId) : null;
+  // Don't bother showing the slot if the item is already a root item (no-op drop)
+  const itemAlreadyAtRoot = (draggedTab && !draggedTab.folderId) || (draggedFolder && !draggedFolder.parentId);
+  const showRootSlot = (draggingTab || draggingFolder) && !itemAlreadyAtRoot;
+
+  return (
+    <div>
+      {/* Root-level tabs (no folder) — rendered ABOVE folders so loose items
+          surface first (matches the long-standing docs-section UX). Sections that
+          render their own root list separately set includeRootTabs={false}. */}
+      {(props.includeRootTabs !== false) && sortTabs(tree.rootTabs, sortMode).map(tab => {
+        const inActiveBundle = props.activeBundleDocIds.size > 0 && !!tab.cloudId && props.activeBundleDocIds.has(tab.cloudId);
+        const isSelected = props.selectedTabIds.has(tab.id) || tab.id === props.activeTabId || inActiveBundle;
+        return (
+          // Wrap in mt-0.5 div to match FolderNode's outer structure. Without this
+          // wrapper, root tabs rendered as direct children of SidebarFolderTree's
+          // wrapper div have HTML5 drag canceled by Chrome.
+          <div key={tab.id} className="mt-0.5">
+            <TabRow
+              tab={tab}
+              isSelected={isSelected}
+              isMultiSelected={props.selectedTabIds.has(tab.id)}
+              isActive={tab.id === props.activeTabId}
+              selectedTabIds={props.selectedTabIds}
+              paddingLeft={6}
+              paddingRight={6}
+              sortMode={sortMode}
+              setDragTabId={props.setDragTabId}
+              renderTabIcon={props.renderTabIcon}
+              renderTabMeta={props.renderTabMeta}
+              renderTabBadge={props.renderTabBadge}
+              sidebarMode={props.sidebarMode}
+              onClick={(e) => props.handlers.onTabClick(tab.id, e)}
+              onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); props.handlers.onTabContextMenu(tab.id, e.clientX, e.clientY); }}
+              onKebab={(rect) => props.handlers.onTabKebab(tab.id, rect)}
+              onReorderTab={props.handlers.onReorderTab}
+            />
+          </div>
+        );
+      })}
+      {/* Folders below root tabs */}
+      {sortedRoots.map(folder => (
+        <FolderNode
+          key={folder.id}
+          folder={folder}
+          depth={0}
+          tree={tree}
+          folders={folders}
+          handlers={props.handlers}
+          activeTabId={props.activeTabId}
+          selectedTabIds={props.selectedTabIds}
+          activeBundleDocIds={props.activeBundleDocIds}
+          sidebarSearch={sidebarSearch}
+          sortMode={sortMode}
+          sidebarMode={props.sidebarMode}
+          docFilter={props.docFilter}
+          dragTabId={props.dragTabId}
+          dragFolderId={props.dragFolderId}
+          setDragTabId={props.setDragTabId}
+          setDragFolderId={props.setDragFolderId}
+          renderTabIcon={props.renderTabIcon}
+          renderTabMeta={props.renderTabMeta}
+          renderTabBadge={props.renderTabBadge}
+        />
+      ))}
+      {/* Visible "Move to root" drop slot — only while dragging a non-root item */}
+      {showRootSlot && (
+        <div
+          className="mx-1 mt-2 mb-1 px-3 py-2 rounded-md text-[10px] text-center select-none"
+          style={{
+            border: `1px dashed ${rootHover ? "var(--accent)" : "var(--border)"}`,
+            color: rootHover ? "var(--accent)" : "var(--text-faint)",
+            background: rootHover ? "var(--accent-dim)" : "transparent",
+            transition: "background 0.1s, color 0.1s, border-color 0.1s",
+          }}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!rootHover) setRootHover(true); }}
+          onDragLeave={() => setRootHover(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            const tabIds = _dragTabIdsRef.length > 0 ? _dragTabIdsRef : (_dragTabIdRef ? [_dragTabIdRef] : (props.dragTabId ? [props.dragTabId] : []));
+            const folderId = _dragFolderIdRef ?? props.dragFolderId;
+            for (const tid of tabIds) props.handlers.onDropTabIntoFolder(tid, null);
+            if (folderId) props.handlers.onDropFolderIntoFolder(folderId, null);
+            _dragTabIdRef = null;
+            _dragTabIdsRef = [];
+            _dragFolderIdRef = null;
+            props.setDragTabId(null);
+            props.setDragFolderId(null);
+            setRootHover(false);
+          }}
+        >
+          Drop here to move to top level
+        </div>
+      )}
+    </div>
+  );
+}

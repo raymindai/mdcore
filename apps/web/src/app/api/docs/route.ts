@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
     isDraft?: boolean;
     source?: string;
     folderId?: string;
+    // Compile-as-first-class — when this doc is created as the output of
+    // /api/bundles/:id/synthesize, these fields persist its provenance so
+    // the user can recompile and we can detect when it goes stale.
+    compileKind?: "memo" | "faq" | "brief";
+    compileFrom?: { bundleId?: string; docIds?: string[]; intent?: string | null };
   };
   try {
     body = await req.json();
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source, folderId } = body;
+  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
   let { userId } = body;
 
   // Verify JWT from Authorization header (VS Code extension, MCP, etc.)
@@ -117,6 +122,9 @@ export async function POST(req: NextRequest) {
       is_draft: isDraft ?? true,
       source: source || null,
       folder_id: folderId || null,
+      compile_kind: compileKind || null,
+      compile_from: compileFrom || null,
+      compiled_at: compileKind ? new Date().toISOString() : null,
     });
     if (!error) { insertError = null; break; }
     if (error.code === "23505") { insertError = error; continue; } // unique violation, retry

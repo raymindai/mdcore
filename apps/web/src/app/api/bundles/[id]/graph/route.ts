@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   // Check bundle exists and is accessible (public bundles can be analyzed by anyone)
   const { data: bundle } = await supabase
     .from("bundles")
-    .select("user_id, anonymous_id, edit_token, is_draft")
+    .select("user_id, anonymous_id, edit_token, is_draft, intent")
     .eq("id", id)
     .single();
 
@@ -125,6 +125,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return `--- Document ${i + 1}: "${doc.title || "Untitled"}" (id: doc:${doc.id}) ---\n${excerpt}`;
   }).join("\n\n");
 
+  // Intent prefix — when set, instructs the AI to anchor every signal
+  // (themes / insights / gaps / connections) to this specific question.
+  const intentPrefix = bundle.intent
+    ? `\n\n## BUNDLE INTENT\nThe user gathered these documents to answer: **${bundle.intent}**\n\nWeight every analysis (themes, insights, gaps, takeaways) by relevance to this question. Surface what helps the user *resolve* the intent.`
+    : "";
+  const fullPrompt = EXTRACTION_PROMPT + intentPrefix;
+
   // Try AI extraction
   const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -135,11 +142,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     let graphData;
 
     if (process.env.ANTHROPIC_API_KEY) {
-      graphData = await extractWithAnthropic(excerpts, docs, process.env.ANTHROPIC_API_KEY);
+      graphData = await extractWithAnthropic(excerpts, docs, process.env.ANTHROPIC_API_KEY, fullPrompt);
     } else if (process.env.OPENAI_API_KEY) {
-      graphData = await extractWithOpenAI(excerpts, docs, process.env.OPENAI_API_KEY);
+      graphData = await extractWithOpenAI(excerpts, docs, process.env.OPENAI_API_KEY, fullPrompt);
     } else if (process.env.GEMINI_API_KEY) {
-      graphData = await extractWithGemini(excerpts, docs, process.env.GEMINI_API_KEY);
+      graphData = await extractWithGemini(excerpts, docs, process.env.GEMINI_API_KEY, fullPrompt);
     }
 
     if (!graphData) {
@@ -186,7 +193,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
 interface DocInfo { id: string; title: string | null }
 
-async function extractWithAnthropic(excerpts: string, docs: DocInfo[], apiKey: string) {
+async function extractWithAnthropic(excerpts: string, docs: DocInfo[], apiKey: string, prompt: string = EXTRACTION_PROMPT) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -199,7 +206,7 @@ async function extractWithAnthropic(excerpts: string, docs: DocInfo[], apiKey: s
       max_tokens: 4096,
       messages: [{
         role: "user",
-        content: `${EXTRACTION_PROMPT}\n\nDocuments:\n${excerpts}`,
+        content: `${prompt}\n\nDocuments:\n${excerpts}`,
       }],
     }),
   });
@@ -209,7 +216,7 @@ async function extractWithAnthropic(excerpts: string, docs: DocInfo[], apiKey: s
   return parseGraphJson(text);
 }
 
-async function extractWithOpenAI(excerpts: string, docs: DocInfo[], apiKey: string) {
+async function extractWithOpenAI(excerpts: string, docs: DocInfo[], apiKey: string, prompt: string = EXTRACTION_PROMPT) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -219,7 +226,7 @@ async function extractWithOpenAI(excerpts: string, docs: DocInfo[], apiKey: stri
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: EXTRACTION_PROMPT },
+        { role: "system", content: prompt },
         { role: "user", content: `Documents:\n${excerpts}` },
       ],
       max_tokens: 4096,
@@ -232,12 +239,12 @@ async function extractWithOpenAI(excerpts: string, docs: DocInfo[], apiKey: stri
   return parseGraphJson(text);
 }
 
-async function extractWithGemini(excerpts: string, docs: DocInfo[], apiKey: string) {
+async function extractWithGemini(excerpts: string, docs: DocInfo[], apiKey: string, prompt: string = EXTRACTION_PROMPT) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: `${EXTRACTION_PROMPT}\n\nDocuments:\n${excerpts}` }] }],
+      contents: [{ parts: [{ text: `${prompt}\n\nDocuments:\n${excerpts}` }] }],
       generationConfig: { maxOutputTokens: 4096, responseMimeType: "application/json" },
     }),
   });

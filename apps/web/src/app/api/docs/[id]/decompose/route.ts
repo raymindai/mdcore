@@ -1,0 +1,287 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
+
+type RouteParams = { params: Promise<{ id: string }> };
+
+/**
+ * Per-document AI semantic decomposition.
+ *
+ *   POST /api/docs/[id]/decompose          → run + cache
+ *   POST /api/docs/[id]/decompose?force=1  → ignore cache, re-run
+ *   GET  /api/docs/[id]/decompose          → return cached result (or 404)
+ *
+ * The AI breaks the document into typed chunks (concept / claim / example /
+ * definition / task / question / context / evidence) and adds typed edges
+ * (supports, elaborates, contradicts, exemplifies, depends_on, related).
+ *
+ * IMPORTANT: each chunk's `content` field is **verbatim** from the source
+ * markdown so the editor can find-and-replace it later. The label is a 3-5
+ * word AI-generated title.
+ */
+
+const DECOMPOSE_PROMPT = `You are a knowledge architect. Break the given document into semantic chunks — units of meaning that stand on their own.
+
+Return ONLY valid JSON:
+{
+  "chunks": [
+    {
+      "id": "c1",
+      "type": "concept|claim|example|definition|task|question|context|evidence",
+      "label": "3-5 word title",
+      "content": "EXACT verbatim substring from the document — must match character-for-character so an editor can find-and-replace it",
+      "weight": 1-10
+    }
+  ],
+  "edges": [
+    {
+      "source": "c1",
+      "target": "c2",
+      "type": "supports|elaborates|contradicts|exemplifies|depends_on|related",
+      "label": "2-4 word relationship",
+      "weight": 1-5
+    }
+  ]
+}
+
+CHUNK TYPES — pick the closest match:
+- concept: an abstract idea, model, framework, principle
+- claim: an assertion or argument the author is making
+- example: a concrete instance illustrating something
+- definition: explaining what a term/thing IS
+- task: an action item, todo, recommendation
+- question: an open question, area of uncertainty
+- context: background, setup, framing material
+- evidence: data, quotes, citations, supporting facts
+
+CRITICAL RULES:
+- chunk.content MUST be a verbatim substring from the document (whitespace OK to differ slightly, but the prose must match). Do NOT summarize or paraphrase the content field.
+- chunk.label is YOUR short title (3-5 words). chunk.content is THEIR words.
+- Aim for 5-20 chunks for typical documents. Don't fragment short paragraphs into multiple chunks.
+- Every chunk should have a clear semantic role. If a paragraph is just a bridge, fold it into the surrounding chunk.
+- weight: 1-10 reflects importance to the document's overall point.
+- edges: connect chunks that have a meaningful relationship. Aim for ~1-2 edges per chunk on average. No orphan chunks if possible.
+- edge.type: pick the strongest relationship type that applies.
+- Return raw JSON only — no markdown code fences, no commentary.`;
+
+export async function GET(req: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("user_id, anonymous_id, edit_mode, allowed_emails, semantic_chunks, decomposed_at")
+    .eq("id", id)
+    .single();
+  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Visibility: same rules as /api/docs/[id] — owner via JWT/anonymousId, or
+  // public via edit_mode = "public" / "view".
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const userId = verified?.userId || req.headers.get("x-user-id");
+  const anonymousId = req.headers.get("x-anonymous-id");
+  const isOwner =
+    !!(userId && doc.user_id && userId === doc.user_id) ||
+    !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
+  const isPublicReadable = doc.edit_mode === "public" || doc.edit_mode === "view";
+  if (!isOwner && !isPublicReadable) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  if (!doc.semantic_chunks) {
+    return NextResponse.json({ error: "No decomposition cached" }, { status: 404 });
+  }
+  return NextResponse.json({ semanticChunks: doc.semantic_chunks, generatedAt: doc.decomposed_at });
+}
+
+export async function POST(req: NextRequest, { params }: RouteParams) {
+  const { id } = await params;
+  const supabase = getSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force") === "1";
+
+  let body: { editToken?: string; userId?: string; anonymousId?: string; intent?: string };
+  try { body = await req.json(); } catch { body = {}; }
+
+  const { data: doc } = await supabase
+    .from("documents")
+    .select("id, title, markdown, user_id, anonymous_id, edit_token, edit_mode, allowed_emails, semantic_chunks, decomposed_at")
+    .eq("id", id)
+    .single();
+  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Auth: owner only (writing semantic_chunks back to the row). Mirror the
+  // same header/body fallback chain the rest of the API uses so anonymous
+  // users with x-anonymous-id and signed-in users with x-user-id (no JWT)
+  // both work.
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const userId = body.userId || verified?.userId || req.headers.get("x-user-id") || undefined;
+  const anonymousId = body.anonymousId || req.headers.get("x-anonymous-id") || undefined;
+  const isOwner =
+    !!(userId && doc.user_id && userId === doc.user_id) ||
+    !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
+  const hasToken = !!(body.editToken && doc.edit_token === body.editToken);
+  if (!isOwner && !hasToken) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  if (!force && doc.semantic_chunks) {
+    return NextResponse.json({ semanticChunks: doc.semantic_chunks, generatedAt: doc.decomposed_at, cached: true });
+  }
+
+  if (!doc.markdown || !doc.markdown.trim()) {
+    return NextResponse.json({ error: "Document is empty" }, { status: 400 });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+
+  // Cap input — long docs get the first 12k chars (most use cases fit easily).
+  const excerpt = doc.markdown.slice(0, 12000);
+  // When the bundle (or caller) provides an intent, the AI weights chunks by
+  // relevance to it — task / question chunks tied to the intent get higher
+  // weight, irrelevant context drops in importance.
+  const intentLine = body.intent && body.intent.trim()
+    ? `\n\nReader's intent (weight chunks by relevance to this): "${body.intent.trim()}"`
+    : "";
+  const prompt = `${DECOMPOSE_PROMPT}${intentLine}\n\nDocument title: "${doc.title || "Untitled"}"\n\nDocument content:\n${excerpt}`;
+
+  try {
+    let result: SemanticChunksResult | null = null;
+    if (process.env.ANTHROPIC_API_KEY) {
+      result = await callAnthropic(prompt, process.env.ANTHROPIC_API_KEY);
+    } else if (process.env.OPENAI_API_KEY) {
+      result = await callOpenAI(prompt, process.env.OPENAI_API_KEY);
+    } else if (process.env.GEMINI_API_KEY) {
+      result = await callGemini(prompt, process.env.GEMINI_API_KEY);
+    }
+    if (!result) return NextResponse.json({ error: "AI extraction failed" }, { status: 500 });
+
+    // Verify chunk content is actually findable in the source. AI sometimes
+    // paraphrases despite the prompt — flag those so the editor can fall back
+    // to "open in source" instead of in-place edit.
+    for (const c of result.chunks) {
+      c.found = doc.markdown.includes(c.content);
+    }
+    result.version = 1;
+
+    const now = new Date().toISOString();
+    await supabase
+      .from("documents")
+      .update({ semantic_chunks: result, decomposed_at: now })
+      .eq("id", id);
+
+    return NextResponse.json({ semanticChunks: result, generatedAt: now, cached: false });
+  } catch (err) {
+    console.error("Decompose AI error:", err);
+    return NextResponse.json({ error: "AI extraction failed" }, { status: 500 });
+  }
+}
+
+// ─── Types + provider impls ─────────────────────────────────────────────
+
+interface SemanticChunk {
+  id: string;
+  type: string;
+  label: string;
+  content: string;
+  weight: number;
+  found?: boolean;
+}
+interface SemanticEdge {
+  source: string;
+  target: string;
+  type: string;
+  label?: string;
+  weight: number;
+}
+interface SemanticChunksResult {
+  chunks: SemanticChunk[];
+  edges: SemanticEdge[];
+  version?: number;
+}
+
+async function callAnthropic(prompt: string, apiKey: string): Promise<SemanticChunksResult | null> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data.content?.[0]?.text || "";
+  return parseChunksJson(text);
+}
+
+async function callOpenAI(prompt: string, apiKey: string): Promise<SemanticChunksResult | null> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 4096,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || "";
+  return parseChunksJson(text);
+}
+
+async function callGemini(prompt: string, apiKey: string): Promise<SemanticChunksResult | null> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 4096, responseMimeType: "application/json" },
+      }),
+    }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return parseChunksJson(text);
+}
+
+function parseChunksJson(text: string): SemanticChunksResult | null {
+  const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = (m ? m[1] : text).trim();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.chunks)) return null;
+    return {
+      chunks: parsed.chunks.map((c: Record<string, unknown>, i: number) => ({
+        id: typeof c.id === "string" && c.id ? c.id : `c${i + 1}`,
+        type: typeof c.type === "string" ? c.type : "context",
+        label: typeof c.label === "string" ? c.label : "Untitled chunk",
+        content: typeof c.content === "string" ? c.content : "",
+        weight: typeof c.weight === "number" ? Math.max(1, Math.min(10, c.weight)) : 5,
+      })),
+      edges: Array.isArray(parsed.edges) ? parsed.edges.map((e: Record<string, unknown>) => ({
+        source: String(e.source || ""),
+        target: String(e.target || ""),
+        type: typeof e.type === "string" ? e.type : "related",
+        label: typeof e.label === "string" ? e.label : undefined,
+        weight: typeof e.weight === "number" ? Math.max(1, Math.min(5, e.weight)) : 2,
+      })).filter((e: SemanticEdge) => e.source && e.target) : [],
+    };
+  } catch {
+    return null;
+  }
+}

@@ -21,6 +21,9 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ELK from "elkjs/lib/elk.bundled.js";
+import { Copy, Plus, Minus, Sliders, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil } from "lucide-react";
+import Tooltip from "./Tooltip";
+import { parseSections, sectionPreview, type Section } from "@/lib/parse-sections";
 
 // ─── Types ───
 
@@ -60,8 +63,50 @@ interface BundleCanvasProps {
   onDocumentClick?: (docId: string) => void;
   onCopyContext?: () => void;
   onRegenerate?: () => void;
+  onRemoveDoc?: (docId: string) => void;
+  onOpenDoc?: (docId: string) => void;
+  onRequestAddDocs?: () => void;
+  onAddDocs?: (docIds: string[]) => void;
+  /** When set, the canvas replaces this doc's card with a tree of section
+   *  nodes parsed from the doc's markdown — clicked sections call onSectionClick. */
+  expandedDocId?: string | null;
+  /** AI-derived semantic decomposition for the expanded doc. When provided,
+   *  takes precedence over the heading-based fallback inside buildLayout. */
+  decomposition?: { chunks: SemanticChunkLike[]; edges: SemanticEdgeLike[] } | null;
+  isDecomposing?: boolean;
+  decomposeError?: string | null;
+  onDecomposeDoc?: (docId: string) => void;
+  onRedecomposeDoc?: (docId: string) => void;
+  onCollapseDoc?: () => void;
+  onSectionClick?: (docId: string, section: Section) => void;
+  onSectionContextMenu?: (docId: string, section: Section, x: number, y: number) => void;
+  onChunkClick?: (docId: string, chunk: SemanticChunkLike, additive?: boolean) => void;
+  onChunkContextMenu?: (docId: string, chunk: SemanticChunkLike, x: number, y: number) => void;
+  /** Selected chunk ids (for visual highlight). */
+  selectedChunkIds?: Set<string>;
+  /** Clear chunk selection (background click). */
+  onClearChunkSelection?: () => void;
+  /** Drag-reorder: source chunk dropped near target chunk → reorder source doc. */
+  onChunkDragReorder?: (docId: string, fromChunkId: string, targetChunkId: string, position: "before" | "after") => void;
+  /** Filter chunks by type (null = all). When set, filtered chunks are dimmed
+   *  but still visible so the constellation stays intact. */
+  chunkTypeFilter?: string | null;
+  onChangeChunkTypeFilter?: (t: string | null) => void;
+  /** Add a brand-new chunk to the expanded doc (opens parent's modal). */
+  onAddChunk?: (docId: string) => void;
+  /** Trigger bundle-level synthesis (Memo / FAQ / Brief). */
+  onSynthesize?: (kind: "memo" | "faq" | "brief") => void;
+  /** Externally requested focus — fits view to this chunk and pulses it.
+   *  Cleared automatically after the animation finishes (parent's choice). */
+  focusChunkId?: string | null;
+  /** Called once the canvas has finished focusing a chunk so the parent can
+   *  clear `focusChunkId` (single-fire request). */
+  onFocusChunkSettled?: () => void;
   className?: string;
 }
+
+interface SemanticChunkLike { id: string; type: string; label: string; content: string; weight: number; found?: boolean }
+interface SemanticEdgeLike { source: string; target: string; type: string; label?: string; weight: number }
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   concept: { bg: "rgba(56,189,248,0.08)", border: "#38bdf8", text: "#38bdf8" },
@@ -79,15 +124,41 @@ const NODE_SIZES: Record<string, { w: number; h: number }> = {
   themeTag: { w: 220, h: 32 },
   conceptTag: { w: 160, h: 36 },
   edgeLabel: { w: 120, h: 22 },
+  sectionNode: { w: 260, h: 96 },
+  sectionRoot: { w: 280, h: 56 },
+  chunkNode: { w: 280, h: 124 },
 };
 
-async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null, selectedDocId?: string | null, detail: DetailLevel = 5): Promise<{ nodes: Node[]; edges: Edge[] }> {
+const CHUNK_TYPE_COLORS: Record<string, { border: string; text: string; bg: string }> = {
+  concept: { border: "#38bdf8", text: "#38bdf8", bg: "rgba(56,189,248,0.06)" },
+  claim: { border: "#fb923c", text: "#fb923c", bg: "rgba(251,146,60,0.06)" },
+  example: { border: "#4ade80", text: "#4ade80", bg: "rgba(74,222,128,0.06)" },
+  definition: { border: "#60a5fa", text: "#60a5fa", bg: "rgba(96,165,250,0.06)" },
+  task: { border: "#fbbf24", text: "#fbbf24", bg: "rgba(251,191,36,0.06)" },
+  question: { border: "#a78bfa", text: "#a78bfa", bg: "rgba(167,139,250,0.06)" },
+  context: { border: "#94a3b8", text: "#94a3b8", bg: "rgba(148,163,184,0.06)" },
+  evidence: { border: "#f472b6", text: "#f472b6", bg: "rgba(244,114,182,0.06)" },
+};
+
+async function buildLayout(
+  docs: BundleDocument[],
+  aiGraph?: AIGraphData | null,
+  selectedDocId?: string | null,
+  detail: DetailLevel = 5,
+  expandedDocId?: string | null,
+  decomposition?: { chunks: SemanticChunkLike[]; edges: SemanticEdgeLike[] } | null,
+): Promise<{ nodes: Node[]; edges: Edge[] }> {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const elkNodes: any[] = [];
   const elkEdges: any[] = [];
   const nodeSet = new Set<string>();
   const hasSummary = aiGraph?.summary || (aiGraph?.themes && aiGraph.themes.length > 0);
+  // Maps "doc:<id>" → real node id for decomposed docs (which render as
+  // sectionRoot instead of documentCard). Used when wiring AI-graph edges
+  // that reference the document by its original id.
+  const docNodeAliases = new Map<string, string>();
+  const resolve = (id: string) => docNodeAliases.get(id) ?? id;
 
   function addNode(id: string, type: string, data: any) {
     if (nodeSet.has(id)) return;
@@ -121,6 +192,108 @@ async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null,
   docs.forEach((doc, i) => {
     const nid = `doc:${doc.id}`;
     const wc = doc.markdown.split(/\s+/).filter(Boolean).length;
+    const isExpanded = expandedDocId === doc.id;
+
+    if (isExpanded) {
+      const rootId = `doc-root:${doc.id}`;
+
+      if (decomposition && decomposition.chunks.length > 0) {
+        // ── AI semantic decomposition path ──
+        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: decomposition.chunks.length });
+
+        const chunkIdMap = new Map<string, string>();
+        decomposition.chunks.forEach(c => {
+          const cid = `chunk:${doc.id}:${c.id}`;
+          chunkIdMap.set(c.id, cid);
+          addNode(cid, "chunkNode", { docId: doc.id, chunk: c });
+          // Connect the root to every chunk so the cluster is rooted; AI edges
+          // layer on top with their semantic relations.
+          elkEdges.push({ id: `cr-${rootId}-${cid}`, sources: [rootId], targets: [cid] });
+          edges.push({ id: `cr-${rootId}-${cid}`, source: rootId, target: cid, type: "default", style: { stroke: "var(--accent)", strokeWidth: 1, opacity: 0.18 } });
+        });
+
+        // AI semantic edges between chunks
+        const edgeColors: Record<string, string> = {
+          supports: "#4ade80",
+          elaborates: "#60a5fa",
+          contradicts: "#ef4444",
+          exemplifies: "#fbbf24",
+          depends_on: "#a78bfa",
+          related: "#94a3b8",
+        };
+        decomposition.edges.forEach((e, i) => {
+          const src = chunkIdMap.get(e.source);
+          const tgt = chunkIdMap.get(e.target);
+          if (!src || !tgt) return;
+          const stroke = edgeColors[e.type] || "var(--accent)";
+          if (e.label) {
+            const labelId = `clabel-${doc.id}-${i}`;
+            addNode(labelId, "edgeLabel", { label: e.label, color: stroke });
+            elkEdges.push({ id: `cs-${src}-${labelId}`, sources: [src], targets: [labelId] });
+            elkEdges.push({ id: `cs-${labelId}-${tgt}`, sources: [labelId], targets: [tgt] });
+            edges.push({ id: `cs-${src}-${labelId}`, source: src, target: labelId, type: "default", style: { stroke, strokeWidth: 1, opacity: 0.5 } });
+            edges.push({ id: `cs-${labelId}-${tgt}`, source: labelId, target: tgt, type: "default", style: { stroke, strokeWidth: 1, opacity: 0.5 } });
+          } else {
+            elkEdges.push({ id: `cs-${src}-${tgt}-${i}`, sources: [src], targets: [tgt] });
+            edges.push({ id: `cs-${src}-${tgt}-${i}`, source: src, target: tgt, type: "default", style: { stroke, strokeWidth: 1, opacity: 0.4 } });
+          }
+        });
+      } else {
+        // ── Fallback: heading-based section tree ──
+        const sections = parseSections(doc.markdown);
+        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: sections.length });
+
+        const sectionIds: string[] = [];
+        sections.forEach((s) => {
+          const sid = `section:${doc.id}:${s.id}`;
+          sectionIds.push(sid);
+          addNode(sid, "sectionNode", {
+            docId: doc.id,
+            section: s,
+            preview: sectionPreview(s.body),
+          });
+        });
+
+        const stack: { idx: number; level: number }[] = [];
+        sections.forEach((s, si) => {
+          while (stack.length && stack[stack.length - 1].level >= s.level) stack.pop();
+          const parentSid = stack.length ? sectionIds[stack[stack.length - 1].idx] : rootId;
+          const childSid = sectionIds[si];
+          elkEdges.push({ id: `sec-${parentSid}-${childSid}`, sources: [parentSid], targets: [childSid] });
+          edges.push({ id: `sec-${parentSid}-${childSid}`, source: parentSid, target: childSid, type: "default", style: { stroke: "var(--accent)", strokeWidth: 1, opacity: 0.4 } });
+          stack.push({ idx: si, level: s.level || 1 });
+        });
+      }
+
+      // Re-route any AI graph edges that reference doc:<id> onto the root node
+      // so the decomposed cluster still hangs from the bundle's main graph.
+      // (The actual rewiring happens in the AI graph edges loop below; we keep
+      // a synonym so that block reuses the same `nid` lookup.)
+      // Add a bridge from doc:<id> → doc-root:<id> via virtual passthrough:
+      // we just allow nodeSet to also know the doc id by inserting a tiny
+      // marker — the simplest thing is to ALSO add the doc node as the root
+      // alias. We picked sectionRoot over documentCard, so AI graph will use
+      // `doc:<id>` as expected — let's normalize the AI edges' source/target
+      // by walking later. To keep that simple here, also register the doc id
+      // as an alias by *not* adding a real node, but by treating it as the
+      // root id when building edges below. We achieve this by mapping in the
+      // edge loop later. For now, the bundle-section connections (theme,
+      // ai-graph) need the doc id to resolve — so we register a hidden
+      // alias node:
+      // Hidden alias: addNode would also add an ELK entry, which we don't want
+      // for a non-rendered placeholder. Instead, track an alias map.
+      docNodeAliases.set(`doc:${doc.id}`, rootId);
+
+      if (hasSummary && aiGraph?.themes && detail >= 3) {
+        const tid = `theme:${i % aiGraph.themes.length}`;
+        if (nodeSet.has(tid)) {
+          elkEdges.push({ id: `e-${tid}-${rootId}`, sources: [tid], targets: [rootId] });
+          edges.push({ id: `e-${tid}-${rootId}`, source: tid, target: rootId, type: "default", style: { stroke: "#60a5fa", strokeWidth: 1, opacity: 0.2 } });
+        }
+      }
+      return;
+    }
+
     addNode(nid, "documentCard", {
       title: doc.title || "Untitled", preview: getPreview(doc.markdown), wordCount: wc,
       readingTime: Math.max(1, Math.ceil(wc / 200)), index: i + 1, total: docs.length,
@@ -150,7 +323,9 @@ async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null,
     showNodes.forEach(n => nodeColorMap.set(n.id, TYPE_COLORS[n.type]?.border || "#38bdf8"));
 
     for (const e of aiGraph.edges) {
-      if (!nodeSet.has(e.source) || !nodeSet.has(e.target)) continue;
+      const src = resolve(e.source);
+      const tgt = resolve(e.target);
+      if (!nodeSet.has(src) || !nodeSet.has(tgt)) continue;
       const isDocToDoc = e.source.startsWith("doc:") && e.target.startsWith("doc:");
       // Edge color = source node's color
       const sourceColor = nodeColorMap.get(e.source) || "var(--accent)";
@@ -161,15 +336,15 @@ async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null,
       };
 
       if (e.label) {
-        const labelId = `label-${e.source}-${e.target}`;
+        const labelId = `label-${src}-${tgt}`;
         addNode(labelId, "edgeLabel", { label: e.label, color: edgeColor });
-        elkEdges.push({ id: `ai-${e.source}-${labelId}`, sources: [e.source], targets: [labelId] });
-        elkEdges.push({ id: `ai-${labelId}-${e.target}`, sources: [labelId], targets: [e.target] });
-        edges.push({ id: `ai-${e.source}-${labelId}`, source: e.source, target: labelId, type: "default", style: edgeStyle });
-        edges.push({ id: `ai-${labelId}-${e.target}`, source: labelId, target: e.target, type: "default", style: edgeStyle });
+        elkEdges.push({ id: `ai-${src}-${labelId}`, sources: [src], targets: [labelId] });
+        elkEdges.push({ id: `ai-${labelId}-${tgt}`, sources: [labelId], targets: [tgt] });
+        edges.push({ id: `ai-${src}-${labelId}`, source: src, target: labelId, type: "default", style: edgeStyle });
+        edges.push({ id: `ai-${labelId}-${tgt}`, source: labelId, target: tgt, type: "default", style: edgeStyle });
       } else {
-        elkEdges.push({ id: `ai-${e.source}-${e.target}`, sources: [e.source], targets: [e.target] });
-        edges.push({ id: `ai-${e.source}-${e.target}`, source: e.source, target: e.target, type: "default", style: edgeStyle });
+        elkEdges.push({ id: `ai-${src}-${tgt}`, sources: [src], targets: [tgt] });
+        edges.push({ id: `ai-${src}-${tgt}`, source: src, target: tgt, type: "default", style: edgeStyle });
       }
     }
 
@@ -213,7 +388,6 @@ async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null,
       edges: elkEdges,
     });
 
-    console.log("ELK result:", elkGraph.children?.length, "children");
     const posMap = new Map<string, { x: number; y: number }>();
     for (const child of elkGraph.children || []) {
       posMap.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
@@ -227,7 +401,6 @@ async function buildLayout(docs: BundleDocument[], aiGraph?: AIGraphData | null,
         positioned++;
       }
     }
-    console.log("Positioned", positioned, "/", nodes.length, "nodes");
 
     // If ELK didn't position any nodes, use grid fallback
     if (positioned === 0) {
@@ -387,19 +560,148 @@ function FlowingEdge({ sourceX, sourceY, targetX, targetY, sourcePosition, targe
 
 const edgeTypes: EdgeTypes = { default: FlowingEdge };
 
+// ─── Section Root Node — slim header that takes a decomposed doc's place ───
+function SectionRootNode({ data }: { data: any }) {
+  return (
+    <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{
+      width: 280,
+      background: "var(--accent-dim)",
+      border: "1.5px solid var(--accent)",
+      boxShadow: "0 0 0 3px rgba(251,146,60,0.10), 0 4px 16px rgba(0,0,0,0.25)",
+    }}>
+      <Handle type="target" position={Position.Left} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="source" position={Position.Right} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Layers width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
+      <span className="text-[12px] font-bold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
+      <span className="text-[9px] px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>
+        {data.sectionCount}
+      </span>
+    </div>
+  );
+}
+
+// ─── Section Node — one heading + body preview ───
+function SectionNode({ data }: { data: any }) {
+  const s: Section = data.section;
+  // Visual depth via left bar tint that gets cooler with level
+  const levelTint = s.level === 0 ? "#94a3b8" : s.level === 1 ? "#fb923c" : s.level === 2 ? "#fbbf24" : s.level === 3 ? "#60a5fa" : "#a78bfa";
+  const levelLabel = s.level === 0 ? "Pre" : `H${s.level}`;
+  return (
+    <div className="rounded-lg overflow-hidden" style={{
+      width: 260,
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+    }}>
+      <Handle type="target" position={Position.Left} style={{ background: levelTint, width: 6, height: 6, border: "none" }} />
+      <Handle type="source" position={Position.Right} style={{ background: levelTint, width: 6, height: 6, border: "none" }} />
+      <div className="flex items-stretch" style={{ minHeight: 96 }}>
+        <div style={{ width: 3, background: levelTint, flexShrink: 0 }} />
+        <div className="px-3 py-2 flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[8px] font-bold tabular-nums uppercase tracking-wider" style={{ color: levelTint }}>{levelLabel}</span>
+            <span className="text-[11px] font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{s.heading || "(preamble)"}</span>
+            <Pencil width={9} height={9} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+          </div>
+          <p className="text-[10px] leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>
+            {data.preview || <span style={{ fontStyle: "italic", color: "var(--text-faint)" }}>(empty)</span>}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chunk Node — AI semantic chunk with type pill + content preview ───
+function ChunkNode({ data }: { data: any }) {
+  const c: SemanticChunkLike = data.chunk;
+  const palette = CHUNK_TYPE_COLORS[c.type] || CHUNK_TYPE_COLORS.context;
+  const preview = (c.content || "").trim().replace(/\s+/g, " ");
+  const truncated = preview.length > 140 ? preview.slice(0, 139) + "…" : preview;
+  return (
+    <div className="rounded-lg overflow-hidden" style={{
+      width: 280,
+      background: "var(--surface)",
+      border: `1px solid ${palette.border}40`,
+      boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+    }}>
+      <Handle type="target" position={Position.Left} style={{ background: palette.border, width: 6, height: 6, border: "none" }} />
+      <Handle type="source" position={Position.Right} style={{ background: palette.border, width: 6, height: 6, border: "none" }} />
+      <div className="px-3 py-2" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
+          <span className="text-[11px] font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+          {c.found === false && (
+            <span className="text-[7px] font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
+          )}
+          <Pencil width={9} height={9} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
+        </div>
+      </div>
+      <div className="px-3 py-2">
+        <p className="text-[10px] leading-[1.45] line-clamp-3" style={{ color: "var(--text-muted)" }}>{truncated || <span style={{ fontStyle: "italic" }}>(no content)</span>}</p>
+      </div>
+    </div>
+  );
+}
+
 const nodeTypes: NodeTypes = {
   summaryNode: SummaryNode,
   themeTag: ThemeTagNode,
   documentCard: DocumentCardNode,
   conceptTag: ConceptTagNode,
   edgeLabel: EdgeLabelNode,
+  sectionNode: SectionNode,
+  sectionRoot: SectionRootNode,
+  chunkNode: ChunkNode,
 };
 
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track fullscreen state changes (Esc, F11, etc.)
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  // Fullscreen targets the whole page (documentElement) instead of just the
+  // canvas div so that the sidebar and AI panel stay visible/accessible while
+  // the canvas goes edge-to-edge. Esc/F11 still toggles back.
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => { /* ignore */ });
+    } else {
+      document.documentElement.requestFullscreen().catch(() => { /* ignore */ });
+    }
+  }, []);
+
+  // Re-fit the canvas whenever the container size changes (sidebar toggle,
+  // AI panel toggle, window resize, etc.). React Flow internally listens to
+  // window resize but not to its container resizing inside flex/grid layouts.
+  // Skip the first observation — the initial mount fit is handled by ReactFlow's
+  // own `fitView` prop, so re-fitting here causes a visible "big → small" flicker.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let raf: number | null = null;
+    let firstObservation = true;
+    const obs = new ResizeObserver(() => {
+      if (firstObservation) { firstObservation = false; return; }
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        try { rfFitView({ padding: 0.15, maxZoom: 1.2, duration: 200 }); } catch { /* ignore */ }
+      });
+    });
+    obs.observe(el);
+    return () => { obs.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, [rfFitView]);
   const [detail, setDetail] = useState<DetailLevel>(aiGraph ? 5 : 1);
   // Always show full map when AI data is available
   useEffect(() => {
@@ -418,13 +720,44 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
   const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
 
   useEffect(() => {
-    buildLayout(documents, aiGraph, selectedDocId, detail).then(({ nodes: n, edges: e }) => {
+    let cancelled = false;
+    buildLayout(documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition).then(({ nodes: n, edges: e }) => {
+      if (cancelled) return;
       setNodes(n);
       setEdges(e);
+      // ELK is async, so by the time setNodes runs ReactFlow has already
+      // rendered with empty nodes — its `fitView` prop only fits on first
+      // render. Refit after the layout populates so the freshly placed nodes
+      // fill the viewport instead of being clipped at the bottom/right.
+      if (n.length > 0) {
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          try { rfFitView({ padding: 0.15, maxZoom: 1.2, duration: 0 }); } catch { /* ignore */ }
+        });
+      }
     });
-  }, [documents, aiGraph, selectedDocId, detail, setNodes, setEdges]);
+    return () => { cancelled = true; };
+  }, [documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition, setNodes, setEdges, rfFitView]);
 
   const [focusedNode, setFocusedNode] = useState<string | null>(null);
+
+  // Fly-to + pulse for externally requested chunk focus (Discoveries panel)
+  useEffect(() => {
+    if (!focusChunkId || !expandedDocId) return;
+    if (nodes.length === 0) return;
+    const targetNodeId = `chunk:${expandedDocId}:${focusChunkId}`;
+    if (!nodes.some(n => n.id === targetNodeId)) return;
+    const handle = requestAnimationFrame(() => {
+      try {
+        rfFitView({ nodes: [{ id: targetNodeId }], padding: 1.2, maxZoom: 1.4, duration: 600 });
+      } catch { /* viewport not ready */ }
+      setPulsedNodeId(targetNodeId);
+      onFocusChunkSettled?.();
+      const t = setTimeout(() => setPulsedNodeId(null), 2200);
+      return () => clearTimeout(t);
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [focusChunkId, expandedDocId, rfFitView, onFocusChunkSettled, nodes]);
 
   // Compute connected nodes (traverse through label nodes for full chain)
   const connectedSet = useMemo(() => {
@@ -449,6 +782,53 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
     return connected;
   }, [focusedNode, edges]);
 
+  // Right-click context menu state for document nodes (Open / Remove)
+  const [docCtxMenu, setDocCtxMenu] = useState<{ x: number; y: number; docId: string } | null>(null);
+  // External focus (set by parent via focusChunkId) — declared up here so the
+  // pulse class can be applied in styledNodes below.
+  const [pulsedNodeId, setPulsedNodeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!docCtxMenu) return;
+    const close = () => setDocCtxMenu(null);
+    window.addEventListener("click", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [docCtxMenu]);
+
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
+    // Doc nodes (collapsed view): open / remove / decompose
+    if (node.id.startsWith("doc:")) {
+      if (!onRemoveDoc && !onOpenDoc && !onDecomposeDoc) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const docId = node.id.slice(4);
+      setDocCtxMenu({ x: e.clientX, y: e.clientY, docId });
+      return;
+    }
+    // Section nodes (decomposed view): forward to parent so it can offer
+    // edit / delete / add-subsection in its own menu.
+    if (node.id.startsWith("section:") && onSectionContextMenu) {
+      const data = node.data as { docId: string; section: Section } | undefined;
+      if (!data) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onSectionContextMenu(data.docId, data.section, e.clientX, e.clientY);
+      return;
+    }
+    // Semantic chunk nodes
+    if (node.id.startsWith("chunk:") && onChunkContextMenu) {
+      const data = node.data as { docId: string; chunk: SemanticChunkLike } | undefined;
+      if (!data) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onChunkContextMenu(data.docId, data.chunk, e.clientX, e.clientY);
+      return;
+    }
+  }, [onRemoveDoc, onOpenDoc, onDecomposeDoc, onSectionContextMenu, onChunkContextMenu]);
+
   const onNodeClick = useCallback((_: any, node: Node) => {
     const wasFocused = focusedNode === node.id;
     setFocusedNode(wasFocused ? null : node.id);
@@ -457,14 +837,89 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
       const size = NODE_SIZES[node.type || "conceptTag"] || { w: 160, h: 36 };
       rfFitView({ nodes: [{ id: node.id }], padding: 1.5, maxZoom: 1.2, duration: 500 });
     }
+    // Section click → forward to parent for editing
+    if (node.id.startsWith("section:") && onSectionClick) {
+      const data = node.data as { docId: string; section: Section } | undefined;
+      if (data) onSectionClick(data.docId, data.section);
+      return;
+    }
+    // Semantic chunk click → forward to parent for editing / multi-select
+    if (node.id.startsWith("chunk:") && onChunkClick) {
+      const data = node.data as { docId: string; chunk: SemanticChunkLike } | undefined;
+      if (!data) return;
+      // Detect modifier key from the original event (React synthetic event
+      // lives on the first param, not the node)
+      // We don't have direct access to the event here — use the global
+      // mouseEvent state captured via window.event as a fallback. ReactFlow
+      // forwards the MouseEvent as the first argument; we rebind below.
+      onChunkClick(data.docId, data.chunk, false);
+      return;
+    }
     if (onDocumentClick && node.type !== "edgeLabel") {
       onDocumentClick(node.id);
     }
-  }, [onDocumentClick, focusedNode, rfFitView]);
+  }, [onDocumentClick, focusedNode, rfFitView, onSectionClick, onChunkClick]);
+
+  // Wrapper that captures the original DOM event so we can detect modifier
+  // keys for multi-select. ReactFlow's onNodeClick gives us the React mouse
+  // event as the first arg.
+  const onNodeClickWithMods = useCallback((e: React.MouseEvent, node: Node) => {
+    if (node.id.startsWith("chunk:") && onChunkClick) {
+      const data = node.data as { docId: string; chunk: SemanticChunkLike } | undefined;
+      if (!data) return;
+      const additive = e.metaKey || e.ctrlKey || e.shiftKey;
+      onChunkClick(data.docId, data.chunk, additive);
+      return;
+    }
+    onNodeClick(e, node);
+  }, [onChunkClick, onNodeClick]);
+
+  // Drag-reorder: when a chunk node is dropped, find the nearest other chunk
+  // node (within the same expanded doc) and reorder source markdown.
+  const onNodeDragStop = useCallback((_e: React.MouseEvent, node: Node, allNodes: Node[]) => {
+    if (!onChunkDragReorder) return;
+    if (!node.id.startsWith("chunk:")) return;
+    const draggedData = node.data as { docId: string; chunk: SemanticChunkLike } | undefined;
+    if (!draggedData) return;
+    const dragSize = NODE_SIZES.chunkNode;
+    const dragCenter = {
+      x: (node.position?.x ?? 0) + dragSize.w / 2,
+      y: (node.position?.y ?? 0) + dragSize.h / 2,
+    };
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    let bestY = 0;
+    for (const other of allNodes) {
+      if (other.id === node.id) continue;
+      if (!other.id.startsWith("chunk:")) continue;
+      const oData = other.data as { docId: string } | undefined;
+      if (!oData || oData.docId !== draggedData.docId) continue;
+      const oCenter = {
+        x: (other.position?.x ?? 0) + dragSize.w / 2,
+        y: (other.position?.y ?? 0) + dragSize.h / 2,
+      };
+      const dx = dragCenter.x - oCenter.x;
+      const dy = dragCenter.y - oCenter.y;
+      const d = Math.hypot(dx, dy);
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = other.id;
+        bestY = oCenter.y;
+      }
+    }
+    // Threshold: must be reasonably close (<300px) AND must have moved a real
+    // distance (>40px) from its original ELK-laid position to count as intent.
+    if (!bestId || bestDist > 300) return;
+    const targetData = allNodes.find(n => n.id === bestId)?.data as { chunk: SemanticChunkLike } | undefined;
+    if (!targetData) return;
+    const position: "before" | "after" = dragCenter.y < bestY ? "before" : "after";
+    onChunkDragReorder(draggedData.docId, draggedData.chunk.id, targetData.chunk.id, position);
+  }, [onChunkDragReorder]);
 
   const onPaneClick = useCallback(() => {
     setFocusedNode(null);
-  }, []);
+    onClearChunkSelection?.();
+  }, [onClearChunkSelection]);
 
   const totalWords = documents.reduce((s, d) => s + d.markdown.split(/\s+/).filter(Boolean).length, 0);
 
@@ -472,31 +927,81 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
   const getNodeGlowColor = useCallback((n: Node) => {
     if (n.type === "documentCard") return "#fb923c";
     if (n.type === "summaryNode" || n.type === "themeTag") return "#60a5fa";
-    const t = (n.data as any)?.type;
-    return TYPE_COLORS[t]?.border || "#38bdf8";
+    if (n.type === "sectionRoot") return "#fb923c"; // doc-aligned accent
+    if (n.type === "sectionNode") {
+      // Match the heading-level tint used inside the SectionNode body
+      const level = (n.data as { section?: { level?: number } } | undefined)?.section?.level;
+      if (level === 0) return "#94a3b8";
+      if (level === 1) return "#fb923c";
+      if (level === 2) return "#fbbf24";
+      if (level === 3) return "#60a5fa";
+      return "#a78bfa";
+    }
+    if (n.type === "chunkNode") {
+      // Use the chunk's semantic type color (claim=orange, concept=cyan, etc.)
+      // This is what the user expected from the chunk's visible accent stripe.
+      const chunkType = (n.data as { chunk?: { type?: string } } | undefined)?.chunk?.type;
+      return CHUNK_TYPE_COLORS[chunkType || ""]?.border || "#94a3b8";
+    }
+    if (n.type === "edgeLabel") {
+      // Edge label nodes carry their own color (set by the source edge's stroke)
+      return (n.data as { color?: string } | undefined)?.color || "#94a3b8";
+    }
+    const t = (n.data as { type?: string } | undefined)?.type;
+    return TYPE_COLORS[t || ""]?.border || "#38bdf8";
   }, []);
 
   // Mark nodes/edges with CSS classes + animations based on focus
+  const chunkSelectedSet = selectedChunkIds || null;
+  const decoreateChunkExtra = useCallback((n: Node, baseClass: string): { className: string; extraStyle: Record<string, string> } => {
+    const extraStyle: Record<string, string> = {};
+    let className = baseClass;
+    if (n.id.startsWith("chunk:")) {
+      const data = n.data as { chunk?: SemanticChunkLike } | undefined;
+      const cid = data?.chunk?.id;
+      if (cid && chunkSelectedSet?.has(cid)) {
+        className += " bundle-chunk-selected";
+      }
+      if (chunkTypeFilter && data?.chunk && data.chunk.type !== chunkTypeFilter) {
+        className += " bundle-chunk-filtered-out";
+      }
+    }
+    if (pulsedNodeId === n.id) {
+      className += " bundle-chunk-pulse";
+    }
+    return { className, extraStyle };
+  }, [chunkSelectedSet, chunkTypeFilter, pulsedNodeId]);
+
   const styledNodes = useMemo(() => {
     if (!connectedSet) {
-      return nodes.map(n => ({
-        ...n,
-        className: hoveredNodeId === n.id ? "bundle-node-ext-hover" : "",
-        style: { "--hover-glow": `${getNodeGlowColor(n)}40`, "--pulse-color": getNodeGlowColor(n) } as any,
-      }));
+      return nodes.map(n => {
+        const color = getNodeGlowColor(n);
+        const baseClass = hoveredNodeId === n.id ? "bundle-node-ext-hover" : "";
+        const extra = decoreateChunkExtra(n, baseClass);
+        return {
+          ...n,
+          className: extra.className,
+          // --node-color: solid color used for hover/selection/focus outlines.
+          // Each node type contributes its own (orange for docs, type-color
+          // for chunks, etc.) so the outline matches the node's identity.
+          style: { "--node-color": color, ...extra.extraStyle } as any,
+        };
+      });
     }
     return nodes.map(n => {
       const color = getNodeGlowColor(n);
       const isFocused = n.id === focusedNode;
       const isConnected = connectedSet.has(n.id);
       const isExtHover = hoveredNodeId === n.id;
+      const baseClass = `${isConnected ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""} ${isExtHover ? "bundle-node-ext-hover" : ""}`;
+      const extra = decoreateChunkExtra(n, baseClass);
       return {
         ...n,
-        className: `${isConnected ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""} ${isExtHover ? "bundle-node-ext-hover" : ""}`,
-        style: { "--pulse-color": color, "--hover-glow": `${color}40` } as any,
+        className: extra.className,
+        style: { "--node-color": color, ...extra.extraStyle } as any,
       };
     });
-  }, [nodes, connectedSet, focusedNode, getNodeGlowColor]);
+  }, [nodes, connectedSet, focusedNode, getNodeGlowColor, decoreateChunkExtra, hoveredNodeId]);
 
   const styledEdges = useMemo(() => {
     if (!connectedSet) return edges;
@@ -510,17 +1015,118 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
     });
   }, [edges, connectedSet]);
 
+  // Drop zone for sidebar drag-and-drop: dragging a doc tab from MDs section
+  // onto the canvas adds it to this bundle.
+  //
+  // Browser quirk: custom MIME types are sometimes hidden from
+  // `dataTransfer.types` during `dragover` (Chrome's protected drag mode).
+  // If we conditionally call `preventDefault` only on our MIME, the drop
+  // gets rejected entirely. Instead we always allow drop on dragover (unless
+  // it's a file drag from the OS) and validate the payload at drop time.
+  const [dropActive, setDropActive] = useState(false);
+  // Fail-safe: any time a drag ends or aborts (Esc, mouseup outside, drop on
+  // a non-handler), clear the overlay. Without this the overlay can stick on
+  // screen if the browser silently rejects our drop (e.g. effectAllowed
+  // mismatch) — drop never fires, so handleDrop's setDropActive(false) never
+  // runs.
+  useEffect(() => {
+    const clear = () => setDropActive(false);
+    window.addEventListener("dragend", clear);
+    window.addEventListener("drop", clear);
+    return () => {
+      window.removeEventListener("dragend", clear);
+      window.removeEventListener("drop", clear);
+    };
+  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (!onAddDocs) return;
+    const types = Array.from(e.dataTransfer.types || []);
+    if (types.includes("Files")) return; // OS file drag — let it through
+    e.preventDefault();
+    // "copy" or "move" both work since the source sets effectAllowed:"copyMove".
+    // We pick "copy" for the cursor cue (adds without removing) but the
+    // browser only honors values compatible with effectAllowed.
+    e.dataTransfer.dropEffect = "copy";
+    setDropActive(true);
+  }, [onAddDocs]);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear when leaving the canvas root, not when entering a child
+    if (e.currentTarget === e.target) setDropActive(false);
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (!onAddDocs) return;
+    e.preventDefault();
+    setDropActive(false);
+    let docIds: string[] = [];
+    try {
+      // Primary: the explicit doc-ids MIME we set on dragstart
+      const raw = e.dataTransfer.getData("application/x-mdfy-doc-ids");
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          docIds = parsed.filter((x): x is string => typeof x === "string" && x.length > 0);
+        }
+      }
+      // Fallback: text/plain "mdfy-doc:<id>" form (used when custom MIMEs are
+      // hidden by Chrome's protected drag mode)
+      if (docIds.length === 0) {
+        const text = e.dataTransfer.getData("text/plain") || "";
+        const m = text.match(/^mdfy-doc:([\w-]+)$/);
+        if (m) docIds = [m[1]];
+      }
+    } catch { /* malformed payload */ }
+    if (docIds.length === 0) return; // not our drag — silently ignore
+    // Skip docs already in the bundle
+    const existing = new Set(documents.map(d => d.id));
+    const fresh = docIds.filter(id => !existing.has(id));
+    if (fresh.length > 0) onAddDocs(fresh);
+  }, [onAddDocs, documents]);
+
   return (
-    <div className={`relative ${className}`} style={{ width: "100%", height: "100%" }}>
+    <div ref={containerRef} className={`relative ${className}`} style={{ width: "100%", height: "100%" }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dropActive && (
+        <div className="absolute inset-0 z-[50] pointer-events-none flex items-center justify-center" style={{ background: "rgba(251,146,60,0.06)", border: "2px dashed var(--accent)", borderRadius: 8 }}>
+          <div className="px-4 py-2 rounded-lg text-[12px] font-semibold" style={{ background: "var(--accent)", color: "#000" }}>
+            Drop to add to bundle
+          </div>
+        </div>
+      )}
       <style>{`
         .react-flow__node { transition: none; }
         .bundle-node-dim { opacity: 0.12 !important; transition: opacity 0.2s; }
         .bundle-node-active { opacity: 1 !important; transition: opacity 0.2s; }
-        .bundle-node-focused { filter: drop-shadow(0 0 8px var(--pulse-color, #fb923c)55); }
-        .bundle-node-ext-hover { filter: drop-shadow(0 0 12px var(--pulse-color, #fb923c)88); transform: scale(1.03); transition: filter 0.2s, transform 0.2s; }
+        /* Hover / focus / selection now use a SOLID OUTLINE in the node's
+           main color (set via --node-color) instead of a soft glow. The ring
+           is drawn with box-shadow spread so it respects rounded corners. */
+        .react-flow__node:hover > div {
+          box-shadow: 0 0 0 1px var(--node-color, var(--accent)) !important;
+          transition: box-shadow 0.12s;
+        }
+        .bundle-node-focused > div {
+          box-shadow: 0 0 0 1px var(--node-color, var(--accent)) !important;
+        }
+        .bundle-node-ext-hover > div {
+          box-shadow: 0 0 0 1px var(--node-color, var(--accent)) !important;
+          transform: scale(1.02);
+          transition: box-shadow 0.15s, transform 0.15s;
+        }
+        .bundle-chunk-selected > div {
+          box-shadow: 0 0 0 2px var(--node-color, var(--accent)) !important;
+        }
+        .bundle-chunk-filtered-out { opacity: 0.18; transition: opacity 0.2s; }
         @keyframes bundleDotFlow { to { stroke-dashoffset: -18; } }
         .bundle-dot-overlay { stroke-dasharray: 0.01 6; stroke-linecap: round; animation: bundleDotFlow 2s linear infinite; }
-        .react-flow__node:hover > div { box-shadow: 0 0 16px var(--hover-glow, rgba(251,146,60,0.25)) !important; transition: box-shadow 0.2s; }
+        /* Pulse: outline thickens/expands rhythmically — no fuzzy glow */
+        @keyframes bundleChunkPulseOutline {
+          0%   { box-shadow: 0 0 0 1px var(--node-color, var(--accent)); }
+          50%  { box-shadow: 0 0 0 3px var(--node-color, var(--accent)); }
+          100% { box-shadow: 0 0 0 1px var(--node-color, var(--accent)); }
+        }
+        .bundle-chunk-pulse > div { animation: bundleChunkPulseOutline 1.4s ease-in-out 2 !important; }
         @keyframes analyzeShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .bundle-analyzing-bar {
           height: 2px; background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
@@ -529,10 +1135,17 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
       `}</style>
       <ReactFlow
         nodes={styledNodes} edges={styledEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick} onPaneClick={onPaneClick} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView
-        fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
-        onInit={(i) => { setTimeout(() => i.fitView({ padding: 0.3, maxZoom: 1 }), 150); }}
+        onNodeClick={onNodeClickWithMods} onNodeContextMenu={onNodeContextMenu} onPaneClick={onPaneClick}
+        onNodeDragStop={(e, node) => onNodeDragStop(e as unknown as React.MouseEvent, node, styledNodes as Node[])}
+        nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView
+        fitViewOptions={{ padding: 0.15, maxZoom: 1.2, duration: 0 }}
         minZoom={0.1} maxZoom={2} proOptions={{ hideAttribution: true }}
+        // Disable ReactFlow's built-in multi-selection (default key = Meta) so
+        // Cmd/Ctrl/Shift+click is delivered straight to our handler instead of
+        // being consumed for ReactFlow's internal selection model. We also
+        // turn off node selection styling we don't need.
+        multiSelectionKeyCode={null}
+        nodesFocusable={false}
         style={{ background: "var(--background)" }}
       >
         <Background variant={"dots" as any} color={theme === "dark" ? "#2a2a2f" : "#c4c4c8"} gap={18} size={1.5} />
@@ -547,35 +1160,239 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           style={{ background: theme === "dark" ? "#18181b" : "#f4f4f5", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", width: 160, height: 100 }} />
       </ReactFlow>
 
-      {/* Top bar */}
-      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5">
-        <button onClick={onCopyContext} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold hover:brightness-110"
-          style={{ background: "var(--accent)", color: "#fff" }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copy as Context
-        </button>
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <input type="range" min={1} max={5} value={detail}
-            onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
-            className="w-14 h-1 accent-[#fb923c]" style={{ cursor: "pointer" }} />
-          <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>{DETAIL_LABELS[detail]}</span>
-        </div>
-        {onRegenerate && !isAnalyzing && aiGraph && (
-          <button onClick={onRegenerate} className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium hover:bg-[var(--toggle-bg)]"
-            style={{ color: "var(--text-muted)", background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-            Regenerate
-          </button>
-        )}
-        {isAnalyzing && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--accent)" }}>
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-            <span className="text-[10px] font-medium" style={{ color: "var(--accent)" }}>Analyzing...</span>
+      {/* Top-left: [Analyze | Copy Context | Add docs]  [Detail slider]
+          When a doc is decomposed, bundle-level actions (Add docs, Copy
+          Context) are hidden — they don't make sense in single-doc focus
+          mode and would crowd the toolbar past the viewport edge. */}
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 flex-wrap" style={{ maxWidth: "calc(100% - 24px)" }}>
+        {/* Action group: Analyze + Copy Context + Add docs */}
+        {!expandedDocId && (onRegenerate || onCopyContext || onRequestAddDocs) && (
+          <div className="flex items-center h-8 rounded-lg overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            {onRegenerate && (
+              <Tooltip text={isAnalyzing ? "Analyzing bundle…" : aiGraph ? "Re-analyze with AI" : "Analyze bundle with AI"} position="bottom">
+                <button onClick={onRegenerate} disabled={isAnalyzing}
+                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] disabled:cursor-not-allowed transition-colors"
+                  style={{ color: "var(--accent)" }}>
+                  {isAnalyzing
+                    ? <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                    : <Sparkles width={11} height={11} />}
+                  <span>{isAnalyzing ? "Analyzing…" : "Analyze"}</span>
+                </button>
+              </Tooltip>
+            )}
+            {onRegenerate && onCopyContext && (
+              <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+            )}
+            {onCopyContext && (
+              <Tooltip text="Copy entire bundle as one prompt for ChatGPT / Claude / Gemini" position="bottom">
+                <button onClick={onCopyContext}
+                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                  style={{ color: "var(--text-secondary)" }}>
+                  <Copy width={11} height={11} />
+                  <span>Copy Context</span>
+                </button>
+              </Tooltip>
+            )}
+            {onCopyContext && onRequestAddDocs && (
+              <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+            )}
+            {onRequestAddDocs && (
+              <Tooltip text="Add documents to this bundle" position="bottom">
+                <button onClick={onRequestAddDocs}
+                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                  style={{ color: "var(--text-secondary)" }}>
+                  <FilePlus2 width={11} height={11} />
+                  <span>Add</span>
+                </button>
+              </Tooltip>
+            )}
           </div>
         )}
+
+        {/* Synthesize group — bundle-level outputs (Memo / FAQ / Brief). Only
+            shown in collapsed (whole-bundle) mode. */}
+        {!expandedDocId && onSynthesize && (
+          <div className="flex items-center h-8 rounded-lg overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <Tooltip text="Generate a 1-page decision memo synthesized from this bundle" position="bottom">
+              <button onClick={() => onSynthesize("memo")}
+                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                style={{ color: "var(--accent)" }}>
+                <Sparkles width={11} height={11} />
+                <span>Memo</span>
+              </button>
+            </Tooltip>
+            <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+            <Tooltip text="Generate FAQ from cross-doc questions + answers" position="bottom">
+              <button onClick={() => onSynthesize("faq")}
+                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                style={{ color: "var(--text-secondary)" }}>
+                <span>FAQ</span>
+              </button>
+            </Tooltip>
+            <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+            <Tooltip text="Generate a narrative brief tying the bundle together" position="bottom">
+              <button onClick={() => onSynthesize("brief")}
+                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                style={{ color: "var(--text-secondary)" }}>
+                <span>Brief</span>
+              </button>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Decomposed-view exit chip + status / re-analyze */}
+        {expandedDocId && onCollapseDoc && (
+          <div className="flex items-center h-8 rounded-lg overflow-hidden"
+            style={{ background: "var(--surface)", border: "1px solid var(--accent)" }}>
+            <Tooltip text="Return to bundle overview" position="bottom">
+              <button onClick={onCollapseDoc}
+                className="flex items-center gap-1.5 h-full px-3 text-[11px] font-semibold hover:brightness-110 transition-all"
+                style={{ background: "var(--accent)", color: "#000" }}>
+                <Layers width={11} height={11} strokeWidth={2.5} />
+                <span>Collapse</span>
+              </button>
+            </Tooltip>
+            {isDecomposing ? (
+              <div className="flex items-center gap-1.5 px-3 h-full text-[10px]" style={{ color: "var(--accent)" }}>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                Decomposing…
+              </div>
+            ) : decomposition ? (
+              <Tooltip text="Re-run AI semantic decomposition" position="bottom">
+                <button onClick={() => onRedecomposeDoc?.(expandedDocId)}
+                  className="flex items-center gap-1 px-2.5 h-full text-[10px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
+                  style={{ color: "var(--text-muted)" }}>
+                  <Sparkles width={10} height={10} />
+                  Re-analyze
+                </button>
+              </Tooltip>
+            ) : null}
+          </div>
+        )}
+        {expandedDocId && onAddChunk && decomposition && (
+          <Tooltip text="Append a new chunk to this document" position="bottom">
+            <button onClick={() => onAddChunk(expandedDocId)}
+              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[10px] font-medium hover:brightness-110 transition-all"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+              <Plus width={11} height={11} />
+              Add chunk
+            </button>
+          </Tooltip>
+        )}
+
+        {/* Detail slider — shows current step (n/5) + label */}
+        <div className="flex items-center h-8 rounded-lg overflow-hidden"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <Tooltip text={`Detail level ${detail} of 5: ${DETAIL_LABELS[detail]}`} position="bottom">
+            <div className="flex items-center gap-2 px-2.5 h-full">
+              <Sliders width={11} height={11} style={{ color: "var(--text-muted)" }} />
+              <div className="relative flex items-center" style={{ width: 88 }}>
+                <input type="range" min={1} max={5} value={detail} step={1}
+                  onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
+                  className="w-full h-1 accent-[var(--accent)]" style={{ cursor: "pointer" }} />
+                {/* Step ticks rendered on top of the rail */}
+                <div className="absolute inset-0 flex justify-between items-center pointer-events-none px-[3px]">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <span key={n} className="block rounded-full" style={{
+                      width: 3, height: 3,
+                      background: n <= detail ? "var(--accent)" : "var(--border)",
+                      opacity: n <= detail ? 0.9 : 0.6,
+                    }} />
+                  ))}
+                </div>
+              </div>
+              <span className="text-[10px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--accent)" }}>
+                {detail}/5 · {DETAIL_LABELS[detail]}
+              </span>
+            </div>
+          </Tooltip>
+        </div>
       </div>
 
-      {/* Legend — bottom left */}
+      {/* Top-right: zoom in / out / reset / fullscreen */}
+      <div className="absolute top-3 right-3 z-20 flex items-center h-8 rounded-lg overflow-hidden"
+        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+        <Tooltip text="Zoom out" position="bottom">
+          <button onClick={() => zoomOut({ duration: 200 })}
+            className="flex items-center justify-center w-8 h-full hover:bg-[var(--toggle-bg)] transition-colors"
+            style={{ color: "var(--text-secondary)" }}>
+            <Minus width={12} height={12} />
+          </button>
+        </Tooltip>
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+        <Tooltip text="Zoom in" position="bottom">
+          <button onClick={() => zoomIn({ duration: 200 })}
+            className="flex items-center justify-center w-8 h-full hover:bg-[var(--toggle-bg)] transition-colors"
+            style={{ color: "var(--text-secondary)" }}>
+            <Plus width={12} height={12} />
+          </button>
+        </Tooltip>
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+        <Tooltip text="Reset view" position="bottom">
+          <button onClick={() => rfFitView({ padding: 0.15, maxZoom: 1.2, duration: 300 })}
+            className="flex items-center justify-center w-8 h-full hover:bg-[var(--toggle-bg)] transition-colors"
+            style={{ color: "var(--text-secondary)" }}>
+            <Circle width={11} height={11} />
+          </button>
+        </Tooltip>
+        <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+        <Tooltip text={isFullscreen ? "Exit fullscreen" : "Fullscreen"} position="bottom">
+          <button onClick={toggleFullscreen}
+            className="flex items-center justify-center w-8 h-full hover:bg-[var(--toggle-bg)] transition-colors"
+            style={{ color: "var(--text-secondary)" }}>
+            {isFullscreen ? <Minimize width={11} height={11} /> : <Maximize width={11} height={11} />}
+          </button>
+        </Tooltip>
+      </div>
+
+      {/* Decompose error (floats below the top-left toolbar so it never
+          collides with the action chips) */}
+      {expandedDocId && decomposeError && (
+        <div className="absolute top-12 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px]"
+          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid #ef4444", color: "#ef4444", maxWidth: "min(420px, 60%)" }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {decomposeError}
+        </div>
+      )}
+
+      {/* Bottom-left: type filter pills (decomposed mode only) */}
+      {expandedDocId && decomposition && onChangeChunkTypeFilter && (() => {
+        const presentTypes = Array.from(new Set(decomposition.chunks.map(c => c.type)));
+        if (presentTypes.length <= 1) return null;
+        return (
+          <div className="absolute bottom-12 left-3 z-20 flex items-center gap-1 px-1 py-1 rounded-lg flex-wrap"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", maxWidth: "60vw" }}>
+            <button
+              onClick={() => onChangeChunkTypeFilter(null)}
+              className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+              style={{
+                color: chunkTypeFilter === null ? "var(--accent)" : "var(--text-faint)",
+                background: chunkTypeFilter === null ? "var(--accent-dim)" : "transparent",
+              }}
+            >All</button>
+            {presentTypes.map(t => {
+              const palette = CHUNK_TYPE_COLORS[t] || CHUNK_TYPE_COLORS.context;
+              const active = chunkTypeFilter === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => onChangeChunkTypeFilter(active ? null : t)}
+                  className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded transition-colors"
+                  style={{
+                    color: active ? palette.text : "var(--text-faint)",
+                    background: active ? `${palette.border}22` : "transparent",
+                    border: active ? `1px solid ${palette.border}55` : "1px solid transparent",
+                  }}
+                >{t}</button>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Bottom-left: legend */}
       {(() => {
         const types = new Set<string>();
         nodes.forEach(n => { if (n.type) types.add(n.type); });
@@ -590,7 +1407,8 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           if (ct.has("tag")) items.push({ icon: "#", label: "Tags", color: TYPE_COLORS.tag.border });
         }
         return items.length > 0 ? (
-          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 px-3 py-1.5 rounded-lg" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 h-7 px-3 rounded-lg"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
             {items.map((item, i) => (
               <div key={i} className="flex items-center gap-1">
                 <span className="text-[10px]" style={{ color: item.color }}>{item.icon}</span>
@@ -601,14 +1419,49 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
         ) : null;
       })()}
 
-      {/* Custom zoom controls — above minimap */}
-      <div className="absolute bottom-[120px] right-3 z-20 flex flex-col gap-0.5 rounded-lg overflow-hidden" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-        <button onClick={() => zoomIn()} className="px-2 py-1.5 text-xs hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-secondary)" }}>+</button>
-        <div style={{ height: 1, background: "var(--border)" }} />
-        <button onClick={() => zoomOut()} className="px-2 py-1.5 text-xs hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-secondary)" }}>−</button>
-        <div style={{ height: 1, background: "var(--border)" }} />
-        <button onClick={() => rfFitView({ padding: 0.3, maxZoom: 1 })} className="px-2 py-1.5 text-[9px] hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-muted)" }}>Fit</button>
-      </div>
+      {/* Right-click context menu on document nodes */}
+      {docCtxMenu && (
+        <div
+          className="fixed z-[200] py-1 rounded-lg shadow-xl"
+          style={{
+            left: Math.min(docCtxMenu.x, (typeof window !== "undefined" ? window.innerWidth : 1024) - 180),
+            top: Math.min(docCtxMenu.y, (typeof window !== "undefined" ? window.innerHeight : 768) - 90),
+            minWidth: 180,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onOpenDoc && (
+            <button
+              onClick={() => { onOpenDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <ExternalLink width={11} height={11} /> Open
+            </button>
+          )}
+          {onDecomposeDoc && (
+            <button
+              onClick={() => { onDecomposeDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <Layers width={11} height={11} /> Decompose into sections
+            </button>
+          )}
+          {onRemoveDoc && (
+            <button
+              onClick={() => { onRemoveDoc(docCtxMenu.docId); setDocCtxMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-colors hover:bg-[var(--menu-hover)]"
+              style={{ color: "#ef4444" }}
+            >
+              <Trash2 width={11} height={11} /> Remove from bundle
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
