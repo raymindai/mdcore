@@ -10198,6 +10198,25 @@ ${clone.innerHTML}
                       </div>
                       {/* Account + Sign Out */}
                       <div className="py-1">
+                        {/* Hub link — only shown when the user has opted in.
+                            Owners often forget where their hub lives once
+                            they set it up; surface it next to Settings so
+                            the URL is a click away. */}
+                        {(profile as { hub_slug?: string | null; hub_public?: boolean } | null)?.hub_public &&
+                         (profile as { hub_slug?: string | null }).hub_slug && (
+                          <button
+                            onClick={() => {
+                              const slug = (profile as { hub_slug?: string }).hub_slug;
+                              setShowAuthMenu(false);
+                              if (slug) window.open(`/hub/${slug}`, "_blank");
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            <span style={{ fontSize: 12 }}>✨</span>
+                            My Hub <span className="font-mono ml-auto" style={{ color: "var(--text-faint)", fontSize: 10 }}>/hub/{(profile as { hub_slug?: string }).hub_slug}</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
                           className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"

@@ -18,6 +18,10 @@ interface BundleDocument {
   markdown: string;
   created_at: string;
   updated_at: string;
+  /** Per-doc annotation set on bundle_documents — surfaces here as a
+   *  read-only "✨ note" under the doc title in the side panel. Owners
+   *  edit it from the sidebar list view; viewers only read. */
+  annotation?: string | null;
 }
 
 export default function BundleViewer({
@@ -547,11 +551,30 @@ export default function BundleViewer({
             {/* Content */}
             <div className="flex-1 overflow-auto px-5 py-5">
               {selectedDocId ? (
-                <div
-                  ref={previewRef}
-                  className="mdcore-rendered prose prose-invert"
-                  dangerouslySetInnerHTML={{ __html: selectedHtml }}
-                />
+                <>
+                  {/* Read-only annotation card — set by the bundle owner via
+                      AI Bundle Generation or manual edit. Only renders when
+                      the doc actually carries one. */}
+                  {(() => {
+                    const sel = documents.find(d => d.id === selectedDocId);
+                    const ann = sel?.annotation?.trim();
+                    if (!ann) return null;
+                    return (
+                      <div
+                        className="mb-5 px-3.5 py-2.5 rounded-md text-sm leading-relaxed"
+                        style={{ background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 40%, transparent)", color: "var(--text-secondary)" }}
+                      >
+                        <span style={{ color: "var(--accent)", fontWeight: 600, marginRight: 6 }}>✨</span>
+                        {ann}
+                      </div>
+                    );
+                  })()}
+                  <div
+                    ref={previewRef}
+                    className="mdcore-rendered prose prose-invert"
+                    dangerouslySetInnerHTML={{ __html: selectedHtml }}
+                  />
+                </>
               ) : selectedNodeInfo && (
                 <div className="space-y-5">
                   {/* Analysis panel — full deep analysis */}
