@@ -1,4 +1,10 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// BundleEmbed manipulates AI-extracted graph data whose shape is intentionally
+// loose (nodes / edges with arbitrary metadata). The v6 Bundle MVP rewrite
+// (W2-W4) will narrow these into typed primitives; until then `any` is the
+// pragmatic stand-in. Disabling at file scope rather than line-by-line to
+// keep the file readable.
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
