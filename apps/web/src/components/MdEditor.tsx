@@ -1891,6 +1891,23 @@ function BundleCreatorModal({
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiDescription, setAiDescription] = useState("");
   const [aiAnnotations, setAiAnnotations] = useState<Record<string, string>>({});
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+
+  // Fetch suggestion prompts on mount — fire once, keep result for the
+  // life of the modal. Empty list (cold hub / AI unavailable) hides
+  // the chip row silently.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/bundles/suggestions", { headers: authHeaders });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (Array.isArray(data?.prompts)) setAiSuggestions(data.prompts);
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [authHeaders]);
 
   const askAI = useCallback(async () => {
     const prompt = aiPrompt.trim();
@@ -2019,6 +2036,70 @@ function BundleCreatorModal({
           )}
           {aiDescription && !aiError && (
             <p className="text-caption mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiDescription}</p>
+          )}
+          {/* Auto-generated prompt suggestions — click to fill + run.
+              Hidden once the user has run a generation (description set)
+              or while a generation is in flight. */}
+          {aiSuggestions.length > 0 && !aiGenerating && !aiDescription && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {aiSuggestions.map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setAiPrompt(p);
+                    // Run on next tick so setAiPrompt commits before askAI
+                    // reads aiPrompt from its closure.
+                    setTimeout(() => {
+                      setAiPrompt(p);
+                      // Inline call with explicit prompt — avoids waiting for
+                      // a re-render to push state into askAI's closure.
+                      (async () => {
+                        if (aiGenerating) return;
+                        setAiError(null);
+                        setAiGenerating(true);
+                        try {
+                          const res = await fetch("/api/bundles/ai-generate", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", ...authHeaders },
+                            body: JSON.stringify({ prompt: p }),
+                          });
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.error || `Request failed (${res.status})`);
+                          }
+                          const data = await res.json();
+                          const suggestion = data?.suggestion;
+                          if (!suggestion) throw new Error("Empty response");
+                          if (suggestion.title) setTitle(suggestion.title);
+                          setAiDescription(suggestion.description || "");
+                          const picks: string[] = Array.isArray(suggestion.documents) ? suggestion.documents.map((d: { id: string }) => d.id) : [];
+                          setSelectedIds(picks);
+                          const ann: Record<string, string> = {};
+                          if (Array.isArray(suggestion.documents)) {
+                            for (const d of suggestion.documents as Array<{ id: string; annotation?: string }>) {
+                              if (d?.id && d.annotation) ann[d.id] = d.annotation;
+                            }
+                          }
+                          setAiAnnotations(ann);
+                        } catch (err) {
+                          setAiError(err instanceof Error ? err.message : "AI generation failed");
+                        } finally {
+                          setAiGenerating(false);
+                        }
+                      })();
+                    }, 0);
+                  }}
+                  className="text-caption px-2 py-1 rounded-full transition-colors"
+                  style={{
+                    background: "var(--toggle-bg)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border-dim)",
+                  }}
+                >
+                  ✨ {p}
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <div className="px-5 py-4 shrink-0">
