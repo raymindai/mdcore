@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ELK from "elkjs/lib/elk.bundled.js";
-import { Copy, Plus, Minus, Sliders, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil } from "lucide-react";
+import { Copy, Plus, Minus, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil, MoreHorizontal, FileText, Lightbulb, CheckSquare, Tag } from "lucide-react";
 import Tooltip from "./Tooltip";
 import { parseSections, sectionPreview, type Section } from "@/lib/parse-sections";
 
@@ -510,14 +510,14 @@ function DocumentCardNode({ data }: { data: any }) {
 
 function ConceptTagNode({ data }: { data: any }) {
   const style = TYPE_COLORS[data.type] || TYPE_COLORS.concept;
-  const icon = data.type === "entity" ? "◆" : data.type === "tag" ? "#" : "○";
+  const Icon = data.type === "entity" ? CheckSquare : data.type === "tag" ? Tag : Lightbulb;
   return (
     <div className="rounded-lg px-3 py-2 flex items-center gap-2" style={{
       background: style.bg, border: `1.5px solid ${style.border}`, maxWidth: 180,
     }}>
       <Handle type="target" position={Position.Left} style={{ background: style.border, width: 5, height: 5, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: style.border, width: 5, height: 5, border: "none" }} />
-      <span className="text-[9px]" style={{ color: style.text, opacity: 0.5 }}>{icon}</span>
+      <Icon width={9} height={9} style={{ color: style.text, opacity: 0.7, flexShrink: 0 }} />
       <span className="text-[10px] font-medium truncate" style={{ color: style.text }}>{data.label}</span>
     </div>
   );
@@ -1160,155 +1160,126 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           style={{ background: theme === "dark" ? "#18181b" : "#f4f4f5", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", width: 160, height: 100 }} />
       </ReactFlow>
 
-      {/* Top-left: [Analyze | Copy Context | Add docs]  [Detail slider]
-          When a doc is decomposed, bundle-level actions (Add docs, Copy
-          Context) are hidden — they don't make sense in single-doc focus
-          mode and would crowd the toolbar past the viewport edge. */}
-      <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 flex-wrap" style={{ maxWidth: "calc(100% - 24px)" }}>
-        {/* Action group: Analyze + Copy Context + Add docs */}
-        {!expandedDocId && (onRegenerate || onCopyContext || onRequestAddDocs) && (
-          <div className="flex items-center h-8 rounded-lg overflow-hidden"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            {onRegenerate && (
-              <Tooltip text={isAnalyzing ? "Analyzing bundle…" : aiGraph ? "Re-analyze with AI" : "Analyze bundle with AI"} position="bottom">
-                <button onClick={onRegenerate} disabled={isAnalyzing}
-                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] disabled:cursor-not-allowed transition-colors"
-                  style={{ color: "var(--accent)" }}>
-                  {isAnalyzing
-                    ? <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                    : <Sparkles width={11} height={11} />}
-                  <span>{isAnalyzing ? "Analyzing…" : "Analyze"}</span>
-                </button>
-              </Tooltip>
-            )}
-            {onRegenerate && onCopyContext && (
-              <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-            )}
-            {onCopyContext && (
-              <Tooltip text="Copy entire bundle as one prompt for ChatGPT / Claude / Gemini" position="bottom">
-                <button onClick={onCopyContext}
-                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                  style={{ color: "var(--text-secondary)" }}>
-                  <Copy width={11} height={11} />
-                  <span>Copy Context</span>
-                </button>
-              </Tooltip>
-            )}
-            {onCopyContext && onRequestAddDocs && (
-              <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-            )}
-            {onRequestAddDocs && (
-              <Tooltip text="Add documents to this bundle" position="bottom">
-                <button onClick={onRequestAddDocs}
-                  className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                  style={{ color: "var(--text-secondary)" }}>
-                  <FilePlus2 width={11} height={11} />
-                  <span>Add</span>
-                </button>
-              </Tooltip>
-            )}
-          </div>
-        )}
-
-        {/* Synthesize group — bundle-level outputs (Memo / FAQ / Brief). Only
-            shown in collapsed (whole-bundle) mode. */}
-        {!expandedDocId && onSynthesize && (
-          <div className="flex items-center h-8 rounded-lg overflow-hidden"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-            <Tooltip text="Generate a 1-page decision memo synthesized from this bundle" position="bottom">
-              <button onClick={() => onSynthesize("memo")}
-                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                style={{ color: "var(--accent)" }}>
-                <Sparkles width={11} height={11} />
-                <span>Memo</span>
-              </button>
-            </Tooltip>
-            <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-            <Tooltip text="Generate FAQ from cross-doc questions + answers" position="bottom">
-              <button onClick={() => onSynthesize("faq")}
-                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                style={{ color: "var(--text-secondary)" }}>
-                <span>FAQ</span>
-              </button>
-            </Tooltip>
-            <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-            <Tooltip text="Generate a narrative brief tying the bundle together" position="bottom">
-              <button onClick={() => onSynthesize("brief")}
-                className="flex items-center gap-1.5 px-3 h-full text-[11px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                style={{ color: "var(--text-secondary)" }}>
-                <span>Brief</span>
-              </button>
-            </Tooltip>
-          </div>
-        )}
-
-        {/* Decomposed-view exit chip + status / re-analyze */}
-        {expandedDocId && onCollapseDoc && (
-          <div className="flex items-center h-8 rounded-lg overflow-hidden"
-            style={{ background: "var(--surface)", border: "1px solid var(--accent)" }}>
-            <Tooltip text="Return to bundle overview" position="bottom">
-              <button onClick={onCollapseDoc}
-                className="flex items-center gap-1.5 h-full px-3 text-[11px] font-semibold hover:brightness-110 transition-all"
-                style={{ background: "var(--accent)", color: "#000" }}>
-                <Layers width={11} height={11} strokeWidth={2.5} />
-                <span>Collapse</span>
-              </button>
-            </Tooltip>
-            {isDecomposing ? (
-              <div className="flex items-center gap-1.5 px-3 h-full text-[10px]" style={{ color: "var(--accent)" }}>
-                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                Decomposing…
-              </div>
-            ) : decomposition ? (
-              <Tooltip text="Re-run AI semantic decomposition" position="bottom">
-                <button onClick={() => onRedecomposeDoc?.(expandedDocId)}
-                  className="flex items-center gap-1 px-2.5 h-full text-[10px] font-medium hover:bg-[var(--toggle-bg)] transition-colors"
-                  style={{ color: "var(--text-muted)" }}>
-                  <Sparkles width={10} height={10} />
-                  Re-analyze
-                </button>
-              </Tooltip>
-            ) : null}
-          </div>
-        )}
-        {expandedDocId && onAddChunk && decomposition && (
-          <Tooltip text="Append a new chunk to this document" position="bottom">
-            <button onClick={() => onAddChunk(expandedDocId)}
-              className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[10px] font-medium hover:brightness-110 transition-all"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-              <Plus width={11} height={11} />
-              Add chunk
-            </button>
-          </Tooltip>
-        )}
-
-        {/* Detail slider — shows current step (n/5) + label */}
-        <div className="flex items-center h-8 rounded-lg overflow-hidden"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-          <Tooltip text={`Detail level ${detail} of 5: ${DETAIL_LABELS[detail]}`} position="bottom">
-            <div className="flex items-center gap-2 px-2.5 h-full">
-              <Sliders width={11} height={11} style={{ color: "var(--text-muted)" }} />
-              <div className="relative flex items-center" style={{ width: 88 }}>
-                <input type="range" min={1} max={5} value={detail} step={1}
-                  onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
-                  className="w-full h-1 accent-[var(--accent)]" style={{ cursor: "pointer" }} />
-                {/* Step ticks rendered on top of the rail */}
-                <div className="absolute inset-0 flex justify-between items-center pointer-events-none px-[3px]">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <span key={n} className="block rounded-full" style={{
-                      width: 3, height: 3,
-                      background: n <= detail ? "var(--accent)" : "var(--border)",
-                      opacity: n <= detail ? 0.9 : 0.6,
-                    }} />
+      {/* Top-left toolbar — collapsed to ONE primary action group + a [⋯] More
+          menu. The previous 5-group layout (Analyze / Synthesize / Add /
+          Decompose / Detail) was the worst readability offender on the
+          canvas; everything except the core "what does AI do for this
+          bundle right now" bar moves into the More dropdown. */}
+      <div className="absolute z-20 flex items-center" style={{ top: "var(--space-3)", left: "var(--space-3)", gap: "var(--space-2)" }}>
+        {/* COLLAPSED MODE — bundle-level actions */}
+        {!expandedDocId && (
+          <>
+            {/* Primary group: Analyze + Synthesis trio */}
+            <div
+              className="flex items-center h-8 rounded-md overflow-hidden"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" }}
+            >
+              {onRegenerate && (
+                <Tooltip text={isAnalyzing ? "Analyzing bundle…" : aiGraph ? "Re-analyze with AI" : "Analyze bundle with AI"} position="bottom">
+                  <button
+                    onClick={onRegenerate}
+                    disabled={isAnalyzing}
+                    className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] disabled:cursor-not-allowed transition-colors"
+                    style={{ color: "var(--accent)", padding: "0 var(--space-3)", gap: "var(--space-2)" }}
+                  >
+                    {isAnalyzing
+                      ? <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                      : <Sparkles width={11} height={11} />}
+                    {isAnalyzing ? "Analyzing…" : "Analyze"}
+                  </button>
+                </Tooltip>
+              )}
+              {onSynthesize && (
+                <>
+                  <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+                  {(["memo", "faq", "brief"] as const).map((kind, i, arr) => (
+                    <div key={kind} className="flex items-center h-full">
+                      <Tooltip
+                        text={
+                          kind === "memo" ? "Generate a 1-page decision memo from this bundle"
+                          : kind === "faq" ? "Generate FAQ from cross-doc questions + answers"
+                          : "Generate a narrative brief tying the bundle together"
+                        }
+                        position="bottom"
+                      >
+                        <button
+                          onClick={() => onSynthesize(kind)}
+                          className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] transition-colors"
+                          style={{ color: "var(--text-secondary)", padding: "0 var(--space-3)" }}
+                        >
+                          {kind === "memo" ? "Memo" : kind === "faq" ? "FAQ" : "Brief"}
+                        </button>
+                      </Tooltip>
+                      {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: "var(--border)" }} />}
+                    </div>
                   ))}
-                </div>
-              </div>
-              <span className="text-[10px] font-medium tabular-nums whitespace-nowrap" style={{ color: "var(--accent)" }}>
-                {detail}/5 · {DETAIL_LABELS[detail]}
-              </span>
+                </>
+              )}
             </div>
-          </Tooltip>
-        </div>
+
+            {/* More menu — Copy Context, Add docs, Detail level */}
+            <CanvasMoreMenu
+              onCopyContext={onCopyContext}
+              onRequestAddDocs={onRequestAddDocs}
+              detail={detail}
+              setDetail={setDetail}
+              detailLabels={DETAIL_LABELS}
+            />
+          </>
+        )}
+
+        {/* EXPANDED MODE — single decomposed doc */}
+        {expandedDocId && onCollapseDoc && (
+          <>
+            <div
+              className="flex items-center h-8 overflow-hidden"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--accent)", borderRadius: "var(--radius-md)" }}
+            >
+              <Tooltip text="Return to bundle overview" position="bottom">
+                <button
+                  onClick={onCollapseDoc}
+                  className="inline-flex items-center text-caption font-semibold h-full hover:brightness-110 transition-all"
+                  style={{ background: "var(--accent)", color: "#000", padding: "0 var(--space-3)", gap: "var(--space-2)" }}
+                >
+                  <Layers width={11} height={11} strokeWidth={2.5} />
+                  Collapse
+                </button>
+              </Tooltip>
+              {isDecomposing ? (
+                <div className="inline-flex items-center text-caption" style={{ color: "var(--accent)", padding: "0 var(--space-3)", gap: "var(--space-2)" }}>
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                  Decomposing…
+                </div>
+              ) : decomposition ? (
+                <Tooltip text="Re-run AI semantic decomposition" position="bottom">
+                  <button
+                    onClick={() => onRedecomposeDoc?.(expandedDocId)}
+                    className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] transition-colors"
+                    style={{ color: "var(--text-muted)", padding: "0 var(--space-3)", gap: "var(--space-1)" }}
+                  >
+                    <Sparkles width={10} height={10} />
+                    Re-analyze
+                  </button>
+                </Tooltip>
+              ) : null}
+              {onAddChunk && decomposition && (
+                <>
+                  <div style={{ width: 1, height: 18, background: "var(--border)" }} />
+                  <Tooltip text="Append a new chunk to this document" position="bottom">
+                    <button
+                      onClick={() => onAddChunk(expandedDocId)}
+                      className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] transition-colors"
+                      style={{ color: "var(--text-secondary)", padding: "0 var(--space-3)", gap: "var(--space-1)" }}
+                    >
+                      <Plus width={11} height={11} />
+                      Add chunk
+                    </button>
+                  </Tooltip>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Top-right: zoom in / out / reset / fullscreen */}
@@ -1396,23 +1367,23 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
       {(() => {
         const types = new Set<string>();
         nodes.forEach(n => { if (n.type) types.add(n.type); });
-        const items: Array<{ icon: string; label: string; color: string }> = [];
-        if (types.has("summaryNode")) items.push({ icon: "◈", label: "Analysis", color: "#60a5fa" });
-        if (types.has("documentCard")) items.push({ icon: "■", label: "Documents", color: "#fb923c" });
+        const items: Array<{ Icon: typeof Sparkles; label: string; color: string }> = [];
+        if (types.has("summaryNode")) items.push({ Icon: Sparkles, label: "Analysis", color: "var(--color-cool)" });
+        if (types.has("documentCard")) items.push({ Icon: FileText, label: "Documents", color: "var(--accent)" });
         if (types.has("conceptTag")) {
           const ct = new Set<string>();
           nodes.filter(n => n.type === "conceptTag").forEach(n => ct.add((n.data as any)?.type || "concept"));
-          if (ct.has("concept")) items.push({ icon: "○", label: "Concepts", color: TYPE_COLORS.concept.border });
-          if (ct.has("entity")) items.push({ icon: "◆", label: "Entities", color: TYPE_COLORS.entity.border });
-          if (ct.has("tag")) items.push({ icon: "#", label: "Tags", color: TYPE_COLORS.tag.border });
+          if (ct.has("concept")) items.push({ Icon: Lightbulb, label: "Concepts", color: "var(--color-cool)" });
+          if (ct.has("entity")) items.push({ Icon: CheckSquare, label: "Entities", color: "var(--color-success)" });
+          if (ct.has("tag")) items.push({ Icon: Tag, label: "Tags", color: "var(--color-neutral)" });
         }
         return items.length > 0 ? (
-          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 h-7 px-3 rounded-lg"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 h-7 px-3 rounded-md"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
             {items.map((item, i) => (
               <div key={i} className="flex items-center gap-1">
-                <span className="text-[10px]" style={{ color: item.color }}>{item.icon}</span>
-                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{item.label}</span>
+                <item.Icon width={10} height={10} style={{ color: item.color }} />
+                <span className="text-caption" style={{ color: "var(--text-muted)" }}>{item.label}</span>
               </div>
             ))}
           </div>
@@ -1460,6 +1431,108 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
               <Trash2 width={11} height={11} /> Remove from bundle
             </button>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Canvas More menu — secondary actions tucked behind a single button so
+//      the toolbar stays at one primary group instead of five competing chips. ───
+function CanvasMoreMenu({
+  onCopyContext,
+  onRequestAddDocs,
+  detail,
+  setDetail,
+  detailLabels,
+}: {
+  onCopyContext?: () => void;
+  onRequestAddDocs?: () => void;
+  detail: DetailLevel;
+  setDetail: (d: DetailLevel) => void;
+  detailLabels: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+  if (!onCopyContext && !onRequestAddDocs) return null;
+
+  return (
+    <div ref={ref} className="relative">
+      <Tooltip text="More — Copy context, Add docs, Detail level" position="bottom">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="inline-flex items-center justify-center h-8 hover:bg-[var(--toggle-bg)] transition-colors"
+          style={{
+            width: 32,
+            background: open ? "var(--toggle-bg)" : "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            color: "var(--text-muted)",
+          }}
+        >
+          <MoreHorizontal width={13} height={13} />
+        </button>
+      </Tooltip>
+      {open && (
+        <div
+          className="absolute z-30 flex flex-col"
+          style={{
+            top: "calc(100% + var(--space-1))",
+            left: 0,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-md)",
+            minWidth: 240,
+            padding: "var(--space-1)",
+          }}
+        >
+          {onCopyContext && (
+            <button
+              onClick={() => { onCopyContext(); setOpen(false); }}
+              className="text-left text-body inline-flex items-center hover:bg-[var(--toggle-bg)] transition-colors rounded"
+              style={{ color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}
+            >
+              <Copy width={12} height={12} />
+              Copy bundle as context
+            </button>
+          )}
+          {onRequestAddDocs && (
+            <button
+              onClick={() => { onRequestAddDocs(); setOpen(false); }}
+              className="text-left text-body inline-flex items-center hover:bg-[var(--toggle-bg)] transition-colors rounded"
+              style={{ color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}
+            >
+              <FilePlus2 width={12} height={12} />
+              Add documents…
+            </button>
+          )}
+          <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
+          {/* Detail level — inline range as a "settings row" */}
+          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-1)" }}>
+            <div className="flex items-center justify-between">
+              <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Detail level</span>
+              <span className="text-caption font-medium tabular-nums" style={{ color: "var(--accent)" }}>{detail}/5 · {detailLabels[detail]}</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={detail}
+              step={1}
+              onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
+              className="w-full h-1 accent-[var(--accent)]"
+              style={{ cursor: "pointer" }}
+            />
+          </div>
         </div>
       )}
     </div>

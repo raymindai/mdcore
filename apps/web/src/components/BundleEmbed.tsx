@@ -7,8 +7,8 @@ import { postProcessHtml } from "@/lib/postprocess";
 import { parseSections, assembleSections, type Section } from "@/lib/parse-sections";
 import { aggregateDiscoveries, type ChunkRef, type TensionItem, type ThreadItem } from "@/lib/discoveries";
 import Tooltip from "@/components/Tooltip";
-import { Button, Chip, Badge, ModalShell } from "@/components/ui";
-import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, X as XIcon } from "lucide-react";
+import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
+import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
 
 // Mirror of the AI route's response shape — kept inline to avoid a public type.
 export interface SemanticChunk {
@@ -1335,55 +1335,47 @@ function DiscoveriesPanel({
         {/* Tensions */}
         {tensions.length > 0 && (
           <DiscoverySection
-            icon={<AlertTriangle width={12} height={12} style={{ color: "#ef4444" }} />}
+            icon={<AlertTriangle width={12} height={12} style={{ color: "var(--color-danger)" }} />}
             label="Tensions"
             count={tensions.length}
-            color="#ef4444"
+            color="var(--color-danger)"
+            defaultOpen
           >
             {tensions.map(t => {
               const res = tensionResolutions?.[t.id];
               return (
-                <div key={t.id} className="rounded-lg p-2.5 space-y-1.5"
-                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                  <div className="flex items-start gap-2">
-                    <button onClick={() => onSelectChunk(t.source)}
-                      className="flex-1 text-left text-[11px] leading-snug hover:underline"
-                      style={{ color: "var(--text-primary)" }}>
-                      <span className="font-semibold">{t.source.chunkLabel}</span>
-                      <span className="text-[9px] ml-1.5" style={{ color: "var(--text-faint)" }}>{t.source.docTitle}</span>
-                    </button>
-                  </div>
-                  <div className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded inline-block font-semibold" style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}>
-                    ↔ {t.relation}
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <button onClick={() => onSelectChunk(t.target)}
-                      className="flex-1 text-left text-[11px] leading-snug hover:underline"
-                      style={{ color: "var(--text-primary)" }}>
-                      <span className="font-semibold">{t.target.chunkLabel}</span>
-                      <span className="text-[9px] ml-1.5" style={{ color: "var(--text-faint)" }}>{t.target.docTitle}</span>
-                    </button>
-                  </div>
-                  {/* Resolve with AI — shows inline */}
+                <div key={t.id} className="rounded-md flex flex-col"
+                  style={{ background: "var(--color-danger-dim)", border: "1px solid var(--color-danger)", padding: "var(--space-3)", gap: "var(--space-2)" }}>
+                  <button onClick={() => onSelectChunk(t.source)}
+                    className="text-left text-caption leading-snug hover:underline"
+                    style={{ color: "var(--text-primary)" }}>
+                    <span className="font-semibold">{t.source.chunkLabel}</span>
+                    <span className="text-caption ml-2" style={{ color: "var(--text-faint)" }}>{t.source.docTitle}</span>
+                  </button>
+                  <Badge variant="danger" uppercase>↔ {t.relation}</Badge>
+                  <button onClick={() => onSelectChunk(t.target)}
+                    className="text-left text-caption leading-snug hover:underline"
+                    style={{ color: "var(--text-primary)" }}>
+                    <span className="font-semibold">{t.target.chunkLabel}</span>
+                    <span className="text-caption ml-2" style={{ color: "var(--text-faint)" }}>{t.target.docTitle}</span>
+                  </button>
                   {!res && onResolveTension && (
-                    <button onClick={() => onResolveTension(t)}
-                      className="w-full mt-1 text-[10px] font-semibold py-1 rounded transition-colors hover:brightness-110"
-                      style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
-                      ✨ Resolve with AI
-                    </button>
+                    <Button variant="danger" size="xs" onClick={() => onResolveTension(t)} className="w-full">
+                      Resolve with AI
+                    </Button>
                   )}
                   {res?.loading && (
-                    <div className="text-[10px] flex items-center gap-1.5 py-1" style={{ color: "var(--text-faint)" }}>
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#ef4444" }} />
+                    <div className="text-caption flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--color-danger)" }} />
                       Reconciling…
                     </div>
                   )}
                   {res?.error && (
-                    <div className="text-[10px] py-1" style={{ color: "#ef4444" }}>Error: {res.error}</div>
+                    <div className="text-caption" style={{ color: "var(--color-danger)" }}>Error: {res.error}</div>
                   )}
                   {res?.text && (
-                    <div className="text-[10px] leading-relaxed mt-1 px-2 py-1.5 rounded whitespace-pre-wrap"
-                      style={{ background: "rgba(74,222,128,0.06)", color: "var(--text-secondary)", border: "1px solid rgba(74,222,128,0.18)" }}>
+                    <div className="text-caption leading-relaxed rounded-md whitespace-pre-wrap"
+                      style={{ background: "var(--color-success-dim)", color: "var(--text-secondary)", border: "1px solid var(--color-success)", padding: "var(--space-2) var(--space-3)" }}>
                       {res.text}
                     </div>
                   )}
@@ -1393,43 +1385,45 @@ function DiscoveriesPanel({
           </DiscoverySection>
         )}
 
-        {/* Open Questions */}
-        {questions.length > 0 && (
-          <DiscoverySection
-            icon={<HelpCircle width={12} height={12} style={{ color: "#a78bfa" }} />}
-            label="Open Questions"
-            count={questions.length}
-            color="#a78bfa"
-          >
-            {questions.map(q => (
-              <button key={`${q.docId}:${q.chunkId}`} onClick={() => onSelectChunk(q)}
-                className="w-full text-left rounded-lg px-2.5 py-2 hover:bg-[var(--menu-hover)] transition-colors group"
-                style={{ background: "var(--toggle-bg)" }}>
-                <div className="text-[11px] font-semibold leading-snug mb-0.5" style={{ color: "var(--text-primary)" }}>
-                  {q.chunkLabel}
-                </div>
-                <div className="text-[9px]" style={{ color: "var(--text-faint)" }}>{q.docTitle}</div>
-              </button>
-            ))}
-          </DiscoverySection>
-        )}
-
         {/* Bundle-level Insights — non-obvious patterns the AI noticed
             looking at all docs together. Pulled from the bundle graph's
             `insights` (highest-value Discoveries because they require
             whole-bundle reasoning, not just per-doc extraction). */}
         {insights.length > 0 && (
           <DiscoverySection
-            icon={<Lightbulb width={12} height={12} style={{ color: "#fbbf24" }} />}
+            icon={<Lightbulb width={12} height={12} style={{ color: "var(--color-warm)" }} />}
             label="Insights"
             count={insights.length}
-            color="#fbbf24"
+            color="var(--color-warm)"
+            defaultOpen
           >
             {insights.map((ins, i) => (
-              <div key={i} className="rounded-lg px-2.5 py-2 leading-relaxed text-[11px]"
-                style={{ background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.18)", color: "var(--text-secondary)" }}>
+              <div key={i} className="rounded-md leading-relaxed text-caption"
+                style={{ background: "var(--color-warm-dim)", color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)" }}>
                 {ins}
               </div>
+            ))}
+          </DiscoverySection>
+        )}
+
+        {/* Open Questions */}
+        {questions.length > 0 && (
+          <DiscoverySection
+            icon={<HelpCircle width={12} height={12} style={{ color: "var(--color-cool)" }} />}
+            label="Open Questions"
+            count={questions.length}
+            color="var(--color-cool)"
+            defaultOpen={false}
+          >
+            {questions.map(q => (
+              <button key={`${q.docId}:${q.chunkId}`} onClick={() => onSelectChunk(q)}
+                className="w-full text-left rounded-md hover:bg-[var(--menu-hover)] transition-colors"
+                style={{ background: "var(--toggle-bg)", padding: "var(--space-2) var(--space-3)" }}>
+                <div className="text-caption font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+                  {q.chunkLabel}
+                </div>
+                <div className="text-caption" style={{ color: "var(--text-faint)" }}>{q.docTitle}</div>
+              </button>
             ))}
           </DiscoverySection>
         )}
@@ -1437,15 +1431,16 @@ function DiscoveriesPanel({
         {/* Gaps — what these docs DON'T cover */}
         {gaps.length > 0 && (
           <DiscoverySection
-            icon={<HelpCircle width={12} height={12} style={{ color: "#f87171" }} />}
+            icon={<HelpCircle width={12} height={12} style={{ color: "var(--color-warm)" }} />}
             label="Gaps"
             count={gaps.length}
-            color="#f87171"
+            color="var(--color-warm)"
+            defaultOpen={false}
           >
             {gaps.map((g, i) => (
-              <div key={i} className="rounded-lg px-2.5 py-2 leading-relaxed text-[11px] flex gap-2"
-                style={{ background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.18)", color: "var(--text-secondary)" }}>
-                <span className="shrink-0 mt-0.5 font-bold" style={{ color: "#f87171" }}>!</span>
+              <div key={i} className="rounded-md leading-relaxed text-caption flex"
+                style={{ background: "var(--color-warm-dim)", color: "var(--text-secondary)", gap: "var(--space-2)", padding: "var(--space-2) var(--space-3)" }}>
+                <span className="shrink-0 mt-0.5 font-bold" style={{ color: "var(--color-warm)" }}>!</span>
                 <span>{g}</span>
               </div>
             ))}
@@ -1456,28 +1451,29 @@ function DiscoveriesPanel({
             between specific document pairs. Click either side → open that doc. */}
         {connections.length > 0 && (
           <DiscoverySection
-            icon={<GitBranch width={12} height={12} style={{ color: "#60a5fa" }} />}
+            icon={<GitBranch width={12} height={12} style={{ color: "var(--color-cool)" }} />}
             label="Connections"
             count={connections.length}
-            color="#60a5fa"
+            color="var(--color-cool)"
+            defaultOpen={false}
           >
             {connections.map((c, i) => (
-              <div key={i} className="rounded-lg px-2.5 py-2"
-                style={{ background: "var(--toggle-bg)", border: "1px solid rgba(96,165,250,0.18)" }}>
-                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <div key={i} className="rounded-md"
+                style={{ background: "var(--toggle-bg)", border: "1px solid var(--color-cool-dim)", padding: "var(--space-2) var(--space-3)" }}>
+                <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: "var(--space-1)" }}>
                   <button onClick={() => onOpenDoc?.(c.doc1Id)}
-                    className="text-[11px] font-semibold hover:underline truncate"
-                    style={{ color: "#60a5fa" }}>
+                    className="text-caption font-semibold hover:underline truncate"
+                    style={{ color: "var(--color-cool)" }}>
                     {docTitleById(c.doc1Id)}
                   </button>
-                  <span className="text-[9px]" style={{ color: "var(--text-faint)" }}>↔</span>
+                  <span className="text-caption" style={{ color: "var(--text-faint)" }}>↔</span>
                   <button onClick={() => onOpenDoc?.(c.doc2Id)}
-                    className="text-[11px] font-semibold hover:underline truncate"
-                    style={{ color: "#60a5fa" }}>
+                    className="text-caption font-semibold hover:underline truncate"
+                    style={{ color: "var(--color-cool)" }}>
                     {docTitleById(c.doc2Id)}
                   </button>
                 </div>
-                <div className="text-[10px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                   {c.relationship}
                 </div>
               </div>
@@ -1488,21 +1484,22 @@ function DiscoveriesPanel({
         {/* Cross-doc Threads */}
         {threads.length > 0 && (
           <DiscoverySection
-            icon={<GitBranch width={12} height={12} style={{ color: "#38bdf8" }} />}
-            label="Cross-doc Threads"
+            icon={<GitBranch width={12} height={12} style={{ color: "var(--color-neutral)" }} />}
+            label="Threads"
             count={threads.length}
-            color="#38bdf8"
+            color="var(--color-neutral)"
+            defaultOpen={false}
           >
             {threads.map(t => (
-              <div key={t.id} className="rounded-lg px-2.5 py-2"
-                style={{ background: "var(--toggle-bg)", border: "1px solid rgba(56,189,248,0.18)" }}>
-                <div className="text-[11px] font-semibold mb-1" style={{ color: "#38bdf8" }}>
+              <div key={t.id} className="rounded-md"
+                style={{ background: "var(--toggle-bg)", border: "1px solid var(--color-neutral-dim)", padding: "var(--space-2) var(--space-3)" }}>
+                <div className="text-caption font-semibold" style={{ color: "var(--color-neutral)", marginBottom: "var(--space-1)" }}>
                   {t.label}
                 </div>
                 <div className="space-y-0.5">
                   {t.occurrences.map(ref => (
                     <button key={`${ref.docId}:${ref.chunkId}`} onClick={() => onSelectChunk(ref)}
-                      className="w-full text-left text-[10px] leading-snug hover:underline truncate"
+                      className="w-full text-left text-caption leading-snug hover:underline truncate"
                       style={{ color: "var(--text-secondary)" }}>
                       <span style={{ color: "var(--text-faint)" }}>·</span> {ref.docTitle}
                     </button>
@@ -1567,21 +1564,30 @@ function BundleIntentBlock({ intent, canEdit, onSave }: {
   );
 }
 
-function DiscoverySection({ icon, label, count, color, children }: {
+function DiscoverySection({ icon, label, count, color, defaultOpen = true, children }: {
   icon: React.ReactNode;
   label: string;
   count: number;
   color: string;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
-      <div className="flex items-center gap-1.5 mb-2">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center w-full transition-colors rounded hover:bg-[var(--toggle-bg)]"
+        style={{ gap: "var(--space-2)", padding: "var(--space-1) var(--space-1)", marginBottom: open ? "var(--space-2)" : 0 }}
+      >
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: "var(--text-faint)", transition: "transform var(--duration-fast)", transform: open ? "rotate(90deg)" : "none" }}>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
         {icon}
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{label}</span>
-        <span className="text-[9px] px-1.5 py-0.5 rounded font-mono tabular-nums" style={{ background: `${color}18`, color }}>{count}</span>
-      </div>
-      <div className="space-y-1.5">{children}</div>
+        <span className="text-caption font-semibold uppercase tracking-wider flex-1 text-left" style={{ color }}>{label}</span>
+        <span className="text-caption font-mono tabular-nums rounded" style={{ background: `${color}18`, color, padding: "0 var(--space-1)" }}>{count}</span>
+      </button>
+      {open && <div className="flex flex-col" style={{ gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>{children}</div>}
     </div>
   );
 }
@@ -2057,13 +2063,23 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
   onOpenDoc?: (docId: string) => void;
   decomposeBridge?: DecomposeBridge;
 }) {
+  // Map node types → semantic color tokens (5-color palette per
+  // docs/DESIGN-TOKENS.md). All distinct unicode glyphs (◈ ◆ # ○ ■) replaced
+  // with Lucide icons via getNodeIcon below.
   const colorMap: Record<string, string> = {
-    analysis: "#60a5fa", entity: "#4ade80", tag: "#a78bfa", concept: "#38bdf8", document: "#fb923c",
+    analysis: "var(--color-cool)",
+    entity: "var(--color-success)",
+    tag: "var(--color-neutral)",
+    concept: "var(--color-cool)",
+    document: "var(--accent)",
   };
-  const iconMap: Record<string, string> = {
-    analysis: "◈", entity: "◆", tag: "#", concept: "○", document: "■",
-  };
-  const color = colorMap[info.type] || "#38bdf8";
+  const color = colorMap[info.type] || "var(--color-neutral)";
+  const NodeIcon = info.type === "analysis" ? Sparkles
+    : info.type === "entity" ? CheckSquare
+    : info.type === "tag" ? Tag
+    : info.type === "concept" ? Lightbulb
+    : info.type === "document" ? FileText
+    : Layers;
 
   // Resizable width — persists across selections in this session
   const [width, setWidth] = useState<number>(() => {
@@ -2114,8 +2130,8 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
       {/* Header */}
       <div className="shrink-0 px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border)" }}>
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="text-sm shrink-0" style={{ color }}>{iconMap[info.type]}</span>
-          <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{info.label}</span>
+          <NodeIcon width={14} height={14} style={{ color, flexShrink: 0 }} />
+          <span className="text-heading truncate" style={{ color: "var(--text-primary)" }}>{info.label}</span>
           {info.type === "document" && info.docId && onOpenDoc && (
             <button
               onClick={() => onOpenDoc(info.docId)}
@@ -2363,20 +2379,18 @@ function DecomposeListPane({ bridge }: { bridge: DecomposeBridge }) {
   }
   if (!decomp) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-3 max-w-[320px] text-center">
-          <Layers width={28} height={28} style={{ color: "var(--accent)" }} />
-          <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Decompose this document into AI-classified semantic chunks (concepts, claims, examples…) and edit each piece independently.
-          </p>
-          <button
-            onClick={bridge.onRequestDecompose}
-            className="mt-1 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-colors hover:brightness-110"
-            style={{ background: "var(--accent)", color: "#000" }}
-          >
-            Decompose with AI
-          </button>
-        </div>
+      <div className="flex-1 flex items-center justify-center">
+        <EmptyState
+          icon={<Layers width={28} height={28} style={{ color: "var(--accent)" }} />}
+          heading="Not decomposed yet"
+          guidance="Break this doc into AI-classified semantic chunks (concepts, claims, examples…) and edit each piece independently."
+          cta={
+            <Button variant="primary" size="sm" onClick={bridge.onRequestDecompose}>
+              Decompose with AI
+            </Button>
+          }
+        />
+        <span className="hidden">{/* placeholder */}</span>
       </div>
     );
   }
@@ -2470,9 +2484,12 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
       {/* Chunk list */}
       <div className="flex-1 overflow-auto px-3 py-2 space-y-1.5">
         {filtered.length === 0 ? (
-          <div className="text-[11px] text-center py-6" style={{ color: "var(--text-faint)" }}>
-            {search || filter ? "No chunks match your filter." : "No chunks yet."}
-          </div>
+          <EmptyState
+            compact
+            icon={<Layers width={20} height={20} />}
+            heading={search || filter ? "No matching chunks" : "No chunks yet"}
+            guidance={search || filter ? "Try a different filter or search term." : "Run Decompose to extract chunks from this document."}
+          />
         ) : (
           filtered.map((c, i) => {
             const palette = SIDEBAR_CHUNK_COLORS[c.type] || SIDEBAR_CHUNK_COLORS.context;

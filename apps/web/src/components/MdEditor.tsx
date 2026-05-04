@@ -7595,11 +7595,9 @@ ${clone.innerHTML}
               </>
             )}
           </span>
-          {/* Compiled-from-bundle badge + Recompile button. Only shown when
-              the active doc has compile metadata. The "outdated" signal needs
-              source updated_at, which we don't load here yet — Recompile is
-              always available as a manual refresh; we'll wire stale detection
-              once cross-bundle source freshness flows in. */}
+          {/* Compiled-from-bundle badge + Recompile button. Tier 2 hierarchy:
+              hidden until viewport ≥ xl so it never crowds the title at small
+              widths. Uses the new Badge + Button primitives for consistency. */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
             if (!ct?.compileKind || !ct.cloudId) return null;
@@ -7607,28 +7605,24 @@ ${clone.innerHTML}
             const sourceCount = ct.compileFrom?.docIds?.length || 0;
             const isRecompiling = recompilingDocId === ct.cloudId;
             return (
-              <div className="hidden lg:inline-flex items-center gap-1.5">
+              <div className="hidden xl:inline-flex items-center" style={{ gap: "var(--space-2)" }}>
                 <Tooltip text={`Compiled from ${sourceCount} source${sourceCount === 1 ? "" : "s"}${ct.compiledAt ? ` · ${new Date(ct.compiledAt).toLocaleString()}` : ""}`} position="bottom">
-                  <span className="inline-flex items-center gap-1 px-1.5 h-5 rounded text-[10px] font-mono shrink-0 whitespace-nowrap"
-                    style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "1px solid var(--accent)" }}>
-                    <Sparkles width={10} height={10} />
+                  <Badge variant="accent">
+                    <Sparkles width={9} height={9} style={{ marginRight: 4 }} />
                     Compiled · {labels[ct.compileKind] || ct.compileKind}
-                  </span>
+                  </Badge>
                 </Tooltip>
                 <Tooltip text="Re-run synthesis with latest source content" position="bottom">
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="xs"
                     onClick={() => ct.cloudId && recompileDoc(ct.cloudId)}
                     disabled={isRecompiling}
-                    className="inline-flex items-center gap-1 px-1.5 h-5 rounded text-[10px] font-medium transition-colors hover:bg-[var(--menu-hover)]"
-                    style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}
+                    loading={isRecompiling}
+                    leadingIcon={!isRecompiling ? <RotateCcw width={9} height={9} /> : undefined}
                   >
-                    {isRecompiling ? (
-                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                    ) : (
-                      <RotateCcw width={9} height={9} />
-                    )}
                     {isRecompiling ? "Recompiling…" : "Recompile"}
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
             );
