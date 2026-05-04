@@ -40,6 +40,29 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
   const pendingRef = useRef<Parameters<typeof scheduleSave>[0] | null>(null);
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 3;
+
+  // Embedding refresh runs on a separate, longer debounce (10s after the
+  // last successful save). It calls POST /api/embed/{cloudId} which is
+  // idempotent — the server short-circuits when the markdown hash hasn't
+  // changed, so a missed call costs nothing on the next save. Fire-and-
+  // forget; embedding failure must never block the editing flow.
+  const embedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const EMBED_DEBOUNCE_MS = 10000;
+  const scheduleEmbed = useCallback((cloudId: string, token: string | undefined) => {
+    if (!cloudId) return;
+    if (embedTimerRef.current) clearTimeout(embedTimerRef.current);
+    embedTimerRef.current = setTimeout(async () => {
+      embedTimerRef.current = null;
+      try {
+        await fetch(`/api/embed/${cloudId}`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+      } catch {
+        // Silent — next save will retry. Embedding is best-effort.
+      }
+    }, EMBED_DEBOUNCE_MS);
+  }, []);
   // Tracks whether we already attempted a Supabase session refresh for the
   // current 403. Prevents an infinite refresh→403→refresh loop if the user is
   // genuinely signed out or lacks permission on the doc.
@@ -187,6 +210,11 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
             }
             retryCountRef.current = 0; // Reset on success
             setState({ isSaving: false, lastSaved: new Date(), error: null, conflict: null });
+            // Kick off the debounced embedding refresh. Server is the
+            // source of truth for "did anything actually change" via
+            // embedding_source_hash, so we trigger after every save and
+            // let the route decide whether to call OpenAI.
+            scheduleEmbed(args.cloudId, bearer ?? undefined);
           } else if (res.status === 409) {
             // Conflict: someone else saved in between
             const conflictData = await res.json().catch(() => ({}));
@@ -237,6 +265,10 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+    if (embedTimerRef.current) {
+      clearTimeout(embedTimerRef.current);
+      embedTimerRef.current = null;
     }
   }, []);
 
