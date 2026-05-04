@@ -84,16 +84,19 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       .then(() => {});
   }
 
-  // Fetch bundle documents (with document content)
+  // Fetch bundle documents (with document content + per-doc annotation)
   const { data: bundleDocs } = await supabase
     .from("bundle_documents")
-    .select("document_id, sort_order")
+    .select("document_id, sort_order, annotation")
     .eq("bundle_id", id)
     .order("sort_order", { ascending: true });
 
   const docIds = (bundleDocs || []).map(d => d.document_id);
+  const annotationByDocId = new Map<string, string | null>(
+    (bundleDocs || []).map(d => [d.document_id, (d as { annotation?: string | null }).annotation ?? null])
+  );
 
-  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string; is_draft: boolean; edit_mode: string; allowed_emails_count: number }> = [];
+  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string; is_draft: boolean; edit_mode: string; allowed_emails_count: number; annotation: string | null }> = [];
   if (docIds.length > 0) {
     const { data: docs } = await supabase
       .from("documents")
@@ -112,6 +115,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
         is_draft: d.is_draft !== false,
         edit_mode: d.edit_mode || "owner",
         allowed_emails_count: Array.isArray(d.allowed_emails) ? d.allowed_emails.length : 0,
+        annotation: annotationByDocId.get(d.id) ?? null,
       }])
     );
     documents = docIds.map(docId => docsMap.get(docId)).filter(Boolean) as typeof documents;

@@ -47,6 +47,9 @@ interface BundleDocument {
   markdown: string;
   created_at: string;
   updated_at: string;
+  /** Per-doc note attached on bundle_documents — "why this doc belongs."
+   *  Populated by AI Bundle Generation or edited inline in the list view. */
+  annotation?: string | null;
 }
 
 interface BundleEmbedProps {
@@ -886,7 +889,18 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
   }
 
   if (view === "list") {
-    return <BundleListView documents={documents} onOpenDoc={onOpenDoc} />;
+    return (
+      <BundleListView
+        documents={documents}
+        bundleId={bundleId}
+        authHeaders={parentAuthHeaders}
+        canEdit={bundleIsOwner}
+        onOpenDoc={onOpenDoc}
+        onAnnotationSaved={(docId, annotation) => {
+          setDocuments(prev => prev.map(d => d.id === docId ? { ...d, annotation } : d));
+        }}
+      />
+    );
   }
 
   return (
@@ -2579,10 +2593,60 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
 
 // ─── Bundle List View — sequential document rendering with TOC ───
 
-function BundleListView({ documents, onOpenDoc }: { documents: BundleDocument[]; onOpenDoc?: (docId: string) => void }) {
+function BundleListView({
+  documents,
+  bundleId,
+  authHeaders,
+  canEdit,
+  onOpenDoc,
+  onAnnotationSaved,
+}: {
+  documents: BundleDocument[];
+  bundleId: string;
+  authHeaders?: Record<string, string>;
+  canEdit?: boolean;
+  onOpenDoc?: (docId: string) => void;
+  onAnnotationSaved?: (docId: string, annotation: string | null) => void;
+}) {
   const [renderedDocs, setRenderedDocs] = useState<Map<string, string>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(documents[0]?.id || null);
+
+  // Local edit state — keyed by docId. While the user is typing, we don't
+  // round-trip to the server; commit on blur.
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [draftAnnotation, setDraftAnnotation] = useState("");
+  const [savingDocId, setSavingDocId] = useState<string | null>(null);
+
+  const startEdit = (doc: BundleDocument) => {
+    if (!canEdit) return;
+    setEditingDocId(doc.id);
+    setDraftAnnotation(doc.annotation || "");
+  };
+  const cancelEdit = () => { setEditingDocId(null); setDraftAnnotation(""); };
+  const saveEdit = async (doc: BundleDocument) => {
+    const next = draftAnnotation.trim();
+    const prev = (doc.annotation || "").trim();
+    if (next === prev) { cancelEdit(); return; }
+    setSavingDocId(doc.id);
+    try {
+      const res = await fetch(`/api/bundles/${bundleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(authHeaders || {}) },
+        body: JSON.stringify({
+          action: "set-annotations",
+          annotations: { [doc.id]: next },
+        }),
+      });
+      if (res.ok) {
+        onAnnotationSaved?.(doc.id, next || null);
+      }
+    } catch { /* swallow — user can retry */ }
+    finally {
+      setSavingDocId(null);
+      cancelEdit();
+    }
+  };
 
   // Render all documents
   useEffect(() => {
@@ -2650,9 +2714,12 @@ function BundleListView({ documents, onOpenDoc }: { documents: BundleDocument[];
       {/* Sequential rendering */}
       <div className="flex-1 overflow-auto" ref={containerRef}>
         <div className="max-w-3xl mx-auto px-8 py-8">
-          {documents.map((doc, i) => (
+          {documents.map((doc, i) => {
+            const isEditing = editingDocId === doc.id;
+            const hasAnnotation = !!(doc.annotation && doc.annotation.trim());
+            return (
             <div key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <span className="text-caption font-mono w-6 h-6 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
                 <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{doc.title || "Untitled"}</h2>
                 {onOpenDoc && (
@@ -2661,9 +2728,64 @@ function BundleListView({ documents, onOpenDoc }: { documents: BundleDocument[];
                   </button>
                 )}
               </div>
+              {/* Annotation row — "why this doc belongs in the bundle." Editable
+                  inline for owners, read-only for viewers. Empty + non-owner
+                  → row is hidden. Empty + owner → "Add note" CTA. */}
+              {isEditing ? (
+                <div className="mb-4 px-3 py-2 rounded-md" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
+                  <textarea
+                    autoFocus
+                    value={draftAnnotation}
+                    onChange={(e) => setDraftAnnotation(e.target.value)}
+                    onBlur={() => saveEdit(doc)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); saveEdit(doc); }
+                    }}
+                    placeholder="Why this doc belongs here…"
+                    rows={2}
+                    maxLength={500}
+                    className="w-full resize-none bg-transparent outline-none text-sm leading-relaxed"
+                    style={{ color: "var(--text-primary)" }}
+                  />
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+                      {savingDocId === doc.id ? "Saving…" : "Esc to cancel · ⌘↵ to save"}
+                    </span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
+                      {draftAnnotation.length}/500
+                    </span>
+                  </div>
+                </div>
+              ) : hasAnnotation ? (
+                <button
+                  onClick={() => startEdit(doc)}
+                  className="w-full text-left mb-4 px-3 py-2 rounded-md transition-colors group"
+                  style={{
+                    background: "var(--accent-dim)",
+                    border: "1px solid transparent",
+                    cursor: canEdit ? "pointer" : "default",
+                  }}
+                  disabled={!canEdit}
+                  title={canEdit ? "Edit note" : undefined}
+                >
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    <span style={{ color: "var(--accent)", fontWeight: 600 }}>✨</span> {doc.annotation}
+                  </p>
+                </button>
+              ) : canEdit ? (
+                <button
+                  onClick={() => startEdit(doc)}
+                  className="text-caption mb-4 px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-faint)", border: "1px dashed var(--border-dim)" }}
+                >
+                  + Add note for this doc
+                </button>
+              ) : null}
               <div className="mdcore-rendered prose prose-invert" dangerouslySetInnerHTML={{ __html: renderedDocs.get(doc.id) || "" }} />
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
