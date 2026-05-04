@@ -9005,7 +9005,7 @@ ${clone.innerHTML}
                               key={f}
                               onClick={() => { setDocFilter(f); localStorage.setItem("mdfy-doc-filter", f); }}
                               title={tips[f]}
-                              className="flex-1 text-caption py-1 rounded transition-colors"
+                              className="flex-1 text-caption font-mono py-1 rounded transition-colors"
                               style={{
                                 background: isActive ? "var(--accent-dim)" : "transparent",
                                 color: isActive ? "var(--accent)" : "var(--text-faint)",
