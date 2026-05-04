@@ -76,6 +76,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       images: [ogImageUrl],
     },
+    // Advertise the Bundle Spec v1.0 raw markdown alternate so AI
+    // fetchers / clients that follow alternate links pick up the
+    // structured payload directly. Skipped for protected bundles so
+    // the alternate URL doesn't leak.
+    alternates: isProtected ? undefined : {
+      canonical: `https://mdfy.app/b/${id}`,
+      types: {
+        "text/markdown": `https://mdfy.app/b/${id}.md`,
+      },
+    },
   };
 }
 

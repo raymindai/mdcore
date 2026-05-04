@@ -180,20 +180,42 @@ export default function BundleViewer({
     }
   };
 
-  // Copy as Context — concatenate all docs for AI
+  // Copy as Context — fetch the Bundle Spec v1.0 conformant payload from
+  // /raw/bundle/[id] so the user pastes the same structured markdown that
+  // AI fetchers receive when they hit the bundle URL directly. Includes
+  // frontmatter (mdfy_bundle: 1, id, title, url, document_count, updated)
+  // + per-doc URLs + annotations. Falls back to a local concat if the
+  // raw endpoint isn't reachable (shouldn't happen on staging/prod, but
+  // belt-and-suspenders for local dev where Supabase may be offline).
   const handleCopyContext = useCallback(async () => {
-    const context = documents.map((doc, i) => {
-      const title = doc.title || "Untitled";
-      return `--- Document ${i + 1}: ${title} ---\n\n${doc.markdown}`;
-    }).join("\n\n---\n\n");
-
-    const header = `Bundle: ${initialTitle || "Untitled Bundle"}\nDocuments: ${documents.length}\n\n`;
+    let payload = "";
     try {
-      await navigator.clipboard.writeText(header + context);
+      const res = await fetch(`/raw/bundle/${id}`, {
+        headers: { Accept: "text/markdown" },
+      });
+      if (res.ok) {
+        payload = await res.text();
+      }
+    } catch { /* fall through to local fallback */ }
+
+    if (!payload) {
+      // Local fallback — keeps "Copy as context" working even when the
+      // raw endpoint can't be reached. Output is intentionally simpler
+      // than the spec payload so the user notices and reports.
+      const header = `Bundle: ${initialTitle || "Untitled Bundle"}\nDocuments: ${documents.length}\n\n`;
+      const body = documents.map((doc, i) => {
+        const title = doc.title || "Untitled";
+        return `--- Document ${i + 1}: ${title} ---\n\n${doc.markdown}`;
+      }).join("\n\n---\n\n");
+      payload = header + body;
+    }
+
+    try {
+      await navigator.clipboard.writeText(payload);
       setContextCopied(true);
       setTimeout(() => setContextCopied(false), 2000);
     } catch { /* clipboard error */ }
-  }, [documents, initialTitle]);
+  }, [id, documents, initialTitle]);
 
   // Regenerate AI analysis
   const [regenerateKey, setRegenerateKey] = useState(0);

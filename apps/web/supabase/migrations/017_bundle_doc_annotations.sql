@@ -1,0 +1,11 @@
+-- v6 — per-doc annotations on bundle_documents.
+--
+-- Bundle Spec v1.0 wants each entry in a bundle to carry an optional
+-- editorial note ("why this doc is here," "what to focus on"). Stored
+-- on the join row rather than the document itself because the same doc
+-- might mean different things in different bundles.
+--
+-- Additive nullable column — production code that doesn't know about
+-- it ignores the field; the new "Copy as context" + /raw/bundle/[id]
+-- payload reads it when present.
+ALTER TABLE bundle_documents ADD COLUMN IF NOT EXISTS annotation TEXT;

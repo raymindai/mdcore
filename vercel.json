@@ -96,6 +96,24 @@
       "destination": "/raw/:id"
     },
     {
+      "source": "/b/:id([A-Za-z0-9_-]{6,12}).md",
+      "destination": "/raw/bundle/:id"
+    },
+    {
+      "source": "/b/:id([A-Za-z0-9_-]{6,12}).txt",
+      "destination": "/raw/bundle/:id"
+    },
+    {
+      "source": "/b/:id([A-Za-z0-9_-]{6,12})",
+      "has": [{ "type": "header", "key": "accept", "value": ".*text\\/(markdown|plain).*" }],
+      "destination": "/raw/bundle/:id"
+    },
+    {
+      "source": "/b/:id([A-Za-z0-9_-]{6,12})",
+      "has": [{ "type": "header", "key": "user-agent", "value": ".*(GPTBot|ChatGPT-User|OAI-SearchBot|Claude-Web|ClaudeBot|anthropic-ai|Anthropic|Google-Extended|GoogleOther|PerplexityBot|cohere-ai|YouBot|Bytespider|Bingbot|DuckDuckBot|Applebot-Extended|MistralAI|Meta-ExternalAgent).*" }],
+      "destination": "/raw/bundle/:id"
+    },
+    {
       "source": "/:id([A-Za-z0-9_-]{6,12})",
       "has": [{ "type": "header", "key": "sec-fetch-dest", "value": "document" }],
       "destination": "/d/:id"
