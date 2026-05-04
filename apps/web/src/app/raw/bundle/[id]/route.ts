@@ -47,14 +47,16 @@ export async function GET(
     return new NextResponse("Service unavailable", { status: 503 });
   }
 
+  // bundles table doesn't have a deleted_at column — soft-delete is
+  // handled via is_draft + the absence from /api/bundles listings. So
+  // we only need draft/password/allowed_emails gating here.
   const { data: bundle } = await supabase
     .from("bundles")
-    .select("id, title, description, is_draft, deleted_at, password_hash, allowed_emails, updated_at")
+    .select("id, title, description, is_draft, password_hash, allowed_emails, updated_at")
     .eq("id", id)
     .single();
 
   if (!bundle) return new NextResponse("Not found", { status: 404 });
-  if (bundle.deleted_at) return new NextResponse("Not found", { status: 404 });
   if (bundle.is_draft) return new NextResponse("Not found", { status: 404 });
   if (bundle.password_hash) {
     return new NextResponse("This bundle is password-protected and cannot be fetched as raw markdown.", { status: 401 });
