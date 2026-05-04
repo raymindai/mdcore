@@ -4477,15 +4477,16 @@ export default function MdEditor() {
           const filtered = prev.filter(f => f.id === EXAMPLES_FOLDER_ID);
           return filtered.length === prev.length ? prev : filtered;
         });
-        setRecentTabIds(prev => prev.length === 0 ? prev : []);
+        // Keep recentTabIds + bundles localStorage cache so re-login restores
+        // Recent immediately. The bundle/cloud tabs themselves are wiped above
+        // for privacy, but Recent IDs alone don't reveal sensitive data and
+        // the render-time fallback (parses bundleId out of "bundle-X-time"
+        // IDs and resolves via bundles[]) lets entries display before the
+        // user re-clicks them.
         setServerDocs(prev => prev.length === 0 ? prev : []);
         setRecentDocs(prev => prev.length === 0 ? prev : []);
         setNotifications(prev => prev.length === 0 ? prev : []);
         setUnreadCount(prev => prev === 0 ? prev : 0);
-        try {
-          localStorage.removeItem("mdfy-recent-tabs");
-          localStorage.removeItem("mdfy-bundles");
-        } catch { /* ignore */ }
       }
     }
     if (isAuthenticated && user) {
@@ -8631,12 +8632,50 @@ ${clone.innerHTML}
             setFolderContextMenu(null);
             setSidebarContextMenu({ x: e.clientX, y: e.clientY });
           }}>
-            {/* ── Section: RECENT (top) — last 7 visited tabs, separate from main tree ── */}
+            {/* ── Section: RECENT (top) — last 7 visited tabs, separate from main tree ──
+                Each entry can come from one of three sources:
+                  1. Existing local Tab (id matches a tab) — normal case.
+                  2. "ghost" bundle: id parses as `bundle-<bundleId>-<ts>` and
+                     bundles[] still has that bundleId. Happens after logout
+                     wipes bundle tabs but recentTabIds was preserved.
+                  3. Unresolvable — drop. */}
             {(() => {
-              const recentTabs = recentTabIds
-                .map(id => tabs.find(t => t.id === id && !t.deleted))
-                .filter((t): t is Tab => !!t)
-                .slice(0, 7);
+              type RecentEntry =
+                | { kind: "tab"; id: string; tab: Tab }
+                | { kind: "ghost-bundle"; id: string; bundleId: string };
+              const resolveRecent = (id: string): RecentEntry | null => {
+                const tab = tabs.find(t => t.id === id && !t.deleted);
+                if (tab) return { kind: "tab", id, tab };
+                const m = /^bundle-(.+)-\d+$/.exec(id);
+                if (m) {
+                  const bundleId = m[1];
+                  if (bundles.some(b => b.id === bundleId)) {
+                    return { kind: "ghost-bundle", id, bundleId };
+                  }
+                }
+                return null;
+              };
+              const openGhostBundle = (bundleId: string) => {
+                const b = bundles.find(x => x.id === bundleId);
+                if (!b) return;
+                setShowOnboarding(false);
+                const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                if (existing) { switchTab(existing.id); return; }
+                const newId = `bundle-${b.id}-${Date.now()}`;
+                const newTab: Tab = { id: newId, kind: "bundle", bundleId: b.id, title: b.title || "Untitled Bundle", markdown: "" };
+                flushSync(() => { setTabs(prev => [...prev, newTab]); });
+                switchTab(newId);
+              };
+              const recentEntries: RecentEntry[] = [];
+              for (const id of recentTabIds) {
+                const r = resolveRecent(id);
+                if (r) recentEntries.push(r);
+                if (recentEntries.length >= 7) break;
+              }
+              const recentTabs = recentEntries
+                .filter((r): r is Extract<RecentEntry, { kind: "tab" }> => r.kind === "tab")
+                .map(r => r.tab); // legacy alias for count display
+              void recentTabs;
               return (
                 <div className="shrink-0">
                   <div
@@ -8651,47 +8690,62 @@ ${clone.innerHTML}
                       style={{ transform: showRecent ? "rotate(0deg)" : "rotate(-90deg)" }}
                     />
                     <span className={`flex-1 text-caption font-medium transition-colors ${showRecent ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Recent</span>
-                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{recentTabs.length}</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{recentEntries.length}</span>
                   </div>
                   {showRecent && (
-                    recentTabs.length === 0 ? (
+                    recentEntries.length === 0 ? (
                       <div className="px-3 py-2 text-caption" style={{ color: "var(--text-faint)" }}>No recently opened documents</div>
                     ) : (
                       <div className="pl-2 pr-2 pb-1 space-y-0.5">
-                        {recentTabs.map(tab => (
-                          // For bundle tabs, ALWAYS resolve display title from
-                          // the live bundles[] array via bundleId lookup —
-                          // local Tab.title can be stale (was baked in when
-                          // the tab was first created), and trying to keep
-                          // it synced via setTabs effects has been racy in
-                          // practice. Reading b.title at render time is
-                          // single-source-of-truth.
-                          (() => {
-                            const displayTitle = tab.kind === "bundle" && tab.bundleId
-                              ? (bundles.find(b => b.id === tab.bundleId)?.title || tab.title || "Untitled")
-                              : (tab.title || "Untitled");
+                        {recentEntries.map(entry => {
+                          if (entry.kind === "ghost-bundle") {
+                            const bundle = bundles.find(b => b.id === entry.bundleId)!;
                             return (
-                          <div
-                            key={`recent-${tab.id}`}
-                            className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
-                            style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
-                            onClick={(e) => handleDocClick(tab.id, e)}
-                            title={displayTitle}
-                          >
-                            {tab.kind === "bundle" ? renderBundleStatusIcon(tab.bundleId, 13) : <DocStatusIcon tab={tab} isActive={false} />}
-                            <span className="truncate flex-1 text-body">{displayTitle}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== tab.id)); }}
-                              className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
-                              style={{ color: "var(--text-faint)" }}
-                              title="Remove from recent"
-                            >
-                              <X width={9} height={9} />
-                            </button>
-                          </div>
+                              <div
+                                key={`recent-${entry.id}`}
+                                className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                                style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
+                                onClick={() => openGhostBundle(entry.bundleId)}
+                                title={bundle.title || "Untitled Bundle"}
+                              >
+                                {renderBundleStatusIcon(entry.bundleId, 13)}
+                                <span className="truncate flex-1 text-body">{bundle.title || "Untitled Bundle"}</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== entry.id)); }}
+                                  className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
+                                  style={{ color: "var(--text-faint)" }}
+                                  title="Remove from recent"
+                                >
+                                  <X width={9} height={9} />
+                                </button>
+                              </div>
                             );
-                          })()
-                        ))}
+                          }
+                          const tab = entry.tab;
+                          const displayTitle = tab.kind === "bundle" && tab.bundleId
+                            ? (bundles.find(b => b.id === tab.bundleId)?.title || tab.title || "Untitled")
+                            : (tab.title || "Untitled");
+                          return (
+                            <div
+                              key={`recent-${tab.id}`}
+                              className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                              style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
+                              onClick={(e) => handleDocClick(tab.id, e)}
+                              title={displayTitle}
+                            >
+                              {tab.kind === "bundle" ? renderBundleStatusIcon(tab.bundleId, 13) : <DocStatusIcon tab={tab} isActive={false} />}
+                              <span className="truncate flex-1 text-body">{displayTitle}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setRecentTabIds(prev => prev.filter(id => id !== tab.id)); }}
+                                className="shrink-0 w-4 h-4 rounded items-center justify-center transition-colors hover:bg-[var(--border-dim)] hidden group-hover/recent:flex"
+                                style={{ color: "var(--text-faint)" }}
+                                title="Remove from recent"
+                              >
+                                <X width={9} height={9} />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )
                   )}
@@ -10345,13 +10399,37 @@ ${clone.innerHTML}
                 )}
 
                 {/* Recent files — same data source as sidebar Recent (recentTabIds).
-                    Includes bundle tabs since they're regular tabs with kind="bundle". */}
+                    Mirrors the sidebar's ghost-bundle resolution so entries
+                    survive logout/re-login even when the local bundle tab was
+                    wiped: an unmatched `bundle-X-time` ID is rebuilt against
+                    bundles[] for display + click. */}
                 {(() => {
-                  const recent = recentTabIds
-                    .map(id => tabs.find(t => t.id === id && !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER))
-                    .filter((t): t is Tab => !!t)
-                    .slice(0, 5);
-                  if (recent.length === 0) return null;
+                  type HomeRecentEntry =
+                    | { kind: "tab"; id: string; tab: Tab }
+                    | { kind: "ghost-bundle"; id: string; bundleId: string };
+                  const entries: HomeRecentEntry[] = [];
+                  for (const id of recentTabIds) {
+                    if (entries.length >= 5) break;
+                    const tab = tabs.find(t => t.id === id && !t.deleted && !t.readonly && t.ownerEmail !== EXAMPLE_OWNER);
+                    if (tab) { entries.push({ kind: "tab", id, tab }); continue; }
+                    const m = /^bundle-(.+)-\d+$/.exec(id);
+                    if (m && bundles.some(b => b.id === m[1])) {
+                      entries.push({ kind: "ghost-bundle", id, bundleId: m[1] });
+                    }
+                  }
+                  if (entries.length === 0) return null;
+                  const openGhost = (bundleId: string) => {
+                    const b = bundles.find(x => x.id === bundleId);
+                    if (!b) return;
+                    setShowOnboarding(false);
+                    try { localStorage.setItem("mdfy-onboarded", "1"); } catch {}
+                    const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === b.id);
+                    if (existing) { switchTab(existing.id); return; }
+                    const newId = `bundle-${b.id}-${Date.now()}`;
+                    const newTab: Tab = { id: newId, kind: "bundle", bundleId: b.id, title: b.title || "Untitled Bundle", markdown: "" };
+                    flushSync(() => { setTabs(prev => [...prev, newTab]); });
+                    switchTab(newId);
+                  };
                   return (
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
@@ -10365,19 +10443,33 @@ ${clone.innerHTML}
                         </button>
                       </div>
                       <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                        {recent.map((t, i) => {
+                        {entries.map((entry, i) => {
+                          if (entry.kind === "ghost-bundle") {
+                            const bundle = bundles.find(b => b.id === entry.bundleId)!;
+                            return (
+                              <button key={entry.id} onClick={() => openGhost(entry.bundleId)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-body text-left cursor-pointer"
+                                style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
+                                {renderBundleStatusIcon(entry.bundleId, 14)}
+                                <span className="flex-1 truncate">{bundle.title || "Untitled Bundle"}</span>
+                              </button>
+                            );
+                          }
+                          const t = entry.tab;
                           const displayTitle = t.kind === "bundle" && t.bundleId
                             ? (bundles.find(b => b.id === t.bundleId)?.title || t.title || "Untitled")
                             : (t.title || "Untitled");
                           return (
-                          <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-body text-left cursor-pointer"
-                            style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
-                            {t.kind === "bundle" ? renderBundleStatusIcon(t.bundleId, 14) : <DocStatusIcon tab={t} isActive={false} />}
-                            <span className="flex-1 truncate">{displayTitle}</span>
-                          </button>
+                            <button key={t.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(t.id); }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-body text-left cursor-pointer"
+                              style={{ color: "var(--text-secondary)", background: "var(--surface)", transition: "all 0.12s", borderTop: i > 0 ? "1px solid var(--border-dim)" : "none" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--menu-hover)"; e.currentTarget.style.color = "var(--text-primary)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
+                              {t.kind === "bundle" ? renderBundleStatusIcon(t.bundleId, 14) : <DocStatusIcon tab={t} isActive={false} />}
+                              <span className="flex-1 truncate">{displayTitle}</span>
+                            </button>
                           );
                         })}
                       </div>
