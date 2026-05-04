@@ -3119,6 +3119,10 @@ export default function MdEditor() {
   const [conceptsLoading, setConceptsLoading] = useState(false);
   const [openedConceptId, setOpenedConceptId] = useState<string | null>(null);
   const [showConcepts, setShowConcepts] = useState(false);
+  // Single-doc concepts (docCount === 1) are noisy — they're not the "knowledge
+  // compound" surface the section is selling. Hidden under a fold by default;
+  // cross-linked concepts surface first.
+  const [showSingleDocConcepts, setShowSingleDocConcepts] = useState(false);
   // AI-synthesized canonical definitions for concepts. Cached in-memory by
   // concept id — first request triggers AI, subsequent opens of the same
   // drawer reuse the cached paragraph.
@@ -9240,32 +9244,65 @@ ${clone.innerHTML}
                     {conceptIndex.concepts.length}
                   </span>
                 </div>
-                {showConcepts && (
-                  <div className="pb-2">
-                    {conceptIndex.concepts.slice(0, 30).map(c => {
-                      const isCross = c.docCount >= 2;
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => setOpenedConceptId(c.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1 text-caption cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          <span aria-hidden className="shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: isCross ? "var(--accent)" : "var(--text-faint)" }} />
-                          <span className="flex-1 truncate text-left">{c.label}</span>
-                          <span className="text-caption tabular-nums shrink-0" style={{ color: isCross ? "var(--accent)" : "var(--text-faint)" }}>
-                            {c.docCount}
-                          </span>
-                        </button>
-                      );
-                    })}
-                    {conceptIndex.concepts.length > 30 && (
-                      <div className="px-2 py-1 text-caption" style={{ color: "var(--text-faint)" }}>
-                        +{conceptIndex.concepts.length - 30} more
-                      </div>
-                    )}
-                  </div>
-                )}
+                {showConcepts && (() => {
+                  const crossLinked = conceptIndex.concepts.filter(c => c.docCount >= 2);
+                  const singleDoc = conceptIndex.concepts.filter(c => c.docCount < 2);
+                  const renderRow = (c: ConceptEntry) => {
+                    const isCross = c.docCount >= 2;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => setOpenedConceptId(c.id)}
+                        className="w-full flex items-center gap-2 px-2 py-1 text-caption cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <span aria-hidden className="shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: isCross ? "var(--accent)" : "var(--text-faint)" }} />
+                        <span className="flex-1 truncate text-left">{c.label}</span>
+                        <span className="text-caption tabular-nums shrink-0" style={{ color: isCross ? "var(--accent)" : "var(--text-faint)" }}>
+                          {c.docCount}
+                        </span>
+                      </button>
+                    );
+                  };
+                  return (
+                    <div className="pb-2">
+                      {crossLinked.length === 0 && singleDoc.length > 0 && (
+                        <div className="px-2 py-1.5 text-caption leading-relaxed" style={{ color: "var(--text-faint)" }}>
+                          No cross-linked concepts yet. Decompose more docs to surface compounds.
+                        </div>
+                      )}
+                      {crossLinked.slice(0, 30).map(renderRow)}
+                      {crossLinked.length > 30 && (
+                        <div className="px-2 py-1 text-caption" style={{ color: "var(--text-faint)" }}>
+                          +{crossLinked.length - 30} more cross-linked
+                        </div>
+                      )}
+                      {singleDoc.length > 0 && (
+                        <>
+                          <button
+                            onClick={() => setShowSingleDocConcepts(prev => !prev)}
+                            className="w-full flex items-center gap-1 px-2 py-1 text-caption cursor-pointer transition-colors hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)", marginTop: "var(--space-1)" }}
+                          >
+                            {showSingleDocConcepts ? <ChevronDown width={10} height={10} /> : <ChevronRight width={10} height={10} />}
+                            <span className="flex-1 text-left">Single-doc concepts</span>
+                            <span className="tabular-nums">{singleDoc.length}</span>
+                          </button>
+                          {showSingleDocConcepts && (
+                            <>
+                              {singleDoc.slice(0, 30).map(renderRow)}
+                              {singleDoc.length > 30 && (
+                                <div className="px-2 py-1 text-caption" style={{ color: "var(--text-faint)" }}>
+                                  +{singleDoc.length - 30} more
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {isAuthenticated && conceptsLoading && !conceptIndex && (
@@ -12655,43 +12692,55 @@ ${clone.innerHTML}
             }
           >
             <div className="space-y-3">
-              {/* AI canonical definition — synthesized from all occurrences */}
-              <div className="rounded-md" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", padding: "var(--space-3)" }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-2)" }}>
-                  <h4 className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>What it means here</h4>
-                  {!def && (
-                    <Button variant="primary" size="xs" onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}>
-                      Define with AI
-                    </Button>
+              {/* AI synthesis only makes sense when the concept actually links
+                  multiple docs. Single-doc concepts get a guidance card pointing
+                  the user back to the source — the occurrence card below is
+                  already the "open in doc" CTA. */}
+              {c.docCount >= 2 ? (
+                <div className="rounded-md" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", padding: "var(--space-3)" }}>
+                  <div className="flex items-center justify-between" style={{ marginBottom: "var(--space-2)" }}>
+                    <h4 className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>What it means across your library</h4>
+                    {!def && (
+                      <Button variant="primary" size="xs" onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}>
+                        Define with AI
+                      </Button>
+                    )}
+                    {def && !def.loading && def.text && (
+                      <button
+                        onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
+                        className="text-caption hover:underline"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        Re-define
+                      </button>
+                    )}
+                  </div>
+                  {def?.loading && (
+                    <div className="text-caption flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
+                      Synthesizing definition…
+                    </div>
                   )}
-                  {def && !def.loading && def.text && (
-                    <button
-                      onClick={() => fetchConceptDefinition(c.id, c.label, c.occurrences)}
-                      className="text-caption hover:underline"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      Re-define
-                    </button>
+                  {def?.error && (
+                    <div className="text-caption" style={{ color: "var(--color-danger)" }}>Error: {def.error}</div>
+                  )}
+                  {def?.text && (
+                    <p className="text-body leading-relaxed" style={{ color: "var(--text-primary)" }}>{def.text}</p>
+                  )}
+                  {!def && (
+                    <p className="text-caption leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      Synthesize how this concept is used across {c.docCount} docs and {c.occurrenceCount} mentions.
+                    </p>
                   )}
                 </div>
-                {def?.loading && (
-                  <div className="text-caption flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
-                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                    Synthesizing definition…
-                  </div>
-                )}
-                {def?.error && (
-                  <div className="text-caption" style={{ color: "var(--color-danger)" }}>Error: {def.error}</div>
-                )}
-                {def?.text && (
-                  <p className="text-body leading-relaxed" style={{ color: "var(--text-primary)" }}>{def.text}</p>
-                )}
-                {!def && (
+              ) : (
+                <div className="rounded-md" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)", padding: "var(--space-3)" }}>
+                  <h4 className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)", marginBottom: "var(--space-2)" }}>Not yet a compound</h4>
                   <p className="text-caption leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                    Generate a one-paragraph synthesis of how this concept is used across your library.
+                    This concept only appears in one doc so far. Decompose more docs that touch related ideas — when the same concept lands twice, it surfaces as a cross-linked compound here.
                   </p>
-                )}
-              </div>
+                </div>
+              )}
               {/* Occurrences */}
               {c.occurrences.map((occ, i) => (
                 <button
