@@ -26,6 +26,7 @@ import { useCodeMirror } from "@/components/useCodeMirror";
 import FloatingToolbar from "@/components/FloatingToolbar";
 import ShareModal from "@/components/ShareModal";
 import ToastContainer, { showToast } from "@/components/Toast";
+import { FEATURES } from "@/lib/feature-flags";
 import { importFile, getSupportedAcceptString, mdfyText } from "@/lib/file-import";
 import { isCliOutput, cliToMarkdown } from "@/lib/cli-to-md";
 import {
@@ -9294,11 +9295,12 @@ ${clone.innerHTML}
             })()}
 
             {/* ── Section: CONCEPTS — cross-doc index ──
-                The bundle-vs-doc layer was the previous frame. This is the
-                user-vs-library layer: every concept-type chunk extracted
-                across all your decomposed docs surfaces here, with cross-
-                doc occurrence counts. Click → drawer with all citations. */}
-            {isAuthenticated && conceptIndex && conceptIndex.concepts.length > 0 && (
+                Hidden by default for v6 launch (FEATURES.THINKING_SURFACE).
+                Cross-doc concepts are part of the thinking-surface vocabulary
+                that v6 deliberately doesn't expose to first-time visitors;
+                the section + drawer code stays so flipping the flag back on
+                restores it without rebuilding. */}
+            {FEATURES.THINKING_SURFACE && isAuthenticated && conceptIndex && conceptIndex.concepts.length > 0 && (
               <div className="shrink-0 flex flex-col">
                 <div
                   data-section-id="concepts"
@@ -10348,11 +10350,11 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-y-auto flex flex-col" style={{ background: "var(--background)" }}>
               <div className="w-full max-w-xl mx-auto my-auto px-5 py-8">
 
-                {/* Knowledge-compounds stats — reinforces that the library
-                    is a growing asset, not just a folder. Pulled from the
-                    cross-doc concept index. Click any stat → opens Concepts
-                    sidebar section + filter. */}
-                {isAuthenticated && conceptIndex && conceptIndex.stats.totalDocs > 0 && (
+                {/* Knowledge-compounds stats — gated on the thinking-surface
+                    flag because it surfaces concept counts that don't make
+                    sense without the Concepts sidebar section (also hidden).
+                    Will return when v6 launch settles. */}
+                {FEATURES.THINKING_SURFACE && isAuthenticated && conceptIndex && conceptIndex.stats.totalDocs > 0 && (
                   <div className="mb-6 rounded-xl px-4 py-3" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}>
                     <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
                       Your knowledge

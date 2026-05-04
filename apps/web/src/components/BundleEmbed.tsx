@@ -12,6 +12,7 @@ import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { parseSections, assembleSections, type Section } from "@/lib/parse-sections";
 import { aggregateDiscoveries, type ChunkRef, type TensionItem, type ThreadItem } from "@/lib/discoveries";
+import { FEATURES } from "@/lib/feature-flags";
 import Tooltip from "@/components/Tooltip";
 import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
 import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
@@ -377,7 +378,10 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
   }, [bundleId, buildPatchHeaders, editToken]);
 
   // ─── Discoveries panel (default right-side view when nothing is selected) ───
-  const [showDiscoveries, setShowDiscoveries] = useState(true);
+  // Defaults open only when the thinking-surface flag is on. With the flag
+  // off (v6 launch default) the panel never mounts and the surrounding
+  // gating below short-circuits.
+  const [showDiscoveries, setShowDiscoveries] = useState<boolean>(FEATURES.THINKING_SURFACE);
   const [bulkDecomposing, setBulkDecomposing] = useState<{ done: number; total: number } | null>(null);
   // Externally requested chunk to focus on canvas (Discoveries → fly-to)
   const [focusChunkId, setFocusChunkId] = useState<string | null>(null);
@@ -979,7 +983,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           )}
         </>
       )}
-      discoveriesPanel={showDiscoveries ? (
+      discoveriesPanel={FEATURES.THINKING_SURFACE && showDiscoveries ? (
         <DiscoveriesPanel
           discoveries={discoveries}
           totalDocs={documents.length}
@@ -996,7 +1000,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           onResolveTension={resolveTension}
         />
       ) : null}
-      reopenDiscoveriesNode={!showDiscoveries && !aiPanelOpen ? (
+      reopenDiscoveriesNode={FEATURES.THINKING_SURFACE && !showDiscoveries && !aiPanelOpen ? (
         <DiscoveriesReopenButton
           onClick={() => setShowDiscoveries(true)}
           count={discoveries.tensions.length + discoveries.questions.length + discoveries.threads.length + discoveries.insights.length + discoveries.gaps.length + discoveries.connections.length}
