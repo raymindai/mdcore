@@ -4,7 +4,7 @@ import AboutContent from "@/components/AboutContent";
 export const metadata: Metadata = {
   title: "About — mdfy.app",
   description:
-    "mdfy.app — Own your markdown, use it anywhere. Capture AI conversations from ChatGPT and Claude, edit in WYSIWYG, share with permanent URLs, and deploy as context.",
+    "mdfy is your personal knowledge hub for the AI era. Capture from any AI chat, bundle by topic, deploy to any AI as a URL. Document, Bundle, and Hub URLs — same primitive, three scopes.",
   alternates: {
     canonical: "https://mdfy.app/about",
     languages: { ko: "https://mdfy.app/ko/about" },
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "About — mdfy.app",
     description:
-      "Own your markdown, use it anywhere. Capture AI conversations, edit in WYSIWYG, share with permanent URLs, and deploy as context.",
+      "Your personal knowledge hub for the AI era. Capture, Bundle, Deploy — every URL is a living document, deployable to any AI.",
     url: "https://mdfy.app/about",
     images: [{ url: "/api/og?title=About", width: 1200, height: 630 }],
   },

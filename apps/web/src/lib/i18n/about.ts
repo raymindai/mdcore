@@ -9,10 +9,10 @@ export function getAboutTexts(locale: "en" | "ko") {
 const texts = {
   en: {
     hero: {
-      h1_1: "Own your markdown.",
-      h1_2: "Use it anywhere.",
-      sub: "Capture AI answers. Edit in WYSIWYG. Share, bundle, deploy as context. Owned, edited, portable.",
-      cta_primary: "Open mdfy editor",
+      h1_1: "Your personal knowledge hub",
+      h1_2: "for the AI era.",
+      sub: "Capture from anywhere. Bundle by topic. Deploy to any AI as a URL. Your knowledge — owned, edited, portable.",
+      cta_primary: "Start your hub →",
       cta_secondary: "Install Chrome extension",
     },
 
@@ -321,10 +321,10 @@ const texts = {
 
   ko: {
     hero: {
-      h1_1: "당신의 마크다운,",
-      h1_2: "어디서든.",
-      sub: "AI 답변을 캡처하세요. WYSIWYG으로 편집하세요. 공유하고, 번들하고, 컨텍스트로 배포하세요. 내가 만들고, 내가 쓰고, 내 것.",
-      cta_primary: "에디터 열기",
+      h1_1: "AI 시대의",
+      h1_2: "개인 지식허브.",
+      sub: "어디서든 캡처하고, 주제별로 묶고, 어떤 AI에든 URL로 deploy하세요. 당신의 지식 — 소유하고, 편집하고, 어디든.",
+      cta_primary: "허브 시작하기 →",
       cta_secondary: "Chrome 확장 설치",
     },
 

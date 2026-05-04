@@ -15,26 +15,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.app -- Your Markdown, Beautifully Published.",
+  title: "mdfy.app — Your personal knowledge hub for the AI era.",
   description:
-    "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
+    "Capture from anywhere. Bundle by topic. Deploy to any AI as a URL. Document, Bundle, Hub — every URL is a living document, deployable to Claude, ChatGPT, Cursor, anywhere.",
   keywords: [
+    "personal knowledge hub",
+    "AI memory",
+    "AI context",
     "markdown",
-    "editor",
-    "publisher",
-    "share",
-    "document",
-    "WYSIWYG",
+    "URL",
     "MCP",
-    "API",
-    "AI",
+    "Claude",
+    "ChatGPT",
+    "Cursor",
+    "knowledge management",
   ],
   authors: [{ name: "mdfy", url: "https://mdfy.app" }],
   metadataBase: new URL("https://mdfy.app"),
   openGraph: {
-    title: "mdfy.app -- Your Markdown, Beautifully Published.",
+    title: "mdfy.app — Your personal knowledge hub for the AI era.",
     description:
-      "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API. No login required.",
+      "Capture, Bundle, Deploy. One URL primitive at three scopes — Document, Bundle, Hub. Paste any URL into any AI as context.",
     url: "https://mdfy.app",
     siteName: "mdfy.app",
     type: "website",
@@ -42,9 +43,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.app -- Your Markdown, Beautifully Published.",
+    title: "mdfy.app — Your personal knowledge hub for the AI era.",
     description:
-      "Create, edit, and share beautiful documents instantly. WYSIWYG Markdown editor with AI tools, cross-platform sync, and developer API.",
+      "Capture, Bundle, Deploy. One URL primitive at three scopes. Deploy to any AI.",
     images: ["/api/og"],
   },
   robots: {

@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import ManifestoContent from "@/components/ManifestoContent";
 
 export const metadata: Metadata = {
-  title: "Why I'm building mdfy — Manifesto",
+  title: "Manifesto — Personal knowledge hub for the AI era",
   description:
-    "Markdown URLs as the substrate for AI-era knowledge. Authored memory, not extracted. The bigger bet behind mdfy.app and the cross-AI publishing layer.",
+    "Own your markdown. Build your hub. Deploy anywhere. Document, Bundle, Hub — same URL primitive, three scopes. AI is a collaborator, not just a tool.",
   alternates: {
     canonical: "https://mdfy.app/manifesto",
     languages: { ko: "https://mdfy.app/ko/manifesto" },
   },
   openGraph: {
-    title: "Why I'm building mdfy — Manifesto",
-    description: "Markdown URLs as the substrate for AI-era knowledge. The bigger bet behind mdfy.app.",
+    title: "Manifesto — mdfy.app",
+    description: "Own your markdown. Build your hub. Deploy anywhere. The 7 beliefs behind mdfy.",
     url: "https://mdfy.app/manifesto",
     images: [{ url: "/api/og?title=Manifesto", width: 1200, height: 630 }],
   },
