@@ -230,7 +230,54 @@ async function callBundleCurator(system: string, user: string): Promise<string> 
     return data.choices?.[0]?.message?.content || "";
   }
 
-  throw new Error("No AI provider configured (ANTHROPIC_API_KEY or OPENAI_API_KEY)");
+  if (process.env.GEMINI_API_KEY) {
+    // Gemini fallback. responseMimeType + responseSchema enforces
+    // structured JSON without relying on the model to obey "no fences"
+    // in the system prompt. Schema mirrors the {title,description,
+    // documents:[{id,annotation}]} shape parseSuggestion expects.
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2000,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              documents: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    annotation: { type: "string" },
+                  },
+                  required: ["id"],
+                },
+              },
+            },
+            required: ["title", "description", "documents"],
+          },
+        },
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Gemini ${res.status}: ${text || "unknown"}`);
+    }
+    const data = await res.json();
+    type Part = { text?: string };
+    const parts: Part[] = data.candidates?.[0]?.content?.parts || [];
+    return parts.map(p => p.text || "").join("");
+  }
+
+  throw new Error("No AI provider configured (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY)");
 }
 
 function parseSuggestion(text: string, candidates: CandidateRow[]): AISuggestion {
