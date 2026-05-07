@@ -3,6 +3,17 @@ import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { corsHeaders, ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
+
+/**
+ * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
+ * claude.ai, gemini.google.com → mdfy.app/api/docs). Trusted origins
+ * defined in lib/anonymous-cookie.ts; everything else gets a no-op.
+ */
+export async function OPTIONS(req: NextRequest) {
+  const headers = corsHeaders(req);
+  return new NextResponse(null, { status: 204, headers });
+}
 
 export async function POST(req: NextRequest) {
   // Rate limit by IP (x-real-ip and x-forwarded-for are set by Vercel's proxy in production)
@@ -47,8 +58,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, anonymousId, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
+  const { markdown = "", title, password, expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
   let { userId } = body;
+  let { anonymousId } = body;
 
   // Verify JWT from Authorization header (VS Code extension, MCP, etc.)
   const verified = await verifyAuthToken(req.headers.get("authorization"));
@@ -71,6 +83,23 @@ export async function POST(req: NextRequest) {
   // Also check x-user-id header as final fallback (web app)
   if (!userId) {
     userId = req.headers.get("x-user-id") || undefined;
+  }
+
+  // x-anonymous-id header fallback (extension and bookmarklet may pass it)
+  if (!anonymousId) {
+    anonymousId = req.headers.get("x-anonymous-id") || undefined;
+  }
+
+  // Cookie fallback: when neither body, header, nor user is provided, group
+  // this capture under the browser's mdfy_anon cookie so the user can claim
+  // every captured doc on sign-in.
+  if (!userId && !anonymousId) {
+    anonymousId = readAnonymousCookie(req) || undefined;
+  }
+  // If still nothing AND no auth, mint a fresh id now so the inserted row
+  // has it. The Set-Cookie at the end of the handler persists it for next time.
+  if (!userId && !anonymousId) {
+    anonymousId = crypto.randomUUID();
   }
 
   // Allow empty markdown for auto-save (draft creation)
@@ -136,5 +165,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   }
 
-  return NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
+  const res = NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
+  // CORS for cross-origin captures
+  for (const [k, v] of Object.entries(corsHeaders(req))) res.headers.set(k, v);
+  // Issue / refresh the anonymous cookie so subsequent captures from this
+  // browser group together. Skip when authenticated.
+  ensureAnonymousCookie(req, res, {
+    skip: !!userId,
+    explicitId: anonymousId ?? readAnonymousCookie(req),
+  });
+  return res;
 }

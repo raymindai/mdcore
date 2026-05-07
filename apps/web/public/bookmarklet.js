@@ -318,7 +318,9 @@
     fetch(BASE + "/api/docs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "omit",
+      // include lets us send and receive the mdfy_anon cookie so this
+      // capture is grouped with the user's other anonymous docs.
+      credentials: "include",
       body: JSON.stringify({
         markdown: built.markdown,
         title: built.title,
