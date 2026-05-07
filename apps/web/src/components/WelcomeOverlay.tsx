@@ -10,6 +10,7 @@ const slides = [
     title: "Own your markdown.\nUse it anywhere.",
     desc: "Capture AI answers, edit in WYSIWYG, share with a permanent URL. No signup needed.",
     icon: null,
+    demoLink: { href: "/hub/yc-demo", label: "See a real hub →" },
   },
   {
     step: "01",
@@ -194,6 +195,23 @@ export default function WelcomeOverlay() {
             >
               {slide.desc}
             </p>
+          )}
+
+          {/* Demo hub link (signed-out visitors land here first) */}
+          {"demoLink" in slide && slide.demoLink && (
+            <Link
+              href={(slide.demoLink as { href: string; label: string }).href}
+              onClick={dismiss}
+              style={{
+                display: "inline-block",
+                marginTop: 14,
+                fontSize: 13,
+                color: "var(--accent)",
+                textDecoration: "none",
+              }}
+            >
+              {(slide.demoLink as { href: string; label: string }).label}
+            </Link>
           )}
 
           {/* Surfaces list (slide 04) */}
