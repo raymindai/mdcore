@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getSupabaseBrowserClient } from "./supabase-browser";
+import { getAnonymousId, clearAnonymousId } from "./anonymous-id";
+import { readMdfyAnonCookie, clearMdfyAnonCookie } from "./anonymous-cookie-client";
 import type { User } from "@supabase/supabase-js";
 
 interface Profile {
@@ -69,6 +71,47 @@ export function useAuth() {
         if (session?.user) {
           setState((prev) => ({ ...prev, user: session.user, accessToken: session.access_token || null, loading: false }));
           fetchProfile(supabase, session.user.id, setState);
+          // SIGNED_IN: claim everything the user captured anonymously
+          // (legacy localStorage + new cross-origin cookie). Idempotent;
+          // running it twice is harmless.
+          if (event === "SIGNED_IN") {
+            const localAnon = getAnonymousId();
+            const cookieAnon = readMdfyAnonCookie();
+            if (localAnon || cookieAnon) {
+              fetch("/api/user/migrate", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  anonymousId: localAnon || undefined,
+                  cookieAnonymousId: cookieAnon || undefined,
+                }),
+              })
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                  if (!data) return;
+                  const total = (data.documentsMigrated || 0) + (data.bundlesMigrated || 0);
+                  if (total > 0) {
+                    if (localAnon) clearAnonymousId();
+                    if (cookieAnon) clearMdfyAnonCookie();
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(
+                        new CustomEvent("mdfy-anon-claimed", {
+                          detail: {
+                            documents: data.documentsMigrated || 0,
+                            bundles: data.bundlesMigrated || 0,
+                          },
+                        })
+                      );
+                    }
+                  }
+                })
+                .catch(() => { /* migration is best-effort */ });
+            }
+          }
         } else {
           setState({ user: null, profile: null, loading: false, accessToken: null });
         }
