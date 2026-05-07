@@ -39,9 +39,13 @@ export async function importShare(rawUrl: string): Promise<ShareImportResult> {
     case "chatgpt":
       return extractChatGPTShare(rawUrl);
     case "claude":
+      throw new ShareImportError(
+        "Claude shares can't be fetched server-side — Cloudflare blocks it. Use the mdfy bookmarklet on the chat page instead: https://mdfy.app/bookmarklet",
+        { status: 501 }
+      );
     case "gemini":
       throw new ShareImportError(
-        `Importing from ${provider === "claude" ? "Claude" : "Gemini"} is not available yet. ChatGPT shares work today.`,
+        "Gemini share-link import isn't available yet. For now, use the mdfy bookmarklet on the chat page: https://mdfy.app/bookmarklet",
         { status: 501 }
       );
   }
