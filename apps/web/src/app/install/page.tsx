@@ -6,8 +6,10 @@ export const metadata: Metadata = {
     "One-line install for the /mdfy slash command in Claude Code. Capture, bundle, and deploy your conversations through your personal mdfy hub.",
 };
 
-const INSTALL_CMD =
+const INSTALL_CMD_CLAUDE =
   "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh";
+const INSTALL_CMD_CURSOR =
+  "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh -s -- --target=cursor";
 
 export default function InstallPage() {
   return (
@@ -17,13 +19,13 @@ export default function InstallPage() {
     >
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-3">
-          Install /mdfy in Claude Code
+          Install mdfy in your AI coding tool
         </h1>
         <p
           className="text-base mb-10"
           style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}
         >
-          A skill for Claude Code that captures the current conversation, builds bundles from your hub, and hands you a URL any other AI can read. One line to install.
+          One line to install. Captures the current conversation, builds bundles from your hub, and hands you a URL any other AI can read. Same actions, two installers below for Claude Code and Cursor.
         </p>
 
         <section className="mb-10">
@@ -31,7 +33,7 @@ export default function InstallPage() {
             className="text-sm uppercase tracking-wider mb-3"
             style={{ color: "var(--text-faint)" }}
           >
-            One-line install
+            Claude Code
           </h2>
           <pre
             className="p-4 rounded-lg overflow-x-auto text-sm"
@@ -41,13 +43,38 @@ export default function InstallPage() {
               fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
             }}
           >
-            <code>{INSTALL_CMD}</code>
+            <code>{INSTALL_CMD_CLAUDE}</code>
           </pre>
           <p
             className="text-xs mt-2"
             style={{ color: "var(--text-faint)" }}
           >
-            Drops SKILL.md into <code>~/.claude/skills/mdfy/</code>. Restart Claude Code (or run <code>/reload-skills</code>) to pick it up.
+            Drops SKILL.md into <code>~/.claude/skills/mdfy/</code>. Restart Claude Code (or run <code>/reload-skills</code>) to pick it up. Then call <code>/mdfy capture &lt;title&gt;</code> in any chat.
+          </p>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Cursor
+          </h2>
+          <pre
+            className="p-4 rounded-lg overflow-x-auto text-sm"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+            }}
+          >
+            <code>{INSTALL_CMD_CURSOR}</code>
+          </pre>
+          <p
+            className="text-xs mt-2"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Drops <code>mdfy.mdc</code> into <code>~/.cursor/rules/</code>. Cursor picks it up on next launch (or after toggling rules in Settings). Then say things like &quot;save this to mdfy as &lt;title&gt;&quot; in any chat.
           </p>
         </section>
 

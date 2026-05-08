@@ -1,0 +1,98 @@
+---
+description: Capture, bundle, and deploy AI conversations and notes through your personal mdfy hub. Activates when the user asks to save the current chat, build a curated bundle, or paste their hub URL into another AI.
+globs:
+alwaysApply: true
+---
+
+# mdfy
+
+You are working alongside the user in Cursor. The user has installed
+the mdfy rule so they can capture this conversation, build a curated
+bundle, or share their personal knowledge hub as a URL that any other
+AI can read.
+
+## When to invoke
+
+- User says "save this," "capture this," or "send this to mdfy"
+- User asks for a sharable URL for what you just produced together
+- User asks to bundle several saved docs around a topic
+- User wants to paste their hub URL into another AI
+
+If none of these apply, ignore this rule.
+
+## Authentication
+
+The user signs in at `https://staging.mdfy.app` (or
+`https://mdfy.app` after public launch). Their access token lives in
+`~/.config/mdfy/token` if they ran `mdfy login`. If the file is
+absent, fall back to anonymous capture (works fine; the cookie path
+groups them and they claim everything on next sign-in).
+
+## Actions
+
+### Capture the current conversation
+
+Save the most recent assistant turn (or a user-specified range) as a
+new public mdfy document.
+
+```
+POST https://staging.mdfy.app/api/docs
+Content-Type: application/json
+Authorization: Bearer <token>   (optional)
+
+{
+  "markdown": "<the conversation segment as markdown>",
+  "title": "<short title from the question or conclusion>",
+  "isDraft": false,
+  "source": "cursor-rule"
+}
+```
+
+Return the URL `https://staging.mdfy.app/<id>` to the user.
+
+### Build a bundle from existing docs
+
+```
+POST https://staging.mdfy.app/api/bundles/ai-generate
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{ "intent": "<topic>" }
+```
+
+Show the suggested doc ids and annotations. If the user accepts,
+finalize via:
+
+```
+POST https://staging.mdfy.app/api/bundles
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{ "title": "<topic>", "documentIds": [...], "isDraft": false }
+```
+
+Return the bundle URL `https://staging.mdfy.app/b/<id>`.
+
+### Print the hub URL
+
+```
+GET https://staging.mdfy.app/api/user/profile
+Authorization: Bearer <token>
+```
+
+If `hub_slug` is set and `hub_public` is true, return
+`https://staging.mdfy.app/hub/<hub_slug>`. Otherwise tell the user to
+enable their hub in settings.
+
+## Tips
+
+- Always paste the resulting URL exactly. Don't reformat.
+- For captures, the title should describe the question or
+  conclusion, not "Conversation about X."
+- The hub URL itself is markdown when fetched by an AI. If you ever
+  need context about who the user is, fetch the hub URL directly.
+
+## Reference
+
+- Web app: https://staging.mdfy.app
+- Live demo hub: https://staging.mdfy.app/hub/yc-demo
