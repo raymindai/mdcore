@@ -31,6 +31,9 @@ interface PublicHubRecallBody {
    *    "chunk"  — paragraph-level matches (Phase 2)
    *    "bundle" — curated bundle matches (Phase 3) */
   level?: "doc" | "chunk" | "bundle";
+  /** When true on level="chunk", merges BM25 + vector cosine via
+   *  reciprocal rank fusion (Phase 4). No effect on doc/bundle levels. */
+  hybrid?: boolean;
 }
 
 export async function POST(
@@ -65,6 +68,7 @@ export async function POST(
   const k = Math.min(Math.max(body.k ?? DEFAULT_K, 1), MAX_K);
   const level: "doc" | "chunk" | "bundle" =
     body.level === "chunk" || body.level === "bundle" ? body.level : "doc";
+  const hybrid = !!body.hybrid && level === "chunk";
 
   // Resolve hub → owner user_id; only public hubs are eligible.
   const { data: profile } = await supabase
@@ -118,6 +122,46 @@ export async function POST(
       document_count: Number(r.document_count),
       distance: Number(r.distance.toFixed(4)),
       updated_at: r.updated_at,
+    }));
+  } else if (level === "chunk" && hybrid) {
+    const { data: rows, error } = await supabase.rpc("hybrid_match_public_hub_chunks", {
+      query_text: question,
+      query_embedding: vectorToSql(queryVec),
+      p_hub_user_id: profile.id,
+      match_count: k,
+    });
+    if (error) {
+      return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
+    }
+
+    type HybridChunkRow = {
+      chunk_id: number;
+      doc_id: string;
+      chunk_idx: number;
+      heading: string | null;
+      heading_path: string | null;
+      markdown: string;
+      doc_title: string | null;
+      doc_updated_at: string;
+      vector_rank: number | null;
+      fts_rank: number | null;
+      rrf_score: number;
+    };
+
+    results = (rows as HybridChunkRow[] | null || []).map((r) => ({
+      chunk_id: r.chunk_id,
+      doc_id: r.doc_id,
+      chunk_idx: r.chunk_idx,
+      heading: r.heading,
+      heading_path: r.heading_path,
+      markdown: r.markdown,
+      doc_title: r.doc_title || "Untitled",
+      doc_url: `https://mdfy.app/${r.doc_id}`,
+      raw_url: `https://mdfy.app/raw/${r.doc_id}`,
+      vector_rank: r.vector_rank,
+      fts_rank: r.fts_rank,
+      rrf_score: Number(r.rrf_score.toFixed(5)),
+      updated_at: r.doc_updated_at,
     }));
   } else if (level === "chunk") {
     const { data: rows, error } = await supabase.rpc("match_public_hub_chunks", {
@@ -199,10 +243,11 @@ export async function POST(
       level,
       results,
       meta: {
-        retrieval: "vector",
+        retrieval: hybrid ? "hybrid_rrf" : "vector",
         model: "text-embedding-3-small",
         dim: 1536,
         k,
+        hybrid,
       },
     },
     {
