@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
 import MdfyLogo from "@/components/MdfyLogo";
+import ViewerFooter from "@/components/ViewerFooter";
+import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import HubCopyUrlButton from "./HubCopyUrlButton";
 
 type Props = {
@@ -344,13 +346,23 @@ export default async function HubPage({ params, searchParams }: Props) {
           </div>
         )}
 
-        <footer className="mt-20 pt-6 text-caption flex items-center justify-between" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
-          <span>
-            Hosted on <Link href="/" style={{ color: "var(--accent)" }}>mdfy.app</Link>
-          </span>
-          <span>Personal knowledge hub for the AI era.</span>
-        </footer>
       </main>
+
+      {/* Promote band — content-flow promote, then the shared chrome
+          footer. Hub pages are inherently public-facing, so the strip
+          is always shown; the lighter owner variant is gated by the
+          owner toggle but the hub viewer can't reliably know that
+          without a client component, so we show the full pitch and
+          let the viewer self-segment. */}
+      <ViewerPromoStrip />
+      <ViewerFooter
+        stats={
+          <>
+            <span className="hidden sm:inline">{hub.docs.length} {hub.docs.length === 1 ? "doc" : "docs"}</span>
+            <span>{hub.bundles.length} {hub.bundles.length === 1 ? "bundle" : "bundles"}</span>
+          </>
+        }
+      />
     </div>
   );
 }

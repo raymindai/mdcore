@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
+import ViewerFooter from "@/components/ViewerFooter";
+import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -571,50 +573,28 @@ export default function DocumentViewer({
         )}
       </div>
 
-      {/* Viral badge (Free tier only, hidden for Pro) — actionable CTA, not just attribution */}
-      {showBadge && (
-        <div className="flex justify-center gap-2 py-3" style={{ borderTop: "1px solid var(--border-dim)" }}>
-          <span className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-mono"
-            style={{ color: "var(--text-muted)" }}>
-            Published with <span style={{ color: "var(--accent)", fontWeight: 600 }}>mdfy</span>.app
-          </span>
-          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-caption font-mono transition-all hover:scale-105"
-            style={{ background: "var(--accent)", color: "#000", fontWeight: 600 }}>
-            Make your own
-            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
-          </a>
-        </div>
+      {/* Viewer-wide promote strip — only when the visitor isn't the
+          owner. Owners about to be redirected via the auth-check effect
+          briefly land here too; the same effect sets authChecked true
+          but doesn't flip a separate isOwner flag, so we hide the strip
+          for password / restricted / expired states (those audiences
+          aren't candidates for the funnel right now). */}
+      {showBadge && unlocked && !isExpired && !accessRevoked && (
+        <ViewerPromoStrip />
       )}
 
-      {/* Footer */}
-      <footer
-        className="flex items-center justify-between px-3 sm:px-5 py-1.5 text-caption font-mono"
-        style={{
-          borderTop: "1px solid var(--border-dim)",
-          color: "var(--text-muted)",
-        }}
-      >
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/about" className="transition-colors" style={{ color: "var(--text-muted)" }}>About</Link>
-          <a href="https://marketplace.visualstudio.com/items?itemName=raymindai.mdfy-vscode" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">VS Code</a>
-          <a href="https://chrome.google.com/webstore" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">Chrome</a>
-          <Link href="/privacy" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }}>Privacy</Link>
-          <a href="https://github.com/raymindai/mdcore" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer">GitHub</a>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="hidden sm:inline">{markdown.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
-          <span>{markdown.length.toLocaleString()} chars</span>
-          <span className="hidden sm:inline">{markdown.split("\n").length.toLocaleString()} lines</span>
-          <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Footer — single shared chrome across /d, /b, /hub. Stats slot
+          carries the lightweight word/char count; engine badges, VS
+          Code / Chrome / Privacy links are gone — the footer's job is
+          minimal nav + the Make-your-own CTA, nothing more. */}
+      <ViewerFooter
+        stats={
+          <>
+            <span className="hidden sm:inline">{markdown.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
+            <span>{markdown.length.toLocaleString()} chars</span>
+          </>
+        }
+      />
 
       {/* Update toast */}
       {updateToast && (

@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import MdfyLogo from "@/components/MdfyLogo";
+import ViewerFooter from "@/components/ViewerFooter";
+import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 
@@ -492,8 +494,11 @@ export default function BundleViewer({
         </div>
       </header>
 
-      {/* Canvas + Document Reader split */}
-      <div className="flex" style={{ height: "calc(100vh - 53px)" }}>
+      {/* Canvas + Document Reader split. Height locks to one viewport
+          minus the header so the canvas always opens fully visible;
+          scrolling the page reveals the promo strip and shared footer
+          underneath, matching the doc/hub viewer chrome. */}
+      <div className="flex shrink-0" style={{ height: "calc(100vh - 53px)" }}>
         {/* Canvas */}
         <div className="relative" style={{ flex: 1, height: "100%", borderRight: selectedDocId ? "1px solid var(--border)" : "none" }}>
           {documents.length > 0 ? (
@@ -787,14 +792,20 @@ export default function BundleViewer({
         )}
       </div>
 
-      {/* Badge */}
-      {showBadge && !selectedDocId && (
-        <div className="absolute bottom-3 right-3 z-20">
-          <a href="https://mdfy.app" target="_blank" rel="noopener noreferrer" className="text-xs px-2 py-1 rounded transition-colors hover:underline" style={{ color: "var(--text-faint)", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}>
-            Published with mdfy.app
-          </a>
-        </div>
-      )}
+      {/* Promote band — only when the visitor is not the owner. The
+          owner-redirect effect at the top of this component sends owners
+          to /?bundle=<id> before this renders, so any signed-in viewer
+          who actually lands here is non-owner and a valid funnel target. */}
+      {showBadge && <ViewerPromoStrip />}
+
+      {/* Shared footer */}
+      <ViewerFooter
+        stats={
+          <>
+            <span className="hidden sm:inline">{documentCount} {documentCount === 1 ? "doc" : "docs"}</span>
+          </>
+        }
+      />
     </div>
   );
 }
