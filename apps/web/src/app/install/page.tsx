@@ -182,11 +182,11 @@ export default function InstallPage() {
           </p>
           <p className="mt-2 text-sm">
             <Link
-              href="/how-mdfy-rag-works"
+              href="/mdfy-memory"
               className="underline"
               style={{ color: "var(--accent)" }}
             >
-              Read how mdfy does RAG (chunked, hybrid, public) &rarr;
+              How mdfy Memory works (chunked, hybrid, public) &rarr;
             </Link>
           </p>
         </section>

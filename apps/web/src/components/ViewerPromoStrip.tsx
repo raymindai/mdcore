@@ -121,11 +121,11 @@ export default function ViewerPromoStrip({ isOwner = false }: ViewerPromoStripPr
             How mdfy works &rarr;
           </Link>
           <Link
-            href="/how-mdfy-rag-works"
+            href="/mdfy-memory"
             className="text-caption"
             style={{ color: "var(--text-faint)" }}
           >
-            How mdfy does RAG &rarr;
+            How mdfy Memory works &rarr;
           </Link>
         </div>
       </div>

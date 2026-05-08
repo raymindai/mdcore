@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/how-mdfy-works", destination: "/d/how-mdfy-works" },
+      { source: "/mdfy-memory", destination: "/d/mdfy-memory" },
+      // Legacy: kept so any link that already shipped to /how-mdfy-rag-works
+      // still resolves. The doc body itself is now a one-liner pointing at
+      // /mdfy-memory; surface links across the app point straight at the
+      // new slug.
       { source: "/how-mdfy-rag-works", destination: "/d/how-mdfy-rag-works" },
     ];
   },

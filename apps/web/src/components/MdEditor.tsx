@@ -10866,7 +10866,9 @@ ${clone.innerHTML}
 
                 {/* Deploy to AI — v6 hero. Goes above Guides because the hub story
                     is the v6 thesis; tutorials come second. Install /mdfy is the
-                    primary CTA so it gets an accent border to stand out. */}
+                    primary CTA, highlighted via an inline tag rather than a
+                    full-card border (the border made the card visually heavier
+                    than its neighbors and read as "warning" yellow). */}
                 <div className="mb-6">
                   <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>Deploy to AI</div>
                   <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
@@ -10879,30 +10881,43 @@ ${clone.innerHTML}
                         : null;
                       const cards = [
                         myHubSlug
-                          ? { label: "Your hub", desc: `mdfy.app/hub/${myHubSlug}`, url: `/hub/${myHubSlug}`, color: "#fb923c", icon: <Globe width={14} height={14} />, primary: false }
-                          : { label: "Browse hubs", desc: "See what a hub looks like", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} />, primary: false },
-                        { label: "Install /mdfy", desc: "From any AI tool", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} />, primary: true },
-                        { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} />, primary: false },
-                        { label: "Live example", desc: "yc-demo's hub", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} />, primary: false },
+                          ? { label: "Your hub", desc: `mdfy.app/hub/${myHubSlug}`, url: `/hub/${myHubSlug}`, color: "#fb923c", icon: <Globe width={14} height={14} />, tag: null }
+                          : { label: "Browse hubs", desc: "See what a hub looks like", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} />, tag: null },
+                        { label: "Install /mdfy", desc: "From any AI tool", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} />, tag: "Recommended" },
+                        { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} />, tag: null },
+                        { label: "Live example", desc: "yc-demo's hub", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} />, tag: null },
                       ];
                       return cards.map((item) => (
                         <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                           className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
                           style={{
                             background: "var(--surface)",
-                            border: item.primary ? `1px solid ${item.color}` : "1px solid var(--border-dim)",
-                            boxShadow: item.primary ? `0 0 0 1px ${item.color}30` : "none",
+                            border: "1px solid var(--border-dim)",
                             textDecoration: "none",
                             transition: "all 0.12s",
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}30`; }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = item.primary ? item.color : "var(--border-dim)";
-                            e.currentTarget.style.boxShadow = item.primary ? `0 0 0 1px ${item.color}30` : "none";
-                          }}>
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
                           <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
-                          <div>
-                            <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</span>
+                              {item.tag && (
+                                <span
+                                  className="text-caption font-mono px-1.5 py-px rounded"
+                                  style={{
+                                    background: "var(--accent-dim)",
+                                    color: "var(--accent)",
+                                    fontSize: 9,
+                                    letterSpacing: 0.5,
+                                    textTransform: "uppercase",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {item.tag}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
                           </div>
                         </a>
@@ -10943,7 +10958,7 @@ ${clone.innerHTML}
                       { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa", icon: <FileText width={14} height={14} /> },
                       { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80", icon: <Download width={14} height={14} /> },
                       { label: "How it works", desc: "Architecture, end to end", url: "/how-mdfy-works", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
-                      { label: "How RAG works", desc: "Chunked, hybrid, public", url: "/how-mdfy-rag-works", color: "#a78bfa", icon: <Sparkles width={14} height={14} /> },
+                      { label: "mdfy Memory", desc: "How memory works under the hood", url: "/mdfy-memory", color: "#a78bfa", icon: <Sparkles width={14} height={14} /> },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
