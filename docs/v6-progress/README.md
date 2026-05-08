@@ -12,7 +12,7 @@ commits, verified scenarios, and any deferred work.
 | W2 | Bookmarklet for cross-AI capture | `31e4f3a8` | shipped |
 | W3 | Anonymous-first capture, claim flow, hub schema, demo CTA | `22dd6d4e`, `1598c2a1`, `e4113c90`, `075e413f` | shipped |
 | W4 | Auto-synthesis with diff/accept (exceed move 1) | `31f17041` | shipped |
-| W5 | Hub log.md, Lint 1.0, PDF ingest (exceed move 2) | n/a | next |
+| W5 | PDF ingest (exceed move 2), hub log.md, hub lint v1 | `a6851d67`, `7c3e3019`, `9631b878` | shipped |
 | W6 | Proactive bundle suggestion (exceed move 3) + internal beta start | n/a | pending |
 | W7 | Shared bundles MVP, confidence tags | n/a | pending |
 | W8 | `/mdfy` slash for Claude Code, suggested queries | n/a | pending |
