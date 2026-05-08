@@ -170,6 +170,15 @@ export default function InstallPage() {
           >
             Karpathy hand-maintains a personal LLM wiki because no consumer surface does this yet. Graphify proved that <code>/&lt;tool&gt;</code> shipped as a skill scales across Claude Code, Cursor, Codex, and Aider. The /mdfy skill is the same shape: one install, then every coding-AI session can capture into your hub and pull from it as context. Same URL works for every AI.
           </p>
+          <p className="mt-4 text-sm">
+            <a
+              href="/how-mdfy-works"
+              className="underline"
+              style={{ color: "var(--accent)" }}
+            >
+              Read the deep dive: How mdfy works &rarr;
+            </a>
+          </p>
         </section>
 
         <section

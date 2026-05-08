@@ -130,6 +130,22 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
           >
             {t.hero.cta_secondary}
           </a>
+          <Link
+            href="/how-mdfy-works"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "14px 24px",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--text-muted)",
+              textDecoration: "none",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            How mdfy works &rarr;
+          </Link>
         </div>
       </section>
 

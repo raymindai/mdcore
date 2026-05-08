@@ -370,6 +370,21 @@ export default function ManifestoContent({ locale }: ManifestoContentProps) {
                 >
                   {t.invitationButtons.email}
                 </a>
+                <Link
+                  href="/how-mdfy-works"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "12px 24px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--text-muted)",
+                    textDecoration: "none",
+                  }}
+                >
+                  How mdfy works &rarr;
+                </Link>
               </div>
             )}
           </>
