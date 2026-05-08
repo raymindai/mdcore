@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import ViewerHeader from "@/components/ViewerHeader";
