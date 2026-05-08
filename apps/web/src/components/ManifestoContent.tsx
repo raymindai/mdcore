@@ -372,27 +372,29 @@ export default function ManifestoContent({ locale }: ManifestoContentProps) {
                 </a>
               </div>
             )}
-            {/* How-mdfy-works deep dive — outside the invitationButtons
-                guard so it renders regardless of i18n shape. The button
-                row above is locale-conditional; this is universal. */}
-            <div style={{ marginTop: 20 }}>
-              <Link
-                href="/how-mdfy-works"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--accent)",
-                  textDecoration: "none",
-                }}
-              >
-                How mdfy works (deep dive) &rarr;
-              </Link>
-            </div>
           </>
         )}
+
+        {/* How-mdfy-works deep dive — outside the EN/KO style ternary
+            so both locales render it. EN page goes through the first
+            branch (audience cards); without this hoist, the link only
+            showed up on KO. */}
+        <div style={{ marginTop: 20 }}>
+          <Link
+            href="/how-mdfy-works"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--accent)",
+              textDecoration: "none",
+            }}
+          >
+            How mdfy works (deep dive) &rarr;
+          </Link>
+        </div>
 
         {/* Closing (English style) */}
         {locale === "en" && (
