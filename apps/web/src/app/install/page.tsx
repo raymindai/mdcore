@@ -10,6 +10,10 @@ const INSTALL_CMD_CLAUDE =
   "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh";
 const INSTALL_CMD_CURSOR =
   "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh -s -- --target=cursor";
+const INSTALL_CMD_CODEX =
+  "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh -s -- --target=codex";
+const INSTALL_CMD_AIDER =
+  "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh -s -- --target=aider";
 
 export default function InstallPage() {
   return (
@@ -83,6 +87,56 @@ export default function InstallPage() {
             className="text-sm uppercase tracking-wider mb-3"
             style={{ color: "var(--text-faint)" }}
           >
+            Codex CLI
+          </h2>
+          <pre
+            className="p-4 rounded-lg overflow-x-auto text-sm"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+            }}
+          >
+            <code>{INSTALL_CMD_CODEX}</code>
+          </pre>
+          <p
+            className="text-xs mt-2"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Appends an <code>mdfy actions</code> block to <code>~/.codex/AGENTS.md</code>. Idempotent: rerunning replaces just the mdfy block, leaves the rest of your AGENTS.md alone. Restart Codex CLI to pick it up.
+          </p>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Aider
+          </h2>
+          <pre
+            className="p-4 rounded-lg overflow-x-auto text-sm"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+            }}
+          >
+            <code>{INSTALL_CMD_AIDER}</code>
+          </pre>
+          <p
+            className="text-xs mt-2"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Drops <code>conventions.md</code> into <code>~/.aider/</code>. Add <code>read: ~/.aider/conventions.md</code> to your <code>.aider.conf.yml</code> and aider will load it as conventions in every session.
+          </p>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
             What you can do after installing
           </h2>
           <ul className="space-y-3" style={{ color: "var(--text-secondary)" }}>
@@ -128,7 +182,7 @@ export default function InstallPage() {
         >
           <p className="mb-2">
             <strong>Privacy.</strong> The skill only sends the conversation
-            segment you ask it to capture, plus your auth token if you've
+            segment you ask it to capture, plus your auth token if you&apos;ve
             signed in. Nothing else.
           </p>
           <p>

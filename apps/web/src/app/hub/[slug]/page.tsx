@@ -5,7 +5,10 @@ import { getSupabaseClient } from "@/lib/supabase";
 import MdfyLogo from "@/components/MdfyLogo";
 import HubCopyUrlButton from "./HubCopyUrlButton";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ at?: string }>;
+};
 
 interface HubData {
   profile: {
@@ -15,11 +18,21 @@ interface HubData {
     hub_slug: string;
     hub_description: string | null;
   };
-  docs: Array<{ id: string; title: string | null; markdown: string; updated_at: string }>;
-  bundles: Array<{ id: string; title: string | null; description: string | null; updated_at: string }>;
+  docs: Array<{ id: string; title: string | null; markdown: string; updated_at: string; created_at: string }>;
+  bundles: Array<{ id: string; title: string | null; description: string | null; updated_at: string; created_at: string }>;
 }
 
-async function getHub(slug: string): Promise<HubData | null> {
+function parseAt(raw: string | undefined): Date | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? `${trimmed}T23:59:59.999Z` : trimmed);
+  if (isNaN(date.getTime())) return null;
+  if (date.getTime() > Date.now()) return null;
+  return date;
+}
+
+async function getHub(slug: string, at: Date | null): Promise<HubData | null> {
   if (!/^[a-z0-9_-]{3,32}$/.test(slug)) return null;
   const supabase = getSupabaseClient();
   if (!supabase) return null;
@@ -31,27 +44,33 @@ async function getHub(slug: string): Promise<HubData | null> {
     .single();
   if (!profile || !profile.hub_public) return null;
 
-  const { data: docs } = await supabase
+  const atIso = at ? at.toISOString() : null;
+
+  let docsQuery = supabase
     .from("documents")
-    .select("id, title, markdown, updated_at")
+    .select("id, title, markdown, updated_at, created_at")
     .eq("user_id", profile.id)
     .eq("is_draft", false)
     .is("deleted_at", null)
-    .is("password_hash", null)
+    .is("password_hash", null);
+  if (atIso) docsQuery = docsQuery.lte("created_at", atIso);
+  const { data: docs } = await docsQuery
     .order("updated_at", { ascending: false })
     .limit(200);
 
-  const { data: bundles } = await supabase
+  let bundlesQuery = supabase
     .from("bundles")
-    .select("id, title, description, updated_at, password_hash, allowed_emails")
+    .select("id, title, description, updated_at, created_at, password_hash, allowed_emails")
     .eq("user_id", profile.id)
-    .eq("is_draft", false)
+    .eq("is_draft", false);
+  if (atIso) bundlesQuery = bundlesQuery.lte("created_at", atIso);
+  const { data: bundles } = await bundlesQuery
     .order("updated_at", { ascending: false })
     .limit(50);
 
   const publicBundles = (bundles || [])
     .filter(b => !b.password_hash && !(Array.isArray(b.allowed_emails) && b.allowed_emails.length > 0))
-    .map(b => ({ id: b.id, title: b.title, description: b.description, updated_at: b.updated_at }));
+    .map(b => ({ id: b.id, title: b.title, description: b.description, updated_at: b.updated_at, created_at: b.created_at }));
 
   return {
     profile: {
@@ -66,9 +85,11 @@ async function getHub(slug: string): Promise<HubData | null> {
   };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const hub = await getHub(slug);
+  const { at: atRaw } = await searchParams;
+  if (parseAt(atRaw)) return { robots: { index: false, follow: false } };
+  const hub = await getHub(slug, null);
   if (!hub) return { robots: { index: false, follow: false } };
 
   const author = hub.profile.display_name || slug;
@@ -94,8 +115,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function fmtRelative(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
+function fmtRelative(iso: string, anchor: number): string {
+  const ms = anchor - new Date(iso).getTime();
   const days = Math.floor(ms / (24 * 60 * 60 * 1000));
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
@@ -104,16 +125,23 @@ function fmtRelative(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export default async function HubPage({ params }: Props) {
+export default async function HubPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const hub = await getHub(slug);
+  const { at: atRaw } = await searchParams;
+  const at = parseAt(atRaw);
+  const hub = await getHub(slug, at);
   if (!hub) notFound();
 
   const author = hub.profile.display_name || slug;
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const recent = hub.docs.filter(d => d.updated_at && new Date(d.updated_at).getTime() >= sevenDaysAgo);
+  const anchor = at ? at.getTime() : Date.now();
+  const sevenDaysAgo = anchor - 7 * 24 * 60 * 60 * 1000;
+  const recent = hub.docs.filter(d => {
+    const updated = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+    return updated >= sevenDaysAgo && updated <= anchor;
+  });
   const olderDocs = hub.docs.filter(d => !recent.find(r => r.id === d.id));
   const hubUrl = `https://mdfy.app/hub/${slug}`;
+  const atLabel = at ? at.toISOString().slice(0, 10) : null;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
@@ -126,6 +154,21 @@ export default async function HubPage({ params }: Props) {
           mdfy.app/hub/<span style={{ color: "var(--accent)" }}>{slug}</span>
         </span>
       </header>
+
+      {atLabel && (
+        <div
+          className="px-6 py-2 text-caption flex items-center justify-center gap-3"
+          style={{ background: "var(--accent-dim)", color: "var(--text-primary)", borderBottom: "1px solid var(--accent)" }}
+        >
+          <span aria-hidden>⏳</span>
+          <span>
+            Hub as of <strong>{atLabel}</strong> — {hub.docs.length} {hub.docs.length === 1 ? "doc" : "docs"} and {hub.bundles.length} {hub.bundles.length === 1 ? "bundle" : "bundles"} that existed by then.
+          </span>
+          <Link href={`/hub/${slug}`} className="underline" style={{ color: "var(--accent)" }}>
+            Back to now
+          </Link>
+        </div>
+      )}
 
       <main className="max-w-3xl mx-auto px-6 py-12 sm:py-16">
         {/* Hero — avatar + name + description */}
@@ -216,7 +259,7 @@ export default async function HubPage({ params }: Props) {
                       {d.title || "Untitled"}
                     </span>
                     <span className="text-caption shrink-0 transition-colors" style={{ color: "var(--text-faint)" }}>
-                      {fmtRelative(d.updated_at)}
+                      {fmtRelative(d.updated_at, anchor)}
                     </span>
                   </Link>
                 </li>
@@ -252,7 +295,7 @@ export default async function HubPage({ params }: Props) {
                     </span>
                   )}
                   <span className="text-caption mt-1" style={{ color: "var(--text-faint)" }}>
-                    Updated {fmtRelative(b.updated_at)}
+                    Updated {fmtRelative(b.updated_at, anchor)}
                   </span>
                 </Link>
               ))}
@@ -293,7 +336,11 @@ export default async function HubPage({ params }: Props) {
 
         {hub.docs.length === 0 && hub.bundles.length === 0 && (
           <div className="py-16 text-center" style={{ color: "var(--text-faint)" }}>
-            <p>This hub doesn&apos;t have any public documents yet.</p>
+            <p>
+              {at
+                ? `No public docs or bundles existed in this hub on ${atLabel}.`
+                : "This hub doesn't have any public documents yet."}
+            </p>
           </div>
         )}
 
