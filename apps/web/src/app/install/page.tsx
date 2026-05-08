@@ -1,0 +1,133 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Install /mdfy in Claude Code | mdfy",
+  description:
+    "One-line install for the /mdfy slash command in Claude Code. Capture, bundle, and deploy your conversations through your personal mdfy hub.",
+};
+
+const INSTALL_CMD =
+  "curl -fsSL https://staging.mdfy.app/skills/mdfy/install.sh | sh";
+
+export default function InstallPage() {
+  return (
+    <main
+      className="min-h-screen px-6 py-16"
+      style={{ background: "var(--background)", color: "var(--text-primary)" }}
+    >
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-3">
+          Install /mdfy in Claude Code
+        </h1>
+        <p
+          className="text-base mb-10"
+          style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}
+        >
+          A skill for Claude Code that captures the current conversation, builds bundles from your hub, and hands you a URL any other AI can read. One line to install.
+        </p>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            One-line install
+          </h2>
+          <pre
+            className="p-4 rounded-lg overflow-x-auto text-sm"
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+            }}
+          >
+            <code>{INSTALL_CMD}</code>
+          </pre>
+          <p
+            className="text-xs mt-2"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Drops SKILL.md into <code>~/.claude/skills/mdfy/</code>. Restart Claude Code (or run <code>/reload-skills</code>) to pick it up.
+          </p>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            What you can do after installing
+          </h2>
+          <ul className="space-y-3" style={{ color: "var(--text-secondary)" }}>
+            <li>
+              <strong>/mdfy capture &lt;title&gt;</strong>
+              <br />
+              Save the conversation segment as a public mdfy URL. Pasted into any AI, it loads as context.
+            </li>
+            <li>
+              <strong>/mdfy bundle &lt;topic&gt;</strong>
+              <br />
+              Generate a curated bundle from your existing hub docs around a topic.
+            </li>
+            <li>
+              <strong>/mdfy hub</strong>
+              <br />
+              Print your hub URL. Paste it into Claude, ChatGPT, Gemini, or Cursor and they read your full personal knowledge as context.
+            </li>
+          </ul>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Why this matters
+          </h2>
+          <p
+            style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}
+          >
+            Karpathy hand-maintains a personal LLM wiki because no consumer surface does this yet. Graphify proved that <code>/&lt;tool&gt;</code> shipped as a skill scales across Claude Code, Cursor, Codex, and Aider. The /mdfy skill is the same shape: one install, then every coding-AI session can capture into your hub and pull from it as context. Same URL works for every AI.
+          </p>
+        </section>
+
+        <section
+          className="mt-16 pt-8 text-sm"
+          style={{
+            borderTop: "1px solid var(--border)",
+            color: "var(--text-faint)",
+            lineHeight: 1.6,
+          }}
+        >
+          <p className="mb-2">
+            <strong>Privacy.</strong> The skill only sends the conversation
+            segment you ask it to capture, plus your auth token if you've
+            signed in. Nothing else.
+          </p>
+          <p>
+            <strong>Open source.</strong> Read the script:{" "}
+            <a
+              href="/skills/mdfy/install.sh"
+              className="underline"
+              style={{ color: "var(--accent)" }}
+            >
+              /skills/mdfy/install.sh
+            </a>
+            . Read the skill:{" "}
+            <a
+              href="/skills/mdfy/SKILL.md"
+              className="underline"
+              style={{ color: "var(--accent)" }}
+            >
+              /skills/mdfy/SKILL.md
+            </a>
+            .
+          </p>
+          <p className="mt-4">
+            Cursor, Codex, and Aider versions of /mdfy follow in W9 and W10.
+          </p>
+        </section>
+      </div>
+    </main>
+  );
+}
