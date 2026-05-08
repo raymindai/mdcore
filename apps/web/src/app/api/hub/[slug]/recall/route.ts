@@ -26,9 +26,11 @@ const SLUG_RE = /^[a-z0-9_-]{3,32}$/;
 interface PublicHubRecallBody {
   question?: string;
   k?: number;
-  /** "doc" returns whole-doc matches (default). "chunk" returns
-   *  paragraph-level matches from document_chunks (Phase 2 RAG). */
-  level?: "doc" | "chunk";
+  /** Retrieval granularity:
+   *    "doc"    — whole-doc matches (default, Phase 1)
+   *    "chunk"  — paragraph-level matches (Phase 2)
+   *    "bundle" — curated bundle matches (Phase 3) */
+  level?: "doc" | "chunk" | "bundle";
 }
 
 export async function POST(
@@ -61,7 +63,8 @@ export async function POST(
   }
 
   const k = Math.min(Math.max(body.k ?? DEFAULT_K, 1), MAX_K);
-  const level: "doc" | "chunk" = body.level === "chunk" ? "chunk" : "doc";
+  const level: "doc" | "chunk" | "bundle" =
+    body.level === "chunk" || body.level === "bundle" ? body.level : "doc";
 
   // Resolve hub → owner user_id; only public hubs are eligible.
   const { data: profile } = await supabase
@@ -87,7 +90,36 @@ export async function POST(
 
   let results: unknown[];
 
-  if (level === "chunk") {
+  if (level === "bundle") {
+    const { data: rows, error } = await supabase.rpc("match_public_hub_bundles", {
+      query_embedding: vectorToSql(queryVec),
+      p_hub_user_id: profile.id,
+      match_count: k,
+    });
+    if (error) {
+      return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
+    }
+
+    type BundleRow = {
+      id: string;
+      title: string | null;
+      description: string | null;
+      updated_at: string;
+      document_count: number;
+      distance: number;
+    };
+
+    results = (rows as BundleRow[] | null || []).map((r) => ({
+      id: r.id,
+      title: r.title || "Untitled Bundle",
+      description: r.description || "",
+      url: `https://mdfy.app/b/${r.id}`,
+      raw_url: `https://mdfy.app/raw/bundle/${r.id}`,
+      document_count: Number(r.document_count),
+      distance: Number(r.distance.toFixed(4)),
+      updated_at: r.updated_at,
+    }));
+  } else if (level === "chunk") {
     const { data: rows, error } = await supabase.rpc("match_public_hub_chunks", {
       query_embedding: vectorToSql(queryVec),
       p_hub_user_id: profile.id,
