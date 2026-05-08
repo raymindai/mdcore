@@ -1222,7 +1222,7 @@ Open any bundle and the right panel shows **Discoveries** — what the bundle wa
 | 🔗 Connections | Doc-to-doc relationships ("doc-A frames what doc-B critiques") |
 | 🌿 Threads | Concepts that recur across multiple docs |
 
-Click any item → the canvas flies to the relevant chunk and pulses it. Tensions get an **✨ Resolve with AI** button that generates a reconciliation paragraph in place.
+Click any item → the canvas flies to the relevant chunk and pulses it. Tensions get an **Resolve with AI** button that generates a reconciliation paragraph in place.
 
 ## Decompose: split a doc into semantic chunks
 
@@ -1238,13 +1238,13 @@ Or use the **sidebar Decompose tab** — same data, vertical list editor for foc
 
 ## Compile: synthesis becomes a permanent artifact
 
-From the canvas top toolbar, hit **✨ Memo / FAQ / Brief** to synthesize the entire bundle into a coherent output:
+From the canvas top toolbar, hit **Memo / FAQ / Brief** to synthesize the entire bundle into a coherent output:
 
 - **Memo** — 1-page decision-ready memo (Headline, TL;DR, Key findings, Tensions, Gaps, Recommendations)
 - **FAQ** — 5–10 synthesized questions and answers across docs
 - **Brief** — 400-600 word narrative essay tying the bundle together
 
-Click **Save as document** and the result becomes a *compiled entry*: a normal doc that **remembers its source bundle** and intent. Compiled docs get a **\`✨ Compiled · Memo\`** badge in the editor header and a **\`↻ Recompile\`** button — when source docs change, one click regenerates the synthesis with the latest content.
+Click **Save as document** and the result becomes a *compiled entry*: a normal doc that **remembers its source bundle** and intent. Compiled docs get a **\`Compiled · Memo\`** badge in the editor header and a **\`↻ Recompile\`** button — when source docs change, one click regenerates the synthesis with the latest content.
 
 This is the Karpathy-style "compile knowledge once, query forever" loop, applied to your bundle.
 
@@ -2038,7 +2038,7 @@ function BundleCreatorModal({
         {/* AI Bundle Generation strip — describe what you want, AI picks from hub. */}
         <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <label className="text-caption font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
-            <span style={{ color: "var(--accent)" }}>✨ Ask AI</span> <span style={{ color: "var(--text-faint)" }}>(optional)</span>
+            <span className="inline-flex items-center gap-1" style={{ color: "var(--accent)" }}><Sparkles width={12} height={12} aria-hidden /> Ask AI</span> <span style={{ color: "var(--text-faint)" }}>(optional)</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -2130,7 +2130,7 @@ function BundleCreatorModal({
                     border: "1px solid var(--border-dim)",
                   }}
                 >
-                  ✨ {p}
+                  <Sparkles width={11} height={11} aria-hidden /> {p}
                 </button>
               ))}
             </div>
@@ -2208,8 +2208,8 @@ function BundleCreatorModal({
                     <div className="flex-1 min-w-0">
                       <div className="truncate">{doc.title}</div>
                       {isSelected && aiAnnotations[doc.id] && (
-                        <div className="text-caption truncate mt-0.5" style={{ color: "var(--accent)", opacity: 0.85 }}>
-                          ✨ {aiAnnotations[doc.id]}
+                        <div className="text-caption truncate mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--accent)", opacity: 0.85 }}>
+                          <Sparkles width={10} height={10} className="shrink-0" aria-hidden /> {aiAnnotations[doc.id]}
                         </div>
                       )}
                     </div>
@@ -10352,7 +10352,7 @@ ${clone.innerHTML}
                             className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                             style={{ color: "var(--accent)" }}
                           >
-                            <span style={{ fontSize: 12 }}>✨</span>
+                            <Globe width={12} height={12} aria-hidden />
                             My Hub <span className="font-mono ml-auto" style={{ color: "var(--text-faint)", fontSize: 10 }}>/hub/{(profile as { hub_slug?: string }).hub_slug}</span>
                           </button>
                         )}

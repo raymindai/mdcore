@@ -423,7 +423,7 @@ function buildCodeBlockNodeView({ node, HTMLAttributes, getPos, editor }: any) {
       const sep = document.createElement("div");
       sep.style.cssText = "height:1px;background:var(--border-dim);margin:3px 0;";
       menu.appendChild(sep);
-      addItem("✨ Render as Mermaid chart (AI)", "AI redraws this as a styled Mermaid diagram", beautifyWithAI);
+      addItem("Render as Mermaid chart (AI)", "AI redraws this as a styled Mermaid diagram", beautifyWithAI);
 
       convertBtn.addEventListener("click", (e) => {
         e.preventDefault(); e.stopPropagation();

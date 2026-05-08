@@ -203,16 +203,27 @@ async function extractWithAnthropic(excerpts: string, docs: DocInfo[], apiKey: s
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      // Anthropic requires max_tokens; the value is just a ceiling.
+      // Billing is on actual output tokens, not the cap, so a larger
+      // value costs nothing extra when the response is short. 4096 was
+      // truncating ~10-doc bundles mid-array; 16K future-proofs even
+      // for hubs that pile 20+ docs into a bundle.
+      max_tokens: 16384,
+      system: "You return ONLY valid JSON matching the schema requested. No prose before or after. No markdown code fences. No explanation. Just the JSON object.",
       messages: [{
         role: "user",
         content: `${prompt}\n\nDocuments:\n${excerpts}`,
       }],
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    console.error("Anthropic API error:", res.status, errText.slice(0, 400));
+    return null;
+  }
   const data = await res.json();
   const text = data.content?.[0]?.text || "";
+  console.log("Anthropic response length:", text.length, "stop_reason:", data.stop_reason);
   return parseGraphJson(text);
 }
 
@@ -229,7 +240,7 @@ async function extractWithOpenAI(excerpts: string, docs: DocInfo[], apiKey: stri
         { role: "system", content: prompt },
         { role: "user", content: `Documents:\n${excerpts}` },
       ],
-      max_tokens: 4096,
+      max_tokens: 16384,
       response_format: { type: "json_object" },
     }),
   });
@@ -245,7 +256,7 @@ async function extractWithGemini(excerpts: string, docs: DocInfo[], apiKey: stri
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: `${prompt}\n\nDocuments:\n${excerpts}` }] }],
-      generationConfig: { maxOutputTokens: 4096, responseMimeType: "application/json" },
+      generationConfig: { maxOutputTokens: 16384, responseMimeType: "application/json" },
     }),
   });
   if (!res.ok) {
@@ -260,12 +271,27 @@ async function extractWithGemini(excerpts: string, docs: DocInfo[], apiKey: stri
 }
 
 function parseGraphJson(text: string) {
-  // Extract JSON from possible markdown code block
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, text];
-  const jsonStr = (jsonMatch[1] || text).trim();
+  // Three-layer extraction so the route survives small model misbehaviors:
+  //   1. strip markdown code fences if present
+  //   2. trim leading / trailing prose by clipping to the outermost { ... }
+  //   3. attempt JSON.parse and log on failure (silent return null was
+  //      hiding *why* analyze was failing in production)
+  let candidate = text.trim();
+  const fenceMatch = candidate.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenceMatch) candidate = fenceMatch[1].trim();
+  const firstBrace = candidate.indexOf("{");
+  const lastBrace = candidate.lastIndexOf("}");
+  if (firstBrace > 0 && lastBrace > firstBrace) {
+    candidate = candidate.slice(firstBrace, lastBrace + 1);
+  } else if (firstBrace > 0) {
+    candidate = candidate.slice(firstBrace);
+  }
   try {
-    const parsed = JSON.parse(jsonStr);
-    if (!parsed.nodes || !parsed.edges) return null;
+    const parsed = JSON.parse(candidate);
+    if (!parsed.nodes || !parsed.edges) {
+      console.error("parseGraphJson: missing nodes/edges. Top-level keys:", Object.keys(parsed));
+      return null;
+    }
     return {
       nodes: parsed.nodes || [],
       edges: parsed.edges || [],
@@ -281,7 +307,10 @@ function parseGraphJson(text: string) {
       connections: parsed.connections || [],
       version: 2,
     };
-  } catch {
+  } catch (err) {
+    console.error("parseGraphJson failed:", err instanceof Error ? err.message : err);
+    console.error("First 300 chars of source:", text.slice(0, 300));
+    console.error("Source length:", text.length, "candidate length:", candidate.length);
     return null;
   }
 }

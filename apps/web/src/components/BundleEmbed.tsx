@@ -2770,7 +2770,7 @@ function BundleListView({
                   title={canEdit ? "Edit note" : undefined}
                 >
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    <span style={{ color: "var(--accent)", fontWeight: 600 }}>✨</span> {doc.annotation}
+                    <span className="font-mono uppercase" style={{ color: "var(--accent)", fontWeight: 700, fontSize: 10, letterSpacing: 0.5, marginRight: 6 }}>AI</span>{doc.annotation}
                   </p>
                 </button>
               ) : canEdit ? (
