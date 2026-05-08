@@ -4,69 +4,85 @@ import Link from "next/link";
 
 const STORAGE_KEY = "mdfy-welcome-seen";
 
-const slides = [
+// v6 welcome flow. Five slides, each with a single role:
+//   intro — hook on the v6 thesis (knowledge hub for the AI era)
+//   01 capture — paste anything, get a permanent URL
+//   02 hub — captures roll up into a single deployable URL
+//   03 deploy — paste hub URL into any AI as context
+//   04 surfaces — install /mdfy and the per-tool plugins
+//
+// Each slide carries an explicit CTA link so the user can jump
+// straight to the action, not just read about it.
+
+type Surface = { name: string; desc: string; color: string };
+
+type Slide = {
+  step: string | null;
+  badge?: string;
+  title: string;
+  desc: string | null;
+  icon: React.ReactNode | null;
+  primaryLink?: { href: string; label: string };
+  secondaryLink?: { href: string; label: string };
+  surfaces?: Surface[];
+};
+
+const slides: Slide[] = [
   {
     step: null,
-    title: "Own your markdown.\nUse it anywhere.",
-    desc: "Capture AI answers, edit in WYSIWYG, share with a permanent URL. No signup needed.",
+    badge: "Personal knowledge hub for the AI era",
+    title: "Your AI memory,\nowned by you.",
+    desc: "ChatGPT, Claude, and Cursor all forget you between sessions. mdfy is the URL that doesn't.",
     icon: null,
-    demoLink: { href: "/hub/yc-demo", label: "See a real hub →" },
+    primaryLink: { href: "/hub/yc-demo", label: "See a real hub →" },
   },
   {
     step: "01",
-    title: "Capture. Import. Paste.",
-    desc: "From ChatGPT, Claude, Gemini — or drop any file. PDF, DOCX, code, plain text. 14+ formats.",
+    title: "Capture anything.",
+    desc: "Paste from ChatGPT, Claude, Gemini, or drop any file — PDF, DOCX, code, plain text. One click, permanent URL, no signup.",
     icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
       </svg>
     ),
   },
   {
     step: "02",
-    title: "Edit like a document.",
-    desc: "Click and type in the rendered preview. Bold, headings, lists, code — no Markdown syntax needed.",
+    title: "Captures become a hub.",
+    desc: "Everything you save lives at one URL: mdfy.app/hub/you. Bundles group related docs. A semantic graph shows how it all connects.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+        <circle cx="12" cy="12" r="3" /><circle cx="4" cy="6" r="2" /><circle cx="20" cy="6" r="2" /><circle cx="4" cy="18" r="2" /><circle cx="20" cy="18" r="2" /><path d="M6 7l4 3M18 7l-4 3M6 17l4-3M18 17l-4-3" />
       </svg>
     ),
+    primaryLink: { href: "/hub/yc-demo", label: "Browse a hub →" },
   },
   {
     step: "03",
-    title: "Share with one click.",
-    desc: "Get a permanent URL like mdfy.app/abc123. Anyone can view it — no app, no login needed.",
+    title: "Paste the URL.\nAny AI reads it.",
+    desc: "Drop your hub URL into Claude, ChatGPT, Cursor, or Codex — they fetch the markdown and load your full personal context.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
       </svg>
     ),
+    primaryLink: { href: "/install", label: "Install /mdfy in your AI tool →" },
   },
   {
     step: "04",
-    title: "Your hub becomes\ncontext for any AI.",
-    desc: "Captures roll up into one URL. Paste your hub into Claude, ChatGPT, Cursor, or Codex — they read your whole knowledge layer as context.",
-    icon: (
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-      </svg>
-    ),
-    hubLink: { href: "/install", label: "Install /mdfy in your AI tool →" },
-  },
-  {
-    step: "05",
-    title: "Works everywhere.",
+    title: "Use it from where you already work.",
     desc: null,
     icon: null,
     surfaces: [
-      { name: "Chrome Extension", desc: "Capture AI conversations", color: "#4ade80" },
-      { name: "VS Code", desc: "WYSIWYG preview + sync", color: "#60a5fa" },
-      { name: "Mac App", desc: "Native desktop with sidebar", color: "#fb923c" },
-      { name: "CLI", desc: "Pipe anything to a URL", color: "#4ade80" },
-      { name: "MCP Server", desc: "AI agents read & write docs", color: "#60a5fa" },
-      { name: "QuickLook", desc: "Space to preview in Finder", color: "#fbbf24" },
+      { name: "Claude Code", desc: "/mdfy capture · bundle · hub", color: "#fb923c" },
+      { name: "Cursor", desc: "Same actions, .mdc rule", color: "#fbbf24" },
+      { name: "Codex CLI", desc: "AGENTS.md block, idempotent", color: "#4ade80" },
+      { name: "Aider", desc: "conventions.md", color: "#60a5fa" },
+      { name: "Chrome", desc: "Capture from any web AI", color: "#c4b5fd" },
+      { name: "VS Code · Mac · CLI · MCP", desc: "Native everywhere else", color: "#f472b6" },
     ],
-    pluginsLink: true,
+    primaryLink: { href: "/install", label: "Install in your tool →" },
+    secondaryLink: { href: "/plugins", label: "All integrations" },
   },
 ];
 
@@ -98,10 +114,6 @@ export default function WelcomeOverlay() {
       dismiss();
     }
   }, [current, dismiss]);
-
-  const skip = useCallback(() => {
-    dismiss();
-  }, [dismiss]);
 
   if (!visible) return null;
 
@@ -139,10 +151,10 @@ export default function WelcomeOverlay() {
         }}
       >
         {/* Content */}
-        <div style={{ padding: slide.icon ? "48px 40px 32px" : "32px 40px 24px", textAlign: "center" }}>
+        <div style={{ padding: slide.icon ? "44px 40px 28px" : "32px 40px 24px", textAlign: "center" }}>
           {/* Icon */}
           {slide.icon && (
-            <div style={{ marginBottom: 20, display: "flex", justifyContent: "center" }}>{slide.icon}</div>
+            <div style={{ marginBottom: 18, display: "flex", justifyContent: "center" }}>{slide.icon}</div>
           )}
 
           {/* Step badge */}
@@ -165,9 +177,27 @@ export default function WelcomeOverlay() {
             </span>
           )}
 
+          {/* Hero badge (intro slide) */}
+          {!slide.step && slide.badge && (
+            <span
+              style={{
+                display: "inline-block",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "var(--accent)",
+                textTransform: "uppercase",
+                letterSpacing: 1.4,
+                marginBottom: 12,
+                fontFamily: "var(--font-geist-mono), monospace",
+              }}
+            >
+              {slide.badge}
+            </span>
+          )}
+
           {/* Logo on first slide */}
           {isFirst && (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>
                 <span style={{ color: "var(--accent)" }}>md</span>
                 <span style={{ color: "var(--text-primary)" }}>fy</span>
@@ -182,7 +212,7 @@ export default function WelcomeOverlay() {
               fontSize: isFirst ? 28 : 22,
               fontWeight: 800,
               color: "var(--text-primary)",
-              lineHeight: 1.3,
+              lineHeight: 1.25,
               letterSpacing: "-0.02em",
               margin: "0 0 12px",
               whiteSpace: "pre-line",
@@ -199,7 +229,7 @@ export default function WelcomeOverlay() {
                 color: "var(--text-muted)",
                 lineHeight: 1.6,
                 margin: 0,
-                maxWidth: 360,
+                maxWidth: 380,
                 marginLeft: "auto",
                 marginRight: "auto",
               }}
@@ -208,59 +238,62 @@ export default function WelcomeOverlay() {
             </p>
           )}
 
-          {/* Demo hub link (signed-out visitors land here first) */}
-          {"demoLink" in slide && slide.demoLink && (
-            <Link
-              href={(slide.demoLink as { href: string; label: string }).href}
-              onClick={dismiss}
-              style={{
-                display: "inline-block",
-                marginTop: 14,
-                fontSize: 13,
-                color: "var(--accent)",
-                textDecoration: "none",
-              }}
-            >
-              {(slide.demoLink as { href: string; label: string }).label}
-            </Link>
-          )}
-
-          {/* Hub-for-AI link (slide 04) */}
-          {"hubLink" in slide && slide.hubLink && (
-            <Link
-              href={(slide.hubLink as { href: string; label: string }).href}
-              onClick={dismiss}
-              style={{
-                display: "inline-block",
-                marginTop: 14,
-                fontSize: 13,
-                color: "var(--accent)",
-                textDecoration: "none",
-              }}
-            >
-              {(slide.hubLink as { href: string; label: string }).label}
-            </Link>
-          )}
-
-          {/* Surfaces list (slide 04) */}
-          {"surfaces" in slide && slide.surfaces && (
-            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6, maxWidth: 320, marginLeft: "auto", marginRight: "auto" }}>
-              {(slide.surfaces as { name: string; desc: string; color: string }[]).map((s) => (
-                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", borderRadius: 8, background: "var(--background)", textAlign: "left" }}>
+          {/* Surfaces grid (slide 04) */}
+          {slide.surfaces && (
+            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 6, maxWidth: 360, marginLeft: "auto", marginRight: "auto" }}>
+              {slide.surfaces.map((s) => (
+                <div
+                  key={s.name}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "7px 12px",
+                    borderRadius: 8,
+                    background: "var(--background)",
+                    textAlign: "left",
+                  }}
+                >
                   <span style={{ width: 6, height: 6, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", minWidth: 110 }}>{s.name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", minWidth: 130 }}>{s.name}</span>
                   <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{s.desc}</span>
                 </div>
               ))}
-              {"pluginsLink" in slide && slide.pluginsLink && (
-                <Link
-                  href="/plugins"
-                  onClick={dismiss}
-                  style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none", marginTop: 4 }}
-                >
-                  See all integrations &rarr;
-                </Link>
-              )}
+            </div>
+          )}
+
+          {/* Primary inline link (per-slide CTA) */}
+          {slide.primaryLink && (
+            <Link
+              href={slide.primaryLink.href}
+              onClick={dismiss}
+              style={{
+                display: "inline-block",
+                marginTop: slide.surfaces ? 14 : 16,
+                fontSize: 13,
+                color: "var(--accent)",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              {slide.primaryLink.label}
+            </Link>
+          )}
+
+          {/* Secondary inline link */}
+          {slide.secondaryLink && (
+            <div style={{ marginTop: 6 }}>
+              <Link
+                href={slide.secondaryLink.href}
+                onClick={dismiss}
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-faint)",
+                  textDecoration: "none",
+                }}
+              >
+                {slide.secondaryLink.label}
+              </Link>
             </div>
           )}
         </div>
@@ -287,7 +320,6 @@ export default function WelcomeOverlay() {
 
         {/* Actions */}
         <div style={{ padding: "16px 40px 32px" }}>
-          {/* Button row */}
           <div style={{ display: "flex", gap: 10 }}>
             {!isFirst && (
               <button
@@ -324,20 +356,21 @@ export default function WelcomeOverlay() {
               {isLast ? "Get started" : "Next"}
             </button>
           </div>
-          {/* Learn more — below on last slide */}
-          {isLast && (
-            <div style={{ textAlign: "center", marginTop: 14 }}>
-              <Link
-                href="/about"
+          {!isLast && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <button
                 onClick={dismiss}
                 style={{
-                  fontSize: 13,
+                  fontSize: 12,
                   color: "var(--text-faint)",
-                  textDecoration: "none",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 4,
                 }}
               >
-                Learn more about mdfy
-              </Link>
+                Skip tour
+              </button>
             </div>
           )}
         </div>

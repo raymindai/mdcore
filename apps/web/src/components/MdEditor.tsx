@@ -10751,11 +10751,61 @@ ${clone.innerHTML}
                   <p className="text-caption mt-1" style={{ opacity: 0.5 }}>MD, PDF, DOCX, PPTX, XLSX, HTML, CSV</p>
                 </div>
 
-                {/* Examples — 2 column grid */}
+                {/* Deploy to AI — v6 hero. Goes above Guides because the hub story
+                    is the v6 thesis; tutorials come second. Install /mdfy is the
+                    primary CTA so it gets an accent border to stand out. */}
+                <div className="mb-6">
+                  <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>Deploy to AI</div>
+                  <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Your hub is the context any AI can read. Paste the URL into Claude, ChatGPT, Cursor, or Codex — they load your knowledge as context.
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(() => {
+                      const myHubSlug = (profile as { hub_slug?: string | null; hub_public?: boolean } | null)?.hub_public
+                        ? (profile as { hub_slug?: string | null }).hub_slug || null
+                        : null;
+                      const cards = [
+                        myHubSlug
+                          ? { label: "Your hub", desc: `mdfy.app/hub/${myHubSlug}`, url: `/hub/${myHubSlug}`, color: "#fb923c", icon: <Globe width={14} height={14} />, primary: false }
+                          : { label: "Browse hubs", desc: "See what a hub looks like", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} />, primary: false },
+                        { label: "Install /mdfy", desc: "From any AI tool", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} />, primary: true },
+                        { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} />, primary: false },
+                        { label: "Live example", desc: "yc-demo's hub", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} />, primary: false },
+                      ];
+                      return cards.map((item) => (
+                        <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
+                          style={{
+                            background: "var(--surface)",
+                            border: item.primary ? `1px solid ${item.color}` : "1px solid var(--border-dim)",
+                            boxShadow: item.primary ? `0 0 0 1px ${item.color}30` : "none",
+                            textDecoration: "none",
+                            transition: "all 0.12s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}30`; }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = item.primary ? item.color : "var(--border-dim)";
+                            e.currentTarget.style.boxShadow = item.primary ? `0 0 0 1px ${item.color}30` : "none";
+                          }}>
+                          <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
+                          <div>
+                            <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                            <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                          </div>
+                        </a>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Examples — 2 column grid. Surface guides (Chrome/VSCode/Mac/CLI/MCP/QuickLook)
+                    are filtered out here because the EXPLORE > Plugins card is the
+                    canonical entry for those — listing both would be a duplicate
+                    surface. The remaining 7 example tabs stay focused on content. */}
                 <div className="mb-6">
                   <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Guides & Examples</div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {EXAMPLE_TABS.map((ex) => (
+                    {EXAMPLE_TABS.filter(ex => !["tab-chrome-ext", "tab-vscode-ext", "tab-desktop", "tab-cli", "tab-mcp", "tab-quicklook"].includes(ex.id)).map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-body text-left cursor-pointer"
                         style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
@@ -10764,33 +10814,6 @@ ${clone.innerHTML}
                         <DocStatusIcon tab={ex} isActive={false} />
                         {ex.title}
                       </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Deploy to AI — v6 surfaces (hub URL becomes context for any AI) */}
-                <div className="mb-6">
-                  <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>Deploy to AI</div>
-                  <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    Your knowledge becomes context any AI can read. Paste your hub URL into Claude, ChatGPT, or Cursor — it loads as your full personal context.
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {([
-                      { label: "Your hub", desc: "Personal knowledge layer", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} /> },
-                      { label: "Install /mdfy", desc: "Capture from Claude, Cursor, Codex, Aider", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} /> },
-                      { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} /> },
-                      { label: "Sample hub", desc: "See how a hub looks", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} /> },
-                    ]).map((item) => (
-                      <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
-                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", textDecoration: "none", transition: "all 0.12s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
-                        <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
-                        <div>
-                          <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
-                          <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
-                        </div>
-                      </a>
                     ))}
                   </div>
                 </div>
