@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { permissionResponse } from "@/lib/permission-response";
 
 /**
  * v6 — Bundle URL → Bundle Spec v1.0 conformant markdown payload.
@@ -39,13 +40,14 @@ import { verifyAuthToken } from "@/lib/verify-auth";
  * didn't make public.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const canonicalUrl = `https://mdfy.app/b/${id}`;
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return new NextResponse("Service unavailable", { status: 503 });
+    return permissionResponse({ reason: "service_unavailable", canonicalUrl, resourceKind: "bundle", resourceId: id });
   }
 
   // bundles table doesn't have a deleted_at column. Soft-delete is
@@ -53,30 +55,27 @@ export async function GET(
   // we only need draft/password/allowed_emails gating here.
   const { data: bundle } = await supabase
     .from("bundles")
-    .select("id, title, description, is_draft, password_hash, allowed_emails, updated_at")
+    .select("id, title, description, is_draft, password_hash, allowed_emails, updated_at, user_id")
     .eq("id", id)
     .single();
 
-  if (!bundle) return new NextResponse("Not found", { status: 404 });
-  if (bundle.is_draft) return new NextResponse("Not found", { status: 404 });
+  if (!bundle) return permissionResponse({ reason: "not_found", canonicalUrl, resourceKind: "bundle", resourceId: id });
+  if (bundle.is_draft) return permissionResponse({ reason: "draft", canonicalUrl, resourceKind: "bundle", resourceId: id });
   if (bundle.password_hash) {
-    return new NextResponse("This bundle is password-protected and cannot be fetched as raw markdown.", { status: 401 });
+    return permissionResponse({ reason: "password_protected", canonicalUrl, resourceKind: "bundle", resourceId: id });
   }
 
   // W7 shared bundles. allowed_emails on a bundle means: only people in
   // the list (or the owner) can fetch it. AI agents acting on behalf of
   // a person should pass that person's email via the X-User-Email header.
-  // Owner is identified separately via JWT (Authorization). Without
-  // either, we 403 with a useful redirect to the in-app /b/<id> route.
+  // Owner is identified separately via JWT (Authorization).
   if (Array.isArray(bundle.allowed_emails) && bundle.allowed_emails.length > 0) {
-    const verified = await verifyAuthToken(_request.headers.get("authorization"));
-    const requesterEmail = (verified?.email || _request.headers.get("x-user-email") || "").toLowerCase();
+    const verified = await verifyAuthToken(request.headers.get("authorization"));
+    const requesterEmail = (verified?.email || request.headers.get("x-user-email") || "").toLowerCase();
     const allowed = (bundle.allowed_emails as string[]).map((e) => e.toLowerCase());
-    if (!requesterEmail || !allowed.includes(requesterEmail)) {
-      return new NextResponse(
-        "This bundle is shared with specific people. Sign in or pass an X-User-Email header to access it.",
-        { status: 403, headers: { "Content-Type": "text/plain" } },
-      );
+    const isOwner = verified?.userId && verified.userId === bundle.user_id;
+    if (!isOwner && (!requesterEmail || !allowed.includes(requesterEmail))) {
+      return permissionResponse({ reason: "email_restricted", canonicalUrl, resourceKind: "bundle", resourceId: id });
     }
   }
 

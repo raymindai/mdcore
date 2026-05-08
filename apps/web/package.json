@@ -10,7 +10,9 @@
     "build:wasm": "cd ../../packages/engine && wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release",
     "test:share": "tsx scripts/test-share-importer.ts",
     "test:bookmarklet": "tsx scripts/test-bookmarklet.ts",
-    "test:diff": "tsx scripts/test-markdown-diff.ts"
+    "test:diff": "tsx scripts/test-markdown-diff.ts",
+    "test:perm": "node --env-file=.env.local scripts/perm-test.mjs",
+    "test:discover": "node --env-file=.env.local scripts/discover-test.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

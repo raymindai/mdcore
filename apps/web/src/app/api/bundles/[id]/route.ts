@@ -229,6 +229,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       allowed_emails: [],
       allowed_editors: [],
       edit_mode: "owner",
+      is_discoverable: false,
       updated_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to unpublish" }, { status: 500 });
@@ -237,13 +238,44 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   // ─── Action: set-allowed-emails ───
   if (body.action === "set-allowed-emails") {
-    const { error } = await supabase.from("bundles").update({
-      allowed_emails: Array.isArray(body.allowedEmails) ? body.allowedEmails : [],
+    const allowedEmails = Array.isArray(body.allowedEmails) ? body.allowedEmails : [];
+    // If the bundle was on /shared and we're locking it down, drop the
+    // discovery flag — discoverability requires fully public.
+    const updates: Record<string, unknown> = {
+      allowed_emails: allowedEmails,
       allowed_editors: Array.isArray(body.allowedEditors) ? body.allowedEditors : [],
       updated_at: new Date().toISOString(),
-    }).eq("id", id);
+    };
+    if (allowedEmails.length > 0) updates.is_discoverable = false;
+    const { error } = await supabase.from("bundles").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to update sharing" }, { status: 500 });
     return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: set-discoverable ───
+  // Owner-only opt-in for the public /shared discovery feed. Only valid
+  // on bundles that are already public (no allowed_emails, no password).
+  if (body.action === "set-discoverable") {
+    const next = !!(body as { discoverable?: boolean }).discoverable;
+    if (next) {
+      const { data: current } = await supabase
+        .from("bundles")
+        .select("password_hash, allowed_emails, is_draft")
+        .eq("id", id)
+        .single();
+      if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      if (current.is_draft) return NextResponse.json({ error: "Publish the bundle before listing it on /shared." }, { status: 400 });
+      if (current.password_hash) return NextResponse.json({ error: "Password-protected bundles can't be listed on /shared." }, { status: 400 });
+      if (Array.isArray(current.allowed_emails) && current.allowed_emails.length > 0) {
+        return NextResponse.json({ error: "Email-restricted bundles can't be listed on /shared." }, { status: 400 });
+      }
+    }
+    const { error } = await supabase.from("bundles").update({
+      is_discoverable: next,
+      updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to update discoverability" }, { status: 500 });
+    return NextResponse.json({ ok: true, isDiscoverable: next });
   }
 
   // ─── Action: change-edit-mode ───

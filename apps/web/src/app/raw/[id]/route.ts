@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { permissionResponse } from "@/lib/permission-response";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 // Public, AI-deployable representation of a single mdfy document.
 // Hit by:
@@ -19,39 +21,45 @@ import { getSupabaseClient } from "@/lib/supabase";
 // expired / email-restricted) intentionally 404 here so the AI never
 // receives content the user didn't make public.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const canonicalUrl = `https://mdfy.app/${id}`;
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return new NextResponse("Service unavailable", { status: 503 });
+    return permissionResponse({ reason: "service_unavailable", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
 
   const { data } = await supabase
     .from("documents")
-    .select("id, markdown, title, is_draft, deleted_at, password_hash, expires_at, allowed_emails, updated_at, source")
+    .select("id, markdown, title, is_draft, deleted_at, password_hash, expires_at, allowed_emails, updated_at, source, user_id")
     .eq("id", id)
     .single();
 
   if (!data) {
-    return new NextResponse("Not found", { status: 404 });
+    return permissionResponse({ reason: "not_found", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
   if (data.deleted_at) {
-    return new NextResponse("Not found", { status: 404 });
+    return permissionResponse({ reason: "deleted", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
   if (data.is_draft) {
-    return new NextResponse("Not found", { status: 404 });
+    return permissionResponse({ reason: "draft", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
   if (data.password_hash) {
-    // Don't expose protected content via the AI fetch path.
-    return new NextResponse("This document is password-protected and cannot be fetched as raw markdown.", { status: 401 });
+    return permissionResponse({ reason: "password_protected", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
   if (data.expires_at && new Date(data.expires_at) < new Date()) {
-    return new NextResponse("Document expired", { status: 410 });
+    return permissionResponse({ reason: "expired", canonicalUrl, resourceKind: "doc", resourceId: id });
   }
   if (Array.isArray(data.allowed_emails) && data.allowed_emails.length > 0) {
-    return new NextResponse("This document is restricted to specific people.", { status: 403 });
+    const verified = await verifyAuthToken(request.headers.get("authorization"));
+    const requesterEmail = (verified?.email || request.headers.get("x-user-email") || "").toLowerCase();
+    const allowed = (data.allowed_emails as string[]).map((e) => e.toLowerCase());
+    const isOwner = verified?.userId && verified.userId === data.user_id;
+    if (!isOwner && (!requesterEmail || !allowed.includes(requesterEmail))) {
+      return permissionResponse({ reason: "email_restricted", canonicalUrl, resourceKind: "doc", resourceId: id });
+    }
   }
 
   const title = (data.title || "Untitled").replace(/"/g, '\\"');
