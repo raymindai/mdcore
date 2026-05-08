@@ -26,6 +26,9 @@ const SLUG_RE = /^[a-z0-9_-]{3,32}$/;
 interface PublicHubRecallBody {
   question?: string;
   k?: number;
+  /** "doc" returns whole-doc matches (default). "chunk" returns
+   *  paragraph-level matches from document_chunks (Phase 2 RAG). */
+  level?: "doc" | "chunk";
 }
 
 export async function POST(
@@ -58,6 +61,7 @@ export async function POST(
   }
 
   const k = Math.min(Math.max(body.k ?? DEFAULT_K, 1), MAX_K);
+  const level: "doc" | "chunk" = body.level === "chunk" ? "chunk" : "doc";
 
   // Resolve hub → owner user_id; only public hubs are eligible.
   const { data: profile } = await supabase
@@ -81,48 +85,86 @@ export async function POST(
     );
   }
 
-  const { data: rows, error } = await supabase.rpc("match_public_hub_docs", {
-    query_embedding: vectorToSql(queryVec),
-    p_hub_user_id: profile.id,
-    match_count: k,
-  });
-  if (error) {
-    return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
-  }
+  let results: unknown[];
 
-  type Row = {
-    id: string;
-    title: string | null;
-    markdown: string;
-    updated_at: string;
-    source: string | null;
-    distance: number;
-  };
+  if (level === "chunk") {
+    const { data: rows, error } = await supabase.rpc("match_public_hub_chunks", {
+      query_embedding: vectorToSql(queryVec),
+      p_hub_user_id: profile.id,
+      match_count: k,
+    });
+    if (error) {
+      return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
+    }
 
-  const results = (rows as Row[] | null || []).map((r) => {
-    // 200-char snippet from the markdown body (without leading code fences),
-    // good enough for a preview without paying the full-doc token cost.
-    const cleaned = (r.markdown || "")
-      .replace(/^---[\s\S]*?---\s*/m, "")
-      .replace(/^#+\s+.*$/gm, "")
-      .replace(/```[\s\S]*?```/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    return {
-      id: r.id,
-      title: r.title || "Untitled",
-      url: `https://mdfy.app/${r.id}`,
-      raw_url: `https://mdfy.app/raw/${r.id}`,
-      snippet: cleaned.slice(0, 200),
-      distance: Number(r.distance.toFixed(4)),
-      updated_at: r.updated_at,
+    type ChunkRow = {
+      chunk_id: number;
+      doc_id: string;
+      chunk_idx: number;
+      heading: string | null;
+      heading_path: string | null;
+      markdown: string;
+      doc_title: string | null;
+      doc_updated_at: string;
+      distance: number;
     };
-  });
+
+    results = (rows as ChunkRow[] | null || []).map((r) => ({
+      chunk_id: r.chunk_id,
+      doc_id: r.doc_id,
+      chunk_idx: r.chunk_idx,
+      heading: r.heading,
+      heading_path: r.heading_path,
+      markdown: r.markdown,
+      doc_title: r.doc_title || "Untitled",
+      doc_url: `https://mdfy.app/${r.doc_id}`,
+      raw_url: `https://mdfy.app/raw/${r.doc_id}`,
+      distance: Number(r.distance.toFixed(4)),
+      updated_at: r.doc_updated_at,
+    }));
+  } else {
+    const { data: rows, error } = await supabase.rpc("match_public_hub_docs", {
+      query_embedding: vectorToSql(queryVec),
+      p_hub_user_id: profile.id,
+      match_count: k,
+    });
+    if (error) {
+      return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
+    }
+
+    type DocRow = {
+      id: string;
+      title: string | null;
+      markdown: string;
+      updated_at: string;
+      source: string | null;
+      distance: number;
+    };
+
+    results = (rows as DocRow[] | null || []).map((r) => {
+      const cleaned = (r.markdown || "")
+        .replace(/^---[\s\S]*?---\s*/m, "")
+        .replace(/^#+\s+.*$/gm, "")
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return {
+        id: r.id,
+        title: r.title || "Untitled",
+        url: `https://mdfy.app/${r.id}`,
+        raw_url: `https://mdfy.app/raw/${r.id}`,
+        snippet: cleaned.slice(0, 200),
+        distance: Number(r.distance.toFixed(4)),
+        updated_at: r.updated_at,
+      };
+    });
+  }
 
   return NextResponse.json(
     {
       hub: { slug, display_name: profile.display_name || slug },
       question,
+      level,
       results,
       meta: {
         retrieval: "vector",

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
-import { embedText, hashEmbeddingSource, prepareEmbeddingInput, vectorToSql } from "@/lib/embeddings";
+import { embedBatch, embedText, hashEmbeddingSource, prepareEmbeddingInput, vectorToSql } from "@/lib/embeddings";
+import { chunkDocument } from "@/lib/chunk-doc";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -56,33 +57,138 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   }
 
   const hash = hashEmbeddingSource(input);
+  let docEmbedded: boolean;
   if (doc.embedding_source_hash === hash) {
-    return NextResponse.json({ skipped: true, reason: "unchanged" });
+    // Doc-level embedding is current. Fall through to chunk refresh —
+    // chunks were added in Phase 2 RAG and may need a one-time backfill
+    // for docs whose body never changed since the chunk table existed.
+    // Both paths are idempotent: chunk hash diff is the actual gate.
+    docEmbedded = false;
+  } else {
+    let vec: number[];
+    try {
+      vec = await embedText(input);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "embed failed";
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
+
+    // Use raw SQL via RPC since supabase-js doesn't natively serialize
+    // pgvector arrays. The vectorToSql helper formats "[v1,v2,...]" which
+    // pgvector parses on insert via implicit cast.
+    const { error: updateErr } = await supabase
+      .from("documents")
+      .update({
+        embedding: vectorToSql(vec),
+        embedding_source_hash: hash,
+        embedding_updated_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (updateErr) {
+      return NextResponse.json({ error: `update failed: ${updateErr.message}` }, { status: 500 });
+    }
+    docEmbedded = true;
   }
 
-  let vec: number[];
+  // ─── Chunk-level refresh (Phase 2 RAG) ─────────────────────────────
+  // Re-chunk the doc, diff the new chunk hashes against what's stored,
+  // and only embed the chunks that changed. Stale chunks (those that
+  // no longer exist in the new split) are deleted. Best-effort — a
+  // failure here doesn't fail the doc-level embed; the next save will
+  // try again. Runs even when doc-level was a hash hit, so previously
+  // un-chunked docs get backfilled.
+  let chunkResult: { chunks: number; embedded: number; deleted: number } | null = null;
   try {
-    vec = await embedText(input);
+    chunkResult = await refreshDocChunks(id, doc.markdown);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "embed failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({
+      docEmbedded,
+      chunkRefresh: { error: err instanceof Error ? err.message : "chunk refresh failed" },
+    });
   }
 
-  // Use raw SQL via RPC since supabase-js doesn't natively serialize
-  // pgvector arrays. The vectorToSql helper formats "[v1,v2,...]" which
-  // pgvector parses on insert via implicit cast.
-  const { error: updateErr } = await supabase
-    .from("documents")
-    .update({
-      embedding: vectorToSql(vec),
-      embedding_source_hash: hash,
-      embedding_updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
+  return NextResponse.json({
+    docEmbedded,
+    embedded: docEmbedded,                 // backwards-compat key
+    chunks: chunkResult,
+    skipped: !docEmbedded && chunkResult?.embedded === 0 ? { reason: "unchanged" } : undefined,
+  });
+}
 
-  if (updateErr) {
-    return NextResponse.json({ error: `update failed: ${updateErr.message}` }, { status: 500 });
+// Idempotent chunk refresh. Mirrors the doc-level pattern:
+//   1. compute new chunks + hashes
+//   2. read stored (chunk_idx, hash) for this doc
+//   3. delete chunk_idx values that no longer exist
+//   4. embed only the chunks whose hash changed (or new ones)
+//   5. upsert markdown / hash / embedding for each touched chunk
+async function refreshDocChunks(
+  docId: string,
+  markdown: string,
+): Promise<{ chunks: number; embedded: number; deleted: number }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("supabase unavailable");
+
+  const newChunks = chunkDocument(markdown || "");
+
+  const { data: stored } = await supabase
+    .from("document_chunks")
+    .select("chunk_idx, hash")
+    .eq("doc_id", docId);
+  const storedByIdx = new Map<number, string>();
+  for (const row of stored || []) {
+    storedByIdx.set(row.chunk_idx as number, row.hash as string);
   }
 
-  return NextResponse.json({ embedded: true });
+  // Delete chunks that no longer exist in the new split.
+  const newIdxSet = new Set(newChunks.map((c) => c.chunk_idx));
+  const toDelete = Array.from(storedByIdx.keys()).filter((idx) => !newIdxSet.has(idx));
+  if (toDelete.length > 0) {
+    await supabase
+      .from("document_chunks")
+      .delete()
+      .eq("doc_id", docId)
+      .in("chunk_idx", toDelete);
+  }
+
+  // Find which chunks need (re-)embedding.
+  const toEmbed = newChunks.filter(
+    (c) => storedByIdx.get(c.chunk_idx) !== c.hash,
+  );
+
+  if (toEmbed.length === 0) {
+    return { chunks: newChunks.length, embedded: 0, deleted: toDelete.length };
+  }
+
+  const inputs = toEmbed.map((c) => prepareEmbeddingInput(c.heading_path, c.markdown));
+  // embedBatch caps at 100 inputs/call. Most docs split into <30 chunks,
+  // so a single batch call covers the common case; if a giant doc ever
+  // exceeds the cap we slice it ourselves.
+  const vectors: number[][] = [];
+  for (let i = 0; i < inputs.length; i += 100) {
+    const slice = inputs.slice(i, i + 100);
+    const batch = await embedBatch(slice);
+    vectors.push(...batch);
+  }
+
+  const now = new Date().toISOString();
+  const upserts = toEmbed.map((c, i) => ({
+    doc_id: docId,
+    chunk_idx: c.chunk_idx,
+    heading: c.heading,
+    heading_path: c.heading_path,
+    markdown: c.markdown,
+    hash: c.hash,
+    embedding: vectorToSql(vectors[i]),
+    embedded_at: now,
+  }));
+  // Chunks unchanged but already in the table need their markdown / heading
+  // updated too if (theoretically) heading_path moved without changing text.
+  // The hash being equal means body+heading unchanged, so no upsert needed.
+  const { error } = await supabase
+    .from("document_chunks")
+    .upsert(upserts, { onConflict: "doc_id,chunk_idx" });
+  if (error) throw new Error(`chunk upsert: ${error.message}`);
+
+  return { chunks: newChunks.length, embedded: toEmbed.length, deleted: toDelete.length };
 }
