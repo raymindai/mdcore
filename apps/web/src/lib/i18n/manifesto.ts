@@ -215,6 +215,11 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
           body: "Not raising now. Will when metrics justify. Care about open infrastructure.",
         },
       ],
+      invitationButtons: {
+        start: "Start now",
+        github: "GitHub",
+        email: "hi@raymind.ai",
+      },
 
       closing: {
         line1Html:

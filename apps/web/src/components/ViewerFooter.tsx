@@ -52,13 +52,10 @@ export default function ViewerFooter({ stats, hideCta = false }: ViewerFooterPro
         {!hideCta && (
           <Link
             href="/"
-            className="flex items-center gap-1 px-2.5 h-6 rounded-md font-medium transition-transform hover:scale-[1.02]"
+            className="flex items-center px-2.5 h-6 rounded-md font-medium transition-transform hover:scale-[1.02]"
             style={{ background: "var(--accent)", color: "#000" }}
           >
             Make your own
-            <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 3l5 5-5 5" />
-            </svg>
           </Link>
         )}
       </div>
