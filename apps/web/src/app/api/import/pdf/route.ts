@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
 import { cleanMarkdownStructure } from "@/lib/llm-clean";
+import { appendHubLog } from "@/lib/hub-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -135,6 +136,16 @@ export async function POST(req: NextRequest) {
     if (insertError) {
       console.error("PDF doc insert error:", insertError);
       return NextResponse.json({ error: "Failed to save imported PDF" }, { status: 500 });
+    }
+    if (userId) {
+      void appendHubLog({
+        userId,
+        event: "doc.imported",
+        targetType: "document",
+        targetId: id,
+        summary: title,
+        metadata: { source: sourceTag, pages, cleanedByAi },
+      });
     }
 
     const res = NextResponse.json({

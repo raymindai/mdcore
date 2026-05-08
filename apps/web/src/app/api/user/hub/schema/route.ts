@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { readHubSchema, writeHubSchema, DEFAULT_HUB_SCHEMA_MD } from "@/lib/hub-schema";
+import { appendHubLog } from "@/lib/hub-log";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,12 @@ export async function PATCH(req: NextRequest) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
+  void appendHubLog({
+    userId,
+    event: "schema.updated",
+    targetType: "schema",
+    summary: (body.markdown ?? "").trim() ? "Schema customized" : "Schema reset to default",
+  });
 
   // Return the now-current schema so the caller doesn't need a second fetch.
   const refreshed = await readHubSchema(userId);

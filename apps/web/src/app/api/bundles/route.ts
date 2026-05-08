@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { synthesizeBundle } from "@/lib/synthesize";
+import { appendHubLog } from "@/lib/hub-log";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -112,10 +113,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to add documents to bundle" }, { status: 500 });
   }
 
+  // Best-effort log entry.
+  if (userId) {
+    void appendHubLog({
+      userId,
+      event: "bundle.created",
+      targetType: "bundle",
+      targetId: id,
+      summary: title || "Untitled Bundle",
+      metadata: { documentCount: documentIds.length },
+    });
+  }
+
   // Schedule auto-synthesis after the response goes out. Next.js 15
   // `after()` keeps the function alive until the work completes, so the
   // synthesis page is durable even though the bundle creation returns
-  // immediately. Authenticated users only — anonymous bundles still work,
+  // immediately. Authenticated users only. Anonymous bundles still work,
   // they just don't get auto-synthesis.
   if (userId) {
     const ownerId = userId;

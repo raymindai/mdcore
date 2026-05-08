@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { corsHeaders, ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
+import { appendHubLog } from "@/lib/hub-log";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -163,6 +164,19 @@ export async function POST(req: NextRequest) {
   if (insertError) {
     console.error("Supabase insert error:", insertError);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+  }
+
+  // Best-effort hub log entry. Anonymous docs aren't logged because
+  // there's no user to attribute them to until claim time.
+  if (userId) {
+    void appendHubLog({
+      userId,
+      event: source === "auto-synthesis" ? "synthesis.created" : "doc.created",
+      targetType: "document",
+      targetId: id,
+      summary: title || null,
+      metadata: { source: source || null, isDraft: isDraft ?? true },
+    });
   }
 
   const res = NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
