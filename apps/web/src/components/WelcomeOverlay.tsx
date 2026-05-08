@@ -1,18 +1,19 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 
 const STORAGE_KEY = "mdfy-welcome-seen";
 
-// v6 welcome flow. Five slides, each with a single role:
+// v6 welcome flow. Five slides, each with one role and one CTA:
 //   intro — hook on the v6 thesis (knowledge hub for the AI era)
-//   01 capture — paste anything, get a permanent URL
+//   01 capture — paste anything (incl. AI share URLs), get a URL
 //   02 hub — captures roll up into a single deployable URL
 //   03 deploy — paste hub URL into any AI as context
-//   04 surfaces — install /mdfy and the per-tool plugins
+//   04 surfaces — works from every AI tool
 //
-// Each slide carries an explicit CTA link so the user can jump
-// straight to the action, not just read about it.
+// One CTA per slide (the Next button). No inline links — those competed
+// with Next and broke the "one screen, one action" rule. The dashboard
+// surfaces (Install /mdfy, Live example, etc.) are the click targets
+// once the user dismisses the overlay.
 
 type Surface = { name: string; desc: string; color: string };
 
@@ -22,24 +23,24 @@ type Slide = {
   title: string;
   desc: string | null;
   icon: React.ReactNode | null;
-  primaryLink?: { href: string; label: string };
-  secondaryLink?: { href: string; label: string };
   surfaces?: Surface[];
 };
 
 const slides: Slide[] = [
   {
     step: null,
-    badge: "Personal knowledge hub for the AI era",
+    // Explicit line break: "Personal knowledge hub" / "for the AI era"
+    // sits clean on two lines instead of orphaning "ERA" on its own
+    // when the badge wraps on narrow viewports.
+    badge: "Personal knowledge hub\nfor the AI era",
     title: "Your AI memory,\nowned by you.",
     desc: "ChatGPT, Claude, and Cursor all forget you between sessions. mdfy is the URL that doesn't.",
     icon: null,
-    primaryLink: { href: "/hub/yc-demo", label: "See a real hub →" },
   },
   {
     step: "01",
     title: "Capture anything.",
-    desc: "Paste from ChatGPT, Claude, Gemini, or drop any file — PDF, DOCX, code, plain text. One click, permanent URL, no signup.",
+    desc: "Paste a ChatGPT share URL or a Claude conversation link. Drop a PDF, DOCX, or code file. mdfy converts each into clean markdown — one click, permanent URL, no signup.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
@@ -55,7 +56,6 @@ const slides: Slide[] = [
         <circle cx="12" cy="12" r="3" /><circle cx="4" cy="6" r="2" /><circle cx="20" cy="6" r="2" /><circle cx="4" cy="18" r="2" /><circle cx="20" cy="18" r="2" /><path d="M6 7l4 3M18 7l-4 3M6 17l4-3M18 17l-4-3" />
       </svg>
     ),
-    primaryLink: { href: "/hub/yc-demo", label: "Browse a hub →" },
   },
   {
     step: "03",
@@ -66,7 +66,6 @@ const slides: Slide[] = [
         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
       </svg>
     ),
-    primaryLink: { href: "/install", label: "Install /mdfy in your AI tool →" },
   },
   {
     step: "04",
@@ -81,8 +80,6 @@ const slides: Slide[] = [
       { name: "Chrome", desc: "Capture from any web AI", color: "#c4b5fd" },
       { name: "VS Code · Mac · CLI · MCP", desc: "Native everywhere else", color: "#f472b6" },
     ],
-    primaryLink: { href: "/install", label: "Install in your tool →" },
-    secondaryLink: { href: "/plugins", label: "All integrations" },
   },
 ];
 
@@ -177,7 +174,8 @@ export default function WelcomeOverlay() {
             </span>
           )}
 
-          {/* Hero badge (intro slide) */}
+          {/* Hero badge (intro slide) — pre-line so the explicit \n in the
+              badge text wraps "for the AI era" onto its own line cleanly. */}
           {!slide.step && slide.badge && (
             <span
               style={{
@@ -189,6 +187,8 @@ export default function WelcomeOverlay() {
                 letterSpacing: 1.4,
                 marginBottom: 12,
                 fontFamily: "var(--font-geist-mono), monospace",
+                whiteSpace: "pre-line",
+                lineHeight: 1.5,
               }}
             >
               {slide.badge}
@@ -262,40 +262,9 @@ export default function WelcomeOverlay() {
             </div>
           )}
 
-          {/* Primary inline link (per-slide CTA) */}
-          {slide.primaryLink && (
-            <Link
-              href={slide.primaryLink.href}
-              onClick={dismiss}
-              style={{
-                display: "inline-block",
-                marginTop: slide.surfaces ? 14 : 16,
-                fontSize: 13,
-                color: "var(--accent)",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              {slide.primaryLink.label}
-            </Link>
-          )}
-
-          {/* Secondary inline link */}
-          {slide.secondaryLink && (
-            <div style={{ marginTop: 6 }}>
-              <Link
-                href={slide.secondaryLink.href}
-                onClick={dismiss}
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-faint)",
-                  textDecoration: "none",
-                }}
-              >
-                {slide.secondaryLink.label}
-              </Link>
-            </div>
-          )}
+          {/* Inline CTAs intentionally removed — one CTA per slide rule.
+              Next / Get started is the only primary action; users explore
+              specific surfaces from the dashboard after dismissal. */}
         </div>
 
         {/* Dots */}

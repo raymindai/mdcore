@@ -1281,6 +1281,38 @@ The home screen shows compounding stats:
 The bundle is no longer a folder. It's a thinking partner that reads what you've gathered and tells you what it sees.
 `;
 
+const SAMPLE_AI_CAPTURE = `# Capture AI conversations
+
+mdfy is built around the idea that the answers you got out of an AI today are worth keeping — and worth deploying back into another AI tomorrow.
+
+## Three ways in
+
+### 1. Paste a share URL
+
+Paste a ChatGPT, Claude, or Gemini share URL directly into the editor. mdfy fetches the conversation and converts it into clean markdown — code blocks, headings, and quotes preserved.
+
+\`\`\`
+https://chat.openai.com/share/abc-...
+https://claude.ai/share/xyz-...
+\`\`\`
+
+### 2. Drop a transcript
+
+Copied a chat thread to clipboard? Paste it. mdfy auto-detects ChatGPT / Claude / Gemini formats and structures the turns for you (User: / Assistant:) so the result reads like a real document, not a wall of text.
+
+### 3. Capture from where you work
+
+- **\`/mdfy capture\`** in Claude Code, Cursor, Codex, or Aider — saves the current conversation segment as a permanent URL.
+- **Chrome extension** — one-click capture from any AI web UI.
+- **API / MCP** — agents can write into your hub directly.
+
+## Why it matters
+
+Every captured doc lives at a permanent URL like \`mdfy.app/abc123\`. Captures roll up into your hub at \`mdfy.app/hub/<you>\`. That URL is the universal context format — paste it back into any AI and they read your full personal knowledge layer.
+
+> The answer you didn't save is the context the next AI session won't have.
+`;
+
 const EXAMPLE_OWNER = "master@mdfy.app";
 const EXAMPLES_FOLDER_ID = "folder-shared-examples";
 
@@ -1288,6 +1320,7 @@ const INITIAL_FOLDERS: Folder[] = [];
 
 const EXAMPLE_TABS: Tab[] = [
   { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  { id: "tab-ai-capture", title: extractTitleFromMd(SAMPLE_AI_CAPTURE), markdown: SAMPLE_AI_CAPTURE, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-bundles", title: extractTitleFromMd(SAMPLE_BUNDLES), markdown: SAMPLE_BUNDLES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
@@ -3990,14 +4023,25 @@ export default function MdEditor() {
   }, [loadTab]);
 
   // ─── Tab nav: back/forward chevrons ───
+  // Home (dashboard) is represented in nav history with the sentinel
+  // "__home__" so back/forward can return to the dashboard the same way
+  // they return to any other tab. Without the sentinel, opening a tab
+  // from the dashboard erased the dashboard from history and the user
+  // had no way to chevron-back to it.
+  const HOME_SENTINEL = "__home__";
+
   const goBack = useCallback(() => {
     if (navIndexRef.current <= 0) return;
     navIndexRef.current = navIndexRef.current - 1;
     const tid = navHistoryRef.current[navIndexRef.current];
     if (!tid) return;
     isNavigatingHistoryRef.current = true;
-    setShowOnboarding(false);
-    switchTab(tid);
+    if (tid === HOME_SENTINEL) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+      switchTab(tid);
+    }
     setNavTick(t => t + 1);
     setTimeout(() => { isNavigatingHistoryRef.current = false; }, 0);
   }, [switchTab]);
@@ -4008,17 +4052,23 @@ export default function MdEditor() {
     const tid = navHistoryRef.current[navIndexRef.current];
     if (!tid) return;
     isNavigatingHistoryRef.current = true;
-    setShowOnboarding(false);
-    switchTab(tid);
+    if (tid === HOME_SENTINEL) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+      switchTab(tid);
+    }
     setNavTick(t => t + 1);
     setTimeout(() => { isNavigatingHistoryRef.current = false; }, 0);
   }, [switchTab]);
 
-  // Track activeTabId changes into nav history (skip when navigating via chevrons)
+  // Track activeTabId changes into nav history (skip when navigating via chevrons).
+  // Active tab pushes are skipped while showOnboarding is true so a Home
+  // entry isn't immediately overwritten by the still-mounted previous tab.
   useEffect(() => {
     if (!activeTabId) return;
+    if (showOnboarding) return;
     if (isNavigatingHistoryRef.current) return;
-    // Truncate forward history when a fresh visit happens after back-navigation
     if (navIndexRef.current < navHistoryRef.current.length - 1) {
       navHistoryRef.current = navHistoryRef.current.slice(0, navIndexRef.current + 1);
     }
@@ -4030,7 +4080,25 @@ export default function MdEditor() {
       navIndexRef.current--;
     }
     setNavTick(t => t + 1);
-  }, [activeTabId]);
+  }, [activeTabId, showOnboarding]);
+
+  // Track Home (dashboard) entries into nav history. Fires when
+  // showOnboarding flips true via the Home button or Alt+H.
+  useEffect(() => {
+    if (!showOnboarding) return;
+    if (isNavigatingHistoryRef.current) return;
+    if (navIndexRef.current < navHistoryRef.current.length - 1) {
+      navHistoryRef.current = navHistoryRef.current.slice(0, navIndexRef.current + 1);
+    }
+    if (navHistoryRef.current[navIndexRef.current] === HOME_SENTINEL) return;
+    navHistoryRef.current.push(HOME_SENTINEL);
+    navIndexRef.current = navHistoryRef.current.length - 1;
+    if (navHistoryRef.current.length > 50) {
+      navHistoryRef.current.shift();
+      navIndexRef.current--;
+    }
+    setNavTick(t => t + 1);
+  }, [showOnboarding]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -10317,10 +10385,14 @@ ${clone.innerHTML}
         )}
         </>
       ) : (
-        /* Collapsed: just the toggle button as a narrow strip */
+        /* Collapsed: just the toggle button as a narrow strip.
+           items-start + pl-2 keeps the toggle icon at the same horizontal
+           offset as when the sidebar is open (px-2 container + button p-1
+           in the open header), so re-opening doesn't visually shift the
+           cursor target. */
         <div
           data-print-hide
-          className="flex flex-col shrink-0 items-center pt-1.5 gap-1"
+          className="flex flex-col shrink-0 items-start pl-2 pt-1.5 gap-1"
           style={{ width: 36, borderRight: "1px solid var(--border-dim)", background: "var(--background)" }}
         >
           <Tooltip text="Open sidebar" position="right">
@@ -10721,7 +10793,7 @@ ${clone.innerHTML}
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { label: "New Document", desc: "Blank page", kbd: "", color: "#fb923c", icon: <Plus width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} addTab(); } },
-                      { label: "Paste", desc: "From clipboard", kbd: "", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch { /* clipboard permission denied — user can Cmd+V manually */ } } },
+                      { label: "Paste", desc: "Text or AI share URL", kbd: "", color: "#4ade80", icon: <FileText width={16} height={16} />, fn: async () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} try { const text = await navigator.clipboard.readText(); if (text) { addTab(); setTimeout(() => { setMarkdown(text); doRender(text); cmSetDocRef.current?.(text); }, 100); } } catch { /* clipboard permission denied — user can Cmd+V manually */ } } },
                       { label: "Import", desc: "PDF, Word, Excel...", kbd: "", color: "#60a5fa", icon: <Upload width={16} height={16} />, fn: () => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} imageFileRef.current?.click(); } },
                     ].map((item) => (
                       <button key={item.label} onClick={item.fn}
@@ -10738,8 +10810,10 @@ ${clone.innerHTML}
                   </div>
                 </div>
 
-                {/* Drop zone */}
-                <div className="mb-6 py-6 rounded-xl cursor-pointer text-center"
+                {/* Drop zone — desktop only. Mobile devices don't support
+                    desktop-style file drag-and-drop, so the affordance just
+                    eats vertical space without paying off there. */}
+                <div className="hidden sm:block mb-6 py-6 rounded-xl cursor-pointer text-center"
                   style={{ border: "2px dashed var(--border)", color: "var(--text-faint)", background: "var(--surface)", transition: "all 0.15s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-faint)"; }}
@@ -10801,18 +10875,21 @@ ${clone.innerHTML}
                 {/* Examples — 2 column grid. Surface guides (Chrome/VSCode/Mac/CLI/MCP/QuickLook)
                     are filtered out here because the EXPLORE > Plugins card is the
                     canonical entry for those — listing both would be a duplicate
-                    surface. The remaining 7 example tabs stay focused on content. */}
+                    surface. The remaining 8 example tabs stay focused on content,
+                    and titles longer than the card width truncate with ellipsis
+                    so the grid stays single-line everywhere. */}
                 <div className="mb-6">
                   <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Guides & Examples</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {EXAMPLE_TABS.filter(ex => !["tab-chrome-ext", "tab-vscode-ext", "tab-desktop", "tab-cli", "tab-mcp", "tab-quicklook"].includes(ex.id)).map((ex) => (
                       <button key={ex.id} onClick={() => { setShowOnboarding(false); try { localStorage.setItem("mdfy-onboarded", "1"); } catch {} switchTab(ex.id); }}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-body text-left cursor-pointer"
+                        title={ex.title}
+                        className="flex items-center gap-2 min-w-0 px-3 py-2 rounded-lg text-body text-left cursor-pointer"
                         style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
                         <DocStatusIcon tab={ex} isActive={false} />
-                        {ex.title}
+                        <span className="flex-1 min-w-0 truncate">{ex.title}</span>
                       </button>
                     ))}
                   </div>
@@ -12004,7 +12081,7 @@ ${clone.innerHTML}
           <button onClick={() => { setShowCommandPalette(true); setCmdSearch(""); }} className="transition-colors hidden sm:inline-flex items-center gap-1" style={{ color: "var(--text-faint)", background: "none", border: "1px solid var(--border-dim)", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer" }} title="Command palette">
             <span style={{ fontSize: 10 }}>{navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl+"}K</span>
           </button>
-          <a href="/about" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.app">About</a>
+          <a href="/about" className="transition-colors inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="About mdfy.app">About</a>
           <a href="/plugins" className="transition-colors hidden sm:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Browser and editor plugins">Plugins</a>
           <a href="/discover" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="Trending public documents">Trending</a>
           <a href="/docs" className="transition-colors hidden md:inline" style={{ color: "var(--text-muted)" }} target="_blank" rel="noopener noreferrer" title="API documentation">API</a>
