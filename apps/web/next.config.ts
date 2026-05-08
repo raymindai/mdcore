@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "officeparser"],
+  // Long-slug explainer docs (mdfy.app/how-mdfy-works, etc.) live in the
+  // documents table the same as any other doc, but their ids exceed the
+  // 12-char nanoid pattern Vercel's top-level rewrite assumes. Map each
+  // human-readable slug explicitly to /d/<id> so the public viewer
+  // renders. Each slug here MUST match a documents.id in the founder hub.
+  async rewrites() {
+    return [
+      { source: "/how-mdfy-works", destination: "/d/how-mdfy-works" },
+      { source: "/how-mdfy-rag-works", destination: "/d/how-mdfy-rag-works" },
+    ];
+  },
   webpack(config) {
     config.experiments = {
       ...config.experiments,
