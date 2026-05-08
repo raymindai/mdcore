@@ -1,6 +1,6 @@
 # W10: `/mdfy` for Codex + Aider · time-traveling hub · two-door landing draft
 
-**Commit.** TBD. *W10: Codex+Aider /mdfy, time-traveling hub, two-door landing draft*
+**Commit.** `d8e9e0f4`. *W10: /mdfy for Codex+Aider, time-traveling hub, two-door landing draft*
 
 ## `/mdfy` for Codex CLI + Aider
 
