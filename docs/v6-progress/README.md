@@ -16,7 +16,7 @@ commits, verified scenarios, and any deferred work.
 | W6 | Proactive bundle suggestions (exceed move 3) | `4368d47c` | shipped |
 | W7 | Shared bundles MVP, confidence tags | `ae0b33fd` | shipped |
 | W8 | `/mdfy` slash for Claude Code, suggested queries | `369e7755` | shipped |
-| W9 | `/mdfy` for Cursor, hub-level graph view | n/a | pending |
+| W9 | `/mdfy` for Cursor, hub-level graph view | `6e46b47a` | shipped |
 | W10 | `/mdfy` for Codex+Aider, time-traveling hub, two-door landing | n/a | pending |
 | W11 | Permission-aware AI fetching, shared bundles discoverable | n/a | pending |
 | W12 | Social hub feed, cross-reference graph, public launch | n/a | pending |
