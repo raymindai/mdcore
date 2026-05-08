@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Install /mdfy in Claude Code | mdfy",
@@ -171,13 +172,13 @@ export default function InstallPage() {
             Karpathy hand-maintains a personal LLM wiki because no consumer surface does this yet. Graphify proved that <code>/&lt;tool&gt;</code> shipped as a skill scales across Claude Code, Cursor, Codex, and Aider. The /mdfy skill is the same shape: one install, then every coding-AI session can capture into your hub and pull from it as context. Same URL works for every AI.
           </p>
           <p className="mt-4 text-sm">
-            <a
+            <Link
               href="/how-mdfy-works"
               className="underline"
               style={{ color: "var(--accent)" }}
             >
               Read the deep dive: How mdfy works &rarr;
-            </a>
+            </Link>
           </p>
         </section>
 
