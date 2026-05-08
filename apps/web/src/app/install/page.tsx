@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import ClaudeMdSnippet from "./ClaudeMdSnippet";
 
 export const metadata: Metadata = {
   title: "Install /mdfy in Claude Code | mdfy",
@@ -131,6 +132,22 @@ export default function InstallPage() {
           >
             Drops <code>conventions.md</code> into <code>~/.aider/</code>. Add <code>read: ~/.aider/conventions.md</code> to your <code>.aider.conf.yml</code> and aider will load it as conventions in every session.
           </p>
+        </section>
+
+        <section className="mb-10">
+          <h2
+            className="text-sm uppercase tracking-wider mb-3"
+            style={{ color: "var(--text-faint)" }}
+          >
+            Wire your hub into CLAUDE.md (optional)
+          </h2>
+          <p
+            className="text-base mb-4"
+            style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}
+          >
+            Claude Code reads <code>CLAUDE.md</code> at the start of every session — global at <code>~/.claude/CLAUDE.md</code>, or per-project at the repo root. Adding your hub URL there lets every Claude Code conversation load your personal context automatically, without you pasting anything.
+          </p>
+          <ClaudeMdSnippet />
         </section>
 
         <section className="mb-10">
