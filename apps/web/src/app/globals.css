@@ -688,8 +688,8 @@ body {
    ======================================== */
 .mdcore-rendered {
   color: var(--text-secondary);
-  font-size: 0.9375rem;
-  line-height: 1.8;
+  font-size: 0.875rem;     /* was 0.9375rem (15px) — felt heavy on long docs; 14px reads tighter */
+  line-height: 1.7;        /* was 1.8 — 1.7 keeps the airy block but doesn't feel stretched at 14px */
   word-wrap: break-word;
 }
 .mdcore-rendered[data-placeholder="true"]:empty::before {
