@@ -370,23 +370,27 @@ export default function ManifestoContent({ locale }: ManifestoContentProps) {
                 >
                   {t.invitationButtons.email}
                 </a>
-                <Link
-                  href="/how-mdfy-works"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "12px 24px",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "var(--text-muted)",
-                    textDecoration: "none",
-                  }}
-                >
-                  How mdfy works &rarr;
-                </Link>
               </div>
             )}
+            {/* How-mdfy-works deep dive — outside the invitationButtons
+                guard so it renders regardless of i18n shape. The button
+                row above is locale-conditional; this is universal. */}
+            <div style={{ marginTop: 20 }}>
+              <Link
+                href="/how-mdfy-works"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--accent)",
+                  textDecoration: "none",
+                }}
+              >
+                How mdfy works (deep dive) &rarr;
+              </Link>
+            </div>
           </>
         )}
 
