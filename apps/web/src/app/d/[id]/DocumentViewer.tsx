@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
+import ViewerHeader from "@/components/ViewerHeader";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -307,110 +307,82 @@ export default function DocumentViewer({
     return () => clearInterval(interval);
   }, [id, unlocked, isProtected, isExpired]);
 
-  const btnClass = "px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1";
+  // Compact pill style every action button shares — keeps the right
+  // side of the header one row tall on every viewport.
+  const actionBtn = "h-7 px-2.5 rounded-md text-caption font-medium flex items-center gap-1.5 transition-colors";
 
   return (
     <div
       className="flex flex-col h-screen"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 backdrop-blur-sm"
-        style={{
-          borderBottom: "1px solid var(--border)",
-          background: "var(--header-bg)",
-        }}
-      >
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <Link
-            href="/"
-            className="font-bold tracking-tight shrink-0"
-          >
-            <MdfyLogo size={18} />
-          </Link>
-          {title && (
-            <span
-              className="text-xs pl-2 sm:pl-3 truncate max-w-[80px] sm:max-w-[300px]"
-              style={{
-                color: "var(--text-muted)",
-                borderLeft: "1px solid var(--border)",
+      <ViewerHeader
+        title={title || "Untitled"}
+        breadcrumb={<>mdfy.app/<span style={{ color: "var(--accent)" }}>{id}</span></>}
+        actions={
+          <>
+            <button
+              onClick={copyLink}
+              className={actionBtn}
+              style={{ background: "var(--toggle-bg)", color: copied ? "#4ade80" : "var(--text-muted)" }}
+              title="Copy link"
+              aria-label="Copy link"
+            >
+              {copied ? (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="4 8 7 11 12 5"/></svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8.5a3 3 0 004.24 0l2-2a3 3 0 00-4.24-4.24l-1 1"/><path d="M9 7.5a3 3 0 00-4.24 0l-2 2a3 3 0 004.24 4.24l1-1"/></svg>
+              )}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Link"}</span>
+            </button>
+            <button
+              onClick={() => setNarrowView(!narrowView)}
+              className={`${actionBtn} hidden sm:flex`}
+              style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
+              title={narrowView ? "Wide view" : "Narrow view"}
+              aria-label="Toggle narrow view"
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+            </button>
+            <button
+              onClick={toggleTheme}
+              className={actionBtn}
+              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+              title="Toggle theme"
+              aria-label="Toggle theme"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                {theme === "dark"
+                  ? <><circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 3.4l1-1"/></>
+                  : <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/>
+                }
+              </svg>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className={`${actionBtn} hidden sm:flex font-mono`}
+              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+              title="Print / Save as PDF"
+              aria-label="Print / Save as PDF"
+            >
+              PDF
+            </button>
+            <Link
+              href={`/?from=${id}`}
+              className={`${actionBtn} font-mono`}
+              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+              onClick={() => {
+                if (passwordInput) {
+                  sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
+                }
               }}
             >
-              {title}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Copy link */}
-          <button
-            onClick={copyLink}
-            className={btnClass}
-            style={{ background: "var(--toggle-bg)", color: copied ? "#4ade80" : "var(--text-muted)" }}
-            aria-label="Copy link"
-          >
-            {copied ? (
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="4 8 7 11 12 5"/></svg>
-            ) : (
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8.5a3 3 0 004.24 0l2-2a3 3 0 00-4.24-4.24l-1 1"/><path d="M9 7.5a3 3 0 00-4.24 0l-2 2a3 3 0 004.24 4.24l1-1"/></svg>
-            )}
-            <span className="hidden sm:inline">{copied ? "Copied" : "Link"}</span>
-          </button>
-          {/* Narrow toggle — hidden on mobile (always narrow there) */}
-          <button
-            onClick={() => setNarrowView(!narrowView)}
-            className="h-6 px-2 rounded-md transition-colors hidden sm:flex items-center gap-1"
-            style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
-            title={narrowView ? "Wide view" : "Narrow view"}
-            aria-label="Toggle narrow view"
-          >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
-            <span className="relative inline-flex items-center" style={{ width: 20, height: 11 }}>
-              <span className="absolute inset-0 rounded-full transition-colors" style={{ background: narrowView ? "var(--accent)" : "var(--text-faint)", opacity: narrowView ? 1 : 0.3 }} />
-              <span className="absolute rounded-full transition-transform" style={{ width: 7, height: 7, top: 2, background: "#fff", transform: narrowView ? "translateX(11px)" : "translateX(2px)" }} />
-            </span>
-          </button>
-          {/* Theme */}
-          <button
-            onClick={toggleTheme}
-            className="h-6 px-2 rounded-md transition-colors flex items-center"
-            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-            aria-label="Toggle theme"
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              {theme === "dark"
-                ? <><circle cx="8" cy="8" r="3.5"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 3.4l1-1"/></>
-                : <path d="M13.5 8.5a5.5 5.5 0 01-6-6 5.5 5.5 0 106 6z"/>
-              }
-            </svg>
-          </button>
-          {/* PDF — desktop only (mobile print UX is poor) */}
-          <button
-            onClick={() => window.print()}
-            className={`${btnClass} hidden sm:flex`}
-            style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-            title="Print / Save as PDF"
-            aria-label="Print / Save as PDF"
-          >
-            PDF
-          </button>
-          {/* Primary CTA — open in editor */}
-          <Link
-            href={`/?from=${id}`}
-            className="px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1.5"
-            style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-            onClick={() => {
-              if (passwordInput) {
-                sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
-              }
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
-            <span className="hidden sm:inline">Edit</span>
-          </Link>
-        </div>
-      </header>
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
+              <span className="hidden sm:inline">Edit</span>
+            </Link>
+          </>
+        }
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-auto" ref={previewRef}>

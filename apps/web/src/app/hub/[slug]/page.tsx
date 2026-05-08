@@ -2,9 +2,9 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase";
-import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
+import ViewerHeader from "@/components/ViewerHeader";
 import HubCopyUrlButton from "./HubCopyUrlButton";
 
 type Props = {
@@ -147,15 +147,10 @@ export default async function HubPage({ params, searchParams }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
-      {/* Top bar */}
-      <header className="sticky top-0 z-10 px-6 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid var(--border-dim)", background: "color-mix(in srgb, var(--background) 85%, transparent)", backdropFilter: "blur(8px)" }}>
-        <Link href="/" className="flex items-center gap-2 shrink-0 transition-opacity hover:opacity-80">
-          <MdfyLogo size={18} />
-        </Link>
-        <span className="text-caption font-mono" style={{ color: "var(--text-faint)" }}>
-          mdfy.app/hub/<span style={{ color: "var(--accent)" }}>{slug}</span>
-        </span>
-      </header>
+      <ViewerHeader
+        title={`${author}'s hub`}
+        breadcrumb={<>mdfy.app/hub/<span style={{ color: "var(--accent)" }}>{slug}</span></>}
+      />
 
       {atLabel && (
         <div

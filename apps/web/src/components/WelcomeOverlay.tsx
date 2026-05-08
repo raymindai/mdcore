@@ -12,8 +12,8 @@ const STORAGE_KEY = "mdfy-welcome-seen";
 //
 // One CTA per slide (the Next button). No inline links — those competed
 // with Next and broke the "one screen, one action" rule. The dashboard
-// surfaces (Install /mdfy, Live example, etc.) are the click targets
-// once the user dismisses the overlay.
+// surfaces (Install /mdfy, mdfy Foundations bundle, etc.) are the
+// click targets once the user dismisses the overlay.
 
 type Surface = { name: string; desc: string; color: string };
 

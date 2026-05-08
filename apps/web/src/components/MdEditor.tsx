@@ -10884,8 +10884,8 @@ ${clone.innerHTML}
                           ? { label: "Your hub", desc: `mdfy.app/hub/${myHubSlug}`, url: `/hub/${myHubSlug}`, color: "#fb923c", icon: <Globe width={14} height={14} />, tag: null }
                           : { label: "Browse hubs", desc: "See what a hub looks like", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} />, tag: null },
                         { label: "Install /mdfy", desc: "From any AI tool", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} />, tag: "Recommended" },
-                        { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} />, tag: null },
-                        { label: "Live example", desc: "yc-demo's hub", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} />, tag: null },
+                        { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Users width={14} height={14} />, tag: null },
+                        { label: "mdfy Foundations", desc: "Curated bundle: what mdfy is", url: "/b/mdfy-foundations", color: "#60a5fa", icon: <Layers width={14} height={14} />, tag: null },
                       ];
                       return cards.map((item) => (
                         <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"

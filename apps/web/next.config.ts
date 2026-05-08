@@ -8,14 +8,25 @@ const nextConfig: NextConfig = {
   // human-readable slug explicitly to /d/<id> so the public viewer
   // renders. Each slug here MUST match a documents.id in the founder hub.
   async rewrites() {
+    // Long-slug content lives in the documents/bundles tables but the
+    // top-level Vercel rewrite expects 6-12-char nanoids. Each branded
+    // slug needs an explicit rewrite to /d/<id> or /b/<id> so the
+    // public viewer renders. New mdfy explainer/foundation content all
+    // ships with long slugs; add new entries here as they are published.
     return [
+      // Architecture explainers
       { source: "/how-mdfy-works", destination: "/d/how-mdfy-works" },
       { source: "/mdfy-memory", destination: "/d/mdfy-memory" },
-      // Legacy: kept so any link that already shipped to /how-mdfy-rag-works
-      // still resolves. The doc body itself is now a one-liner pointing at
-      // /mdfy-memory; surface links across the app point straight at the
-      // new slug.
+      // Legacy alias (now a redirect stub doc)
       { source: "/how-mdfy-rag-works", destination: "/d/how-mdfy-rag-works" },
+      // mdfy-about-mdfy content set
+      { source: "/what-is-mdfy", destination: "/d/what-is-mdfy" },
+      { source: "/mdfy-three-primitives", destination: "/d/mdfy-three-primitives" },
+      { source: "/mdfy-vs-vendor-memory", destination: "/d/mdfy-vs-vendor-memory" },
+      { source: "/mdfy-skills-overview", destination: "/d/mdfy-skills-overview" },
+      { source: "/mdfy-bundle-spec", destination: "/d/mdfy-bundle-spec" },
+      { source: "/mdfy-faq", destination: "/d/mdfy-faq" },
+      { source: "/mdfy-roadmap-2026", destination: "/d/mdfy-roadmap-2026" },
     ];
   },
   webpack(config) {

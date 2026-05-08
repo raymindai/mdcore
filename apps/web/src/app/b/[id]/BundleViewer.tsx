@@ -4,9 +4,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
+import ViewerHeader from "@/components/ViewerHeader";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 
@@ -440,59 +440,56 @@ export default function BundleViewer({
   }
 
   // ─── Main view ───
+  // Compact pill style every action button shares — matches the doc viewer.
+  const actionBtn = "h-7 px-2.5 rounded-md text-caption font-medium flex items-center gap-1.5 transition-colors";
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
-      {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-4 py-3 z-30" style={{ borderBottom: "1px solid var(--border)", background: "var(--header-bg)", backdropFilter: "blur(12px)" }}>
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center">
-            <MdfyLogo />
-          </Link>
-          <div className="flex flex-col">
-            {editToken ? (
-              <input
-                className="text-sm font-semibold bg-transparent outline-none border-b border-transparent hover:border-[var(--border)] focus:border-[var(--accent)] transition-colors"
-                style={{ color: "var(--text-primary)", maxWidth: 300 }}
-                defaultValue={initialTitle || "Untitled Bundle"}
-                onBlur={(e) => {
-                  const newTitle = e.target.value.trim();
-                  if (newTitle && newTitle !== initialTitle) {
-                    fetch(`/api/bundles/${id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ title: newTitle, editToken }),
-                    }).catch(() => {});
-                  }
-                }}
-                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-              />
-            ) : (
-              <h1 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{initialTitle || "Untitled Bundle"}</h1>
-            )}
-            {description && <p className="text-xs" style={{ color: "var(--text-muted)" }}>{description}</p>}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Theme toggle */}
-          <button onClick={toggleTheme} className="p-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]" title="Toggle theme">
-            {theme === "dark" ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
-          </button>
-
-          {/* Copy link */}
-          <button onClick={copyLink} className="p-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]" title="Copy link">
-            {copied ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            )}
-          </button>
-        </div>
-      </header>
+      <ViewerHeader
+        title={
+          editToken ? (
+            <input
+              className="bg-transparent outline-none border-b border-transparent hover:border-[var(--border)] focus:border-[var(--accent)] transition-colors w-full text-body font-semibold"
+              style={{ color: "var(--text-primary)" }}
+              defaultValue={initialTitle || "Untitled Bundle"}
+              onBlur={(e) => {
+                const newTitle = e.target.value.trim();
+                if (newTitle && newTitle !== initialTitle) {
+                  fetch(`/api/bundles/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title: newTitle, editToken }),
+                  }).catch(() => {});
+                }
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            />
+          ) : (
+            initialTitle || "Untitled Bundle"
+          )
+        }
+        subtitle={description || undefined}
+        breadcrumb={<>mdfy.app/b/<span style={{ color: "var(--accent)" }}>{id}</span></>}
+        actions={
+          <>
+            <button onClick={toggleTheme} className={actionBtn} style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }} title="Toggle theme" aria-label="Toggle theme">
+              {theme === "dark" ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              )}
+            </button>
+            <button onClick={copyLink} className={actionBtn} style={{ background: "var(--toggle-bg)", color: copied ? "#4ade80" : "var(--text-muted)" }} title="Copy link" aria-label="Copy link">
+              {copied ? (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="4 8 7 11 12 5"/></svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 8.5a3 3 0 004.24 0l2-2a3 3 0 00-4.24-4.24l-1 1"/><path d="M9 7.5a3 3 0 00-4.24 0l-2 2a3 3 0 004.24 4.24l1-1"/></svg>
+              )}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Link"}</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Canvas + Document Reader split. Height locks to one viewport
           minus the header so the canvas always opens fully visible;
