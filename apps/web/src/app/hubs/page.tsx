@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSupabaseClient } from "@/lib/supabase";
+import { extractCrossRefs, rankCitations } from "@/lib/cross-refs";
 import MdfyLogo from "@/components/MdfyLogo";
 
 export const revalidate = 300;
@@ -26,6 +27,133 @@ interface HubRow {
   hub_description: string | null;
   doc_count: number;
   bundle_count: number;
+}
+
+interface ActivityRow {
+  kind: "doc" | "bundle";
+  id: string;
+  title: string | null;
+  url: string;
+  updated_at: string;
+  owner: { hub_slug: string; display_name: string | null };
+}
+
+interface CitedRow {
+  kind: "doc" | "bundle";
+  id: string;
+  title: string;
+  url: string;
+  hub_slug: string | null;
+  citation_count: number;
+}
+
+async function getMostCited(hubs: HubRow[]): Promise<CitedRow[]> {
+  if (hubs.length === 0) return [];
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const userIds = hubs.map(h => h.id);
+
+  const [{ data: docs }, { data: bundles }] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, title, user_id, markdown")
+      .in("user_id", userIds)
+      .eq("is_draft", false)
+      .is("deleted_at", null)
+      .is("password_hash", null)
+      .order("updated_at", { ascending: false })
+      .limit(300),
+    supabase
+      .from("bundles")
+      .select("id, title, user_id, password_hash, allowed_emails")
+      .in("user_id", userIds)
+      .eq("is_draft", false),
+  ]);
+  const allDocs = docs || [];
+  if (allDocs.length === 0) return [];
+  const publicBundles = (bundles || []).filter(b =>
+    !b.password_hash && !(Array.isArray(b.allowed_emails) && b.allowed_emails.length > 0)
+  );
+
+  const knownDocIds = new Set(allDocs.map(d => d.id));
+  const knownBundleIds = new Set(publicBundles.map(b => b.id));
+  const knownHubSlugs = new Set(hubs.map(h => h.hub_slug));
+
+  const totals = extractCrossRefs(allDocs, knownDocIds, knownBundleIds, knownHubSlugs);
+
+  const docMeta = new Map(allDocs.map(d => [d.id, { title: d.title, user_id: d.user_id }]));
+  const bundleMeta = new Map(publicBundles.map(b => [b.id, { title: b.title, user_id: b.user_id }]));
+  const userToHub = new Map(hubs.map(h => [h.id, h.hub_slug]));
+
+  const docs5 = rankCitations(totals.docCitations, 5).map<CitedRow>(r => {
+    const m = docMeta.get(r.targetId);
+    return {
+      kind: "doc",
+      id: r.targetId,
+      title: m?.title || "Untitled",
+      url: `/${r.targetId}`,
+      hub_slug: m ? userToHub.get(m.user_id) || null : null,
+      citation_count: r.citationCount,
+    };
+  });
+  const bundles3 = rankCitations(totals.bundleCitations, 3).map<CitedRow>(r => {
+    const m = bundleMeta.get(r.targetId);
+    return {
+      kind: "bundle",
+      id: r.targetId,
+      title: m?.title || "Untitled Bundle",
+      url: `/b/${r.targetId}`,
+      hub_slug: m ? userToHub.get(m.user_id) || null : null,
+      citation_count: r.citationCount,
+    };
+  });
+  return [...docs5, ...bundles3].sort((a, b) => b.citation_count - a.citation_count);
+}
+
+async function getActivityFeed(hubs: HubRow[]): Promise<ActivityRow[]> {
+  if (hubs.length === 0) return [];
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+
+  const ownersById = new Map(hubs.map(h => [h.id, { hub_slug: h.hub_slug, display_name: h.display_name }]));
+  const userIds = hubs.map(h => h.id);
+
+  const [{ data: docs }, { data: bundles }] = await Promise.all([
+    supabase
+      .from("documents")
+      .select("id, title, updated_at, user_id")
+      .in("user_id", userIds)
+      .eq("is_draft", false)
+      .is("deleted_at", null)
+      .is("password_hash", null)
+      .order("updated_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("bundles")
+      .select("id, title, updated_at, user_id, password_hash, allowed_emails")
+      .in("user_id", userIds)
+      .eq("is_draft", false)
+      .order("updated_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  const items: ActivityRow[] = [];
+  for (const d of docs || []) {
+    const owner = ownersById.get(d.user_id);
+    if (!owner) continue;
+    items.push({ kind: "doc", id: d.id, title: d.title, url: `/${d.id}`, updated_at: d.updated_at, owner });
+  }
+  for (const b of bundles || []) {
+    if (b.password_hash) continue;
+    if (Array.isArray(b.allowed_emails) && b.allowed_emails.length > 0) continue;
+    const owner = ownersById.get(b.user_id);
+    if (!owner) continue;
+    items.push({ kind: "bundle", id: b.id, title: b.title, url: `/b/${b.id}`, updated_at: b.updated_at, owner });
+  }
+
+  return items
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .slice(0, 12);
 }
 
 async function getHubs(): Promise<HubRow[]> {
@@ -82,8 +210,24 @@ async function getHubs(): Promise<HubRow[]> {
     .sort((a, b) => (b.doc_count + b.bundle_count) - (a.doc_count + a.bundle_count) || a.hub_slug.localeCompare(b.hub_slug));
 }
 
+function fmtAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 60) return min <= 1 ? "just now" : `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.floor(hr / 24);
+  if (d < 7) return `${d}d ago`;
+  if (d < 30) return `${Math.floor(d / 7)}w ago`;
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
 export default async function HubsPage() {
   const hubs = await getHubs();
+  const [activity, mostCited] = await Promise.all([
+    getActivityFeed(hubs),
+    getMostCited(hubs),
+  ]);
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
@@ -104,6 +248,97 @@ export default async function HubsPage() {
             Personal knowledge hubs published with mdfy. Each one is a single URL — paste it into Claude, ChatGPT, or Cursor, and the AI deploys the entire hub as context.
           </p>
         </div>
+
+        {activity.length > 0 && (
+          <section className="mb-10">
+            <header className="flex items-baseline justify-between mb-3">
+              <h2 className="text-heading" style={{ color: "var(--accent)" }}>Recently active</h2>
+              <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+                across all public hubs
+              </span>
+            </header>
+            <ul className="space-y-1">
+              {activity.map(item => (
+                <li
+                  key={`${item.kind}:${item.id}`}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+                >
+                  <span
+                    className="text-caption font-mono uppercase shrink-0"
+                    style={{ color: item.kind === "bundle" ? "var(--accent)" : "var(--text-faint)" }}
+                  >
+                    {item.kind}
+                  </span>
+                  <Link
+                    href={item.url}
+                    className="flex-1 truncate text-body hover:underline"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {item.title || (item.kind === "bundle" ? "Untitled Bundle" : "Untitled")}
+                  </Link>
+                  <Link
+                    href={`/hub/${item.owner.hub_slug}`}
+                    className="text-caption font-mono shrink-0 hover:underline"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    /hub/{item.owner.hub_slug}
+                  </Link>
+                  <span className="text-caption shrink-0 tabular-nums" style={{ color: "var(--text-faint)" }}>
+                    {fmtAgo(item.updated_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {mostCited.length > 0 && (
+          <section className="mb-10">
+            <header className="flex items-baseline justify-between mb-3">
+              <h2 className="text-heading" style={{ color: "var(--accent)" }}>Most cited</h2>
+              <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+                docs and bundles linked to from elsewhere on mdfy
+              </span>
+            </header>
+            <ul className="space-y-1">
+              {mostCited.map(item => (
+                <li
+                  key={`${item.kind}:${item.id}`}
+                  className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+                >
+                  <span
+                    className="text-caption font-mono uppercase shrink-0"
+                    style={{ color: item.kind === "bundle" ? "var(--accent)" : "var(--text-faint)" }}
+                  >
+                    {item.kind}
+                  </span>
+                  <Link
+                    href={item.url}
+                    className="flex-1 truncate text-body hover:underline"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {item.title}
+                  </Link>
+                  {item.hub_slug && (
+                    <Link
+                      href={`/hub/${item.hub_slug}`}
+                      className="text-caption font-mono shrink-0 hover:underline"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      /hub/{item.hub_slug}
+                    </Link>
+                  )}
+                  <span
+                    className="text-caption shrink-0 tabular-nums px-2 rounded"
+                    style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                  >
+                    ×{item.citation_count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {hubs.length === 0 ? (
           <div className="py-16 text-center" style={{ color: "var(--text-faint)" }}>
