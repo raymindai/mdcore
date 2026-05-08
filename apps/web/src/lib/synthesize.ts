@@ -71,18 +71,19 @@ The hub schema below tells you HOW to maintain this user's wiki. Honor it.
 
 Output a wiki-style synthesis page in markdown:
 
-# <Page title — what this synthesis is about>
+# <Page title for this synthesis>
 
 > A 2-3 sentence summary. What does the bundled set of docs collectively say?
 
 ## Key claims
 
-- <Claim 1, with [doc-N] citation>
-- <Claim 2, with [doc-N] citation>
+- [EXTRACTED] <Direct claim quoted or paraphrased from one doc, with [doc-N] citation>
+- [INFERRED] <Claim that follows logically from multiple docs but is not stated outright, with [doc-N] citations>
+- [AMBIGUOUS] <Claim where the docs partially support it but leave room for disagreement, with [doc-N] citations>
 
 ## Cross-references
 
-- <Concept X appears in [doc-A] and [doc-B] — note how they treat it differently or agree>
+- <Concept X appears in [doc-A] and [doc-B]. Note how they treat it differently or agree.>
 
 ## Open questions / gaps
 
@@ -93,9 +94,16 @@ Output a wiki-style synthesis page in markdown:
 - [doc-1]: <one-sentence summary of this doc's role in the page>
 - [doc-2]: <one-sentence summary>
 
-CRITICAL RULES:
+CONFIDENCE TAGS (REQUIRED):
+- Every bullet under "Key claims" MUST start with [EXTRACTED], [INFERRED], or [AMBIGUOUS] in brackets.
+  - [EXTRACTED]: the docs say this directly. Quote or close paraphrase.
+  - [INFERRED]: the docs collectively imply this, but no single sentence states it.
+  - [AMBIGUOUS]: the evidence is partial or split across docs.
+- Don't use the tags outside the Key claims section.
+
+OTHER RULES:
 - Cite sources inline as [doc-N].
-- Don't invent claims — every assertion must be supported by at least one citation.
+- Don't invent claims. Every assertion must be supported by at least one citation.
 - Keep under 700 words.
 - Use the schema's tone and topic guidance.`;
 

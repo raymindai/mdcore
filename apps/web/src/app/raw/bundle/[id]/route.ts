@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
 
 /**
  * v6 — Bundle URL → Bundle Spec v1.0 conformant markdown payload.
@@ -47,7 +48,7 @@ export async function GET(
     return new NextResponse("Service unavailable", { status: 503 });
   }
 
-  // bundles table doesn't have a deleted_at column — soft-delete is
+  // bundles table doesn't have a deleted_at column. Soft-delete is
   // handled via is_draft + the absence from /api/bundles listings. So
   // we only need draft/password/allowed_emails gating here.
   const { data: bundle } = await supabase
@@ -61,8 +62,22 @@ export async function GET(
   if (bundle.password_hash) {
     return new NextResponse("This bundle is password-protected and cannot be fetched as raw markdown.", { status: 401 });
   }
+
+  // W7 shared bundles. allowed_emails on a bundle means: only people in
+  // the list (or the owner) can fetch it. AI agents acting on behalf of
+  // a person should pass that person's email via the X-User-Email header.
+  // Owner is identified separately via JWT (Authorization). Without
+  // either, we 403 with a useful redirect to the in-app /b/<id> route.
   if (Array.isArray(bundle.allowed_emails) && bundle.allowed_emails.length > 0) {
-    return new NextResponse("This bundle is restricted to specific people.", { status: 403 });
+    const verified = await verifyAuthToken(_request.headers.get("authorization"));
+    const requesterEmail = (verified?.email || _request.headers.get("x-user-email") || "").toLowerCase();
+    const allowed = (bundle.allowed_emails as string[]).map((e) => e.toLowerCase());
+    if (!requesterEmail || !allowed.includes(requesterEmail)) {
+      return new NextResponse(
+        "This bundle is shared with specific people. Sign in or pass an X-User-Email header to access it.",
+        { status: 403, headers: { "Content-Type": "text/plain" } },
+      );
+    }
   }
 
   // Resolve bundle's documents in sort_order. Fetch only the columns we

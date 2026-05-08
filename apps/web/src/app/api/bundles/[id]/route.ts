@@ -23,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const verified = await verifyAuthToken(_req.headers.get("authorization"));
   const requesterId = verified?.userId || _req.headers.get("x-user-id");
   const requesterAnonId = _req.headers.get("x-anonymous-id");
+  const requesterEmail = (verified?.email || _req.headers.get("x-user-email") || "").toLowerCase();
 
   // Fetch bundle
   const { data: bundle, error } = await supabase
@@ -43,6 +44,23 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   // Draft: only owner can access
   if (bundle.is_draft && !isOwner) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Allowed-emails gate (W7 shared bundles MVP). When the bundle has a
+  // non-empty allowed_emails list, only the owner or someone in the list
+  // can read it. Email comes from the verified JWT or, for legacy
+  // callers, the x-user-email header.
+  const allowedEmails = Array.isArray(bundle.allowed_emails)
+    ? (bundle.allowed_emails as string[]).map((e) => e.toLowerCase())
+    : [];
+  if (allowedEmails.length > 0 && !isOwner) {
+    const isAllowed = !!requesterEmail && allowedEmails.includes(requesterEmail);
+    if (!isAllowed) {
+      return NextResponse.json(
+        { error: "This bundle is shared with specific people.", restricted: true },
+        { status: 403 }
+      );
+    }
   }
 
   // Password check
