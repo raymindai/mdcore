@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { corsHeaders, ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
 import { appendHubLog } from "@/lib/hub-log";
+import { maybeRefreshSuggestions } from "@/lib/hub-suggestions";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -177,6 +178,21 @@ export async function POST(req: NextRequest) {
       summary: title || null,
       metadata: { source: source || null, isDraft: isDraft ?? true },
     });
+
+    // W6 proactive bundle suggestions. Throttled per-user to once per
+    // 12h inside maybeRefreshSuggestions, so frequent doc bursts
+    // don't hammer the LLM. Skip auto-synthesis docs (they shouldn't
+    // trigger their own clustering pass).
+    if (source !== "auto-synthesis" && !isDraft) {
+      const ownerId = userId;
+      after(async () => {
+        try {
+          await maybeRefreshSuggestions(supabase, ownerId);
+        } catch (err) {
+          console.warn("Suggestion refresh failed:", err);
+        }
+      });
+    }
   }
 
   const res = NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
