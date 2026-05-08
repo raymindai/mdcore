@@ -118,6 +118,10 @@
       "destination": "/raw/hub/:slug/log.md"
     },
     {
+      "source": "/hub/:slug([a-z0-9_-]{3,32})/lint.md",
+      "destination": "/raw/hub/:slug/lint.md"
+    },
+    {
       "source": "/hub/:slug([a-z0-9_-]{3,32}).md",
       "destination": "/raw/hub/:slug"
     },
