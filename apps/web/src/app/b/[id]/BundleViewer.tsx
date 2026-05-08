@@ -16,6 +16,17 @@ const BundleCanvas = dynamic(() => import("@/components/BundleCanvas"), { ssr: f
 
 type Theme = "dark" | "light";
 
+// Tiny placeholder used inside each analysis tab when its data slot is
+// empty. Keeps the panel from collapsing height when the user clicks a
+// tab that the model didn't fill out.
+function EmptyTab({ label }: { label: string }) {
+  return (
+    <p className="text-caption text-center py-8" style={{ color: "var(--text-faint)" }}>
+      {label}
+    </p>
+  );
+}
+
 interface BundleDocument {
   id: string;
   title: string | null;
@@ -78,7 +89,26 @@ export default function BundleViewer({
   const [copied, setCopied] = useState(false);
   const [canvasHoveredNode, setCanvasHoveredNode] = useState<string | null>(null);
   const [contextCopied, setContextCopied] = useState(false);
+  // Analysis side-panel tab state. Reset whenever the user picks a new
+  // analysis node so the new node opens on its first non-empty tab.
+  const [analysisTab, setAnalysisTab] = useState<"summary" | "insights" | "reading" | "links">("summary");
   const previewRef = useRef<HTMLDivElement>(null);
+
+  // Whenever a new analysis node is opened, jump to the first tab that
+  // actually has content. Avoids landing on an empty Reading tab when
+  // the model didn't return one, etc.
+  useEffect(() => {
+    if (selectedNodeInfo?.type !== "analysis") return;
+    const counts = {
+      summary: (selectedNodeInfo.summary ? 1 : 0) + (selectedNodeInfo.keyTakeaways?.length || 0),
+      insights: (selectedNodeInfo.insights?.length || 0) + (selectedNodeInfo.themes?.length || 0),
+      reading: selectedNodeInfo.readingOrder?.length || 0,
+      links: (selectedNodeInfo.connections?.length || 0) + (selectedNodeInfo.gaps?.length || 0),
+    } as const;
+    const first = (Object.entries(counts) as [keyof typeof counts, number][])
+      .find(([, n]) => n > 0)?.[0];
+    if (first) setAnalysisTab(first);
+  }, [selectedNodeInfo]);
 
   // Owner-aware redirect: if the signed-in user owns this bundle, send
   // them to the main editor with ?bundle=<id> so the bundle opens as an
@@ -616,137 +646,199 @@ export default function BundleViewer({
                   />
                 </>
               ) : selectedNodeInfo && (
-                <div className="space-y-5">
-                  {/* Analysis panel — full deep analysis */}
-                  {selectedNodeInfo.type === "analysis" && (
-                    <>
-                      {/* Executive Summary */}
-                      {selectedNodeInfo.summary && (
-                        <div className="rounded-lg p-4" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
-                          <p className="text-body leading-[1.7]" style={{ color: "var(--text-primary)" }}>{selectedNodeInfo.summary}</p>
+                <div>
+                  {/* Analysis panel — redesigned as tabbed pill nav over a
+                      single content area. Previously every section
+                      (Summary / Takeaways / Themes / Insights / Reading /
+                      Connections / Gaps) stacked vertically and the panel
+                      felt like a wall of headings. Now: 4 tabs, one
+                      content area, one cognitive load at a time. Pill
+                      pattern matches MdEditor's left sidebar (All /
+                      Private / Shared / Synced) for consistency. */}
+                  {selectedNodeInfo.type === "analysis" && (() => {
+                    const TABS = [
+                      { key: "summary", label: "Summary", count: (selectedNodeInfo.summary ? 1 : 0) + (selectedNodeInfo.keyTakeaways?.length || 0) },
+                      { key: "insights", label: "Insights", count: (selectedNodeInfo.insights?.length || 0) + (selectedNodeInfo.themes?.length || 0) },
+                      { key: "reading", label: "Reading", count: selectedNodeInfo.readingOrder?.length || 0 },
+                      { key: "links", label: "Links", count: (selectedNodeInfo.connections?.length || 0) + (selectedNodeInfo.gaps?.length || 0) },
+                    ] as const;
+                    type TabKey = typeof TABS[number]["key"];
+                    return (
+                      <>
+                        <div
+                          className="inline-flex items-center gap-0.5 p-0.5 rounded-md w-full mb-5"
+                          style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
+                        >
+                          {TABS.map((t) => {
+                            const isActive = analysisTab === t.key;
+                            const empty = t.count === 0;
+                            return (
+                              <button
+                                key={t.key}
+                                onClick={() => setAnalysisTab(t.key as TabKey)}
+                                disabled={empty}
+                                className="flex-1 text-caption py-1.5 rounded transition-colors flex items-center justify-center gap-1"
+                                style={{
+                                  background: isActive ? "var(--accent-dim)" : "transparent",
+                                  color: isActive ? "var(--accent)" : empty ? "var(--text-faint)" : "var(--text-secondary)",
+                                  fontWeight: isActive ? 600 : 500,
+                                  opacity: empty ? 0.4 : 1,
+                                  cursor: empty ? "default" : "pointer",
+                                }}
+                                onMouseEnter={(e) => { if (!isActive && !empty) { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; } }}
+                                onMouseLeave={(e) => { if (!isActive && !empty) { (e.currentTarget as HTMLElement).style.background = "transparent"; } }}
+                              >
+                                {t.label}
+                                {t.count > 0 && <span className="font-mono tabular-nums" style={{ fontSize: 9, opacity: 0.7 }}>{t.count}</span>}
+                              </button>
+                            );
+                          })}
                         </div>
-                      )}
 
-                      {/* Key Takeaways */}
-                      {selectedNodeInfo.keyTakeaways && selectedNodeInfo.keyTakeaways.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Takeaways</h4>
-                          <div className="space-y-1.5">
-                            {selectedNodeInfo.keyTakeaways.map((t, i) => (
-                              <div key={i} className="flex gap-2 items-start">
-                                <span className="text-xs font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
-                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
+                        {/* SUMMARY tab — executive summary as pull-quote
+                            (no card frame), takeaways as numbered headline
+                            list. */}
+                        {analysisTab === "summary" && (
+                          <div className="space-y-5">
+                            {selectedNodeInfo.summary && (
+                              <p
+                                className="text-body leading-[1.7] pl-4"
+                                style={{
+                                  color: "var(--text-primary)",
+                                  borderLeft: "3px solid var(--accent)",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                {selectedNodeInfo.summary}
+                              </p>
+                            )}
+                            {selectedNodeInfo.keyTakeaways && selectedNodeInfo.keyTakeaways.length > 0 && (
+                              <ol className="space-y-3">
+                                {selectedNodeInfo.keyTakeaways.map((t, i) => (
+                                  <li key={i} className="flex gap-3">
+                                    <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{String(i + 1).padStart(2, "0")}</span>
+                                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
+                            {!selectedNodeInfo.summary && !selectedNodeInfo.keyTakeaways?.length && (
+                              <EmptyTab label="No summary yet" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* INSIGHTS tab — themes as inline tag row at top,
+                            insights below as numbered headline stream. */}
+                        {analysisTab === "insights" && (
+                          <div className="space-y-5">
+                            {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {selectedNodeInfo.themes.map((t, i) => (
+                                  <span key={i} className="font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3 }}>{t.toLowerCase()}</span>
+                                ))}
                               </div>
-                            ))}
+                            )}
+                            {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
+                              <ol className="space-y-4">
+                                {selectedNodeInfo.insights.map((ins, i) => (
+                                  <li key={i} className="flex gap-3">
+                                    <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--accent)", fontSize: 11, fontWeight: 700, marginTop: 4 }}>↳ {String(i + 1).padStart(2, "0")}</span>
+                                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
+                            {!selectedNodeInfo.themes?.length && !selectedNodeInfo.insights?.length && (
+                              <EmptyTab label="No insights yet" />
+                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Themes — small chips, neutral palette so they don't
-                          compete visually with the analysis content below. */}
-                      {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedNodeInfo.themes.map((t, i) => (
-                              <span key={i} className="text-caption px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}>{t}</span>
-                            ))}
+                        {/* READING tab — numbered list of doc titles +
+                            optional reasoning footnote at bottom. */}
+                        {analysisTab === "reading" && (
+                          <div className="space-y-5">
+                            {selectedNodeInfo.readingOrder && selectedNodeInfo.readingOrder.length > 0 ? (
+                              <>
+                                <ol className="space-y-1">
+                                  {selectedNodeInfo.readingOrder.map((docId, i) => {
+                                    const doc = documents.find(d => `doc:${d.id}` === docId);
+                                    return doc ? (
+                                      <li key={i}>
+                                        <button
+                                          onClick={() => renderDocument(doc)}
+                                          onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
+                                          onMouseLeave={() => setCanvasHoveredNode(null)}
+                                          className="w-full text-left text-sm flex items-baseline gap-3 py-1.5 px-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                                          style={{ color: "var(--text-primary)" }}
+                                        >
+                                          <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--accent)", fontSize: 11, fontWeight: 600 }}>{String(i + 1).padStart(2, "0")}</span>
+                                          <span className="truncate">{doc.title || "Untitled"}</span>
+                                        </button>
+                                      </li>
+                                    ) : null;
+                                  })}
+                                </ol>
+                                {selectedNodeInfo.readingOrderReason && (
+                                  <p className="text-caption pt-3 leading-relaxed" style={{ color: "var(--text-muted)", borderTop: "1px solid var(--border-dim)" }}>
+                                    <span className="font-mono uppercase mr-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Why</span>
+                                    {selectedNodeInfo.readingOrderReason}
+                                  </p>
+                                )}
+                              </>
+                            ) : <EmptyTab label="No reading order yet" />}
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Insights — vertical-rule list. Each insight gets a
-                          left accent border and inline padding instead of a
-                          full card; reads as a magazine pull-quote, not a UI
-                          surface. Less "boxes inside boxes" — sidebar is
-                          already a panel. */}
-                      {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-document insights</h4>
-                          <ul className="space-y-2.5">
-                            {selectedNodeInfo.insights.map((ins, i) => (
-                              <li key={i} className="text-sm leading-relaxed pl-3" style={{ color: "var(--text-secondary)", borderLeft: "2px solid var(--accent)" }}>
-                                {ins}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Reading Order — flat numbered list, no per-row
-                          background. Number sits in a circular accent badge
-                          left of the title. */}
-                      {selectedNodeInfo.readingOrder && selectedNodeInfo.readingOrder.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended reading order</h4>
-                          <ol className="space-y-0.5">
-                            {selectedNodeInfo.readingOrder.map((docId, i) => {
-                              const doc = documents.find(d => `doc:${d.id}` === docId);
-                              return doc ? (
-                                <li key={i}>
-                                  <button
-                                    onClick={() => renderDocument(doc)}
-                                    onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
-                                    onMouseLeave={() => setCanvasHoveredNode(null)}
-                                    className="w-full text-left text-sm flex items-center gap-2.5 py-1.5 px-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                                    style={{ color: "var(--text-primary)" }}
-                                  >
-                                    <span className="text-caption font-mono tabular-nums w-5 text-right shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}.</span>
-                                    {doc.title || "Untitled"}
-                                  </button>
-                                </li>
-                              ) : null;
-                            })}
-                          </ol>
-                          {selectedNodeInfo.readingOrderReason && (
-                            <p className="text-caption mt-2 leading-relaxed pl-7" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Document-to-Document Connections — inline two-line
-                          form: title ↔ title on top, relationship below. No
-                          card background. Cleaner column rhythm. */}
-                      {selectedNodeInfo.connections && selectedNodeInfo.connections.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document connections</h4>
-                          <ul className="space-y-3">
-                            {selectedNodeInfo.connections.map((c, i) => {
-                              const d1 = documents.find(d => `doc:${d.id}` === c.doc1);
-                              const d2 = documents.find(d => `doc:${d.id}` === c.doc2);
-                              return (
-                                <li key={i}>
-                                  <div className="flex items-center gap-1.5 text-caption">
-                                    <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
-                                    <ArrowLeftRight width={11} height={11} className="shrink-0" style={{ color: "var(--text-faint)" }} aria-hidden />
-                                    <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
-                                  </div>
-                                  <p className="text-caption leading-relaxed mt-1" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Gaps — same vertical-rule treatment as Insights but
-                          in red, with an alert icon prefix. */}
-                      {selectedNodeInfo.gaps && selectedNodeInfo.gaps.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps &amp; missing perspectives</h4>
-                          <ul className="space-y-2.5">
-                            {selectedNodeInfo.gaps.map((gap, i) => (
-                              <li key={i} className="text-sm leading-relaxed pl-3 flex gap-2" style={{ color: "var(--text-secondary)", borderLeft: "2px solid #f87171" }}>
-                                <AlertTriangle width={12} height={12} className="shrink-0 mt-1" style={{ color: "#f87171" }} aria-hidden />
-                                <span>{gap}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  )}
+                        {/* LINKS tab — inter-doc connections + gaps. Same
+                            magazine-list pattern, two visual columns split
+                            by a separator. */}
+                        {analysisTab === "links" && (
+                          <div className="space-y-5">
+                            {selectedNodeInfo.connections && selectedNodeInfo.connections.length > 0 && (
+                              <div>
+                                <h5 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Connections</h5>
+                                <ul className="space-y-3">
+                                  {selectedNodeInfo.connections.map((c, i) => {
+                                    const d1 = documents.find(d => `doc:${d.id}` === c.doc1);
+                                    const d2 = documents.find(d => `doc:${d.id}` === c.doc2);
+                                    return (
+                                      <li key={i}>
+                                        <div className="flex items-center gap-1.5 text-caption mb-0.5">
+                                          <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
+                                          <ArrowLeftRight width={10} height={10} className="shrink-0" style={{ color: "var(--text-faint)" }} aria-hidden />
+                                          <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
+                                        </div>
+                                        <p className="text-caption leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            )}
+                            {selectedNodeInfo.gaps && selectedNodeInfo.gaps.length > 0 && (
+                              <div className={selectedNodeInfo.connections?.length ? "pt-4" : ""} style={selectedNodeInfo.connections?.length ? { borderTop: "1px solid var(--border-dim)" } : {}}>
+                                <h5 className="font-mono uppercase mb-2 flex items-center gap-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "#f87171" }}>
+                                  <AlertTriangle width={10} height={10} aria-hidden /> Gaps
+                                </h5>
+                                <ul className="space-y-2">
+                                  {selectedNodeInfo.gaps.map((gap, i) => (
+                                    <li key={i} className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                                      {gap}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {!selectedNodeInfo.connections?.length && !selectedNodeInfo.gaps?.length && (
+                              <EmptyTab label="No connections yet" />
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Concept/Entity/Tag panel */}
                   {(selectedNodeInfo.type === "concept" || selectedNodeInfo.type === "entity" || selectedNodeInfo.type === "tag") && (
