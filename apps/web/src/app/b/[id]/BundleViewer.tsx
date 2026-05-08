@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { File as FileIcon, Sparkles, BookOpen, Tag, Box, Hash, ArrowRight } from "lucide-react";
+import { File as FileIcon, Sparkles, BookOpen, Tag, Box, Hash, ArrowRight, ArrowLeftRight, AlertTriangle } from "lucide-react";
 import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
@@ -635,93 +635,106 @@ export default function BundleViewer({
                         </div>
                       )}
 
-                      {/* Themes */}
+                      {/* Themes — small chips, neutral palette so they don't
+                          compete visually with the analysis content below. */}
                       {selectedNodeInfo.themes && selectedNodeInfo.themes.length > 0 && (
                         <div>
                           <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1">
                             {selectedNodeInfo.themes.map((t, i) => (
-                              <span key={i} className="text-xs px-3 py-1 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>{t}</span>
+                              <span key={i} className="text-caption px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)" }}>{t}</span>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      {/* Insights */}
+                      {/* Insights — vertical-rule list. Each insight gets a
+                          left accent border and inline padding instead of a
+                          full card; reads as a magazine pull-quote, not a UI
+                          surface. Less "boxes inside boxes" — sidebar is
+                          already a panel. */}
                       {selectedNodeInfo.insights && selectedNodeInfo.insights.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-Document Insights</h4>
-                          <div className="space-y-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-document insights</h4>
+                          <ul className="space-y-2.5">
                             {selectedNodeInfo.insights.map((ins, i) => (
-                              <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
-                                <ArrowRight width={11} height={11} className="shrink-0 mt-1" style={{ color: "var(--accent)" }} aria-hidden />
-                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
-                              </div>
+                              <li key={i} className="text-sm leading-relaxed pl-3" style={{ color: "var(--text-secondary)", borderLeft: "2px solid var(--accent)" }}>
+                                {ins}
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
                       )}
 
-                      {/* Reading Order */}
+                      {/* Reading Order — flat numbered list, no per-row
+                          background. Number sits in a circular accent badge
+                          left of the title. */}
                       {selectedNodeInfo.readingOrder && selectedNodeInfo.readingOrder.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended Reading Order</h4>
-                          <div className="space-y-1">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Recommended reading order</h4>
+                          <ol className="space-y-0.5">
                             {selectedNodeInfo.readingOrder.map((docId, i) => {
                               const doc = documents.find(d => `doc:${d.id}` === docId);
                               return doc ? (
-                                <button key={i} onClick={() => renderDocument(doc)}
-                                  onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
-                                  onMouseLeave={() => setCanvasHoveredNode(null)}
-                                  className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2"
-                                  style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
-                                  <span className="text-xs font-bold w-4 h-4 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
-                                  {doc.title || "Untitled"}
-                                </button>
+                                <li key={i}>
+                                  <button
+                                    onClick={() => renderDocument(doc)}
+                                    onMouseEnter={() => setCanvasHoveredNode(`doc:${doc.id}`)}
+                                    onMouseLeave={() => setCanvasHoveredNode(null)}
+                                    className="w-full text-left text-sm flex items-center gap-2.5 py-1.5 px-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                                    style={{ color: "var(--text-primary)" }}
+                                  >
+                                    <span className="text-caption font-mono tabular-nums w-5 text-right shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}.</span>
+                                    {doc.title || "Untitled"}
+                                  </button>
+                                </li>
                               ) : null;
                             })}
-                          </div>
+                          </ol>
                           {selectedNodeInfo.readingOrderReason && (
-                            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
+                            <p className="text-caption mt-2 leading-relaxed pl-7" style={{ color: "var(--text-muted)" }}>{selectedNodeInfo.readingOrderReason}</p>
                           )}
                         </div>
                       )}
 
-                      {/* Document-to-Document Connections */}
+                      {/* Document-to-Document Connections — inline two-line
+                          form: title ↔ title on top, relationship below. No
+                          card background. Cleaner column rhythm. */}
                       {selectedNodeInfo.connections && selectedNodeInfo.connections.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document Connections</h4>
-                          <div className="space-y-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Document connections</h4>
+                          <ul className="space-y-3">
                             {selectedNodeInfo.connections.map((c, i) => {
                               const d1 = documents.find(d => `doc:${d.id}` === c.doc1);
                               const d2 = documents.find(d => `doc:${d.id}` === c.doc2);
                               return (
-                                <div key={i} className="rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
-                                    <span className="text-xs" style={{ color: "var(--text-faint)" }}>↔</span>
-                                    <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
+                                <li key={i}>
+                                  <div className="flex items-center gap-1.5 text-caption">
+                                    <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d1?.title || c.doc1}</span>
+                                    <ArrowLeftRight width={11} height={11} className="shrink-0" style={{ color: "var(--text-faint)" }} aria-hidden />
+                                    <span className="font-medium truncate" style={{ color: "var(--accent)" }}>{d2?.title || c.doc2}</span>
                                   </div>
-                                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
-                                </div>
+                                  <p className="text-caption leading-relaxed mt-1" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
+                                </li>
                               );
                             })}
-                          </div>
+                          </ul>
                         </div>
                       )}
 
-                      {/* Gaps */}
+                      {/* Gaps — same vertical-rule treatment as Insights but
+                          in red, with an alert icon prefix. */}
                       {selectedNodeInfo.gaps && selectedNodeInfo.gaps.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps & Missing Perspectives</h4>
-                          <div className="space-y-1.5">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps &amp; missing perspectives</h4>
+                          <ul className="space-y-2.5">
                             {selectedNodeInfo.gaps.map((gap, i) => (
-                              <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)" }}>
-                                <span className="text-xs shrink-0" style={{ color: "#f87171" }}>!</span>
-                                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{gap}</p>
-                              </div>
+                              <li key={i} className="text-sm leading-relaxed pl-3 flex gap-2" style={{ color: "var(--text-secondary)", borderLeft: "2px solid #f87171" }}>
+                                <AlertTriangle width={12} height={12} className="shrink-0 mt-1" style={{ color: "#f87171" }} aria-hidden />
+                                <span>{gap}</span>
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
                       )}
                     </>

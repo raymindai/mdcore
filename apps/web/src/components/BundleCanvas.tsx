@@ -613,10 +613,30 @@ function SectionNode({ data }: { data: any }) {
 }
 
 // ─── Chunk Node — AI semantic chunk with type pill + content preview ───
+// Strip markdown syntax for the preview line. The chunk body is raw
+// markdown — bold, headings, links, code fences — and dumping it
+// straight into the card looked broken.
+function stripMarkdownForPreview(md: string): string {
+  return (md || "")
+    .replace(/^---[\s\S]*?---\s*/m, "")               // frontmatter
+    .replace(/```[\s\S]*?```/g, " [code] ")           // fenced blocks
+    .replace(/`([^`]+)`/g, "$1")                       // inline code
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")             // images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")          // links → label
+    .replace(/^#{1,6}\s+/gm, "")                       // headings
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")               // bold
+    .replace(/(\*|_)(.+?)\1/g, "$2")                  // italic
+    .replace(/^\s*>\s+/gm, "")                         // blockquote
+    .replace(/^\s*[-*+]\s+/gm, "")                     // list bullets
+    .replace(/^\s*\d+\.\s+/gm, "")                     // ordered list
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function ChunkNode({ data }: { data: any }) {
   const c: SemanticChunkLike = data.chunk;
   const palette = CHUNK_TYPE_COLORS[c.type] || CHUNK_TYPE_COLORS.context;
-  const preview = (c.content || "").trim().replace(/\s+/g, " ");
+  const preview = stripMarkdownForPreview(c.content);
   const truncated = preview.length > 140 ? preview.slice(0, 139) + "…" : preview;
   return (
     <div className="rounded-lg overflow-hidden" style={{
@@ -627,12 +647,30 @@ function ChunkNode({ data }: { data: any }) {
     }}>
       <Handle type="target" position={Position.Left} style={{ background: palette.border, width: 6, height: 6, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: palette.border, width: 6, height: 6, border: "none" }} />
-      <div className="px-3 py-2" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
+      <div className="px-3 py-1.5" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
         <div className="flex items-center gap-1.5">
-          <span className="text-caption font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
+          {/* Type badge: smaller font, no bold, font-mono so the tracking
+              looks intentional rather than oversized. */}
+          <span
+            className="font-mono uppercase px-1 py-px rounded shrink-0"
+            style={{
+              color: palette.text,
+              background: `${palette.border}14`,
+              fontSize: 9,
+              letterSpacing: 0.4,
+              fontWeight: 600,
+            }}
+          >
+            {c.type}
+          </span>
           <span className="text-caption font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{c.label}</span>
           {c.found === false && (
-            <span className="text-caption font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
+            <span
+              className="font-mono uppercase px-1 py-px rounded shrink-0"
+              style={{ color: "#ef4444", background: "rgba(239,68,68,0.10)", fontSize: 9, letterSpacing: 0.4, fontWeight: 600 }}
+            >
+              Stale
+            </span>
           )}
           <Pencil width={9} height={9} style={{ color: "var(--text-faint)", flexShrink: 0 }} />
         </div>
@@ -1328,35 +1366,38 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
         </div>
       )}
 
-      {/* Bottom-left: type filter pills (decomposed mode only) */}
+      {/* Bottom-left: type filter pills (decomposed mode only). Mirrors
+          the MD filter chip pattern in the main editor's left sidebar
+          (All / Private / Shared / Synced) — single accent color for the
+          active state, no per-type color variation, equal-width buttons,
+          subtle hover. Cleaner than the previous per-type colored pills. */}
       {expandedDocId && decomposition && onChangeChunkTypeFilter && (() => {
         const presentTypes = Array.from(new Set(decomposition.chunks.map(c => c.type)));
         if (presentTypes.length <= 1) return null;
+        const allOptions = [null as string | null, ...presentTypes];
         return (
-          <div className="absolute bottom-12 left-3 z-20 flex items-center gap-1 px-1 py-1 rounded-lg flex-wrap"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)", maxWidth: "60vw" }}>
-            <button
-              onClick={() => onChangeChunkTypeFilter(null)}
-              className="px-2 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
-              style={{
-                color: chunkTypeFilter === null ? "var(--accent)" : "var(--text-faint)",
-                background: chunkTypeFilter === null ? "var(--accent-dim)" : "transparent",
-              }}
-            >All</button>
-            {presentTypes.map(t => {
-              const palette = CHUNK_TYPE_COLORS[t] || CHUNK_TYPE_COLORS.context;
-              const active = chunkTypeFilter === t;
+          <div
+            className="absolute bottom-12 left-3 z-20 inline-flex items-center gap-0.5 p-0.5 rounded-md"
+            style={{ background: "var(--background)", border: "1px solid var(--border-dim)", maxWidth: "60vw" }}
+          >
+            {allOptions.map((t) => {
+              const isActive = chunkTypeFilter === t;
+              const label = t ?? "All";
               return (
                 <button
-                  key={t}
-                  onClick={() => onChangeChunkTypeFilter(active ? null : t)}
-                  className="px-2 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
+                  key={label}
+                  onClick={() => onChangeChunkTypeFilter(t === null ? null : (isActive ? null : t))}
+                  className="px-2.5 py-1 text-caption rounded transition-colors capitalize"
                   style={{
-                    color: active ? palette.text : "var(--text-faint)",
-                    background: active ? `${palette.border}22` : "transparent",
-                    border: active ? `1px solid ${palette.border}55` : "1px solid transparent",
+                    background: isActive ? "var(--accent-dim)" : "transparent",
+                    color: isActive ? "var(--accent)" : "var(--text-faint)",
+                    fontWeight: isActive ? 600 : 500,
                   }}
-                >{t}</button>
+                  onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; } }}
+                  onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; } }}
+                >
+                  {label}
+                </button>
               );
             })}
           </div>
