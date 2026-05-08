@@ -19,6 +19,7 @@ import FolderEmojiPicker from "@/components/FolderEmojiPicker";
 import MdfyLogo from "@/components/MdfyLogo";
 import MathEditor from "@/components/MathEditor";
 import Tooltip from "@/components/Tooltip";
+import SynthesisDiff from "@/components/SynthesisDiff";
 import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import { extractTitleFromMd } from "@/lib/extract-title";
@@ -3864,6 +3865,39 @@ export default function MdEditor() {
 
   // Track whether current navigation is from popstate (back/forward) to avoid pushing duplicate history entries
   const isPopstateRef = useRef(false);
+
+  // ─── Synthesis diff/accept overlay state (W4 exceed-move) ───
+  // When a user clicks "Update synthesis" we open the SynthesisDiff
+  // component which previews the LLM's proposed update inline as a
+  // line-level diff, then PATCHes the doc on Accept. This is the
+  // capability Karpathy's regenerate-only pattern can't offer.
+  const [synthesisDiffDocId, setSynthesisDiffDocId] = useState<string | null>(null);
+  const openSynthesisDiff = useCallback((docId: string) => {
+    setSynthesisDiffDocId(docId);
+  }, []);
+  const closeSynthesisDiff = useCallback(() => {
+    setSynthesisDiffDocId(null);
+  }, []);
+  const onSynthesisAccepted = useCallback((newMarkdown: string) => {
+    if (!synthesisDiffDocId) return;
+    const docId = synthesisDiffDocId;
+    const now = new Date().toISOString();
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.cloudId === docId ? { ...t, markdown: newMarkdown, compiledAt: now } : t
+      )
+    );
+    if (
+      activeTabIdRef.current &&
+      tabs.find((t) => t.id === activeTabIdRef.current && t.cloudId === docId)
+    ) {
+      setMarkdownRaw(newMarkdown);
+      markdownRef.current = newMarkdown;
+      doRenderRef.current(newMarkdown);
+      tiptapRef.current?.setMarkdown(newMarkdown);
+    }
+    showToast("Synthesis updated.", "info");
+  }, [synthesisDiffDocId, tabs]);
 
   // ─── Recompile a compiled doc (Memo / FAQ / Brief) from its source bundle ───
   const [recompilingDocId, setRecompilingDocId] = useState<string | null>(null);
@@ -7835,16 +7869,14 @@ ${clone.innerHTML}
                     Compiled · {labels[ct.compileKind] || ct.compileKind}
                   </Badge>
                 </Tooltip>
-                <Tooltip text="Re-run synthesis with latest source content" position="bottom">
+                <Tooltip text="Preview an updated synthesis from the current sources, then accept or reject" position="bottom">
                   <Button
                     variant="secondary"
                     size="xs"
-                    onClick={() => ct.cloudId && recompileDoc(ct.cloudId)}
-                    disabled={isRecompiling}
-                    loading={isRecompiling}
-                    leadingIcon={!isRecompiling ? <RotateCcw width={9} height={9} /> : undefined}
+                    onClick={() => ct.cloudId && openSynthesisDiff(ct.cloudId)}
+                    leadingIcon={<RotateCcw width={9} height={9} />}
                   >
-                    {isRecompiling ? "Recompiling…" : "Recompile"}
+                    Update synthesis
                   </Button>
                 </Tooltip>
               </div>
@@ -13792,6 +13824,26 @@ ${clone.innerHTML}
           }}
         />
       )}
+
+      {/* Synthesis diff/accept overlay (W4). The Update-synthesis button
+          on a compiled doc opens this; on Accept the doc's markdown is
+          PATCHed and the active editor refreshes. */}
+      {synthesisDiffDocId && (() => {
+        const tab = tabs.find((t) => t.cloudId === synthesisDiffDocId);
+        return (
+          <SynthesisDiff
+            docId={synthesisDiffDocId}
+            auth={{
+              accessToken: accessToken || undefined,
+              editToken: tab?.editToken,
+              userId: user?.id,
+              anonymousId: getAnonymousId() || undefined,
+            }}
+            onClose={closeSynthesisDiff}
+            onAccepted={onSynthesisAccepted}
+          />
+        );
+      })()}
     </div>
   );
 }

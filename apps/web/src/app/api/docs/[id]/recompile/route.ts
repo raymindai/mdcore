@@ -55,9 +55,33 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   }
   const kind = doc.compile_kind as SynthesisKind;
 
+  // Preview mode: synthesize but DON'T save. Caller can then show the user
+  // a diff vs the existing doc.markdown and ask them to accept or reject.
+  // The exceed-move over Karpathy's regenerate-only pattern.
+  const isPreview = req.nextUrl.searchParams.get("preview") === "1";
+
   try {
     const result = await synthesizeBundle(supabase, compileFrom.bundleId, kind, compileFrom.intent ?? undefined);
     if (!result) return NextResponse.json({ error: "Recompile failed (bundle empty or AI down)" }, { status: 500 });
+
+    if (isPreview) {
+      // Return the proposed markdown alongside the existing one so the
+      // client can render a diff. No DB writes.
+      const { data: existing } = await supabase
+        .from("documents")
+        .select("markdown, compiled_at")
+        .eq("id", id)
+        .single();
+      return NextResponse.json({
+        preview: true,
+        kind,
+        currentMarkdown: existing?.markdown ?? "",
+        proposedMarkdown: result.markdown,
+        previousCompiledAt: existing?.compiled_at ?? null,
+        sourceDocIds: result.sourceDocIds,
+        intent: result.intent,
+      });
+    }
 
     const now = new Date().toISOString();
     // Update doc with fresh markdown + bump compile metadata

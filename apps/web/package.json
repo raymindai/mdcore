@@ -9,7 +9,8 @@
     "lint": "eslint",
     "build:wasm": "cd ../../packages/engine && wasm-pack build --target bundler --out-dir ../../apps/web/src/lib/wasm --release",
     "test:share": "tsx scripts/test-share-importer.ts",
-    "test:bookmarklet": "tsx scripts/test-bookmarklet.ts"
+    "test:bookmarklet": "tsx scripts/test-bookmarklet.ts",
+    "test:diff": "tsx scripts/test-markdown-diff.ts"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -36,6 +37,7 @@
     "@tiptap/pm": "^3.22.5",
     "@tiptap/starter-kit": "^3.22.5",
     "@types/dagre": "^0.7.54",
+    "@types/diff": "^7.0.2",
     "@types/katex": "^0.16.8",
     "@types/react-window": "^1.8.8",
     "@types/turndown": "^5.0.6",
@@ -44,6 +46,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "@xyflow/react": "^12.10.2",
     "dagre": "^0.8.5",
+    "diff": "^9.0.0",
     "elkjs": "^0.11.1",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.40",

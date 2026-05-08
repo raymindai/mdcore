@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { synthesizeBundle } from "@/lib/synthesize";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -111,7 +112,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to add documents to bundle" }, { status: 500 });
   }
 
+  // Schedule auto-synthesis after the response goes out. Next.js 15
+  // `after()` keeps the function alive until the work completes, so the
+  // synthesis page is durable even though the bundle creation returns
+  // immediately. Authenticated users only — anonymous bundles still work,
+  // they just don't get auto-synthesis.
+  if (userId) {
+    const ownerId = userId;
+    after(async () => {
+      try {
+        await runAutoSynthesis(supabase, id, ownerId);
+      } catch (err) {
+        console.warn("Auto-synthesis failed:", err);
+      }
+    });
+  }
+
   return NextResponse.json({ id, editToken, created_at: new Date().toISOString() });
+}
+
+/**
+ * Best-effort: synthesize the bundle and persist as a wiki doc. Errors
+ * here never break bundle creation — they're logged and dropped.
+ */
+async function runAutoSynthesis(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  bundleId: string,
+  userId: string,
+) {
+  if (!supabase) return;
+  const result = await synthesizeBundle(supabase, bundleId, "wiki");
+  if (!result) return;
+  const synthId = nanoid(8);
+  const synthEditToken = nanoid(32);
+  const now = new Date().toISOString();
+  await supabase.from("documents").insert({
+    id: synthId,
+    markdown: result.markdown,
+    title: extractFirstHeading(result.markdown) || "Synthesis",
+    edit_token: synthEditToken,
+    user_id: userId,
+    edit_mode: "account",
+    is_draft: false,
+    source: "auto-synthesis",
+    compile_kind: "wiki",
+    compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
+    compiled_at: now,
+  });
+}
+
+function extractFirstHeading(md: string): string | null {
+  const m = md.match(/^\s*#\s+(.+)$/m);
+  return m ? m[1].trim().slice(0, 120) : null;
 }
 
 export async function GET(req: NextRequest) {

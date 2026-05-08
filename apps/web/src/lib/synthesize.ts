@@ -9,8 +9,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readHubSchema, DEFAULT_HUB_SCHEMA_MD } from "@/lib/hub-schema";
 
-export type SynthesisKind = "memo" | "faq" | "brief";
+export type SynthesisKind = "memo" | "faq" | "brief" | "wiki";
 
 const MEMO_PROMPT = `You are a senior analyst producing a one-page decision memo from a collection of documents.
 
@@ -64,6 +65,40 @@ CRITICAL RULES:
 - If the docs don't answer a question, say so explicitly (don't invent).
 - Order questions from most foundational to most specific.`;
 
+const WIKI_PROMPT = `You are the LLM maintaining the owner's personal knowledge wiki. The owner curates raw documents; you keep the wiki page that synthesizes them.
+
+The hub schema below tells you HOW to maintain this user's wiki. Honor it.
+
+Output a wiki-style synthesis page in markdown:
+
+# <Page title — what this synthesis is about>
+
+> A 2-3 sentence summary. What does the bundled set of docs collectively say?
+
+## Key claims
+
+- <Claim 1, with [doc-N] citation>
+- <Claim 2, with [doc-N] citation>
+
+## Cross-references
+
+- <Concept X appears in [doc-A] and [doc-B] — note how they treat it differently or agree>
+
+## Open questions / gaps
+
+- <What the docs don't address but should>
+
+## Provenance
+
+- [doc-1]: <one-sentence summary of this doc's role in the page>
+- [doc-2]: <one-sentence summary>
+
+CRITICAL RULES:
+- Cite sources inline as [doc-N].
+- Don't invent claims — every assertion must be supported by at least one citation.
+- Keep under 700 words.
+- Use the schema's tone and topic guidance.`;
+
 const BRIEF_PROMPT = `You are a writer producing a narrative brief that distills a collection of documents into a single readable essay.
 
 Output STRICT markdown:
@@ -101,7 +136,7 @@ export async function synthesizeBundle(
 ): Promise<SynthesisResult | null> {
   const { data: bundle } = await supabase
     .from("bundles")
-    .select("intent, graph_data")
+    .select("intent, graph_data, user_id")
     .eq("id", bundleId)
     .single();
   if (!bundle) return null;
@@ -146,8 +181,30 @@ export async function synthesizeBundle(
     ? `## Bundle-level Signals\n${themes.length ? `Themes: ${themes.join(", ")}\n` : ""}${insights.length ? `Insights:\n${insights.map(s => `- ${s}`).join("\n")}\n` : ""}${gaps.length ? `Gaps:\n${gaps.map(s => `- ${s}`).join("\n")}\n` : ""}\n`
     : "";
 
-  const promptHead = kind === "faq" ? FAQ_PROMPT : kind === "brief" ? BRIEF_PROMPT : MEMO_PROMPT;
-  const fullPrompt = `${promptHead}\n\n---\n${intentBlock}${signalsBlock}## Documents\n${sections}`;
+  const promptHead =
+    kind === "faq" ? FAQ_PROMPT
+      : kind === "brief" ? BRIEF_PROMPT
+        : kind === "wiki" ? WIKI_PROMPT
+          : MEMO_PROMPT;
+
+  // For wiki kind, inject the hub's MDFY.md schema so the LLM follows the
+  // owner's customizations (tone, topics, cross-reference rules, lint
+  // signals). For other kinds the schema is irrelevant — the prompt itself
+  // is the spec.
+  let schemaBlock = "";
+  if (kind === "wiki" && bundle.user_id) {
+    try {
+      const schema = await readHubSchema(bundle.user_id as string);
+      // Only include the schema text when it differs from the bundled
+      // default — otherwise we waste tokens on something the prompt already
+      // implies.
+      if (!schema.isDefault && schema.markdown.trim() !== DEFAULT_HUB_SCHEMA_MD.trim()) {
+        schemaBlock = `## Hub schema (the owner's instructions for you)\n${schema.markdown}\n\n`;
+      }
+    } catch { /* fall back to default behavior */ }
+  }
+
+  const fullPrompt = `${promptHead}\n\n---\n${schemaBlock}${intentBlock}${signalsBlock}## Documents\n${sections}`;
 
   const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
