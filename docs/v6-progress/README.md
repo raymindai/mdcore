@@ -14,7 +14,7 @@ commits, verified scenarios, and any deferred work.
 | W4 | Auto-synthesis with diff/accept (exceed move 1) | `31f17041` | shipped |
 | W5 | PDF ingest (exceed move 2), hub log.md, hub lint v1 | `a6851d67`, `7c3e3019`, `9631b878` | shipped |
 | W6 | Proactive bundle suggestions (exceed move 3) | `4368d47c` | shipped |
-| W7 | Shared bundles MVP, confidence tags | n/a | pending |
+| W7 | Shared bundles MVP, confidence tags | `ae0b33fd` | shipped |
 | W8 | `/mdfy` slash for Claude Code, suggested queries | n/a | pending |
 | W9 | `/mdfy` for Cursor, hub-level graph view | n/a | pending |
 | W10 | `/mdfy` for Codex+Aider, time-traveling hub, two-door landing | n/a | pending |
