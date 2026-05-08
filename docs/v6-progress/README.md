@@ -19,7 +19,7 @@ commits, verified scenarios, and any deferred work.
 | W9 | `/mdfy` for Cursor, hub-level graph view | `6e46b47a` | shipped |
 | W10 | `/mdfy` for Codex+Aider, time-traveling hub, two-door landing draft | `d8e9e0f4` | shipped |
 | W11 | Permission-aware AI fetching, shared bundles discoverable | `dfcb0f0a` | shipped |
-| W12 | Social hub feed, cross-reference graph, public launch | n/a | pending |
+| W12 | Social hub feed, cross-reference graph, launch readiness | `9e4c8413` | shipped (launch flip held for end of August 2026) |
 
 ## Conventions
 
