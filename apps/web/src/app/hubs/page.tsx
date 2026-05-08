@@ -156,6 +156,15 @@ async function getActivityFeed(hubs: HubRow[]): Promise<ActivityRow[]> {
     .slice(0, 12);
 }
 
+// Hubs we exclude from every public aggregation surface: the founder
+// hub (raymindai) and the demo fixture (yc-demo). Both stay
+// hub_public=true so their docs are still fetchable as raw markdown by
+// AI agents — they just don't appear in the gallery / Recently Active /
+// Most Cited as if they were community examples. mdfy's official
+// content surfaces (dashboard EXPLORE, /shared bundles) point at this
+// content directly via specific URLs, not via the gallery.
+const RESERVED_HUB_SLUGS = new Set(["yc-demo", "raymindai"]);
+
 async function getHubs(): Promise<HubRow[]> {
   const supabase = getSupabaseClient();
   if (!supabase) return [];
@@ -166,8 +175,12 @@ async function getHubs(): Promise<HubRow[]> {
     .not("hub_slug", "is", null)
     .limit(100);
   if (!profiles || profiles.length === 0) return [];
+  // Apply reserved-slug filter early so all downstream lookups (counts,
+  // activity feed, cited rollup) share the same exclusion set.
+  const filteredProfiles = profiles.filter((p) => !RESERVED_HUB_SLUGS.has(p.hub_slug as string));
+  if (filteredProfiles.length === 0) return [];
 
-  const userIds = profiles.map(p => p.id);
+  const userIds = filteredProfiles.map(p => p.id);
 
   // Per-user public doc counts. Single query per user would explode; use
   // a single rpc-like query and aggregate in memory.
@@ -195,7 +208,7 @@ async function getHubs(): Promise<HubRow[]> {
     bundleCount.set(b.user_id, (bundleCount.get(b.user_id) || 0) + 1);
   }
 
-  return profiles
+  return filteredProfiles
     .filter(p => p.hub_slug)
     .map(p => ({
       id: p.id,

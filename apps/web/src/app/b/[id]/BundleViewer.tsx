@@ -597,6 +597,7 @@ export default function BundleViewer({
                   <div
                     ref={previewRef}
                     className="mdcore-rendered prose prose-invert"
+                    style={{ fontSize: 13.5, lineHeight: 1.6 }}
                     dangerouslySetInnerHTML={{ __html: selectedHtml }}
                   />
                 </>

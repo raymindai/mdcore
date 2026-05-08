@@ -37,7 +37,7 @@ export default function DocumentViewer({
   const [theme, setThemeState] = useState<Theme>("dark");
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
-  const [narrowView, setNarrowView] = useState(true);
+  const [copiedMd, setCopiedMd] = useState(false);
   const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
   // Defer the access gate UNTIL client-side auth check finishes — otherwise
   // owners see "You need access" flash for ~500ms before the redirect to /
@@ -307,9 +307,18 @@ export default function DocumentViewer({
     return () => clearInterval(interval);
   }, [id, unlocked, isProtected, isExpired]);
 
-  // Compact pill style every action button shares — keeps the right
-  // side of the header one row tall on every viewport.
+  // Compact pill style every action button shares.
   const actionBtn = "h-7 px-2.5 rounded-md text-caption font-medium flex items-center gap-1.5 transition-colors";
+
+  // Copy markdown — paste-into-AI flow. Strips no formatting; the
+  // markdown body itself is what every LLM already knows how to read.
+  const copyMarkdown = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(markdownRef.current || "");
+      setCopiedMd(true);
+      setTimeout(() => setCopiedMd(false), 2000);
+    } catch { /* clipboard denied */ }
+  }, []);
 
   return (
     <div
@@ -336,13 +345,18 @@ export default function DocumentViewer({
               <span className="hidden sm:inline">{copied ? "Copied" : "Link"}</span>
             </button>
             <button
-              onClick={() => setNarrowView(!narrowView)}
-              className={`${actionBtn} hidden sm:flex`}
-              style={{ background: narrowView ? "var(--accent-dim)" : "var(--toggle-bg)", color: narrowView ? "var(--accent)" : "var(--text-muted)" }}
-              title={narrowView ? "Wide view" : "Narrow view"}
-              aria-label="Toggle narrow view"
+              onClick={copyMarkdown}
+              className={actionBtn}
+              style={{ background: "var(--toggle-bg)", color: copiedMd ? "#4ade80" : "var(--text-muted)" }}
+              title="Copy markdown — paste into any AI as context"
+              aria-label="Copy markdown"
             >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M4 2v12M12 2v12M1 8h3M12 8h3" strokeLinecap="round"/><path d="M6 6.5L8 8l-2 1.5M10 6.5L8 8l2 1.5" strokeLinecap="round"/></svg>
+              {copiedMd ? (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="4 8 7 11 12 5"/></svg>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h10v10H3z"/><path d="M5 6h6M5 9h6M5 12h3"/></svg>
+              )}
+              <span className="hidden sm:inline">{copiedMd ? "Copied" : "MD"}</span>
             </button>
             <button
               onClick={toggleTheme}
@@ -358,28 +372,6 @@ export default function DocumentViewer({
                 }
               </svg>
             </button>
-            <button
-              onClick={() => window.print()}
-              className={`${actionBtn} hidden sm:flex font-mono`}
-              style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-              title="Print / Save as PDF"
-              aria-label="Print / Save as PDF"
-            >
-              PDF
-            </button>
-            <Link
-              href={`/?from=${id}`}
-              className={`${actionBtn} font-mono`}
-              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-              onClick={() => {
-                if (passwordInput) {
-                  sessionStorage.setItem(`mdfy-pw-${id}`, passwordInput);
-                }
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M11.5 1.5L14.5 4.5M7 9l-1 4 4-1 6.5-6.5-3-3L7 9z"/></svg>
-              <span className="hidden sm:inline">Edit</span>
-            </Link>
           </>
         }
       />
@@ -532,7 +524,7 @@ export default function DocumentViewer({
           </div>
         ) : html ? (
           <article
-            className={`mdcore-rendered p-4 sm:p-8 ${narrowView ? "mx-auto max-w-3xl" : "max-w-none"}`}
+            className="mdcore-rendered p-4 sm:p-8 mx-auto max-w-3xl"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
