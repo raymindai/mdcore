@@ -44,6 +44,17 @@ const slides = [
   },
   {
     step: "04",
+    title: "Your hub becomes\ncontext for any AI.",
+    desc: "Captures roll up into one URL. Paste your hub into Claude, ChatGPT, Cursor, or Codex — they read your whole knowledge layer as context.",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+      </svg>
+    ),
+    hubLink: { href: "/install", label: "Install /mdfy in your AI tool →" },
+  },
+  {
+    step: "05",
     title: "Works everywhere.",
     desc: null,
     icon: null,
@@ -211,6 +222,23 @@ export default function WelcomeOverlay() {
               }}
             >
               {(slide.demoLink as { href: string; label: string }).label}
+            </Link>
+          )}
+
+          {/* Hub-for-AI link (slide 04) */}
+          {"hubLink" in slide && slide.hubLink && (
+            <Link
+              href={(slide.hubLink as { href: string; label: string }).href}
+              onClick={dismiss}
+              style={{
+                display: "inline-block",
+                marginTop: 14,
+                fontSize: 13,
+                color: "var(--accent)",
+                textDecoration: "none",
+              }}
+            >
+              {(slide.hubLink as { href: string; label: string }).label}
             </Link>
           )}
 

@@ -10767,6 +10767,34 @@ ${clone.innerHTML}
                     ))}
                   </div>
                 </div>
+                {/* Deploy to AI — v6 surfaces (hub URL becomes context for any AI) */}
+                <div className="mb-6">
+                  <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>Deploy to AI</div>
+                  <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Your knowledge becomes context any AI can read. Paste your hub URL into Claude, ChatGPT, or Cursor — it loads as your full personal context.
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { label: "Your hub", desc: "Personal knowledge layer", url: "/hubs", color: "#fb923c", icon: <Globe width={14} height={14} /> },
+                      { label: "Install /mdfy", desc: "Capture from Claude, Cursor, Codex, Aider", url: "/install", color: "#fbbf24", icon: <Sparkles width={14} height={14} /> },
+                      { label: "Shared bundles", desc: "Curated public context", url: "/shared", color: "#4ade80", icon: <Layers width={14} height={14} /> },
+                      { label: "Sample hub", desc: "See how a hub looks", url: "/hub/yc-demo", color: "#60a5fa", icon: <Users width={14} height={14} /> },
+                    ]).map((item) => (
+                      <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", textDecoration: "none", transition: "all 0.12s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
+                        <div className="mt-0.5 shrink-0" style={{ color: item.color }}>{item.icon}</div>
+                        <div>
+                          <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                          <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Explore + Plugins — 2 column grid */}
                 <div className="mb-6">
                   <div className="text-caption font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Explore</div>
