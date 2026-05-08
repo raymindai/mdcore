@@ -27,6 +27,11 @@ const nextConfig: NextConfig = {
       { source: "/mdfy-bundle-spec", destination: "/d/mdfy-bundle-spec" },
       { source: "/mdfy-faq", destination: "/d/mdfy-faq" },
       { source: "/mdfy-roadmap-2026", destination: "/d/mdfy-roadmap-2026" },
+      // Case studies — short Pain → Action → Result stories
+      { source: "/case-cross-tool-handoff", destination: "/d/case-cross-tool-handoff" },
+      { source: "/case-claude-md-personal-context", destination: "/d/case-claude-md-personal-context" },
+      { source: "/case-share-with-team", destination: "/d/case-share-with-team" },
+      { source: "/case-personal-llm-wiki", destination: "/d/case-personal-llm-wiki" },
     ];
   },
   webpack(config) {

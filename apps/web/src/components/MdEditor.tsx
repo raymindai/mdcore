@@ -10926,6 +10926,38 @@ ${clone.innerHTML}
                   </div>
                 </div>
 
+                {/* How people use mdfy — short Pain → Action → Result case
+                    studies. Each card opens a published doc in the founder
+                    hub. Sits between the v6 hero (Deploy to AI) and the
+                    tutorial-shaped Guides & Examples — answers "why would
+                    I bother" before "here's how it works." */}
+                <div className="mb-6">
+                  <div className="flex items-baseline justify-between mb-2">
+                    <div className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>How people use mdfy</div>
+                    <a href="/b/mdfy-in-practice" target="_blank" rel="noopener noreferrer" className="text-caption" style={{ color: "var(--text-faint)" }}>All cases &rarr;</a>
+                  </div>
+                  <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Four short Pain → Action → Result stories. Read in under a minute each.
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {([
+                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on the same context", url: "/case-cross-tool-handoff", color: "#fb923c" },
+                      { label: "CLAUDE.md onboarding", desc: "Every new chat loads your hub", url: "/case-claude-md-personal-context", color: "#fbbf24" },
+                      { label: "Share like Notion", desc: "AI conversation → teammate-readable URL", url: "/case-share-with-team", color: "#4ade80" },
+                      { label: "Personal LLM wiki", desc: "Karpathy's shape, automated", url: "/case-personal-llm-wiki", color: "#60a5fa" },
+                    ]).map((item) => (
+                      <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
+                        className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", textDecoration: "none", transition: "all 0.12s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}20`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.boxShadow = "none"; }}>
+                        <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{item.label}</div>
+                        <div className="text-caption" style={{ color: "var(--text-faint)" }}>{item.desc}</div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Examples — 2 column grid. Surface guides (Chrome/VSCode/Mac/CLI/MCP/QuickLook)
                     are filtered out here because the EXPLORE > Plugins card is the
                     canonical entry for those — listing both would be a duplicate
