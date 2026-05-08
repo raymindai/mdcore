@@ -76,6 +76,28 @@ export default function BundleViewer({
   const [contextCopied, setContextCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // Owner-aware redirect: if the signed-in user owns this bundle, send
+  // them to the main editor with ?bundle=<id> so the bundle opens as an
+  // editable tab. Mirrors the per-document behavior in /d/[id].
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+        const supabase = getSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const res = await fetch(`/api/bundles/${id}`, {
+          headers: { "x-user-id": user.id, "x-user-email": user.email || "" },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.isOwner) {
+          window.location.replace(`/?bundle=${id}`);
+        }
+      } catch { /* not signed in or bundle not accessible — stay on viewer */ }
+    })();
+  }, [id]);
+
   // Theme
   useEffect(() => {
     const saved = localStorage.getItem("mdfy-theme");

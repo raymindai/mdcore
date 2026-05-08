@@ -4854,6 +4854,45 @@ export default function MdEditor() {
       const docParam = params.get("from") || params.get("doc");
       // Validate doc ID: only allow alphanumeric, hyphen, underscore (nanoid charset)
       const fromId = docParam && /^[\w-]+$/.test(docParam) ? docParam : null;
+
+      // Check ?bundle= parameter — fired by /b/<id> viewer when the
+      // signed-in visitor is the bundle owner. Opens the bundle as an
+      // editable tab in the main editor and rewrites the URL back to
+      // /b/<id> so refresh stays on the same flow.
+      const bundleParam = params.get("bundle");
+      const bundleId = bundleParam && /^[\w-]+$/.test(bundleParam) ? bundleParam : null;
+      if (bundleId) {
+        try {
+          const headers: Record<string, string> = { ...authHeaders };
+          const res = await fetch(`/api/bundles/${bundleId}`, { headers });
+          if (res.ok) {
+            const bundleData = await res.json();
+            setTabs(prev => {
+              const existing = prev.find(t => t.kind === "bundle" && t.bundleId === bundleId);
+              if (existing) {
+                activeTabIdRef.current = existing.id;
+                setActiveTabId(existing.id);
+                return prev;
+              }
+              const newTabId = `bundle-${bundleId}-${Date.now()}`;
+              const newTab: Tab = {
+                id: newTabId,
+                kind: "bundle",
+                bundleId,
+                title: bundleData.title || "Untitled Bundle",
+                markdown: "",
+              };
+              activeTabIdRef.current = newTab.id;
+              setActiveTabId(newTab.id);
+              return [...prev, newTab];
+            });
+            setShowOnboarding(false);
+            window.history.replaceState(null, "", `/b/${bundleId}`);
+            return;
+          }
+        } catch { /* fall through to default flow */ }
+      }
+
       // Save editToken from URL if provided (from Chrome extension)
       const urlToken = params.get("token");
       if (fromId && urlToken) {
