@@ -180,6 +180,15 @@ export default function InstallPage() {
               Read the deep dive: How mdfy works &rarr;
             </Link>
           </p>
+          <p className="mt-2 text-sm">
+            <Link
+              href="/how-mdfy-rag-works"
+              className="underline"
+              style={{ color: "var(--accent)" }}
+            >
+              Read how mdfy does RAG (chunked, hybrid, public) &rarr;
+            </Link>
+          </p>
         </section>
 
         <section

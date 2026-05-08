@@ -112,13 +112,20 @@ export default function ViewerPromoStrip({ isOwner = false }: ViewerPromoStripPr
             <span className="text-caption" style={{ color: "var(--text-faint)" }}>see examples</span>
           </Link>
         </div>
-        <div className="mt-4">
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
           <Link
             href="/how-mdfy-works"
             className="text-caption"
             style={{ color: "var(--text-faint)" }}
           >
-            How mdfy works (deep dive) &rarr;
+            How mdfy works &rarr;
+          </Link>
+          <Link
+            href="/how-mdfy-rag-works"
+            className="text-caption"
+            style={{ color: "var(--text-faint)" }}
+          >
+            How mdfy does RAG &rarr;
           </Link>
         </div>
       </div>

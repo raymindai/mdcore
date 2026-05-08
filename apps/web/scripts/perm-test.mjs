@@ -27,11 +27,16 @@ const { error: insBunErr } = await s.from("bundles").insert({
 if (insBunErr) { console.error("insert bundle failed", insBunErr); process.exit(1); }
 
 // Also pick or create a fully public doc to verify the happy path still works.
+// Filter out our own restricted fixture (just inserted) and any other doc
+// with allowed_emails set — those would 403 the "public doc" assertion.
 const { data: docs } = await s.from("documents")
-  .select("id")
+  .select("id, allowed_emails")
   .eq("user_id", userId).eq("is_draft", false).is("deleted_at", null)
   .is("password_hash", null).limit(50);
-const publicDoc = docs.find(d => true); // any
+const publicDoc = docs.find(
+  (d) => d.id !== docId && (!Array.isArray(d.allowed_emails) || d.allowed_emails.length === 0),
+);
+if (!publicDoc) { console.error("no fully public doc found in hub"); process.exit(1); }
 const { data: publicBundles } = await s.from("bundles")
   .select("id, allowed_emails, password_hash")
   .eq("user_id", userId).eq("is_draft", false).limit(50);

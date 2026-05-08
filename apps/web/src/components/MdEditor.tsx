@@ -10943,6 +10943,7 @@ ${clone.innerHTML}
                       { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa", icon: <FileText width={14} height={14} /> },
                       { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80", icon: <Download width={14} height={14} /> },
                       { label: "How it works", desc: "Architecture, end to end", url: "/how-mdfy-works", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
+                      { label: "How RAG works", desc: "Chunked, hybrid, public", url: "/how-mdfy-rag-works", color: "#a78bfa", icon: <Sparkles width={14} height={14} /> },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
