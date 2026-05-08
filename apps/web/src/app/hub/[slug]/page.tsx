@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Clock, Sparkles, File as FileIcon, Layers } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
@@ -157,7 +158,7 @@ export default async function HubPage({ params, searchParams }: Props) {
           className="px-6 py-2 text-caption flex items-center justify-center gap-3"
           style={{ background: "var(--accent-dim)", color: "var(--text-primary)", borderBottom: "1px solid var(--accent)" }}
         >
-          <span aria-hidden>⏳</span>
+          <Clock width={13} height={13} aria-hidden style={{ color: "var(--accent)" }} />
           <span>
             Hub as of <strong>{atLabel}</strong> — {hub.docs.length} {hub.docs.length === 1 ? "doc" : "docs"} and {hub.bundles.length} {hub.bundles.length === 1 ? "bundle" : "bundles"} that existed by then.
           </span>
@@ -211,7 +212,7 @@ export default async function HubPage({ params, searchParams }: Props) {
         {/* Deploy-to-AI panel */}
         <section className="mb-12 px-5 py-4 rounded-xl" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
           <div className="flex items-start gap-3">
-            <span className="text-xl shrink-0" style={{ color: "var(--accent)" }}>✨</span>
+            <Sparkles width={18} height={18} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-body font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                 Deploy this hub to any AI
@@ -251,7 +252,7 @@ export default async function HubPage({ params, searchParams }: Props) {
                     href={`/d/${d.id}`}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors group hover:bg-[var(--toggle-bg)]"
                   >
-                    <span className="text-caption font-mono w-2 h-2 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
+                    <FileIcon width={12} height={12} className="shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
                     <span className="flex-1 truncate text-body" style={{ color: "var(--text-primary)" }}>
                       {d.title || "Untitled"}
                     </span>
@@ -279,9 +280,12 @@ export default async function HubPage({ params, searchParams }: Props) {
                   className="flex flex-col gap-1.5 p-4 rounded-lg transition-colors hover:bg-[var(--toggle-bg)]"
                   style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
                 >
-                  <span className="text-body font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
-                    {b.title || "Untitled Bundle"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Layers width={13} height={13} className="shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
+                    <span className="text-body font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+                      {b.title || "Untitled Bundle"}
+                    </span>
+                  </div>
                   {b.description ? (
                     <span className="text-caption leading-relaxed line-clamp-2" style={{ color: "var(--text-muted)" }}>
                       {b.description}
@@ -318,6 +322,7 @@ export default async function HubPage({ params, searchParams }: Props) {
                     href={`/d/${d.id}`}
                     className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
                   >
+                    <FileIcon width={11} height={11} className="shrink-0" style={{ color: "var(--text-faint)" }} aria-hidden />
                     <span className="flex-1 truncate text-body" style={{ color: "var(--text-secondary)" }}>
                       {d.title || "Untitled"}
                     </span>

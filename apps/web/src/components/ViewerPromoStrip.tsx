@@ -44,10 +44,14 @@ export default function ViewerPromoStrip({ isOwner = false }: ViewerPromoStripPr
 
   return (
     <section
-      className="shrink-0 px-4 sm:px-8 py-7"
+      className="shrink-0 px-4 sm:px-8 py-8"
       style={{
+        // Slightly lifted surface so the promo band visually separates from
+        // the doc / hub / bundle content above. var(--surface) is the same
+        // shade the dashboard cards sit on; here it does the section-break job.
+        background: "var(--surface)",
         borderTop: "1px solid var(--border-dim)",
-        background: "var(--background)",
+        borderBottom: "1px solid var(--border-dim)",
       }}
     >
       <div className="max-w-3xl mx-auto">

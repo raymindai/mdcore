@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { File as FileIcon, Layers } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase";
 import { extractCrossRefs, rankCitations } from "@/lib/cross-refs";
 import MdfyLogo from "@/components/MdfyLogo";
@@ -399,9 +400,10 @@ export default async function HubsPage() {
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-2 text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
-                    <span>{h.doc_count} {h.doc_count === 1 ? "doc" : "docs"}</span>
-                    {h.bundle_count > 0 && <span>·</span>}
-                    {h.bundle_count > 0 && <span>{h.bundle_count} {h.bundle_count === 1 ? "bundle" : "bundles"}</span>}
+                    <span className="flex items-center gap-1"><FileIcon width={10} height={10} aria-hidden />{h.doc_count} {h.doc_count === 1 ? "doc" : "docs"}</span>
+                    {h.bundle_count > 0 && (
+                      <span className="flex items-center gap-1"><Layers width={10} height={10} aria-hidden />{h.bundle_count} {h.bundle_count === 1 ? "bundle" : "bundles"}</span>
+                    )}
                   </div>
                 </div>
               </Link>

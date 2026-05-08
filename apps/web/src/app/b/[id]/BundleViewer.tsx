@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { File as FileIcon, Sparkles, BookOpen, Tag, Box, Hash, ArrowRight } from "lucide-react";
 import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
@@ -534,7 +535,7 @@ export default function BundleViewer({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {selectedDocId ? (
                     <>
-                      <span className="text-sm shrink-0" style={{ color: "var(--accent)" }}>■</span>
+                      <FileIcon width={13} height={13} className="shrink-0" style={{ color: "var(--accent)" }} aria-hidden />
                       <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                         {documents.find(d => d.id === selectedDocId)?.title || "Untitled"}
                       </span>
@@ -548,12 +549,17 @@ export default function BundleViewer({
                     </>
                   ) : selectedNodeInfo && (
                     <>
-                      <span className="text-sm shrink-0" style={{
-                        color: selectedNodeInfo.type === "analysis" ? "#60a5fa"
+                      {(() => {
+                        const color = selectedNodeInfo.type === "analysis" ? "#60a5fa"
                           : selectedNodeInfo.type === "entity" ? "#4ade80"
                           : selectedNodeInfo.type === "tag" ? "#a78bfa"
-                          : "#38bdf8"
-                      }}>{selectedNodeInfo.type === "analysis" ? "◈" : selectedNodeInfo.type === "entity" ? "◆" : selectedNodeInfo.type === "tag" ? "#" : "○"}</span>
+                          : "#38bdf8";
+                        const NodeIcon = selectedNodeInfo.type === "analysis" ? BookOpen
+                          : selectedNodeInfo.type === "entity" ? Box
+                          : selectedNodeInfo.type === "tag" ? Tag
+                          : Hash;
+                        return <NodeIcon width={13} height={13} className="shrink-0" style={{ color }} aria-hidden />;
+                      })()}
                       <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                         {selectedNodeInfo.label}
                       </span>
@@ -589,7 +595,7 @@ export default function BundleViewer({
                         className="mb-5 px-3.5 py-2.5 rounded-md text-sm leading-relaxed"
                         style={{ background: "var(--accent-dim)", border: "1px solid color-mix(in srgb, var(--accent) 40%, transparent)", color: "var(--text-secondary)" }}
                       >
-                        <span style={{ color: "var(--accent)", fontWeight: 600, marginRight: 6 }}>✨</span>
+                        <Sparkles width={12} height={12} className="inline-block mr-1.5 align-text-bottom" style={{ color: "var(--accent)" }} aria-hidden />
                         {ann}
                       </div>
                     );
@@ -648,7 +654,7 @@ export default function BundleViewer({
                           <div className="space-y-2">
                             {selectedNodeInfo.insights.map((ins, i) => (
                               <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
-                                <span className="text-xs shrink-0" style={{ color: "var(--accent)" }}>→</span>
+                                <ArrowRight width={11} height={11} className="shrink-0 mt-1" style={{ color: "var(--accent)" }} aria-hidden />
                                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
                               </div>
                             ))}

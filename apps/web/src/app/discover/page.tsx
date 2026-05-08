@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { File as FileIcon } from "lucide-react";
 import { DocsNav, SiteFooter } from "@/components/docs";
 
 interface TrendingRepo {
@@ -214,7 +215,7 @@ export default function DiscoverPage() {
                               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--toggle-bg)")}
                               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                             >
-                              <span style={{ color: "var(--text-faint)", fontSize: 11 }}>📄</span>
+                              <FileIcon width={11} height={11} style={{ color: "var(--text-faint)" }} aria-hidden />
                               <span style={{ flex: 1, color: "var(--text-secondary)", fontFamily: "var(--font-geist-mono), monospace", fontSize: 12 }}>{file}</span>
                               <span style={{
                                 padding: "2px 8px", borderRadius: 4, fontSize: 9, fontWeight: 700,
