@@ -9193,12 +9193,11 @@ ${clone.innerHTML}
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
               <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — anyone with the link can read</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared — password or specific people</span></div>
-              <div className="flex items-center gap-2"><Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Saved — only you can read (open Share to publish)</span></div>
-              <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Draft — work in progress</span></div>
+              <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Draft — work in progress, only you</span></div>
               <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only — shared with you</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 12, height: 12 }}>
-                  <Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} />
+                  <Globe width={12} height={12} style={{ color: "var(--accent)" }} />
                   <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="var(--accent)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
                 </div>
                 <span style={{ color: "var(--text-muted)" }}>+ Synced (VS Code, Desktop, CLI, MCP)</span>
