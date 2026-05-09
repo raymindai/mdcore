@@ -87,7 +87,16 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
   /**
    * Create a new document on the server.
    * Returns { id, editToken } or null on failure.
+   *
+   * In-flight dedup: if two callers ask to create a doc with the same
+   * (owner, title, markdown) fingerprint while the first request is still
+   * in flight, the second waits for the first's response and returns the
+   * same {id, editToken}. Without this, multiple simultaneous create calls
+   * (concurrent migration runs across tabs, double-fired effects under
+   * StrictMode, accidental double-clicks of "+ New") would each spawn a
+   * fresh server doc — exactly how the duplicates pile up.
    */
+  const inflightCreatesRef = useRef<Map<string, Promise<{ id: string; editToken: string } | null>>>(new Map());
   const createDocument = useCallback(
     async (args: {
       markdown: string;
@@ -95,29 +104,44 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
       userId?: string;
       anonymousId?: string;
     }) => {
-      try {
-        const res = await fetch("/api/docs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            markdown: args.markdown,
-            title: args.title,
-            userId: args.userId,
-            anonymousId: args.anonymousId,
-            editMode: args.userId ? "account" : "token",
-            isDraft: true,
-          }),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        lastSavedMdRef.current = args.markdown;
-        if (data.updated_at) lastServerUpdatedAtRef.current = data.updated_at;
-        setState({ isSaving: false, lastSaved: new Date(), error: null, conflict: null });
-        return { id: data.id as string, editToken: data.editToken as string };
-      } catch {
-        setState((s) => ({ ...s, error: "Failed to create document" }));
-        return null;
-      }
+      const ownerKey = args.userId || args.anonymousId || "anon";
+      // Fingerprint: owner + title + a 1KB markdown prefix. The prefix is
+      // enough to differentiate distinct content while keeping the key
+      // bounded; the server-side dedup will catch any collisions inside
+      // the same 30s window.
+      const fingerprint = `${ownerKey}::${args.title || ""}::${args.markdown.slice(0, 1024)}`;
+      const inflight = inflightCreatesRef.current.get(fingerprint);
+      if (inflight) return inflight;
+
+      const task = (async () => {
+        try {
+          const res = await fetch("/api/docs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              markdown: args.markdown,
+              title: args.title,
+              userId: args.userId,
+              anonymousId: args.anonymousId,
+              editMode: args.userId ? "account" : "token",
+              isDraft: true,
+            }),
+          });
+          if (!res.ok) return null;
+          const data = await res.json();
+          lastSavedMdRef.current = args.markdown;
+          if (data.updated_at) lastServerUpdatedAtRef.current = data.updated_at;
+          setState({ isSaving: false, lastSaved: new Date(), error: null, conflict: null });
+          return { id: data.id as string, editToken: data.editToken as string };
+        } catch {
+          setState((s) => ({ ...s, error: "Failed to create document" }));
+          return null;
+        } finally {
+          inflightCreatesRef.current.delete(fingerprint);
+        }
+      })();
+      inflightCreatesRef.current.set(fingerprint, task);
+      return task;
     },
     []
   );

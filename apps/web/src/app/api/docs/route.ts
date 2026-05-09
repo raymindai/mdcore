@@ -112,6 +112,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Document too large (max 500KB)" }, { status: 413 });
   }
 
+  // ─── Idempotency / dup-create guard ─────────────────────────────────────
+  //
+  // We've seen "MDs에 복제된 MD들이 엄청 많아졌음" — duplicate documents pile
+  // up in a user's library because nothing on the server prevents the same
+  // content from being POSTed twice in quick succession. Likely sources:
+  //   • two browser tabs both running the local-tab → cloud-doc migration
+  //     against the same `mdfy-tabs` localStorage state at boot
+  //   • a Chrome-extension/bookmarklet capture retrying after a transient
+  //     network failure
+  //   • React 18 dev StrictMode double-invoking an effect that creates
+  //     a draft (paths exist that intentionally re-trigger after auth)
+  //   • the user accidentally double-clicking a "New Document" template
+  //
+  // Defense: before inserting, look for a recent doc by the SAME owner
+  // (user_id OR anonymous_id) with IDENTICAL markdown + title created in
+  // the last 30 seconds. If found, return THAT doc instead of inserting a
+  // sibling. 30s is short enough that legitimate "new doc with the same
+  // content" actions (rare) aren't blocked.
+  //
+  // The `Duplicate to my MDs` UI flow appends " (copy)" to the title, so
+  // its title differs from the source — that path is NOT collapsed here.
+  if ((userId || anonymousId) && markdown.length > 0) {
+    try {
+      const sinceIso = new Date(Date.now() - 30_000).toISOString();
+      const ownerFilter = userId
+        ? { col: "user_id", val: userId }
+        : { col: "anonymous_id", val: anonymousId! };
+      const { data: dupRows } = await supabase
+        .from("documents")
+        .select("id, edit_token, markdown, title, created_at")
+        .eq(ownerFilter.col, ownerFilter.val)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      const existing = (dupRows || []).find((row) =>
+        row.markdown === markdown && (row.title || null) === (title || null)
+      );
+      if (existing) {
+        const res = NextResponse.json({
+          id: existing.id,
+          editToken: existing.edit_token,
+          created_at: existing.created_at,
+          deduplicated: true,
+        });
+        for (const [k, v] of Object.entries(corsHeaders(req))) res.headers.set(k, v);
+        ensureAnonymousCookie(req, res, {
+          skip: !!userId,
+          explicitId: anonymousId ?? readAnonymousCookie(req),
+        });
+        return res;
+      }
+    } catch {
+      // Dedup is best-effort — never block insertion if the lookup fails.
+    }
+  }
+
   const editToken = nanoid(32);
 
   // Salted password hash (salt:base64-SHA-256)
