@@ -7868,10 +7868,10 @@ ${clone.innerHTML}
   }, [html]);
 
   const shareButtonLabel = {
-    idle: "SHARE",
-    sharing: "SHARE",
-    copied: "COPIED!",
-    error: "RETRY",
+    idle: "Share",
+    sharing: "Share",
+    copied: "Copied",
+    error: "Retry",
   }[shareState];
 
   // Memoize sidebar filter computations to avoid re-filtering on every render
@@ -8389,7 +8389,7 @@ ${clone.innerHTML}
               <button
                 onClick={handleShare}
                 disabled={shareState === "sharing"}
-                className="px-2 h-6 rounded-md font-mono transition-colors text-caption font-medium flex items-center gap-1.5"
+                className="px-2 h-6 rounded-md transition-colors text-caption font-medium flex items-center gap-1.5"
                 title={`Share (${mod}+S)`}
                 style={{
                   background: shareState === "copied" ? "rgba(34, 197, 94, 0.2)" : "var(--accent-dim)",
@@ -8399,9 +8399,9 @@ ${clone.innerHTML}
                 {shareState === "sharing" ? (
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}><circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/></svg>
                 ) : (
-                  <Share2 width={12} height={12} />
+                  <Share2 width={11} height={11} />
                 )}
-                <span className="hidden lg:inline">{shareButtonLabel}</span>
+                <span className="hidden sm:inline">{shareButtonLabel}</span>
               </button>
               <div className="absolute top-full mt-1.5 right-0 w-48 p-2.5 rounded-lg text-caption leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
