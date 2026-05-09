@@ -87,9 +87,18 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // Check password (supports both salted "salt:hash" and legacy unsalted formats)
+  // Check password (supports both salted "salt:hash" and legacy unsalted formats).
+  // OWNER BYPASS: the owner of a password-protected doc must NOT be asked
+  // for the password to view their own row. The previous flow returned 401
+  // even when the requester was the owner — the editor then showed an
+  // empty doc because /api/docs/<id> failed before returning markdown.
+  // Bundles already skip the password gate for owners; aligning docs to
+  // match.
   const hasPassword = !!data.password_hash;
-  if (hasPassword) {
+  const isDocOwner =
+    !!(requesterId && data.user_id && requesterId === data.user_id) ||
+    !!(requesterAnonId && data.anonymous_id && requesterAnonId === data.anonymous_id);
+  if (hasPassword && !isDocOwner) {
     const providedPassword = _req.headers.get("x-document-password") || "";
     if (!providedPassword) {
       return NextResponse.json({ error: "Password required", passwordRequired: true }, { status: 401 });
