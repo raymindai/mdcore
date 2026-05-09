@@ -141,8 +141,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   // Private: only the owner can read
   type DocRow = { id: string; title: string | null; markdown: string; updated_at: string; source: string | null; is_draft: boolean; password_hash: string | null; allowed_emails: string[] | null; edit_mode: string | null };
   type BundleRow = { id: string; title: string | null; description: string | null; updated_at: string; is_draft: boolean; password_hash: string | null; allowed_emails: string[] | null };
-  type DocCard = { id: string; title: string; snippet: string; updated_at: string; isDraft: boolean; editMode: string | null; cloudId: string };
-  type BundleCard = { id: string; title: string; description: string | null; updated_at: string; isDraft: boolean };
+  // Carry the share-state fields through to the client so DocStatusIcon
+  // can resolve the correct icon (Cloud / Users / Globe / Eye). Without
+  // these, every doc rendered in the Hub view would fall through to
+  // the default Public/Globe branch — including the ones in the Shared
+  // tier, which is what the founder spotted.
+  type DocCard = { id: string; title: string; snippet: string; updated_at: string; isDraft: boolean; editMode: string | null; cloudId: string; hasPassword: boolean; sharedWithCount: number };
+  type BundleCard = { id: string; title: string; description: string | null; updated_at: string; isDraft: boolean; hasPassword: boolean; sharedWithCount: number };
 
   const isOwner = !!callerUserId && callerUserId === profile.id;
   let ownerView: {
@@ -180,6 +185,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       return "public";
     };
 
+    // Owner email — used to exclude the owner from sharedWithCount so
+    // a doc that's only shared with yourself reads as Private, not
+    // Shared. Mirrors the sidebar's hydration logic in MdEditor.
+    let ownerEmailLower: string | null = null;
+    try {
+      const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+      ownerEmailLower = authUser?.user?.email?.toLowerCase() || null;
+    } catch { /* ignore */ }
+    const computeSharedCount = (allowed: string[] | null | undefined): number => {
+      if (!allowed) return 0;
+      return allowed.filter(e => e.toLowerCase() !== (ownerEmailLower || "")).length;
+    };
+
     const docCards: { public: DocCard[]; shared: DocCard[]; private: DocCard[] } = { public: [], shared: [], private: [] };
     for (const d of (allDocs as DocRow[] | null) ?? []) {
       const card: DocCard = {
@@ -190,6 +208,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
         isDraft: d.is_draft,
         editMode: d.edit_mode,
         cloudId: d.id,
+        hasPassword: !!d.password_hash,
+        sharedWithCount: computeSharedCount(d.allowed_emails),
       };
       docCards[classifyDoc(d)].push(card);
     }
@@ -201,6 +221,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
         description: b.description,
         updated_at: b.updated_at,
         isDraft: b.is_draft,
+        hasPassword: !!b.password_hash,
+        sharedWithCount: computeSharedCount(b.allowed_emails),
       };
       bundleCards[classifyBundle(b)].push(card);
     }

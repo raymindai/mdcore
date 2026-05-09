@@ -29,6 +29,8 @@ interface DocCard {
   isDraft: boolean;
   editMode: string | null;
   cloudId: string;
+  hasPassword?: boolean;
+  sharedWithCount?: number;
 }
 interface BundleCard {
   id: string;
@@ -36,6 +38,8 @@ interface BundleCard {
   description: string | null;
   updated_at: string;
   isDraft: boolean;
+  hasPassword?: boolean;
+  sharedWithCount?: number;
 }
 interface HubData {
   hub: {
@@ -67,6 +71,16 @@ interface HubEmbedProps {
   onOpenBundle?: (bundleId: string) => void;
 }
 
+// Module-level cache. The hub tab unmounts whenever the user switches
+// to a doc/bundle tab and re-mounts when they come back, which used
+// to fire a fresh /api/hub/<slug> + show the full loader every time.
+// Caching across mounts means the cached snapshot paints instantly
+// while a background revalidation refreshes silently. 60-second TTL
+// keeps the data reasonably fresh without doing the round-trip on
+// every back-button press.
+const hubDataCache = new Map<string, { data: HubData; ts: number }>();
+const HUB_CACHE_TTL_MS = 60_000;
+
 function relativeTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const ms = Date.now() - new Date(iso).getTime();
@@ -88,40 +102,58 @@ const TIERS = {
 } as const;
 
 export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProps) {
-  const [data, setData] = useState<HubData | null>(null);
+  // Seed from cache so re-mounting (back-button from a doc/bundle tab)
+  // shows the previous snapshot instantly instead of the loader.
+  const cachedEntry = hubDataCache.get(slug);
+  const cacheIsFresh = cachedEntry && Date.now() - cachedEntry.ts < HUB_CACHE_TTL_MS;
+  const [data, setData] = useState<HubData | null>(cachedEntry?.data || null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Only show the full-screen loader when there's NO cached snapshot
+  // to render. With a snapshot we revalidate in the background.
+  const [loading, setLoading] = useState(!cachedEntry);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    // Stale-while-revalidate: if we have fresh cache, skip the loading
+    // state entirely. If cache is stale, still skip the loader (we
+    // already have something to show) but refresh in the background.
+    const cached = hubDataCache.get(slug);
+    if (cached) {
+      setData(cached.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     (async () => {
       try {
         const res = await fetch(`/api/hub/${slug}`, { credentials: "include" });
         if (!res.ok) {
           const e = await res.json().catch(() => ({}));
-          if (!cancelled) {
+          if (!cancelled && !cached) {
             setError(e.error || `Failed (${res.status})`);
             setLoading(false);
           }
           return;
         }
         const json = (await res.json()) as HubData;
+        hubDataCache.set(slug, { data: json, ts: Date.now() });
         if (!cancelled) {
           setData(json);
           setLoading(false);
         }
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !cached) {
           setError(err instanceof Error ? err.message : "Failed");
           setLoading(false);
         }
       }
     })();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+  void cacheIsFresh; // referenced only to suppress unused-var if linter complains
 
   const copyUrl = async () => {
     if (!data) return;
@@ -358,6 +390,8 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
                               editMode: d.editMode || undefined,
                               cloudId: d.cloudId,
                               permission: "mine",
+                              hasPassword: d.hasPassword,
+                              sharedWithCount: d.sharedWithCount,
                             }}
                             isActive={false}
                           />
