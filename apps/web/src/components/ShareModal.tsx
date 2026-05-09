@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "react";
 import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
-import { Lock, Link2, X } from "lucide-react";
+import { Globe, Users, Lock, Link2, X } from "lucide-react";
 import { Button, ModalShell } from "@/components/ui";
 
 interface ShareModalProps {
@@ -57,8 +57,19 @@ function ShareModal({
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
   const [editors, setEditors] = useState<string[]>(initialAllowedEditors);
-  const [generalAccess, setGeneralAccess] = useState<"restricted" | "anyone-view">(
-    currentEditMode === "view" ? "anyone-view" : "restricted"
+  // Read access has two real states the user controls:
+  //   - "anyone": no email allow-list, no password → anyone with the
+  //     URL can read. This is the default for a published doc.
+  //   - "restricted-people": at least one email in allowed_emails →
+  //     only those people + the owner can read.
+  //
+  // The previous `restricted` ↔ `anyone-view` toggle conflated reads
+  // with edit_mode (view vs owner), which doesn't actually affect
+  // read permissions in /api/docs/[id]. Now `restricted-people` only
+  // makes sense when there's a real restriction (emails set), and the
+  // option is disabled until the user adds at least one email.
+  const [generalAccess, setGeneralAccess] = useState<"anyone" | "restricted-people">(
+    initialAllowedEmails.length > 0 ? "restricted-people" : "anyone"
   );
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -118,24 +129,37 @@ function ShareModal({
     setEmails(updatedEmails);
     setEditors(updatedEditors);
     await saveAccess(updatedEmails, updatedEditors);
-    // If all emails removed and access was not already restricted, reset to restricted
-    if (updatedEmails.length === 0 && generalAccess !== "restricted") {
-      setGeneralAccess("restricted");
-      try {
-        await changeEditModeFn(docId, userId, "owner");
-        onEditModeChange("owner");
-      } catch {}
+    // If all emails removed, restriction no longer holds — fall back
+    // to "anyone with the link" since the doc is now read-public.
+    if (updatedEmails.length === 0 && generalAccess === "restricted-people") {
+      setGeneralAccess("anyone");
     }
-  }, [emails, editors, saveAccess, generalAccess, docId, userId, onEditModeChange]);
+  }, [emails, editors, saveAccess, generalAccess]);
 
 
-  const handleAccessChange = useCallback(async (mode: "restricted" | "anyone-view") => {
+  const handleAccessChange = useCallback(async (mode: "anyone" | "restricted-people") => {
+    // "Anyone": clear allowed_emails so the doc actually goes public.
+    // "Restricted-people": only meaningful when emails are present.
+    if (mode === "restricted-people" && emails.length === 0) {
+      showToast("Add at least one email above first.", "info");
+      return;
+    }
     setGeneralAccess(mode);
-    const editMode = mode === "anyone-view" ? "view" : "owner";
+    if (mode === "anyone" && emails.length > 0) {
+      // Drop the email allow-list so reads truly go public.
+      setEmails([]);
+      setEditors([]);
+      await saveAccess([], []);
+    }
     try {
-      await changeEditModeFn(docId, userId, editMode as "owner" | "view" | "public");
-      onEditModeChange(editMode as "owner" | "view" | "public");
-      showToast(mode === "restricted" ? "Access restricted" : "Anyone can view", "success");
+      // We keep edit_mode steering for backwards compat with older
+      // clients (vscode/desktop) that branch on it. "Anyone" maps to
+      // edit_mode="view" (read-public, owner-only edits); "Restricted"
+      // keeps edit_mode="owner" (the legacy default).
+      const editMode = mode === "anyone" ? "view" : "owner";
+      await changeEditModeFn(docId, userId, editMode);
+      onEditModeChange(editMode);
+      showToast(mode === "restricted-people" ? "Restricted to people above" : "Anyone with the link can read", "success");
     } catch { showToast("Failed to change access", "error"); }
   }, [docId, userId, onEditModeChange]);
 
@@ -290,28 +314,49 @@ function ShareModal({
           <div className="pb-4">{banner}</div>
         )}
 
-        {/* General access — toggle between Restricted and Anyone with link */}
+        {/* Read access — two real states. "Anyone" = no email
+            allow-list, no password. "Restricted to people" requires
+            at least one email above (disabled until then). The icons +
+            labels match the sidebar's DocStatusIcon vocabulary so the
+            toggle the user picks here is the icon they see there. */}
         <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
-            General access
+            Who can read
           </label>
           <div className="flex flex-col gap-1.5">
             {([
-              { value: "restricted" as const, label: "Restricted", desc: "Only people added above can access", icon: <Lock width={16} height={16} strokeWidth={1.5} /> },
-              { value: "anyone-view" as const, label: "Anyone with the link can view", desc: "View only — only the owner can edit", icon: <Link2 width={16} height={16} strokeWidth={1.5} /> },
+              {
+                value: "anyone" as const,
+                label: "Anyone with the link",
+                desc: "Anyone can read this doc by URL — listed on your hub.",
+                icon: <Globe width={16} height={16} strokeWidth={1.5} />,
+                disabled: false,
+              },
+              {
+                value: "restricted-people" as const,
+                label: "Specific people only",
+                desc: emails.length === 0
+                  ? "Add at least one email above first to enable."
+                  : `Only ${emails.length} person${emails.length === 1 ? "" : "s"} listed above + you can read.`,
+                icon: <Users width={16} height={16} strokeWidth={1.5} />,
+                disabled: emails.length === 0,
+              },
             ]).map((opt) => {
               const selected = generalAccess === opt.value;
+              const isDisabled = opt.disabled && !selected;
               return (
                 <button
                   key={opt.value}
-                  onClick={() => !selected && handleAccessChange(opt.value)}
+                  onClick={() => !selected && !isDisabled && handleAccessChange(opt.value)}
+                  disabled={isDisabled}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors"
                   style={{
                     background: selected ? "var(--accent-dim)" : "var(--background)",
                     border: selected ? "1px solid var(--accent)" : "1px solid var(--border-dim)",
+                    opacity: isDisabled ? 0.45 : 1,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
                   }}
                 >
-                  {/* Radio circle */}
                   <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center" style={{ border: selected ? "none" : "2px solid var(--border)" }}>
                     {selected && <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "var(--accent)" }}>
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#000" }} />
