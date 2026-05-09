@@ -5182,6 +5182,13 @@ export default function MdEditor() {
                 doRender(doc.markdown);
               }
             }
+          } else if (res.status === 404 || res.status === 410) {
+            // Doc gone (hard-deleted, soft-deleted for non-owner, or expired).
+            // Mark the local tab deleted so we don't keep firing the same
+            // 404 on every reload — the rehydrate loop only runs on tabs
+            // where !deleted. The Trash UI renders deleted tabs separately
+            // so the user can still discover/restore by id if needed.
+            setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: true, deletedAt: Date.now() } : t));
           }
         } catch { /* silent — localStorage still has the tab metadata */ }
       }
