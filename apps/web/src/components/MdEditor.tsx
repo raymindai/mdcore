@@ -11489,7 +11489,10 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && activeTab?.kind !== "bundle" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "var(--background)", gap: 14 }}>
-                  <div className="mdfy-loader-pulse">
+                  {/* One-shot fade-in: opacity 0 → 1 with a small scale-up.
+                      No infinite pulse — once visible the logo just sits
+                      while the slide bar carries the "still working" signal. */}
+                  <div className="mdfy-loader-enter">
                     <MdfyLogo size={26} />
                   </div>
                   <div className="mdfy-loader-bar" style={{ width: 96, height: 2, background: "var(--border-dim)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
@@ -11503,11 +11506,11 @@ ${clone.innerHTML}
                       0%   { left: -40%; }
                       100% { left: 100%; }
                     }
-                    @keyframes mdfyLoaderPulse {
-                      0%, 100% { opacity: 0.55; transform: scale(1); }
-                      50%      { opacity: 1;    transform: scale(1.04); }
+                    @keyframes mdfyLoaderEnter {
+                      from { opacity: 0; transform: scale(0.92); }
+                      to   { opacity: 1; transform: scale(1); }
                     }
-                    .mdfy-loader-pulse { animation: mdfyLoaderPulse 1.6s ease-in-out infinite; }
+                    .mdfy-loader-enter { animation: mdfyLoaderEnter 480ms ease-out both; }
                   `}</style>
                 </div>
               )}
@@ -12266,12 +12269,16 @@ ${clone.innerHTML}
         <div className="flex items-center gap-2 sm:gap-4">
           <Tooltip text="mdfy.app is in alpha — features can change and bugs are expected. Send feedback to hi@raymind.ai." position="top">
             <span
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold tracking-wider uppercase shrink-0"
+              className="inline-flex items-center font-semibold uppercase shrink-0"
               style={{
                 color: "var(--accent)",
                 background: "var(--accent-dim)",
                 border: "1px solid var(--accent)",
-                letterSpacing: "0.08em",
+                letterSpacing: "0.06em",
+                fontSize: 8,
+                padding: "1px 4px",
+                borderRadius: 3,
+                lineHeight: 1.1,
               }}
             >
               Alpha

@@ -11,9 +11,10 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
       className="flex flex-col items-center justify-center h-screen"
       style={{ background: "var(--background)", gap: 18 }}
     >
-      {/* Logo with subtle pulse — same vocabulary as the in-app doc
-          loading state, just one notch larger. */}
-      <div style={{ animation: "mdfyBootPulse 1.6s ease-in-out infinite" }}>
+      {/* One-shot fade-in: opacity 0 → 1 with a small scale-up. The
+          logo settles and the slide bar below carries the loading
+          signal — no infinite pulse on the mark itself. */}
+      <div style={{ animation: "mdfyBootEnter 520ms ease-out both" }}>
         <MdfyLogo size={34} />
       </div>
 
@@ -71,9 +72,9 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
           0%   { left: -40%; }
           100% { left: 100%; }
         }
-        @keyframes mdfyBootPulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
-          50%      { opacity: 1;    transform: scale(1.05); }
+        @keyframes mdfyBootEnter {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
     </div>
