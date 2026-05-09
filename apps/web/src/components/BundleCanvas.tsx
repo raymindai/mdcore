@@ -490,18 +490,24 @@ function ThemeTagNode({ data }: { data: any }) {
 // ─── Document Card Node ───
 
 function DocumentCardNode({ data }: { data: any }) {
+  // Doc cards anchor on the orange brand color directly (#fb923c) instead of
+  // var(--accent) so they always match the legend chip + the bundle status
+  // pill — both of which use #fb923c. Without this, picking a non-orange
+  // accent in Settings made the legend disagree with the doc nodes.
   const isSelected = data.isSelected;
+  const DOC_COLOR = "#fb923c";
+  const DOC_COLOR_DIM = "rgba(251,146,60,0.15)";
   return (
     <div className="rounded-xl overflow-hidden transition-all" style={{
-      width: 270, background: isSelected ? "var(--accent-dim)" : "var(--surface)",
-      border: isSelected ? "2px solid var(--accent)" : "1px solid var(--border)",
+      width: 270, background: isSelected ? DOC_COLOR_DIM : "var(--surface)",
+      border: isSelected ? `2px solid ${DOC_COLOR}` : "1px solid var(--border)",
       boxShadow: isSelected ? "0 0 0 3px rgba(251,146,60,0.15), 0 4px 20px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.2)",
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
-      <Handle type="source" position={Position.Right} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
 
       <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-        <span className="text-caption font-mono font-bold w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: "var(--accent)", color: "#000", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>{data.index}</span>
+        <span className="text-caption font-mono font-bold w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: DOC_COLOR, color: "#000", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>{data.index}</span>
         <span className="text-body font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
       </div>
 
@@ -573,19 +579,23 @@ function FlowingEdge({ sourceX, sourceY, targetX, targetY, sourcePosition, targe
 const edgeTypes: EdgeTypes = { default: FlowingEdge };
 
 // ─── Section Root Node — slim header that takes a decomposed doc's place ───
+// Same #fb923c brand orange as DocumentCardNode so the legend's "Documents"
+// chip applies to both representations of the same primitive.
 function SectionRootNode({ data }: { data: any }) {
+  const DOC_COLOR = "#fb923c";
+  const DOC_COLOR_DIM = "rgba(251,146,60,0.15)";
   return (
     <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{
       width: 280,
-      background: "var(--accent-dim)",
-      border: "1.5px solid var(--accent)",
+      background: DOC_COLOR_DIM,
+      border: `1.5px solid ${DOC_COLOR}`,
       boxShadow: "0 0 0 3px rgba(251,146,60,0.10), 0 4px 16px rgba(0,0,0,0.25)",
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
-      <Handle type="source" position={Position.Right} style={{ background: "var(--accent)", width: 8, height: 8, border: "2px solid var(--surface)" }} />
-      <Layers width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
+      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Layers width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
       <span className="text-body font-bold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
-      <span className="text-caption px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>
+      <span className="text-caption px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: DOC_COLOR, color: "#000" }}>
         {data.sectionCount}
       </span>
     </div>
@@ -1325,9 +1335,19 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
         <Background variant={"dots" as any} color={theme === "dark" ? "#2a2a2f" : "#c4c4c8"} gap={18} size={1.5} />
         <MiniMap position="bottom-right" pannable zoomable
           nodeColor={(n) => {
-            if (n.type === "summaryNode") return "#60a5fa";
-            if (n.type === "themeTag") return "#60a5fa";
-            if (n.type === "documentCard") return "#fb923c";
+            // Mirror the canvas + legend mapping exactly so the minimap is a
+            // true thumbnail of the colors above. Chunks and edge labels
+            // both delegate to their type-color tables; sectionRoot inherits
+            // the doc orange because it's the same primitive in expanded mode.
+            if (n.type === "summaryNode" || n.type === "themeTag") return "#60a5fa";
+            if (n.type === "documentCard" || n.type === "sectionRoot") return "#fb923c";
+            if (n.type === "chunkNode") {
+              const ct = (n.data as any)?.type;
+              return CHUNK_TYPE_COLORS[ct]?.border || "#94a3b8";
+            }
+            if (n.type === "edgeLabel") {
+              return ((n.data as any)?.color as string) || "var(--border)";
+            }
             return TYPE_COLORS[(n.data as any)?.type]?.border || "#38bdf8";
           }}
           maskColor={theme === "dark" ? "rgba(9,9,11,0.8)" : "rgba(250,249,247,0.8)"}

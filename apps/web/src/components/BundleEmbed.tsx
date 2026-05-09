@@ -104,6 +104,17 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       targetKind?: "doc" | "concept" | "entity" | "tag" | "other";
       direction?: "in" | "out";
     }>;
+    coverage?: {
+      docs: number;
+      concepts: number;
+      entities: number;
+      tags: number;
+      connections: number;
+      generatedAt: string | null;
+    };
+    connections?: Array<{
+      doc1: string; doc2: string; doc1Id: string; doc2Id: string; relationship: string;
+    }>;
     docId?: string;
     docContent?: string;
     docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
@@ -922,12 +933,41 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       });
       return;
     }
-    // Summary node
+    // Summary node — surface the full extracted graph plus coverage stats
+    // (doc/concept/connection counts) and freshness so the Bundle Analysis
+    // sidebar can show "what was actually analyzed" instead of just an
+    // unanchored prose blob.
     if (nodeId === "analysis:summary" && aiGraph) {
+      const conceptCount = (aiGraph.nodes || []).filter((n: any) => n.type === "concept").length;
+      const entityCount = (aiGraph.nodes || []).filter((n: any) => n.type === "entity").length;
+      const tagCount = (aiGraph.nodes || []).filter((n: any) => n.type === "tag").length;
+      const connections = Array.isArray(aiGraph.connections) ? aiGraph.connections : [];
+      // Resolve doc ids in connections back to titles for display
+      const docTitleById = new Map(documents.map(d => [d.id, d.title || "Untitled"] as const));
+      const resolvedConnections = connections.map((c: any) => {
+        const id1 = String(c.doc1 || "").replace(/^doc:/, "");
+        const id2 = String(c.doc2 || "").replace(/^doc:/, "");
+        return {
+          doc1: docTitleById.get(id1) || id1,
+          doc2: docTitleById.get(id2) || id2,
+          doc1Id: id1,
+          doc2Id: id2,
+          relationship: c.relationship || "related",
+        };
+      });
       openNodeInfo({
         type: "analysis", label: "Bundle Analysis",
         summary: aiGraph.summary, themes: aiGraph.themes, insights: aiGraph.insights,
         keyTakeaways: aiGraph.keyTakeaways, gaps: aiGraph.gaps,
+        coverage: {
+          docs: documents.length,
+          concepts: conceptCount,
+          entities: entityCount,
+          tags: tagCount,
+          connections: connections.length,
+          generatedAt: graphGeneratedAt,
+        },
+        connections: resolvedConnections,
       });
       return;
     }
@@ -1417,7 +1457,8 @@ function DiscoveriesPanel({
           </div>
         )}
 
-        {/* Tensions */}
+        {/* Tensions — left rail in danger color, no full-surface fill. Reads
+            as a paragraph with citations instead of a colored alert box. */}
         {tensions.length > 0 && (
           <DiscoverySection
             icon={<AlertTriangle width={12} height={12} style={{ color: "var(--color-danger)" }} />}
@@ -1429,15 +1470,15 @@ function DiscoveriesPanel({
             {tensions.map(t => {
               const res = tensionResolutions?.[t.id];
               return (
-                <div key={t.id} className="rounded-md flex flex-col"
-                  style={{ background: "var(--color-danger-dim)", border: "1px solid var(--color-danger)", padding: "var(--space-3)", gap: "var(--space-2)" }}>
+                <div key={t.id} className="flex flex-col"
+                  style={{ paddingLeft: 12, borderLeft: "2px solid var(--color-danger)", gap: 6 }}>
                   <button onClick={() => onSelectChunk(t.source)}
                     className="text-left text-caption leading-snug hover:underline"
                     style={{ color: "var(--text-primary)" }}>
                     <span className="font-semibold">{t.source.chunkLabel}</span>
                     <span className="text-caption ml-2" style={{ color: "var(--text-faint)" }}>{t.source.docTitle}</span>
                   </button>
-                  <Badge variant="danger" uppercase>↔ {t.relation}</Badge>
+                  <span className="font-mono uppercase self-start" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--color-danger)" }}>↔ {t.relation}</span>
                   <button onClick={() => onSelectChunk(t.target)}
                     className="text-left text-caption leading-snug hover:underline"
                     style={{ color: "var(--text-primary)" }}>
@@ -1445,9 +1486,13 @@ function DiscoveriesPanel({
                     <span className="text-caption ml-2" style={{ color: "var(--text-faint)" }}>{t.target.docTitle}</span>
                   </button>
                   {!res && onResolveTension && (
-                    <Button variant="danger" size="xs" onClick={() => onResolveTension(t)} className="w-full">
-                      Resolve with AI
-                    </Button>
+                    <button
+                      onClick={() => onResolveTension(t)}
+                      className="self-start text-caption font-mono uppercase hover:underline"
+                      style={{ fontSize: 10, letterSpacing: 0.4, color: "var(--color-danger)", padding: "2px 0" }}
+                    >
+                      Resolve with AI →
+                    </button>
                   )}
                   {res?.loading && (
                     <div className="text-caption flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
@@ -1459,8 +1504,8 @@ function DiscoveriesPanel({
                     <div className="text-caption" style={{ color: "var(--color-danger)" }}>Error: {res.error}</div>
                   )}
                   {res?.text && (
-                    <div className="text-caption leading-relaxed rounded-md whitespace-pre-wrap"
-                      style={{ background: "var(--color-success-dim)", color: "var(--text-secondary)", border: "1px solid var(--color-success)", padding: "var(--space-2) var(--space-3)" }}>
+                    <div className="text-caption leading-relaxed whitespace-pre-wrap"
+                      style={{ color: "var(--text-secondary)", paddingLeft: 8, borderLeft: "2px solid var(--color-success)", marginTop: 4 }}>
                       {res.text}
                     </div>
                   )}
@@ -1470,10 +1515,7 @@ function DiscoveriesPanel({
           </DiscoverySection>
         )}
 
-        {/* Bundle-level Insights — non-obvious patterns the AI noticed
-            looking at all docs together. Pulled from the bundle graph's
-            `insights` (highest-value Discoveries because they require
-            whole-bundle reasoning, not just per-doc extraction). */}
+        {/* Bundle-level Insights — flat prose, optional → glyph as marker. */}
         {insights.length > 0 && (
           <DiscoverySection
             icon={<Lightbulb width={12} height={12} style={{ color: "var(--color-warm)" }} />}
@@ -1483,15 +1525,15 @@ function DiscoveriesPanel({
             defaultOpen
           >
             {insights.map((ins, i) => (
-              <div key={i} className="rounded-md leading-relaxed text-caption"
-                style={{ background: "var(--color-warm-dim)", color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)" }}>
-                {ins}
+              <div key={i} className="flex gap-2 items-baseline">
+                <span className="shrink-0 font-mono" style={{ color: "var(--color-warm)", fontSize: 11, marginTop: 2 }}>→</span>
+                <p className="text-caption leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{ins}</p>
               </div>
             ))}
           </DiscoverySection>
         )}
 
-        {/* Open Questions */}
+        {/* Open Questions — clickable rows with hover row, no fill. */}
         {questions.length > 0 && (
           <DiscoverySection
             icon={<HelpCircle width={12} height={12} style={{ color: "var(--color-cool)" }} />}
@@ -1502,9 +1544,9 @@ function DiscoveriesPanel({
           >
             {questions.map(q => (
               <button key={`${q.docId}:${q.chunkId}`} onClick={() => onSelectChunk(q)}
-                className="w-full text-left rounded-md hover:bg-[var(--menu-hover)] transition-colors"
-                style={{ background: "var(--toggle-bg)", padding: "var(--space-2) var(--space-3)" }}>
-                <div className="text-caption font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
+                className="w-full text-left rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ padding: "4px 6px" }}>
+                <div className="text-caption font-medium leading-snug" style={{ color: "var(--text-primary)" }}>
                   {q.chunkLabel}
                 </div>
                 <div className="text-caption" style={{ color: "var(--text-faint)" }}>{q.docTitle}</div>
@@ -1513,7 +1555,7 @@ function DiscoveriesPanel({
           </DiscoverySection>
         )}
 
-        {/* Gaps — what these docs DON'T cover */}
+        {/* Gaps — left rail, plain text. Same pattern as Analysis panel. */}
         {gaps.length > 0 && (
           <DiscoverySection
             icon={<HelpCircle width={12} height={12} style={{ color: "var(--color-warm)" }} />}
@@ -1523,17 +1565,14 @@ function DiscoveriesPanel({
             defaultOpen={false}
           >
             {gaps.map((g, i) => (
-              <div key={i} className="rounded-md leading-relaxed text-caption flex"
-                style={{ background: "var(--color-warm-dim)", color: "var(--text-secondary)", gap: "var(--space-2)", padding: "var(--space-2) var(--space-3)" }}>
-                <span className="shrink-0 mt-0.5 font-bold" style={{ color: "var(--color-warm)" }}>!</span>
-                <span>{g}</span>
-              </div>
+              <p key={i} className="text-caption leading-[1.55]" style={{ color: "var(--text-secondary)", paddingLeft: 12, borderLeft: "2px solid var(--color-warm)" }}>
+                {g}
+              </p>
             ))}
           </DiscoverySection>
         )}
 
-        {/* Doc-to-doc Connections — explicit relationships the AI noticed
-            between specific document pairs. Click either side → open that doc. */}
+        {/* Doc-to-doc Connections — clean row, no box outline. */}
         {connections.length > 0 && (
           <DiscoverySection
             icon={<GitBranch width={12} height={12} style={{ color: "var(--color-cool)" }} />}
@@ -1543,22 +1582,21 @@ function DiscoveriesPanel({
             defaultOpen={false}
           >
             {connections.map((c, i) => (
-              <div key={i} className="rounded-md"
-                style={{ background: "var(--toggle-bg)", border: "1px solid var(--color-cool-dim)", padding: "var(--space-2) var(--space-3)" }}>
-                <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: "var(--space-1)" }}>
+              <div key={i} className="rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ padding: "4px 6px" }}>
+                <div className="flex items-center flex-wrap" style={{ gap: 6, marginBottom: 2 }}>
                   <button onClick={() => onOpenDoc?.(c.doc1Id)}
-                    className="text-caption font-semibold hover:underline truncate"
-                    style={{ color: "var(--color-cool)" }}>
+                    className="text-caption font-medium hover:underline truncate"
+                    style={{ color: "var(--text-primary)", maxWidth: "45%" }}>
                     {docTitleById(c.doc1Id)}
                   </button>
-                  <span className="text-caption" style={{ color: "var(--text-faint)" }}>↔</span>
+                  <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--color-cool)", fontWeight: 600 }}>↔</span>
                   <button onClick={() => onOpenDoc?.(c.doc2Id)}
-                    className="text-caption font-semibold hover:underline truncate"
-                    style={{ color: "var(--color-cool)" }}>
+                    className="text-caption font-medium hover:underline truncate"
+                    style={{ color: "var(--text-primary)", maxWidth: "45%" }}>
                     {docTitleById(c.doc2Id)}
                   </button>
                 </div>
-                <div className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-caption leading-snug" style={{ color: "var(--text-muted)" }}>
                   {c.relationship}
                 </div>
               </div>
@@ -1566,7 +1604,7 @@ function DiscoveriesPanel({
           </DiscoverySection>
         )}
 
-        {/* Cross-doc Threads */}
+        {/* Cross-doc Threads — header + nested doc list. No surrounding box. */}
         {threads.length > 0 && (
           <DiscoverySection
             icon={<GitBranch width={12} height={12} style={{ color: "var(--color-neutral)" }} />}
@@ -1576,17 +1614,16 @@ function DiscoveriesPanel({
             defaultOpen={false}
           >
             {threads.map(t => (
-              <div key={t.id} className="rounded-md"
-                style={{ background: "var(--toggle-bg)", border: "1px solid var(--color-neutral-dim)", padding: "var(--space-2) var(--space-3)" }}>
-                <div className="text-caption font-semibold" style={{ color: "var(--color-neutral)", marginBottom: "var(--space-1)" }}>
+              <div key={t.id} className="flex flex-col" style={{ gap: 2 }}>
+                <div className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: 0.4, color: "var(--color-neutral)" }}>
                   {t.label}
                 </div>
-                <div className="space-y-0.5">
+                <div className="flex flex-col" style={{ gap: 0, paddingLeft: 8 }}>
                   {t.occurrences.map(ref => (
                     <button key={`${ref.docId}:${ref.chunkId}`} onClick={() => onSelectChunk(ref)}
-                      className="w-full text-left text-caption leading-snug hover:underline truncate"
+                      className="text-left text-caption leading-snug hover:underline truncate"
                       style={{ color: "var(--text-secondary)" }}>
-                      <span style={{ color: "var(--text-faint)" }}>—</span> {ref.docTitle}
+                      {ref.docTitle}
                     </button>
                   ))}
                 </div>
@@ -2093,6 +2130,17 @@ type NodeInfoData = {
     targetKind?: "doc" | "concept" | "entity" | "tag" | "other";
     direction?: "in" | "out";
   }>;
+  coverage?: {
+    docs: number;
+    concepts: number;
+    entities: number;
+    tags: number;
+    connections: number;
+    generatedAt: string | null;
+  };
+  connections?: Array<{
+    doc1: string; doc2: string; doc1Id: string; doc2Id: string; relationship: string;
+  }>;
   docId?: string;
   docContent?: string;
   docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
@@ -2316,66 +2364,173 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
       ) : (
       <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
 
-        {/* Analysis panel */}
-        {info.type === "analysis" && (
-          <>
-            {info.summary && (
-              <div className="rounded-lg p-4" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>Executive Summary</h4>
-                <p className="text-sm leading-[1.7]" style={{ color: "var(--text-primary)" }}>{info.summary}</p>
-              </div>
-            )}
-            {info.keyTakeaways && info.keyTakeaways.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Key Takeaways</h4>
-                <div className="space-y-1.5">
-                  {info.keyTakeaways.map((t: string, i: number) => (
-                    <div key={i} className="flex gap-2 items-start">
-                      <span className="text-xs font-bold w-5 h-5 flex items-center justify-center rounded shrink-0" style={{ background: "var(--accent)", color: "#fff" }}>{i + 1}</span>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t}</p>
-                    </div>
-                  ))}
+        {/* Analysis panel — typography-first redesign. The previous version
+            stacked five differently-colored boxes (orange summary card, plain
+            numbered list, blue rounded pills, gray rounded rows, pink rows)
+            with no shared rhythm. This rewrite uses a single mono-uppercase
+            section header (matching the chunk panel and decompose pane that
+            already exist elsewhere), tabular numerals, and rail-only accents
+            so the eye can scan each section without re-learning the
+            treatment. Coverage + freshness now live at the top so the user
+            knows *what* was analyzed and *when* before reading any prose. */}
+        {info.type === "analysis" && (() => {
+          const cov = info.coverage;
+          const ageStr = cov?.generatedAt ? (() => {
+            const ms = Date.now() - new Date(cov.generatedAt!).getTime();
+            const m = Math.floor(ms / 60000);
+            if (m < 1) return "just now";
+            if (m < 60) return `${m}m ago`;
+            const h = Math.floor(m / 60);
+            if (h < 24) return `${h}h ago`;
+            const d = Math.floor(h / 24);
+            return `${d}d ago`;
+          })() : null;
+          const StatChip = ({ value, label, color }: { value: number; label: string; color?: string }) => (
+            <div className="flex flex-col" style={{ minWidth: 0 }}>
+              <span className="tabular-nums font-semibold" style={{ fontSize: 14, color: color || "var(--text-primary)", lineHeight: 1.1 }}>{value.toLocaleString()}</span>
+              <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", marginTop: 2 }}>{label}</span>
+            </div>
+          );
+          const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+            <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>{children}</h4>
+          );
+          return (
+            <>
+              {/* Coverage strip — the at-a-glance "what was actually analyzed".
+                  Without this, the user is staring at prose with no anchor to
+                  the source corpus. */}
+              {cov && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <SectionLabel>Coverage</SectionLabel>
+                    {ageStr && (
+                      <span className="font-mono" style={{ fontSize: 10, color: "var(--text-faint)" }}>analyzed {ageStr}</span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline" style={{ gap: 18 }}>
+                    <StatChip value={cov.docs} label="docs" />
+                    {cov.concepts > 0 && <StatChip value={cov.concepts} label="concepts" color="#38bdf8" />}
+                    {cov.entities > 0 && <StatChip value={cov.entities} label="entities" color="#4ade80" />}
+                    {cov.tags > 0 && <StatChip value={cov.tags} label="tags" color="#a78bfa" />}
+                    {cov.connections > 0 && <StatChip value={cov.connections} label="links" color="#60a5fa" />}
+                  </div>
                 </div>
-              </div>
-            )}
-            {info.themes && info.themes.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Themes</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {info.themes.map((t: string, i: number) => (
-                    <span key={i} className="text-xs px-3 py-1 rounded-full" style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>{t}</span>
-                  ))}
+              )}
+
+              {/* Summary — flat prose with a left rail in the analysis color
+                  instead of a full orange surface. Reads as text, not a chip. */}
+              {info.summary && (
+                <div>
+                  <SectionLabel>Summary</SectionLabel>
+                  <p className="text-sm leading-[1.7]" style={{ color: "var(--text-primary)", paddingLeft: 12, borderLeft: "2px solid #60a5fa" }}>{info.summary}</p>
                 </div>
-              </div>
-            )}
-            {info.insights && info.insights.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Cross-Document Insights</h4>
-                <div className="space-y-2">
-                  {info.insights.map((ins: string, i: number) => (
-                    <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "var(--toggle-bg)" }}>
-                      <span className="text-xs shrink-0" style={{ color: "var(--accent)" }}>→</span>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{ins}</p>
-                    </div>
-                  ))}
+              )}
+
+              {/* Takeaways — mono numerals match the rest of the app's
+                  tabular-nums style; no filled colored badges. */}
+              {info.keyTakeaways && info.keyTakeaways.length > 0 && (
+                <div>
+                  <SectionLabel>Key takeaways</SectionLabel>
+                  <ol className="space-y-2.5">
+                    {info.keyTakeaways.map((t: string, i: number) => (
+                      <li key={i} className="flex gap-3 items-baseline">
+                        <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: 0.5, minWidth: 22 }}>
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{t}</p>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
-              </div>
-            )}
-            {info.gaps && info.gaps.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#f87171" }}>Gaps & Missing</h4>
-                <div className="space-y-1.5">
-                  {info.gaps.map((g: string, i: number) => (
-                    <div key={i} className="flex gap-2 rounded-lg p-2.5" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)" }}>
-                      <span className="text-xs shrink-0" style={{ color: "#f87171" }}>!</span>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{g}</p>
-                    </div>
-                  ))}
+              )}
+
+              {/* Themes — mono uppercase tags. The previous chip-pill chrome
+                  competed with the chunk-type chips elsewhere. */}
+              {info.themes && info.themes.length > 0 && (
+                <div>
+                  <SectionLabel>Themes</SectionLabel>
+                  <div className="flex flex-wrap" style={{ gap: 6 }}>
+                    {info.themes.map((t: string, i: number) => (
+                      <span key={i} className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: 0.5, color: "#60a5fa", padding: "2px 6px", border: "1px solid color-mix(in srgb, #60a5fa 30%, transparent)", borderRadius: 4 }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+
+              {/* Document connections — NEW. The aiGraph already returns
+                  doc-to-doc links via `connections`, but the panel never
+                  surfaced them. Each row is clickable and tells the user
+                  exactly which two docs share a relationship and what the
+                  relationship is. This is the closest thing to "what's
+                  related to what" at the bundle level. */}
+              {info.connections && info.connections.length > 0 && (
+                <div>
+                  <SectionLabel>Document connections</SectionLabel>
+                  <div className="space-y-1.5">
+                    {(info.connections as Array<{ doc1: string; doc2: string; doc1Id: string; doc2Id: string; relationship: string }>).map((c, i) => (
+                      <div key={i} className="rounded px-2.5 py-2" style={{ background: "var(--toggle-bg)" }}>
+                        <div className="flex items-center flex-wrap" style={{ gap: 6 }}>
+                          <button
+                            onClick={() => onOpenDoc?.(c.doc1Id)}
+                            className="text-sm font-medium truncate text-left hover:underline"
+                            style={{ color: "var(--text-primary)", maxWidth: "45%" }}
+                            title={c.doc1}
+                          >
+                            {c.doc1}
+                          </button>
+                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>↔</span>
+                          <button
+                            onClick={() => onOpenDoc?.(c.doc2Id)}
+                            className="text-sm font-medium truncate text-left hover:underline"
+                            style={{ color: "var(--text-primary)", maxWidth: "45%" }}
+                            title={c.doc2}
+                          >
+                            {c.doc2}
+                          </button>
+                        </div>
+                        <p className="text-xs leading-snug mt-1" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cross-doc insights — pattern-level observations. Same flat
+                  treatment as takeaways. */}
+              {info.insights && info.insights.length > 0 && (
+                <div>
+                  <SectionLabel>Cross-doc insights</SectionLabel>
+                  <ul className="space-y-2.5">
+                    {info.insights.map((ins: string, i: number) => (
+                      <li key={i} className="flex gap-2 items-baseline">
+                        <span className="shrink-0 font-mono" style={{ color: "var(--accent)", fontSize: 11, marginTop: 2 }}>→</span>
+                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{ins}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Gaps — the only section that keeps a colored cue, because the
+                  semantic ("missing", "needs attention") is the whole point.
+                  Even here, drop the per-row pink box for a left rail. */}
+              {info.gaps && info.gaps.length > 0 && (
+                <div>
+                  <SectionLabel>Gaps</SectionLabel>
+                  <ul className="space-y-2">
+                    {info.gaps.map((g: string, i: number) => (
+                      <li key={i} className="flex gap-2 items-baseline" style={{ paddingLeft: 12, borderLeft: "2px solid #f87171" }}>
+                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{g}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Concept/Entity/Tag panel — the subject (this concept) is shown in
             the panel header, so each row reads as "{subject} —{verb}→ {object}"
