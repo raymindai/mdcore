@@ -131,7 +131,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> 
 const elk = new ELK();
 
 const NODE_SIZES: Record<string, { w: number; h: number }> = {
-  documentCard: { w: 270, h: 140 },
+  documentCard: { w: 240, h: 76 },
   summaryNode: { w: 300, h: 190 },
   themeTag: { w: 220, h: 32 },
   conceptTag: { w: 160, h: 36 },
@@ -490,35 +490,46 @@ function ThemeTagNode({ data }: { data: any }) {
 // ─── Document Card Node ───
 
 function DocumentCardNode({ data }: { data: any }) {
-  // Doc cards anchor on the orange brand color directly (#fb923c) instead of
-  // var(--accent) so they always match the legend chip + the bundle status
-  // pill — both of which use #fb923c. Without this, picking a non-orange
-  // accent in Settings made the legend disagree with the doc nodes.
+  // Cleaner card: single rectangle with a thin orange index strip on the
+  // left (acts as the type indicator), title prominent, one-line preview,
+  // stats inline as monospace below. No three internal sub-cards, no
+  // colored chips, no dividers between sub-rows. Color anchored on
+  // #fb923c so the legend + status pill + minimap all read the same brand
+  // orange regardless of the user's accent setting.
   const isSelected = data.isSelected;
   const DOC_COLOR = "#fb923c";
-  const DOC_COLOR_DIM = "rgba(251,146,60,0.15)";
+  const DOC_COLOR_DIM = "rgba(251,146,60,0.10)";
   return (
-    <div className="rounded-xl overflow-hidden transition-all" style={{
-      width: 270, background: isSelected ? DOC_COLOR_DIM : "var(--surface)",
-      border: isSelected ? `2px solid ${DOC_COLOR}` : "1px solid var(--border)",
-      boxShadow: isSelected ? "0 0 0 3px rgba(251,146,60,0.15), 0 4px 20px rgba(0,0,0,0.3)" : "0 2px 12px rgba(0,0,0,0.2)",
+    <div className="overflow-hidden transition-all flex" style={{
+      width: 240,
+      background: isSelected ? DOC_COLOR_DIM : "var(--surface)",
+      border: `1px solid ${isSelected ? DOC_COLOR : "var(--border)"}`,
+      borderRadius: 10,
+      boxShadow: isSelected ? "0 0 0 2px rgba(251,146,60,0.18)" : "0 1px 6px rgba(0,0,0,0.18)",
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
-      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 6, height: 6, border: "2px solid var(--surface)" }} />
+      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 6, height: 6, border: "2px solid var(--surface)" }} />
 
-      <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-        <span className="text-caption font-mono font-bold w-6 h-6 flex items-center justify-center rounded-lg" style={{ background: DOC_COLOR, color: "#000", textShadow: "0 0 1px rgba(255,255,255,0.3)" }}>{data.index}</span>
-        <span className="text-body font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
+      {/* Left rail — narrow strip with the index. Replaces the bulky
+          orange numbered badge inside the header row. */}
+      <div className="flex items-center justify-center shrink-0" style={{ width: 22, background: DOC_COLOR }}>
+        <span className="font-mono tabular-nums" style={{ fontSize: 10, fontWeight: 700, color: "#000", letterSpacing: 0.3 }}>
+          {String(data.index).padStart(2, "0")}
+        </span>
       </div>
 
-      <div className="px-3 py-2">
-        <p className="text-caption leading-[1.5] line-clamp-2" style={{ color: "var(--text-muted)" }}>{data.preview || "Empty"}</p>
-      </div>
-
-      <div className="px-3 py-1.5 flex items-center gap-1.5 flex-wrap" style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{data.wordCount.toLocaleString()} words</span>
-        <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{data.readingTime}m</span>
-        {data.hasCode && <span className="text-caption px-1.5 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.1)", color: "#a78bfa" }}>Code</span>}
+      <div className="flex-1 min-w-0 flex flex-col" style={{ padding: "8px 10px", gap: 4 }}>
+        <span className="font-semibold truncate" style={{ fontSize: 12, color: "var(--text-primary)", lineHeight: 1.3 }}>{data.title}</span>
+        {data.preview && (
+          <p className="line-clamp-1" style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>{data.preview}</p>
+        )}
+        <div className="flex items-center font-mono tabular-nums" style={{ fontSize: 10, color: "var(--text-faint)", gap: 10, marginTop: 1 }}>
+          <span>{data.wordCount.toLocaleString()}w</span>
+          <span>~{data.readingTime}m</span>
+          {data.hasCode && (
+            <span style={{ color: "#a78bfa" }}>code</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -544,13 +555,26 @@ function ConceptTagNode({ data }: { data: any }) {
 // ─── Edge Label Node (inline with edges so dagre reserves space) ───
 
 function EdgeLabelNode({ data }: { data: any }) {
+  // The wrapper itself carries the border, background, and rounded corners.
+  // Previously the chrome lived on the inner span while the wrapper was a
+  // bare flex container — react-flow's hover ring then drew a sharp
+  // rectangular outline around the wrapper that didn't match the rounded
+  // pill inside. With the chrome on the wrapper, any hover treatment
+  // applied by react-flow follows the same rounded shape.
   return (
-    <div className="flex items-center justify-center" style={{ minWidth: 40 }}>
+    <div
+      className="flex items-center justify-center text-caption px-1.5 py-0.5 whitespace-nowrap"
+      style={{
+        minWidth: 40,
+        color: data.color || "var(--text-faint)",
+        background: "var(--surface)",
+        border: `1px solid ${data.color || "var(--border)"}30`,
+        borderRadius: 4,
+      }}
+    >
       <Handle type="target" position={Position.Left} style={{ background: "transparent", width: 1, height: 1, border: "none" }} />
       <Handle type="source" position={Position.Right} style={{ background: "transparent", width: 1, height: 1, border: "none" }} />
-      <span className="text-caption px-1.5 py-0.5 rounded whitespace-nowrap" style={{ color: data.color || "var(--text-faint)", background: "var(--surface)", border: `1px solid ${data.color || "var(--border)"}30` }}>
-        {data.label}
-      </span>
+      {data.label}
     </div>
   );
 }
@@ -1354,76 +1378,20 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
           style={{ background: theme === "dark" ? "#18181b" : "#f4f4f5", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", width: 160, height: 100 }} />
       </ReactFlow>
 
-      {/* Top-left toolbar — collapsed to ONE primary action group + a [⋯] More
-          menu. The previous 5-group layout (Analyze / Synthesize / Add /
-          Decompose / Detail) was the worst readability offender on the
-          canvas; everything except the core "what does AI do for this
-          bundle right now" bar moves into the More dropdown. */}
+      {/* Top-left toolbar — pipeline status pills are now the canonical
+          surface for "where this bundle stands" (clicking them re-runs the
+          underlying AI pass). The standalone Analyze button was redundant
+          with the Analyzed pill, and the Memo/FAQ/Brief trio moves into the
+          More menu so the toolbar reads as: STATUS + MORE, nothing else. */}
       <div className="absolute z-20 flex items-center" style={{ top: "var(--space-3)", left: "var(--space-3)", gap: "var(--space-2)" }}>
         {/* COLLAPSED MODE — bundle-level actions */}
         {!expandedDocId && (
           <>
-            {/* Primary group: Analyze + Synthesis trio */}
-            <div
-              className="flex items-center h-8 rounded-md overflow-hidden"
-              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" }}
-            >
-              {onRegenerate && (
-                <Tooltip text={isAnalyzing ? "Analyzing bundle…" : aiGraph ? "Re-analyze with AI" : "Analyze bundle with AI"} position="bottom">
-                  <button
-                    onClick={onRegenerate}
-                    disabled={isAnalyzing}
-                    className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] disabled:cursor-not-allowed transition-colors"
-                    style={{ color: "var(--accent)", padding: "0 var(--space-3)", gap: "var(--space-2)" }}
-                  >
-                    {isAnalyzing
-                      ? <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "var(--accent)" }} />
-                      : <Sparkles width={11} height={11} />}
-                    {isAnalyzing ? "Analyzing…" : "Analyze"}
-                  </button>
-                </Tooltip>
-              )}
-              {onSynthesize && (
-                <>
-                  <div style={{ width: 1, height: 18, background: "var(--border)" }} />
-                  {(["memo", "faq", "brief"] as const).map((kind, i, arr) => (
-                    <div key={kind} className="flex items-center h-full">
-                      <Tooltip
-                        text={
-                          kind === "memo" ? "Generate a 1-page decision memo from this bundle"
-                          : kind === "faq" ? "Generate FAQ from cross-doc questions + answers"
-                          : "Generate a narrative brief tying the bundle together"
-                        }
-                        position="bottom"
-                      >
-                        <button
-                          onClick={() => onSynthesize(kind)}
-                          className="inline-flex items-center text-caption font-medium h-full hover:bg-[var(--toggle-bg)] transition-colors"
-                          style={{ color: "var(--text-secondary)", padding: "0 var(--space-3)" }}
-                        >
-                          {kind === "memo" ? "Memo" : kind === "faq" ? "FAQ" : "Brief"}
-                        </button>
-                      </Tooltip>
-                      {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: "var(--border)" }} />}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-
-            {/* More menu — Copy Context, Add docs, Detail level */}
-            <CanvasMoreMenu
-              onCopyContext={onCopyContext}
-              onRequestAddDocs={onRequestAddDocs}
-              detail={detail}
-              setDetail={setDetail}
-              detailLabels={DETAIL_LABELS}
-            />
-
             {/* Pipeline status — at-a-glance freshness for the two AI passes
                 this bundle depends on (graph extraction + vector embedding).
                 Owners can click to re-run. Read-only viewers see the chip but
-                can't trigger refresh. */}
+                can't trigger refresh. Now the primary action surface — the
+                old "Analyze" button was just a duplicate. */}
             <BundleStatusGroup
               isOwner={!!isOwner}
               isAnalyzing={!!isAnalyzing}
@@ -1432,6 +1400,17 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
               embeddingUpdatedAt={embeddingUpdatedAt || null}
               onAnalyze={onRegenerate}
               onEmbed={onEmbed}
+            />
+
+            {/* More menu — Synthesize (Memo/FAQ/Brief), Copy context, Add
+                docs, Detail level. */}
+            <CanvasMoreMenu
+              onCopyContext={onCopyContext}
+              onRequestAddDocs={onRequestAddDocs}
+              onSynthesize={onSynthesize}
+              detail={detail}
+              setDetail={setDetail}
+              detailLabels={DETAIL_LABELS}
             />
           </>
         )}
@@ -1574,74 +1553,50 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
         );
       })()}
 
-      {/* Bottom-left: legend — colors here MUST match the actual node/edge
-          renderers (TYPE_COLORS, CHUNK_TYPE_COLORS, FlowingEdge stroke
-          assignments) so what users see on the canvas is what's labeled in
-          the legend. Two rows: nodes and edges. */}
+      {/* Bottom-left: legend — single horizontal row, nodes + chunk types
+          only. Edge colors deliberately omitted: they always follow the
+          source node's color (already represented), so a separate Edges row
+          was repeating information without adding signal. Tooltips on each
+          item give the explanation that the row label can't fit. */}
       {(() => {
         const nodeKinds = new Set<string>();
         const conceptKinds = new Set<string>();
         const chunkKinds = new Set<string>();
-        const edgeKinds = new Set<string>();
         nodes.forEach(n => { if (n.type) nodeKinds.add(n.type); });
         nodes.filter(n => n.type === "conceptTag").forEach(n => conceptKinds.add((n.data as any)?.type || "concept"));
         nodes.filter(n => n.type === "chunkNode").forEach(n => { const ct = (n.data as any)?.type; if (ct) chunkKinds.add(ct); });
-        edges.forEach(e => {
-          const t = (e.data as any)?.relationType || (e.data as any)?.type;
-          if (t) edgeKinds.add(t);
-        });
 
         type Item = { Icon?: typeof Sparkles; dot?: string; label: string; color: string; tooltip?: string };
-        const nodeItems: Item[] = [];
-        if (nodeKinds.has("summaryNode")) nodeItems.push({ Icon: Sparkles, label: "Analysis", color: "#60a5fa" });
-        if (nodeKinds.has("documentCard") || nodeKinds.has("sectionRoot")) nodeItems.push({ Icon: FileText, label: "Documents", color: "#fb923c" });
-        if (conceptKinds.has("concept")) nodeItems.push({ Icon: Lightbulb, label: "Concepts", color: TYPE_COLORS.concept.border });
-        if (conceptKinds.has("entity")) nodeItems.push({ Icon: CheckSquare, label: "Entities", color: TYPE_COLORS.entity.border });
-        if (conceptKinds.has("tag")) nodeItems.push({ Icon: Tag, label: "Tags", color: TYPE_COLORS.tag.border });
+        const items: Item[] = [];
+        if (nodeKinds.has("summaryNode")) items.push({ Icon: Sparkles, label: "Analysis", color: "#60a5fa", tooltip: "Bundle-level AI analysis (summary, themes, insights)." });
+        if (nodeKinds.has("documentCard") || nodeKinds.has("sectionRoot")) items.push({ Icon: FileText, label: "Docs", color: "#fb923c", tooltip: "Source documents in this bundle." });
+        if (conceptKinds.has("concept")) items.push({ Icon: Lightbulb, label: "Concepts", color: TYPE_COLORS.concept.border, tooltip: "Distinct concepts the AI extracted across docs." });
+        if (conceptKinds.has("entity")) items.push({ Icon: CheckSquare, label: "Entities", color: TYPE_COLORS.entity.border, tooltip: "Specific things — products, people, projects." });
+        if (conceptKinds.has("tag")) items.push({ Icon: Tag, label: "Tags", color: TYPE_COLORS.tag.border, tooltip: "Topical tags assigned across the bundle." });
 
-        // Chunk types only show when decomposition is open. Order matches the
-        // decompose panel for muscle memory.
+        // Chunk types only when decomposition is open — appended inline so
+        // the legend stays a single row.
         const chunkOrder: Array<keyof typeof CHUNK_TYPE_COLORS> = ["claim", "definition", "example", "evidence", "question", "task", "concept", "context"];
-        const chunkItems: Item[] = chunkOrder
+        chunkOrder
           .filter(k => chunkKinds.has(k))
-          .map(k => ({ dot: CHUNK_TYPE_COLORS[k].border, label: k.charAt(0).toUpperCase() + k.slice(1), color: CHUNK_TYPE_COLORS[k].border }));
+          .forEach(k => items.push({ dot: CHUNK_TYPE_COLORS[k].border, label: k.charAt(0).toUpperCase() + k.slice(1), color: CHUNK_TYPE_COLORS[k].border, tooltip: `${k.charAt(0).toUpperCase() + k.slice(1)} chunks (decomposition view).` }));
 
-        // Edge color rules — mirror the FlowingEdge wiring above:
-        //   doc-to-doc: blue (#60a5fa)
-        //   chunk-to-chunk / concept-to-doc: source node's color
-        // We surface a compact "Edges" group with the most common kinds.
-        const edgeItems: Item[] = [];
-        if (edges.length > 0) {
-          edgeItems.push({ dot: "#60a5fa", label: "Doc ↔ Doc", color: "#60a5fa", tooltip: "Edges between two documents in the bundle." });
-          if (nodeKinds.has("conceptTag")) edgeItems.push({ dot: "#94a3b8", label: "Concept link", color: "#94a3b8", tooltip: "Edge from a concept/entity/tag to the doc it appears in. Color follows the concept's type." });
-          if (nodeKinds.has("chunkNode")) edgeItems.push({ dot: "#fb923c", label: "Chunk relation", color: "#fb923c", tooltip: "Edge between two chunks (decomposition view). Color follows the source chunk's type." });
-        }
-
-        const groups: Array<{ label: string; items: Item[] }> = [];
-        if (nodeItems.length > 0) groups.push({ label: "Nodes", items: nodeItems });
-        if (chunkItems.length > 0) groups.push({ label: "Chunks", items: chunkItems });
-        if (edgeItems.length > 0) groups.push({ label: "Edges", items: edgeItems });
-        if (groups.length === 0) return null;
+        if (items.length === 0) return null;
 
         return (
-          <div className="absolute bottom-3 left-3 z-20 flex flex-col gap-1.5 px-2.5 py-1.5 rounded-md"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", maxWidth: 360 }}>
-            {groups.map((g, gi) => (
-              <div key={gi} className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", minWidth: 38 }}>{g.label}</span>
-                {g.items.map((item, i) => (
-                  <Tooltip key={i} text={item.tooltip || item.label} position="top">
-                    <div className="flex items-center gap-1">
-                      {item.Icon ? (
-                        <item.Icon width={10} height={10} style={{ color: item.color }} />
-                      ) : (
-                        <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, display: "inline-block" }} />
-                      )}
-                      <span className="text-caption" style={{ color: "var(--text-muted)" }}>{item.label}</span>
-                    </div>
-                  </Tooltip>
-                ))}
-              </div>
+          <div className="absolute bottom-3 left-3 z-20 flex items-center flex-nowrap overflow-x-auto px-2.5 h-7 rounded-md"
+            style={{ gap: 12, background: "var(--bg-elevated)", border: "1px solid var(--border)", maxWidth: "calc(100% - 24px)" }}>
+            {items.map((item, i) => (
+              <Tooltip key={i} text={item.tooltip || item.label} position="top">
+                <div className="flex items-center shrink-0" style={{ gap: 5 }}>
+                  {item.Icon ? (
+                    <item.Icon width={10} height={10} style={{ color: item.color }} />
+                  ) : (
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, display: "inline-block" }} />
+                  )}
+                  <span className="text-caption whitespace-nowrap" style={{ color: "var(--text-muted)" }}>{item.label}</span>
+                </div>
+              </Tooltip>
             ))}
           </div>
         );
@@ -1699,12 +1654,14 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
 function CanvasMoreMenu({
   onCopyContext,
   onRequestAddDocs,
+  onSynthesize,
   detail,
   setDetail,
   detailLabels,
 }: {
   onCopyContext?: () => void;
   onRequestAddDocs?: () => void;
+  onSynthesize?: (kind: "memo" | "faq" | "brief") => void;
   detail: DetailLevel;
   setDetail: (d: DetailLevel) => void;
   detailLabels: string[];
@@ -1719,11 +1676,25 @@ function CanvasMoreMenu({
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);
   }, [open]);
-  if (!onCopyContext && !onRequestAddDocs) return null;
+  if (!onCopyContext && !onRequestAddDocs && !onSynthesize) return null;
+
+  const menuItem = (label: string, desc: string, Icon: typeof Copy, onClick: () => void) => (
+    <button
+      onClick={() => { onClick(); setOpen(false); }}
+      className="text-left inline-flex items-start hover:bg-[var(--toggle-bg)] transition-colors rounded"
+      style={{ color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}
+    >
+      <Icon width={12} height={12} style={{ marginTop: 2, flexShrink: 0, color: "var(--text-faint)" }} />
+      <div className="flex flex-col">
+        <span className="text-body" style={{ color: "var(--text-primary)" }}>{label}</span>
+        <span className="text-caption" style={{ color: "var(--text-faint)" }}>{desc}</span>
+      </div>
+    </button>
+  );
 
   return (
     <div ref={ref} className="relative">
-      <Tooltip text="More — Copy context, Add docs, Detail level" position="bottom">
+      <Tooltip text="More — Synthesize, Copy context, Add docs, Detail level" position="bottom">
         <button
           onClick={() => setOpen(o => !o)}
           className="inline-flex items-center justify-center h-8 hover:bg-[var(--toggle-bg)] transition-colors"
@@ -1748,30 +1719,27 @@ function CanvasMoreMenu({
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-md)",
             boxShadow: "var(--shadow-md)",
-            minWidth: 240,
+            minWidth: 260,
             padding: "var(--space-1)",
           }}
         >
-          {onCopyContext && (
-            <button
-              onClick={() => { onCopyContext(); setOpen(false); }}
-              className="text-left text-body inline-flex items-center hover:bg-[var(--toggle-bg)] transition-colors rounded"
-              style={{ color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}
-            >
-              <Copy width={12} height={12} />
-              Copy bundle as context
-            </button>
+          {/* Synthesize trio — moved out of the toolbar to declutter the
+              top-left strip per user feedback. Each entry pairs the action
+              name with a one-line "what it produces" so the user doesn't
+              have to recall what Memo / FAQ / Brief mean. */}
+          {onSynthesize && (
+            <>
+              <div style={{ padding: "var(--space-1) var(--space-3)" }}>
+                <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Synthesize</span>
+              </div>
+              {menuItem("Memo", "1-page decision memo from this bundle", Sparkles, () => onSynthesize("memo"))}
+              {menuItem("FAQ", "FAQ from cross-doc questions + answers", Sparkles, () => onSynthesize("faq"))}
+              {menuItem("Brief", "Narrative brief tying the bundle together", Sparkles, () => onSynthesize("brief"))}
+              <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
+            </>
           )}
-          {onRequestAddDocs && (
-            <button
-              onClick={() => { onRequestAddDocs(); setOpen(false); }}
-              className="text-left text-body inline-flex items-center hover:bg-[var(--toggle-bg)] transition-colors rounded"
-              style={{ color: "var(--text-secondary)", padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}
-            >
-              <FilePlus2 width={12} height={12} />
-              Add documents…
-            </button>
-          )}
+          {onCopyContext && menuItem("Copy bundle as context", "Concatenated markdown for the AI of your choice", Copy, onCopyContext)}
+          {onRequestAddDocs && menuItem("Add documents…", "Pick from your library to extend this bundle", FilePlus2, onRequestAddDocs)}
           <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
           {/* Detail level — inline range as a "settings row" */}
           <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-1)" }}>

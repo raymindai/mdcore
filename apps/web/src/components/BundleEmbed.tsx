@@ -2362,17 +2362,14 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
       {info.type === "document" ? (
         <DocumentNodeBody info={info} decomposeBridge={decomposeBridge} onOpenDoc={onOpenDoc} />
       ) : (
-      <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
+      <div className="flex-1 overflow-auto" style={{ fontSize: 12 }}>
 
-        {/* Analysis panel — typography-first redesign. The previous version
-            stacked five differently-colored boxes (orange summary card, plain
-            numbered list, blue rounded pills, gray rounded rows, pink rows)
-            with no shared rhythm. This rewrite uses a single mono-uppercase
-            section header (matching the chunk panel and decompose pane that
-            already exist elsewhere), tabular numerals, and rail-only accents
-            so the eye can scan each section without re-learning the
-            treatment. Coverage + freshness now live at the top so the user
-            knows *what* was analyzed and *when* before reading any prose. */}
+        {/* Analysis panel — sections render as alternating-background rows
+            (table-zebra pattern) so each section has clear visual separation
+            without colored boxes or left-rail accents. Body text is locked to
+            12px (sidebar baseline) so the panel matches the rest of the app's
+            type scale. Coverage stats render with icons + tooltip per metric
+            so the user understands what each number means without guessing. */}
         {info.type === "analysis" && (() => {
           const cov = info.coverage;
           const ageStr = cov?.generatedAt ? (() => {
@@ -2385,151 +2382,156 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             const d = Math.floor(h / 24);
             return `${d}d ago`;
           })() : null;
-          const StatChip = ({ value, label, color }: { value: number; label: string; color?: string }) => (
-            <div className="flex flex-col" style={{ minWidth: 0 }}>
-              <span className="tabular-nums font-semibold" style={{ fontSize: 14, color: color || "var(--text-primary)", lineHeight: 1.1 }}>{value.toLocaleString()}</span>
-              <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", marginTop: 2 }}>{label}</span>
-            </div>
-          );
           const SectionLabel = ({ children }: { children: React.ReactNode }) => (
             <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>{children}</h4>
           );
-          return (
-            <>
-              {/* Coverage strip — the at-a-glance "what was actually analyzed".
-                  Without this, the user is staring at prose with no anchor to
-                  the source corpus. */}
-              {cov && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <SectionLabel>Coverage</SectionLabel>
-                    {ageStr && (
-                      <span className="font-mono" style={{ fontSize: 10, color: "var(--text-faint)" }}>analyzed {ageStr}</span>
-                    )}
-                  </div>
-                  <div className="flex items-baseline" style={{ gap: 18 }}>
-                    <StatChip value={cov.docs} label="docs" />
-                    {cov.concepts > 0 && <StatChip value={cov.concepts} label="concepts" color="#38bdf8" />}
-                    {cov.entities > 0 && <StatChip value={cov.entities} label="entities" color="#4ade80" />}
-                    {cov.tags > 0 && <StatChip value={cov.tags} label="tags" color="#a78bfa" />}
-                    {cov.connections > 0 && <StatChip value={cov.connections} label="links" color="#60a5fa" />}
-                  </div>
-                </div>
-              )}
-
-              {/* Summary — flat prose with a left rail in the analysis color
-                  instead of a full orange surface. Reads as text, not a chip. */}
-              {info.summary && (
-                <div>
-                  <SectionLabel>Summary</SectionLabel>
-                  <p className="text-sm leading-[1.7]" style={{ color: "var(--text-primary)", paddingLeft: 12, borderLeft: "2px solid #60a5fa" }}>{info.summary}</p>
-                </div>
-              )}
-
-              {/* Takeaways — mono numerals match the rest of the app's
-                  tabular-nums style; no filled colored badges. */}
-              {info.keyTakeaways && info.keyTakeaways.length > 0 && (
-                <div>
-                  <SectionLabel>Key takeaways</SectionLabel>
-                  <ol className="space-y-2.5">
-                    {info.keyTakeaways.map((t: string, i: number) => (
-                      <li key={i} className="flex gap-3 items-baseline">
-                        <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: 0.5, minWidth: 22 }}>
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{t}</p>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {/* Themes — mono uppercase tags. The previous chip-pill chrome
-                  competed with the chunk-type chips elsewhere. */}
-              {info.themes && info.themes.length > 0 && (
-                <div>
-                  <SectionLabel>Themes</SectionLabel>
-                  <div className="flex flex-wrap" style={{ gap: 6 }}>
-                    {info.themes.map((t: string, i: number) => (
-                      <span key={i} className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: 0.5, color: "#60a5fa", padding: "2px 6px", border: "1px solid color-mix(in srgb, #60a5fa 30%, transparent)", borderRadius: 4 }}>
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Document connections — NEW. The aiGraph already returns
-                  doc-to-doc links via `connections`, but the panel never
-                  surfaced them. Each row is clickable and tells the user
-                  exactly which two docs share a relationship and what the
-                  relationship is. This is the closest thing to "what's
-                  related to what" at the bundle level. */}
-              {info.connections && info.connections.length > 0 && (
-                <div>
-                  <SectionLabel>Document connections</SectionLabel>
-                  <div className="space-y-1.5">
-                    {(info.connections as Array<{ doc1: string; doc2: string; doc1Id: string; doc2Id: string; relationship: string }>).map((c, i) => (
-                      <div key={i} className="rounded px-2.5 py-2" style={{ background: "var(--toggle-bg)" }}>
-                        <div className="flex items-center flex-wrap" style={{ gap: 6 }}>
-                          <button
-                            onClick={() => onOpenDoc?.(c.doc1Id)}
-                            className="text-sm font-medium truncate text-left hover:underline"
-                            style={{ color: "var(--text-primary)", maxWidth: "45%" }}
-                            title={c.doc1}
-                          >
-                            {c.doc1}
-                          </button>
-                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>↔</span>
-                          <button
-                            onClick={() => onOpenDoc?.(c.doc2Id)}
-                            className="text-sm font-medium truncate text-left hover:underline"
-                            style={{ color: "var(--text-primary)", maxWidth: "45%" }}
-                            title={c.doc2}
-                          >
-                            {c.doc2}
-                          </button>
-                        </div>
-                        <p className="text-xs leading-snug mt-1" style={{ color: "var(--text-muted)" }}>{c.relationship}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Cross-doc insights — pattern-level observations. Same flat
-                  treatment as takeaways. */}
-              {info.insights && info.insights.length > 0 && (
-                <div>
-                  <SectionLabel>Cross-doc insights</SectionLabel>
-                  <ul className="space-y-2.5">
-                    {info.insights.map((ins: string, i: number) => (
-                      <li key={i} className="flex gap-2 items-baseline">
-                        <span className="shrink-0 font-mono" style={{ color: "var(--accent)", fontSize: 11, marginTop: 2 }}>→</span>
-                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{ins}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Gaps — the only section that keeps a colored cue, because the
-                  semantic ("missing", "needs attention") is the whole point.
-                  Even here, drop the per-row pink box for a left rail. */}
-              {info.gaps && info.gaps.length > 0 && (
-                <div>
-                  <SectionLabel>Gaps</SectionLabel>
-                  <ul className="space-y-2">
-                    {info.gaps.map((g: string, i: number) => (
-                      <li key={i} className="flex gap-2 items-baseline" style={{ paddingLeft: 12, borderLeft: "2px solid #f87171" }}>
-                        <p className="text-sm leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{g}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
+          // Stat with icon + tooltip — each Coverage metric gets a quick
+          // explanation on hover so "29 concepts" is no longer mysterious.
+          const StatItem = ({ value, label, color, Icon, tooltip }: { value: number; label: string; color?: string; Icon: typeof Sparkles; tooltip: string }) => (
+            <Tooltip text={tooltip} position="top">
+              <div className="flex items-center" style={{ gap: 5, minWidth: 0 }}>
+                <Icon width={11} height={11} style={{ color: color || "var(--text-faint)", flexShrink: 0 }} />
+                <span className="tabular-nums font-semibold" style={{ fontSize: 13, color: color || "var(--text-primary)", lineHeight: 1.1 }}>{value.toLocaleString()}</span>
+                <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>{label}</span>
+              </div>
+            </Tooltip>
           );
+          // Section wrapper that applies the alternating background. Index
+          // controlled by callsite so we don't have to plumb context.
+          const Section = ({ index, children }: { index: number; children: React.ReactNode }) => (
+            <section style={{
+              padding: "14px 20px",
+              background: index % 2 === 0 ? "transparent" : "color-mix(in srgb, var(--toggle-bg) 45%, transparent)",
+              borderTop: index === 0 ? "none" : "1px solid var(--border-dim)",
+            }}>
+              {children}
+            </section>
+          );
+          // Compose the visible sections in order so the alternating row index
+          // is correct even when some are absent (e.g. no Gaps).
+          const sections: React.ReactNode[] = [];
+          if (cov) {
+            sections.push(
+              <Section key="coverage" index={sections.length}>
+                <div className="flex items-center justify-between mb-2">
+                  <SectionLabel>Coverage</SectionLabel>
+                  {ageStr && (
+                    <span className="font-mono" style={{ fontSize: 10, color: "var(--text-faint)" }}>analyzed {ageStr}</span>
+                  )}
+                </div>
+                <div className="flex items-center flex-wrap" style={{ rowGap: 8, columnGap: 14 }}>
+                  <StatItem value={cov.docs} label="docs" color="#fb923c" Icon={FileText} tooltip="Source documents in this bundle." />
+                  {cov.concepts > 0 && <StatItem value={cov.concepts} label="concepts" color="#38bdf8" Icon={Lightbulb} tooltip="Distinct concepts the AI extracted across docs." />}
+                  {cov.entities > 0 && <StatItem value={cov.entities} label="entities" color="#4ade80" Icon={CheckSquare} tooltip="Specific things the AI identified — products, people, projects." />}
+                  {cov.tags > 0 && <StatItem value={cov.tags} label="tags" color="#a78bfa" Icon={Tag} tooltip="Topical tags the AI assigned across the bundle." />}
+                  {cov.connections > 0 && <StatItem value={cov.connections} label="links" color="#60a5fa" Icon={GitBranch} tooltip="Doc-to-doc relationships the AI surfaced." />}
+                </div>
+              </Section>
+            );
+          }
+          if (info.summary) {
+            sections.push(
+              <Section key="summary" index={sections.length}>
+                <SectionLabel>Summary</SectionLabel>
+                <p style={{ fontSize: 12, lineHeight: 1.65, color: "var(--text-primary)" }}>{info.summary}</p>
+              </Section>
+            );
+          }
+          if (info.keyTakeaways && info.keyTakeaways.length > 0) {
+            sections.push(
+              <Section key="takeaways" index={sections.length}>
+                <SectionLabel>Key takeaways</SectionLabel>
+                <ol className="space-y-2">
+                  {info.keyTakeaways.map((t: string, i: number) => (
+                    <li key={i} className="flex gap-3 items-baseline">
+                      <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 11, color: "var(--text-faint)", letterSpacing: 0.5, minWidth: 22 }}>
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-secondary)" }}>{t}</p>
+                    </li>
+                  ))}
+                </ol>
+              </Section>
+            );
+          }
+          if (info.themes && info.themes.length > 0) {
+            sections.push(
+              <Section key="themes" index={sections.length}>
+                <SectionLabel>Themes</SectionLabel>
+                <div className="flex flex-wrap" style={{ gap: 6 }}>
+                  {info.themes.map((t: string, i: number) => (
+                    <span key={i} className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: 0.5, color: "#60a5fa", padding: "2px 6px", border: "1px solid color-mix(in srgb, #60a5fa 30%, transparent)", borderRadius: 4 }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </Section>
+            );
+          }
+          if (info.connections && info.connections.length > 0) {
+            sections.push(
+              <Section key="connections" index={sections.length}>
+                <SectionLabel>Document connections</SectionLabel>
+                <div className="space-y-1.5">
+                  {(info.connections as Array<{ doc1: string; doc2: string; doc1Id: string; doc2Id: string; relationship: string }>).map((c, i) => (
+                    <div key={i} className="rounded px-2 py-1.5" style={{ background: "var(--bg-elevated)" }}>
+                      <div className="flex items-center flex-wrap" style={{ gap: 6 }}>
+                        <button
+                          onClick={() => onOpenDoc?.(c.doc1Id)}
+                          className="font-medium truncate text-left hover:underline"
+                          style={{ fontSize: 12, color: "var(--text-primary)", maxWidth: "45%" }}
+                          title={c.doc1}
+                        >
+                          {c.doc1}
+                        </button>
+                        <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>↔</span>
+                        <button
+                          onClick={() => onOpenDoc?.(c.doc2Id)}
+                          className="font-medium truncate text-left hover:underline"
+                          style={{ fontSize: 12, color: "var(--text-primary)", maxWidth: "45%" }}
+                          title={c.doc2}
+                        >
+                          {c.doc2}
+                        </button>
+                      </div>
+                      <p className="leading-snug mt-1" style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.relationship}</p>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            );
+          }
+          if (info.insights && info.insights.length > 0) {
+            sections.push(
+              <Section key="insights" index={sections.length}>
+                <SectionLabel>Cross-doc insights</SectionLabel>
+                <ul className="space-y-2">
+                  {info.insights.map((ins: string, i: number) => (
+                    <li key={i} className="flex gap-2 items-baseline">
+                      <span className="shrink-0 font-mono" style={{ color: "var(--accent)", fontSize: 11, marginTop: 2 }}>→</span>
+                      <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-secondary)" }}>{ins}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            );
+          }
+          if (info.gaps && info.gaps.length > 0) {
+            sections.push(
+              <Section key="gaps" index={sections.length}>
+                <SectionLabel>Gaps</SectionLabel>
+                <ul className="space-y-1.5">
+                  {info.gaps.map((g: string, i: number) => (
+                    <li key={i} className="flex gap-2 items-baseline">
+                      <span className="shrink-0 font-mono" style={{ color: "#f87171", fontSize: 12, fontWeight: 700 }}>!</span>
+                      <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-secondary)" }}>{g}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            );
+          }
+          return <>{sections}</>;
         })()}
 
         {/* Concept/Entity/Tag panel — the subject (this concept) is shown in
@@ -2537,43 +2539,66 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             without restating the subject. The targetKind dot tells you at a
             glance whether the link points to a doc, another concept, an
             entity, or a tag. */}
-        {(info.type === "concept" || info.type === "entity" || info.type === "tag") && (
-          <>
-            {info.weight && (
-              <div className="flex items-center gap-3">
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>Importance {info.weight}/10</span>
-                <div className="flex gap-0.5">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < info.weight! ? color : "var(--border-dim)" }} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {info.description && (
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{info.description}</p>
-            )}
-            {info.connectedDocs && info.connectedDocs.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+        {/* Concept/Entity/Tag panel — uses the same alternating-section
+            pattern as the analysis view + 12px body for consistency. */}
+        {(info.type === "concept" || info.type === "entity" || info.type === "tag") && (() => {
+          const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+            <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>{children}</h4>
+          );
+          const Section = ({ index, children }: { index: number; children: React.ReactNode }) => (
+            <section style={{
+              padding: "14px 20px",
+              background: index % 2 === 0 ? "transparent" : "color-mix(in srgb, var(--toggle-bg) 45%, transparent)",
+              borderTop: index === 0 ? "none" : "1px solid var(--border-dim)",
+            }}>
+              {children}
+            </section>
+          );
+          const sections: React.ReactNode[] = [];
+          if (info.weight || info.description) {
+            sections.push(
+              <Section key="meta" index={sections.length}>
+                {info.weight && (
+                  <div className="flex items-center gap-3 mb-2">
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Importance {info.weight}/10</span>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < info.weight! ? color : "var(--border-dim)" }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {info.description && (
+                  <p style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text-secondary)" }}>{info.description}</p>
+                )}
+              </Section>
+            );
+          }
+          if (info.connectedDocs && info.connectedDocs.length > 0) {
+            sections.push(
+              <Section key="docs" index={sections.length}>
+                <SectionLabel>
                   &quot;{info.label}&quot; appears in {info.connectedDocs.length} document{info.connectedDocs.length > 1 ? "s" : ""}
-                </h4>
-                <div className="space-y-1.5">
+                </SectionLabel>
+                <div className="space-y-1">
                   {info.connectedDocs.map((doc: { id: string; title: string }) => (
                     <button key={doc.id} onClick={() => onOpenDoc?.(doc.id)}
-                      className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2.5"
-                      style={{ color: "var(--text-primary)", background: "var(--toggle-bg)" }}>
-                      <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: "#fb923c" }} />
+                      className="w-full text-left px-2 py-1.5 rounded font-medium transition-colors hover:bg-[var(--toggle-bg)] flex items-center gap-2"
+                      style={{ fontSize: 12, color: "var(--text-primary)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#fb923c" }} />
                       {doc.title}
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-            {info.relationships && info.relationships.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+              </Section>
+            );
+          }
+          if (info.relationships && info.relationships.length > 0) {
+            sections.push(
+              <Section key="rels" index={sections.length}>
+                <SectionLabel>
                   Linked to {info.relationships.length} {info.relationships.length === 1 ? "node" : "nodes"}
-                </h4>
+                </SectionLabel>
                 <div className="space-y-1.5">
                   {(info.relationships as Array<{ label: string; target: string; targetKind?: string; direction?: string }>).map((rel, i) => {
                     const kindColor =
@@ -2590,7 +2615,7 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                       "";
                     const arrow = rel.direction === "in" ? "←" : "→";
                     return (
-                      <div key={i} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--toggle-bg)" }}>
+                      <div key={i} className="px-2 py-1.5 rounded" style={{ fontSize: 12, background: "var(--bg-elevated)" }}>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
                             {info.label}
@@ -2598,7 +2623,7 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                           <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
                             {arrow}
                           </span>
-                          <span className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0" style={{ background: `color-mix(in srgb, ${kindColor} 12%, transparent)`, color: kindColor }}>
+                          <span className="px-1.5 py-0.5 rounded font-medium shrink-0" style={{ fontSize: 11, background: `color-mix(in srgb, ${kindColor} 12%, transparent)`, color: kindColor }}>
                             {rel.label}
                           </span>
                           <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
@@ -2615,10 +2640,11 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                     );
                   })}
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              </Section>
+            );
+          }
+          return <>{sections}</>;
+        })()}
       </div>
       )}
     </div>
