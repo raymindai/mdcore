@@ -2571,11 +2571,12 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             info.type === "tag" ? "#a78bfa" :
             "var(--text-faint)";
           if (info.weight || info.description) {
-            // Importance gauge — old strip of 10 mini bars replaced with a
-            // single horizontal track, a numeric headline, and a band label
-            // (low / medium / high / critical). The whole row carries a
-            // tooltip explaining what importance means and why it matters
-            // ("how much weight the AI gave this in the bundle's analysis").
+            // Importance — section label sits on its own row (so it lines
+            // up with the other section labels in this panel), and the
+            // value + band + gauge share a single second row. Gauge is a
+            // 10-dot meter (filled vs hollow) so it reads as "9 of 10
+            // beats" without repeating the prior horizontal-track or
+            // mini-bars treatments.
             const w = info.weight || 0;
             const band = w >= 9 ? "Critical" : w >= 7 ? "High" : w >= 4 ? "Medium" : "Low";
             const importanceTooltip = "Importance is the weight (0–10) the AI assigned this node when it built the bundle graph. Higher = appeared in more docs and contributed more to the cross-doc analysis. Use it to decide which concepts deserve their own doc or bundle.";
@@ -2583,17 +2584,33 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
               <Section key="meta" index={sections.length}>
                 {info.weight && (
                   <Tooltip text={importanceTooltip} position="bottom">
-                    <div className="flex flex-col mb-3" style={{ gap: 6, cursor: "help" }}>
-                      <div className="flex items-baseline justify-between">
-                        <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Importance</span>
-                        <span className="flex items-baseline" style={{ gap: 6 }}>
-                          <span className="font-mono tabular-nums font-semibold" style={{ fontSize: 13, color: subjectColor }}>{w}</span>
+                    <div className="flex flex-col mb-3" style={{ gap: 8, cursor: "help" }}>
+                      <SectionLabel>Importance</SectionLabel>
+                      <div className="flex items-center" style={{ gap: 10 }}>
+                        <span className="flex items-baseline" style={{ gap: 3 }}>
+                          <span className="font-mono tabular-nums font-semibold" style={{ fontSize: 14, color: subjectColor, lineHeight: 1 }}>{w}</span>
                           <span className="font-mono" style={{ fontSize: 10, color: "var(--text-faint)" }}>/10</span>
-                          <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: subjectColor, marginLeft: 4 }}>{band}</span>
                         </span>
-                      </div>
-                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--border-dim)" }}>
-                        <div style={{ width: `${(w / 10) * 100}%`, height: "100%", background: subjectColor, transition: "width 0.3s ease" }} />
+                        <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: subjectColor }}>{band}</span>
+                        <div className="flex items-center ml-auto" style={{ gap: 3 }}>
+                          {Array.from({ length: 10 }).map((_, i) => {
+                            const filled = i < w;
+                            return (
+                              <span
+                                key={i}
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: 999,
+                                  background: filled ? subjectColor : "transparent",
+                                  border: filled ? "none" : `1px solid var(--border)`,
+                                  boxSizing: "border-box",
+                                  display: "inline-block",
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </Tooltip>
