@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "react";
 import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
-import { Globe, Users, Lock, Link2, X } from "lucide-react";
+import { Globe, Users, Cloud, Link2, X } from "lucide-react";
 import { Button, ModalShell } from "@/components/ui";
 
 interface ShareModalProps {
@@ -343,7 +343,7 @@ function ShareModal({
                 value: "private" as const,
                 label: "Only me",
                 desc: "Saved to cloud — only you can read this URL.",
-                icon: <Lock width={16} height={16} strokeWidth={1.5} />,
+                icon: <Cloud width={16} height={16} strokeWidth={1.5} />,
                 disabled: false,
               },
               {

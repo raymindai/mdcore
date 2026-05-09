@@ -15,7 +15,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Layers, Copy, Check, ExternalLink, Globe, Eye, Lock, Users,
+  Layers, Copy, Check, ExternalLink, Globe, Eye, Cloud, Users,
   ShieldAlert,
 } from "lucide-react";
 import DocStatusIcon from "@/components/DocStatusIcon";
@@ -84,7 +84,7 @@ function relativeTime(iso: string | null | undefined): string {
 const TIERS = {
   public:  { label: "Public",  desc: "On your hub URL — anyone with the link can read", icon: Globe,        color: "var(--accent)", bg: "var(--accent-dim)" },
   shared:  { label: "Shared",  desc: "Restricted to specific people or password",         icon: Users,         color: "#60a5fa",       bg: "rgba(96,165,250,0.12)" },
-  private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Lock, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
+  private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Cloud, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
 } as const;
 
 export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProps) {

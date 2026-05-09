@@ -1,6 +1,6 @@
 import { memo } from "react";
 import {
-  Eye, Globe, Lock, Users, FileIcon,
+  Eye, Globe, Cloud, Users, FileIcon,
 } from "lucide-react";
 import Tooltip from "@/components/Tooltip";
 
@@ -8,7 +8,8 @@ import Tooltip from "@/components/Tooltip";
 // There are exactly THREE access states a doc can be in (matching
 // ShareModal's "Who can read" radio + the Hub's owner view):
 //
-//   Lock    (faint)  Private   — only you (is_draft=true)
+//   Cloud   (faint)  Private   — saved to cloud, only you can read
+//                                (is_draft=true)
 //   Users   (blue)   Shared    — password OR specific people
 //   Globe   (accent) Public    — anyone with the URL (is_draft=false,
 //                                no password, no email allow-list)
@@ -68,7 +69,7 @@ function DocStatusIcon({ tab, isActive }: {
     tip = "Public — anyone with the URL can read";
   } else if (tab.cloudId) {
     // is_draft=true — saved to cloud but not shared. Only you can read.
-    Icon = Lock;
+    Icon = Cloud;
     color = "var(--text-faint)";
     tip = "Private — saved to cloud, only you can read";
   } else {
