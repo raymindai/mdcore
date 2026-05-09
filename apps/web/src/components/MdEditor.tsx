@@ -1502,6 +1502,7 @@ interface Tab {
   sharedWithCount?: number; // number of non-owner people shared with
   isSharedByMe?: boolean;  // legacy: I've shared this doc with others
   isRestricted?: boolean;  // legacy: shared with specific people
+  hasPassword?: boolean;   // password-protected — feeds the "Shared" access icon
   viewCount?: number;      // document view count
   ownerEmail?: string;     // owner's email (for shared docs)
   source?: string;         // origin: "vscode" | "chrome" | null
@@ -5470,6 +5471,11 @@ export default function MdEditor() {
           const viewCountMap = new Map<string, number>(
             data.documents.map((d: { id: string; view_count?: number }) => [d.id, d.view_count || 0])
           );
+          // Password presence — drives the "Shared" tier in
+          // DocStatusIcon when the doc is published-but-restricted.
+          const hasPasswordMap = new Map<string, boolean>(
+            data.documents.map((d: { id: string; hasPassword?: boolean }) => [d.id, !!d.hasPassword])
+          );
           setTabs(prev => {
             // Update existing tabs with server state
             const updated = prev.map(t => {
@@ -5483,8 +5489,9 @@ export default function MdEditor() {
               const newEditMode = editModeMap.get(t.cloudId) || "token";
               const newSharedCount = sharedCountMap.get(t.cloudId) || 0;
               const newViewCount = viewCountMap.get(t.cloudId) || 0;
-              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount && t.viewCount === newViewCount) return t;
-              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount, viewCount: newViewCount };
+              const newHasPassword = hasPasswordMap.get(t.cloudId) || false;
+              if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount && t.viewCount === newViewCount && t.hasPassword === newHasPassword) return t;
+              return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount, viewCount: newViewCount, hasPassword: newHasPassword };
             });
             // Create tabs for server docs that don't have local tabs
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
@@ -9184,17 +9191,16 @@ ${clone.innerHTML}
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Desktop, CLI, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
-              <div className="flex items-center gap-2"><FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private / Draft</span></div>
-              <div className="flex items-center gap-2"><CircleCheck width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Synced (VS Code, Desktop, CLI, MCP)</span></div>
-              <div className="flex items-center gap-2"><Share2 width={12} height={12} style={{ color: "#4ade80" }} /><span style={{ color: "var(--text-muted)" }}>Shared (anyone with link)</span></div>
-              <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared with specific people</span></div>
+              <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — listed on your hub</span></div>
+              <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared — password or specific people</span></div>
+              <div className="flex items-center gap-2"><Lock width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private — only you</span></div>
               <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 12, height: 12 }}>
-                  <Share2 width={12} height={12} style={{ color: "#4ade80" }} />
-                  <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="#22c55e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                  <Globe width={12} height={12} style={{ color: "var(--accent)" }} />
+                  <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="var(--accent)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
                 </div>
-                <span style={{ color: "var(--text-muted)" }}>Shared + Synced</span>
+                <span style={{ color: "var(--text-muted)" }}>+ Synced (VS Code, Desktop, CLI, MCP)</span>
               </div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Bundle Icons</div>

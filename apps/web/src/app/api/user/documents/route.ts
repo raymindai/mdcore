@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("documents")
-    .select("id, title, created_at, updated_at, deleted_at, view_count, is_draft, edit_mode, allowed_emails, source, folder_id, sort_order")
+    .select("id, title, created_at, updated_at, deleted_at, view_count, is_draft, edit_mode, allowed_emails, password_hash, source, folder_id, sort_order")
     .order("updated_at", { ascending: false })
     .limit(200);
   if (!includeDeleted) query = query.is("deleted_at", null);
@@ -52,5 +52,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });
   }
 
-  return NextResponse.json({ documents: data });
+  // Transform: never leak the actual password_hash to the client. The
+  // sidebar only needs to know IF a password exists, to drive the
+  // shared-vs-private icon decision in DocStatusIcon.
+  const documents = (data || []).map((d) => {
+    const { password_hash, ...rest } = d as { password_hash?: string | null } & Record<string, unknown>;
+    return { ...rest, hasPassword: !!password_hash };
+  });
+
+  return NextResponse.json({ documents });
 }
