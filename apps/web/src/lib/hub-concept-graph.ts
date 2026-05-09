@@ -16,11 +16,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MAX_CONCEPTS = 200;
 const MAX_RELATIONS = 800;
-const ITERATIONS = 120;
-const REPULSION = 12000;
-const SPRING_K = 0.04;
-const SPRING_LEN = 110;
-const CENTER_PULL = 0.0028;
+const ITERATIONS = 200;
+const REPULSION = 5500;
+const SPRING_K = 0.05;
+const SPRING_LEN = 90;
+const CENTER_PULL = 0.006;
+// Hard bounds so a runaway force pass can't shoot nodes off-canvas.
+// Viewer's viewBox is -600..600 / -500..500; clamp slightly inside.
+const BOUND_X = 460;
+const BOUND_Y = 360;
+// Outer ring radius used to place ISOLATED concepts (no edges). Force
+// layout produces noise for them — a calm ring around the connected
+// cluster is far more legible.
+const ISOLATED_RING_R = 430;
 
 export interface HubConceptNode {
   id: number;
@@ -101,17 +109,9 @@ export async function computeHubConceptGraph(
   const maxOcc = Math.max(...concepts.map((c) => c.occurrence_count || 1), 1);
   const sizeFor = (occ: number) => 1 + Math.log2((occ || 1) + 1) / Math.log2(maxOcc + 1) * 2;
 
-  // Initial positions: place concepts on a Fibonacci-style spiral ring
-  // ordered by weight so high-signal nodes start near the centre.
-  const positions: Record<number, { x: number; y: number; vx: number; vy: number }> = {};
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  concepts.forEach((c, i) => {
-    const r = 30 + i * 8;
-    const a = i * golden;
-    positions[c.id] = { x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0 };
-  });
-
-  // Adjacency for spring forces.
+  // Build adjacency + connected-component map. Concepts with at least
+  // one relation belong to the "force-directed" set; the rest get
+  // arranged on an outer ring so they don't drift around as noise.
   const neighborMap = new Map<number, Array<{ other: number; weight: number }>>();
   for (const r of validRelations) {
     if (!neighborMap.has(r.source_concept_id)) neighborMap.set(r.source_concept_id, []);
@@ -119,16 +119,28 @@ export async function computeHubConceptGraph(
     neighborMap.get(r.source_concept_id)!.push({ other: r.target_concept_id, weight: r.weight || 1 });
     neighborMap.get(r.target_concept_id)!.push({ other: r.source_concept_id, weight: r.weight || 1 });
   }
+  const connected = concepts.filter((c) => neighborMap.has(c.id));
+  const isolated = concepts.filter((c) => !neighborMap.has(c.id));
 
-  // Force simulation. Light enough to run in a single request.
+  // Initial positions for connected nodes — small Fibonacci-style
+  // spiral seeded near the centre. Force layout takes over from here.
+  const positions: Record<number, { x: number; y: number; vx: number; vy: number }> = {};
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  connected.forEach((c, i) => {
+    const r = 20 + i * 4;
+    const a = i * golden;
+    positions[c.id] = { x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0 };
+  });
+
+  // Force simulation runs only over the connected subset. Repulsion is
+  // pairwise n² which is fine at <=200 nodes.
   for (let iter = 0; iter < ITERATIONS; iter++) {
     const damping = 0.85 - (iter / ITERATIONS) * 0.4;
-    // Repulsion (pairwise n^2 — fine at <=200 nodes).
-    for (let i = 0; i < concepts.length; i++) {
-      const a = concepts[i];
+    for (let i = 0; i < connected.length; i++) {
+      const a = connected[i];
       const pa = positions[a.id];
-      for (let j = i + 1; j < concepts.length; j++) {
-        const b = concepts[j];
+      for (let j = i + 1; j < connected.length; j++) {
+        const b = connected[j];
         const pb = positions[b.id];
         const dx = pa.x - pb.x;
         const dy = pa.y - pb.y;
@@ -145,6 +157,7 @@ export async function computeHubConceptGraph(
     for (const r of validRelations) {
       const pa = positions[r.source_concept_id];
       const pb = positions[r.target_concept_id];
+      if (!pa || !pb) continue;
       const dx = pb.x - pa.x;
       const dy = pb.y - pa.y;
       const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 0.01);
@@ -154,8 +167,9 @@ export async function computeHubConceptGraph(
       pa.vx += fx; pa.vy += fy;
       pb.vx -= fx; pb.vy -= fy;
     }
-    // Centre pull keeps the graph compact.
-    for (const c of concepts) {
+    // Centre pull + integrate + clamp to canvas bounds so no node ever
+    // shoots off-screen even with high-velocity pairs.
+    for (const c of connected) {
       const p = positions[c.id];
       p.vx -= p.x * CENTER_PULL;
       p.vy -= p.y * CENTER_PULL;
@@ -163,8 +177,26 @@ export async function computeHubConceptGraph(
       p.y += p.vy * damping;
       p.vx *= damping;
       p.vy *= damping;
+      if (p.x > BOUND_X) { p.x = BOUND_X; p.vx = 0; }
+      if (p.x < -BOUND_X) { p.x = -BOUND_X; p.vx = 0; }
+      if (p.y > BOUND_Y) { p.y = BOUND_Y; p.vy = 0; }
+      if (p.y < -BOUND_Y) { p.y = -BOUND_Y; p.vy = 0; }
     }
   }
+
+  // Isolated concepts get arranged on a calm outer ring, ordered by
+  // occurrence_count so heavier concepts sit at predictable angles.
+  // Beats letting the force layout produce a noisy halo of unrelated
+  // nodes overlapping each other.
+  const isolatedSorted = [...isolated].sort((a, b) => b.occurrence_count - a.occurrence_count);
+  isolatedSorted.forEach((c, i) => {
+    const a = (i / Math.max(isolatedSorted.length, 1)) * Math.PI * 2;
+    positions[c.id] = {
+      x: Math.cos(a) * ISOLATED_RING_R,
+      y: Math.sin(a) * ISOLATED_RING_R,
+      vx: 0, vy: 0,
+    };
+  });
 
   const allDocs = new Set<string>();
   for (const c of concepts) for (const id of c.doc_ids || []) allDocs.add(id);

@@ -11279,7 +11279,7 @@ ${clone.innerHTML}
             <div
               data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: activeTab?.kind === "bundle" ? "none" : undefined }}
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || activeTab?.kind === "hub") ? "none" : undefined }}
             >
               <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
