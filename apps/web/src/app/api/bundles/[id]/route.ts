@@ -219,6 +219,23 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   if (body.action === "publish") {
     const { error } = await supabase.from("bundles").update({ is_draft: false, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to publish" }, { status: 500 });
+    // Cascade: publishing a bundle implies publishing every member doc.
+    // Without this the bundle is visible publicly but its member docs
+    // 404 for non-owner viewers (is_draft=true gates the doc fetch),
+    // which was the source of the stale-doc 404 storm on staging.
+    const { data: members } = await supabase
+      .from("bundle_documents")
+      .select("document_id")
+      .eq("bundle_id", id);
+    const memberIds = (members || []).map((m) => m.document_id);
+    if (memberIds.length > 0) {
+      await supabase
+        .from("documents")
+        .update({ is_draft: false, updated_at: new Date().toISOString() })
+        .in("id", memberIds)
+        .eq("is_draft", true)
+        .is("deleted_at", null);
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -233,22 +250,76 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       updated_at: new Date().toISOString(),
     }).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to unpublish" }, { status: 500 });
+    // Cascade: a member doc reverts to draft only if it has NO OTHER
+    // published bundle keeping it visible. Otherwise unpublishing one
+    // bundle would yank its members out from under another bundle that
+    // is still public.
+    const { data: members } = await supabase
+      .from("bundle_documents")
+      .select("document_id")
+      .eq("bundle_id", id);
+    const memberIds = (members || []).map((m) => m.document_id);
+    if (memberIds.length > 0) {
+      // For each member, count published bundles (not this one) it still belongs to
+      const { data: otherMemberships } = await supabase
+        .from("bundle_documents")
+        .select("document_id, bundles!inner(id, is_draft)")
+        .in("document_id", memberIds)
+        .neq("bundle_id", id);
+      const stillPublishedElsewhere = new Set<string>();
+      type MembershipRow = { document_id: string; bundles: { is_draft: boolean } | { is_draft: boolean }[] | null };
+      for (const r of (otherMemberships || []) as MembershipRow[]) {
+        const b = Array.isArray(r.bundles) ? r.bundles[0] : r.bundles;
+        if (b && !b.is_draft) stillPublishedElsewhere.add(r.document_id);
+      }
+      const idsToUnpublish = memberIds.filter((id) => !stillPublishedElsewhere.has(id));
+      if (idsToUnpublish.length > 0) {
+        await supabase
+          .from("documents")
+          .update({ is_draft: true, updated_at: new Date().toISOString() })
+          .in("id", idsToUnpublish)
+          .is("deleted_at", null);
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 
   // ─── Action: set-allowed-emails ───
   if (body.action === "set-allowed-emails") {
     const allowedEmails = Array.isArray(body.allowedEmails) ? body.allowedEmails : [];
+    const allowedEditors = Array.isArray(body.allowedEditors) ? body.allowedEditors : [];
     // If the bundle was on /shared and we're locking it down, drop the
     // discovery flag — discoverability requires fully public.
     const updates: Record<string, unknown> = {
       allowed_emails: allowedEmails,
-      allowed_editors: Array.isArray(body.allowedEditors) ? body.allowedEditors : [],
+      allowed_editors: allowedEditors,
       updated_at: new Date().toISOString(),
     };
     if (allowedEmails.length > 0) updates.is_discoverable = false;
     const { error } = await supabase.from("bundles").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to update sharing" }, { status: 500 });
+    // Cascade member-level access: every doc that's a member of THIS
+    // bundle gets the same allowed_emails / allowed_editors. Otherwise
+    // the bundle says "shared with X" but X clicking through to a
+    // member doc gets 403/404 because the doc still has its own
+    // (different / empty) allow-list. Replaces rather than merges —
+    // bundle-level sharing wins for its members.
+    const { data: members } = await supabase
+      .from("bundle_documents")
+      .select("document_id")
+      .eq("bundle_id", id);
+    const memberIds = (members || []).map((m) => m.document_id);
+    if (memberIds.length > 0) {
+      await supabase
+        .from("documents")
+        .update({
+          allowed_emails: allowedEmails,
+          allowed_editors: allowedEditors,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", memberIds)
+        .is("deleted_at", null);
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -324,6 +395,33 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const { error } = await supabase.from("bundle_documents").upsert(newDocs, { onConflict: "bundle_id,document_id" });
     if (error) return NextResponse.json({ error: "Failed to add documents" }, { status: 500 });
     await supabase.from("bundles").update({ updated_at: new Date().toISOString() }).eq("id", id);
+    // Inherit the bundle's current visibility on the newly-added members.
+    // If the bundle is published or has an allow-list, the docs we just
+    // added must mirror that — otherwise viewers see them in the bundle's
+    // member list but get 403/404 fetching them individually.
+    const { data: bundleRow } = await supabase
+      .from("bundles")
+      .select("is_draft, allowed_emails, allowed_editors")
+      .eq("id", id)
+      .single();
+    if (bundleRow) {
+      const docUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (bundleRow.is_draft === false) docUpdates.is_draft = false;
+      if (Array.isArray(bundleRow.allowed_emails) && bundleRow.allowed_emails.length > 0) {
+        docUpdates.allowed_emails = bundleRow.allowed_emails;
+      }
+      if (Array.isArray(bundleRow.allowed_editors) && bundleRow.allowed_editors.length > 0) {
+        docUpdates.allowed_editors = bundleRow.allowed_editors;
+      }
+      // Only run when there's something beyond updated_at to set.
+      if (Object.keys(docUpdates).length > 1) {
+        await supabase
+          .from("documents")
+          .update(docUpdates)
+          .in("id", body.documentIds)
+          .is("deleted_at", null);
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 
