@@ -134,7 +134,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
         {/* ── Identity row ────────────────────────────────────────── */}
         <header className="flex items-start gap-4 mb-8">
           <img
-            src={data.hub.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${slug}`}
+            src={data.hub.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(slug)}`}
             alt=""
             className="w-16 h-16 rounded-full shrink-0"
             style={{ border: "1px solid var(--border-dim)" }}
@@ -259,7 +259,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
             <li className="flex items-start gap-2">
               <Eye width={12} height={12} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
               <span>
-                <strong style={{ color: "var(--text-primary)" }}>See your hub as a visitor sees it.</strong> The "View as visitor" link above opens the public-facing page — the exact thing that lands when someone opens your URL.
+                <strong style={{ color: "var(--text-primary)" }}>See your hub as a visitor sees it.</strong> The &ldquo;View as visitor&rdquo; link above opens the public-facing page — the exact thing that lands when someone opens your URL.
               </span>
             </li>
             <li className="flex items-start gap-2">

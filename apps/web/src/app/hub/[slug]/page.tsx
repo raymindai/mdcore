@@ -47,6 +47,24 @@ async function getHub(slug: string, at: Date | null): Promise<HubData | null> {
     .single();
   if (!profile || !profile.hub_public) return null;
 
+  // Match the sidebar's resolveAvatar fallback chain (profile →
+  // OAuth metadata → dicebear) so the hub page never shows a
+  // different face than the in-app sidebar for the same person.
+  let resolvedAvatar = profile.avatar_url || null;
+  let ownerEmail: string | null = null;
+  try {
+    const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+    ownerEmail = authUser?.user?.email || null;
+    if (!resolvedAvatar) {
+      const meta = (authUser?.user?.user_metadata as { avatar_url?: string } | undefined) || {};
+      if (meta.avatar_url) resolvedAvatar = meta.avatar_url;
+    }
+  } catch { /* admin lookup unavailable */ }
+  if (!resolvedAvatar) {
+    const seed = encodeURIComponent(ownerEmail || profile.hub_slug || "user");
+    resolvedAvatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${seed}`;
+  }
+
   const atIso = at ? at.toISOString() : null;
 
   let docsQuery = supabase

@@ -35,6 +35,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: "Hub not found" }, { status: 404 });
   }
 
+  // Avatar resolution must match the editor sidebar's `resolveAvatar`:
+  // profile.avatar_url → OAuth user_metadata.avatar_url → dicebear
+  // identicon seeded by EMAIL (not slug). Without this fall-through
+  // the in-editor hub page showed a slug-seeded dicebear identicon
+  // while the sidebar showed the user's Google/GitHub OAuth photo —
+  // same person, two different faces.
+  let resolvedAvatar = profile.avatar_url || null;
+  let ownerEmail: string | null = null;
+  try {
+    const { data: authUser } = await supabase.auth.admin.getUserById(profile.id);
+    ownerEmail = authUser?.user?.email || null;
+    if (!resolvedAvatar) {
+      const meta = (authUser?.user?.user_metadata as { avatar_url?: string } | undefined) || {};
+      if (meta.avatar_url) resolvedAvatar = meta.avatar_url;
+    }
+  } catch { /* admin lookup unavailable — fall through to dicebear */ }
+  if (!resolvedAvatar) {
+    const seed = encodeURIComponent(ownerEmail || profile.hub_slug || "user");
+    resolvedAvatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${seed}`;
+  }
+
   // Public docs from this user — non-draft, non-deleted, no password,
   // no email restrictions. Order by most-recently-updated.
   const { data: docs } = await supabase
@@ -122,7 +143,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     hub: {
       slug: profile.hub_slug,
       display_name: profile.display_name,
-      avatar_url: profile.avatar_url,
+      avatar_url: resolvedAvatar,
       description: profile.hub_description,
       plan: profile.plan,
       url: `https://mdfy.app/hub/${profile.hub_slug}`,
