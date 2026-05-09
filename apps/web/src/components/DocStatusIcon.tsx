@@ -5,21 +5,26 @@ import {
 import Tooltip from "@/components/Tooltip";
 
 // Doc icon — communicates ACCESS state (Public / Shared / Private),
-// matching the access-tier vocabulary the Hub view uses. The same
-// classification logic powers /api/hub/[slug]'s ownerView, so a doc
-// reads the same way in MDs, in Recent, and in the Hub tab.
+// matching the same vocabulary the ShareModal and Hub view use.
 //
-// Tier breakdown (mirrors hub-route.ts):
-//   - Private:  is_draft=true, OR shared-with-me readonly views
-//   - Shared:   published AND (password OR allowed_emails OR a public
-//               link)
-//   - Public:   published AND no password, no email allow-list, no
-//               public-link mode
+// Definitions (must stay in lockstep with ShareModal +
+// /api/hub/[slug] classifyDoc):
+//   - Public:  edit_mode is "view" or "public" — anyone with the
+//              URL can read. ShareModal's "Anyone with the link".
+//   - Shared:  has password OR allowed_emails — restricted to
+//              specific people. ShareModal's "Restricted" + people.
+//   - Private: anything else. Drafts AND published docs whose
+//              edit_mode is "account"/"owner"/"token" with no
+//              password and no allowed_emails (only the owner can
+//              read). ShareModal's plain "Restricted".
 //
-// The synced-from-external badge (green checkmark on top of the
-// access icon) is preserved and overlays whichever tier the doc is
-// in. Externally-synced + private vs externally-synced + shared etc.
-// all read at once.
+// "Published" alone (is_draft=false) is NOT enough to be Public —
+// the owner has to explicitly grant view/public access via the
+// share modal. Otherwise the doc is restricted to the owner only,
+// which is Private.
+//
+// The synced-from-external badge (green checkmark) overlays
+// whichever tier the doc is in.
 
 function DocStatusIcon({ tab, isActive }: {
   tab: {
@@ -38,7 +43,7 @@ function DocStatusIcon({ tab, isActive }: {
   void isActive;
 
   const isPublished = tab.isDraft === false;
-  const isPublicLink = tab.editMode === "view" || tab.editMode === "public" || tab.isSharedByMe === true;
+  const isPublicLink = tab.editMode === "view" || tab.editMode === "public";
   const hasEmailRestriction = (tab.sharedWithCount ?? 0) > 0 || tab.isRestricted === true;
   const hasPassword = tab.hasPassword === true;
   const isSynced = tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source);
@@ -51,12 +56,10 @@ function DocStatusIcon({ tab, isActive }: {
     Icon = Eye;
     color = "var(--text-faint)";
     tip = "View only — shared with you";
-  } else if (!isPublished) {
-    // Drafts and any owner-only doc that hasn't been published yet.
-    Icon = Lock;
-    color = "var(--text-faint)";
-    tip = "Private — only you can read this";
-  } else if (hasPassword || hasEmailRestriction) {
+  } else if (isPublished && (hasPassword || hasEmailRestriction)) {
+    // Shared takes priority over Public when both apply (specific-
+    // people restrictions narrow the audience even if a public-link
+    // mode is set).
     Icon = Users;
     color = "#60a5fa";
     tip = hasPassword && hasEmailRestriction
@@ -64,18 +67,19 @@ function DocStatusIcon({ tab, isActive }: {
       : hasPassword
         ? "Shared — password protected"
         : "Shared — with specific people";
-  } else if (isPublicLink) {
+  } else if (isPublished && isPublicLink) {
     Icon = Globe;
     color = "var(--accent)";
     tip = "Public — anyone with the link can read";
   } else {
-    // Published but the owner hasn't opted into a public link or
-    // email restriction. Treat as PUBLIC — it's listed on the hub
-    // and reachable by URL — so the user sees the same Globe they
-    // see in the Hub view's Public section.
-    Icon = Globe;
-    color = "var(--accent)";
-    tip = "Public — listed on your hub";
+    // Drafts AND published-but-restricted docs (edit_mode owner /
+    // account / token with no shares). Both are private to the owner
+    // — the URL can't be opened by anyone else.
+    Icon = Lock;
+    color = "var(--text-faint)";
+    tip = isPublished
+      ? "Private — restricted to you"
+      : "Private — draft, only you can read";
   }
 
   if (isSynced) tip += ` · synced from ${tab.source}`;

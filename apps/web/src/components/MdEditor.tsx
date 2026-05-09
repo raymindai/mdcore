@@ -3980,19 +3980,19 @@ export default function MdEditor() {
             compileFrom: doc.compile_from || undefined,
             compiledAt: doc.compiled_at || undefined,
           } : x));
-          // If the server's stored title disagreed with the H1, push the
-          // H1 back to the server so future loads converge.
-          if (fetchedH1 && fetchedH1 !== "Untitled" && fetchedH1 !== doc.title) {
-            autoSave.scheduleSave({
-              cloudId: tab.cloudId!,
-              markdown: md,
-              title: fetchedH1,
-              userId: user?.id,
-              userEmail: user?.email,
-              anonymousId,
-              editToken: tab.editToken,
-            });
-          }
+          // PREVIOUSLY: when server's stored title disagreed with the
+          // first H1, loadTab fired a scheduleSave to push the H1 back.
+          // That save included expectedUpdatedAt, so any concurrent
+          // server-side edit (another device, hub regen, etc.) made
+          // the user see a "Document Conflict" modal even though they
+          // hadn't typed a single character.
+          //
+          // The local tab title is already set to the H1-derived value
+          // above, so MDs / Recent / the editor header all read it
+          // correctly for this session. The next time the user makes
+          // any actual edit, triggerAutoSave will include this same
+          // title in its body and the server converges naturally — no
+          // ghost conflict modal in the meantime.
         })
         .catch(() => {
           doRenderRef.current("");
