@@ -2639,6 +2639,15 @@ export default function MdEditor() {
   const [showMyDocs, setShowMyDocs] = useState(true);
   const [showMyBundles, setShowMyBundles] = useState(true);
   const [bundleView, setBundleView] = useState<"canvas" | "list">("canvas");
+  // Hub-tab view mode — Overview is the workspace landing page (profile,
+  // deploy-to-AI strip, bundles + docs lists). Graph is the
+  // Obsidian-style concept canvas embedded inline. Persisted so the
+  // user's last choice survives a reload.
+  const [hubView, setHubView] = useState<"overview" | "graph">(() => {
+    if (typeof window === "undefined") return "overview";
+    return (localStorage.getItem("mdfy-hub-view") as "overview" | "graph") || "overview";
+  });
+  useEffect(() => { try { localStorage.setItem("mdfy-hub-view", hubView); } catch {} }, [hubView]);
   const [showBundleChat, setShowBundleChat] = useState(false);
   const [activeBundleDocIds, setActiveBundleDocIds] = useState<Set<string>>(new Set());
   const [showSharedDocs, setShowSharedDocs] = useState(() => {
@@ -8185,8 +8194,32 @@ ${clone.innerHTML}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
           </button>
-          {/* View buttons — different for bundle tabs vs doc tabs */}
-          {activeTab?.kind === "bundle" ? (
+          {/* View buttons — different per tab kind: hub gets
+              [Overview | Graph], bundle gets [Canvas | List], doc/home
+              gets [Live | Split | Source]. */}
+          {activeTab?.kind === "hub" ? (
+            <>
+              {/* Hub: Overview (list-style landing) / Graph (Obsidian
+                  concept canvas embedded inline). */}
+              {([
+                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <Layers width={13} height={13} /> },
+                { mode: "graph" as const,    label: "Graph",    shortcut: "2", icon: <Network width={13} height={13} /> },
+              ]).map(({ mode, label, shortcut, icon }) => {
+                const active = !showOnboarding && hubView === mode;
+                return (
+                  <button key={mode} onClick={() => { setHubView(mode); setShowOnboarding(false); }} title={`${label} (Alt+${shortcut})`}
+                    className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
+                    style={{
+                      background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
+                      color: active ? "var(--accent)" : "var(--text-muted)",
+                    }}>
+                    {icon}
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                );
+              })}
+            </>
+          ) : activeTab?.kind === "bundle" ? (
             <>
               {/* Bundle: Canvas / List. Canvas uses Network (graph nodes
                   + edges) — Layers stays reserved for the Bundle primitive
@@ -11516,9 +11549,8 @@ ${clone.innerHTML}
                 <div className="flex-1 min-w-0">
                   <HubEmbed
                     slug={activeTab.hubSlug}
-                    onOpenGraph={() => {
-                      if (activeTab.hubSlug) window.open(`/hub/${activeTab.hubSlug}/graph`, "_blank");
-                    }}
+                    view={hubView}
+                    onSwitchToGraph={() => setHubView("graph")}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }
