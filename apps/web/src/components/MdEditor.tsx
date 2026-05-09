@@ -38,7 +38,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8127,6 +8127,60 @@ ${clone.innerHTML}
           className="flex items-center gap-1.5 shrink-0 pointer-events-auto"
           style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
+          {/* Hub — leftmost pill in the centre cluster. Sits OUTSIDE
+              both the [Back|Forward] and [Home + views] groups so it
+              never disrupts those layouts. h-6 + 1px border in its
+              own rounded-lg div matches the sibling pills exactly. */}
+          {hubSlug && (() => {
+            const hubTabId = `hub-${hubSlug}`;
+            const isHubActive = activeTab?.id === hubTabId;
+            return (
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
+                  <button
+                    onClick={() => {
+                      if (isHubActive) {
+                        const fallback = recentTabIds
+                          .map(id => tabs.find(t => t.id === id))
+                          .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
+                          || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
+                        setTabs(prev => prev.filter(t => t.id !== hubTabId));
+                        setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
+                        if (fallback) switchTab(fallback.id);
+                        else setShowOnboarding(true);
+                        return;
+                      }
+                      setShowOnboarding(false);
+                      setTabs(prev => {
+                        if (prev.some(t => t.id === hubTabId)) return prev;
+                        const newTab: Tab = {
+                          id: hubTabId,
+                          kind: "hub",
+                          hubSlug,
+                          title: "My Hub",
+                          markdown: "",
+                        };
+                        return [...prev, newTab];
+                      });
+                      queueMicrotask(() => switchTab(hubTabId));
+                      if (!isDraggingSidebarRef.current) {
+                        setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
+                    style={{
+                      background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
+                      color: isHubActive ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                    aria-pressed={isHubActive}
+                  >
+                    <Bookmark width={13} height={13} />
+                    <span className="hidden sm:inline">Hub</span>
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })()}
           {/* Back / Forward — own group, separate from Home */}
           {(() => {
             void navTick; // re-evaluate on history tick
@@ -8166,61 +8220,6 @@ ${clone.innerHTML}
                   </button>
                 </Tooltip>
               </div>
-            );
-          })()}
-          {/* Hub — own pill, separated from the Home + view-modes group.
-              Hub is a destination, not a view mode, so it deserves
-              visual separation. Toggles the in-editor hub tab: first
-              click opens `/hub/<slug>` as an editor tab; second click
-              (while the hub tab is active) closes it and returns to
-              the previous tab. Only rendered when hub_slug exists. */}
-          {hubSlug && (() => {
-            const hubTabId = `hub-${hubSlug}`;
-            const isHubActive = activeTab?.id === hubTabId;
-            return (
-              <Tooltip text={isHubActive ? "Close My Hub" : "My Hub — public knowledge base"} position="bottom">
-                <button
-                  onClick={() => {
-                    if (isHubActive) {
-                      const fallback = recentTabIds
-                        .map(id => tabs.find(t => t.id === id))
-                        .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
-                        || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
-                      setTabs(prev => prev.filter(t => t.id !== hubTabId));
-                      setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
-                      if (fallback) switchTab(fallback.id);
-                      else setShowOnboarding(true);
-                      return;
-                    }
-                    setShowOnboarding(false);
-                    setTabs(prev => {
-                      if (prev.some(t => t.id === hubTabId)) return prev;
-                      const newTab: Tab = {
-                        id: hubTabId,
-                        kind: "hub",
-                        hubSlug,
-                        title: "My Hub",
-                        markdown: "",
-                      };
-                      return [...prev, newTab];
-                    });
-                    queueMicrotask(() => switchTab(hubTabId));
-                    if (!isDraggingSidebarRef.current) {
-                      setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
-                    }
-                  }}
-                  className="flex items-center gap-1 px-2 h-6 rounded-lg text-caption font-medium transition-colors"
-                  style={{
-                    background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
-                    color: isHubActive ? "var(--accent)" : "var(--text-muted)",
-                    border: `1px solid ${isHubActive ? "var(--accent)" : "var(--border-dim)"}`,
-                  }}
-                  aria-pressed={isHubActive}
-                >
-                  <Network width={13} height={13} />
-                  <span className="hidden sm:inline">Hub</span>
-                </button>
-              </Tooltip>
             );
           })()}
           {/* Home + view modes — own group */}
@@ -11504,9 +11503,6 @@ ${clone.innerHTML}
                 <div className="flex-1 min-w-0">
                   <HubEmbed
                     slug={activeTab.hubSlug}
-                    onNewDoc={() => addTab()}
-                    onNewBundle={() => { setBundleCreatorDocs([]); setShowBundleCreator(true); }}
-                    onOpenChat={() => { setShowAIPanel(true); setAiPanelMode("hub"); }}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }

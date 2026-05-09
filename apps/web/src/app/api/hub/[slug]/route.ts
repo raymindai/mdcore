@@ -100,6 +100,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     if (!lastUpdated || d.updated_at > lastUpdated) lastUpdated = d.updated_at;
   }
 
+  // Drafts count — owner-private docs that exist in the library but
+  // don't show on the public hub. Surfaced in the response so the
+  // editor's hub view can honestly say "X drafts not shown" instead
+  // of letting the founder think the hub count is the whole library.
+  const { count: draftsCount } = await supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id)
+    .eq("is_draft", true)
+    .is("deleted_at", null);
+  // Bundles drafts too — bundles table doesn't have deleted_at, so
+  // is_draft alone is the filter.
+  const { count: bundleDraftsCount } = await supabase
+    .from("bundles")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id)
+    .eq("is_draft", true);
+
   return NextResponse.json({
     hub: {
       slug: profile.hub_slug,
@@ -123,6 +141,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       bundles: publicBundles.length,
       concepts: totalConceptCount,
       totalWords,
+      drafts: draftsCount ?? 0,
+      bundleDrafts: bundleDraftsCount ?? 0,
     },
     lastUpdated,
   });
