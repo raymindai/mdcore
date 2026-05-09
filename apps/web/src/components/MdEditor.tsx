@@ -11845,54 +11845,63 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
-                  {/* Mode switcher — three-tab radio so all assistants
-                      (Document, Bundle, Hub) are visible at once. Active
-                      tab tracks the current scope automatically: opening
-                      a doc tab makes Document active, opening a bundle
-                      tab makes Bundle active. Clicking an inactive
-                      Document/Bundle tab jumps to the most-recent tab of
-                      that kind. Hub is always reachable when hub_slug
-                      exists. Single accent colour — orange — for both
-                      the active fill and labels. */}
+                  {/* Mode switcher — two tabs: the per-scope assistant
+                      (Document or Bundle, whichever matches the current
+                      tab) plus Hub. We don't render Document AND Bundle
+                      simultaneously since only one is meaningful at a
+                      time; the visible per-scope tab swaps based on
+                      activeTab.kind. Active state uses accent-dim
+                      background + orange text (high contrast in dark
+                      mode); orange-on-white was hard to read. */}
                   <div className="px-2 pt-2 shrink-0">
                     <div
-                      className="grid grid-cols-3 gap-0.5 p-0.5 rounded-lg"
+                      className="flex items-center gap-0.5 p-0.5 rounded-lg"
                       style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
                       role="radiogroup"
                       aria-label="Assistant mode"
                     >
-                      {([
-                        { id: "doc",    label: "Document", icon: <Sparkles width={11} height={11} />,
-                          active: !isHubMode && !isBundleMode,
-                          onClick: () => jumpToMostRecent("doc") },
-                        { id: "bundle", label: "Bundle",   icon: <Layers width={11} height={11} />,
-                          active: !isHubMode && isBundleMode,
-                          onClick: () => jumpToMostRecent("bundle") },
-                        ...(hubSlug ? [{ id: "hub" as const, label: "Hub", icon: <Network width={11} height={11} />,
-                          active: isHubMode,
-                          onClick: () => setAiPanelMode("hub") }] : []),
-                      ]).map((t) => (
-                        <button
-                          key={t.id}
-                          role="radio"
-                          aria-checked={t.active}
-                          onClick={t.onClick}
-                          className="flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
-                          style={{
-                            background: t.active ? "var(--accent)" : "transparent",
-                            color: t.active ? "#fff" : "var(--text-faint)",
-                            boxShadow: t.active ? "0 1px 3px rgba(251,146,60,0.35)" : "none",
-                          }}
-                          title={
-                            t.id === "doc" ? "Document Assistant — chat scoped to the current doc" :
-                            t.id === "bundle" ? "Bundle Assistant — chat scoped to the current bundle" :
-                            "Hub Assistant — chat across your whole hub"
-                          }
-                        >
-                          {t.icon}
-                          {t.label}
-                        </button>
-                      ))}
+                      {(() => {
+                        type ModeTab = { id: "doc" | "bundle" | "hub"; label: string; icon: React.ReactNode; active: boolean; onClick: () => void; title: string };
+                        // Pick whichever scope tab applies right now —
+                        // Document if the user is on a doc, Bundle if on
+                        // a bundle. Active when aiPanelMode is auto.
+                        const scopeTab: ModeTab = isBundleMode || activeTab?.kind === "bundle"
+                          ? { id: "bundle", label: "Bundle", icon: <Layers width={11} height={11} />,
+                              active: !isHubMode && isBundleMode,
+                              onClick: () => setAiPanelMode("auto"),
+                              title: "Bundle Assistant — chat scoped to the current bundle" }
+                          : { id: "doc", label: "Document", icon: <Sparkles width={11} height={11} />,
+                              active: !isHubMode,
+                              onClick: () => setAiPanelMode("auto"),
+                              title: "Document Assistant — chat scoped to the current doc" };
+                        const radioTabs: ModeTab[] = [scopeTab];
+                        if (hubSlug) {
+                          radioTabs.push({
+                            id: "hub", label: "Hub", icon: <Network width={11} height={11} />,
+                            active: isHubMode,
+                            onClick: () => setAiPanelMode("hub"),
+                            title: "Hub Assistant — chat across your whole hub",
+                          });
+                        }
+                        return radioTabs.map((t) => (
+                          <button
+                            key={t.id}
+                            role="radio"
+                            aria-checked={t.active}
+                            onClick={t.onClick}
+                            className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
+                            style={{
+                              background: t.active ? "var(--accent-dim)" : "transparent",
+                              color: t.active ? "var(--accent)" : "var(--text-faint)",
+                              border: t.active ? "1px solid var(--accent)" : "1px solid transparent",
+                            }}
+                            title={t.title}
+                          >
+                            {t.icon}
+                            {t.label}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                   {/* Hub mode → ontology-grounded chat over the whole hub */}

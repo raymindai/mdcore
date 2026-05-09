@@ -223,11 +223,21 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
 
   const isUser = message.role === "user";
   if (isUser) {
+    // User bubble — quiet dark surface (not loud orange). Right
+    // alignment + sharp top-right corner is enough to read as
+    // "from me"; the orange glaze hurt legibility (orange + white).
     return (
       <div className="flex justify-end">
         <div
-          className="max-w-[85%] min-w-0 px-3 py-2 rounded-2xl rounded-tr-md text-sm"
-          style={{ background: chatAccent, color: "#fff", overflowWrap: "anywhere", wordBreak: "break-word" }}
+          className="max-w-[85%] min-w-0 px-3 py-2 rounded-2xl rounded-tr-md leading-relaxed"
+          style={{
+            background: "var(--surface)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-dim)",
+            fontSize: 13,
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+          }}
         >
           {message.content}
         </div>
@@ -254,11 +264,12 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
         </span>
       </div>
       <div
-        className="px-3 py-2 rounded-lg text-sm leading-relaxed min-w-0"
+        className="px-3 py-2 rounded-lg leading-relaxed min-w-0"
         style={{
           background: "var(--toggle-bg)",
           color: "var(--text-primary)",
           border: "1px solid var(--border-dim)",
+          fontSize: 13,
         }}
       >
         <ChatMarkdown
