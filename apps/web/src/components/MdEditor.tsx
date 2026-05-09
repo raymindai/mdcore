@@ -38,7 +38,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8250,7 +8250,7 @@ ${clone.innerHTML}
                     }}
                     aria-pressed={isHubActive}
                   >
-                    <Globe width={13} height={13} />
+                    <LayoutDashboard width={13} height={13} />
                     <span className="hidden sm:inline">Hub</span>
                   </button>
                 </Tooltip>
@@ -9191,13 +9191,14 @@ ${clone.innerHTML}
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Desktop, CLI, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
-              <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — listed on your hub</span></div>
+              <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — anyone with the link can read</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared — password or specific people</span></div>
-              <div className="flex items-center gap-2"><Lock width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private — only you</span></div>
-              <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only (shared with me)</span></div>
+              <div className="flex items-center gap-2"><Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Saved — only you can read (open Share to publish)</span></div>
+              <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Draft — work in progress</span></div>
+              <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only — shared with you</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 12, height: 12 }}>
-                  <Globe width={12} height={12} style={{ color: "var(--accent)" }} />
+                  <Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} />
                   <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="var(--accent)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
                 </div>
                 <span style={{ color: "var(--text-muted)" }}>+ Synced (VS Code, Desktop, CLI, MCP)</span>

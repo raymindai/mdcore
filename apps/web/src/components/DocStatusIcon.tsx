@@ -1,30 +1,26 @@
 import { memo } from "react";
 import {
-  Eye, Globe, Lock, Users,
+  Eye, Globe, Cloud, Pencil, Users, FileIcon,
 } from "lucide-react";
 import Tooltip from "@/components/Tooltip";
 
-// Doc icon — communicates ACCESS state (Public / Shared / Private),
-// matching the same vocabulary the ShareModal and Hub view use.
+// Doc icon — communicates ACCESS state. Five distinct states so the
+// founder's library doesn't read as a wall of identical icons:
 //
-// Definitions (must stay in lockstep with ShareModal +
-// /api/hub/[slug] classifyDoc):
-//   - Public:  edit_mode is "view" or "public" — anyone with the
-//              URL can read. ShareModal's "Anyone with the link".
-//   - Shared:  has password OR allowed_emails — restricted to
-//              specific people. ShareModal's "Restricted" + people.
-//   - Private: anything else. Drafts AND published docs whose
-//              edit_mode is "account"/"owner"/"token" with no
-//              password and no allowed_emails (only the owner can
-//              read). ShareModal's plain "Restricted".
+//   Eye       (faint)  View only — shared WITH you (not yours)
+//   Pencil    (faint)  Draft — work-in-progress, not yet published
+//   Cloud     (faint)  Saved cloud — published but only you can read
+//                       (default for logged-in user, edit_mode account/token)
+//   Users     (blue)   Shared — password OR specific people
+//   Globe     (accent) Public — anyone with the link can read
+//                       (edit_mode view/public)
 //
-// "Published" alone (is_draft=false) is NOT enough to be Public —
-// the owner has to explicitly grant view/public access via the
-// share modal. Otherwise the doc is restricted to the owner only,
-// which is Private.
+// "Published" and "Public" are NOT the same: a doc you publish without
+// granting view/public access is just persisted to cloud — only you
+// can read it via /d/<id>. The Cloud icon captures that nuance.
 //
-// The synced-from-external badge (green checkmark) overlays
-// whichever tier the doc is in.
+// The synced-from-external badge (green checkmark) overlays whichever
+// tier the doc is in.
 
 function DocStatusIcon({ tab, isActive }: {
   tab: {
@@ -57,9 +53,6 @@ function DocStatusIcon({ tab, isActive }: {
     color = "var(--text-faint)";
     tip = "View only — shared with you";
   } else if (isPublished && (hasPassword || hasEmailRestriction)) {
-    // Shared takes priority over Public when both apply (specific-
-    // people restrictions narrow the audience even if a public-link
-    // mode is set).
     Icon = Users;
     color = "#60a5fa";
     tip = hasPassword && hasEmailRestriction
@@ -71,15 +64,23 @@ function DocStatusIcon({ tab, isActive }: {
     Icon = Globe;
     color = "var(--accent)";
     tip = "Public — anyone with the link can read";
-  } else {
-    // Drafts AND published-but-restricted docs (edit_mode owner /
-    // account / token with no shares). Both are private to the owner
-    // — the URL can't be opened by anyone else.
-    Icon = Lock;
+  } else if (isPublished) {
+    // Saved to cloud, but no public link and no shares set —
+    // ShareModal calls this "Restricted". Only the owner can read it
+    // via /d/<id>. Default state for a logged-in user's published
+    // docs.
+    Icon = Cloud;
     color = "var(--text-faint)";
-    tip = isPublished
-      ? "Private — restricted to you"
-      : "Private — draft, only you can read";
+    tip = "Saved — only you can read this. Open Share to publish.";
+  } else if (tab.cloudId) {
+    // Auto-saved draft, never published.
+    Icon = Pencil;
+    color = "var(--text-faint)";
+    tip = "Draft — work in progress, not yet published";
+  } else {
+    Icon = FileIcon;
+    color = "var(--text-faint)";
+    tip = "Local — not saved to cloud yet";
   }
 
   if (isSynced) tip += ` · synced from ${tab.source}`;
