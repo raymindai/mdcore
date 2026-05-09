@@ -11809,45 +11809,48 @@ ${clone.innerHTML}
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start items-start gap-2"} min-w-0`}>
+                      <div key={i} className={`flex flex-col gap-1.5 min-w-0`}>
                         {msg.role === "ai" && (
-                          <div
-                            className="shrink-0 flex items-center justify-center mt-0.5"
-                            style={{
-                              width: 22, height: 22, borderRadius: 999,
-                              background: mode.accentDim, color: mode.accent,
-                              border: `1px solid ${mode.accent}`,
-                            }}
-                            title="Document Assistant"
-                          >
-                            <Sparkles width={11} height={11} />
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="flex items-center justify-center shrink-0"
+                              style={{ width: 20, height: 20, borderRadius: 4, background: "var(--accent-dim)" }}
+                            >
+                              <Sparkles width={11} height={11} style={{ color: "var(--accent)" }} />
+                            </div>
+                            <span
+                              className="font-bold uppercase tracking-wider"
+                              style={{ color: "var(--accent)", fontSize: 10, letterSpacing: "0.08em" }}
+                            >
+                              Document
+                            </span>
                           </div>
                         )}
-                        <div className={`max-w-[85%] min-w-0 px-3 py-2 text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
-                          style={{
-                            background: msg.role === "user" ? mode.accent : "var(--toggle-bg)",
-                            color: msg.role === "user" ? "#fff" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-primary)",
-                            border: msg.role === "ai" && !msg.text.startsWith("Error") ? "1px solid var(--border-dim)" : undefined,
-                            borderRadius: 14,
-                            borderTopRightRadius: msg.role === "user" ? 4 : 14,
-                            borderTopLeftRadius: msg.role === "ai" ? 4 : 14,
-                            borderLeft: msg.role === "ai" && !msg.text.startsWith("Error") ? `2px solid ${mode.accentDim}` : undefined,
-                            overflowWrap: "anywhere",
-                            wordBreak: "break-word",
-                          }}>
-                          <span>{msg.text}</span>
-                          {msg.canUndo && undoStack.current.length > 1 && (
-                            <button
-                              onClick={() => {
-                                undo();
-                                setAiChatHistory(prev => prev.map((m, j) => j === i ? { ...m, canUndo: false, text: m.text + " (undone)" } : m));
-                              }}
-                              className="ml-2 px-1.5 py-0.5 rounded text-caption font-medium transition-colors hover:opacity-80"
-                              style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
-                            >
-                              Undo
-                            </button>
-                          )}
+                        <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} min-w-0`}>
+                          <div className={`max-w-[85%] min-w-0 px-3 py-2 text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
+                            style={{
+                              background: msg.role === "user" ? "var(--accent)" : "var(--toggle-bg)",
+                              color: msg.role === "user" ? "#fff" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-primary)",
+                              border: msg.role === "ai" && !msg.text.startsWith("Error") ? "1px solid var(--border-dim)" : undefined,
+                              borderRadius: 14,
+                              borderTopRightRadius: msg.role === "user" ? 4 : 14,
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                            }}>
+                            <span>{msg.text}</span>
+                            {msg.canUndo && undoStack.current.length > 1 && (
+                              <button
+                                onClick={() => {
+                                  undo();
+                                  setAiChatHistory(prev => prev.map((m, j) => j === i ? { ...m, canUndo: false, text: m.text + " (undone)" } : m));
+                                }}
+                                className="ml-2 px-1.5 py-0.5 rounded text-caption font-medium transition-colors hover:opacity-80"
+                                style={{ color: "var(--accent)", background: "var(--accent-dim)" }}
+                              >
+                                Undo
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

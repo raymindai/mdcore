@@ -214,64 +214,62 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
   );
 }
 
-function MessageBubble({ message, onCitationClick, isStreaming, accent, accentDim }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
+function MessageBubble({ message, onCitationClick, isStreaming }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
+  // Chat bubbles use the global mdfy orange uniformly — per-mode colour
+  // already lives in the panel header so you know which assistant is
+  // active; the bubble itself doesn't need to repeat that signal.
+  const chatAccent = "var(--accent)";
+  const chatAccentDim = "var(--accent-dim)";
+
   const isUser = message.role === "user";
   if (isUser) {
-    // User bubble — solid accent on the right, sharp top-right corner
-    // points toward the speaker.
     return (
       <div className="flex justify-end">
         <div
           className="max-w-[85%] min-w-0 px-3 py-2 rounded-2xl rounded-tr-md text-sm"
-          style={{ background: accent, color: "#fff", overflowWrap: "anywhere", wordBreak: "break-word" }}
+          style={{ background: chatAccent, color: "#fff", overflowWrap: "anywhere", wordBreak: "break-word" }}
         >
           {message.content}
         </div>
       </div>
     );
   }
-  // Assistant bubble — avatar on the left + a subtle bubble container
-  // so the message is visibly framed (not just floating text under a
-  // small badge). Sharp top-left corner points back at the avatar.
+  // Assistant: small rounded-square avatar + label above the bubble.
+  // Bubble is a quiet container — no left stripe — so the message
+  // reads as a chat bubble, not a callout.
   return (
-    <div className="flex justify-start items-start gap-2 min-w-0">
-      <div
-        className="shrink-0 flex items-center justify-center mt-0.5"
-        style={{
-          width: 26, height: 26, borderRadius: 999,
-          background: accentDim, color: accent,
-          border: `1px solid ${accent}`,
-        }}
-        title="Hub Assistant"
-      >
-        <Network width={13} height={13} />
-      </div>
-      <div className="min-w-0 max-w-[88%] flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{ width: 20, height: 20, borderRadius: 4, background: chatAccentDim }}
+        >
+          <Network width={11} height={11} style={{ color: chatAccent }} />
+        </div>
         <span
           className="font-bold uppercase tracking-wider"
-          style={{ color: accent, fontSize: 9, letterSpacing: "0.08em" }}
+          style={{ color: chatAccent, fontSize: 10, letterSpacing: "0.08em" }}
         >
           Hub
         </span>
-        <div
-          className="px-3 py-2 rounded-2xl rounded-tl-md text-sm leading-relaxed min-w-0"
-          style={{
-            background: "var(--toggle-bg)",
-            color: "var(--text-primary)",
-            border: "1px solid var(--border-dim)",
-            borderLeft: `2px solid ${accentDim}`,
-          }}
-        >
-          <ChatMarkdown
-            content={message.content}
-            accent={accent}
-            accentDim={accentDim}
-            citationRegex={/\[doc:([\w-]+)\]/g}
-            resolveCitation={(m) => ({ label: m[1], docId: m[1], title: `Open doc ${m[1]}` })}
-            onCitationClick={onCitationClick}
-          />
-          {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: accent, verticalAlign: "middle" }} />}
-        </div>
+      </div>
+      <div
+        className="px-3 py-2 rounded-lg text-sm leading-relaxed min-w-0"
+        style={{
+          background: "var(--toggle-bg)",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border-dim)",
+        }}
+      >
+        <ChatMarkdown
+          content={message.content}
+          accent={chatAccent}
+          accentDim={chatAccentDim}
+          citationRegex={/\[doc:([\w-]+)\]/g}
+          resolveCitation={(m) => ({ label: m[1], docId: m[1], title: `Open doc ${m[1]}` })}
+          onCitationClick={onCitationClick}
+        />
+        {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: chatAccent, verticalAlign: "middle" }} />}
       </div>
     </div>
   );
