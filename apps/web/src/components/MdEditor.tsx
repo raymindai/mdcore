@@ -11539,19 +11539,47 @@ ${clone.innerHTML}
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
               {showAIPanel && (canEdit || activeTab?.kind === "bundle" || (aiPanelMode === "hub" && hubSlug)) && (() => {
-                // Mode definitions — extensible: add a new entry per future mode
-                // and the panel will display its label + icon automatically.
+                // Three assistants, three identities. Each mode owns a
+                // distinct color, icon, and scope so the user always knows
+                // which scope they're chatting with: one doc, a bundle of
+                // them, or the whole hub. Visual identity flows through to
+                // the chat bubbles + citation chips via accent props.
                 const isHubMode = aiPanelMode === "hub" && !!hubSlug;
                 const isBundleMode = !isHubMode && activeTab?.kind === "bundle";
-                // Hub mode forces ontology-grounded chat over the entire hub.
-                // Bundle mode is the per-bundle assistant. Doc mode is the
-                // default per-document AI tools surface. All three carry the
-                // Sparkles glyph in the header for visual unity.
+                const activeBundle = isBundleMode ? bundles.find(b => b.id === activeTab?.bundleId) : null;
+                const docWordCount = !isHubMode && !isBundleMode ? markdown.trim().split(/\s+/).filter(Boolean).length : 0;
                 const mode = isHubMode
-                  ? { id: "hub" as const, label: "Hub Assistant", icon: <Sparkles width={12} height={12} /> }
+                  ? {
+                      id: "hub" as const,
+                      label: "Hub",
+                      icon: <Network width={12} height={12} />,
+                      accent: "#a78bfa",
+                      accentDim: "rgba(167,139,250,0.16)",
+                      scope: hubConceptCount > 0
+                        ? `${hubConceptCount} concepts · whole hub`
+                        : "ontology not built yet",
+                    }
                   : isBundleMode
-                    ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Sparkles width={12} height={12} /> }
-                    : { id: "doc" as const, label: "Document Assistant", icon: <Sparkles width={12} height={12} /> };
+                    ? {
+                        id: "bundle" as const,
+                        label: "Bundle",
+                        icon: <Layers width={12} height={12} />,
+                        accent: "#38bdf8",
+                        accentDim: "rgba(56,189,248,0.16)",
+                        scope: activeBundle
+                          ? `${activeBundle.documentCount} doc${activeBundle.documentCount === 1 ? "" : "s"} · ${activeBundle.title || "Untitled"}`
+                          : (activeTab?.title || "this bundle"),
+                      }
+                    : {
+                        id: "doc" as const,
+                        label: "Document",
+                        icon: <Sparkles width={12} height={12} />,
+                        accent: "var(--accent)",
+                        accentDim: "var(--accent-dim)",
+                        scope: activeTab?.title
+                          ? `${activeTab.title}${docWordCount > 0 ? ` · ${docWordCount.toLocaleString()} word${docWordCount === 1 ? "" : "s"}` : ""}`
+                          : (docWordCount > 0 ? `${docWordCount.toLocaleString()} words` : "draft"),
+                      };
                 return (
                 <div
                   data-pane="ai-panel"
@@ -11583,11 +11611,33 @@ ${clone.innerHTML}
                     <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
-                  {/* Mode indicator + actions header */}
-                  <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                    <div className="flex items-center gap-1.5">
-                      <span style={{ color: "var(--accent)" }}>{mode.icon}</span>
-                      <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>{mode.label}</span>
+                  {/* Mode indicator + actions header. The bar carries the
+                      mode color so the surface itself signals which
+                      assistant you're talking to without reading text. */}
+                  <div
+                    className="flex items-center justify-between px-3 py-2 shrink-0 gap-3"
+                    style={{
+                      borderBottom: "1px solid var(--border-dim)",
+                      background: `linear-gradient(to right, ${mode.accentDim}, transparent 70%)`,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span
+                        className="flex items-center justify-center shrink-0"
+                        style={{
+                          width: 22, height: 22, borderRadius: 6,
+                          background: mode.accentDim,
+                          color: mode.accent,
+                        }}
+                      >
+                        {mode.icon}
+                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-caption font-semibold leading-tight" style={{ color: mode.accent }}>{mode.label}</span>
+                        <span className="text-caption leading-tight truncate" style={{ color: "var(--text-faint)", fontSize: 10 }} title={mode.scope}>
+                          {mode.scope}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {/* Hub-mode toggle — only when the user has a public hub_slug.
@@ -11607,7 +11657,7 @@ ${clone.innerHTML}
                           Hub
                         </button>
                       )}
-                      {aiChatHistory.length > 0 && !isHubMode && (
+                      {aiChatHistory.length > 0 && !isHubMode && !isBundleMode && (
                         <button
                           onClick={() => setAiChatHistory([])}
                           className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
@@ -11644,6 +11694,8 @@ ${clone.innerHTML}
                       slug={hubSlug}
                       hubName={profile?.display_name || hubSlug}
                       conceptCount={hubConceptCount}
+                      accent={mode.accent}
+                      accentDim={mode.accentDim}
                       onCitationClick={(docId) => {
                         const existing = tabs.find(t => t.cloudId === docId);
                         if (existing) { switchTab(existing.id); return; }
@@ -11663,6 +11715,8 @@ ${clone.innerHTML}
                       bundleId={activeTab.bundleId}
                       bundleTitle={activeTab.title}
                       documentCount={bundles.find(b => b.id === activeTab?.bundleId)?.documentCount}
+                      accent={mode.accent}
+                      accentDim={mode.accentDim}
                       onClose={() => setShowAIPanel(false)}
                       onCitationClick={(docId) => {
                         const existing = tabs.find(t => t.cloudId === docId);
@@ -11722,22 +11776,24 @@ ${clone.innerHTML}
                     )}
                   </div>
                   {/* Chat history */}
-                  <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+                  <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-w-0">
                     {aiChatHistory.length === 0 && !aiProcessing && (
                       <div className="text-center py-8">
-                        <Sparkles width={24} height={24} className="mx-auto mb-3" style={{ color: "var(--border)", opacity: 0.5 }} />
-                        <p className="text-caption mb-1" style={{ color: "var(--text-faint)" }}>Ask AI to edit your document</p>
-                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>e.g. &ldquo;Make the intro shorter&rdquo;</p>
-                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Add a conclusion&rdquo;</p>
-                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.6 }}>&ldquo;Rewrite in a formal tone&rdquo;</p>
+                        <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3" style={{ background: mode.accentDim }}>
+                          <Sparkles width={22} height={22} style={{ color: mode.accent }} />
+                        </div>
+                        <p className="text-caption mb-1" style={{ color: "var(--text-secondary)" }}>Ask AI to edit your document</p>
+                        <p className="text-caption" style={{ color: "var(--text-faint)", opacity: 0.7 }}>Edits this doc only — for cross-doc, switch to Bundle or Hub.</p>
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
                       <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-lg text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
                           style={{
-                            background: msg.role === "user" ? "var(--accent-dim)" : "var(--toggle-bg)",
-                            color: msg.role === "user" ? "var(--accent)" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
+                            background: msg.role === "user" ? mode.accentDim : "var(--toggle-bg)",
+                            color: msg.role === "user" ? mode.accent : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
+                            overflowWrap: "anywhere",
+                            wordBreak: "break-word",
                           }}>
                           <span>{msg.text}</span>
                           {msg.canUndo && undoStack.current.length > 1 && (

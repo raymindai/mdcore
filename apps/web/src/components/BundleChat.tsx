@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ScrollText, CheckSquare, Scale, HelpCircle, RotateCcw } from "lucide-react";
+import { ScrollText, CheckSquare, Scale, HelpCircle, RotateCcw, Layers } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -13,19 +13,27 @@ interface BundleChatProps {
   bundleId: string;
   bundleTitle?: string;
   documentCount?: number;
+  /** Accent + dim hex/rgba pair so the panel can colour itself
+   *  distinctly from Doc / Hub assistants. Defaults fall back to the
+   *  global --accent. */
+  accent?: string;
+  accentDim?: string;
   onCitationClick?: (docId: string) => void;
   onClose?: () => void;
 }
 
-// Quick action prompts shown as a 2x2 grid (matches Document Assistant pattern)
+// Quick action prompts shown as a 2x2 grid (matches Document Assistant pattern).
+// Icons use currentColor so the row inherits the Bundle theme colour at render.
 const QUICK_ACTIONS = [
-  { label: "Summarize", icon: <ScrollText width={11} height={11} style={{ color: "var(--accent)" }} />, question: "Give me a clear, structured summary of what this bundle contains as a whole." },
-  { label: "Action items", icon: <CheckSquare width={11} height={11} style={{ color: "#60a5fa" }} />, question: "Extract all action items, tasks, or recommendations mentioned across the documents. Format as a checklist." },
-  { label: "Tensions", icon: <Scale width={11} height={11} style={{ color: "#fbbf24" }} />, question: "What tensions, contradictions, or conflicting viewpoints exist between these documents?" },
-  { label: "What's missing", icon: <HelpCircle width={11} height={11} style={{ color: "#a78bfa" }} />, question: "What important topics, perspectives, or information are missing from this bundle?" },
+  { label: "Summarize", icon: <ScrollText width={11} height={11} />, question: "Give me a clear, structured summary of what this bundle contains as a whole." },
+  { label: "Action items", icon: <CheckSquare width={11} height={11} />, question: "Extract all action items, tasks, or recommendations mentioned across the documents. Format as a checklist." },
+  { label: "Tensions", icon: <Scale width={11} height={11} />, question: "What tensions, contradictions, or conflicting viewpoints exist between these documents?" },
+  { label: "What's missing", icon: <HelpCircle width={11} height={11} />, question: "What important topics, perspectives, or information are missing from this bundle?" },
 ];
 
-export default function BundleChat({ bundleId, bundleTitle, documentCount, onCitationClick, onClose }: BundleChatProps) {
+export default function BundleChat({ bundleId, bundleTitle, documentCount, accent, accentDim, onCitationClick }: BundleChatProps) {
+  const themeAccent = accent || "var(--accent)";
+  const themeAccentDim = accentDim || "var(--accent-dim)";
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -145,36 +153,49 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-w-0">
       {/* Quick actions — 2x2 grid, mirrors Document Assistant style */}
       <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
         <div className="grid grid-cols-2 gap-1">
           {QUICK_ACTIONS.map((q, i) => (
             <button key={i} onClick={() => sendMessage(q.question)}
               disabled={isStreaming}
-              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-caption transition-colors hover:bg-[var(--accent-dim)] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}>
-              {q.icon}
-              <span>{q.label}</span>
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-caption transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-w-0"
+              style={{ background: "var(--toggle-bg)", color: "var(--text-primary)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = themeAccentDim; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--toggle-bg)"; }}>
+              <span className="shrink-0" style={{ color: themeAccent }}>{q.icon}</span>
+              <span className="truncate">{q.label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Messages / empty state */}
-      <div className="flex-1 overflow-auto px-4 py-4">
+      <div className="flex-1 overflow-auto px-3 py-4 min-w-0">
         {messages.length === 0 ? (
           <div className="text-center py-6">
-            <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--accent-dim)" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <div className="w-12 h-12 mx-auto rounded-2xl flex items-center justify-center mb-3" style={{ background: themeAccentDim }}>
+              <Layers width={22} height={22} style={{ color: themeAccent }} />
             </div>
             <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{bundleTitle || "This bundle"}</h3>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{documentCount} document{documentCount !== 1 ? "s" : ""} loaded — Ask anything</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {documentCount
+                ? `${documentCount} document${documentCount !== 1 ? "s" : ""} grouped together. Answers reason ACROSS them — tensions, gaps, summaries.`
+                : "Ask anything about this bundle."}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {messages.map((msg, i) => (
-              <MessageBubble key={i} message={msg} onCitationClick={onCitationClick} isStreaming={isStreaming && i === messages.length - 1} />
+              <MessageBubble
+                key={i}
+                message={msg}
+                onCitationClick={onCitationClick}
+                isStreaming={isStreaming && i === messages.length - 1}
+                accent={themeAccent}
+                accentDim={themeAccentDim}
+              />
             ))}
             {error && (
               <div className="text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}>
@@ -190,7 +211,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
           same wrapper padding, same inner box (toggle-bg + border-dim, rounded-lg,
           px-3 py-2, gap-1.5), same text-caption, same paper-plane Send icon. */}
       <form onSubmit={onSubmit} className="shrink-0 px-2 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg min-w-0" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
           <input
             ref={inputRef}
             type="text"
@@ -202,11 +223,11 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
                 onSubmit(e as unknown as React.FormEvent);
               }
             }}
-            placeholder="Ask anything about this bundle..."
+            placeholder="Ask anything across this bundle…"
             maxLength={500}
             disabled={isStreaming}
             autoFocus
-            className="flex-1 text-caption bg-transparent"
+            className="flex-1 text-caption bg-transparent min-w-0"
             style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
           />
           {messages.length > 0 && (
@@ -219,7 +240,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
           )}
           <button type="submit" disabled={!input.trim() || isStreaming}
             className="shrink-0 p-1.5 rounded-md transition-colors"
-            style={{ background: input.trim() && !isStreaming ? "var(--accent)" : "transparent", color: input.trim() && !isStreaming ? "#000" : "var(--text-faint)" }}
+            style={{ background: input.trim() && !isStreaming ? themeAccent : "transparent", color: input.trim() && !isStreaming ? "#fff" : "var(--text-faint)" }}
             title="Send">
             {isStreaming ? (
               <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin block" />
@@ -235,13 +256,16 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
 
 // ─── Message Bubble with citation rendering ───
 
-function MessageBubble({ message, onCitationClick, isStreaming }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean }) {
+function MessageBubble({ message, onCitationClick, isStreaming, accent, accentDim }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
   const isUser = message.role === "user";
 
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] px-3 py-2 rounded-2xl rounded-tr-sm text-sm" style={{ background: "var(--accent)", color: "#fff" }}>
+        <div
+          className="max-w-[85%] px-3 py-2 rounded-2xl rounded-tr-sm text-sm"
+          style={{ background: accent, color: "#fff", overflowWrap: "anywhere", wordBreak: "break-word" }}
+        >
           {message.content}
         </div>
       </div>
@@ -250,16 +274,19 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
 
   // Render assistant message with citation parsing
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <div className="flex items-center gap-1.5">
-        <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: "var(--accent-dim)" }}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg>
+        <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: accentDim }}>
+          <Layers width={11} height={11} style={{ color: accent }} />
         </div>
-        <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>AI</span>
+        <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: accent }}>Bundle</span>
       </div>
-      <div className="text-sm leading-relaxed pl-6" style={{ color: "var(--text-primary)" }}>
-        <RenderedMarkdown content={message.content} docMap={message.docMap} onCitationClick={onCitationClick} />
-        {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: "var(--accent)", verticalAlign: "middle" }} />}
+      <div
+        className="text-sm leading-relaxed pl-6 min-w-0"
+        style={{ color: "var(--text-primary)", overflowWrap: "anywhere", wordBreak: "break-word" }}
+      >
+        <RenderedMarkdown content={message.content} docMap={message.docMap} onCitationClick={onCitationClick} accent={accent} accentDim={accentDim} />
+        {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: accent, verticalAlign: "middle" }} />}
       </div>
     </div>
   );
@@ -267,7 +294,7 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
 
 // ─── Markdown rendering with [doc:N] citation parsing ───
 
-function RenderedMarkdown({ content, docMap, onCitationClick }: { content: string; docMap?: Record<number, { id: string; title: string }>; onCitationClick?: (docId: string) => void }) {
+function RenderedMarkdown({ content, docMap, onCitationClick, accent, accentDim }: { content: string; docMap?: Record<number, { id: string; title: string }>; onCitationClick?: (docId: string) => void; accent: string; accentDim: string }) {
   // Parse citations and split into segments
   const segments: Array<{ type: "text" | "citation"; value: string; docNum?: number }> = [];
   const regex = /\[doc:(\d+)\]/g;
@@ -293,26 +320,26 @@ function RenderedMarkdown({ content, docMap, onCitationClick }: { content: strin
           return (
             <button key={i} onClick={() => onCitationClick?.(doc.id)} title={doc.title}
               className="inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0.5 rounded text-caption font-mono font-semibold transition-colors hover:brightness-125 align-baseline"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)", verticalAlign: "baseline" }}>
+              style={{ background: accentDim, color: accent, verticalAlign: "baseline" }}>
               {seg.docNum}
             </button>
           );
         }
         // Render text with basic markdown (paragraphs, bold, lists)
-        return <span key={i} dangerouslySetInnerHTML={{ __html: renderBasicMarkdown(seg.value) }} />;
+        return <span key={i} dangerouslySetInnerHTML={{ __html: renderBasicMarkdown(seg.value, accent) }} />;
       })}
     </>
   );
 }
 
-function renderBasicMarkdown(text: string): string {
+function renderBasicMarkdown(text: string, accent: string): string {
   return text
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code style="background: var(--toggle-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.9em;">$1</code>')
+    .replace(/`([^`]+)`/g, '<code style="background: var(--toggle-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; word-break: break-all;">$1</code>')
     .replace(/^#{1,3}\s+(.+)$/gm, '<strong style="display: block; margin-top: 0.5em;">$1</strong>')
-    .replace(/^[-*]\s+(.+)$/gm, '<div style="margin-left: 1em; position: relative;"><span style="position: absolute; left: -1em; color: var(--accent)">•</span>$1</div>')
+    .replace(/^[-*]\s+(.+)$/gm, `<div style="margin-left: 1em; position: relative;"><span style="position: absolute; left: -1em; color: ${accent}">•</span>$1</div>`)
     .replace(/^\d+\.\s+(.+)$/gm, '<div style="margin-left: 1em;">$1</div>')
     .replace(/\n\n/g, '<br/><br/>')
     .replace(/\n/g, '<br/>');
