@@ -632,16 +632,11 @@ export default function BundleViewer({
                   })()}
                   <div
                     ref={previewRef}
-                    // .mdcore-rendered already supplies typography for the
-                    // engine's HTML output (paragraph margins, heading scale,
-                    // code styling). Adding `prose prose-invert` on top
-                    // double-applied paragraph margins (prose's 1.25em won
-                    // over .mdcore-rendered's 0.75rem), making the side
-                    // panel feel more spread-out than the doc viewer for
-                    // the same content. Dropped prose so the side panel
-                    // matches the rest of the product's typography rhythm.
+                    // .mdcore-rendered already supplies the 12px / 1.65
+                    // body baseline that matches the sidebar + doc
+                    // viewer. No inline override needed — that just
+                    // diverged the side panel from the rest.
                     className="mdcore-rendered"
-                    style={{ fontSize: 13.5, lineHeight: 1.6 }}
                     dangerouslySetInnerHTML={{ __html: selectedHtml }}
                   />
                 </>

@@ -1694,11 +1694,29 @@ function SectionEditor({ docId, section, onClose, onSave }: {
   );
 }
 
-// ─── Chunk Editor — modal for editing one semantic chunk's content +
-// label. Now matches the doc viewer's typography rhythm in Preview mode
-// (same .mdcore-rendered scale + 14px / 1.7) so chunks aren't a separate
-// editing universe. Tab toggles between Source (raw markdown, mono) and
-// Preview (rendered, identical to how the chunk reads inside the doc).
+// ─── Chunk Editor — modal for editing one semantic chunk. Editing
+// happens on the rendered output via the same Tiptap surface the main
+// editor uses (no Source/Preview toggle, no markdown syntax exposed).
+// The Tiptap bundle is lazy-loaded so opening other modals doesn't pay
+// its cost.
+const TiptapLiveEditor = dynamic(() => import("@/components/TiptapLiveEditor"), {
+  ssr: false,
+  loading: () => (
+    <p className="text-caption" style={{ color: "var(--text-faint)" }}>Loading editor…</p>
+  ),
+});
+
+function ChunkLiveEditor({ markdown, onChange }: { markdown: string; onChange: (md: string) => void }) {
+  return (
+    <TiptapLiveEditor
+      markdown={markdown}
+      onChange={onChange}
+      canEdit
+      narrowView={false}
+    />
+  );
+}
+
 const CHUNK_TYPE_RAIL: Record<string, string> = {
   concept: "#38bdf8",
   claim: "#fb923c",
@@ -1718,27 +1736,8 @@ function ChunkEditor({ chunk, onClose, onSave }: {
   const [content, setContent] = useState(chunk.content);
   const [label, setLabel] = useState(chunk.label);
   const [saving, setSaving] = useState(false);
-  const [view, setView] = useState<"source" | "preview">("source");
-  const [previewHtml, setPreviewHtml] = useState<string>("");
   const dirty = content !== chunk.content || label !== chunk.label;
   const railColor = CHUNK_TYPE_RAIL[chunk.type] || CHUNK_TYPE_RAIL.context;
-
-  // Render markdown → HTML for preview. Re-runs whenever the textarea
-  // changes so the preview is live the moment you flip to it.
-  useEffect(() => {
-    if (view !== "preview") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const result = await renderMarkdown(content || "");
-        const processed = postProcessHtml(result.html);
-        if (!cancelled) setPreviewHtml(processed);
-      } catch {
-        if (!cancelled) setPreviewHtml("<p style=\"color: var(--text-muted)\">Failed to render</p>");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [content, view]);
 
   return (
     <ModalShell
@@ -1815,74 +1814,29 @@ function ChunkEditor({ chunk, onClose, onSave }: {
           />
         </div>
 
-        {/* Source / Preview tab pill row + the textarea or rendered preview
-            in a single content area underneath. Same chip pattern as the
-            sidebar filters and the analysis tabs. */}
+        {/* Live editor — same Tiptap surface the main editor uses. No
+            Source/Preview toggle: editing happens directly on the
+            rendered output (markdown is the underlying format but the
+            user never sees the syntax). Mounted dynamically so the
+            Tiptap bundle isn't pulled in until someone opens the modal. */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-2">
-            <span
-              className="font-mono uppercase"
-              style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", fontWeight: 600 }}
-            >
-              Content
-            </span>
-            <div
-              className="inline-flex items-center gap-0.5 p-0.5 rounded-md"
-              style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
-            >
-              {(["source", "preview"] as const).map((v) => {
-                const isActive = view === v;
-                return (
-                  <button
-                    key={v}
-                    onClick={() => setView(v)}
-                    className="px-2.5 py-1 text-caption rounded transition-colors capitalize"
-                    style={{
-                      background: isActive ? "var(--accent-dim)" : "transparent",
-                      color: isActive ? "var(--accent)" : "var(--text-faint)",
-                      fontWeight: isActive ? 600 : 500,
-                    }}
-                    onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
-                    onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; }}
-                  >
-                    {v}
-                  </button>
-                );
-              })}
-            </div>
+          <span
+            className="font-mono uppercase mb-2"
+            style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", fontWeight: 600 }}
+          >
+            Content
+          </span>
+          <div
+            className="mdcore-rendered flex-1 overflow-auto rounded-md outline-none"
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border-dim)",
+              padding: "var(--space-3) var(--space-4)",
+              minHeight: 220,
+            }}
+          >
+            <ChunkLiveEditor markdown={content} onChange={setContent} />
           </div>
-
-          {view === "source" ? (
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Chunk content…"
-              spellCheck={false}
-              className="text-body rounded-md outline-none resize-none flex-1"
-              style={{
-                background: "var(--background)",
-                color: "var(--text-primary)",
-                border: "1px solid var(--border-dim)",
-                borderLeft: `2px solid ${railColor}`,
-                padding: "var(--space-2) var(--space-3)",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                lineHeight: 1.55,
-                minHeight: 220,
-              }}
-            />
-          ) : (
-            <div
-              className="mdcore-rendered rounded-md flex-1 overflow-auto"
-              style={{
-                background: "var(--background)",
-                border: "1px solid var(--border-dim)",
-                borderLeft: `2px solid ${railColor}`,
-                padding: "var(--space-3) var(--space-4)",
-                minHeight: 220,
-              }}
-              dangerouslySetInnerHTML={{ __html: previewHtml || `<p style="color: var(--text-faint); font-style: italic">${content.trim() ? "Rendering…" : "Empty chunk"}</p>` }}
-            />
-          )}
         </div>
       </div>
     </ModalShell>
@@ -2461,114 +2415,103 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
           )}
         </div>
       ) : (
-        // Metadata + AI insights about this document. Stats are NOT
-        // insights — they're metadata. They sit on a small mono header
-        // line at the very top and the body below is the actual analysis:
-        // AI summary, chunk breakdown (when decomposed), and clickable
-        // related concepts.
-        <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
-          {/* Metadata header — small, mono, not labeled "About" */}
+        // Insights tab — every section has a clear, plainly-named header
+        // ("Stats", "What this doc says", "Claims it makes", "Examples
+        // it gives", "Questions it raises", "Definitions", "Open tasks",
+        // "Related concepts"). Each section pulls from existing graph
+        // or decomposition data and only renders when non-empty.
+        // Replaces the old "What this doc holds" stacked-bar (mechanical,
+        // not insightful) with type-specific lists that actually show
+        // what the doc is about.
+        <div className="flex-1 overflow-auto px-5 py-5 space-y-6">
+
           {info.docStats && (
-            <div className="flex items-baseline gap-3 text-caption font-mono" style={{ color: "var(--text-faint)", fontSize: 10 }}>
-              <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
-              <span style={{ opacity: 0.5 }}>·</span>
-              <span className="tabular-nums">~{info.docStats.readingTime} min</span>
-              <span style={{ opacity: 0.5 }}>·</span>
-              <span className="tabular-nums">{info.docStats.sections} sections</span>
-              {info.docStats.hasCode && (
-                <>
-                  <span style={{ opacity: 0.5 }}>·</span>
-                  <span className="uppercase" style={{ color: "#a78bfa", letterSpacing: 0.4, fontWeight: 600 }}>Code</span>
-                </>
-              )}
+            <div>
+              <h4 className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Stats</h4>
+              <div className="flex items-baseline gap-3 text-caption font-mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
+                <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span className="tabular-nums">~{info.docStats.readingTime} min read</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span className="tabular-nums">{info.docStats.sections} sections</span>
+                {info.docStats.hasCode && (
+                  <>
+                    <span style={{ opacity: 0.5 }}>·</span>
+                    <span className="uppercase" style={{ color: "#a78bfa", letterSpacing: 0.4, fontWeight: 600 }}>contains code</span>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
-          {/* AI Summary — italic pull-quote, no box */}
           {info.documentSummary && (
             <div>
-              <span className="font-mono uppercase mr-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--accent)", fontWeight: 700 }}>AI</span>
+              <h4 className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>What this doc says</h4>
               <p
-                className="inline text-sm leading-relaxed"
-                style={{ color: "var(--text-primary)", fontStyle: "italic" }}
+                className="text-sm leading-relaxed"
+                style={{ color: "var(--text-primary)" }}
               >
                 {info.documentSummary}
               </p>
             </div>
           )}
 
-          {/* What this document holds — chunk-type breakdown when the
-              doc has been decomposed. This is the real insight content
-              (not docStats): "this doc is mostly claims" vs "this doc is
-              mostly context." Skips silently when not decomposed yet. */}
-          {(() => {
-            const decomp = decomposeBridge?.decomposition;
-            if (!decomp || decomp.chunks.length === 0) return null;
-            const counts: Record<string, number> = {};
-            for (const c of decomp.chunks) counts[c.type] = (counts[c.type] || 0) + 1;
-            const ordered = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-            const total = decomp.chunks.length;
-            return (
-              <div>
-                <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>What this doc holds</h4>
-                <div className="space-y-1.5">
-                  {ordered.map(([type, n]) => {
-                    const pct = Math.round((n / total) * 100);
-                    const color = CHUNK_TYPE_RAIL[type] || CHUNK_TYPE_RAIL.context;
-                    return (
-                      <div key={type} className="flex items-center gap-2 text-caption">
-                        <span
-                          className="font-mono uppercase shrink-0"
-                          style={{ color, fontSize: 9, letterSpacing: 0.4, fontWeight: 600, width: 64 }}
-                        >
-                          {type}
-                        </span>
-                        <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-secondary)", fontSize: 11, width: 24 }}>{n}</span>
-                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Key claims — pulled from decomposition chunks of type
-              "claim". Most useful "what does this doc actually argue"
-              answer for an Insights tab. */}
+          {/* Per-chunk-type insight sections. Each one appears only when
+              the decomposition produced chunks of that type. Plain
+              numbered lists, no left rail (the rail repeated 5× was
+              just visual noise — the section header already keys the
+              type). Clicking a row opens the chunk editor. */}
           {(() => {
             const decomp = decomposeBridge?.decomposition;
             if (!decomp) return null;
-            const claims = decomp.chunks.filter((c) => c.type === "claim");
-            if (claims.length === 0) return null;
+            const sections: Array<{ type: string; header: string }> = [
+              { type: "claim", header: "Claims it makes" },
+              { type: "definition", header: "Definitions it gives" },
+              { type: "example", header: "Examples it shows" },
+              { type: "question", header: "Questions it raises" },
+              { type: "task", header: "Open tasks" },
+              { type: "evidence", header: "Evidence it cites" },
+            ];
             return (
-              <div>
-                <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Key claims</h4>
-                <ul className="space-y-2">
-                  {claims.map((c) => (
-                    <li
-                      key={c.id}
-                      className="text-sm leading-relaxed pl-3 cursor-pointer"
-                      style={{ color: "var(--text-secondary)", borderLeft: `2px solid ${CHUNK_TYPE_RAIL.claim}` }}
-                      onClick={() => decomposeBridge?.onEditChunk(c)}
-                    >
-                      <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
-                      {stripMarkdownPreview(c.content) && (
-                        <span> — {stripMarkdownPreview(c.content).slice(0, 140)}{stripMarkdownPreview(c.content).length > 140 ? "…" : ""}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <>
+                {sections.map(({ type, header }) => {
+                  const items = decomp.chunks.filter((c) => c.type === type);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={type}>
+                      <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
+                        {header} <span style={{ opacity: 0.6 }}>{items.length}</span>
+                      </h4>
+                      <ol className="space-y-2.5">
+                        {items.map((c, i) => {
+                          const preview = stripMarkdownPreview(c.content);
+                          return (
+                            <li
+                              key={c.id}
+                              className="flex gap-3 text-sm leading-relaxed cursor-pointer rounded px-1 py-0.5 -mx-1 transition-colors"
+                              style={{ color: "var(--text-secondary)" }}
+                              onClick={() => decomposeBridge?.onEditChunk(c)}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                            >
+                              <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-faint)", fontSize: 11 }}>{String(i + 1).padStart(2, "0")}</span>
+                              <span className="flex-1">
+                                <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+                                {preview && (
+                                  <span> — {preview.slice(0, 140)}{preview.length > 140 ? "…" : ""}</span>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  );
+                })}
+              </>
             );
           })()}
 
-          {/* Related concepts — clickable now. Each chip calls
-              onOpenDoc with the connected node's id. The cross-doc link
-              relationship comes from the AI graph extraction; clicking
-              jumps the side panel to that doc/concept. */}
           {info.connectedDocs && info.connectedDocs.length > 0 && (
             <div>
               <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Related concepts</h4>
