@@ -16,7 +16,7 @@ import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
 import { FEATURES } from "@/lib/feature-flags";
 import Tooltip from "@/components/Tooltip";
 import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
-import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
+import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, Zap, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
 
 // Mirror of the AI route's response shape — kept inline to avoid a public type.
 export interface SemanticChunk {
@@ -1518,10 +1518,12 @@ function DiscoveriesPanel({
           </DiscoverySection>
         )}
 
-        {/* Bundle-level Insights — flat prose, optional → glyph as marker. */}
+        {/* Bundle-level Insights — Zap icon (the "aha" moment) instead of
+            Lightbulb, which is the canonical Concepts icon and was making
+            insight rows look like another concept row. */}
         {insights.length > 0 && (
           <DiscoverySection
-            icon={<Lightbulb width={12} height={12} style={{ color: "var(--color-warm)" }} />}
+            icon={<Zap width={12} height={12} style={{ color: "var(--color-warm)" }} />}
             label="Insights"
             count={insights.length}
             color="var(--color-warm)"
@@ -1529,7 +1531,7 @@ function DiscoveriesPanel({
           >
             {insights.map((ins, i) => (
               <div key={i} className="flex gap-2.5 items-baseline">
-                <Lightbulb width={11} height={11} style={{ color: "var(--color-warm)", flexShrink: 0, transform: "translateY(2px)" }} />
+                <Zap width={11} height={11} style={{ color: "var(--color-warm)", flexShrink: 0, transform: "translateY(2px)" }} />
                 <p className="text-caption leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{ins}</p>
               </div>
             ))}
@@ -2513,7 +2515,7 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                 <ul className="space-y-2">
                   {info.insights.map((ins: string, i: number) => (
                     <li key={i} className="flex gap-2.5 items-baseline">
-                      <Lightbulb width={11} height={11} style={{ color: "var(--accent)", flexShrink: 0, transform: "translateY(2px)" }} />
+                      <Zap width={11} height={11} style={{ color: "var(--accent)", flexShrink: 0, transform: "translateY(2px)" }} />
                       <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-secondary)" }}>{ins}</p>
                     </li>
                   ))}
