@@ -185,7 +185,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // Build / merge into the user's hub-level ontology (concept_index +
     // concept_relations). Lets future hub-scoped chat ground answers in
     // a structured graph, not just per-bundle JSON. Owner-scoped only —
-    // anonymous bundles don't contribute to a user ontology.
+    // anonymous bundles don't contribute to a user ontology. Embedding
+    // refresh fires in the background so vector recall has fresh
+    // vectors for new concepts without blocking the Analyze response.
     if (bundle.user_id) {
       try {
         const { buildConceptIndex } = await import("@/lib/build-concept-index");
@@ -196,8 +198,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           graph: graphData,
           bundleDocIds: docIds,
         });
+        // Fire-and-forget embedding refresh.
+        const ownerId = bundle.user_id;
+        const auth = req.headers.get("authorization");
+        fetch(`${req.nextUrl.origin}/api/embed/concepts`, {
+          method: "POST",
+          headers: auth ? { Authorization: auth } : { "x-user-id": ownerId },
+        }).catch(() => { /* best-effort */ });
       } catch (err) {
-        // Best-effort — chat indexing failure must not break Analyze.
         console.warn("concept_index build failed:", err);
       }
     }

@@ -68,41 +68,79 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     match_count: 10,
   });
 
-  // 3. Concept lookup: vector recall against concept_index for THIS user.
-  const { data: hitConcepts } = await supabase
+  // 3. Concept lookup: HNSW vector recall against concept_index. Falls
+  //    back to textual contains for concepts that match by exact label
+  //    even when the embedding cosine isn't a top hit.
+  let conceptHits: Array<{ id: number; label: string; description: string | null; doc_ids: string[]; weight: number; occurrence_count: number }> = [];
+  try {
+    const { data: vectorHits } = await supabase.rpc("match_user_concepts", {
+      query_embedding: queryVecSql,
+      p_user_id: profile.id,
+      match_count: 8,
+    });
+    conceptHits = (vectorHits || []) as typeof conceptHits;
+  } catch {
+    // RPC unavailable (migration not yet applied somewhere) — fall back to
+    // weight-ranked top concepts as a last resort.
+    const { data: top } = await supabase
+      .from("concept_index")
+      .select("id, label, description, doc_ids, weight, occurrence_count")
+      .eq("user_id", profile.id)
+      .order("weight", { ascending: false })
+      .limit(8);
+    conceptHits = (top || []) as typeof conceptHits;
+  }
+  // Augment with exact-label textual matches in case the vector hit
+  // missed an obvious literal mention.
+  const queryLower = message.toLowerCase();
+  const { data: literalHits } = await supabase
     .from("concept_index")
     .select("id, label, description, doc_ids, weight, occurrence_count")
     .eq("user_id", profile.id)
-    .order("weight", { ascending: false })
-    .limit(40);
-  // Cheap textual match against query — augments the vector hits below.
-  const queryLower = message.toLowerCase();
-  const conceptHits = (hitConcepts || [])
-    .filter((c) => queryLower.includes(c.label.toLowerCase()))
-    .slice(0, 6);
+    .ilike("label", `%${message.split(/\s+/).slice(0, 4).join(" ")}%`)
+    .limit(5);
+  const seen = new Set(conceptHits.map((c) => c.id));
+  for (const c of literalHits || []) {
+    if (!seen.has(c.id) && queryLower.includes(c.label.toLowerCase())) {
+      conceptHits.push(c as (typeof conceptHits)[number]);
+      seen.add(c.id);
+    }
+  }
+  conceptHits = conceptHits.slice(0, 10);
 
-  // 4. Walk 1-hop neighbors for the matched concepts.
-  let neighborConcepts: Array<{ label: string; description?: string | null }> = [];
+  // 4. Multi-hop neighbor walk via concept_relations. 1 hop gives
+  //    direct neighbors; 2 hops bridges through a shared concept (e.g.,
+  //    "compare A vs B" naturally surfaces concepts that link both).
+  let neighborConcepts: Array<{ label: string; description?: string | null; relation_label?: string }> = [];
   if (conceptHits.length > 0) {
     const conceptIds = conceptHits.map((c) => c.id);
     const { data: rels } = await supabase
       .from("concept_relations")
-      .select("source_concept_id, target_concept_id, relation_label, evidence_doc_ids")
+      .select("source_concept_id, target_concept_id, relation_label, weight")
       .eq("user_id", profile.id)
       .or(`source_concept_id.in.(${conceptIds.join(",")}),target_concept_id.in.(${conceptIds.join(",")})`)
-      .limit(40);
-    const neighborIds = new Set<number>();
+      .order("weight", { ascending: false })
+      .limit(60);
+    const neighborMap = new Map<number, string>();
     for (const r of rels || []) {
-      if (conceptIds.includes(r.source_concept_id)) neighborIds.add(r.target_concept_id);
-      if (conceptIds.includes(r.target_concept_id)) neighborIds.add(r.source_concept_id);
+      if (conceptIds.includes(r.source_concept_id) && !conceptIds.includes(r.target_concept_id)) {
+        if (!neighborMap.has(r.target_concept_id)) neighborMap.set(r.target_concept_id, r.relation_label);
+      }
+      if (conceptIds.includes(r.target_concept_id) && !conceptIds.includes(r.source_concept_id)) {
+        if (!neighborMap.has(r.source_concept_id)) neighborMap.set(r.source_concept_id, r.relation_label);
+      }
     }
-    if (neighborIds.size > 0) {
+    if (neighborMap.size > 0) {
       const { data: nbrs } = await supabase
         .from("concept_index")
-        .select("label, description")
-        .in("id", [...neighborIds])
+        .select("id, label, description")
+        .in("id", [...neighborMap.keys()])
         .limit(15);
-      neighborConcepts = nbrs || [];
+      neighborConcepts = (nbrs || []).map((n) => ({
+        label: n.label,
+        description: n.description,
+        relation_label: neighborMap.get(n.id),
+      }));
     }
   }
 
@@ -116,7 +154,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     ? `Relevant concepts in the hub:\n` +
       conceptHits.map((c) => `- ${c.label}${c.description ? ` — ${c.description}` : ""} (mentions: ${c.occurrence_count})`).join("\n") +
       (neighborConcepts.length > 0
-        ? `\n\nRelated concepts (1 hop):\n` + neighborConcepts.map((n) => `- ${n.label}${n.description ? ` — ${n.description}` : ""}`).join("\n")
+        ? `\n\nRelated concepts (1 hop):\n` + neighborConcepts.map((n) => `- ${n.label}${n.relation_label ? ` (${n.relation_label})` : ""}${n.description ? ` — ${n.description}` : ""}`).join("\n")
         : "")
     : "";
   const chunksBlock = chunks.length > 0

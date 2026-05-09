@@ -14,6 +14,7 @@ import {
 import MdCanvas from "@/components/MdCanvas";
 import BundleEmbed from "@/components/BundleEmbed";
 import BundleChat from "@/components/BundleChat";
+import HubChat from "@/components/HubChat";
 import SidebarFolderTree from "@/components/SidebarFolder";
 import FolderEmojiPicker from "@/components/FolderEmojiPicker";
 import MdfyLogo from "@/components/MdfyLogo";
@@ -3045,6 +3046,16 @@ export default function MdEditor() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("mdfy-panel-ai") === "true";
   });
+  // AI panel mode override. "auto" resolves from activeTab.kind (doc/bundle).
+  // "hub" forces the hub-wide assistant — surfaced only when the user has a
+  // hub_slug. Persisted so the mode survives reloads.
+  const [aiPanelMode, setAiPanelMode] = useState<"auto" | "hub">(() => {
+    if (typeof window === "undefined") return "auto";
+    return (localStorage.getItem("mdfy-ai-panel-mode") as "auto" | "hub") || "auto";
+  });
+  useEffect(() => { try { localStorage.setItem("mdfy-ai-panel-mode", aiPanelMode); } catch {} }, [aiPanelMode]);
+  // Concept count for the hub — surfaced in HubChat's empty state.
+  const [hubConceptCount, setHubConceptCount] = useState<number>(0);
   const [showOutlinePanel, setShowOutlinePanel] = useState(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("mdfy-panel-outline");
@@ -3065,6 +3076,25 @@ export default function MdEditor() {
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("mdfy-ai-panel-width", String(aiPanelWidth));
   }, [aiPanelWidth]);
+  // Load concept count for the user's hub once we know the slug. Used by
+  // HubChat's empty state ("78 concepts indexed — ask anything"). The count
+  // endpoint is cheap (HEAD on concept_index for the user) so we re-fetch
+  // any time the panel opens in hub mode to stay roughly fresh.
+  const hubSlug = (profile as { hub_slug?: string | null } | null)?.hub_slug || null;
+  useEffect(() => {
+    if (!hubSlug) { setHubConceptCount(0); return; }
+    if (!showAIPanel || aiPanelMode !== "hub") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/hub/${hubSlug}/concepts/count`, { headers: authHeaders });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (!cancelled && typeof j?.count === "number") setHubConceptCount(j.count);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [hubSlug, showAIPanel, aiPanelMode, authHeaders]);
   const isDraggingAiPanel = useRef(false);
   const aiPanelPendingWidthRef = useRef<number | null>(null);
 
@@ -11505,16 +11535,20 @@ ${clone.innerHTML}
                 />
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
-              {showAIPanel && (canEdit || activeTab?.kind === "bundle") && (() => {
+              {showAIPanel && (canEdit || activeTab?.kind === "bundle" || (aiPanelMode === "hub" && hubSlug)) && (() => {
                 // Mode definitions — extensible: add a new entry per future mode
                 // and the panel will display its label + icon automatically.
-                const isBundleMode = activeTab?.kind === "bundle";
-                // Both modes carry the AI Sparkles glyph in the header —
-                // this strip is the AI surface, not a primitive picker.
-                // Layers stays reserved for the Bundle primitive icon set.
-                const mode = isBundleMode
-                  ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Sparkles width={12} height={12} /> }
-                  : { id: "doc" as const, label: "Document Assistant", icon: <Sparkles width={12} height={12} /> };
+                const isHubMode = aiPanelMode === "hub" && !!hubSlug;
+                const isBundleMode = !isHubMode && activeTab?.kind === "bundle";
+                // Hub mode forces ontology-grounded chat over the entire hub.
+                // Bundle mode is the per-bundle assistant. Doc mode is the
+                // default per-document AI tools surface. All three carry the
+                // Sparkles glyph in the header for visual unity.
+                const mode = isHubMode
+                  ? { id: "hub" as const, label: "Hub Assistant", icon: <Sparkles width={12} height={12} /> }
+                  : isBundleMode
+                    ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Sparkles width={12} height={12} /> }
+                    : { id: "doc" as const, label: "Document Assistant", icon: <Sparkles width={12} height={12} /> };
                 return (
                 <div
                   data-pane="ai-panel"
@@ -11553,7 +11587,24 @@ ${clone.innerHTML}
                       <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>{mode.label}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      {aiChatHistory.length > 0 && (
+                      {/* Hub-mode toggle — only when the user has a public hub_slug.
+                          Switches the panel between the per-doc/bundle assistant
+                          (auto) and the ontology-grounded Hub Assistant. */}
+                      {hubSlug && (
+                        <button
+                          onClick={() => setAiPanelMode(prev => prev === "hub" ? "auto" : "hub")}
+                          className="flex items-center gap-1 px-1.5 h-5 rounded text-caption font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                          style={{
+                            color: isHubMode ? "var(--accent)" : "var(--text-muted)",
+                            background: isHubMode ? "var(--accent-dim)" : "transparent",
+                          }}
+                          title={isHubMode ? "Switch to per-doc assistant" : "Switch to Hub Assistant (whole-hub ontology)"}
+                        >
+                          <Network width={9} height={9} />
+                          Hub
+                        </button>
+                      )}
+                      {aiChatHistory.length > 0 && !isHubMode && (
                         <button
                           onClick={() => setAiChatHistory([])}
                           className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
@@ -11563,7 +11614,7 @@ ${clone.innerHTML}
                           <RotateCcw width={9} height={9} />
                         </button>
                       )}
-                      {undoStack.current.length > 1 && (
+                      {undoStack.current.length > 1 && !isHubMode && !isBundleMode && (
                         <button
                           onClick={() => { undo(); setAiChatHistory(prev => [...prev, { role: "ai", text: "Reverted to previous version." }]); }}
                           className="flex items-center gap-1 px-1.5 h-5 rounded text-caption font-medium transition-colors hover:bg-[var(--menu-hover)]"
@@ -11584,8 +11635,27 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
+                  {/* Hub mode → ontology-grounded chat over the whole hub */}
+                  {isHubMode && hubSlug && (
+                    <HubChat
+                      slug={hubSlug}
+                      hubName={profile?.display_name || hubSlug}
+                      conceptCount={hubConceptCount}
+                      onCitationClick={(docId) => {
+                        const existing = tabs.find(t => t.cloudId === docId);
+                        if (existing) { switchTab(existing.id); return; }
+                        fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                          if (!d) return;
+                          const newId = `doc-${docId}-${Date.now()}`;
+                          const newTab: Tab = { id: newId, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: docId, isDraft: d.is_draft };
+                          setTabs(prev => [...prev, newTab]);
+                          switchTab(newId);
+                        }).catch(() => {});
+                      }}
+                    />
+                  )}
                   {/* Bundle mode → render BundleChat in place of doc tools */}
-                  {isBundleMode && activeTab?.bundleId && (
+                  {!isHubMode && isBundleMode && activeTab?.bundleId && (
                     <BundleChat
                       bundleId={activeTab.bundleId}
                       bundleTitle={activeTab.title}
@@ -11605,7 +11675,7 @@ ${clone.innerHTML}
                     />
                   )}
                   {/* Doc mode (default) — existing AI tools follow */}
-                  {!isBundleMode && (<>
+                  {!isBundleMode && !isHubMode && (<>
                   {/* Quick actions with tooltips */}
                   <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                     <div className="grid grid-cols-2 gap-1">
