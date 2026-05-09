@@ -3825,7 +3825,34 @@ export default function MdEditor() {
     // Update ref IMMEDIATELY so doRender uses correct tab ID
     activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
-    setTitle(tab.title || undefined);
+    // Header title MUST follow the document's first H1. If the stored
+    // tab.title and the H1 in tab.markdown disagree (e.g., the row was
+    // legacy-created with a custom title that doesn't match the heading,
+    // or some external sync wrote one without the other), trust the H1.
+    // Otherwise the header would briefly show the stale stored title and
+    // then visibly "change" the moment the user typed (handleTiptapChange
+    // re-derives from H1 + persists). That flicker is what the user has
+    // been hitting.
+    const h1Title = tab.markdown ? extractTitleFromMd(tab.markdown) : "";
+    const initialTitle = (h1Title && h1Title !== "Untitled") ? h1Title : tab.title;
+    setTitle(initialTitle || undefined);
+    // Backfill the in-memory tab + auto-save when the stored title was
+    // out of sync with the H1. Without this the next save would still
+    // carry the stale title; with this, server + UI converge on H1.
+    if (h1Title && h1Title !== "Untitled" && h1Title !== tab.title) {
+      setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: h1Title } : t));
+      if (tab.cloudId) {
+        autoSave.scheduleSave({
+          cloudId: tab.cloudId,
+          markdown: tab.markdown,
+          title: h1Title,
+          userId: user?.id,
+          userEmail: user?.email,
+          anonymousId,
+          editToken: tab.editToken,
+        });
+      }
+    }
     // Cancel any pending debounced render from CodeMirror
     if (debounceRef.current) clearTimeout(debounceRef.current);
     // Update permission + doc state based on tab
@@ -3867,7 +3894,12 @@ export default function MdEditor() {
         .then(doc => {
           if (!doc || activeTabIdRef.current !== tab.id) return;
           const md = doc.markdown || "";
-          const t = doc.title || tab.title;
+          // Title invariant: first H1 of the doc IS the title. Fall back
+          // to the server's stored title only when no H1 exists. Schedule
+          // a save when they disagree so the server converges on the H1
+          // — otherwise the next session would re-show the stale title.
+          const fetchedH1 = md ? extractTitleFromMd(md) : "";
+          const t = (fetchedH1 && fetchedH1 !== "Untitled") ? fetchedH1 : (doc.title || tab.title);
           setMarkdownRaw(md);
           setTitle(t);
           undoStack.current = [md];
@@ -3884,6 +3916,19 @@ export default function MdEditor() {
             compileFrom: doc.compile_from || undefined,
             compiledAt: doc.compiled_at || undefined,
           } : x));
+          // If the server's stored title disagreed with the H1, push the
+          // H1 back to the server so future loads converge.
+          if (fetchedH1 && fetchedH1 !== "Untitled" && fetchedH1 !== doc.title) {
+            autoSave.scheduleSave({
+              cloudId: tab.cloudId!,
+              markdown: md,
+              title: fetchedH1,
+              userId: user?.id,
+              userEmail: user?.email,
+              anonymousId,
+              editToken: tab.editToken,
+            });
+          }
         })
         .catch(() => {
           doRenderRef.current("");
