@@ -2629,11 +2629,15 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                 <SectionLabel>
                   Linked to {info.relationships.length} {info.relationships.length === 1 ? "node" : "nodes"}
                 </SectionLabel>
-                <div className="space-y-1">
+                {/* Two-column rows: verb on the left (mono uppercase, fixed
+                    width so all verbs line up), arrow + target on the right.
+                    Stripped of subject dots, line strokes, and target dots —
+                    they were stacking three colored markers per row for no
+                    extra information. The target's canvas color survives on
+                    its icon, which is enough to read "this is a Doc / Concept /
+                    Entity / Tag at a glance." */}
+                <div className="space-y-0.5">
                   {(info.relationships as Array<{ label: string; target: string; targetKind?: string; direction?: string }>).map((rel, i) => {
-                    // kindColor mirrors the canvas TYPE_COLORS exactly for
-                    // doc/concept/entity/tag — so the dot in this row reads
-                    // as "the same colored node from the canvas".
                     const kindColor =
                       rel.targetKind === "doc" ? "#fb923c" :
                       rel.targetKind === "entity" ? "#4ade80" :
@@ -2646,33 +2650,19 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                       rel.targetKind === "tag" ? Tag :
                       rel.targetKind === "concept" ? Lightbulb :
                       Sparkles;
-                    // Edge line color follows the canvas rule: edge color =
-                    // source's color. For "out" the source is this concept
-                    // (subjectColor); for "in" it's the other node (kindColor).
-                    const lineColor = rel.direction === "in" ? kindColor : subjectColor;
+                    const arrow = rel.direction === "in" ? "←" : "→";
                     return (
-                      <div key={i} className="px-2 py-1.5 rounded" style={{ fontSize: 12, background: "var(--bg-elevated)" }}>
-                        <div className="flex items-center" style={{ gap: 8 }}>
-                          {/* Subject node — colored dot in this concept's
-                              canvas color so the row matches what the user
-                              sees on the graph. */}
-                          <span className="shrink-0" style={{ width: 8, height: 8, borderRadius: 999, background: subjectColor }} />
-                          {/* Edge line — short colored stroke + the verb on
-                              top, matching the canvas rule that the line
-                              takes the source's color. */}
-                          <div className="flex flex-col items-center shrink-0" style={{ minWidth: 60 }}>
-                            <span className="font-medium uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: lineColor }}>
-                              {rel.label}
-                            </span>
-                            <div style={{ height: 1, width: "100%", background: lineColor, marginTop: 2 }} />
-                          </div>
-                          {/* Target node — colored icon + name. The icon
-                              + color tell the user "this is a Doc/Concept/
-                              Entity/Tag", same kind as the canvas legend. */}
-                          <span className="shrink-0" style={{ width: 8, height: 8, borderRadius: 999, background: kindColor }} />
+                      <div key={i} className="grid items-center px-1 py-1 rounded transition-colors hover:bg-[var(--bg-elevated)]" style={{ gridTemplateColumns: "minmax(96px, 30%) 12px 1fr", gap: 8, fontSize: 12 }}>
+                        <span className="font-mono uppercase truncate" style={{ fontSize: 10, letterSpacing: 0.5, color: "var(--text-muted)" }}>
+                          {rel.label}
+                        </span>
+                        <span className="font-mono text-center" style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                          {arrow}
+                        </span>
+                        <span className="flex items-center min-w-0" style={{ gap: 6 }}>
                           <TargetIcon width={11} height={11} style={{ color: kindColor, flexShrink: 0 }} />
                           <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
-                        </div>
+                        </span>
                       </div>
                     );
                   })}

@@ -131,7 +131,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> 
 const elk = new ELK();
 
 const NODE_SIZES: Record<string, { w: number; h: number }> = {
-  documentCard: { w: 270, h: 130 },
+  documentCard: { w: 270, h: 150 },
   summaryNode: { w: 300, h: 190 },
   themeTag: { w: 220, h: 32 },
   conceptTag: { w: 160, h: 36 },
@@ -427,12 +427,25 @@ async function buildLayout(
   return { nodes, edges };
 }
 
+// Strip markdown chrome (headings/bold/code/links/blockquotes/tables) and
+// return up to ~400 chars of clean prose so DocumentCardNode can render a
+// meaningful multi-line excerpt instead of just word/read stats. The card
+// uses CSS line-clamp to crop visually — the extra characters give the
+// clamp room to fill rather than truncating mid-sentence.
 function getPreview(md: string): string {
-  return md.replace(/^#{1,6}\s+/gm, "").replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/`[^`]+`/g, "").replace(/```[\s\S]*?```/g, "")
-    .replace(/\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/^[>\-*+]\s*/gm, "")
-    .replace(/^\|.*\|$/gm, "").split("\n").map(l => l.trim())
-    .filter(l => l.length > 0).slice(0, 3).join(" — ");
+  const cleaned = md
+    .replace(/^---[\s\S]*?---\n/m, "")           // strip front matter
+    .replace(/```[\s\S]*?```/g, "")               // fenced code blocks
+    .replace(/^#{1,6}\s+.*$/gm, "")               // ATX headings (drop entire heading line)
+    .replace(/^[>\-*+]\s*/gm, "")                 // list/quote markers
+    .replace(/^\|.*\|$/gm, "")                    // table rows
+    .replace(/!?\[([^\]]*)\]\([^)]+\)/g, "$1")    // images + links
+    .replace(/`([^`]+)`/g, "$1")                  // inline code
+    .replace(/(\*\*|__)([^*_]+)\1/g, "$2")        // bold
+    .replace(/(\*|_)([^*_]+)\1/g, "$2")           // italic
+    .split("\n").map(l => l.trim()).filter(Boolean)
+    .join(" ");
+  return cleaned.slice(0, 400);
 }
 
 // ─── Summary Node ───
@@ -490,11 +503,15 @@ function ThemeTagNode({ data }: { data: any }) {
 // ─── Document Card Node ───
 
 function DocumentCardNode({ data }: { data: any }) {
-  // Mirrors the SummaryNode shape (rounded card, header row, body, footer
-  // strip) so the two primary card kinds — Analysis and Documents — share
-  // a vocabulary on the canvas. The number is now a small monospace prefix
-  // next to the title (the bulky orange numbered badge was the offender);
-  // the rest of the orange affordance lives on the border + handles.
+  // Header order: NUMBER → FileText icon → title. The number anchors the
+  // doc in the bundle's reading order (same convention used in the
+  // sidebar list); putting it before the icon makes the eye scan the
+  // sequence first, which is what the canvas is showing the user.
+  //
+  // Stats footer (word count / reading time) removed entirely — the user
+  // explicitly asked for more content over more numbers. The body now
+  // gives ~5 lines of clamped prose, which is what tells you whether
+  // this doc is worth opening.
   const isSelected = data.isSelected;
   const DOC_COLOR = "#fb923c";
   return (
@@ -508,26 +525,27 @@ function DocumentCardNode({ data }: { data: any }) {
       <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
 
       <div className="px-3 py-2 flex items-center gap-2" style={{ background: "rgba(251,146,60,0.08)", borderBottom: "1px solid var(--border-dim)" }}>
-        <FileText width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
         <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 10, color: DOC_COLOR, fontWeight: 700, letterSpacing: 0.3 }}>
           {String(data.index).padStart(2, "0")}
         </span>
+        <FileText width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
         <span className="font-semibold truncate flex-1" style={{ fontSize: 12, color: "var(--text-primary)" }}>{data.title}</span>
-      </div>
-
-      {data.preview && (
-        <div className="px-3 py-2">
-          <p className="line-clamp-2" style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>{data.preview}</p>
-        </div>
-      )}
-
-      <div className="px-3 py-1.5 flex items-center font-mono tabular-nums" style={{ borderTop: "1px solid var(--border-dim)", fontSize: 10, color: "var(--text-faint)", gap: 10 }}>
-        <span>{data.wordCount.toLocaleString()}w</span>
-        <span>~{data.readingTime}m</span>
         {data.hasCode && (
-          <span style={{ color: "#a78bfa", letterSpacing: 0.4 }}>code</span>
+          <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.4, color: "#a78bfa", padding: "1px 5px", borderRadius: 3, background: "rgba(167,139,250,0.10)" }}>
+            code
+          </span>
         )}
       </div>
+
+      {data.preview ? (
+        <div className="px-3 py-2.5">
+          <p className="line-clamp-5" style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.55 }}>{data.preview}</p>
+        </div>
+      ) : (
+        <div className="px-3 py-3" style={{ fontSize: 11, color: "var(--text-faint)", fontStyle: "italic" }}>
+          Empty document
+        </div>
+      )}
     </div>
   );
 }
