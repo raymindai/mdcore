@@ -24,6 +24,7 @@ import ELK from "elkjs/lib/elk.bundled.js";
 import { Copy, Plus, Minus, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil, MoreHorizontal, FileText, Lightbulb, CheckSquare, Tag } from "lucide-react";
 import Tooltip from "./Tooltip";
 import { parseSections, sectionPreview, type Section } from "@/lib/parse-sections";
+import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
 
 // ─── Types ───
 
@@ -613,30 +614,10 @@ function SectionNode({ data }: { data: any }) {
 }
 
 // ─── Chunk Node — AI semantic chunk with type pill + content preview ───
-// Strip markdown syntax for the preview line. The chunk body is raw
-// markdown — bold, headings, links, code fences — and dumping it
-// straight into the card looked broken.
-function stripMarkdownForPreview(md: string): string {
-  return (md || "")
-    .replace(/^---[\s\S]*?---\s*/m, "")               // frontmatter
-    .replace(/```[\s\S]*?```/g, " [code] ")           // fenced blocks
-    .replace(/`([^`]+)`/g, "$1")                       // inline code
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")             // images
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")          // links → label
-    .replace(/^#{1,6}\s+/gm, "")                       // headings
-    .replace(/(\*\*|__)(.+?)\1/g, "$2")               // bold
-    .replace(/(\*|_)(.+?)\1/g, "$2")                  // italic
-    .replace(/^\s*>\s+/gm, "")                         // blockquote
-    .replace(/^\s*[-*+]\s+/gm, "")                     // list bullets
-    .replace(/^\s*\d+\.\s+/gm, "")                     // ordered list
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function ChunkNode({ data }: { data: any }) {
   const c: SemanticChunkLike = data.chunk;
   const palette = CHUNK_TYPE_COLORS[c.type] || CHUNK_TYPE_COLORS.context;
-  const preview = stripMarkdownForPreview(c.content);
+  const preview = stripMarkdownPreview(c.content);
   const truncated = preview.length > 140 ? preview.slice(0, 139) + "…" : preview;
   return (
     <div className="rounded-lg overflow-hidden" style={{

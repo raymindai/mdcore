@@ -12,6 +12,7 @@ import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
 import { parseSections, assembleSections, type Section } from "@/lib/parse-sections";
 import { aggregateDiscoveries, type ChunkRef, type TensionItem, type ThreadItem } from "@/lib/discoveries";
+import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
 import { FEATURES } from "@/lib/feature-flags";
 import Tooltip from "@/components/Tooltip";
 import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
@@ -2346,29 +2347,53 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
       ) : (
         // Metadata + AI insights about this document
         <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
+          {/* About — flat metric row, no chip frames. Just label-value
+              pairs separated by hairline dividers, much quieter than
+              three pill chips of equal weight. */}
           {info.docStats && (
-            <div>
-              <h4 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>About</h4>
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{info.docStats.wordCount.toLocaleString()} words</span>
-                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>~{info.docStats.readingTime} min</span>
-                <span className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>{info.docStats.sections} sections</span>
-                {info.docStats.hasCode && <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}>Code</span>}
-              </div>
+            <div className="flex items-baseline gap-4 text-caption" style={{ color: "var(--text-muted)" }}>
+              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>{info.docStats.wordCount.toLocaleString()}</span> words</span>
+              <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
+              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>~{info.docStats.readingTime}</span> min</span>
+              <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
+              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>{info.docStats.sections}</span> sections</span>
+              {info.docStats.hasCode && (
+                <>
+                  <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
+                  <span className="font-mono uppercase" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: 0.4, fontWeight: 600 }}>Code</span>
+                </>
+              )}
             </div>
           )}
+          {/* AI Summary — italic pull-quote with accent left rule. Same
+              treatment as the analysis-tab Summary. No card frame, no
+              orange box. Smaller "AI" mono prefix instead of an uppercase
+              section header. */}
           {info.documentSummary && (
-            <div className="rounded-lg p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}>
-              <h4 className="text-caption font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--accent)" }}>AI Summary</h4>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>{info.documentSummary}</p>
+            <div>
+              <span className="font-mono uppercase mr-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--accent)", fontWeight: 700 }}>AI</span>
+              <p
+                className="inline text-sm leading-relaxed"
+                style={{ color: "var(--text-primary)", fontStyle: "italic" }}
+              >
+                {info.documentSummary}
+              </p>
             </div>
           )}
+          {/* Related concepts — small flat tags, no border, lowercase
+              mono so they read as tag chips, not buttons. */}
           {info.connectedDocs && info.connectedDocs.length > 0 && (
             <div>
-              <h4 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Related Concepts</h4>
-              <div className="flex flex-wrap gap-1.5">
+              <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Related concepts</h4>
+              <div className="flex flex-wrap gap-1">
                 {info.connectedDocs.map((c: { id: string; title: string }) => (
-                  <span key={c.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.2)" }}>{c.title}</span>
+                  <span
+                    key={c.id}
+                    className="font-mono px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3 }}
+                  >
+                    {c.title.toLowerCase()}
+                  </span>
                 ))}
               </div>
             </div>
@@ -2474,65 +2499,102 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
         </Tooltip>
       </div>
 
-      {/* Type filter pills */}
+      {/* Type filter pills — single accent state, count in mono. Same
+          chip pattern as MdEditor's left sidebar (All / Private / etc.)
+          and the canvas filter row, so the user sees one filter language
+          everywhere. Per-type color is reserved for the chunk's own
+          identity (its left rail), not the filter button. */}
       {presentTypes.length > 1 && (
-        <div className="shrink-0 px-3 py-1.5 flex items-center gap-1 flex-wrap" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <button
-            onClick={() => setFilter(null)}
-            className="px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
-            style={{
-              color: filter === null ? "var(--accent)" : "var(--text-faint)",
-              background: filter === null ? "var(--accent-dim)" : "transparent",
-            }}
-          >All ({decomp.chunks.length})</button>
-          {presentTypes.map(t => {
-            const palette = SIDEBAR_CHUNK_COLORS[t] || SIDEBAR_CHUNK_COLORS.context;
-            const active = filter === t;
-            const count = decomp.chunks.filter(c => c.type === t).length;
-            return (
-              <button
-                key={t}
-                onClick={() => setFilter(active ? null : t)}
-                className="px-1.5 py-0.5 text-caption font-semibold uppercase tracking-wider rounded transition-colors"
-                style={{
-                  color: active ? palette.text : "var(--text-faint)",
-                  background: active ? `${palette.border}22` : "transparent",
-                  border: active ? `1px solid ${palette.border}55` : "1px solid transparent",
-                }}
-              >{t} ({count})</button>
-            );
-          })}
+        <div className="shrink-0 px-3 py-1.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <div
+            className="inline-flex items-center gap-0.5 p-0.5 rounded-md"
+            style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
+          >
+            {[null, ...presentTypes].map((t) => {
+              const isActive = filter === t;
+              const label = t ?? "All";
+              const count = t === null ? decomp.chunks.length : decomp.chunks.filter(c => c.type === t).length;
+              return (
+                <button
+                  key={label}
+                  onClick={() => setFilter(t === null ? null : (isActive ? null : t))}
+                  className="px-2 py-1 text-caption rounded transition-colors capitalize flex items-center gap-1"
+                  style={{
+                    background: isActive ? "var(--accent-dim)" : "transparent",
+                    color: isActive ? "var(--accent)" : "var(--text-faint)",
+                    fontWeight: isActive ? 600 : 500,
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; } }}
+                  onMouseLeave={(e) => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; } }}
+                >
+                  {label}
+                  <span className="font-mono tabular-nums" style={{ fontSize: 9, opacity: 0.7 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* Chunk list */}
-      <div className="flex-1 overflow-auto px-3 py-2 space-y-1.5">
+      {/* Chunk list — flat rows separated by hairline, no per-card box.
+          Each row shows: a left color-rail keyed by chunk type, a small
+          mono type badge, the chunk label, and a stripped one-line
+          preview. Stale uses a dot + caption text rather than a red box. */}
+      <div className="flex-1 overflow-auto">
         {filtered.length === 0 ? (
-          <EmptyState
-            compact
-            icon={<Layers width={20} height={20} />}
-            heading={search || filter ? "No matching chunks" : "No chunks yet"}
-            guidance={search || filter ? "Try a different filter or search term." : "Run Decompose to extract chunks from this document."}
-          />
+          <div className="px-3 py-2">
+            <EmptyState
+              compact
+              icon={<Layers width={20} height={20} />}
+              heading={search || filter ? "No matching chunks" : "No chunks yet"}
+              guidance={search || filter ? "Try a different filter or search term." : "Run Decompose to extract chunks from this document."}
+            />
+          </div>
         ) : (
           filtered.map((c, i) => {
             const palette = SIDEBAR_CHUNK_COLORS[c.type] || SIDEBAR_CHUNK_COLORS.context;
             const fullIdx = decomp.chunks.findIndex(x => x.id === c.id);
             const isFirst = fullIdx === 0;
             const isLast = fullIdx === decomp.chunks.length - 1;
+            const preview = stripMarkdownPreview(c.content);
+            const truncated = preview.length > 200 ? preview.slice(0, 199).trim() + "…" : preview;
             return (
-              <div key={c.id} className="rounded-lg overflow-hidden group/chunk" style={{
-                background: "var(--surface)",
-                border: `1px solid ${palette.border}30`,
-              }}>
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5" style={{ background: palette.bg, borderBottom: `1px solid ${palette.border}25` }}>
-                  <span className="text-caption font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ color: palette.text, background: `${palette.border}18` }}>{c.type}</span>
-                  <span className="text-caption font-semibold truncate flex-1 cursor-pointer" style={{ color: "var(--text-primary)" }}
-                    onClick={() => bridge.onEditChunk(c)}>
+              <div
+                key={c.id}
+                className="group/chunk px-3 py-2.5 cursor-pointer transition-colors"
+                style={{
+                  borderLeft: `2px solid ${palette.border}`,
+                  borderBottom: "1px solid var(--border-dim)",
+                  background: "transparent",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                onClick={() => bridge.onEditChunk(c)}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span
+                    className="font-mono uppercase px-1 py-px rounded shrink-0"
+                    style={{
+                      color: palette.text,
+                      background: `${palette.border}14`,
+                      fontSize: 9,
+                      letterSpacing: 0.4,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {c.type}
+                  </span>
+                  <span className="text-caption font-semibold truncate flex-1" style={{ color: "var(--text-primary)" }}>
                     {c.label}
                   </span>
                   {c.found === false && (
-                    <span className="text-caption font-bold uppercase tracking-wider px-1 py-0.5 rounded" style={{ color: "#ef4444", background: "rgba(239,68,68,0.12)" }}>Stale</span>
+                    <span
+                      className="font-mono uppercase shrink-0 flex items-center gap-1"
+                      style={{ color: "#ef4444", fontSize: 9, letterSpacing: 0.4, fontWeight: 600 }}
+                    >
+                      <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                      Stale
+                    </span>
                   )}
                   <div className="flex items-center gap-0.5 opacity-0 group-hover/chunk:opacity-100 transition-opacity">
                     <Tooltip text="Move up" position="top">
@@ -2572,9 +2634,8 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
                     </Tooltip>
                   </div>
                 </div>
-                <p className="px-2.5 py-2 text-caption leading-[1.5] cursor-pointer" style={{ color: "var(--text-muted)" }}
-                  onClick={() => bridge.onEditChunk(c)}>
-                  {c.content.length > 200 ? c.content.slice(0, 199).trim() + "…" : c.content}
+                <p className="text-caption leading-[1.55]" style={{ color: "var(--text-muted)" }}>
+                  {truncated || <span style={{ fontStyle: "italic", opacity: 0.6 }}>(no content)</span>}
                 </p>
                 <span className="hidden">{i}</span>
               </div>
