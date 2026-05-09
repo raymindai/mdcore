@@ -13,6 +13,7 @@ import {
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
 import BundleEmbed from "@/components/BundleEmbed";
+import HubEmbed from "@/components/HubEmbed";
 import BundleChat from "@/components/BundleChat";
 import HubChat from "@/components/HubChat";
 import SidebarFolderTree from "@/components/SidebarFolder";
@@ -1485,8 +1486,9 @@ interface Tab {
   id: string;
   title: string;
   markdown: string;
-  kind?: "doc" | "bundle";  // tab type — defaults to "doc"
+  kind?: "doc" | "bundle" | "hub";  // tab type — defaults to "doc"
   bundleId?: string;        // for bundle tabs — Supabase bundle id
+  hubSlug?: string;         // for hub tabs — public hub slug
   folderId?: string;       // null = root level
   cloudId?: string;        // Supabase document id
   editToken?: string;      // for token-based ownership
@@ -4214,7 +4216,7 @@ export default function MdEditor() {
 
   // Multi-select: compute visible doc order for shift-range
   const visibleMyDocIds = useMemo(() => {
-    const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle");
+    const allMyTabs = tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle" && t.kind !== "hub");
     const myTabs = docFilter === "all" ? allMyTabs
       : docFilter === "private" ? allMyTabs.filter(t => !t.isSharedByMe && !t.isRestricted)
       : docFilter === "shared" ? allMyTabs.filter(t => t.isSharedByMe || t.isRestricted)
@@ -7896,7 +7898,7 @@ ${clone.innerHTML}
 
   // Memoize sidebar filter computations to avoid re-filtering on every render
   const memoAllMyTabs = useMemo(() =>
-    tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle"),
+    tabs.filter(t => !t.deleted && !t.readonly && t.permission !== "readonly" && t.permission !== "editable" && t.kind !== "bundle" && t.kind !== "hub"),
     [tabs]
   );
 
@@ -8168,23 +8170,65 @@ ${clone.innerHTML}
           })()}
           {/* Home + view modes — own group */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-          {/* Hub — opens /hub/<slug> in a new tab. Only rendered when the
-              user has a public hub_slug (otherwise the URL would 404). */}
-          {hubSlug && (
-            <>
-              <Tooltip text="My Hub — public knowledge base + graph" position="bottom">
-                <button
-                  onClick={() => window.open(`/hub/${hubSlug}`, "_blank")}
-                  className="flex items-center justify-center w-7 h-6 transition-colors"
-                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
-                  aria-label="Open my hub"
-                >
-                  <Network width={13} height={13} />
-                </button>
-              </Tooltip>
-              <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
-            </>
-          )}
+          {/* Hub — toggles the in-editor hub tab. Click once to open the
+              hub overview as a tab; click again (when the hub tab is
+              already active) to close it and return to the previously
+              active tab. Only rendered when the user has a public
+              hub_slug. */}
+          {hubSlug && (() => {
+            const hubTabId = `hub-${hubSlug}`;
+            const isHubActive = activeTab?.id === hubTabId;
+            return (
+              <>
+                <Tooltip text={isHubActive ? "Close My Hub" : "My Hub — public knowledge base + graph"} position="bottom">
+                  <button
+                    onClick={() => {
+                      if (isHubActive) {
+                        // Close the hub tab — drop it from `tabs` and
+                        // return to the most recently active non-hub
+                        // tab. Falls back to onboarding if no other tab.
+                        const fallback = recentTabIds
+                          .map(id => tabs.find(t => t.id === id))
+                          .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
+                          || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
+                        setTabs(prev => prev.filter(t => t.id !== hubTabId));
+                        setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
+                        if (fallback) switchTab(fallback.id);
+                        else setShowOnboarding(true);
+                        return;
+                      }
+                      setShowOnboarding(false);
+                      setTabs(prev => {
+                        if (prev.some(t => t.id === hubTabId)) return prev;
+                        const newTab: Tab = {
+                          id: hubTabId,
+                          kind: "hub",
+                          hubSlug,
+                          title: "My Hub",
+                          markdown: "",
+                        };
+                        return [...prev, newTab];
+                      });
+                      queueMicrotask(() => switchTab(hubTabId));
+                      if (!isDraggingSidebarRef.current) {
+                        setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
+                      }
+                    }}
+                    className="flex items-center justify-center w-7 h-6 transition-colors"
+                    style={{
+                      background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
+                      color: isHubActive ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                    aria-label={isHubActive ? "Close my hub" : "Open my hub"}
+                    aria-pressed={isHubActive}
+                  >
+                    <Network width={13} height={13} />
+                  </button>
+                </Tooltip>
+                <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+              </>
+            );
+          })()}
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
@@ -11447,6 +11491,59 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 flex min-h-0 relative">
+            {/* Hub tab — in-editor view of /hub/<slug>. Same overlay slot
+                as BundleEmbed so it covers the editor preview while
+                respecting the right-side panels. */}
+            {activeTab?.kind === "hub" && activeTab.hubSlug && !showOnboarding && (
+              <div
+                className="absolute top-0 bottom-0 left-0 z-10 flex"
+                style={{
+                  right: showAIPanel ? aiPanelWidth : (showOutlinePanel ? "min(260px, 40%)" : (showImagePanel ? 320 : 0)),
+                  background: "var(--background)",
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <HubEmbed
+                    slug={activeTab.hubSlug}
+                    onOpenGraph={() => {
+                      if (activeTab.hubSlug) window.open(`/hub/${activeTab.hubSlug}/graph`, "_blank");
+                    }}
+                    onOpenDoc={(docId) => {
+                      const existing = tabs.find(t => t.cloudId === docId);
+                      if (existing) { switchTab(existing.id); return; }
+                      fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                        if (!d) return;
+                        const newId = `doc-${docId}-${Date.now()}`;
+                        const newTab: Tab = {
+                          id: newId, kind: "doc",
+                          title: d.title || "Untitled",
+                          markdown: d.markdown || "",
+                          cloudId: docId,
+                          isDraft: d.is_draft,
+                          shared: !d.isOwner,
+                          readonly: !d.isOwner && d.editMode !== "public",
+                        };
+                        setTabs(prev => [...prev, newTab]);
+                        switchTab(newId);
+                      }).catch(() => {});
+                    }}
+                    onOpenBundle={(bundleId) => {
+                      const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
+                      if (existing) { switchTab(existing.id); return; }
+                      const b = bundles.find(x => x.id === bundleId);
+                      const newId = `bundle-${bundleId}-${Date.now()}`;
+                      const newTab: Tab = {
+                        id: newId, kind: "bundle", bundleId,
+                        title: b?.title || "Untitled Bundle",
+                        markdown: "",
+                      };
+                      setTabs(prev => [...prev, newTab]);
+                      switchTab(newId);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
             {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && (
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
@@ -11516,7 +11613,7 @@ ${clone.innerHTML}
                 concepts that also appear in OTHER docs, surface a pill row
                 so the user can jump to the cross-doc context. Only shown for
                 regular doc tabs (not bundles, not onboarding). */}
-            {activeTab?.kind !== "bundle" && !showOnboarding && relatedConcepts.length > 0 && (
+            {activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && !showOnboarding && relatedConcepts.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 flex-wrap shrink-0"
                 style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}>
                 <span className="text-caption font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-faint)" }}>
@@ -11541,7 +11638,7 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
-              {isLoading && activeTab?.kind !== "bundle" && (
+              {isLoading && activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "var(--background)", gap: 14 }}>
                   {/* One-shot fade-in: opacity 0 → 1 with a small scale-up.
                       No infinite pulse — once visible the logo just sits
@@ -11592,14 +11689,16 @@ ${clone.innerHTML}
                 />
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
-              {showAIPanel && (canEdit || activeTab?.kind === "bundle" || (aiPanelMode === "hub" && hubSlug)) && (() => {
+              {showAIPanel && (canEdit || activeTab?.kind === "bundle" || activeTab?.kind === "hub" || (aiPanelMode === "hub" && hubSlug)) && (() => {
                 // Three assistants — Document, Bundle, Hub. All share the
                 // mdfy orange palette; the radio tabs above the panel are
                 // the single source of mode identity. The header below
                 // just shows "what the active assistant is working with"
                 // (title + word count, doc count + bundle name, concept
                 // count). No per-mode colour.
-                const isHubMode = aiPanelMode === "hub" && !!hubSlug;
+                // When the hub tab is open, the chat snaps to Hub mode
+                // automatically — no need for the user to flip the radio.
+                const isHubMode = !!hubSlug && (aiPanelMode === "hub" || activeTab?.kind === "hub");
                 const isBundleMode = !isHubMode && activeTab?.kind === "bundle";
                 const activeBundle = isBundleMode ? bundles.find(b => b.id === activeTab?.bundleId) : null;
                 const docWordCount = !isHubMode && !isBundleMode ? markdown.trim().split(/\s+/).filter(Boolean).length : 0;
@@ -11647,10 +11746,13 @@ ${clone.innerHTML}
                   if (activeTab?.kind === kind) return;
                   // Prefer recent tabs first (user's recency signal),
                   // fall back to anything in `tabs` of the right kind.
+                  const matchKind = (t: Tab) => kind === "bundle"
+                    ? t.kind === "bundle"
+                    : (t.kind !== "bundle" && t.kind !== "hub");
                   const candidatesFromRecent = recentTabIds
                     .map((id) => tabs.find((t) => t.id === id))
-                    .filter((t): t is Tab => !!t && (kind === "bundle" ? t.kind === "bundle" : t.kind !== "bundle") && !t.deleted);
-                  const fallback = tabs.find((t) => (kind === "bundle" ? t.kind === "bundle" : t.kind !== "bundle") && !t.deleted && !t.readonly);
+                    .filter((t): t is Tab => !!t && matchKind(t) && !t.deleted);
+                  const fallback = tabs.find((t) => matchKind(t) && !t.deleted && !t.readonly);
                   const target = candidatesFromRecent[0] || fallback;
                   if (target) switchTab(target.id);
                 };

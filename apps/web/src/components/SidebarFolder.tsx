@@ -46,8 +46,11 @@ export interface SidebarTabItem {
   ownerEmail?: string;
   sortOrder?: number;
   // Distinguishes doc vs bundle so cross-section drops (e.g. dropping a doc
-  // into a bundle canvas) can filter to doc items only.
-  kind?: "doc" | "bundle";
+  // into a bundle canvas) can filter to doc items only. The "hub" kind is
+  // a synthetic editor-only tab (one per session, never persisted to a
+  // sidebar folder), so this list never actually contains hub items —
+  // accept the wider union just so the upstream Tab type satisfies it.
+  kind?: "doc" | "bundle" | "hub";
   // Newly added but not yet opened — drives the pulsing orange dot indicator.
   unread?: boolean;
 }
