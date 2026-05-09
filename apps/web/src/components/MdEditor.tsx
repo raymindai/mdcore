@@ -8168,6 +8168,23 @@ ${clone.innerHTML}
           })()}
           {/* Home + view modes — own group */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+          {/* Hub — opens /hub/<slug> in a new tab. Only rendered when the
+              user has a public hub_slug (otherwise the URL would 404). */}
+          {hubSlug && (
+            <>
+              <Tooltip text="My Hub — public knowledge base + graph" position="bottom">
+                <button
+                  onClick={() => window.open(`/hub/${hubSlug}`, "_blank")}
+                  className="flex items-center justify-center w-7 h-6 transition-colors"
+                  style={{ background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                  aria-label="Open my hub"
+                >
+                  <Network width={13} height={13} />
+                </button>
+              </Tooltip>
+              <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+            </>
+          )}
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
