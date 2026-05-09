@@ -8164,36 +8164,13 @@ ${clone.innerHTML}
               </>
             )}
           </span>
-          {/* Compiled-from-bundle badge + Recompile button. Tier 2 hierarchy:
-              hidden until viewport ≥ xl so it never crowds the title at small
-              widths. Uses the new Badge + Button primitives for consistency. */}
-          {(() => {
-            const ct = tabs.find(t => t.id === activeTabId);
-            if (!ct?.compileKind || !ct.cloudId) return null;
-            const labels: Record<string, string> = { memo: "Memo", faq: "FAQ", brief: "Brief" };
-            const sourceCount = ct.compileFrom?.docIds?.length || 0;
-            const isRecompiling = recompilingDocId === ct.cloudId;
-            return (
-              <div className="hidden xl:inline-flex items-center" style={{ gap: "var(--space-2)" }}>
-                <Tooltip text={`Compiled from ${sourceCount} source${sourceCount === 1 ? "" : "s"}${ct.compiledAt ? ` — ${new Date(ct.compiledAt).toLocaleString()}` : ""}`} position="bottom">
-                  <Badge variant="accent">
-                    <Sparkles width={9} height={9} style={{ marginRight: 4 }} />
-                    Compiled — {labels[ct.compileKind] || ct.compileKind}
-                  </Badge>
-                </Tooltip>
-                <Tooltip text="Preview an updated synthesis from the current sources, then accept or reject" position="bottom">
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    onClick={() => ct.cloudId && openSynthesisDiff(ct.cloudId)}
-                    leadingIcon={<RotateCcw width={9} height={9} />}
-                  >
-                    Update synthesis
-                  </Button>
-                </Tooltip>
-              </div>
-            );
-          })()}
+          {/* "Compiled — Memo/FAQ/Brief" badge + "Update synthesis"
+              button removed from the header per founder feedback —
+              they crowded the title row. The compile metadata is
+              still on the Tab object (compileKind / compileFrom /
+              compiledAt) and openSynthesisDiff() / recompileDoc()
+              remain defined, so the feature can be re-exposed from a
+              context menu or details panel later without re-plumbing. */}
         </div>
 
         {/* Center cluster: [Back/Forward] gap [Home + view modes] — both groups absolute-centered as one unit */}
