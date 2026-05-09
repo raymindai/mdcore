@@ -92,6 +92,9 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
   const [graphGeneratedAt, setGraphGeneratedAt] = useState<string | null>(null);
   const [embeddingUpdatedAt, setEmbeddingUpdatedAt] = useState<string | null>(null);
   const [isEmbedding, setIsEmbedding] = useState(false);
+  // Set by /api/bundles/[id] when any member doc was updated AFTER
+  // graph_generated_at — drives the "Stale" badge on the Analyzed pill.
+  const [isAnalysisStale, setIsAnalysisStale] = useState(false);
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<{
     type: string; label: string; weight?: number; description?: string;
     summary?: string; themes?: string[]; insights?: string[];
@@ -147,6 +150,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
         setBundleIsOwner(!!data.isOwner);
         setGraphGeneratedAt(data.graph_generated_at || null);
         setEmbeddingUpdatedAt(data.embedding_updated_at || null);
+        setIsAnalysisStale(!!data.isAnalysisStale);
         setIsLoading(false);
 
         // Background: pull cached decompositions for every doc in parallel.
@@ -210,6 +214,8 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
         const g = await res.json();
         setAiGraph(g.graphData);
         setGraphGeneratedAt(g.generatedAt || new Date().toISOString());
+        // Just regenerated — no longer stale.
+        setIsAnalysisStale(false);
       }
     } catch { /* error */ }
     setIsAnalyzing(false);
@@ -1021,6 +1027,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           graphGeneratedAt={graphGeneratedAt}
           embeddingUpdatedAt={embeddingUpdatedAt}
           isEmbedding={isEmbedding}
+          isAnalysisStale={isAnalysisStale}
           isOwner={bundleIsOwner}
           onEmbed={handleEmbed}
           onDocumentClick={handleNodeClick}

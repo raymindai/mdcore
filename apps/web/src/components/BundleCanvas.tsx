@@ -67,6 +67,10 @@ interface BundleCanvasProps {
    *  current title/description/members. */
   embeddingUpdatedAt?: string | null;
   isEmbedding?: boolean;
+  /** True when at least one member doc was updated AFTER the bundle's
+   *  graph was generated — signals the Analyzed pill to show a Stale
+   *  badge so the user knows to re-Analyze. */
+  isAnalysisStale?: boolean;
   /** Owner-only actions (re-embed) are gated on this. */
   isOwner?: boolean;
   onEmbed?: () => void;
@@ -770,6 +774,7 @@ function BundleStatusGroup({
   isOwner,
   isAnalyzing,
   isEmbedding,
+  isAnalysisStale,
   graphGeneratedAt,
   embeddingUpdatedAt,
   onAnalyze,
@@ -778,6 +783,7 @@ function BundleStatusGroup({
   isOwner: boolean;
   isAnalyzing: boolean;
   isEmbedding: boolean;
+  isAnalysisStale: boolean;
   graphGeneratedAt: string | null;
   embeddingUpdatedAt: string | null;
   onAnalyze?: () => void;
@@ -792,6 +798,7 @@ function BundleStatusGroup({
     tooltip: string;
     fresh: boolean;
     busy: boolean;
+    stale?: boolean;
     onClick?: () => void;
     color: string;
   }> = [
@@ -799,10 +806,13 @@ function BundleStatusGroup({
       label: "Analyzed",
       age: graphGeneratedAt ? fmtAge(graphGeneratedAt) : "Not yet",
       tooltip: graphGeneratedAt
-        ? `AI graph last generated ${fmtAbsolute(graphGeneratedAt)}.${isOwner ? " Click to re-run." : ""}`
+        ? (isAnalysisStale
+            ? `AI graph generated ${fmtAbsolute(graphGeneratedAt)} — STALE: at least one member doc was edited since.${isOwner ? " Click to re-run." : ""}`
+            : `AI graph last generated ${fmtAbsolute(graphGeneratedAt)}.${isOwner ? " Click to re-run." : ""}`)
         : `This bundle hasn't been analyzed yet.${isOwner ? " Click to run AI analysis." : ""}`,
       fresh: !!graphGeneratedAt,
       busy: isAnalyzing,
+      stale: !!graphGeneratedAt && isAnalysisStale,
       onClick: isOwner ? onAnalyze : undefined,
       color: "#fb923c",
     },
@@ -841,6 +851,22 @@ function BundleStatusGroup({
             <span className="tabular-nums" style={{ color: chip.fresh ? "var(--text-secondary)" : "var(--text-faint)", fontSize: 11 }}>
               {chip.busy ? "Working…" : chip.age}
             </span>
+            {chip.stale && !chip.busy && (
+              <span
+                className="font-mono uppercase"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: 0.5,
+                  color: "#fbbf24",
+                  background: "rgba(251,191,36,0.12)",
+                  padding: "1px 5px",
+                  borderRadius: 3,
+                  marginLeft: 2,
+                }}
+              >
+                Stale
+              </span>
+            )}
           </span>
         );
         return (
@@ -869,7 +895,7 @@ function BundleStatusGroup({
 
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onPaneClose, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isAnalysisStale, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onPaneClose, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -1411,6 +1437,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
               isOwner={!!isOwner}
               isAnalyzing={!!isAnalyzing}
               isEmbedding={!!isEmbedding}
+              isAnalysisStale={!!isAnalysisStale}
               graphGeneratedAt={graphGeneratedAt || null}
               embeddingUpdatedAt={embeddingUpdatedAt || null}
               onAnalyze={onRegenerate}

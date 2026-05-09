@@ -142,11 +142,34 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   // Strip sensitive fields
   const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, edit_token: _et, ...safeBundle } = bundle;
 
+  // Analysis staleness: the graph was generated at graph_generated_at
+  // from the docs at that time. If ANY current member doc has been
+  // updated more recently, the graph reflects a stale snapshot. The
+  // Analyzed status pill in the canvas reads this to show a "Stale"
+  // badge without requiring the client to fetch each member's
+  // updated_at itself.
+  let isAnalysisStale = false;
+  let latestMemberUpdatedAt: string | null = null;
+  if (bundle.graph_generated_at && documents.length > 0) {
+    const latestMs = documents.reduce((max, d) => {
+      const t = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+      return t > max ? t : max;
+    }, 0);
+    if (latestMs > 0) {
+      latestMemberUpdatedAt = new Date(latestMs).toISOString();
+      if (latestMs > new Date(bundle.graph_generated_at).getTime()) {
+        isAnalysisStale = true;
+      }
+    }
+  }
+
   return NextResponse.json({
     ...safeBundle,
     hasPassword,
     isOwner,
     documents,
+    isAnalysisStale,
+    latestMemberUpdatedAt,
     ...(isOwner ? { editToken: bundle.edit_token } : {}),
   });
 }
