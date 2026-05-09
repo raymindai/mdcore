@@ -2792,7 +2792,15 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
             );
           }
           // Per-chunk-type sections — each pushes its own Section so the
-          // alternating rhythm continues across all of them.
+          // alternating rhythm continues across all of them. Type badges
+          // pull color from the same CHUNK_TYPE_COLORS the canvas uses, so
+          // a "claim" row in the sidebar wears the same orange as a claim
+          // chunk on the graph.
+          const chunkColors: Record<string, string> = {
+            claim: "#fb923c", definition: "#60a5fa", example: "#4ade80",
+            question: "#a78bfa", task: "#fbbf24", evidence: "#f472b6",
+            concept: "#38bdf8", context: "#94a3b8",
+          };
           const decomp = decomposeBridge?.decomposition;
           if (decomp) {
             const chunkSections: Array<{ type: string; header: string }> = [
@@ -2806,28 +2814,37 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
             for (const { type, header } of chunkSections) {
               const items = decomp.chunks.filter((c) => c.type === type);
               if (items.length === 0) continue;
+              const typeColor = chunkColors[type] || "var(--text-faint)";
               sections.push(
                 <Section key={type} index={sections.length}>
-                  <SectionLabel>
-                    {header} <span style={{ opacity: 0.6 }}>{items.length}</span>
-                  </SectionLabel>
-                  <ol className="space-y-2">
+                  <div className="flex items-center mb-2" style={{ gap: 8 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 999, background: typeColor, display: "inline-block" }} />
+                    <h4 className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: typeColor }}>
+                      {header}
+                    </h4>
+                    <span className="font-mono tabular-nums" style={{ fontSize: 9, color: "var(--text-faint)", marginLeft: "auto" }}>
+                      {items.length}
+                    </span>
+                  </div>
+                  <ol className="space-y-1.5">
                     {items.map((c, i) => {
                       const preview = stripMarkdownPreview(c.content);
                       return (
                         <li
                           key={c.id}
-                          className="flex gap-3 leading-[1.55] cursor-pointer rounded px-1 py-0.5 -mx-1 transition-colors"
-                          style={{ fontSize: 12, color: "var(--text-secondary)" }}
+                          className="flex leading-[1.55] cursor-pointer rounded transition-colors"
+                          style={{ fontSize: 12, color: "var(--text-secondary)", padding: "3px 6px", margin: "0 -6px", gap: 10 }}
                           onClick={() => decomposeBridge?.onEditChunk(c)}
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                         >
-                          <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-faint)", fontSize: 11 }}>{String(i + 1).padStart(2, "0")}</span>
+                          <span className="font-mono tabular-nums shrink-0" style={{ color: typeColor, fontSize: 10, fontWeight: 600, opacity: 0.7, paddingTop: 1 }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
                           <span className="flex-1">
                             <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
                             {preview && (
-                              <span> — {preview.slice(0, 140)}{preview.length > 140 ? "…" : ""}</span>
+                              <span style={{ color: "var(--text-muted)" }}> — {preview.slice(0, 140)}{preview.length > 140 ? "…" : ""}</span>
                             )}
                           </span>
                         </li>
@@ -2842,16 +2859,17 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
             sections.push(
               <Section key="related" index={sections.length}>
                 <SectionLabel>Related concepts</SectionLabel>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap" style={{ gap: 4 }}>
                   {info.connectedDocs.map((c: { id: string; title: string }) => (
                     <button
                       key={c.id}
                       onClick={() => onOpenDoc?.(c.id)}
-                      className="font-mono px-1.5 py-0.5 rounded transition-colors"
-                      style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3, cursor: onOpenDoc ? "pointer" : "default" }}
-                      onMouseEnter={(e) => { if (onOpenDoc) { (e.currentTarget as HTMLElement).style.background = "var(--accent-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+                      className="inline-flex items-center font-mono rounded transition-colors"
+                      style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3, cursor: onOpenDoc ? "pointer" : "default", gap: 4, padding: "3px 7px", border: "1px solid var(--border-dim)" }}
+                      onMouseEnter={(e) => { if (onOpenDoc) { (e.currentTarget as HTMLElement).style.background = "var(--accent-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; } }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; }}
                     >
+                      <Lightbulb width={9} height={9} style={{ color: "#38bdf8" }} />
                       {c.title}
                     </button>
                   ))}

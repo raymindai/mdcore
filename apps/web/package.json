@@ -12,6 +12,8 @@
     "test:bookmarklet": "tsx scripts/test-bookmarklet.ts",
     "test:diff": "tsx scripts/test-markdown-diff.ts",
     "test:perm": "node --env-file=.env.local scripts/perm-test.mjs",
+    "test:perm:matrix": "node --env-file=.env.local scripts/test-perm-matrix.mjs",
+    "audit:perm": "node --env-file=.env.local scripts/audit-permissions.mjs",
     "test:discover": "node --env-file=.env.local scripts/discover-test.mjs",
     "test:cross-refs": "tsx scripts/test-cross-refs.ts",
     "test:cross-refs:integration": "node --env-file=.env.local scripts/cross-refs-integration.mjs"

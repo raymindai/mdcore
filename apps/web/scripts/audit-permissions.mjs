@@ -41,9 +41,11 @@ function flag(rule, payload) {
   violations.push({ rule, ...payload });
 }
 
-// Pull the corpus
+// Pull the corpus — only LIVE rows (deleted_at IS NULL) for the invariant
+// checks. Soft-deleted rows are trash, not live data, so violations there
+// don't represent active user-facing problems.
 const [{ data: docs }, { data: bundles }, { data: bds }] = await Promise.all([
-  s.from("documents").select("id, user_id, anonymous_id, is_draft, deleted_at, edit_mode, allowed_emails, allowed_editors, password_hash"),
+  s.from("documents").select("id, user_id, anonymous_id, is_draft, deleted_at, edit_mode, allowed_emails, allowed_editors, password_hash").is("deleted_at", null),
   s.from("bundles").select("id, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, password_hash, is_discoverable"),
   s.from("bundle_documents").select("bundle_id, document_id"),
 ]);
