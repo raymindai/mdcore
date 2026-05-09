@@ -8205,7 +8205,7 @@ ${clone.innerHTML}
                     }}
                     aria-pressed={isHubActive}
                   >
-                    <Bookmark width={13} height={13} />
+                    <Globe width={13} height={13} />
                     <span className="hidden sm:inline">Hub</span>
                   </button>
                 </Tooltip>
@@ -8267,11 +8267,12 @@ ${clone.innerHTML}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
           </button>
-          {/* View buttons — different per tab kind. Hub tabs render no
-              view-mode buttons (the hub overview is the only view), so
-              they fall through to render nothing here. Bundle tabs get
-              [Canvas | List]; doc/home gets [Live | Split | Source]. */}
-          {activeTab?.kind === "hub" ? null : activeTab?.kind === "bundle" ? (
+          {/* View buttons — different per tab kind. Bundle tabs get
+              [Canvas | List]; everything else (doc + hub + onboarding)
+              keeps [Live | Split | Source] so the toolbar layout stays
+              identical when the user toggles Hub on/off. The view-mode
+              choice persists for when the user returns to a doc tab. */}
+          {activeTab?.kind === "bundle" ? (
             <>
               {/* Bundle: Canvas / List. Canvas uses Network (graph nodes
                   + edges) — Layers stays reserved for the Bundle primitive

@@ -1,13 +1,13 @@
 "use client";
 
-// In-editor view of a hub. Distinct from Home (which is your private
-// workspace landing) — Hub is the PUBLIC face of your knowledge base.
-// The view focuses on things only Hub gives you:
+// In-editor view of the user's hub. Distinct from Home (private
+// workspace landing) — Hub is the PUBLIC face. The view focuses on:
 //
 //   - the deploy-to-AI URL (the v6 thesis surface)
 //   - "view as a visitor sees it"
-//   - public counts vs drafts hidden (honest accounting)
-//   - the published docs + bundles others can actually reach
+//   - the user's full library grouped by access (Public / Shared /
+//     Private), bundles above docs in each section so the workspace
+//     primitive comes first
 //
 // Clicking a doc/bundle opens it as an editor tab in the same
 // instance — no full-page navigation, no losing context.
@@ -15,10 +15,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ScrollText, Layers, Copy, Check, ExternalLink, Globe, Eye,
-  Lock, BookOpen,
+  Layers, Copy, Check, ExternalLink, Globe, Eye, Lock, Users,
+  ShieldAlert,
 } from "lucide-react";
+import DocStatusIcon from "@/components/DocStatusIcon";
 
+interface DocCard {
+  id: string;
+  title: string;
+  snippet: string;
+  updated_at: string;
+  isDraft: boolean;
+  editMode: string | null;
+  cloudId: string;
+}
+interface BundleCard {
+  id: string;
+  title: string;
+  description: string | null;
+  updated_at: string;
+  isDraft: boolean;
+}
 interface HubData {
   hub: {
     slug: string;
@@ -28,18 +45,19 @@ interface HubData {
     plan: string | null;
     url: string;
   };
+  /** Public-only doc list — kept for the public-visitor fallback when
+   *  the caller is not the hub owner. Owners use `ownerView` instead. */
   documents: Array<{ id: string; title: string; snippet: string; updated_at: string; source: string | null }>;
+  /** Public-only bundle list — same purpose as `documents`. */
   bundles: Array<{ id: string; title: string; description: string | null; updated_at: string }>;
   topConcepts?: Array<{ id: number; label: string; occurrence: number; docCount: number }>;
-  counts: {
-    documents: number;
-    bundles: number;
-    concepts?: number;
-    totalWords?: number;
-    drafts?: number;
-    bundleDrafts?: number;
-  };
+  counts: { documents: number; bundles: number; concepts?: number; totalWords?: number };
   lastUpdated?: string | null;
+  isOwner?: boolean;
+  ownerView?: {
+    bundles: { public: BundleCard[]; shared: BundleCard[]; private: BundleCard[] };
+    documents: { public: DocCard[]; shared: DocCard[]; private: DocCard[] };
+  } | null;
 }
 
 interface HubEmbedProps {
@@ -58,6 +76,16 @@ function relativeTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// Three access tiers — visual identity for each section header. Public
+// (orange = on the hub), Shared (blue = with specific people),
+// Private (faint = only you). Using explicit colours so the tier the
+// user is looking at is always recognisable at a glance.
+const TIERS = {
+  public:  { label: "Public",  desc: "On your hub URL — anyone with the link can read", icon: Globe,        color: "var(--accent)", bg: "var(--accent-dim)" },
+  shared:  { label: "Shared",  desc: "Restricted to specific people or password",         icon: Users,         color: "#60a5fa",       bg: "rgba(96,165,250,0.12)" },
+  private: { label: "Private", desc: "Only you can read these — your working drafts and pinboard", icon: Lock, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
+} as const;
+
 export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProps) {
   const [data, setData] = useState<HubData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +98,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
     setError(null);
     (async () => {
       try {
-        const res = await fetch(`/api/hub/${slug}`);
+        const res = await fetch(`/api/hub/${slug}`, { credentials: "include" });
         if (!res.ok) {
           const e = await res.json().catch(() => ({}));
           if (!cancelled) {
@@ -120,18 +148,22 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
     );
   }
 
-  const draftsCount = data.counts.drafts ?? 0;
-  const bundleDraftsCount = data.counts.bundleDrafts ?? 0;
+  const ov = data.ownerView;
+  const totalCounts = ov
+    ? {
+        public:  ov.bundles.public.length  + ov.documents.public.length,
+        shared:  ov.bundles.shared.length  + ov.documents.shared.length,
+        private: ov.bundles.private.length + ov.documents.private.length,
+      }
+    : null;
 
   return (
     <div className="h-full overflow-auto">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* ── Eyebrow + title ─────────────────────────────────────── */}
+        {/* ── Eyebrow + identity ──────────────────────────────────── */}
         <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
           Public knowledge hub
         </div>
-
-        {/* ── Identity row ────────────────────────────────────────── */}
         <header className="flex items-start gap-4 mb-8">
           <img
             src={data.hub.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(slug)}`}
@@ -154,7 +186,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
           </div>
         </header>
 
-        {/* ── Deploy-to-AI — the hero affordance, the WHY of Hub ─── */}
+        {/* ── Deploy-to-AI — the WHY of Hub ───────────────────────── */}
         <section
           className="mb-8 px-5 py-4 rounded-xl"
           style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}
@@ -166,7 +198,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
                 Deploy this hub to any AI
               </p>
               <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches a structured index and follows inline links to read individual docs and bundles as needed.
+                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches a structured index and follows inline links.
               </p>
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <code
@@ -192,7 +224,6 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
                   target="_blank"
                   className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                   style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                  title="Open the public page in a new tab — see your hub as a visitor sees it"
                 >
                   <Eye width={11} height={11} />
                   View as visitor
@@ -211,150 +242,167 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
           </div>
         </section>
 
-        {/* ── Stat strip — public counts, with drafts hidden tally ─ */}
-        <section className="flex items-center gap-6 mb-3 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <div className="flex flex-col">
-            <span className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{data.counts.documents}</span>
-            <span className="text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Public {data.counts.documents === 1 ? "doc" : "docs"}</span>
-          </div>
-          <div className="w-px h-10" style={{ background: "var(--border-dim)" }} />
-          <div className="flex flex-col">
-            <span className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{data.counts.bundles}</span>
-            <span className="text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Public {data.counts.bundles === 1 ? "bundle" : "bundles"}</span>
-          </div>
-          {(draftsCount > 0 || bundleDraftsCount > 0) && (
-            <>
-              <div className="w-px h-10" style={{ background: "var(--border-dim)" }} />
-              <div className="flex flex-col">
-                <span className="text-display font-bold tabular-nums flex items-center gap-1.5" style={{ color: "var(--text-faint)" }}>
-                  <Lock width={14} height={14} />
-                  {draftsCount + bundleDraftsCount}
-                </span>
-                <span className="text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>
-                  Hidden ({draftsCount} draft{draftsCount === 1 ? "" : "s"}{bundleDraftsCount > 0 ? `, ${bundleDraftsCount} bundle${bundleDraftsCount === 1 ? "" : "s"}` : ""})
-                </span>
-              </div>
-            </>
-          )}
-        </section>
-        {(draftsCount > 0 || bundleDraftsCount > 0) && (
-          <p className="text-caption mb-8" style={{ color: "var(--text-faint)" }}>
-            Your library has more — the hub only shows <strong>published</strong> docs and bundles. Drafts and password-protected items stay private.
-          </p>
+        {/* ── Stat strip — counts by access tier ──────────────────── */}
+        {totalCounts && (
+          <section className="grid grid-cols-3 gap-2 mb-8">
+            {(["public", "shared", "private"] as const).map((tier) => {
+              const t = TIERS[tier];
+              const Icon = t.icon;
+              return (
+                <div
+                  key={tier}
+                  className="px-4 py-3 rounded-xl"
+                  style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                >
+                  <div className="flex items-center gap-1.5 mb-1" style={{ color: t.color }}>
+                    <Icon width={12} height={12} />
+                    <span className="text-caption uppercase tracking-wider font-semibold">{t.label}</span>
+                  </div>
+                  <div className="text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                    {totalCounts[tier]}
+                  </div>
+                  <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>
+                    {ov ? `${ov.bundles[tier].length} bundle${ov.bundles[tier].length === 1 ? "" : "s"} · ${ov.documents[tier].length} doc${ov.documents[tier].length === 1 ? "" : "s"}` : ""}
+                  </div>
+                </div>
+              );
+            })}
+          </section>
         )}
-        {!(draftsCount > 0 || bundleDraftsCount > 0) && <div className="mb-8" />}
 
-        {/* ── What you can do here — only-on-Hub actions ─────────── */}
-        <section className="mb-10 px-5 py-4 rounded-xl" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}>
-          <h2 className="text-caption font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>
-            What you can do here
-          </h2>
-          <ul className="space-y-2 text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            <li className="flex items-start gap-2">
-              <Globe width={12} height={12} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-              <span>
-                <strong style={{ color: "var(--text-primary)" }}>Drop your hub URL into any AI.</strong> Claude, ChatGPT, Cursor, Codex — they fetch your full personal context as a structured index.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Eye width={12} height={12} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-              <span>
-                <strong style={{ color: "var(--text-primary)" }}>See your hub as a visitor sees it.</strong> The &ldquo;View as visitor&rdquo; link above opens the public-facing page — the exact thing that lands when someone opens your URL.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <BookOpen width={12} height={12} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-              <span>
-                <strong style={{ color: "var(--text-primary)" }}>Browse other people&apos;s hubs.</strong> See how other founders, researchers, and writers structure theirs at <Link href="/hubs" target="_blank" className="underline" style={{ color: "var(--accent)" }}>/hubs</Link>.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <Lock width={12} height={12} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-              <span>
-                <strong style={{ color: "var(--text-primary)" }}>Control what&apos;s public.</strong> Drafts and password-protected docs never appear here. Publish from each doc&apos;s Share menu, or unpublish to take something off the hub.
-              </span>
-            </li>
-          </ul>
-        </section>
+        {/* ── Owner view — three sections by access tier, bundles
+              above docs in each section. Non-owner falls through to
+              the simpler public-only fallback below. ─────────────── */}
+        {ov && (["public", "shared", "private"] as const).map((tier) => {
+          const t = TIERS[tier];
+          const bundles = ov.bundles[tier];
+          const docs = ov.documents[tier];
+          if (bundles.length === 0 && docs.length === 0) return null;
+          const Icon = t.icon;
+          return (
+            <section key={tier} className="mb-10">
+              <div className="flex items-baseline gap-2 mb-3 pb-2" style={{ borderBottom: `1px solid ${t.color === "var(--accent)" ? "var(--accent-dim)" : t.bg}` }}>
+                <span
+                  className="flex items-center justify-center shrink-0"
+                  style={{ width: 22, height: 22, borderRadius: 6, background: t.bg, color: t.color }}
+                >
+                  <Icon width={12} height={12} />
+                </span>
+                <h2 className="text-heading" style={{ color: t.color }}>{t.label}</h2>
+                <span className="text-caption font-mono tabular-nums" style={{ color: "var(--text-faint)" }}>
+                  {bundles.length + docs.length}
+                </span>
+                <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>{t.desc}</span>
+              </div>
 
-        {/* ── Recent / Public docs ────────────────────────────────── */}
-        {data.documents.length > 0 && (
+              {/* Bundles first — workspace primitive comes above docs */}
+              {bundles.length > 0 && (
+                <div className="mb-4">
+                  <div className="text-caption uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)", fontSize: 10 }}>
+                    Bundles · {bundles.length}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {bundles.map((b) => (
+                      <button
+                        key={b.id}
+                        onClick={() => onOpenBundle?.(b.id)}
+                        className="text-left flex flex-col gap-1 p-3 rounded-lg transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Layers width={13} height={13} style={{ color: t.color }} className="shrink-0" />
+                          <span className="text-body font-medium truncate" style={{ color: "var(--text-primary)" }}>{b.title}</span>
+                          <span className="ml-auto text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>{relativeTime(b.updated_at)}</span>
+                        </div>
+                        {b.description && (
+                          <p className="text-caption line-clamp-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
+                            {b.description}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Docs — same row layout the sidebar uses, with the
+                  same DocStatusIcon so a doc reads identically here
+                  and in MDs. */}
+              {docs.length > 0 && (
+                <div>
+                  <div className="text-caption uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)", fontSize: 10 }}>
+                    Docs · {docs.length}
+                  </div>
+                  <ul className="space-y-0.5">
+                    {docs.slice(0, 30).map((d) => (
+                      <li key={d.id}>
+                        <button
+                          onClick={() => onOpenDoc?.(d.id)}
+                          className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+                        >
+                          <DocStatusIcon
+                            tab={{
+                              isDraft: d.isDraft,
+                              editMode: d.editMode || undefined,
+                              cloudId: d.cloudId,
+                              permission: "mine",
+                            }}
+                            isActive={false}
+                          />
+                          <span className="flex-1 truncate text-body" style={{ color: "var(--text-primary)" }}>{d.title}</span>
+                          <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>{relativeTime(d.updated_at)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {docs.length > 30 && (
+                    <p className="text-caption mt-2" style={{ color: "var(--text-faint)" }}>
+                      +{docs.length - 30} more — open the sidebar to browse all.
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
+
+        {/* ── Non-owner fallback — when API didn't return ownerView,
+              this is a public visitor. Show only what's public. ── */}
+        {!ov && data.documents.length > 0 && (
           <section className="mb-10">
             <header className="flex items-baseline justify-between mb-3">
-              <h2 className="text-heading" style={{ color: "var(--accent)" }}>Public docs</h2>
+              <h2 className="text-heading" style={{ color: "var(--accent)" }}>Public</h2>
               <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-                {data.documents.length} total{data.lastUpdated ? ` · last update ${relativeTime(data.lastUpdated)}` : ""}
+                {data.counts.bundles} bundle{data.counts.bundles === 1 ? "" : "s"} · {data.counts.documents} doc{data.counts.documents === 1 ? "" : "s"}
               </span>
             </header>
             <ul className="space-y-1">
-              {data.documents.slice(0, 12).map((d) => (
+              {data.documents.map((d) => (
                 <li key={d.id}>
                   <button
                     onClick={() => onOpenDoc?.(d.id)}
                     className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
                   >
-                    <ScrollText width={12} height={12} className="shrink-0" style={{ color: "var(--accent)" }} />
+                    <DocStatusIcon tab={{ isDraft: false, cloudId: d.id, permission: "readonly" }} isActive={false} />
                     <span className="flex-1 truncate text-body" style={{ color: "var(--text-primary)" }}>{d.title}</span>
                     <span className="text-caption shrink-0 font-mono" style={{ color: "var(--text-faint)" }}>{relativeTime(d.updated_at)}</span>
                   </button>
                 </li>
               ))}
             </ul>
-            {data.documents.length > 12 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mt-2">
-                {data.documents.slice(12).map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => onOpenDoc?.(d.id)}
-                    className="text-left flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)] min-w-0"
-                  >
-                    <ScrollText width={11} height={11} style={{ color: "var(--text-muted)" }} className="shrink-0" />
-                    <span className="truncate text-caption" style={{ color: "var(--text-secondary)" }}>{d.title}</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </section>
         )}
 
-        {/* ── Bundles ────────────────────────────────────────────── */}
-        {data.bundles.length > 0 && (
-          <section className="mb-12">
-            <header className="mb-3">
-              <h2 className="text-heading" style={{ color: "var(--accent)" }}>Public bundles</h2>
-            </header>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {data.bundles.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => onOpenBundle?.(b.id)}
-                  className="text-left flex flex-col gap-1 p-3 rounded-lg transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Layers width={13} height={13} style={{ color: "var(--accent)" }} className="shrink-0" />
-                    <span className="text-body font-medium truncate" style={{ color: "var(--text-primary)" }}>{b.title}</span>
-                  </div>
-                  {b.description ? (
-                    <p className="text-caption line-clamp-2 leading-relaxed" style={{ color: "var(--text-faint)" }}>
-                      {b.description}
-                    </p>
-                  ) : (
-                    <span className="text-caption" style={{ color: "var(--text-faint)" }}>{relativeTime(b.updated_at)}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {data.documents.length === 0 && data.bundles.length === 0 && (
+        {/* Empty hub state */}
+        {ov && totalCounts &&
+          totalCounts.public === 0 && totalCounts.shared === 0 && totalCounts.private === 0 && (
           <div className="py-12 text-center">
-            <p className="text-body mb-2" style={{ color: "var(--text-secondary)" }}>
-              Your hub is empty.
+            <ShieldAlert width={24} height={24} className="mx-auto mb-3" style={{ color: "var(--text-faint)", opacity: 0.5 }} />
+            <p className="text-body mb-1" style={{ color: "var(--text-secondary)" }}>
+              No content yet.
             </p>
             <p className="text-caption" style={{ color: "var(--text-faint)" }}>
-              Publish a doc or bundle from the editor to see it appear here.
+              Create a doc or a bundle to fill your hub.
             </p>
           </div>
         )}

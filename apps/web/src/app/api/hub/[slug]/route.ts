@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { verifyAuthToken } from "@/lib/verify-auth";
+import { getServerUserId } from "@/lib/supabase-server";
 
 /**
  * v6 — Hub URL API.
  *
  * GET /api/hub/[slug] — JSON view of a public hub.
  *
- * Returns the hub owner's profile (display name + avatar + description),
- * a recent-activity strip, and a paginated list of public docs +
- * bundles. The hub viewer page (`/hub/[slug]`) consumes this directly;
- * AI fetchers go through `/raw/hub/[slug]` for the markdown payload.
+ * Public callers see a paginated list of PUBLIC docs + bundles
+ * (published, non-passworded, non-email-restricted). When the caller
+ * is the hub OWNER (Bearer / x-user-id / Supabase session cookie that
+ * resolves to profile.id), the response also carries an `ownerView`
+ * with all of the owner's content grouped by access level — used by
+ * the in-editor Hub tab to render Public / Shared / Private sections.
  *
- * Privacy: only profiles with hub_public = true are exposed. Drafts,
- * password-protected, and email-restricted docs are filtered out at
- * the SQL layer so private content can't leak even if someone enables
- * their hub publicly.
+ * Privacy: only profiles with hub_public = true are exposed for
+ * public reads. Drafts, password-protected, and email-restricted
+ * content NEVER leaks to non-owners; ownerView is gated on the
+ * authentication match.
  */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!/^[a-z0-9_-]{3,32}$/.test(slug)) {
     return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
@@ -24,6 +28,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 
   const supabase = getSupabaseClient();
   if (!supabase) return NextResponse.json({ error: "Storage not configured" }, { status: 503 });
+
+  // Resolve the caller. Falls through Bearer → x-user-id → cookie so
+  // the in-editor fetch (credentials: include only) authenticates via
+  // the same path the hub graph used to.
+  const verified = await verifyAuthToken(req.headers.get("authorization"));
+  const callerUserId = verified?.userId || req.headers.get("x-user-id") || (await getServerUserId());
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -60,7 +70,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   // no email restrictions. Order by most-recently-updated.
   const { data: docs } = await supabase
     .from("documents")
-    .select("id, title, markdown, updated_at, source")
+    .select("id, title, markdown, updated_at, source, allowed_emails")
     .eq("user_id", profile.id)
     .eq("is_draft", false)
     .is("deleted_at", null)
@@ -68,9 +78,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     .order("updated_at", { ascending: false })
     .limit(200);
 
-  const filteredDocs = (docs || []).filter(d => {
-    // No allowed_emails restriction — emit only fully public docs.
-    return true;
+  // Drop docs with allowed_emails restrictions — they're not "public"
+  // even though the SQL filter let them through (allowed_emails is an
+  // array column; PostgREST has no clean nullable-or-empty filter
+  // syntax, so we filter in JS).
+  const filteredDocs = (docs || []).filter((d) => {
+    const ae = (d as { allowed_emails?: string[] | null }).allowed_emails;
+    return !(Array.isArray(ae) && ae.length > 0);
   });
 
   // Public bundles — non-draft, no password, no allowed_emails. Bundles
@@ -121,23 +135,77 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     if (!lastUpdated || d.updated_at > lastUpdated) lastUpdated = d.updated_at;
   }
 
-  // Drafts count — owner-private docs that exist in the library but
-  // don't show on the public hub. Surfaced in the response so the
-  // editor's hub view can honestly say "X drafts not shown" instead
-  // of letting the founder think the hub count is the whole library.
-  const { count: draftsCount } = await supabase
-    .from("documents")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("is_draft", true)
-    .is("deleted_at", null);
-  // Bundles drafts too — bundles table doesn't have deleted_at, so
-  // is_draft alone is the filter.
-  const { count: bundleDraftsCount } = await supabase
-    .from("bundles")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("is_draft", true);
+  // Owner view — all of the user's content, grouped by access level.
+  // Public:  on /hub/<slug>  (is_draft=false, no pw, no email allow-list)
+  // Shared:  password OR email-restricted (or other share semantics)
+  // Private: only the owner can read
+  type DocRow = { id: string; title: string | null; markdown: string; updated_at: string; source: string | null; is_draft: boolean; password_hash: string | null; allowed_emails: string[] | null; edit_mode: string | null };
+  type BundleRow = { id: string; title: string | null; description: string | null; updated_at: string; is_draft: boolean; password_hash: string | null; allowed_emails: string[] | null };
+  type DocCard = { id: string; title: string; snippet: string; updated_at: string; isDraft: boolean; editMode: string | null; cloudId: string };
+  type BundleCard = { id: string; title: string; description: string | null; updated_at: string; isDraft: boolean };
+
+  const isOwner = !!callerUserId && callerUserId === profile.id;
+  let ownerView: {
+    bundles: { public: BundleCard[]; shared: BundleCard[]; private: BundleCard[] };
+    documents: { public: DocCard[]; shared: DocCard[]; private: DocCard[] };
+  } | null = null;
+
+  if (isOwner) {
+    const [{ data: allDocs }, { data: allBundles }] = await Promise.all([
+      supabase
+        .from("documents")
+        .select("id, title, markdown, updated_at, source, is_draft, password_hash, allowed_emails, edit_mode")
+        .eq("user_id", profile.id)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false }),
+      supabase
+        .from("bundles")
+        .select("id, title, description, updated_at, is_draft, password_hash, allowed_emails")
+        .eq("user_id", profile.id)
+        .order("updated_at", { ascending: false }),
+    ]);
+
+    const classifyDoc = (d: DocRow): "public" | "shared" | "private" => {
+      if (d.is_draft) return "private";
+      const hasPw = !!d.password_hash;
+      const hasEmails = Array.isArray(d.allowed_emails) && d.allowed_emails.length > 0;
+      if (hasPw || hasEmails) return "shared";
+      return "public";
+    };
+    const classifyBundle = (b: BundleRow): "public" | "shared" | "private" => {
+      if (b.is_draft) return "private";
+      const hasPw = !!b.password_hash;
+      const hasEmails = Array.isArray(b.allowed_emails) && b.allowed_emails.length > 0;
+      if (hasPw || hasEmails) return "shared";
+      return "public";
+    };
+
+    const docCards: { public: DocCard[]; shared: DocCard[]; private: DocCard[] } = { public: [], shared: [], private: [] };
+    for (const d of (allDocs as DocRow[] | null) ?? []) {
+      const card: DocCard = {
+        id: d.id,
+        title: d.title || "Untitled",
+        snippet: (d.markdown || "").slice(0, 200),
+        updated_at: d.updated_at,
+        isDraft: d.is_draft,
+        editMode: d.edit_mode,
+        cloudId: d.id,
+      };
+      docCards[classifyDoc(d)].push(card);
+    }
+    const bundleCards: { public: BundleCard[]; shared: BundleCard[]; private: BundleCard[] } = { public: [], shared: [], private: [] };
+    for (const b of (allBundles as BundleRow[] | null) ?? []) {
+      const card: BundleCard = {
+        id: b.id,
+        title: b.title || "Untitled Bundle",
+        description: b.description,
+        updated_at: b.updated_at,
+        isDraft: b.is_draft,
+      };
+      bundleCards[classifyBundle(b)].push(card);
+    }
+    ownerView = { bundles: bundleCards, documents: docCards };
+  }
 
   return NextResponse.json({
     hub: {
@@ -162,9 +230,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       bundles: publicBundles.length,
       concepts: totalConceptCount,
       totalWords,
-      drafts: draftsCount ?? 0,
-      bundleDrafts: bundleDraftsCount ?? 0,
     },
     lastUpdated,
+    ownerView,
+    isOwner,
   });
 }
