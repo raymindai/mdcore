@@ -384,6 +384,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // its old bundles — the user must add it back, which is the intended
     // semantic for "trash means break this relationship".
     await supabase.from("bundle_documents").delete().eq("document_id", id);
+    // Drop chunk-level embeddings too. Hard DELETE cascades them via FK,
+    // but soft-delete leaves them behind — they'd keep surfacing the
+    // trashed doc in semantic recall (match_public_hub_chunks reads from
+    // document_chunks directly). Restoring from trash will require a
+    // re-embed which the auto-save flow handles on next edit.
+    await supabase.from("document_chunks").delete().eq("doc_id", id);
     return NextResponse.json({ ok: true });
   }
 

@@ -136,6 +136,35 @@ for (const r of bds || []) {
   if (!docById.has(r.document_id)) flag("10-orphan-bd-doc", { bundle_id: r.bundle_id, document_id: r.document_id });
 }
 
+// 11. cross-owner bundle membership (bundle owner ≠ doc owner)
+//     Possible only via direct DB writes; the API guards adding non-owned
+//     docs. Surfaces if anyone bypassed.
+{
+  const { data: ownerJoin } = await s
+    .from("bundle_documents")
+    .select("bundle_id, document_id, bundles!inner(user_id), documents!inner(user_id)");
+  for (const r of ownerJoin || []) {
+    const b = Array.isArray(r.bundles) ? r.bundles[0] : r.bundles;
+    const d = Array.isArray(r.documents) ? r.documents[0] : r.documents;
+    if (b && d && b.user_id && d.user_id && b.user_id !== d.user_id) {
+      flag("11-cross-owner-bundle-member", { bundle_id: r.bundle_id, document_id: r.document_id });
+    }
+  }
+}
+
+// 12. document_chunks orphans / chunks of soft-deleted docs
+{
+  const { data: chunks } = await s.from("document_chunks").select("doc_id").limit(5000);
+  const chunkDocIds = [...new Set((chunks || []).map((c) => c.doc_id))];
+  if (chunkDocIds.length > 0) {
+    const { data: parents } = await s.from("documents").select("id, deleted_at").in("id", chunkDocIds);
+    const liveSet = new Set((parents || []).filter((p) => !p.deleted_at).map((p) => p.id));
+    for (const c of chunks || []) {
+      if (!liveSet.has(c.doc_id)) flag("12-chunk-orphan", { doc_id: c.doc_id });
+    }
+  }
+}
+
 // Report
 const byRule = new Map();
 for (const v of violations) {
