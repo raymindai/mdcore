@@ -11576,22 +11576,25 @@ ${clone.innerHTML}
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
               {showAIPanel && (canEdit || activeTab?.kind === "bundle" || (aiPanelMode === "hub" && hubSlug)) && (() => {
-                // Three assistants, three identities. Each mode owns a
-                // distinct color, icon, and scope so the user always knows
-                // which scope they're chatting with: one doc, a bundle of
-                // them, or the whole hub. Visual identity flows through to
-                // the chat bubbles + citation chips via accent props.
+                // Three assistants — Document, Bundle, Hub. All share the
+                // mdfy orange palette; the radio tabs above the panel are
+                // the single source of mode identity. The header below
+                // just shows "what the active assistant is working with"
+                // (title + word count, doc count + bundle name, concept
+                // count). No per-mode colour.
                 const isHubMode = aiPanelMode === "hub" && !!hubSlug;
                 const isBundleMode = !isHubMode && activeTab?.kind === "bundle";
                 const activeBundle = isBundleMode ? bundles.find(b => b.id === activeTab?.bundleId) : null;
                 const docWordCount = !isHubMode && !isBundleMode ? markdown.trim().split(/\s+/).filter(Boolean).length : 0;
+                const accent = "var(--accent)";
+                const accentDim = "var(--accent-dim)";
                 const mode = isHubMode
                   ? {
                       id: "hub" as const,
                       label: "Hub",
                       icon: <Network width={12} height={12} />,
-                      accent: "#a78bfa",
-                      accentDim: "rgba(167,139,250,0.16)",
+                      accent,
+                      accentDim,
                       scope: hubConceptCount > 0
                         ? `${hubConceptCount} concepts · whole hub`
                         : "ontology not built yet",
@@ -11601,8 +11604,8 @@ ${clone.innerHTML}
                         id: "bundle" as const,
                         label: "Bundle",
                         icon: <Layers width={12} height={12} />,
-                        accent: "#38bdf8",
-                        accentDim: "rgba(56,189,248,0.16)",
+                        accent,
+                        accentDim,
                         scope: activeBundle
                           ? `${activeBundle.documentCount} doc${activeBundle.documentCount === 1 ? "" : "s"} · ${activeBundle.title || "Untitled"}`
                           : (activeTab?.title || "this bundle"),
@@ -11611,12 +11614,29 @@ ${clone.innerHTML}
                         id: "doc" as const,
                         label: "Document",
                         icon: <Sparkles width={12} height={12} />,
-                        accent: "var(--accent)",
-                        accentDim: "var(--accent-dim)",
+                        accent,
+                        accentDim,
                         scope: activeTab?.title
                           ? `${activeTab.title}${docWordCount > 0 ? ` · ${docWordCount.toLocaleString()} word${docWordCount === 1 ? "" : "s"}` : ""}`
                           : (docWordCount > 0 ? `${docWordCount.toLocaleString()} words` : "draft"),
                       };
+                // Helpers for the radio tab clicks: clicking Document /
+                // Bundle when no tab of that kind is active jumps to the
+                // most recent tab of that kind so the radio actually
+                // gets you to the scope it advertises.
+                const jumpToMostRecent = (kind: "doc" | "bundle") => {
+                  setAiPanelMode("auto");
+                  // If the current activeTab already matches, nothing to do.
+                  if (activeTab?.kind === kind) return;
+                  // Prefer recent tabs first (user's recency signal),
+                  // fall back to anything in `tabs` of the right kind.
+                  const candidatesFromRecent = recentTabIds
+                    .map((id) => tabs.find((t) => t.id === id))
+                    .filter((t): t is Tab => !!t && (kind === "bundle" ? t.kind === "bundle" : t.kind !== "bundle") && !t.deleted);
+                  const fallback = tabs.find((t) => (kind === "bundle" ? t.kind === "bundle" : t.kind !== "bundle") && !t.deleted && !t.readonly);
+                  const target = candidatesFromRecent[0] || fallback;
+                  if (target) switchTab(target.id);
+                };
                 return (
                 <div
                   data-pane="ai-panel"
@@ -11648,29 +11668,27 @@ ${clone.innerHTML}
                     <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full">
-                  {/* Mode indicator + actions header. The bar carries the
-                      mode color so the surface itself signals which
-                      assistant you're talking to without reading text. */}
+                  {/* Mode indicator + actions header. Single brand colour
+                      (orange) so the panel feels like one product. The
+                      radio tabs below this row are the source of mode
+                      identity; the header just shows the active scope. */}
                   <div
                     className="flex items-center justify-between px-3 py-2 shrink-0 gap-2"
-                    style={{
-                      borderBottom: "1px solid var(--border-dim)",
-                      background: `linear-gradient(to right, ${mode.accentDim}, transparent 60%)`,
-                    }}
+                    style={{ borderBottom: "1px solid var(--border-dim)" }}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span
                         className="flex items-center justify-center shrink-0"
                         style={{
                           width: 24, height: 24, borderRadius: 6,
-                          background: mode.accentDim,
-                          color: mode.accent,
+                          background: "var(--accent-dim)",
+                          color: "var(--accent)",
                         }}
                       >
                         {mode.icon}
                       </span>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-caption font-semibold leading-tight" style={{ color: mode.accent }}>{mode.label}</span>
+                        <span className="text-caption font-semibold leading-tight" style={{ color: "var(--accent)" }}>{mode.label}</span>
                         <span className="leading-tight truncate" style={{ color: "var(--text-faint)", fontSize: 10 }} title={mode.scope}>
                           {mode.scope}
                         </span>
@@ -11708,45 +11726,56 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
-                  {/* Mode switcher — prominent two-tab pill so users can flip
-                      between the per-doc/bundle assistant (auto) and the
-                      whole-hub assistant. Only rendered when the user has a
-                      hub_slug (otherwise hub mode is unreachable anyway). */}
-                  {hubSlug && (
-                    <div className="px-2 pt-2 shrink-0">
-                      <div
-                        className="flex items-center p-0.5 rounded-lg"
-                        style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
-                      >
+                  {/* Mode switcher — three-tab radio so all assistants
+                      (Document, Bundle, Hub) are visible at once. Active
+                      tab tracks the current scope automatically: opening
+                      a doc tab makes Document active, opening a bundle
+                      tab makes Bundle active. Clicking an inactive
+                      Document/Bundle tab jumps to the most-recent tab of
+                      that kind. Hub is always reachable when hub_slug
+                      exists. Single accent colour — orange — for both
+                      the active fill and labels. */}
+                  <div className="px-2 pt-2 shrink-0">
+                    <div
+                      className="grid grid-cols-3 gap-0.5 p-0.5 rounded-lg"
+                      style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                      role="radiogroup"
+                      aria-label="Assistant mode"
+                    >
+                      {([
+                        { id: "doc",    label: "Document", icon: <Sparkles width={11} height={11} />,
+                          active: !isHubMode && !isBundleMode,
+                          onClick: () => jumpToMostRecent("doc") },
+                        { id: "bundle", label: "Bundle",   icon: <Layers width={11} height={11} />,
+                          active: !isHubMode && isBundleMode,
+                          onClick: () => jumpToMostRecent("bundle") },
+                        ...(hubSlug ? [{ id: "hub" as const, label: "Hub", icon: <Network width={11} height={11} />,
+                          active: isHubMode,
+                          onClick: () => setAiPanelMode("hub") }] : []),
+                      ]).map((t) => (
                         <button
-                          onClick={() => setAiPanelMode("auto")}
-                          className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
+                          key={t.id}
+                          role="radio"
+                          aria-checked={t.active}
+                          onClick={t.onClick}
+                          className="flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
                           style={{
-                            background: !isHubMode ? "var(--surface)" : "transparent",
-                            color: !isHubMode ? (isBundleMode ? "#38bdf8" : "var(--accent)") : "var(--text-faint)",
-                            boxShadow: !isHubMode ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
+                            background: t.active ? "var(--accent)" : "transparent",
+                            color: t.active ? "#fff" : "var(--text-faint)",
+                            boxShadow: t.active ? "0 1px 3px rgba(251,146,60,0.35)" : "none",
                           }}
-                          title={isBundleMode ? "Talking to this bundle" : "Talking to this document"}
+                          title={
+                            t.id === "doc" ? "Document Assistant — chat scoped to the current doc" :
+                            t.id === "bundle" ? "Bundle Assistant — chat scoped to the current bundle" :
+                            "Hub Assistant — chat across your whole hub"
+                          }
                         >
-                          {isBundleMode ? <Layers width={11} height={11} /> : <Sparkles width={11} height={11} />}
-                          {isBundleMode ? "Bundle" : "Document"}
+                          {t.icon}
+                          {t.label}
                         </button>
-                        <button
-                          onClick={() => setAiPanelMode("hub")}
-                          className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
-                          style={{
-                            background: isHubMode ? "#a78bfa" : "transparent",
-                            color: isHubMode ? "#fff" : "var(--text-faint)",
-                            boxShadow: isHubMode ? "0 1px 4px rgba(167,139,250,0.4)" : "none",
-                          }}
-                          title="Talk to your whole hub (ontology-grounded)"
-                        >
-                          <Network width={11} height={11} />
-                          Hub
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
                   {/* Hub mode → ontology-grounded chat over the whole hub */}
                   {isHubMode && hubSlug && (
                     <HubChat
