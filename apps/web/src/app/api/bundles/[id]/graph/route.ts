@@ -182,6 +182,26 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       .update({ graph_data: graphData, graph_generated_at: now, updated_at: now })
       .eq("id", id);
 
+    // Build / merge into the user's hub-level ontology (concept_index +
+    // concept_relations). Lets future hub-scoped chat ground answers in
+    // a structured graph, not just per-bundle JSON. Owner-scoped only —
+    // anonymous bundles don't contribute to a user ontology.
+    if (bundle.user_id) {
+      try {
+        const { buildConceptIndex } = await import("@/lib/build-concept-index");
+        await buildConceptIndex({
+          supabase,
+          userId: bundle.user_id,
+          bundleId: id,
+          graph: graphData,
+          bundleDocIds: docIds,
+        });
+      } catch (err) {
+        // Best-effort — chat indexing failure must not break Analyze.
+        console.warn("concept_index build failed:", err);
+      }
+    }
+
     return NextResponse.json({ graphData, generatedAt: now });
   } catch (err) {
     console.error("AI graph extraction error:", err);
