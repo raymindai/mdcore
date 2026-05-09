@@ -2915,8 +2915,21 @@ export default function MdEditor() {
 
   // Trigger auto-save without undo tracking (used by undo/redo)
   const triggerAutoSave = useCallback((val: string) => {
+    // Drop stale callbacks: if the editor's current ref has moved on, the
+    // val we were passed is no longer the truth. Saving it would PATCH the
+    // current active doc with whatever stale content the original caller
+    // captured. This is the cheapest "right thing wins" guard against
+    // tab-switch races feeding old content into the new doc's cloudId.
+    if (val !== markdownRef.current) return;
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
+      // Hold off saving while a tab switch is mid-flight. handleTiptapChange
+      // already gates on this flag for direct edits, but other call sites
+      // (undo/redo, paste, programmatic setMarkdown) come straight through
+      // setMarkdown → triggerAutoSave with no flag check. Without this gate,
+      // a re-mount or content-replacement during loadTab can fire one last
+      // save with stale content under the NEW tab's cloudId.
+      if (tabSwitchInFlightRef.current) return;
       maybeCreateSessionSnapshot(currentTab.cloudId);
       // When Yjs collaboration is active, skip conflict detection
       // (CRDT handles merging, so both users save the same merged content)
@@ -3841,6 +3854,13 @@ export default function MdEditor() {
     // If cloud tab has no content, fetch it from server
     if (tab.cloudId && !tab.markdown) {
       setMarkdownRaw("");
+      // Clear TipTap content IMMEDIATELY so the editor doesn't show the
+      // previous tab's body during the fetch. Without this, switching
+      // from tab A (with content) to tab B (cloud-only, empty local md)
+      // would render A's content in TipTap until B's fetch returned —
+      // and any keystroke during that window would PATCH B with A's
+      // content under B's cloudId.
+      tiptapRef.current?.setMarkdown("");
       setIsLoading(true);
       fetch(`/api/docs/${tab.cloudId}`, { headers: authHeadersRef.current })
         .then(res => res.ok ? res.json() : null)
