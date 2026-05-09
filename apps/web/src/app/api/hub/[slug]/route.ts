@@ -66,6 +66,40 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     .filter(b => !b.password_hash && !(Array.isArray(b.allowed_emails) && b.allowed_emails.length > 0))
     .map(b => ({ id: b.id, title: b.title || "Untitled Bundle", description: b.description, updated_at: b.updated_at }));
 
+  // Top concepts for the in-editor hub view. Uses the per-user
+  // concept_index (built by bundle Analyze passes) to surface the
+  // most-mentioned topics as pill chips. Best-effort — empty array
+  // when the table is missing or the user hasn't run Analyze yet.
+  let topConcepts: Array<{ id: number; label: string; occurrence: number; docCount: number }> = [];
+  let totalConceptCount = 0;
+  try {
+    const { count } = await supabase
+      .from("concept_index")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id);
+    totalConceptCount = count ?? 0;
+    const { data: concepts } = await supabase
+      .from("concept_index")
+      .select("id, label, occurrence_count, doc_ids")
+      .eq("user_id", profile.id)
+      .order("occurrence_count", { ascending: false })
+      .limit(12);
+    topConcepts = (concepts || []).map((c) => ({
+      id: c.id,
+      label: c.label,
+      occurrence: c.occurrence_count,
+      docCount: (c.doc_ids || []).length,
+    }));
+  } catch { /* table may not exist yet — return empty */ }
+
+  // Aggregate stats — total words across published docs, last update.
+  let totalWords = 0;
+  let lastUpdated: string | null = null;
+  for (const d of filteredDocs) {
+    totalWords += (d.markdown || "").trim().split(/\s+/).filter(Boolean).length;
+    if (!lastUpdated || d.updated_at > lastUpdated) lastUpdated = d.updated_at;
+  }
+
   return NextResponse.json({
     hub: {
       slug: profile.hub_slug,
@@ -83,9 +117,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       source: d.source,
     })),
     bundles: publicBundles,
+    topConcepts,
     counts: {
       documents: filteredDocs.length,
       bundles: publicBundles.length,
+      concepts: totalConceptCount,
+      totalWords,
     },
+    lastUpdated,
   });
 }

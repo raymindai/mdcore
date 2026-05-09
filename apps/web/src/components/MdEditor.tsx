@@ -8168,11 +8168,63 @@ ${clone.innerHTML}
               </div>
             );
           })()}
+          {/* Hub — own pill, separated from the Home + view-modes group.
+              Hub is a destination, not a view mode, so it deserves
+              visual separation. Toggles the in-editor hub tab: first
+              click opens `/hub/<slug>` as an editor tab; second click
+              (while the hub tab is active) closes it and returns to
+              the previous tab. Only rendered when hub_slug exists. */}
+          {hubSlug && (() => {
+            const hubTabId = `hub-${hubSlug}`;
+            const isHubActive = activeTab?.id === hubTabId;
+            return (
+              <Tooltip text={isHubActive ? "Close My Hub" : "My Hub — public knowledge base"} position="bottom">
+                <button
+                  onClick={() => {
+                    if (isHubActive) {
+                      const fallback = recentTabIds
+                        .map(id => tabs.find(t => t.id === id))
+                        .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
+                        || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
+                      setTabs(prev => prev.filter(t => t.id !== hubTabId));
+                      setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
+                      if (fallback) switchTab(fallback.id);
+                      else setShowOnboarding(true);
+                      return;
+                    }
+                    setShowOnboarding(false);
+                    setTabs(prev => {
+                      if (prev.some(t => t.id === hubTabId)) return prev;
+                      const newTab: Tab = {
+                        id: hubTabId,
+                        kind: "hub",
+                        hubSlug,
+                        title: "My Hub",
+                        markdown: "",
+                      };
+                      return [...prev, newTab];
+                    });
+                    queueMicrotask(() => switchTab(hubTabId));
+                    if (!isDraggingSidebarRef.current) {
+                      setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2 h-6 rounded-lg text-caption font-medium transition-colors"
+                  style={{
+                    background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
+                    color: isHubActive ? "var(--accent)" : "var(--text-muted)",
+                    border: `1px solid ${isHubActive ? "var(--accent)" : "var(--border-dim)"}`,
+                  }}
+                  aria-pressed={isHubActive}
+                >
+                  <Network width={13} height={13} />
+                  <span className="hidden sm:inline">Hub</span>
+                </button>
+              </Tooltip>
+            );
+          })()}
           {/* Home + view modes — own group */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-          {/* Hub button moved to the sidebar top — its own full-width
-              pill above LIBRARY. The toolbar slot was reclaimed so the
-              Home + view-modes pill stays exactly four buttons wide. */}
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
@@ -8770,73 +8822,6 @@ ${clone.innerHTML}
               header's borderTop now, so this wrapper no longer needs its own
               borderBottom (which would stack as a doubled line). */}
           <div className="shrink-0 select-none">
-          {/* My Hub — workspace-style entry point at the very top of the
-              sidebar. Toggles the in-editor hub tab: first click opens
-              `/hub/<slug>` as an editor tab, second click (while the hub
-              tab is active) closes it and returns to the previous tab.
-              Only rendered when the user has a public hub_slug; without
-              one the row is hidden so the sidebar still starts cleanly
-              with LIBRARY. */}
-          {hubSlug && (() => {
-            const hubTabId = `hub-${hubSlug}`;
-            const isHubActive = activeTab?.id === hubTabId;
-            return (
-              <div className="px-2 pt-2 pb-1.5">
-                <button
-                  onClick={() => {
-                    if (isHubActive) {
-                      const fallback = recentTabIds
-                        .map(id => tabs.find(t => t.id === id))
-                        .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
-                        || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
-                      setTabs(prev => prev.filter(t => t.id !== hubTabId));
-                      setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
-                      if (fallback) switchTab(fallback.id);
-                      else setShowOnboarding(true);
-                      return;
-                    }
-                    setShowOnboarding(false);
-                    setTabs(prev => {
-                      if (prev.some(t => t.id === hubTabId)) return prev;
-                      const newTab: Tab = {
-                        id: hubTabId,
-                        kind: "hub",
-                        hubSlug,
-                        title: "My Hub",
-                        markdown: "",
-                      };
-                      return [...prev, newTab];
-                    });
-                    queueMicrotask(() => switchTab(hubTabId));
-                    if (!isDraggingSidebarRef.current) {
-                      setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
-                    }
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-caption font-semibold transition-colors group/hub"
-                  style={{
-                    background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
-                    color: isHubActive ? "var(--accent)" : "var(--text-secondary)",
-                    border: `1px solid ${isHubActive ? "var(--accent)" : "var(--border-dim)"}`,
-                  }}
-                  aria-pressed={isHubActive}
-                  title={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base + graph"}
-                >
-                  <span
-                    className="flex items-center justify-center shrink-0"
-                    style={{
-                      width: 22, height: 22, borderRadius: 5,
-                      background: "var(--accent-dim)",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    <Network width={12} height={12} />
-                  </span>
-                  <span className="flex-1 text-left truncate">My Hub</span>
-                  <span className="font-mono text-caption truncate" style={{ color: "var(--text-faint)", fontSize: 10 }}>/{hubSlug}</span>
-                </button>
-              </div>
-            );
-          })()}
           <div
             className="flex items-center justify-between px-2 py-1.5 text-caption font-mono"
             style={{ color: "var(--text-muted)", cursor: "default" }}
@@ -11519,6 +11504,9 @@ ${clone.innerHTML}
                 <div className="flex-1 min-w-0">
                   <HubEmbed
                     slug={activeTab.hubSlug}
+                    onNewDoc={() => addTab()}
+                    onNewBundle={() => { setBundleCreatorDocs([]); setShowBundleCreator(true); }}
+                    onOpenChat={() => { setShowAIPanel(true); setAiPanelMode("hub"); }}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }
