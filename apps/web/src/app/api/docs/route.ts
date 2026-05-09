@@ -136,6 +136,16 @@ export async function POST(req: NextRequest) {
   // its title differs from the source — that path is NOT collapsed here.
   const dupHit = await findRecentDuplicateDoc(supabase, { userId, anonymousId }, markdown, title);
   if (dupHit) {
+    // Telemetry — every dedup hit means we *prevented* a duplicate from
+    // landing. Log the time delta + referer so we can spot which client
+    // path is misbehaving (multi-tab migration, repeat-import, etc).
+    const ageMs = Date.now() - new Date(dupHit.created_at).getTime();
+    console.log(
+      `[doc-dedup] hit user=${userId || "anon:" + (anonymousId || "?").slice(0, 8)}`,
+      `existing=${dupHit.id} age=${Math.round(ageMs / 1000)}s`,
+      `title=${(title || "").slice(0, 60)} bytes=${markdown.length}`,
+      `referer=${req.headers.get("referer") || "-"}`,
+    );
     const res = NextResponse.json({
       id: dupHit.id,
       editToken: dupHit.edit_token,
