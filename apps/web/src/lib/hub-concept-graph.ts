@@ -16,19 +16,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MAX_CONCEPTS = 200;
 const MAX_RELATIONS = 800;
-const ITERATIONS = 200;
-const REPULSION = 5500;
-const SPRING_K = 0.05;
-const SPRING_LEN = 90;
-const CENTER_PULL = 0.006;
+const ITERATIONS = 260;
+const REPULSION = 6500;
+const SPRING_K = 0.06;
+const SPRING_LEN = 110;
+const CENTER_PULL = 0.0055;
 // Hard bounds so a runaway force pass can't shoot nodes off-canvas.
 // Viewer's viewBox is -600..600 / -500..500; clamp slightly inside.
 const BOUND_X = 460;
 const BOUND_Y = 360;
-// Outer ring radius used to place ISOLATED concepts (no edges). Force
-// layout produces noise for them — a calm ring around the connected
-// cluster is far more legible.
-const ISOLATED_RING_R = 430;
+// Default rendering policy: ONLY show concepts with at least one
+// relation. Isolated concepts (occurrence in just one doc, no cross-
+// doc edges) dominated the canvas as fireworks of unrelated points
+// and made the graph unreadable. Owners can still see them in the
+// list views; the graph is for showing STRUCTURE.
+const HIDE_ISOLATED = true;
 
 export interface HubConceptNode {
   id: number;
@@ -55,7 +57,14 @@ export interface HubConceptEdge {
 export interface HubConceptGraph {
   nodes: HubConceptNode[];
   edges: HubConceptEdge[];
-  totals: { concepts: number; relations: number; docs: number };
+  totals: {
+    /** Concepts shown on the canvas (= structural ones with at least one relation). */
+    concepts: number;
+    /** Concepts that exist in the user's hub but were filtered out for being isolated. */
+    hiddenIsolated: number;
+    relations: number;
+    docs: number;
+  };
   computedAt: string;
 }
 
@@ -109,9 +118,10 @@ export async function computeHubConceptGraph(
   const maxOcc = Math.max(...concepts.map((c) => c.occurrence_count || 1), 1);
   const sizeFor = (occ: number) => 1 + Math.log2((occ || 1) + 1) / Math.log2(maxOcc + 1) * 2;
 
-  // Build adjacency + connected-component map. Concepts with at least
-  // one relation belong to the "force-directed" set; the rest get
-  // arranged on an outer ring so they don't drift around as noise.
+  // Build adjacency. Concepts with at least one relation are the
+  // "structural" set we render. Isolated concepts are dropped from
+  // the graph entirely (default policy) — they live in the list
+  // views, the graph shows STRUCTURE, not inventory.
   const neighborMap = new Map<number, Array<{ other: number; weight: number }>>();
   for (const r of validRelations) {
     if (!neighborMap.has(r.source_concept_id)) neighborMap.set(r.source_concept_id, []);
@@ -119,28 +129,36 @@ export async function computeHubConceptGraph(
     neighborMap.get(r.source_concept_id)!.push({ other: r.target_concept_id, weight: r.weight || 1 });
     neighborMap.get(r.target_concept_id)!.push({ other: r.source_concept_id, weight: r.weight || 1 });
   }
-  const connected = concepts.filter((c) => neighborMap.has(c.id));
-  const isolated = concepts.filter((c) => !neighborMap.has(c.id));
+  const visibleConcepts = HIDE_ISOLATED
+    ? concepts.filter((c) => neighborMap.has(c.id))
+    : concepts;
+  const visibleConceptIdSet = new Set(visibleConcepts.map((c) => c.id));
+  const visibleRelations = validRelations.filter(
+    (r) => visibleConceptIdSet.has(r.source_concept_id) && visibleConceptIdSet.has(r.target_concept_id),
+  );
 
-  // Initial positions for connected nodes — small Fibonacci-style
-  // spiral seeded near the centre. Force layout takes over from here.
+  // Initial positions: gentle spiral seeded near the centre, ordered
+  // by occurrence_count desc so high-signal concepts start closest to
+  // origin where they'll settle as the cluster's anchors.
   const positions: Record<number, { x: number; y: number; vx: number; vy: number }> = {};
   const golden = Math.PI * (3 - Math.sqrt(5));
-  connected.forEach((c, i) => {
-    const r = 20 + i * 4;
+  const seedOrder = [...visibleConcepts].sort((a, b) => b.occurrence_count - a.occurrence_count);
+  seedOrder.forEach((c, i) => {
+    const r = 25 + i * 5;
     const a = i * golden;
     positions[c.id] = { x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0 };
   });
 
-  // Force simulation runs only over the connected subset. Repulsion is
-  // pairwise n² which is fine at <=200 nodes.
+  // Force simulation. Repulsion is pairwise n² which is fine at the
+  // visible-concept counts we're dealing with (typically <50 once
+  // isolated nodes are filtered out).
   for (let iter = 0; iter < ITERATIONS; iter++) {
-    const damping = 0.85 - (iter / ITERATIONS) * 0.4;
-    for (let i = 0; i < connected.length; i++) {
-      const a = connected[i];
+    const damping = 0.88 - (iter / ITERATIONS) * 0.45;
+    for (let i = 0; i < visibleConcepts.length; i++) {
+      const a = visibleConcepts[i];
       const pa = positions[a.id];
-      for (let j = i + 1; j < connected.length; j++) {
-        const b = connected[j];
+      for (let j = i + 1; j < visibleConcepts.length; j++) {
+        const b = visibleConcepts[j];
         const pb = positions[b.id];
         const dx = pa.x - pb.x;
         const dy = pa.y - pb.y;
@@ -153,8 +171,8 @@ export async function computeHubConceptGraph(
         pb.vx -= fx; pb.vy -= fy;
       }
     }
-    // Spring attraction along edges.
-    for (const r of validRelations) {
+    // Spring attraction along edges, scaled by relation weight.
+    for (const r of visibleRelations) {
       const pa = positions[r.source_concept_id];
       const pb = positions[r.target_concept_id];
       if (!pa || !pb) continue;
@@ -169,7 +187,7 @@ export async function computeHubConceptGraph(
     }
     // Centre pull + integrate + clamp to canvas bounds so no node ever
     // shoots off-screen even with high-velocity pairs.
-    for (const c of connected) {
+    for (const c of visibleConcepts) {
       const p = positions[c.id];
       p.vx -= p.x * CENTER_PULL;
       p.vy -= p.y * CENTER_PULL;
@@ -184,24 +202,10 @@ export async function computeHubConceptGraph(
     }
   }
 
-  // Isolated concepts get arranged on a calm outer ring, ordered by
-  // occurrence_count so heavier concepts sit at predictable angles.
-  // Beats letting the force layout produce a noisy halo of unrelated
-  // nodes overlapping each other.
-  const isolatedSorted = [...isolated].sort((a, b) => b.occurrence_count - a.occurrence_count);
-  isolatedSorted.forEach((c, i) => {
-    const a = (i / Math.max(isolatedSorted.length, 1)) * Math.PI * 2;
-    positions[c.id] = {
-      x: Math.cos(a) * ISOLATED_RING_R,
-      y: Math.sin(a) * ISOLATED_RING_R,
-      vx: 0, vy: 0,
-    };
-  });
-
   const allDocs = new Set<string>();
-  for (const c of concepts) for (const id of c.doc_ids || []) allDocs.add(id);
+  for (const c of visibleConcepts) for (const id of c.doc_ids || []) allDocs.add(id);
 
-  const nodes: HubConceptNode[] = concepts.map((c) => ({
+  const nodes: HubConceptNode[] = visibleConcepts.map((c) => ({
     id: c.id,
     label: c.label,
     conceptType: c.concept_type,
@@ -215,7 +219,7 @@ export async function computeHubConceptGraph(
     size: sizeFor(c.occurrence_count),
   }));
 
-  const edges: HubConceptEdge[] = validRelations.map((r) => ({
+  const edges: HubConceptEdge[] = visibleRelations.map((r) => ({
     source: r.source_concept_id,
     target: r.target_concept_id,
     relationLabel: r.relation_label,
@@ -225,7 +229,12 @@ export async function computeHubConceptGraph(
   return {
     nodes,
     edges,
-    totals: { concepts: concepts.length, relations: edges.length, docs: allDocs.size },
+    totals: {
+      concepts: visibleConcepts.length,
+      hiddenIsolated: concepts.length - visibleConcepts.length,
+      relations: edges.length,
+      docs: allDocs.size,
+    },
     computedAt: new Date().toISOString(),
   };
 }

@@ -52,7 +52,7 @@ interface ConceptEdge {
 interface HubConceptGraph {
   nodes: ConceptNode[];
   edges: ConceptEdge[];
-  totals: { concepts: number; relations: number; docs: number };
+  totals: { concepts: number; hiddenIsolated: number; relations: number; docs: number };
   computedAt: string;
 }
 
@@ -183,7 +183,7 @@ export default function HubGraphCanvas({ apiPath, hubUrl }: Props) {
   }
 
   const stats = view === "concepts" && conceptGraph
-    ? `${conceptGraph.totals.concepts} concepts, ${conceptGraph.totals.relations} relations across ${conceptGraph.totals.docs} docs`
+    ? `${conceptGraph.totals.concepts} connected concepts · ${conceptGraph.totals.relations} relations · ${conceptGraph.totals.docs} docs${conceptGraph.totals.hiddenIsolated > 0 ? ` · +${conceptGraph.totals.hiddenIsolated} isolated hidden` : ""}`
     : graph
       ? `${graph.totals.docs} docs, ${graph.totals.bundles} bundles, ${graph.totals.semanticEdges} semantic links`
       : "";
