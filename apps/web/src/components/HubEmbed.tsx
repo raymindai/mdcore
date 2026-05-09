@@ -7,8 +7,9 @@
 //
 // Two views:
 //   - "overview" — workspace landing (profile + deploy + lists)
-//   - "graph"    — Obsidian-style concept graph, embedded inline so
-//                  the user doesn't have to bounce out to a new tab
+//   - "graph"    — knowledge graph (concept_index nodes + relations
+//                  edges), embedded inline so the user doesn't have to
+//                  bounce out to a new tab
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -152,7 +153,7 @@ export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onO
         </header>
 
         {/* Deploy to AI strip — same purpose as the public /hub/<slug>
-            page: a copy-to-clipboard URL + jump to Obsidian-style graph. */}
+            page: a copy-to-clipboard URL + jump to the knowledge graph. */}
         <section
           className="mb-8 px-4 py-4 rounded-lg"
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
@@ -182,7 +183,7 @@ export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onO
               onClick={onSwitchToGraph}
               className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
               style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)", background: "var(--accent-dim)" }}
-              title="Switch to the Obsidian-style concept graph view (toolbar Graph)"
+              title="Switch to the knowledge graph view (toolbar Graph)"
             >
               <Network width={11} height={11} />
               Open graph

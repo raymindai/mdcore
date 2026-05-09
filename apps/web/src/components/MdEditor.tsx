@@ -2641,7 +2641,7 @@ export default function MdEditor() {
   const [bundleView, setBundleView] = useState<"canvas" | "list">("canvas");
   // Hub-tab view mode — Overview is the workspace landing page (profile,
   // deploy-to-AI strip, bundles + docs lists). Graph is the
-  // Obsidian-style concept canvas embedded inline. Persisted so the
+  // knowledge-graph concept canvas embedded inline. Persisted so the
   // user's last choice survives a reload.
   const [hubView, setHubView] = useState<"overview" | "graph">(() => {
     if (typeof window === "undefined") return "overview";
@@ -8199,8 +8199,8 @@ ${clone.innerHTML}
               gets [Live | Split | Source]. */}
           {activeTab?.kind === "hub" ? (
             <>
-              {/* Hub: Overview (list-style landing) / Graph (Obsidian
-                  concept canvas embedded inline). */}
+              {/* Hub: Overview (list-style landing) / Graph (knowledge
+                  graph concept canvas embedded inline). */}
               {([
                 { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <Layers width={13} height={13} /> },
                 { mode: "graph" as const,    label: "Graph",    shortcut: "2", icon: <Network width={13} height={13} /> },
