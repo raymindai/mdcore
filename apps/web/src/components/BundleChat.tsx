@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ScrollText, CheckSquare, Scale, HelpCircle, RotateCcw, Layers } from "lucide-react";
+import { CheckSquare, Scale, HelpCircle, RotateCcw, Layers, ScrollText } from "lucide-react";
+import ChatMarkdown from "@/components/ChatMarkdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -283,64 +284,23 @@ function MessageBubble({ message, onCitationClick, isStreaming, accent, accentDi
       </div>
       <div
         className="text-sm leading-relaxed pl-6 min-w-0"
-        style={{ color: "var(--text-primary)", overflowWrap: "anywhere", wordBreak: "break-word" }}
+        style={{ color: "var(--text-primary)" }}
       >
-        <RenderedMarkdown content={message.content} docMap={message.docMap} onCitationClick={onCitationClick} accent={accent} accentDim={accentDim} />
+        <ChatMarkdown
+          content={message.content}
+          accent={accent}
+          accentDim={accentDim}
+          citationRegex={/\[doc:(\d+)\]/g}
+          resolveCitation={(m) => {
+            const num = parseInt(m[1]);
+            const doc = message.docMap?.[num];
+            return doc ? { label: String(num), docId: doc.id, title: doc.title } : null;
+          }}
+          onCitationClick={onCitationClick}
+        />
         {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: accent, verticalAlign: "middle" }} />}
       </div>
     </div>
   );
 }
 
-// ─── Markdown rendering with [doc:N] citation parsing ───
-
-function RenderedMarkdown({ content, docMap, onCitationClick, accent, accentDim }: { content: string; docMap?: Record<number, { id: string; title: string }>; onCitationClick?: (docId: string) => void; accent: string; accentDim: string }) {
-  // Parse citations and split into segments
-  const segments: Array<{ type: "text" | "citation"; value: string; docNum?: number }> = [];
-  const regex = /\[doc:(\d+)\]/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ type: "text", value: content.slice(lastIndex, match.index) });
-    }
-    segments.push({ type: "citation", value: match[0], docNum: parseInt(match[1]) });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < content.length) {
-    segments.push({ type: "text", value: content.slice(lastIndex) });
-  }
-
-  return (
-    <>
-      {segments.map((seg, i) => {
-        if (seg.type === "citation" && seg.docNum && docMap?.[seg.docNum]) {
-          const doc = docMap[seg.docNum];
-          return (
-            <button key={i} onClick={() => onCitationClick?.(doc.id)} title={doc.title}
-              className="inline-flex items-center gap-0.5 mx-0.5 px-1.5 py-0.5 rounded text-caption font-mono font-semibold transition-colors hover:brightness-125 align-baseline"
-              style={{ background: accentDim, color: accent, verticalAlign: "baseline" }}>
-              {seg.docNum}
-            </button>
-          );
-        }
-        // Render text with basic markdown (paragraphs, bold, lists)
-        return <span key={i} dangerouslySetInnerHTML={{ __html: renderBasicMarkdown(seg.value, accent) }} />;
-      })}
-    </>
-  );
-}
-
-function renderBasicMarkdown(text: string, accent: string): string {
-  return text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code style="background: var(--toggle-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; word-break: break-all;">$1</code>')
-    .replace(/^#{1,3}\s+(.+)$/gm, '<strong style="display: block; margin-top: 0.5em;">$1</strong>')
-    .replace(/^[-*]\s+(.+)$/gm, `<div style="margin-left: 1em; position: relative;"><span style="position: absolute; left: -1em; color: ${accent}">•</span>$1</div>`)
-    .replace(/^\d+\.\s+(.+)$/gm, '<div style="margin-left: 1em;">$1</div>')
-    .replace(/\n\n/g, '<br/><br/>')
-    .replace(/\n/g, '<br/>');
-}
