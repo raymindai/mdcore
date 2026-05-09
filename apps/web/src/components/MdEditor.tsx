@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { flushSync, createPortal } from "react-dom";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
@@ -4279,13 +4279,51 @@ export default function MdEditor() {
     return [...rootIds, ...myFolderIds, ...sharedRootIds, ...sharedFolderIds];
   }, [tabs, docFilter, sortMode, sidebarSearchDebounced, folders, hiddenExampleIds]);
 
-  // Tracks which Recent row is mid-flip-animation. Cleared after the
-  // CSS animation finishes (600ms). Only set when the clicked tab is
-  // ALREADY the active one — clicking it gives no other visual feedback,
-  // so the flip is the "got it, you're already here" ack.
-  const [flippingRecentId, setFlippingRecentId] = useState<string | null>(null);
-  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (flipTimerRef.current) clearTimeout(flipTimerRef.current); }, []);
+  // FLIP-style reorder animation for the Recent list. When a click
+  // promotes an item to the top of the list, we capture each row's
+  // bounding box BEFORE the state change, then in useLayoutEffect we
+  // measure the new position and apply an inverted translate that
+  // animates back to identity — so the row visibly slides from its
+  // old slot to the top while the others shift down.
+  const recentRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const recentFlipPending = useRef(false);
+  const recentFlipRects = useRef<Map<string, DOMRect>>(new Map());
+  const captureRecentRects = useCallback(() => {
+    recentFlipPending.current = true;
+    const m = new Map<string, DOMRect>();
+    for (const [id, el] of recentRowRefs.current) {
+      if (el) m.set(id, el.getBoundingClientRect());
+    }
+    recentFlipRects.current = m;
+  }, []);
+  useLayoutEffect(() => {
+    if (!recentFlipPending.current) return;
+    recentFlipPending.current = false;
+    const prev = recentFlipRects.current;
+    if (prev.size === 0) return;
+    for (const [id, el] of recentRowRefs.current) {
+      if (!el) continue;
+      const before = prev.get(id);
+      if (!before) continue;
+      const after = el.getBoundingClientRect();
+      const dy = before.top - after.top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+      void el.offsetHeight; // force reflow so the next transform animates
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
+        el.style.transform = "translateY(0)";
+        const onEnd = () => {
+          el.style.transition = "";
+          el.style.transform = "";
+          el.removeEventListener("transitionend", onEnd);
+        };
+        el.addEventListener("transitionend", onEnd);
+      });
+    }
+    recentFlipRects.current.clear();
+  });
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
     setShowOnboarding(false);
@@ -4312,25 +4350,23 @@ export default function MdEditor() {
         // PATCH the cloud doc with the wrong markdown + title.
         switchTab(tabId);
         // Push to Recent (most-recent-first, max 7, dedup). Skip mid-drag so
-        // we don't recreate sidebar DOM nodes mid-flight.
+        // we don't recreate sidebar DOM nodes mid-flight. Capture rects
+        // first so the FLIP useLayoutEffect animates the slide-to-top.
+        if (!isDraggingSidebarRef.current) {
+          if (recentTabIds.includes(tabId) && recentTabIds[0] !== tabId) captureRecentRects();
+          setRecentTabIds(prev => [tabId, ...prev.filter(id => id !== tabId)].slice(0, 7));
+        }
+      } else if (recentTabIds.includes(tabId) && recentTabIds[0] !== tabId) {
+        // Already active and already in Recent but not at the top —
+        // promote it. Capture rects first so the FLIP useLayoutEffect
+        // can animate the move-to-top.
+        captureRecentRects();
         if (!isDraggingSidebarRef.current) {
           setRecentTabIds(prev => [tabId, ...prev.filter(id => id !== tabId)].slice(0, 7));
         }
-      } else {
-        // Already on this tab — fire the Recent-row flip animation as a
-        // visual "yes, you're already here" ack. Restart cleanly if a
-        // previous flip is still mid-flight.
-        if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
-        setFlippingRecentId(null);
-        // Force a paint between null → tabId so a same-tab re-click
-        // restarts the keyframe animation instead of being ignored.
-        requestAnimationFrame(() => {
-          setFlippingRecentId(tabId);
-          flipTimerRef.current = setTimeout(() => setFlippingRecentId(null), 620);
-        });
       }
     }
-  }, [visibleMyDocIds, activeTabId, switchTab]);
+  }, [visibleMyDocIds, activeTabId, switchTab, captureRecentRects, recentTabIds]);
 
   // Clear selection on filter/search change
   useEffect(() => { setSelectedTabIds(new Set()); }, [docFilter, sidebarSearch, sortMode]);
@@ -8194,9 +8230,11 @@ ${clone.innerHTML}
                         return [...prev, newTab];
                       });
                       queueMicrotask(() => switchTab(hubTabId));
-                      if (!isDraggingSidebarRef.current) {
-                        setRecentTabIds(prev => [hubTabId, ...prev.filter(id => id !== hubTabId)].slice(0, 7));
-                      }
+                      // Do NOT push the hub tab into Recent — Hub is
+                      // always reachable via its dedicated toolbar
+                      // button, so polluting Recent with it would crowd
+                      // out the doc/bundle entries that benefit from
+                      // recency tracking.
                     }}
                     className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                     style={{
@@ -8308,7 +8346,12 @@ ${clone.innerHTML}
               <Code width={13} height={13} />
             )},
           ]).map(({ mode, label, shortcut, icon }) => {
-            const active = !showOnboarding && viewMode === mode;
+            // The Live/Split/Source pills only signal an "active" state
+            // when the editor is actually showing a doc — on Hub or
+            // Onboarding nothing is rendering at viewMode, so the pills
+            // stay inactive (the user's last choice persists for when
+            // they return to a doc).
+            const active = !showOnboarding && activeTab?.kind !== "hub" && viewMode === mode;
             const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
             const disabled = showOnboarding && !hasActiveDoc;
             return (
@@ -9219,7 +9262,11 @@ ${clone.innerHTML}
               const recentEntries: RecentEntry[] = [];
               for (const id of recentTabIds) {
                 const r = resolveRecent(id);
-                if (r) recentEntries.push(r);
+                if (!r) continue;
+                // Hub tabs are reachable from the dedicated toolbar
+                // button — never let one occupy a slot in Recent.
+                if (r.kind === "tab" && r.tab.kind === "hub") continue;
+                recentEntries.push(r);
                 if (recentEntries.length >= 7) break;
               }
               const recentTabs = recentEntries
@@ -9250,27 +9297,26 @@ ${clone.innerHTML}
                         {recentEntries.map(entry => {
                           if (entry.kind === "ghost-bundle") {
                             const bundle = bundles.find(b => b.id === entry.bundleId)!;
-                            const isFlipping = flippingRecentId === entry.id;
                             return (
                               <div
                                 key={`recent-${entry.id}`}
-                                className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent ${isFlipping ? "mdfy-recent-flip" : ""}`}
+                                ref={(el) => {
+                                  if (el) recentRowRefs.current.set(entry.id, el);
+                                  else recentRowRefs.current.delete(entry.id);
+                                }}
+                                className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
                                 style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                                 onClick={() => {
-                                  // Already on this bundle? Fire the flip animation as the
-                                  // "you're already here" ack. Otherwise switch normally.
+                                  // If already at the top of Recent, plain switch.
+                                  // Otherwise capture rects and reorder so the row
+                                  // animates a slide-to-top via FLIP.
+                                  if (recentTabIds[0] !== entry.id) {
+                                    captureRecentRects();
+                                    setRecentTabIds(prev => [entry.id, ...prev.filter(id => id !== entry.id)].slice(0, 7));
+                                  }
                                   const activeTab = tabs.find(t => t.id === activeTabId);
                                   const alreadyOpen = activeTab?.kind === "bundle" && activeTab.bundleId === entry.bundleId;
-                                  if (alreadyOpen) {
-                                    if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
-                                    setFlippingRecentId(null);
-                                    requestAnimationFrame(() => {
-                                      setFlippingRecentId(entry.id);
-                                      flipTimerRef.current = setTimeout(() => setFlippingRecentId(null), 620);
-                                    });
-                                    return;
-                                  }
-                                  openGhostBundle(entry.bundleId);
+                                  if (!alreadyOpen) openGhostBundle(entry.bundleId);
                                 }}
                                 title={bundle.title || "Untitled Bundle"}
                               >
@@ -9291,11 +9337,14 @@ ${clone.innerHTML}
                           const displayTitle = tab.kind === "bundle" && tab.bundleId
                             ? (bundles.find(b => b.id === tab.bundleId)?.title || tab.title || "Untitled")
                             : (tab.title || "Untitled");
-                          const isFlipping = flippingRecentId === tab.id;
                           return (
                             <div
                               key={`recent-${tab.id}`}
-                              className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent ${isFlipping ? "mdfy-recent-flip" : ""}`}
+                              ref={(el) => {
+                                if (el) recentRowRefs.current.set(tab.id, el);
+                                else recentRowRefs.current.delete(tab.id);
+                              }}
+                              className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
                               style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                               onClick={(e) => handleDocClick(tab.id, e)}
                               title={displayTitle}

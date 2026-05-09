@@ -2509,21 +2509,25 @@ textarea::selection {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Recent-row flip — fired when the user clicks a Recent entry that's
-   already the active tab. The 3D rotation around the vertical axis
-   gives a "card flips to acknowledge" feedback so the click doesn't
-   feel ignored. perspective sets the depth so the rotation reads as
-   3D, not as a horizontal scale.
+/* Recent rows reorder animation handled in JS via the FLIP technique
+   (capture rects, mutate state, invert + play). No keyframes here —
+   the transform/transition is set inline so each row animates from
+   its previous Y to its new Y in 280ms ease-out. */
 
-   The hover background is paused mid-flip via brief background:none
-   so the toggle-bg doesn't bleed through the rotated face. */
-@keyframes mdfy-recent-flip {
-  0%   { transform: perspective(600px) rotateY(0deg);   }
-  50%  { transform: perspective(600px) rotateY(180deg); }
-  100% { transform: perspective(600px) rotateY(360deg); }
+/* Shared loader vocabulary — pulsing logo enter + indeterminate slide
+   bar. Used by the doc loader (inline-defined, but the keyframes here
+   are the canonical copy) and the hub-tab loader. Keeping them in
+   globals.css means any future surface that wants the same loading
+   feel can opt in by reusing the class names without reshipping the
+   keyframes inside its own <style> block. */
+@keyframes mdfyLoaderBar {
+  0%   { left: -40%; }
+  100% { left: 100%; }
 }
-.mdfy-recent-flip {
-  animation: mdfy-recent-flip 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
+@keyframes mdfyLoaderEnter {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.mdfy-loader-enter {
+  animation: mdfyLoaderEnter 480ms ease-out both;
 }

@@ -19,6 +19,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import DocStatusIcon from "@/components/DocStatusIcon";
+import MdfyLogo from "@/components/MdfyLogo";
 
 interface DocCard {
   id: string;
@@ -132,9 +133,20 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
   };
 
   if (loading) {
+    // Match the doc loader vocabulary: pulsing logo, slide bar,
+    // monospace caption. Same visual rhythm so the Hub doesn't feel
+    // like a half-built screen while the API request is in flight.
     return (
-      <div className="flex items-center justify-center h-full text-caption" style={{ color: "var(--text-muted)" }}>
-        Loading hub…
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: "var(--background)", gap: 14 }}>
+        <div className="mdfy-loader-enter">
+          <MdfyLogo size={26} />
+        </div>
+        <div style={{ width: 96, height: 2, background: "var(--border-dim)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
+          <div style={{ position: "absolute", top: 0, height: "100%", width: "40%", background: "var(--accent)", borderRadius: 1, animation: "mdfyLoaderBar 1.1s ease-in-out infinite" }} />
+        </div>
+        <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: "var(--text-faint)" }}>
+          Loading hub
+        </span>
       </div>
     );
   }
