@@ -85,12 +85,25 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
   const [bundleIsOwner, setBundleIsOwner] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // Pipeline status — surfaced in the canvas toolbar so the user can tell at
+  // a glance whether the bundle is current with its own AI analysis (graph
+  // extraction) and embedding (vector for semantic recall). Without these,
+  // there was no way to know if this bundle was "live" or stale.
+  const [graphGeneratedAt, setGraphGeneratedAt] = useState<string | null>(null);
+  const [embeddingUpdatedAt, setEmbeddingUpdatedAt] = useState<string | null>(null);
+  const [isEmbedding, setIsEmbedding] = useState(false);
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<{
     type: string; label: string; weight?: number; description?: string;
     summary?: string; themes?: string[]; insights?: string[];
     keyTakeaways?: string[]; gaps?: string[];
     connectedDocs?: Array<{ id: string; title: string }>;
-    relationships?: Array<{ label: string; target: string }>;
+    relationships?: Array<{
+      label: string;
+      target: string;
+      targetId?: string;
+      targetKind?: "doc" | "concept" | "entity" | "tag" | "other";
+      direction?: "in" | "out";
+    }>;
     docId?: string;
     docContent?: string;
     docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
@@ -121,6 +134,8 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
         if (data.graph_data) setAiGraph(data.graph_data);
         if (typeof data.intent === "string") setBundleIntent(data.intent);
         setBundleIsOwner(!!data.isOwner);
+        setGraphGeneratedAt(data.graph_generated_at || null);
+        setEmbeddingUpdatedAt(data.embedding_updated_at || null);
         setIsLoading(false);
 
         // Background: pull cached decompositions for every doc in parallel.
@@ -153,6 +168,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
             if (res.ok) {
               const g = await res.json();
               setAiGraph(g.graphData);
+              setGraphGeneratedAt(g.generatedAt || new Date().toISOString());
             }
           } catch { /* AI not available */ }
           setIsAnalyzing(false);
@@ -172,9 +188,9 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
     setAiGraph(null);
     setIsAnalyzing(true);
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = { "Content-Type": "application/json", ...(parentAuthHeaders || {}) };
       const anonId = localStorage.getItem("mdfy-anonymous-id");
-      if (anonId) headers["x-anonymous-id"] = anonId;
+      if (anonId && !headers["x-anonymous-id"]) headers["x-anonymous-id"] = anonId;
       const res = await fetch(`/api/bundles/${bundleId}/graph`, {
         method: "POST", headers,
         body: JSON.stringify({ editToken }),
@@ -182,10 +198,33 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       if (res.ok) {
         const g = await res.json();
         setAiGraph(g.graphData);
+        setGraphGeneratedAt(g.generatedAt || new Date().toISOString());
       }
     } catch { /* error */ }
     setIsAnalyzing(false);
-  }, [bundleId, editToken]);
+  }, [bundleId, editToken, parentAuthHeaders]);
+
+  // Re-embed the bundle for semantic recall (Phase 3 RAG). Owner-only.
+  // Idempotent on the server (skips if hash unchanged), but we always show
+  // the user a fresh "embedded" timestamp on success so they know the action
+  // landed. Cache miss / unchanged still updates the chip's relative time.
+  const handleEmbed = useCallback(async () => {
+    if (!bundleIsOwner) return;
+    setIsEmbedding(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json", ...(parentAuthHeaders || {}) };
+      const anonId = localStorage.getItem("mdfy-anonymous-id");
+      if (anonId && !headers["x-anonymous-id"]) headers["x-anonymous-id"] = anonId;
+      const res = await fetch(`/api/embed/bundle/${bundleId}`, { method: "POST", headers });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // Only mark fresh when the server actually re-embedded; "skipped"
+        // (hash unchanged or empty) keeps the existing timestamp truthful.
+        if (data.embedded) setEmbeddingUpdatedAt(new Date().toISOString());
+      }
+    } catch { /* network error */ }
+    setIsEmbedding(false);
+  }, [bundleId, bundleIsOwner, parentAuthHeaders]);
 
   // Build auth headers for bundle PATCH (uses anonymousId or userId/email)
   // Mutual exclusivity with AI chat panel: when the parent opens the AI chat,
@@ -857,8 +896,24 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
         .filter((e: any) => e.source === nodeId || e.target === nodeId)
         .map((e: any) => {
           const targetId = e.source === nodeId ? e.target : e.source;
-          const targetNode = aiGraph.nodes.find((n: any) => n.id === targetId) || documents.find(d => `doc:${d.id}` === targetId);
-          return { label: e.label || "related", target: (targetNode as any)?.label || (targetNode as any)?.title || targetId };
+          const direction = e.source === nodeId ? "out" : "in";
+          const targetNode = aiGraph.nodes.find((n: any) => n.id === targetId);
+          const targetDoc = !targetNode ? documents.find(d => `doc:${d.id}` === targetId) : undefined;
+          // targetKind drives the icon/color hint in NodeInfoPanel so the
+          // viewer can tell at a glance whether this concept links to a
+          // sibling concept, an entity, a tag, or a document.
+          let targetKind: "doc" | "concept" | "entity" | "tag" | "other" = "other";
+          if (targetDoc || targetId.startsWith("doc:")) targetKind = "doc";
+          else if (targetNode?.type === "entity") targetKind = "entity";
+          else if (targetNode?.type === "tag") targetKind = "tag";
+          else if (targetNode?.type === "concept") targetKind = "concept";
+          return {
+            label: e.label || "related",
+            target: targetNode?.label || targetDoc?.title || targetId,
+            targetId,
+            targetKind,
+            direction,
+          };
         });
       openNodeInfo({
         type: concept.type, label: concept.label, weight: concept.weight, description: concept.description,
@@ -914,6 +969,11 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           documents={documents}
           aiGraph={aiGraph}
           isAnalyzing={isAnalyzing}
+          graphGeneratedAt={graphGeneratedAt}
+          embeddingUpdatedAt={embeddingUpdatedAt}
+          isEmbedding={isEmbedding}
+          isOwner={bundleIsOwner}
+          onEmbed={handleEmbed}
           onDocumentClick={handleNodeClick}
           onCopyContext={handleCopyContext}
           onRegenerate={handleRegenerate}
@@ -1526,7 +1586,7 @@ function DiscoveriesPanel({
                     <button key={`${ref.docId}:${ref.chunkId}`} onClick={() => onSelectChunk(ref)}
                       className="w-full text-left text-caption leading-snug hover:underline truncate"
                       style={{ color: "var(--text-secondary)" }}>
-                      <span style={{ color: "var(--text-faint)" }}>·</span> {ref.docTitle}
+                      <span style={{ color: "var(--text-faint)" }}>—</span> {ref.docTitle}
                     </button>
                   ))}
                 </div>
@@ -2026,7 +2086,13 @@ type NodeInfoData = {
   summary?: string; themes?: string[]; insights?: string[];
   keyTakeaways?: string[]; gaps?: string[];
   connectedDocs?: Array<{ id: string; title: string }>;
-  relationships?: Array<{ label: string; target: string }>;
+  relationships?: Array<{
+    label: string;
+    target: string;
+    targetId?: string;
+    targetKind?: "doc" | "concept" | "entity" | "tag" | "other";
+    direction?: "in" | "out";
+  }>;
   docId?: string;
   docContent?: string;
   docStats?: { wordCount: number; readingTime: number; sections: number; hasCode: boolean };
@@ -2311,7 +2377,11 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
           </>
         )}
 
-        {/* Concept/Entity/Tag panel */}
+        {/* Concept/Entity/Tag panel — the subject (this concept) is shown in
+            the panel header, so each row reads as "{subject} —{verb}→ {object}"
+            without restating the subject. The targetKind dot tells you at a
+            glance whether the link points to a doc, another concept, an
+            entity, or a tag. */}
         {(info.type === "concept" || info.type === "entity" || info.type === "tag") && (
           <>
             {info.weight && (
@@ -2329,13 +2399,15 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             )}
             {info.connectedDocs && info.connectedDocs.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Appears in {info.connectedDocs.length} document{info.connectedDocs.length > 1 ? "s" : ""}</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+                  &quot;{info.label}&quot; appears in {info.connectedDocs.length} document{info.connectedDocs.length > 1 ? "s" : ""}
+                </h4>
                 <div className="space-y-1.5">
                   {info.connectedDocs.map((doc: { id: string; title: string }) => (
                     <button key={doc.id} onClick={() => onOpenDoc?.(doc.id)}
                       className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-[var(--accent-dim)] flex items-center gap-2.5"
                       style={{ color: "var(--text-primary)", background: "var(--toggle-bg)" }}>
-                      <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: "var(--accent)" }} />
+                      <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: "#fb923c" }} />
                       {doc.title}
                     </button>
                   ))}
@@ -2344,17 +2416,49 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             )}
             {info.relationships && info.relationships.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Relationships</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+                  Linked to {info.relationships.length} {info.relationships.length === 1 ? "node" : "nodes"}
+                </h4>
                 <div className="space-y-1.5">
-                  {info.relationships.map((rel: any, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 px-3 py-2 rounded-lg text-sm" style={{ background: "var(--toggle-bg)" }}>
-                      <span className="shrink-0 mt-0.5" style={{ color }}>→</span>
-                      <div>
-                        <span className="font-medium" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
-                        <span className="ml-1.5 text-xs" style={{ color: "var(--text-muted)" }}>{rel.label}</span>
+                  {(info.relationships as Array<{ label: string; target: string; targetKind?: string; direction?: string }>).map((rel, i) => {
+                    const kindColor =
+                      rel.targetKind === "doc" ? "#fb923c" :
+                      rel.targetKind === "entity" ? "#4ade80" :
+                      rel.targetKind === "tag" ? "#a78bfa" :
+                      rel.targetKind === "concept" ? "#38bdf8" :
+                      "var(--text-faint)";
+                    const kindLabel =
+                      rel.targetKind === "doc" ? "Doc" :
+                      rel.targetKind === "entity" ? "Entity" :
+                      rel.targetKind === "tag" ? "Tag" :
+                      rel.targetKind === "concept" ? "Concept" :
+                      "";
+                    const arrow = rel.direction === "in" ? "←" : "→";
+                    return (
+                      <div key={i} className="px-3 py-2 rounded-lg text-sm" style={{ background: "var(--toggle-bg)" }}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
+                            {info.label}
+                          </span>
+                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                            {arrow}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0" style={{ background: `color-mix(in srgb, ${kindColor} 12%, transparent)`, color: kindColor }}>
+                            {rel.label}
+                          </span>
+                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                            {arrow}
+                          </span>
+                          <span className="font-medium" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
+                          {kindLabel && (
+                            <span className="font-mono uppercase shrink-0 ml-auto px-1 rounded" style={{ fontSize: 9, letterSpacing: 0.5, color: kindColor, border: `1px solid color-mix(in srgb, ${kindColor} 30%, transparent)` }}>
+                              {kindLabel}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -2430,13 +2534,13 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
               <h4 className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Stats</h4>
               <div className="flex items-baseline gap-3 text-caption font-mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
                 <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
-                <span style={{ opacity: 0.5 }}>·</span>
+                <span style={{ opacity: 0.5 }}>—</span>
                 <span className="tabular-nums">~{info.docStats.readingTime} min read</span>
-                <span style={{ opacity: 0.5 }}>·</span>
+                <span style={{ opacity: 0.5 }}>—</span>
                 <span className="tabular-nums">{info.docStats.sections} sections</span>
                 {info.docStats.hasCode && (
                   <>
-                    <span style={{ opacity: 0.5 }}>·</span>
+                    <span style={{ opacity: 0.5 }}>—</span>
                     <span className="uppercase" style={{ color: "#a78bfa", letterSpacing: 0.4, fontWeight: 600 }}>contains code</span>
                   </>
                 )}
@@ -2824,7 +2928,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
       </div>
       {/* Footer summary */}
       <div className="shrink-0 px-3 py-1.5 text-caption flex items-center justify-between" style={{ borderTop: "1px solid var(--border-dim)", color: "var(--text-faint)" }}>
-        <span>{decomp.chunks.length} chunk{decomp.chunks.length === 1 ? "" : "s"} · {decomp.edges.length} relation{decomp.edges.length === 1 ? "" : "s"}</span>
+        <span>{decomp.chunks.length} chunk{decomp.chunks.length === 1 ? "" : "s"} — {decomp.edges.length} relation{decomp.edges.length === 1 ? "" : "s"}</span>
         {void SIDEBAR_CHUNK_TYPES /* keep tree-shaking happy */}
       </div>
     </div>
@@ -2990,7 +3094,7 @@ function BundleListView({
                   />
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-                      {savingDocId === doc.id ? "Saving…" : "Esc to cancel · ⌘↵ to save"}
+                      {savingDocId === doc.id ? "Saving…" : "Esc to cancel — ⌘↵ to save"}
                     </span>
                     <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
                       {draftAnnotation.length}/500

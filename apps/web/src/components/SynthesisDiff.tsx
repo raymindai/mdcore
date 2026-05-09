@@ -168,7 +168,7 @@ export default function SynthesisDiff({ docId, auth, onClose, onAccepted }: Prop
                 : diff?.identical
                   ? "No changes — the synthesis is up to date."
                   : diff
-                    ? `${diff.added} line${diff.added === 1 ? "" : "s"} added · ${diff.removed} removed`
+                    ? `${diff.added} line${diff.added === 1 ? "" : "s"} added — ${diff.removed} removed`
                     : ""}
             </div>
           </div>

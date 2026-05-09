@@ -207,7 +207,7 @@ export default function MdcoreAiPage() {
             <span style={{ color: "#4ade80" }}>&apos;{`{"markdown": "# Hello\\n**Fast.**", "output": "html"}`}&apos;</span>{"\n"}
             {"\n"}
             <span style={{ color: "var(--text-faint)" }}>{"// => <h1>Hello</h1><p><strong>Fast.</strong></p>"}</span>{"\n"}
-            <span style={{ color: "var(--text-faint)" }}>{"//    1.8ms · edge-cached"}</span>
+            <span style={{ color: "var(--text-faint)" }}>{"//    1.8ms — edge-cached"}</span>
           </pre>
         </div>
       </section>
@@ -556,7 +556,7 @@ $$`}
                 </div>
               </div>
             ))}
-            <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "16px 0 0", ...mono }}>10KB document · GFM + math + code blocks</p>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "16px 0 0", ...mono }}>10KB document — GFM + math + code blocks</p>
           </div>
 
           {/* Architecture */}

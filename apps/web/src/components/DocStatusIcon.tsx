@@ -39,7 +39,7 @@ function DocStatusIcon({ tab, isActive }: {
     Icon = FileIcon; color = "var(--text-faint)"; tip = "Local";
   }
 
-  if (isSynced) tip += ` · Synced (${tab.source})`;
+  if (isSynced) tip += ` — Synced (${tab.source})`;
 
   return (
     <Tooltip text={tip}>

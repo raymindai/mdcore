@@ -73,12 +73,12 @@ const slides: Slide[] = [
     desc: null,
     icon: null,
     surfaces: [
-      { name: "Claude Code", desc: "/mdfy capture · bundle · hub", color: "#fb923c" },
+      { name: "Claude Code", desc: "/mdfy capture, bundle, hub", color: "#fb923c" },
       { name: "Cursor", desc: "Same actions, .mdc rule", color: "#fbbf24" },
       { name: "Codex CLI", desc: "AGENTS.md block, idempotent", color: "#4ade80" },
       { name: "Aider", desc: "conventions.md", color: "#60a5fa" },
       { name: "Chrome", desc: "Capture from any web AI", color: "#c4b5fd" },
-      { name: "VS Code · Mac · CLI · MCP", desc: "Native everywhere else", color: "#f472b6" },
+      { name: "VS Code, Mac, CLI, MCP", desc: "Native everywhere else", color: "#f472b6" },
     ],
   },
 ];

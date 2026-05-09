@@ -119,8 +119,14 @@ export default function Tooltip({
             border: "1px solid var(--border)",
             boxShadow: "var(--shadow-lg)",
             pointerEvents: "none" as const,
-            whiteSpace: "nowrap" as const,
-            maxWidth: 360,
+            // Wrap once we hit maxWidth instead of bleeding past the
+            // background. wordBreak guards against URL-like strings that
+            // have no soft-wrap opportunities.
+            whiteSpace: "normal" as const,
+            wordBreak: "break-word" as const,
+            // Narrower than viewport so even a long sentence still leaves
+            // breathing room from the screen edge.
+            maxWidth: "min(360px, calc(100vw - 24px))",
           }}
         >
           {text}

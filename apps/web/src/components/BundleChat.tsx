@@ -169,7 +169,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, onCit
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             </div>
             <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>{bundleTitle || "This bundle"}</h3>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{documentCount} document{documentCount !== 1 ? "s" : ""} loaded · Ask anything</p>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>{documentCount} document{documentCount !== 1 ? "s" : ""} loaded — Ask anything</p>
           </div>
         ) : (
           <div className="space-y-4">

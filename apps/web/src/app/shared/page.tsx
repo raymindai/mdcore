@@ -158,9 +158,9 @@ export default async function SharedBundlesPage() {
                       style={{ color: "var(--text-faint)" }}
                     >
                       <span>{b.document_count} {b.document_count === 1 ? "doc" : "docs"}</span>
-                      <span aria-hidden>·</span>
+                      <span aria-hidden>—</span>
                       <span>by {ownerLabel}</span>
-                      <span aria-hidden>·</span>
+                      <span aria-hidden>—</span>
                       <span>{fmtRelative(b.updated_at)}</span>
                     </div>
                   </Link>

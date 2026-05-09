@@ -1244,7 +1244,7 @@ From the canvas top toolbar, hit **Memo / FAQ / Brief** to synthesize the entire
 - **FAQ** — 5–10 synthesized questions and answers across docs
 - **Brief** — 400-600 word narrative essay tying the bundle together
 
-Click **Save as document** and the result becomes a *compiled entry*: a normal doc that **remembers its source bundle** and intent. Compiled docs get a **\`Compiled · Memo\`** badge in the editor header and a **\`↻ Recompile\`** button — when source docs change, one click regenerates the synthesis with the latest content.
+Click **Save as document** and the result becomes a *compiled entry*: a normal doc that **remembers its source bundle** and intent. Compiled docs get a **\`Compiled — Memo\`** badge in the editor header and a **\`↻ Recompile\`** button — when source docs change, one click regenerates the synthesis with the latest content.
 
 This is the Karpathy-style "compile knowledge once, query forever" loop, applied to your bundle.
 
@@ -1255,7 +1255,7 @@ In the left sidebar, the **Concepts** section shows every concept that appears i
 Click any concept → drawer with all citations across your library:
 
 \`\`\`
-AI Memory Ownership · 4 docs · 7 mentions
+AI Memory Ownership — 4 docs, 7 mentions
   ┌─ "mdfy.cc V2"               [concept] excerpt…
   ├─ "Bundle Strategy Brief"    [definition] excerpt…
   └─ "Launch Plan"              [concept] excerpt…
@@ -1265,7 +1265,7 @@ Click any citation → opens the source doc as a tab. This is your personal know
 
 The home screen shows compounding stats:
 
-> **64 docs · 47 concepts · 23 cross-linked**
+> **64 docs, 47 concepts, 23 cross-linked**
 >
 > 23 concepts connect multiple docs in your library.
 
@@ -4887,6 +4887,13 @@ export default function MdEditor() {
               return [...prev, newTab];
             });
             setShowOnboarding(false);
+            // The doc-editor loading overlay (MdfyLogo at z-10) starts as true
+            // and is cleared by doRender(). The bundle handler doesn't render
+            // any markdown, so without this clear the overlay would sit on
+            // top of BundleEmbed (same z-index, later DOM sibling) until the
+            // user clicks the sidebar bundle item — which is exactly the
+            // "blank logo screen" symptom we saw on /b/<id> when signed in.
+            setIsLoading(false);
             window.history.replaceState(null, "", `/b/${bundleId}`);
             return;
           }
@@ -7824,9 +7831,9 @@ ${clone.innerHTML}
     const iconColor = isRestricted ? "#60a5fa" : isPublic ? "#4ade80" : "var(--text-faint)";
     const overlay = Math.max(7, Math.round(size * 0.55));
     const tipText = isRestricted
-      ? `Shared with ${sharedWithCount} ${sharedWithCount === 1 ? "person" : "people"}${hasPassword ? " · password-protected" : ""}`
+      ? `Shared with ${sharedWithCount} ${sharedWithCount === 1 ? "person" : "people"}${hasPassword ? " — password-protected" : ""}`
       : hasPassword
-        ? "Public link · password-protected"
+        ? "Public link — password-protected"
         : isPublic
           ? "Public — anyone with the link can view"
           : "Private bundle — only you can see this";
@@ -7970,10 +7977,10 @@ ${clone.innerHTML}
             const isRecompiling = recompilingDocId === ct.cloudId;
             return (
               <div className="hidden xl:inline-flex items-center" style={{ gap: "var(--space-2)" }}>
-                <Tooltip text={`Compiled from ${sourceCount} source${sourceCount === 1 ? "" : "s"}${ct.compiledAt ? ` · ${new Date(ct.compiledAt).toLocaleString()}` : ""}`} position="bottom">
+                <Tooltip text={`Compiled from ${sourceCount} source${sourceCount === 1 ? "" : "s"}${ct.compiledAt ? ` — ${new Date(ct.compiledAt).toLocaleString()}` : ""}`} position="bottom">
                   <Badge variant="accent">
                     <Sparkles width={9} height={9} style={{ marginRight: 4 }} />
-                    Compiled · {labels[ct.compileKind] || ct.compileKind}
+                    Compiled — {labels[ct.compileKind] || ct.compileKind}
                   </Badge>
                 </Tooltip>
                 <Tooltip text="Preview an updated synthesis from the current sources, then accept or reject" position="bottom">
@@ -11318,7 +11325,7 @@ ${clone.innerHTML}
                         };
                         return [...prev, newTab];
                       });
-                      showToast(`Saved · ${title}`, "info");
+                      showToast(`Saved — ${title}`, "info");
                     }}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
@@ -11373,7 +11380,7 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
-              {isLoading && (
+              {isLoading && activeTab?.kind !== "bundle" && (
                 <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "var(--background)" }}>
                   <MdfyLogo size={18} />
                 </div>
@@ -13306,7 +13313,7 @@ ${clone.innerHTML}
                 <span className="truncate">{c.label}</span>
               </span>
             }
-            subtitle={`${c.docCount} ${c.docCount === 1 ? "doc" : "docs"} · ${c.occurrenceCount} mentions`}
+            subtitle={`${c.docCount} ${c.docCount === 1 ? "doc" : "docs"} — ${c.occurrenceCount} mentions`}
             headerExtras={
               <div className="flex items-center gap-1">
                 {c.types.map(t => <Badge key={t} variant="accent" uppercase>{t}</Badge>)}

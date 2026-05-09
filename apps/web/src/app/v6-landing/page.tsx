@@ -41,7 +41,7 @@ export default function V6LandingDraft() {
           <MdfyLogo size={20} />
         </Link>
         <span className="text-caption font-mono" style={{ color: "var(--text-faint)" }}>
-          v6-landing draft · noindex
+          v6-landing draft — noindex
         </span>
       </header>
 
@@ -75,7 +75,7 @@ export default function V6LandingDraft() {
             className="text-xs uppercase tracking-wider mb-3"
             style={{ color: "var(--text-faint)" }}
           >
-            Door 1 · For every LLM user
+            Door 1 — For every LLM user
           </p>
           <h2
             className="text-2xl font-semibold mb-3"
@@ -114,7 +114,7 @@ export default function V6LandingDraft() {
             className="text-xs uppercase tracking-wider mb-3"
             style={{ color: "var(--text-faint)" }}
           >
-            Door 2 · For power users
+            Door 2 — For power users
           </p>
           <h2
             className="text-2xl font-semibold mb-3"
@@ -201,7 +201,7 @@ export default function V6LandingDraft() {
         <span>
           Hosted on <Link href="/" style={{ color: "var(--accent)" }}>mdfy.app</Link>
         </span>
-        <span>v6-landing draft · not the live page yet</span>
+        <span>v6-landing draft — not the live page yet</span>
       </footer>
     </main>
   );

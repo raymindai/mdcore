@@ -182,17 +182,17 @@ export default function DocsPage() {
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 12, padding: "16px 20px", marginBottom: 20, fontSize: 13, lineHeight: 1.8, color: "var(--text-muted)" }}>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>markdown</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · required</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — required</span>
               <span>The Markdown content to render.</span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>output</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span><code style={{ ...mono, fontSize: 12, color: "var(--accent)" }}>html</code> | <code style={{ ...mono, fontSize: 12 }}>png</code> | <code style={{ ...mono, fontSize: 12 }}>pdf</code>. Default: html</span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>theme</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span>Rendering theme. Default: minimal-dark</span>
             </div>
           </div>
@@ -227,17 +227,17 @@ export default function DocsPage() {
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 12, padding: "16px 20px", marginBottom: 20, fontSize: 13, lineHeight: 1.8, color: "var(--text-muted)" }}>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>source</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · required</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — required</span>
               <span>URL or base64-encoded file content.</span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>format</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span><code style={{ ...mono, fontSize: 12 }}>url</code> | <code style={{ ...mono, fontSize: 12 }}>html</code> | <code style={{ ...mono, fontSize: 12 }}>pdf</code> | <code style={{ ...mono, fontSize: 12 }}>docx</code>. Auto-detected if omitted.</span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>output</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span>Always <code style={{ ...mono, fontSize: 12, color: "var(--accent)" }}>markdown</code>.</span>
             </div>
           </div>
@@ -255,17 +255,17 @@ export default function DocsPage() {
           <div style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", borderRadius: 12, padding: "16px 20px", marginBottom: 20, fontSize: 13, lineHeight: 1.8, color: "var(--text-muted)" }}>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>markdown</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · required</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — required</span>
               <span>The Markdown content to normalize.</span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>source_flavor</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span>Source flavor. Default: <code style={{ ...mono, fontSize: 12, color: "var(--accent)" }}>auto</code></span>
             </div>
             <div style={{ display: "flex", gap: 12, padding: "4px 0" }}>
               <code style={{ color: "var(--text-primary)", ...mono, width: 120 }}>target</code>
-              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string · optional</span>
+              <span style={{ color: "var(--text-faint)", ...mono, fontSize: 11 }}>string — optional</span>
               <span><code style={{ ...mono, fontSize: 12 }}>commonmark</code> | <code style={{ ...mono, fontSize: 12, color: "var(--accent)" }}>gfm</code> | <code style={{ ...mono, fontSize: 12 }}>mdcore</code>. Default: gfm</span>
             </div>
           </div>

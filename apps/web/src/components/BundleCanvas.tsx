@@ -59,6 +59,17 @@ interface BundleCanvasProps {
   documents: BundleDocument[];
   aiGraph?: AIGraphData | null;
   isAnalyzing?: boolean;
+  /** ISO timestamp the bundle's AI graph was last generated. Drives the
+   *  Analysis status pill so the user can see freshness without clicking. */
+  graphGeneratedAt?: string | null;
+  /** ISO timestamp the bundle's vector embedding was last refreshed.
+   *  Surfaced as a status pill so the user knows recall reflects the
+   *  current title/description/members. */
+  embeddingUpdatedAt?: string | null;
+  isEmbedding?: boolean;
+  /** Owner-only actions (re-embed) are gated on this. */
+  isOwner?: boolean;
+  onEmbed?: () => void;
   hoveredNodeId?: string | null;
   selectedDocId?: string | null;
   onDocumentClick?: (docId: string) => void;
@@ -421,7 +432,7 @@ function getPreview(md: string): string {
     .replace(/`[^`]+`/g, "").replace(/```[\s\S]*?```/g, "")
     .replace(/\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/^[>\-*+]\s*/gm, "")
     .replace(/^\|.*\|$/gm, "").split("\n").map(l => l.trim())
-    .filter(l => l.length > 0).slice(0, 3).join(" · ");
+    .filter(l => l.length > 0).slice(0, 3).join(" — ");
 }
 
 // ─── Summary Node ───
@@ -439,7 +450,7 @@ function SummaryNode({ data }: { data: any }) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         <span className="text-caption font-semibold" style={{ color: "#60a5fa" }}>Bundle Analysis</span>
         <span className="text-caption ml-auto px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>
-          {data.docCount} docs · {data.totalWords.toLocaleString()} words
+          {data.docCount} docs — {data.totalWords.toLocaleString()} words
         </span>
       </div>
 
@@ -674,9 +685,145 @@ const nodeTypes: NodeTypes = {
   chunkNode: ChunkNode,
 };
 
+// ─── Bundle pipeline status group ─────────────────────────────────────────
+//
+// Two passes contribute to a "live" bundle:
+//   1. Graph extraction — one Anthropic call producing the canvas's
+//      summary/themes/insights/concepts (graph_generated_at).
+//   2. Vector embedding — one OpenAI call producing the bundle's recall
+//      vector from title + description + member titles (embedding_updated_at).
+//
+// Before this strip the user had no surface for either timestamp; both are
+// invisible but load-bearing. The chips are color-coded (orange=fresh,
+// neutral=missing) and tooltip the absolute time. Owners can click to
+// re-run; viewers see the chip without the click affordance.
+//
+function fmtAge(iso: string | null): string {
+  if (!iso) return "—";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "just now";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
+function fmtAbsolute(iso: string | null): string {
+  if (!iso) return "Never";
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+function BundleStatusGroup({
+  isOwner,
+  isAnalyzing,
+  isEmbedding,
+  graphGeneratedAt,
+  embeddingUpdatedAt,
+  onAnalyze,
+  onEmbed,
+}: {
+  isOwner: boolean;
+  isAnalyzing: boolean;
+  isEmbedding: boolean;
+  graphGeneratedAt: string | null;
+  embeddingUpdatedAt: string | null;
+  onAnalyze?: () => void;
+  onEmbed?: () => void;
+}) {
+  // Chips re-render when the underlying timestamps change; we don't tick
+  // every minute because the canvas already triggers re-renders often
+  // enough (hover, zoom, layout) that fmtAge stays close to real time.
+  const chips: Array<{
+    label: string;
+    age: string;
+    tooltip: string;
+    fresh: boolean;
+    busy: boolean;
+    onClick?: () => void;
+    color: string;
+  }> = [
+    {
+      label: "Analyzed",
+      age: graphGeneratedAt ? fmtAge(graphGeneratedAt) : "Not yet",
+      tooltip: graphGeneratedAt
+        ? `AI graph last generated ${fmtAbsolute(graphGeneratedAt)}.${isOwner ? " Click to re-run." : ""}`
+        : `This bundle hasn't been analyzed yet.${isOwner ? " Click to run AI analysis." : ""}`,
+      fresh: !!graphGeneratedAt,
+      busy: isAnalyzing,
+      onClick: isOwner ? onAnalyze : undefined,
+      color: "#fb923c",
+    },
+    {
+      label: "Embedded",
+      age: embeddingUpdatedAt ? fmtAge(embeddingUpdatedAt) : "Not yet",
+      tooltip: embeddingUpdatedAt
+        ? `Vector embedding refreshed ${fmtAbsolute(embeddingUpdatedAt)}. Powers semantic recall.${isOwner ? " Click to re-embed after editing title/description/members." : ""}`
+        : `This bundle hasn't been embedded yet — semantic recall won't surface it.${isOwner ? " Click to embed now." : ""}`,
+      fresh: !!embeddingUpdatedAt,
+      busy: isEmbedding,
+      onClick: isOwner ? onEmbed : undefined,
+      color: "#60a5fa",
+    },
+  ];
+
+  return (
+    <div
+      className="flex items-center h-8 rounded-md overflow-hidden"
+      style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+    >
+      {chips.map((chip, i) => {
+        const interactive = !!chip.onClick && !chip.busy;
+        const dotColor = chip.busy ? chip.color : chip.fresh ? chip.color : "var(--text-faint)";
+        const inner = (
+          <span className="inline-flex items-center text-caption font-mono h-full" style={{ padding: "0 var(--space-3)", gap: 6 }}>
+            <span
+              style={{
+                width: 6, height: 6, borderRadius: 999,
+                background: dotColor,
+                opacity: chip.fresh || chip.busy ? 1 : 0.5,
+                animation: chip.busy ? "bundlePulse 1.2s ease-in-out infinite" : undefined,
+              }}
+            />
+            <span style={{ color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.4, fontSize: 9 }}>{chip.label}</span>
+            <span className="tabular-nums" style={{ color: chip.fresh ? "var(--text-secondary)" : "var(--text-faint)", fontSize: 11 }}>
+              {chip.busy ? "Working…" : chip.age}
+            </span>
+          </span>
+        );
+        return (
+          <div key={chip.label} className="flex items-center h-full">
+            <Tooltip text={chip.tooltip} position="bottom">
+              {interactive ? (
+                <button
+                  onClick={chip.onClick}
+                  className="h-full inline-flex items-center hover:bg-[var(--toggle-bg)] transition-colors"
+                  style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                >
+                  {inner}
+                </button>
+              ) : (
+                <div className="h-full inline-flex items-center">{inner}</div>
+              )}
+            </Tooltip>
+            {i < chips.length - 1 && <div style={{ width: 1, height: 18, background: "var(--border)" }} />}
+          </div>
+        );
+      })}
+      <style>{`@keyframes bundlePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }`}</style>
+    </div>
+  );
+}
+
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -1125,6 +1272,14 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
           box-shadow: 0 0 0 1px var(--node-color, var(--accent)) !important;
           transition: box-shadow 0.12s;
         }
+        /* Edge labels are inline pills, not interactive nodes. Their wrapper
+           div is rectangular but the visible pill inside is rounded — so the
+           default hover ring above would draw a sharp rectangle around a
+           rounded pill. Suppress the hover ring on edgeLabel nodes. */
+        .react-flow__node[data-id^="edge-"]:hover > div,
+        .react-flow__node.react-flow__node-edgeLabel:hover > div {
+          box-shadow: none !important;
+        }
         .bundle-node-focused > div {
           box-shadow: 0 0 0 1px var(--node-color, var(--accent)) !important;
         }
@@ -1243,6 +1398,20 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
               detail={detail}
               setDetail={setDetail}
               detailLabels={DETAIL_LABELS}
+            />
+
+            {/* Pipeline status — at-a-glance freshness for the two AI passes
+                this bundle depends on (graph extraction + vector embedding).
+                Owners can click to re-run. Read-only viewers see the chip but
+                can't trigger refresh. */}
+            <BundleStatusGroup
+              isOwner={!!isOwner}
+              isAnalyzing={!!isAnalyzing}
+              isEmbedding={!!isEmbedding}
+              graphGeneratedAt={graphGeneratedAt || null}
+              embeddingUpdatedAt={embeddingUpdatedAt || null}
+              onAnalyze={onRegenerate}
+              onEmbed={onEmbed}
             />
           </>
         )}
@@ -1385,31 +1554,77 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, selectedDocId, hov
         );
       })()}
 
-      {/* Bottom-left: legend */}
+      {/* Bottom-left: legend — colors here MUST match the actual node/edge
+          renderers (TYPE_COLORS, CHUNK_TYPE_COLORS, FlowingEdge stroke
+          assignments) so what users see on the canvas is what's labeled in
+          the legend. Two rows: nodes and edges. */}
       {(() => {
-        const types = new Set<string>();
-        nodes.forEach(n => { if (n.type) types.add(n.type); });
-        const items: Array<{ Icon: typeof Sparkles; label: string; color: string }> = [];
-        if (types.has("summaryNode")) items.push({ Icon: Sparkles, label: "Analysis", color: "var(--color-cool)" });
-        if (types.has("documentCard")) items.push({ Icon: FileText, label: "Documents", color: "var(--accent)" });
-        if (types.has("conceptTag")) {
-          const ct = new Set<string>();
-          nodes.filter(n => n.type === "conceptTag").forEach(n => ct.add((n.data as any)?.type || "concept"));
-          if (ct.has("concept")) items.push({ Icon: Lightbulb, label: "Concepts", color: "var(--color-cool)" });
-          if (ct.has("entity")) items.push({ Icon: CheckSquare, label: "Entities", color: "var(--color-success)" });
-          if (ct.has("tag")) items.push({ Icon: Tag, label: "Tags", color: "var(--color-neutral)" });
+        const nodeKinds = new Set<string>();
+        const conceptKinds = new Set<string>();
+        const chunkKinds = new Set<string>();
+        const edgeKinds = new Set<string>();
+        nodes.forEach(n => { if (n.type) nodeKinds.add(n.type); });
+        nodes.filter(n => n.type === "conceptTag").forEach(n => conceptKinds.add((n.data as any)?.type || "concept"));
+        nodes.filter(n => n.type === "chunkNode").forEach(n => { const ct = (n.data as any)?.type; if (ct) chunkKinds.add(ct); });
+        edges.forEach(e => {
+          const t = (e.data as any)?.relationType || (e.data as any)?.type;
+          if (t) edgeKinds.add(t);
+        });
+
+        type Item = { Icon?: typeof Sparkles; dot?: string; label: string; color: string; tooltip?: string };
+        const nodeItems: Item[] = [];
+        if (nodeKinds.has("summaryNode")) nodeItems.push({ Icon: Sparkles, label: "Analysis", color: "#60a5fa" });
+        if (nodeKinds.has("documentCard") || nodeKinds.has("sectionRoot")) nodeItems.push({ Icon: FileText, label: "Documents", color: "#fb923c" });
+        if (conceptKinds.has("concept")) nodeItems.push({ Icon: Lightbulb, label: "Concepts", color: TYPE_COLORS.concept.border });
+        if (conceptKinds.has("entity")) nodeItems.push({ Icon: CheckSquare, label: "Entities", color: TYPE_COLORS.entity.border });
+        if (conceptKinds.has("tag")) nodeItems.push({ Icon: Tag, label: "Tags", color: TYPE_COLORS.tag.border });
+
+        // Chunk types only show when decomposition is open. Order matches the
+        // decompose panel for muscle memory.
+        const chunkOrder: Array<keyof typeof CHUNK_TYPE_COLORS> = ["claim", "definition", "example", "evidence", "question", "task", "concept", "context"];
+        const chunkItems: Item[] = chunkOrder
+          .filter(k => chunkKinds.has(k))
+          .map(k => ({ dot: CHUNK_TYPE_COLORS[k].border, label: k.charAt(0).toUpperCase() + k.slice(1), color: CHUNK_TYPE_COLORS[k].border }));
+
+        // Edge color rules — mirror the FlowingEdge wiring above:
+        //   doc-to-doc: blue (#60a5fa)
+        //   chunk-to-chunk / concept-to-doc: source node's color
+        // We surface a compact "Edges" group with the most common kinds.
+        const edgeItems: Item[] = [];
+        if (edges.length > 0) {
+          edgeItems.push({ dot: "#60a5fa", label: "Doc ↔ Doc", color: "#60a5fa", tooltip: "Edges between two documents in the bundle." });
+          if (nodeKinds.has("conceptTag")) edgeItems.push({ dot: "#94a3b8", label: "Concept link", color: "#94a3b8", tooltip: "Edge from a concept/entity/tag to the doc it appears in. Color follows the concept's type." });
+          if (nodeKinds.has("chunkNode")) edgeItems.push({ dot: "#fb923c", label: "Chunk relation", color: "#fb923c", tooltip: "Edge between two chunks (decomposition view). Color follows the source chunk's type." });
         }
-        return items.length > 0 ? (
-          <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2.5 h-7 px-3 rounded-md"
-            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
-            {items.map((item, i) => (
-              <div key={i} className="flex items-center gap-1">
-                <item.Icon width={10} height={10} style={{ color: item.color }} />
-                <span className="text-caption" style={{ color: "var(--text-muted)" }}>{item.label}</span>
+
+        const groups: Array<{ label: string; items: Item[] }> = [];
+        if (nodeItems.length > 0) groups.push({ label: "Nodes", items: nodeItems });
+        if (chunkItems.length > 0) groups.push({ label: "Chunks", items: chunkItems });
+        if (edgeItems.length > 0) groups.push({ label: "Edges", items: edgeItems });
+        if (groups.length === 0) return null;
+
+        return (
+          <div className="absolute bottom-3 left-3 z-20 flex flex-col gap-1.5 px-2.5 py-1.5 rounded-md"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", maxWidth: 360 }}>
+            {groups.map((g, gi) => (
+              <div key={gi} className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", minWidth: 38 }}>{g.label}</span>
+                {g.items.map((item, i) => (
+                  <Tooltip key={i} text={item.tooltip || item.label} position="top">
+                    <div className="flex items-center gap-1">
+                      {item.Icon ? (
+                        <item.Icon width={10} height={10} style={{ color: item.color }} />
+                      ) : (
+                        <span style={{ width: 8, height: 8, borderRadius: 999, background: item.color, display: "inline-block" }} />
+                      )}
+                      <span className="text-caption" style={{ color: "var(--text-muted)" }}>{item.label}</span>
+                    </div>
+                  </Tooltip>
+                ))}
               </div>
             ))}
           </div>
-        ) : null;
+        );
       })()}
 
       {/* Right-click context menu on document nodes */}
@@ -1542,7 +1757,7 @@ function CanvasMoreMenu({
           <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-1)" }}>
             <div className="flex items-center justify-between">
               <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Detail level</span>
-              <span className="text-caption font-medium tabular-nums" style={{ color: "var(--accent)" }}>{detail}/5 · {detailLabels[detail]}</span>
+              <span className="text-caption font-medium tabular-nums" style={{ color: "var(--accent)" }}>{detail}/5 — {detailLabels[detail]}</span>
             </div>
             <input
               type="range"
