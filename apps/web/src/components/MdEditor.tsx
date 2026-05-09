@@ -11740,7 +11740,7 @@ ${clone.innerHTML}
                     : {
                         id: "doc" as const,
                         label: "Document",
-                        icon: <Sparkles width={12} height={12} />,
+                        icon: <FileText width={12} height={12} />,
                         accent,
                         accentDim,
                         scope: activeTab?.title
@@ -11881,7 +11881,7 @@ ${clone.innerHTML}
                               active: !isHubMode && isBundleMode,
                               onClick: () => setAiPanelMode("auto"),
                               title: "Bundle Assistant — chat scoped to the current bundle" }
-                          : { id: "doc", label: "Document", icon: <Sparkles width={11} height={11} />,
+                          : { id: "doc", label: "Document", icon: <FileText width={11} height={11} />,
                               active: !isHubMode,
                               onClick: () => setAiPanelMode("auto"),
                               title: "Document Assistant — chat scoped to the current doc" };
@@ -12021,7 +12021,7 @@ ${clone.innerHTML}
                               className="flex items-center justify-center shrink-0"
                               style={{ width: 20, height: 20, borderRadius: 4, background: "var(--accent-dim)" }}
                             >
-                              <Sparkles width={11} height={11} style={{ color: "var(--accent)" }} />
+                              <FileText width={11} height={11} style={{ color: "var(--accent)" }} />
                             </div>
                             <span
                               className="font-bold uppercase tracking-wider"
@@ -12032,13 +12032,14 @@ ${clone.innerHTML}
                           </div>
                         )}
                         <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} min-w-0`}>
-                          <div className={`max-w-[85%] min-w-0 px-3 py-2 text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
+                          <div className={`max-w-[85%] min-w-0 px-3 py-2 leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
                             style={{
-                              background: msg.role === "user" ? "var(--accent)" : "var(--toggle-bg)",
-                              color: msg.role === "user" ? "#fff" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-primary)",
-                              border: msg.role === "ai" && !msg.text.startsWith("Error") ? "1px solid var(--border-dim)" : undefined,
+                              background: msg.role === "user" ? "var(--surface)" : "var(--toggle-bg)",
+                              color: msg.text.startsWith("Error") ? "#f87171" : "var(--text-primary)",
+                              border: msg.role === "user" || (msg.role === "ai" && !msg.text.startsWith("Error")) ? "1px solid var(--border-dim)" : undefined,
                               borderRadius: 14,
                               borderTopRightRadius: msg.role === "user" ? 4 : 14,
+                              fontSize: 13,
                               overflowWrap: "anywhere",
                               wordBreak: "break-word",
                             }}>
