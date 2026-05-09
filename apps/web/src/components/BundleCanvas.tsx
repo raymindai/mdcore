@@ -23,7 +23,7 @@ import "@xyflow/react/dist/style.css";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { Copy, Plus, Minus, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil, MoreHorizontal, FileText, Lightbulb, CheckSquare, Tag } from "lucide-react";
 import Tooltip from "./Tooltip";
-import { parseSections, sectionPreview, type Section } from "@/lib/parse-sections";
+import type { Section } from "@/lib/parse-sections";
 import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
 
 // ─── Types ───
@@ -255,30 +255,14 @@ async function buildLayout(
           }
         });
       } else {
-        // ── Fallback: heading-based section tree ──
-        const sections = parseSections(doc.markdown);
-        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: sections.length, index: i + 1 });
-
-        const sectionIds: string[] = [];
-        sections.forEach((s) => {
-          const sid = `section:${doc.id}:${s.id}`;
-          sectionIds.push(sid);
-          addNode(sid, "sectionNode", {
-            docId: doc.id,
-            section: s,
-            preview: sectionPreview(s.body),
-          });
-        });
-
-        const stack: { idx: number; level: number }[] = [];
-        sections.forEach((s, si) => {
-          while (stack.length && stack[stack.length - 1].level >= s.level) stack.pop();
-          const parentSid = stack.length ? sectionIds[stack[stack.length - 1].idx] : rootId;
-          const childSid = sectionIds[si];
-          elkEdges.push({ id: `sec-${parentSid}-${childSid}`, sources: [parentSid], targets: [childSid] });
-          edges.push({ id: `sec-${parentSid}-${childSid}`, source: parentSid, target: childSid, type: "default", style: { stroke: "var(--accent)", strokeWidth: 1, opacity: 0.4 } });
-          stack.push({ idx: si, level: s.level || 1 });
-        });
+        // No AI decomposition yet — render JUST the section root. Previously
+        // we fell back to a heading-based section tree (parseSections) that
+        // appeared instantly and was then replaced by the AI result a moment
+        // later, which was confusing — it looked like the AI had already run
+        // but with H-tag-shaped output. Removing the fallback means the user
+        // sees: doc card → click Decompose → section root alone (header only)
+        // → AI returns → chunks fly in. One source of truth.
+        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: 0, index: i + 1 });
       }
 
       // Re-route any AI graph edges that reference doc:<id> onto the root node
