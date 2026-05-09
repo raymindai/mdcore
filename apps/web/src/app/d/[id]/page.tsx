@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getSupabaseClient } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { getServerUserId } from "@/lib/supabase-server";
+import { notFound, redirect } from "next/navigation";
 import ClientViewer from "./ClientViewer";
 
 type Props = { params: Promise<{ id: string }> };
@@ -109,6 +110,20 @@ export default async function DocPage({ params }: Props) {
   const { id } = await params;
   const doc = await getDocument(id);
   if (!doc) notFound();
+
+  // SSR-side owner redirect — if the caller is signed in and owns this
+  // doc, send them straight to the editor instead of rendering the
+  // public viewer first. The client-side check in DocumentViewer is
+  // kept as a fallback for browsers without a Supabase session cookie
+  // (e.g. just refreshed from a stale tab), but the server hop here
+  // means the common case (owner with a fresh cookie) never sees the
+  // viewer flash + window.location.replace round trip.
+  if (doc.user_id) {
+    const userId = await getServerUserId();
+    if (userId && userId === doc.user_id) {
+      redirect(`/?from=${id}`);
+    }
+  }
 
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
   const isProtected = !!doc.password_hash;

@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getSupabaseClient } from "@/lib/supabase";
-import { notFound } from "next/navigation";
+import { getServerUserId } from "@/lib/supabase-server";
+import { notFound, redirect } from "next/navigation";
 import ClientViewer from "./ClientViewer";
 
 type Props = { params: Promise<{ id: string }> };
@@ -93,6 +94,16 @@ export default async function BundlePage({ params }: Props) {
   const { id } = await params;
   const bundle = await getBundle(id);
   if (!bundle) notFound();
+
+  // SSR-side owner redirect — see /d/[id] for the rationale. Avoids the
+  // double-mount (viewer → window.location.replace → editor) for the
+  // common signed-in-owner case.
+  if (bundle.user_id) {
+    const userId = await getServerUserId();
+    if (userId && userId === bundle.user_id) {
+      redirect(`/?bundle=${id}`);
+    }
+  }
 
   const isProtected = !!bundle.password_hash;
   const isDraft = !!(bundle as { isDraft?: boolean }).isDraft;
