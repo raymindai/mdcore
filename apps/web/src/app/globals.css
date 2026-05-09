@@ -2508,3 +2508,22 @@ textarea::selection {
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* Recent-row flip — fired when the user clicks a Recent entry that's
+   already the active tab. The 3D rotation around the vertical axis
+   gives a "card flips to acknowledge" feedback so the click doesn't
+   feel ignored. perspective sets the depth so the rotation reads as
+   3D, not as a horizontal scale.
+
+   The hover background is paused mid-flip via brief background:none
+   so the toggle-bg doesn't bleed through the rotated face. */
+@keyframes mdfy-recent-flip {
+  0%   { transform: perspective(600px) rotateY(0deg);   }
+  50%  { transform: perspective(600px) rotateY(180deg); }
+  100% { transform: perspective(600px) rotateY(360deg); }
+}
+.mdfy-recent-flip {
+  animation: mdfy-recent-flip 600ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}

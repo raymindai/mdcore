@@ -4246,6 +4246,14 @@ export default function MdEditor() {
     return [...rootIds, ...myFolderIds, ...sharedRootIds, ...sharedFolderIds];
   }, [tabs, docFilter, sortMode, sidebarSearchDebounced, folders, hiddenExampleIds]);
 
+  // Tracks which Recent row is mid-flip-animation. Cleared after the
+  // CSS animation finishes (600ms). Only set when the clicked tab is
+  // ALREADY the active one — clicking it gives no other visual feedback,
+  // so the flip is the "got it, you're already here" ack.
+  const [flippingRecentId, setFlippingRecentId] = useState<string | null>(null);
+  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (flipTimerRef.current) clearTimeout(flipTimerRef.current); }, []);
+
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
     setShowOnboarding(false);
     setActiveBundleDocIds(new Set()); // clear bundle highlight when selecting MD
@@ -4275,6 +4283,18 @@ export default function MdEditor() {
         if (!isDraggingSidebarRef.current) {
           setRecentTabIds(prev => [tabId, ...prev.filter(id => id !== tabId)].slice(0, 7));
         }
+      } else {
+        // Already on this tab — fire the Recent-row flip animation as a
+        // visual "yes, you're already here" ack. Restart cleanly if a
+        // previous flip is still mid-flight.
+        if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+        setFlippingRecentId(null);
+        // Force a paint between null → tabId so a same-tab re-click
+        // restarts the keyframe animation instead of being ignored.
+        requestAnimationFrame(() => {
+          setFlippingRecentId(tabId);
+          flipTimerRef.current = setTimeout(() => setFlippingRecentId(null), 620);
+        });
       }
     }
   }, [visibleMyDocIds, activeTabId, switchTab]);
@@ -9139,12 +9159,28 @@ ${clone.innerHTML}
                         {recentEntries.map(entry => {
                           if (entry.kind === "ghost-bundle") {
                             const bundle = bundles.find(b => b.id === entry.bundleId)!;
+                            const isFlipping = flippingRecentId === entry.id;
                             return (
                               <div
                                 key={`recent-${entry.id}`}
-                                className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                                className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent ${isFlipping ? "mdfy-recent-flip" : ""}`}
                                 style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
-                                onClick={() => openGhostBundle(entry.bundleId)}
+                                onClick={() => {
+                                  // Already on this bundle? Fire the flip animation as the
+                                  // "you're already here" ack. Otherwise switch normally.
+                                  const activeTab = tabs.find(t => t.id === activeTabId);
+                                  const alreadyOpen = activeTab?.kind === "bundle" && activeTab.bundleId === entry.bundleId;
+                                  if (alreadyOpen) {
+                                    if (flipTimerRef.current) clearTimeout(flipTimerRef.current);
+                                    setFlippingRecentId(null);
+                                    requestAnimationFrame(() => {
+                                      setFlippingRecentId(entry.id);
+                                      flipTimerRef.current = setTimeout(() => setFlippingRecentId(null), 620);
+                                    });
+                                    return;
+                                  }
+                                  openGhostBundle(entry.bundleId);
+                                }}
                                 title={bundle.title || "Untitled Bundle"}
                               >
                                 {renderBundleStatusIcon(entry.bundleId, 13)}
@@ -9164,10 +9200,11 @@ ${clone.innerHTML}
                           const displayTitle = tab.kind === "bundle" && tab.bundleId
                             ? (bundles.find(b => b.id === tab.bundleId)?.title || tab.title || "Untitled")
                             : (tab.title || "Untitled");
+                          const isFlipping = flippingRecentId === tab.id;
                           return (
                             <div
                               key={`recent-${tab.id}`}
-                              className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                              className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent ${isFlipping ? "mdfy-recent-flip" : ""}`}
                               style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                               onClick={(e) => handleDocClick(tab.id, e)}
                               title={displayTitle}
