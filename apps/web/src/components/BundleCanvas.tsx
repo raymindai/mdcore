@@ -98,6 +98,10 @@ interface BundleCanvasProps {
   selectedChunkIds?: Set<string>;
   /** Clear chunk selection (background click). */
   onClearChunkSelection?: () => void;
+  /** Close the side info panel — fires from background pane clicks so an
+   *  empty-area click acts as "deselect" instead of leaving the previous
+   *  node's panel pinned open. */
+  onPaneClose?: () => void;
   /** Drag-reorder: source chunk dropped near target chunk → reorder source doc. */
   onChunkDragReorder?: (docId: string, fromChunkId: string, targetChunkId: string, position: "before" | "after") => void;
   /** Filter chunks by type (null = all). When set, filtered chunks are dimmed
@@ -881,7 +885,7 @@ function BundleStatusGroup({
 
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onPaneClose, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -1143,7 +1147,10 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
   const onPaneClick = useCallback(() => {
     setFocusedNode(null);
     onClearChunkSelection?.();
-  }, [onClearChunkSelection]);
+    // Background click also clears the side info panel — clicking empty
+    // space anywhere on the canvas is the universal "deselect" gesture.
+    onPaneClose?.();
+  }, [onClearChunkSelection, onPaneClose]);
 
   const totalWords = documents.reduce((s, d) => s + d.markdown.split(/\s+/).filter(Boolean).length, 0);
 

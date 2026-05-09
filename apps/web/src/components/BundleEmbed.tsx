@@ -974,7 +974,13 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       });
       return;
     }
-  }, [onOpenDoc, aiGraph, documents, openNodeInfo]);
+    // Unknown node type (e.g. themeTag, or any future node kind that
+    // doesn't have a dedicated panel). Closing the panel is the right
+    // behaviour: it's confusing to leave the previous selection's content
+    // visible after the user clicked a different node — looks like the
+    // click was ignored when in fact the panel just has nothing to say.
+    setSelectedNodeInfo(null);
+  }, [onOpenDoc, aiGraph, documents, openNodeInfo, graphGeneratedAt]);
 
   if (isLoading) {
     return (
@@ -1052,6 +1058,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           onChunkContextMenu={(docId, chunk, x, y) => setChunkCtxMenu({ docId, chunk, x, y })}
           selectedChunkIds={selectedChunkIds}
           onClearChunkSelection={() => setSelectedChunkIds(new Set())}
+          onPaneClose={() => setSelectedNodeInfo(null)}
           onChunkDragReorder={(docId, fromId, targetId, position) => reorderChunk(docId, fromId, targetId, position)}
           chunkTypeFilter={chunkTypeFilter}
           onAddChunk={(docId) => setAddingChunkForDocId(docId)}
