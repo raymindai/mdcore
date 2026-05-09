@@ -21,7 +21,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ELK from "elkjs/lib/elk.bundled.js";
-import { Copy, Plus, Minus, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil, MoreHorizontal, FileText, Lightbulb, CheckSquare, Tag } from "lucide-react";
+import { Copy, Plus, Minus, Sparkles, Circle, Maximize, Minimize, Trash2, ExternalLink, FilePlus2, Layers, Pencil, MoreHorizontal, FileText, Lightbulb, CheckSquare, Tag, Check } from "lucide-react";
 import Tooltip from "./Tooltip";
 import type { Section } from "@/lib/parse-sections";
 import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
@@ -1437,14 +1437,19 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
               className="flex items-center h-8 overflow-hidden"
               style={{ background: "var(--bg-elevated)", border: "1px solid var(--accent)", borderRadius: "var(--radius-md)" }}
             >
-              <Tooltip text="Return to bundle overview" position="bottom">
+              {/* "Done" instead of "Collapse" — the previous label was a
+                  mode-mechanic word ("collapse the tree"); users read it as
+                  "minimize" or got stuck wondering whether they had to
+                  manually save first. "Done" + the auto-save hint below
+                  describes the actual exit gesture. */}
+              <Tooltip text="Exit decompose view. Edits to chunks save automatically as you type — there's nothing to commit before leaving." position="bottom">
                 <button
                   onClick={onCollapseDoc}
                   className="inline-flex items-center text-caption font-semibold h-full hover:brightness-110 transition-all"
                   style={{ background: "var(--accent)", color: "#000", padding: "0 var(--space-3)", gap: "var(--space-2)" }}
                 >
-                  <Layers width={11} height={11} strokeWidth={2.5} />
-                  Collapse
+                  <Check width={11} height={11} strokeWidth={2.5} />
+                  Done
                 </button>
               </Tooltip>
               {isDecomposing ? (

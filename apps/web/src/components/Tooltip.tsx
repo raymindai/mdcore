@@ -124,9 +124,16 @@ export default function Tooltip({
             // have no soft-wrap opportunities.
             whiteSpace: "normal" as const,
             wordBreak: "break-word" as const,
+            // Floor tooltip width so a near-edge trigger can't collapse it
+            // into a 1-character vertical column (saw "B / u / n / d / l /
+            // e ..." rendering for a tooltip near the right edge of the
+            // viewport). The width still shrinks to fit short text via
+            // `width: max-content` semantics from the parent.
+            minWidth: 120,
             // Narrower than viewport so even a long sentence still leaves
             // breathing room from the screen edge.
             maxWidth: "min(360px, calc(100vw - 24px))",
+            width: "max-content",
           }}
         >
           {text}

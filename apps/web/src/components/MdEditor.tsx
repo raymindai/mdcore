@@ -8329,16 +8329,18 @@ ${clone.innerHTML}
             </div>
             {/* Universal Assistant button — always visible, but disabled
                 when there's no doc/bundle being viewed (start screen, or no
-                editable doc/bundle). Hover shows contextual tooltip. */}
+                editable doc/bundle). Always renders Sparkles: this is the
+                AI surface, not a Bundle/Doc primitive (Layers belongs to the
+                Bundle icon family used in the sidebar). */}
             {(() => {
               const isBundle = activeTab?.kind === "bundle" && !!activeTab.bundleId;
               const isDoc = !!activeTab && activeTab.kind !== "bundle" && canEdit && !showOnboarding;
               const enabled = !showOnboarding && (isBundle || isDoc);
               const tip = enabled
-                ? `${isBundle ? "Bundle Assistant" : "Document Assistant"} — chat, AI tools`
+                ? (isBundle ? "Bundle Assistant" : "Document Assistant")
                 : "Open a document or bundle to use the Assistant";
               return (
-                <Tooltip text={tip}>
+                <Tooltip text={tip} position="left">
                   <button
                     onClick={() => { if (!enabled) return; setShowAIPanel(prev => !prev); setShowExportMenu(false); setShowHistory(false); setShowImagePanel(false); setShowOutlinePanel(false); }}
                     disabled={!enabled}
@@ -8350,7 +8352,7 @@ ${clone.innerHTML}
                       cursor: !enabled ? "not-allowed" : "pointer",
                     }}
                   >
-                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : (isBundle ? <Layers width={11} height={11} /> : <Sparkles width={11} height={11} />)}
+                    {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     <span className="hidden sm:inline">AI</span>
                   </button>
                 </Tooltip>
@@ -11416,8 +11418,11 @@ ${clone.innerHTML}
                 // Mode definitions — extensible: add a new entry per future mode
                 // and the panel will display its label + icon automatically.
                 const isBundleMode = activeTab?.kind === "bundle";
+                // Both modes carry the AI Sparkles glyph in the header —
+                // this strip is the AI surface, not a primitive picker.
+                // Layers stays reserved for the Bundle primitive icon set.
                 const mode = isBundleMode
-                  ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Layers width={12} height={12} /> }
+                  ? { id: "bundle" as const, label: "Bundle Assistant", icon: <Sparkles width={12} height={12} /> }
                   : { id: "doc" as const, label: "Document Assistant", icon: <Sparkles width={12} height={12} /> };
                 return (
                 <div
