@@ -2292,7 +2292,7 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
           markdown content lives in its own scroll area, separated from AI
           analysis + metadata. Other node types render flat (no tabs). */}
       {info.type === "document" ? (
-        <DocumentNodeBody info={info} decomposeBridge={decomposeBridge} />
+        <DocumentNodeBody info={info} decomposeBridge={decomposeBridge} onOpenDoc={onOpenDoc} />
       ) : (
       <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
 
@@ -2413,7 +2413,7 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
 }
 
 // ─── Document body with Document / Insights / Decompose tabs ───
-function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridge?: DecomposeBridge }) {
+function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; decomposeBridge?: DecomposeBridge; onOpenDoc?: (docId: string) => void }) {
   type TabId = "document" | "insights" | "decompose";
   const [tab, setTab] = useState<TabId>(info.docContent ? "document" : "insights");
   // Default to "document" so users see the actual content first; if there's
@@ -2461,30 +2461,30 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
           )}
         </div>
       ) : (
-        // Metadata + AI insights about this document
+        // Metadata + AI insights about this document. Stats are NOT
+        // insights — they're metadata. They sit on a small mono header
+        // line at the very top and the body below is the actual analysis:
+        // AI summary, chunk breakdown (when decomposed), and clickable
+        // related concepts.
         <div className="flex-1 overflow-auto px-5 py-5 space-y-5">
-          {/* About — flat metric row, no chip frames. Just label-value
-              pairs separated by hairline dividers, much quieter than
-              three pill chips of equal weight. */}
+          {/* Metadata header — small, mono, not labeled "About" */}
           {info.docStats && (
-            <div className="flex items-baseline gap-4 text-caption" style={{ color: "var(--text-muted)" }}>
-              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>{info.docStats.wordCount.toLocaleString()}</span> words</span>
-              <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
-              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>~{info.docStats.readingTime}</span> min</span>
-              <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
-              <span><span className="font-mono tabular-nums" style={{ color: "var(--text-secondary)" }}>{info.docStats.sections}</span> sections</span>
+            <div className="flex items-baseline gap-3 text-caption font-mono" style={{ color: "var(--text-faint)", fontSize: 10 }}>
+              <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
+              <span style={{ opacity: 0.5 }}>·</span>
+              <span className="tabular-nums">~{info.docStats.readingTime} min</span>
+              <span style={{ opacity: 0.5 }}>·</span>
+              <span className="tabular-nums">{info.docStats.sections} sections</span>
               {info.docStats.hasCode && (
                 <>
-                  <span style={{ width: 1, height: 12, background: "var(--border-dim)", display: "inline-block" }} />
-                  <span className="font-mono uppercase" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: 0.4, fontWeight: 600 }}>Code</span>
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  <span className="uppercase" style={{ color: "#a78bfa", letterSpacing: 0.4, fontWeight: 600 }}>Code</span>
                 </>
               )}
             </div>
           )}
-          {/* AI Summary — italic pull-quote with accent left rule. Same
-              treatment as the analysis-tab Summary. No card frame, no
-              orange box. Smaller "AI" mono prefix instead of an uppercase
-              section header. */}
+
+          {/* AI Summary — italic pull-quote, no box */}
           {info.documentSummary && (
             <div>
               <span className="font-mono uppercase mr-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--accent)", fontWeight: 700 }}>AI</span>
@@ -2496,27 +2496,102 @@ function DocumentNodeBody({ info, decomposeBridge }: { info: any; decomposeBridg
               </p>
             </div>
           )}
-          {/* Related concepts — small flat tags, no border, lowercase
-              mono so they read as tag chips, not buttons. */}
+
+          {/* What this document holds — chunk-type breakdown when the
+              doc has been decomposed. This is the real insight content
+              (not docStats): "this doc is mostly claims" vs "this doc is
+              mostly context." Skips silently when not decomposed yet. */}
+          {(() => {
+            const decomp = decomposeBridge?.decomposition;
+            if (!decomp || decomp.chunks.length === 0) return null;
+            const counts: Record<string, number> = {};
+            for (const c of decomp.chunks) counts[c.type] = (counts[c.type] || 0) + 1;
+            const ordered = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+            const total = decomp.chunks.length;
+            return (
+              <div>
+                <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>What this doc holds</h4>
+                <div className="space-y-1.5">
+                  {ordered.map(([type, n]) => {
+                    const pct = Math.round((n / total) * 100);
+                    const color = CHUNK_TYPE_RAIL[type] || CHUNK_TYPE_RAIL.context;
+                    return (
+                      <div key={type} className="flex items-center gap-2 text-caption">
+                        <span
+                          className="font-mono uppercase shrink-0"
+                          style={{ color, fontSize: 9, letterSpacing: 0.4, fontWeight: 600, width: 64 }}
+                        >
+                          {type}
+                        </span>
+                        <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-secondary)", fontSize: 11, width: 24 }}>{n}</span>
+                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--toggle-bg)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Key claims — pulled from decomposition chunks of type
+              "claim". Most useful "what does this doc actually argue"
+              answer for an Insights tab. */}
+          {(() => {
+            const decomp = decomposeBridge?.decomposition;
+            if (!decomp) return null;
+            const claims = decomp.chunks.filter((c) => c.type === "claim");
+            if (claims.length === 0) return null;
+            return (
+              <div>
+                <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Key claims</h4>
+                <ul className="space-y-2">
+                  {claims.map((c) => (
+                    <li
+                      key={c.id}
+                      className="text-sm leading-relaxed pl-3 cursor-pointer"
+                      style={{ color: "var(--text-secondary)", borderLeft: `2px solid ${CHUNK_TYPE_RAIL.claim}` }}
+                      onClick={() => decomposeBridge?.onEditChunk(c)}
+                    >
+                      <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+                      {stripMarkdownPreview(c.content) && (
+                        <span> — {stripMarkdownPreview(c.content).slice(0, 140)}{stripMarkdownPreview(c.content).length > 140 ? "…" : ""}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+
+          {/* Related concepts — clickable now. Each chip calls
+              onOpenDoc with the connected node's id. The cross-doc link
+              relationship comes from the AI graph extraction; clicking
+              jumps the side panel to that doc/concept. */}
           {info.connectedDocs && info.connectedDocs.length > 0 && (
             <div>
               <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Related concepts</h4>
               <div className="flex flex-wrap gap-1">
                 {info.connectedDocs.map((c: { id: string; title: string }) => (
-                  <span
+                  <button
                     key={c.id}
-                    className="font-mono px-1.5 py-0.5 rounded"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3 }}
+                    onClick={() => onOpenDoc?.(c.id)}
+                    className="font-mono px-1.5 py-0.5 rounded transition-colors"
+                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3, cursor: onOpenDoc ? "pointer" : "default" }}
+                    onMouseEnter={(e) => { if (onOpenDoc) { (e.currentTarget as HTMLElement).style.background = "var(--accent-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
                   >
                     {c.title.toLowerCase()}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
           )}
-          {!info.docStats && !info.documentSummary && (!info.connectedDocs || info.connectedDocs.length === 0) && (
+
+          {!info.documentSummary && !decomposeBridge?.decomposition && (!info.connectedDocs || info.connectedDocs.length === 0) && (
             <div className="text-body text-center py-8" style={{ color: "var(--text-faint)" }}>
-              No insights yet. Run Analyze to generate.
+              No insights yet. Run Decompose or Analyze to generate.
             </div>
           )}
         </div>
@@ -2574,6 +2649,46 @@ const SIDEBAR_CHUNK_COLORS: Record<string, { border: string; text: string; bg: s
   evidence: { border: "#f472b6", text: "#f472b6", bg: "rgba(244,114,182,0.06)" },
 };
 
+// Tiny dismissible banner that explains what Decompose does. Shown the
+// first time a user opens the Decompose pane; remembered via
+// localStorage so it doesn't keep nagging.
+function DecomposeExplainerBanner() {
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = localStorage.getItem("mdfy-decompose-explainer-seen");
+    if (!seen) setDismissed(false);
+  }, []);
+  if (dismissed) return null;
+  return (
+    <div
+      className="shrink-0 px-3 py-2.5 text-caption flex items-start gap-2.5"
+      style={{ background: "var(--toggle-bg)", borderBottom: "1px solid var(--border-dim)" }}
+    >
+      <span
+        className="font-mono uppercase shrink-0 mt-0.5"
+        style={{ color: "var(--accent)", fontSize: 9, letterSpacing: 0.5, fontWeight: 700 }}
+      >
+        About
+      </span>
+      <p className="flex-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+        Decompose splits a document into smaller meaning-bearing chunks (claims, concepts, context, etc.) so each one can be cited, edited, or pulled into other bundles independently. The AI assigns a type to every chunk; you can rename, re-rank, extract, or delete from the list below. Re-run from the refresh button when the source doc changes.
+      </p>
+      <button
+        onClick={() => {
+          setDismissed(true);
+          try { localStorage.setItem("mdfy-decompose-explainer-seen", "1"); } catch {}
+        }}
+        className="shrink-0 p-0.5 rounded transition-colors hover:bg-[var(--menu-hover)]"
+        style={{ color: "var(--text-faint)" }}
+        aria-label="Dismiss explainer"
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+  );
+}
+
 function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; decomp: SemanticChunksResult }) {
   const [filter, setFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -2589,6 +2704,11 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Decompose explainer — small dismissible banner above the
+          toolbar. First-time users have no idea what "Decompose" means
+          or why a doc is being split into Context / Concept / Claim. */}
+      <DecomposeExplainerBanner />
+
       {/* Toolbar: search + actions */}
       <div className="shrink-0 px-3 py-2 flex items-center gap-1.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
         <input
@@ -2712,7 +2832,7 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
                       Stale
                     </span>
                   )}
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover/chunk:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-0.5 transition-opacity opacity-50 group-hover/chunk:opacity-100">
                     <Tooltip text="Move up" position="top">
                       <button onClick={() => bridge.onMoveChunk(c.id, "up")} disabled={isFirst}
                         className="p-0.5 rounded hover:bg-[var(--menu-hover)] disabled:opacity-30"
