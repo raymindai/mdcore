@@ -25,6 +25,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const DEDUP_WINDOW_MS = 30_000;
 
+/**
+ * True when the supabase error is the partial UNIQUE index from
+ * migration 029 firing on a same-owner same-(title, markdown) insert.
+ * The caller should look up the existing row and return it instead of
+ * propagating the failure.
+ */
+export function isStrictDupLockError(
+  error: { code?: string | null; message?: string | null } | null | undefined,
+): boolean {
+  if (!error) return false;
+  return error.code === "23505" && !!error.message?.includes("documents_owner_strict_dup_lock");
+}
+
 export interface DedupOwner {
   userId?: string | null;
   anonymousId?: string | null;

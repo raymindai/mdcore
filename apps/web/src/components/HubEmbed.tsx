@@ -4,17 +4,10 @@
 // publicly (profile, deploy-to-AI strip, docs + bundles list) but
 // scoped to live inside an editor tab — clicking a doc/bundle opens
 // it as a tab in the same editor instead of navigating away.
-//
-// Two views:
-//   - "overview" — workspace landing (profile + deploy + lists)
-//   - "graph"    — knowledge graph (concept_index nodes + relations
-//                  edges), embedded inline so the user doesn't have to
-//                  bounce out to a new tab
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ScrollText, Layers, Network, Copy, Check, ExternalLink } from "lucide-react";
-import HubGraphCanvas from "@/app/hub/[slug]/graph/HubGraphCanvas";
+import { ScrollText, Layers, Copy, Check, ExternalLink } from "lucide-react";
 
 interface HubData {
   hub: {
@@ -32,14 +25,11 @@ interface HubData {
 
 interface HubEmbedProps {
   slug: string;
-  view?: "overview" | "graph";
-  /** Switch the inline view to graph mode (toolbar can do the same). */
-  onSwitchToGraph?: () => void;
   onOpenDoc?: (docId: string) => void;
   onOpenBundle?: (bundleId: string) => void;
 }
 
-export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onOpenDoc, onOpenBundle }: HubEmbedProps) {
+export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProps) {
   const [data, setData] = useState<HubData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,18 +91,6 @@ export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onO
     );
   }
 
-  // Graph view — embed the same HubGraphCanvas the /hub/<slug>/graph
-  // page uses. apiPath is owner-only; the hub tab is only ever opened
-  // by the hub's owner from the sidebar workspace switcher, so the
-  // owner-only API is the right choice.
-  if (view === "graph") {
-    return (
-      <div className="h-full">
-        <HubGraphCanvas apiPath="/api/user/hub/graph" hubUrl={`/hub/${slug}`} />
-      </div>
-    );
-  }
-
   const recentDocs = data.documents.slice(0, 7);
   const remainingDocs = data.documents.slice(7);
 
@@ -153,7 +131,7 @@ export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onO
         </header>
 
         {/* Deploy to AI strip — same purpose as the public /hub/<slug>
-            page: a copy-to-clipboard URL + jump to the knowledge graph. */}
+            page: a copy-to-clipboard URL + raw .md fallback. */}
         <section
           className="mb-8 px-4 py-4 rounded-lg"
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
@@ -178,15 +156,6 @@ export default function HubEmbed({ slug, view = "overview", onSwitchToGraph, onO
             >
               {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
               {copied ? "Copied" : "Copy"}
-            </button>
-            <button
-              onClick={onSwitchToGraph}
-              className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)", background: "var(--accent-dim)" }}
-              title="Switch to the knowledge graph view (toolbar Graph)"
-            >
-              <Network width={11} height={11} />
-              Open graph
             </button>
             <Link
               href={`/hub/${slug}.md`}

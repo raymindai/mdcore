@@ -233,13 +233,6 @@ export default async function HubPage({ params, searchParams }: Props) {
                 >
                   View raw .md
                 </Link>
-                <Link
-                  href={`/hub/${slug}/graph`}
-                  className="text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                >
-                  Open graph
-                </Link>
               </div>
             </div>
           </div>

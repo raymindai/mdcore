@@ -5,7 +5,7 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 import { ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
 import { cleanMarkdownStructure } from "@/lib/llm-clean";
 import { appendHubLog } from "@/lib/hub-log";
-import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
+import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
 
     let id = "";
     let insertError: { code?: string; message?: string } | null = null;
+    let dupLockHit: { id: string; edit_token: string; created_at: string } | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       id = nanoid(8);
       const { error } = await supabase.from("documents").insert({
@@ -155,8 +156,33 @@ export async function POST(req: NextRequest) {
         source: sourceTag,
       });
       if (!error) { insertError = null; break; }
-      if (error.code === "23505") { insertError = error; continue; }
+      if (isStrictDupLockError(error)) {
+        // Race lost — return the surviving canonical row.
+        const survivor = await findRecentDuplicateDoc(
+          supabase,
+          { userId, anonymousId: !userId ? anonymousId : null },
+          markdown,
+          title,
+        );
+        if (survivor) { dupLockHit = survivor; break; }
+        insertError = error; break;
+      }
+      if (error.code === "23505") { insertError = error; continue; } // PK collision — retry
       insertError = error; break;
+    }
+    if (dupLockHit) {
+      const res = NextResponse.json({
+        id: dupLockHit.id,
+        editToken: dupLockHit.edit_token,
+        title,
+        markdown,
+        deduplicated: true,
+      });
+      ensureAnonymousCookie(req, res, {
+        skip: !!userId,
+        explicitId: anonymousId ?? readAnonymousCookie(req),
+      });
+      return res;
     }
     if (insertError) {
       console.error("PDF doc insert error:", insertError);

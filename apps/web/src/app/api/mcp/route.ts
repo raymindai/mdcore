@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { getSupabaseClient } from "@/lib/supabase";
 import { nanoid } from "nanoid";
-import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
+import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 
 // ─── Helpers ───
 
@@ -127,7 +127,16 @@ function createMcpServer(userId?: string) {
         edit_mode: userId ? "account" : "token",
         is_draft: isDraft, source: "mcp",
       });
-      if (error) return errorResult(`Failed to create: ${error.message}`);
+      if (error) {
+        if (isStrictDupLockError(error)) {
+          // Race lost — return the existing identical doc.
+          const survivor = await findRecentDuplicateDoc(supabase, { userId }, markdown, title || null);
+          if (survivor) {
+            return textResult(`Document already exists (deduplicated):\n- URL: ${BASE_URL}/${survivor.id}\n- ID: ${survivor.id}`);
+          }
+        }
+        return errorResult(`Failed to create: ${error.message}`);
+      }
       return textResult(`Document created:\n- URL: ${BASE_URL}/${id}\n- ID: ${id}\n- Status: ${isDraft ? "private draft" : "publicly accessible"}`);
     }
   );
@@ -378,7 +387,13 @@ function createMcpServer(userId?: string) {
           edit_mode: userId ? "account" : "token",
           is_draft: true, source: "mcp",
         });
-        if (error) return errorResult(`Failed to save: ${error.message}`);
+        if (error) {
+          if (isStrictDupLockError(error)) {
+            const survivor = await findRecentDuplicateDoc(supabase, { userId }, markdown, docTitle);
+            if (survivor) return textResult(`Already imported ${url} (deduplicated)\n→ ${BASE_URL}/${survivor.id}\nID: ${survivor.id}`);
+          }
+          return errorResult(`Failed to save: ${error.message}`);
+        }
         return textResult(`Imported ${url}\n→ ${BASE_URL}/${newId}\nID: ${newId}\nLength: ${markdown.length} chars`);
       } catch (err) {
         return errorResult(err instanceof Error ? err.message : "fetch failed");

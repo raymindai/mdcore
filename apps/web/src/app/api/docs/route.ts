@@ -183,9 +183,18 @@ export async function POST(req: NextRequest) {
   // - anonymous → "token" (edit_token = ownership proof)
   const resolvedEditMode = editMode || (userId ? "account" : "token");
 
-  // Retry nanoid generation on unique constraint violation (up to 3 attempts)
+  // Insert with two distinct retry strategies for 23505 unique
+  // violations:
+  //   - documents_pkey collision (random nanoid happened to match an
+  //     existing one) → regenerate nanoid and retry
+  //   - documents_owner_strict_dup_lock (migration 029 — atomic
+  //     same-owner same-(title, markdown) guard) → don't insert, look
+  //     up the existing row and return it as the dedup hit. This is
+  //     the "race lost" branch: the application-layer dedup pre-check
+  //     missed it because two concurrent requests both saw zero rows.
   let id: string = "";
   let insertError: { code?: string; message?: string } | null = null;
+  let dupLockHit: { id: string; edit_token: string; created_at: string } | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     id = nanoid(8);
     const { error } = await supabase.from("documents").insert({
@@ -206,8 +215,38 @@ export async function POST(req: NextRequest) {
       compiled_at: compileKind ? new Date().toISOString() : null,
     });
     if (!error) { insertError = null; break; }
-    if (error.code === "23505") { insertError = error; continue; } // unique violation, retry
-    insertError = error; break; // other error, don't retry
+    if (error.code === "23505") {
+      const msg = error.message || "";
+      if (msg.includes("documents_owner_strict_dup_lock")) {
+        // Race lost — re-query for the surviving row and return it.
+        const survivor = await findRecentDuplicateDoc(supabase, { userId, anonymousId }, markdown, title);
+        if (survivor) { dupLockHit = survivor; break; }
+        insertError = error; break;
+      }
+      // Otherwise it's a PK collision — regenerate id and retry.
+      insertError = error;
+      continue;
+    }
+    insertError = error; break;
+  }
+
+  if (dupLockHit) {
+    console.log(
+      `[doc-dedup] 23505 hit user=${userId} existing=${dupLockHit.id}`,
+      `title=${(title || "").slice(0, 60)} bytes=${markdown.length}`,
+    );
+    const res = NextResponse.json({
+      id: dupLockHit.id,
+      editToken: dupLockHit.edit_token,
+      created_at: dupLockHit.created_at,
+      deduplicated: true,
+    });
+    for (const [k, v] of Object.entries(corsHeaders(req))) res.headers.set(k, v);
+    ensureAnonymousCookie(req, res, {
+      skip: !!userId,
+      explicitId: anonymousId ?? readAnonymousCookie(req),
+    });
+    return res;
   }
 
   if (insertError) {
