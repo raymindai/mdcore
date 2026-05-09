@@ -895,8 +895,11 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       });
       return;
     }
-    // Concept/Entity/Tag → show in side panel
-    if (nodeId.startsWith("concept:") && aiGraph) {
+    // Concept/Entity/Tag → show in side panel. We match by exact node lookup
+    // in aiGraph.nodes instead of a "concept:" prefix check because the LLM
+    // sometimes returns entity:/tag: prefixes despite the prompt asking for
+    // concept: only — that mismatch silently broke entity/tag clicks.
+    if (aiGraph && (nodeId.startsWith("concept:") || nodeId.startsWith("entity:") || nodeId.startsWith("tag:"))) {
       const concept = aiGraph.nodes.find((n: any) => n.id === nodeId);
       if (!concept) return;
       const connectedDocIds = aiGraph.edges
@@ -1525,8 +1528,8 @@ function DiscoveriesPanel({
             defaultOpen
           >
             {insights.map((ins, i) => (
-              <div key={i} className="flex gap-2 items-baseline">
-                <span className="shrink-0 font-mono" style={{ color: "var(--color-warm)", fontSize: 11, marginTop: 2 }}>→</span>
+              <div key={i} className="flex gap-2.5 items-baseline">
+                <Lightbulb width={11} height={11} style={{ color: "var(--color-warm)", flexShrink: 0, transform: "translateY(2px)" }} />
                 <p className="text-caption leading-[1.55]" style={{ color: "var(--text-secondary)" }}>{ins}</p>
               </div>
             ))}
@@ -2272,17 +2275,19 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
   onOpenDoc?: (docId: string) => void;
   decomposeBridge?: DecomposeBridge;
 }) {
-  // Map node types → semantic color tokens (5-color palette per
-  // docs/DESIGN-TOKENS.md). All distinct unicode glyphs (◈ ◆ # ○ ■) replaced
-  // with Lucide icons via getNodeIcon below.
+  // Lock the panel header color to the same hex the canvas node uses, so
+  // the side-panel "icon + title" block reads as the exact same node the
+  // user clicked. The previous theme-token mapping (--color-neutral for
+  // tag, --color-cool for concept) drifted from the canvas hex (purple,
+  // sky) which made the panel feel like a different object.
   const colorMap: Record<string, string> = {
-    analysis: "var(--color-cool)",
-    entity: "var(--color-success)",
-    tag: "var(--color-neutral)",
-    concept: "var(--color-cool)",
-    document: "var(--accent)",
+    analysis: "#60a5fa",
+    concept: "#38bdf8",
+    entity: "#4ade80",
+    tag: "#a78bfa",
+    document: "#fb923c",
   };
-  const color = colorMap[info.type] || "var(--color-neutral)";
+  const color = colorMap[info.type] || "var(--text-faint)";
   const NodeIcon = info.type === "analysis" ? Sparkles
     : info.type === "entity" ? CheckSquare
     : info.type === "tag" ? Tag
@@ -2507,8 +2512,8 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                 <SectionLabel>Cross-doc insights</SectionLabel>
                 <ul className="space-y-2">
                   {info.insights.map((ins: string, i: number) => (
-                    <li key={i} className="flex gap-2 items-baseline">
-                      <span className="shrink-0 font-mono" style={{ color: "var(--accent)", fontSize: 11, marginTop: 2 }}>→</span>
+                    <li key={i} className="flex gap-2.5 items-baseline">
+                      <Lightbulb width={11} height={11} style={{ color: "var(--accent)", flexShrink: 0, transform: "translateY(2px)" }} />
                       <p style={{ fontSize: 12, lineHeight: 1.55, color: "var(--text-secondary)" }}>{ins}</p>
                     </li>
                   ))}
@@ -2555,18 +2560,41 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
             </section>
           );
           const sections: React.ReactNode[] = [];
+          // Subject's own type-color matches the canvas exactly (TYPE_COLORS),
+          // so the relationship-row source dot reads as "this is the same
+          // node you clicked on the canvas, in its canvas color".
+          const subjectColor =
+            info.type === "concept" ? "#38bdf8" :
+            info.type === "entity" ? "#4ade80" :
+            info.type === "tag" ? "#a78bfa" :
+            "var(--text-faint)";
           if (info.weight || info.description) {
+            // Importance gauge — old strip of 10 mini bars replaced with a
+            // single horizontal track, a numeric headline, and a band label
+            // (low / medium / high / critical). The whole row carries a
+            // tooltip explaining what importance means and why it matters
+            // ("how much weight the AI gave this in the bundle's analysis").
+            const w = info.weight || 0;
+            const band = w >= 9 ? "Critical" : w >= 7 ? "High" : w >= 4 ? "Medium" : "Low";
+            const importanceTooltip = "Importance is the weight (0–10) the AI assigned this node when it built the bundle graph. Higher = appeared in more docs and contributed more to the cross-doc analysis. Use it to decide which concepts deserve their own doc or bundle.";
             sections.push(
               <Section key="meta" index={sections.length}>
                 {info.weight && (
-                  <div className="flex items-center gap-3 mb-2">
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Importance {info.weight}/10</span>
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < info.weight! ? color : "var(--border-dim)" }} />
-                      ))}
+                  <Tooltip text={importanceTooltip} position="bottom">
+                    <div className="flex flex-col mb-3" style={{ gap: 6, cursor: "help" }}>
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Importance</span>
+                        <span className="flex items-baseline" style={{ gap: 6 }}>
+                          <span className="font-mono tabular-nums font-semibold" style={{ fontSize: 13, color: subjectColor }}>{w}</span>
+                          <span className="font-mono" style={{ fontSize: 10, color: "var(--text-faint)" }}>/10</span>
+                          <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: subjectColor, marginLeft: 4 }}>{band}</span>
+                        </span>
+                      </div>
+                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--border-dim)" }}>
+                        <div style={{ width: `${(w / 10) * 100}%`, height: "100%", background: subjectColor, transition: "width 0.3s ease" }} />
+                      </div>
                     </div>
-                  </div>
+                  </Tooltip>
                 )}
                 {info.description && (
                   <p style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text-secondary)" }}>{info.description}</p>
@@ -2580,13 +2608,13 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                 <SectionLabel>
                   &quot;{info.label}&quot; appears in {info.connectedDocs.length} document{info.connectedDocs.length > 1 ? "s" : ""}
                 </SectionLabel>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {info.connectedDocs.map((doc: { id: string; title: string }) => (
                     <button key={doc.id} onClick={() => onOpenDoc?.(doc.id)}
-                      className="w-full text-left px-2 py-1.5 rounded font-medium transition-colors hover:bg-[var(--toggle-bg)] flex items-center gap-2"
-                      style={{ fontSize: 12, color: "var(--text-primary)" }}>
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "#fb923c" }} />
-                      {doc.title}
+                      className="w-full text-left px-2 py-1.5 rounded font-medium transition-colors hover:bg-[var(--bg-elevated)] flex items-center"
+                      style={{ fontSize: 12, color: "var(--text-primary)", gap: 8 }}>
+                      <FileText width={12} height={12} style={{ color: "#fb923c", flexShrink: 0 }} />
+                      <span className="truncate">{doc.title}</span>
                     </button>
                   ))}
                 </div>
@@ -2599,42 +2627,49 @@ function NodeInfoPanel({ info, onClose, onOpenDoc, decomposeBridge }: {
                 <SectionLabel>
                   Linked to {info.relationships.length} {info.relationships.length === 1 ? "node" : "nodes"}
                 </SectionLabel>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {(info.relationships as Array<{ label: string; target: string; targetKind?: string; direction?: string }>).map((rel, i) => {
+                    // kindColor mirrors the canvas TYPE_COLORS exactly for
+                    // doc/concept/entity/tag — so the dot in this row reads
+                    // as "the same colored node from the canvas".
                     const kindColor =
                       rel.targetKind === "doc" ? "#fb923c" :
                       rel.targetKind === "entity" ? "#4ade80" :
                       rel.targetKind === "tag" ? "#a78bfa" :
                       rel.targetKind === "concept" ? "#38bdf8" :
                       "var(--text-faint)";
-                    const kindLabel =
-                      rel.targetKind === "doc" ? "Doc" :
-                      rel.targetKind === "entity" ? "Entity" :
-                      rel.targetKind === "tag" ? "Tag" :
-                      rel.targetKind === "concept" ? "Concept" :
-                      "";
-                    const arrow = rel.direction === "in" ? "←" : "→";
+                    const TargetIcon =
+                      rel.targetKind === "doc" ? FileText :
+                      rel.targetKind === "entity" ? CheckSquare :
+                      rel.targetKind === "tag" ? Tag :
+                      rel.targetKind === "concept" ? Lightbulb :
+                      Sparkles;
+                    // Edge line color follows the canvas rule: edge color =
+                    // source's color. For "out" the source is this concept
+                    // (subjectColor); for "in" it's the other node (kindColor).
+                    const lineColor = rel.direction === "in" ? kindColor : subjectColor;
                     return (
                       <div key={i} className="px-2 py-1.5 rounded" style={{ fontSize: 12, background: "var(--bg-elevated)" }}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
-                            {info.label}
-                          </span>
-                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
-                            {arrow}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded font-medium shrink-0" style={{ fontSize: 11, background: `color-mix(in srgb, ${kindColor} 12%, transparent)`, color: kindColor }}>
-                            {rel.label}
-                          </span>
-                          <span className="font-mono shrink-0" style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
-                            {arrow}
-                          </span>
-                          <span className="font-medium" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
-                          {kindLabel && (
-                            <span className="font-mono uppercase shrink-0 ml-auto px-1 rounded" style={{ fontSize: 9, letterSpacing: 0.5, color: kindColor, border: `1px solid color-mix(in srgb, ${kindColor} 30%, transparent)` }}>
-                              {kindLabel}
+                        <div className="flex items-center" style={{ gap: 8 }}>
+                          {/* Subject node — colored dot in this concept's
+                              canvas color so the row matches what the user
+                              sees on the graph. */}
+                          <span className="shrink-0" style={{ width: 8, height: 8, borderRadius: 999, background: subjectColor }} />
+                          {/* Edge line — short colored stroke + the verb on
+                              top, matching the canvas rule that the line
+                              takes the source's color. */}
+                          <div className="flex flex-col items-center shrink-0" style={{ minWidth: 60 }}>
+                            <span className="font-medium uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: lineColor }}>
+                              {rel.label}
                             </span>
-                          )}
+                            <div style={{ height: 1, width: "100%", background: lineColor, marginTop: 2 }} />
+                          </div>
+                          {/* Target node — colored icon + name. The icon
+                              + color tell the user "this is a Doc/Concept/
+                              Entity/Tag", same kind as the canvas legend. */}
+                          <span className="shrink-0" style={{ width: 8, height: 8, borderRadius: 999, background: kindColor }} />
+                          <TargetIcon width={11} height={11} style={{ color: kindColor, flexShrink: 0 }} />
+                          <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{rel.target}</span>
                         </div>
                       </div>
                     );
@@ -2700,56 +2735,51 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
           )}
         </div>
       ) : (
-        // Insights tab — every section has a clear, plainly-named header
-        // ("Stats", "What this doc says", "Claims it makes", "Examples
-        // it gives", "Questions it raises", "Definitions", "Open tasks",
-        // "Related concepts"). Each section pulls from existing graph
-        // or decomposition data and only renders when non-empty.
-        // Replaces the old "What this doc holds" stacked-bar (mechanical,
-        // not insightful) with type-specific lists that actually show
-        // what the doc is about.
-        <div className="flex-1 overflow-auto px-5 py-5 space-y-6">
-
-          {info.docStats && (
-            <div>
-              <h4 className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Stats</h4>
-              <div className="flex items-baseline gap-3 text-caption font-mono" style={{ color: "var(--text-muted)", fontSize: 11 }}>
-                <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
-                <span style={{ opacity: 0.5 }}>—</span>
-                <span className="tabular-nums">~{info.docStats.readingTime} min read</span>
-                <span style={{ opacity: 0.5 }}>—</span>
-                <span className="tabular-nums">{info.docStats.sections} sections</span>
-                {info.docStats.hasCode && (
-                  <>
-                    <span style={{ opacity: 0.5 }}>—</span>
+        // Insights tab — alternating-row sections matching the Bundle
+        // Analysis sidebar. Body locked to 12px so the type scale matches
+        // the rest of the app.
+        (() => {
+          const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+            <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>{children}</h4>
+          );
+          const Section = ({ index, children }: { index: number; children: React.ReactNode }) => (
+            <section style={{
+              padding: "14px 20px",
+              background: index % 2 === 0 ? "transparent" : "color-mix(in srgb, var(--toggle-bg) 45%, transparent)",
+              borderTop: index === 0 ? "none" : "1px solid var(--border-dim)",
+            }}>
+              {children}
+            </section>
+          );
+          const sections: React.ReactNode[] = [];
+          if (info.docStats) {
+            sections.push(
+              <Section key="stats" index={sections.length}>
+                <SectionLabel>Stats</SectionLabel>
+                <div className="flex items-baseline font-mono" style={{ color: "var(--text-muted)", fontSize: 11, gap: 12 }}>
+                  <span className="tabular-nums">{info.docStats.wordCount.toLocaleString()} words</span>
+                  <span className="tabular-nums">~{info.docStats.readingTime} min read</span>
+                  <span className="tabular-nums">{info.docStats.sections} sections</span>
+                  {info.docStats.hasCode && (
                     <span className="uppercase" style={{ color: "#a78bfa", letterSpacing: 0.4, fontWeight: 600 }}>contains code</span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {info.documentSummary && (
-            <div>
-              <h4 className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>What this doc says</h4>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {info.documentSummary}
-              </p>
-            </div>
-          )}
-
-          {/* Per-chunk-type insight sections. Each one appears only when
-              the decomposition produced chunks of that type. Plain
-              numbered lists, no left rail (the rail repeated 5× was
-              just visual noise — the section header already keys the
-              type). Clicking a row opens the chunk editor. */}
-          {(() => {
-            const decomp = decomposeBridge?.decomposition;
-            if (!decomp) return null;
-            const sections: Array<{ type: string; header: string }> = [
+                  )}
+                </div>
+              </Section>
+            );
+          }
+          if (info.documentSummary) {
+            sections.push(
+              <Section key="summary" index={sections.length}>
+                <SectionLabel>What this doc says</SectionLabel>
+                <p style={{ fontSize: 12, lineHeight: 1.65, color: "var(--text-primary)" }}>{info.documentSummary}</p>
+              </Section>
+            );
+          }
+          // Per-chunk-type sections — each pushes its own Section so the
+          // alternating rhythm continues across all of them.
+          const decomp = decomposeBridge?.decomposition;
+          if (decomp) {
+            const chunkSections: Array<{ type: string; header: string }> = [
               { type: "claim", header: "Claims it makes" },
               { type: "definition", header: "Definitions it gives" },
               { type: "example", header: "Examples it shows" },
@@ -2757,72 +2787,71 @@ function DocumentNodeBody({ info, decomposeBridge, onOpenDoc }: { info: any; dec
               { type: "task", header: "Open tasks" },
               { type: "evidence", header: "Evidence it cites" },
             ];
-            return (
-              <>
-                {sections.map(({ type, header }) => {
-                  const items = decomp.chunks.filter((c) => c.type === type);
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={type}>
-                      <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
-                        {header} <span style={{ opacity: 0.6 }}>{items.length}</span>
-                      </h4>
-                      <ol className="space-y-2.5">
-                        {items.map((c, i) => {
-                          const preview = stripMarkdownPreview(c.content);
-                          return (
-                            <li
-                              key={c.id}
-                              className="flex gap-3 text-sm leading-relaxed cursor-pointer rounded px-1 py-0.5 -mx-1 transition-colors"
-                              style={{ color: "var(--text-secondary)" }}
-                              onClick={() => decomposeBridge?.onEditChunk(c)}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                            >
-                              <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-faint)", fontSize: 11 }}>{String(i + 1).padStart(2, "0")}</span>
-                              <span className="flex-1">
-                                <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
-                                {preview && (
-                                  <span> — {preview.slice(0, 140)}{preview.length > 140 ? "…" : ""}</span>
-                                )}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-                  );
-                })}
-              </>
+            for (const { type, header } of chunkSections) {
+              const items = decomp.chunks.filter((c) => c.type === type);
+              if (items.length === 0) continue;
+              sections.push(
+                <Section key={type} index={sections.length}>
+                  <SectionLabel>
+                    {header} <span style={{ opacity: 0.6 }}>{items.length}</span>
+                  </SectionLabel>
+                  <ol className="space-y-2">
+                    {items.map((c, i) => {
+                      const preview = stripMarkdownPreview(c.content);
+                      return (
+                        <li
+                          key={c.id}
+                          className="flex gap-3 leading-[1.55] cursor-pointer rounded px-1 py-0.5 -mx-1 transition-colors"
+                          style={{ fontSize: 12, color: "var(--text-secondary)" }}
+                          onClick={() => decomposeBridge?.onEditChunk(c)}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                        >
+                          <span className="font-mono tabular-nums shrink-0" style={{ color: "var(--text-faint)", fontSize: 11 }}>{String(i + 1).padStart(2, "0")}</span>
+                          <span className="flex-1">
+                            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.label}</span>
+                            {preview && (
+                              <span> — {preview.slice(0, 140)}{preview.length > 140 ? "…" : ""}</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </Section>
+              );
+            }
+          }
+          if (info.connectedDocs && info.connectedDocs.length > 0) {
+            sections.push(
+              <Section key="related" index={sections.length}>
+                <SectionLabel>Related concepts</SectionLabel>
+                <div className="flex flex-wrap gap-1">
+                  {info.connectedDocs.map((c: { id: string; title: string }) => (
+                    <button
+                      key={c.id}
+                      onClick={() => onOpenDoc?.(c.id)}
+                      className="font-mono px-1.5 py-0.5 rounded transition-colors"
+                      style={{ background: "var(--bg-elevated)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3, cursor: onOpenDoc ? "pointer" : "default" }}
+                      onMouseEnter={(e) => { if (onOpenDoc) { (e.currentTarget as HTMLElement).style.background = "var(--accent-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
+                    >
+                      {c.title}
+                    </button>
+                  ))}
+                </div>
+              </Section>
             );
-          })()}
-
-          {info.connectedDocs && info.connectedDocs.length > 0 && (
-            <div>
-              <h4 className="font-mono uppercase mb-2" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Related concepts</h4>
-              <div className="flex flex-wrap gap-1">
-                {info.connectedDocs.map((c: { id: string; title: string }) => (
-                  <button
-                    key={c.id}
-                    onClick={() => onOpenDoc?.(c.id)}
-                    className="font-mono px-1.5 py-0.5 rounded transition-colors"
-                    style={{ background: "var(--toggle-bg)", color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.3, cursor: onOpenDoc ? "pointer" : "default" }}
-                    onMouseEnter={(e) => { if (onOpenDoc) { (e.currentTarget as HTMLElement).style.background = "var(--accent-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
-                  >
-                    {c.title.toLowerCase()}
-                  </button>
-                ))}
+          }
+          if (sections.length === 0) {
+            return (
+              <div className="flex-1 overflow-auto px-5 py-8 text-center" style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                No insights yet. Run Decompose or Analyze to generate.
               </div>
-            </div>
-          )}
-
-          {!info.documentSummary && !decomposeBridge?.decomposition && (!info.connectedDocs || info.connectedDocs.length === 0) && (
-            <div className="text-body text-center py-8" style={{ color: "var(--text-faint)" }}>
-              No insights yet. Run Decompose or Analyze to generate.
-            </div>
-          )}
-        </div>
+            );
+          }
+          return <div className="flex-1 overflow-auto" style={{ fontSize: 12 }}>{sections}</div>;
+        })()
       )}
     </div>
   );
@@ -3022,17 +3051,21 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
             const isLast = fullIdx === decomp.chunks.length - 1;
             const preview = stripMarkdownPreview(c.content);
             const truncated = preview.length > 200 ? preview.slice(0, 199).trim() + "…" : preview;
+            // Zebra-stripe rows match the alternating-section pattern in
+            // the Bundle Analysis sidebar — same visual rhythm in both
+            // panels. The per-chunk-type color lives on the badge below
+            // (palette.text on palette.bg) instead of a left rail.
+            const baseBg = i % 2 === 0 ? "transparent" : "color-mix(in srgb, var(--toggle-bg) 45%, transparent)";
             return (
               <div
                 key={c.id}
                 className="group/chunk px-3 py-2.5 cursor-pointer transition-colors"
                 style={{
-                  borderLeft: `2px solid ${palette.border}`,
                   borderBottom: "1px solid var(--border-dim)",
-                  background: "transparent",
+                  background: baseBg,
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-elevated)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = baseBg; }}
                 onClick={() => bridge.onEditChunk(c)}
               >
                 <div className="flex items-center gap-1.5 mb-1">

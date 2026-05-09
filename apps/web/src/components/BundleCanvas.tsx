@@ -131,7 +131,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> 
 const elk = new ELK();
 
 const NODE_SIZES: Record<string, { w: number; h: number }> = {
-  documentCard: { w: 240, h: 76 },
+  documentCard: { w: 270, h: 130 },
   summaryNode: { w: 300, h: 190 },
   themeTag: { w: 220, h: 32 },
   conceptTag: { w: 160, h: 36 },
@@ -490,46 +490,43 @@ function ThemeTagNode({ data }: { data: any }) {
 // ─── Document Card Node ───
 
 function DocumentCardNode({ data }: { data: any }) {
-  // Cleaner card: single rectangle with a thin orange index strip on the
-  // left (acts as the type indicator), title prominent, one-line preview,
-  // stats inline as monospace below. No three internal sub-cards, no
-  // colored chips, no dividers between sub-rows. Color anchored on
-  // #fb923c so the legend + status pill + minimap all read the same brand
-  // orange regardless of the user's accent setting.
+  // Mirrors the SummaryNode shape (rounded card, header row, body, footer
+  // strip) so the two primary card kinds — Analysis and Documents — share
+  // a vocabulary on the canvas. The number is now a small monospace prefix
+  // next to the title (the bulky orange numbered badge was the offender);
+  // the rest of the orange affordance lives on the border + handles.
   const isSelected = data.isSelected;
   const DOC_COLOR = "#fb923c";
-  const DOC_COLOR_DIM = "rgba(251,146,60,0.10)";
   return (
-    <div className="overflow-hidden transition-all flex" style={{
-      width: 240,
-      background: isSelected ? DOC_COLOR_DIM : "var(--surface)",
-      border: `1px solid ${isSelected ? DOC_COLOR : "var(--border)"}`,
-      borderRadius: 10,
-      boxShadow: isSelected ? "0 0 0 2px rgba(251,146,60,0.18)" : "0 1px 6px rgba(0,0,0,0.18)",
+    <div className="rounded-xl overflow-hidden transition-all" style={{
+      width: 270,
+      background: isSelected ? "rgba(251,146,60,0.10)" : "var(--surface)",
+      border: `1.5px solid ${DOC_COLOR}`,
+      boxShadow: isSelected ? "0 0 0 3px rgba(251,146,60,0.15), 0 4px 20px rgba(0,0,0,0.25)" : "0 4px 20px rgba(251,146,60,0.10)",
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 6, height: 6, border: "2px solid var(--surface)" }} />
-      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 6, height: 6, border: "2px solid var(--surface)" }} />
+      <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
+      <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
 
-      {/* Left rail — narrow strip with the index. Replaces the bulky
-          orange numbered badge inside the header row. */}
-      <div className="flex items-center justify-center shrink-0" style={{ width: 22, background: DOC_COLOR }}>
-        <span className="font-mono tabular-nums" style={{ fontSize: 10, fontWeight: 700, color: "#000", letterSpacing: 0.3 }}>
+      <div className="px-3 py-2 flex items-center gap-2" style={{ background: "rgba(251,146,60,0.08)", borderBottom: "1px solid var(--border-dim)" }}>
+        <FileText width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
+        <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 10, color: DOC_COLOR, fontWeight: 700, letterSpacing: 0.3 }}>
           {String(data.index).padStart(2, "0")}
         </span>
+        <span className="font-semibold truncate flex-1" style={{ fontSize: 12, color: "var(--text-primary)" }}>{data.title}</span>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col" style={{ padding: "8px 10px", gap: 4 }}>
-        <span className="font-semibold truncate" style={{ fontSize: 12, color: "var(--text-primary)", lineHeight: 1.3 }}>{data.title}</span>
-        {data.preview && (
-          <p className="line-clamp-1" style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>{data.preview}</p>
-        )}
-        <div className="flex items-center font-mono tabular-nums" style={{ fontSize: 10, color: "var(--text-faint)", gap: 10, marginTop: 1 }}>
-          <span>{data.wordCount.toLocaleString()}w</span>
-          <span>~{data.readingTime}m</span>
-          {data.hasCode && (
-            <span style={{ color: "#a78bfa" }}>code</span>
-          )}
+      {data.preview && (
+        <div className="px-3 py-2">
+          <p className="line-clamp-2" style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>{data.preview}</p>
         </div>
+      )}
+
+      <div className="px-3 py-1.5 flex items-center font-mono tabular-nums" style={{ borderTop: "1px solid var(--border-dim)", fontSize: 10, color: "var(--text-faint)", gap: 10 }}>
+        <span>{data.wordCount.toLocaleString()}w</span>
+        <span>~{data.readingTime}m</span>
+        {data.hasCode && (
+          <span style={{ color: "#a78bfa", letterSpacing: 0.4 }}>code</span>
+        )}
       </div>
     </div>
   );
@@ -1741,22 +1738,44 @@ function CanvasMoreMenu({
           {onCopyContext && menuItem("Copy bundle as context", "Concatenated markdown for the AI of your choice", Copy, onCopyContext)}
           {onRequestAddDocs && menuItem("Add documents…", "Pick from your library to extend this bundle", FilePlus2, onRequestAddDocs)}
           <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
-          {/* Detail level — inline range as a "settings row" */}
-          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-1)" }}>
+          {/* Detail level — segmented stepper instead of a free-form range
+              slider. Each step is labeled with what it adds, so the user
+              can pick a level by intent ("just docs" / "+ analysis" /
+              "+ themes" / "+ key concepts" / "full map") instead of
+              dragging a thumb and guessing. */}
+          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}>
             <div className="flex items-center justify-between">
-              <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Detail level</span>
-              <span className="text-caption font-medium tabular-nums" style={{ color: "var(--accent)" }}>{detail}/5 — {detailLabels[detail]}</span>
+              <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Detail level</span>
+              <span className="font-mono tabular-nums" style={{ fontSize: 10, color: "var(--accent)" }}>{detailLabels[detail]}</span>
             </div>
-            <input
-              type="range"
-              min={1}
-              max={5}
-              value={detail}
-              step={1}
-              onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
-              className="w-full h-1 accent-[var(--accent)]"
-              style={{ cursor: "pointer" }}
-            />
+            <div className="flex items-center" style={{ gap: 2 }}>
+              {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => {
+                const active = detail === lvl;
+                const passed = lvl <= detail;
+                return (
+                  <Tooltip key={lvl} text={detailLabels[lvl] || `Level ${lvl}`} position="top">
+                    <button
+                      onClick={() => setDetail(lvl)}
+                      className="transition-all"
+                      style={{
+                        flex: 1,
+                        height: 18,
+                        background: passed ? "var(--accent)" : "var(--toggle-bg)",
+                        opacity: active ? 1 : passed ? 0.6 : 1,
+                        border: "none",
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        position: "relative",
+                      }}
+                    >
+                      <span className="font-mono tabular-nums" style={{ fontSize: 9, color: passed ? "#000" : "var(--text-faint)", fontWeight: active ? 700 : 500 }}>
+                        {lvl}
+                      </span>
+                    </button>
+                  </Tooltip>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
