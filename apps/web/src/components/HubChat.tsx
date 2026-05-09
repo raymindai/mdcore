@@ -119,7 +119,7 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
   };
 
   return (
-    <div className="flex flex-col h-full min-w-0">
+    <div className="flex flex-col flex-1 min-h-0 min-w-0">
       <div className="px-2 py-2 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
         <div className="grid grid-cols-2 gap-1">
           {QUICK_ACTIONS.map((q, i) => (
