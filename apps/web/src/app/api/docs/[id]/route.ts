@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
@@ -157,11 +157,38 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     } catch { /* ignore */ }
   }
 
+  // Compile staleness: a synthesis doc (compile_from set) is stale when
+  // any of its source docs were updated AFTER the synthesis was compiled.
+  // Surfaces an `isCompileStale` flag the editor can use to badge the
+  // Recompile button without the client needing to fetch sources itself.
+  let isCompileStale = false;
+  let latestSourceUpdatedAt: string | null = null;
+  const compileFrom = data.compile_from as { docIds?: string[]; bundleId?: string } | null;
+  if (data.compile_kind && data.compiled_at && compileFrom?.docIds && Array.isArray(compileFrom.docIds) && compileFrom.docIds.length > 0) {
+    try {
+      const { data: sourceRows } = await supabase
+        .from("documents")
+        .select("updated_at")
+        .in("id", compileFrom.docIds)
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (sourceRows && sourceRows.length > 0) {
+        latestSourceUpdatedAt = sourceRows[0].updated_at;
+        if (new Date(latestSourceUpdatedAt!).getTime() > new Date(data.compiled_at).getTime()) {
+          isCompileStale = true;
+        }
+      }
+    } catch { /* best-effort — don't block the read */ }
+  }
+
   return NextResponse.json({
     ...safeData,
     hasPassword,
     editMode: data.edit_mode || "token",
     isOwner: isOwnedByRequester,
+    isCompileStale,
+    latestSourceUpdatedAt,
     isEditor: isAllowedEditor,
     ...(isOwnedByRequester ? { editToken: data.edit_token, allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
     ...(ownerEmail ? { ownerEmail } : {}),
@@ -438,6 +465,34 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+
+    // If the title changed, every bundle that has this doc as a member
+    // is now stale on the embedding side — bundle vectors are hashed on
+    // (bundle title + description + member titles). Refresh those bundle
+    // embeddings in the background. /api/embed/bundle is idempotent
+    // (hash short-circuit) so calling it on every title change is safe.
+    // We don't await — embedding refresh shouldn't block the save reply.
+    if (title !== undefined && title !== doc.title) {
+      after(async () => {
+        try {
+          const { data: members } = await supabase
+            .from("bundle_documents")
+            .select("bundle_id")
+            .eq("document_id", id);
+          const bundleIds = [...new Set((members || []).map((m) => m.bundle_id))];
+          for (const bundleId of bundleIds) {
+            try {
+              await fetch(`${req.nextUrl.origin}/api/embed/bundle/${bundleId}`, {
+                method: "POST",
+                headers: req.headers.get("authorization")
+                  ? { Authorization: req.headers.get("authorization")! }
+                  : { "x-user-id": doc.user_id || "" },
+              });
+            } catch { /* one bundle's failure shouldn't block others */ }
+          }
+        } catch { /* best-effort */ }
+      });
+    }
 
     // Send notification to document owner when updated from external source (CLI, MCP, Desktop)
     // Skip if the editor IS the owner (no self-notification) or if source is web auto-save
