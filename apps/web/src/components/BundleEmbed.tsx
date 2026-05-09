@@ -1694,7 +1694,22 @@ function SectionEditor({ docId, section, onClose, onSave }: {
   );
 }
 
-// ─── Chunk Editor — modal for editing one semantic chunk's content + label ───
+// ─── Chunk Editor — modal for editing one semantic chunk's content +
+// label. Now matches the doc viewer's typography rhythm in Preview mode
+// (same .mdcore-rendered scale + 14px / 1.7) so chunks aren't a separate
+// editing universe. Tab toggles between Source (raw markdown, mono) and
+// Preview (rendered, identical to how the chunk reads inside the doc).
+const CHUNK_TYPE_RAIL: Record<string, string> = {
+  concept: "#38bdf8",
+  claim: "#fb923c",
+  example: "#4ade80",
+  definition: "#60a5fa",
+  task: "#fbbf24",
+  question: "#a78bfa",
+  context: "#94a3b8",
+  evidence: "#f472b6",
+};
+
 function ChunkEditor({ chunk, onClose, onSave }: {
   chunk: SemanticChunk;
   onClose: () => void;
@@ -1703,12 +1718,28 @@ function ChunkEditor({ chunk, onClose, onSave }: {
   const [content, setContent] = useState(chunk.content);
   const [label, setLabel] = useState(chunk.label);
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<"source" | "preview">("source");
+  const [previewHtml, setPreviewHtml] = useState<string>("");
   const dirty = content !== chunk.content || label !== chunk.label;
-  const typeColor: Record<string, string> = {
-    concept: "cool", claim: "accent", example: "success", definition: "cool",
-    task: "warm", question: "warm", context: "default", evidence: "accent",
-  } as const;
-  const variant = (typeColor[chunk.type as keyof typeof typeColor] || "default") as "cool" | "accent" | "success" | "warm" | "default";
+  const railColor = CHUNK_TYPE_RAIL[chunk.type] || CHUNK_TYPE_RAIL.context;
+
+  // Render markdown → HTML for preview. Re-runs whenever the textarea
+  // changes so the preview is live the moment you flip to it.
+  useEffect(() => {
+    if (view !== "preview") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await renderMarkdown(content || "");
+        const processed = postProcessHtml(result.html);
+        if (!cancelled) setPreviewHtml(processed);
+      } catch {
+        if (!cancelled) setPreviewHtml("<p style=\"color: var(--text-muted)\">Failed to render</p>");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [content, view]);
+
   return (
     <ModalShell
       open
@@ -1716,11 +1747,30 @@ function ChunkEditor({ chunk, onClose, onSave }: {
       size="lg"
       title="Edit chunk"
       headerExtras={
-        <div className="flex items-center gap-1">
-          <Badge variant={variant === "default" ? "default" : variant} uppercase>{chunk.type}</Badge>
+        <div className="flex items-center gap-1.5">
+          {/* Type badge — same mono-9px contract as the chunk list +
+              canvas card so we have one badge language across the bundle. */}
+          <span
+            className="font-mono uppercase px-1 py-px rounded shrink-0"
+            style={{
+              color: railColor,
+              background: `${railColor}14`,
+              fontSize: 9,
+              letterSpacing: 0.4,
+              fontWeight: 600,
+            }}
+          >
+            {chunk.type}
+          </span>
           {chunk.found === false && (
             <Tooltip text="Source text drifted — edits cannot be located in the document. Re-run Decompose first." position="bottom">
-              <Badge variant="danger">Stale</Badge>
+              <span
+                className="font-mono uppercase shrink-0 flex items-center gap-1"
+                style={{ color: "#ef4444", fontSize: 9, letterSpacing: 0.4, fontWeight: 600 }}
+              >
+                <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} />
+                Stale
+              </span>
             </Tooltip>
           )}
         </div>
@@ -1746,27 +1796,93 @@ function ChunkEditor({ chunk, onClose, onSave }: {
       }
     >
       <div className="flex flex-col gap-3 min-h-0">
-        <div>
-          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Label</label>
+        {/* Label row — small mono uppercase tag in front of the input
+            (was an oversized header above it). */}
+        <div className="flex items-center gap-2">
+          <span
+            className="font-mono uppercase shrink-0"
+            style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", fontWeight: 600 }}
+          >
+            Label
+          </span>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Short title (3-5 words)"
-            className="w-full text-body font-semibold rounded-md outline-none"
+            className="flex-1 text-body font-semibold rounded-md outline-none"
             style={{ background: "var(--toggle-bg)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)" }}
           />
         </div>
+
+        {/* Source / Preview tab pill row + the textarea or rendered preview
+            in a single content area underneath. Same chip pattern as the
+            sidebar filters and the analysis tabs. */}
         <div className="flex-1 flex flex-col min-h-0">
-          <label className="text-caption font-semibold uppercase tracking-wider block" style={{ color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>Content (verbatim from doc)</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Chunk content…"
-            spellCheck={false}
-            className="text-body rounded-md outline-none resize-none flex-1"
-            style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", padding: "var(--space-2) var(--space-3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", lineHeight: 1.55, minHeight: 220 }}
-          />
+          <div className="flex items-center justify-between mb-2">
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)", fontWeight: 600 }}
+            >
+              Content
+            </span>
+            <div
+              className="inline-flex items-center gap-0.5 p-0.5 rounded-md"
+              style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
+            >
+              {(["source", "preview"] as const).map((v) => {
+                const isActive = view === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className="px-2.5 py-1 text-caption rounded transition-colors capitalize"
+                    style={{
+                      background: isActive ? "var(--accent-dim)" : "transparent",
+                      color: isActive ? "var(--accent)" : "var(--text-faint)",
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                    onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+                    onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "var(--text-faint)"; }}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {view === "source" ? (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Chunk content…"
+              spellCheck={false}
+              className="text-body rounded-md outline-none resize-none flex-1"
+              style={{
+                background: "var(--background)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--border-dim)",
+                borderLeft: `2px solid ${railColor}`,
+                padding: "var(--space-2) var(--space-3)",
+                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                lineHeight: 1.55,
+                minHeight: 220,
+              }}
+            />
+          ) : (
+            <div
+              className="mdcore-rendered rounded-md flex-1 overflow-auto"
+              style={{
+                background: "var(--background)",
+                border: "1px solid var(--border-dim)",
+                borderLeft: `2px solid ${railColor}`,
+                padding: "var(--space-3) var(--space-4)",
+                minHeight: 220,
+              }}
+              dangerouslySetInnerHTML={{ __html: previewHtml || `<p style="color: var(--text-faint); font-style: italic">${content.trim() ? "Rendering…" : "Empty chunk"}</p>` }}
+            />
+          )}
         </div>
       </div>
     </ModalShell>
