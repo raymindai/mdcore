@@ -5,6 +5,7 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 import { ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
 import { cleanMarkdownStructure } from "@/lib/llm-clean";
 import { appendHubLog } from "@/lib/hub-log";
+import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -113,6 +114,30 @@ export async function POST(req: NextRequest) {
     const editToken = nanoid(32);
     const title = (pdfTitle && pdfTitle.trim()) || filename.replace(/\.pdf$/i, "");
     const sourceTag = `pdf:${filename}`;
+
+    // Dedup: same caller, same content, within 30s — return that doc
+    // instead of importing the same PDF twice (e.g., user clicks Import,
+    // network blips, retry — both attempts would otherwise persist).
+    const dupHit = await findRecentDuplicateDoc(
+      supabase,
+      { userId, anonymousId: !userId ? anonymousId : null },
+      markdown,
+      title,
+    );
+    if (dupHit) {
+      const res = NextResponse.json({
+        id: dupHit.id,
+        editToken: dupHit.edit_token,
+        title,
+        markdown,
+        deduplicated: true,
+      });
+      ensureAnonymousCookie(req, res, {
+        skip: !!userId,
+        explicitId: anonymousId ?? readAnonymousCookie(req),
+      });
+      return res;
+    }
 
     let id = "";
     let insertError: { code?: string; message?: string } | null = null;

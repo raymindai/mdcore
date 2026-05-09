@@ -6,6 +6,7 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 import { corsHeaders, ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cookie";
 import { appendHubLog } from "@/lib/hub-log";
 import { maybeRefreshSuggestions } from "@/lib/hub-suggestions";
+import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -133,39 +134,20 @@ export async function POST(req: NextRequest) {
   //
   // The `Duplicate to my MDs` UI flow appends " (copy)" to the title, so
   // its title differs from the source — that path is NOT collapsed here.
-  if ((userId || anonymousId) && markdown.length > 0) {
-    try {
-      const sinceIso = new Date(Date.now() - 30_000).toISOString();
-      const ownerFilter = userId
-        ? { col: "user_id", val: userId }
-        : { col: "anonymous_id", val: anonymousId! };
-      const { data: dupRows } = await supabase
-        .from("documents")
-        .select("id, edit_token, markdown, title, created_at")
-        .eq(ownerFilter.col, ownerFilter.val)
-        .gte("created_at", sinceIso)
-        .order("created_at", { ascending: false })
-        .limit(8);
-      const existing = (dupRows || []).find((row) =>
-        row.markdown === markdown && (row.title || null) === (title || null)
-      );
-      if (existing) {
-        const res = NextResponse.json({
-          id: existing.id,
-          editToken: existing.edit_token,
-          created_at: existing.created_at,
-          deduplicated: true,
-        });
-        for (const [k, v] of Object.entries(corsHeaders(req))) res.headers.set(k, v);
-        ensureAnonymousCookie(req, res, {
-          skip: !!userId,
-          explicitId: anonymousId ?? readAnonymousCookie(req),
-        });
-        return res;
-      }
-    } catch {
-      // Dedup is best-effort — never block insertion if the lookup fails.
-    }
+  const dupHit = await findRecentDuplicateDoc(supabase, { userId, anonymousId }, markdown, title);
+  if (dupHit) {
+    const res = NextResponse.json({
+      id: dupHit.id,
+      editToken: dupHit.edit_token,
+      created_at: dupHit.created_at,
+      deduplicated: true,
+    });
+    for (const [k, v] of Object.entries(corsHeaders(req))) res.headers.set(k, v);
+    ensureAnonymousCookie(req, res, {
+      skip: !!userId,
+      explicitId: anonymousId ?? readAnonymousCookie(req),
+    });
+    return res;
   }
 
   const editToken = nanoid(32);

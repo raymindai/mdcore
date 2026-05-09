@@ -42,6 +42,23 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Suggestion has no documents" }, { status: 400 });
   }
 
+  // Atomic claim: only one accept request can flip status `open → accepting`.
+  // Without this, two concurrent clicks both pass the `status !== "open"`
+  // check above, both create a bundle, and the second's bundle becomes a
+  // duplicate. The conditional UPDATE guarantees at-most-once acceptance
+  // across racing requests.
+  const { data: claimed } = await supabase
+    .from("hub_suggestions")
+    .update({ status: "accepting", updated_at: new Date().toISOString() })
+    .eq("id", suggestionId)
+    .eq("user_id", userId)
+    .eq("status", "open")
+    .select("id")
+    .single();
+  if (!claimed) {
+    return NextResponse.json({ error: "Suggestion is no longer open" }, { status: 409 });
+  }
+
   // Create the bundle.
   const editToken = nanoid(32);
   let bundleId = "";
@@ -59,7 +76,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (error.code === "23505") { insertError = error; continue; }
     insertError = error; break;
   }
-  if (insertError) return NextResponse.json({ error: "Failed to create bundle" }, { status: 500 });
+  if (insertError) {
+    // Revert the claim so the user can retry — otherwise the suggestion
+    // stays in "accepting" forever and looks accepted but has no bundle.
+    await supabase
+      .from("hub_suggestions")
+      .update({ status: "open", updated_at: new Date().toISOString() })
+      .eq("id", suggestionId)
+      .eq("user_id", userId);
+    return NextResponse.json({ error: "Failed to create bundle" }, { status: 500 });
+  }
 
   const bundleDocs = docIds.map((docId, sortOrder) => ({
     bundle_id: bundleId,
@@ -69,6 +95,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   const { error: linkErr } = await supabase.from("bundle_documents").insert(bundleDocs);
   if (linkErr) {
     await supabase.from("bundles").delete().eq("id", bundleId);
+    await supabase
+      .from("hub_suggestions")
+      .update({ status: "open", updated_at: new Date().toISOString() })
+      .eq("id", suggestionId)
+      .eq("user_id", userId);
     return NextResponse.json({ error: "Failed to link documents" }, { status: 500 });
   }
 

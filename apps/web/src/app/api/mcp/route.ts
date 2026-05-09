@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { getSupabaseClient } from "@/lib/supabase";
 import { nanoid } from "nanoid";
+import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
 
 // ─── Helpers ───
 
@@ -105,6 +106,18 @@ function createMcpServer(userId?: string) {
     async ({ markdown, title, draft }) => {
       if (!supabase) return errorResult("Storage not configured");
       const isDraft = draft ?? true;
+      // 30s same-content dedup so an MCP client that retries on transient
+      // error (or an LLM that calls mdfy_create twice for the same output)
+      // doesn't pile up a sibling row.
+      const dupHit = await findRecentDuplicateDoc(
+        supabase,
+        { userId },
+        markdown,
+        title || null,
+      );
+      if (dupHit) {
+        return textResult(`Document already exists (deduplicated):\n- URL: ${BASE_URL}/${dupHit.id}\n- ID: ${dupHit.id}`);
+      }
       const id = nanoid(8);
       const editToken = nanoid(32);
       const { error } = await supabase.from("documents").insert({
@@ -344,6 +357,18 @@ function createMcpServer(userId?: string) {
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         const docTitle = title || titleMatch?.[1].trim() || url;
         const markdown = `> Source: ${url}\n\n` + htmlToMarkdownLite(html);
+        // Dedup: importing the same URL twice in quick succession should
+        // not create a sibling — common when an LLM retries on transient
+        // failure or an agent re-runs a tool call.
+        const dupHit = await findRecentDuplicateDoc(
+          supabase,
+          { userId },
+          markdown,
+          docTitle,
+        );
+        if (dupHit) {
+          return textResult(`Already imported ${url} (deduplicated)\n→ ${BASE_URL}/${dupHit.id}\nID: ${dupHit.id}`);
+        }
         const newId = nanoid(8);
         const editToken = nanoid(32);
         const { error } = await supabase.from("documents").insert({
