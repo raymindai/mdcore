@@ -217,10 +217,12 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
 function MessageBubble({ message, onCitationClick, isStreaming, accent, accentDim }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
   const isUser = message.role === "user";
   if (isUser) {
+    // User bubble — solid accent on the right, sharp top-right corner
+    // points toward the speaker.
     return (
       <div className="flex justify-end">
         <div
-          className="max-w-[85%] px-3 py-2 rounded-2xl rounded-tr-sm text-sm"
+          className="max-w-[85%] min-w-0 px-3 py-2 rounded-2xl rounded-tr-md text-sm"
           style={{ background: accent, color: "#fff", overflowWrap: "anywhere", wordBreak: "break-word" }}
         >
           {message.content}
@@ -228,27 +230,48 @@ function MessageBubble({ message, onCitationClick, isStreaming, accent, accentDi
       </div>
     );
   }
+  // Assistant bubble — avatar on the left + a subtle bubble container
+  // so the message is visibly framed (not just floating text under a
+  // small badge). Sharp top-left corner points back at the avatar.
   return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <div className="flex items-center gap-1.5">
-        <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: accentDim }}>
-          <Network width={11} height={11} style={{ color: accent }} />
-        </div>
-        <span className="text-caption font-semibold uppercase tracking-wider" style={{ color: accent }}>Hub</span>
-      </div>
+    <div className="flex justify-start items-start gap-2 min-w-0">
       <div
-        className="text-sm leading-relaxed pl-6 min-w-0"
-        style={{ color: "var(--text-primary)" }}
+        className="shrink-0 flex items-center justify-center mt-0.5"
+        style={{
+          width: 26, height: 26, borderRadius: 999,
+          background: accentDim, color: accent,
+          border: `1px solid ${accent}`,
+        }}
+        title="Hub Assistant"
       >
-        <ChatMarkdown
-          content={message.content}
-          accent={accent}
-          accentDim={accentDim}
-          citationRegex={/\[doc:([\w-]+)\]/g}
-          resolveCitation={(m) => ({ label: m[1], docId: m[1], title: `Open doc ${m[1]}` })}
-          onCitationClick={onCitationClick}
-        />
-        {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: accent, verticalAlign: "middle" }} />}
+        <Network width={13} height={13} />
+      </div>
+      <div className="min-w-0 max-w-[88%] flex flex-col gap-1">
+        <span
+          className="font-bold uppercase tracking-wider"
+          style={{ color: accent, fontSize: 9, letterSpacing: "0.08em" }}
+        >
+          Hub
+        </span>
+        <div
+          className="px-3 py-2 rounded-2xl rounded-tl-md text-sm leading-relaxed min-w-0"
+          style={{
+            background: "var(--toggle-bg)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-dim)",
+            borderLeft: `2px solid ${accentDim}`,
+          }}
+        >
+          <ChatMarkdown
+            content={message.content}
+            accent={accent}
+            accentDim={accentDim}
+            citationRegex={/\[doc:([\w-]+)\]/g}
+            resolveCitation={(m) => ({ label: m[1], docId: m[1], title: `Open doc ${m[1]}` })}
+            onCitationClick={onCitationClick}
+          />
+          {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: accent, verticalAlign: "middle" }} />}
+        </div>
       </div>
     </div>
   );

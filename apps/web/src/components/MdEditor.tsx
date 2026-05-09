@@ -11809,11 +11809,29 @@ ${clone.innerHTML}
                       </div>
                     )}
                     {aiChatHistory.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
+                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start items-start gap-2"} min-w-0`}>
+                        {msg.role === "ai" && (
+                          <div
+                            className="shrink-0 flex items-center justify-center mt-0.5"
+                            style={{
+                              width: 22, height: 22, borderRadius: 999,
+                              background: mode.accentDim, color: mode.accent,
+                              border: `1px solid ${mode.accent}`,
+                            }}
+                            title="Document Assistant"
+                          >
+                            <Sparkles width={11} height={11} />
+                          </div>
+                        )}
+                        <div className={`max-w-[85%] min-w-0 px-3 py-2 text-caption leading-relaxed ${msg.role === "ai" && msg.text.startsWith("Error") ? "border border-red-500/20" : ""}`}
                           style={{
-                            background: msg.role === "user" ? mode.accentDim : "var(--toggle-bg)",
-                            color: msg.role === "user" ? mode.accent : msg.text.startsWith("Error") ? "#f87171" : "var(--text-secondary)",
+                            background: msg.role === "user" ? mode.accent : "var(--toggle-bg)",
+                            color: msg.role === "user" ? "#fff" : msg.text.startsWith("Error") ? "#f87171" : "var(--text-primary)",
+                            border: msg.role === "ai" && !msg.text.startsWith("Error") ? "1px solid var(--border-dim)" : undefined,
+                            borderRadius: 14,
+                            borderTopRightRadius: msg.role === "user" ? 4 : 14,
+                            borderTopLeftRadius: msg.role === "ai" ? 4 : 14,
+                            borderLeft: msg.role === "ai" && !msg.text.startsWith("Error") ? `2px solid ${mode.accentDim}` : undefined,
                             overflowWrap: "anywhere",
                             wordBreak: "break-word",
                           }}>
