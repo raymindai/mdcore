@@ -36,7 +36,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8061,9 +8061,12 @@ ${clone.innerHTML}
           {/* View buttons — different for bundle tabs vs doc tabs */}
           {activeTab?.kind === "bundle" ? (
             <>
-              {/* Bundle: Canvas / List */}
+              {/* Bundle: Canvas / List. Canvas uses Network (graph nodes
+                  + edges) — Layers stays reserved for the Bundle primitive
+                  itself (sidebar, status icons, "New bundle" button) so the
+                  two no longer share a glyph. */}
               {([
-                { mode: "canvas" as const, label: "Canvas", shortcut: "1", icon: <Layers width={13} height={13} /> },
+                { mode: "canvas" as const, label: "Canvas", shortcut: "1", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "2", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
               const active = !showOnboarding && bundleView === mode;

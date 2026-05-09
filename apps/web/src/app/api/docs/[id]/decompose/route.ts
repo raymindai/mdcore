@@ -4,6 +4,31 @@ import { verifyAuthToken } from "@/lib/verify-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+// Normalized substring matcher used by both POST (write-time) and GET
+// (read-time) so the Stale flag has consistent semantics. Strict
+// `markdown.includes(content)` flagged AI paraphrasing as Stale even when
+// the user never touched the source — see route comment block below for
+// details. By collapsing whitespace, unifying smart quotes / em-dashes,
+// and lowercasing, we let "the AI tweaked a comma" pass while still
+// catching real source edits.
+function normalizeForMatch(s: string): string {
+  return s
+    .replace(/[‘’ʼ]/g, "'")     // smart single quotes → '
+    .replace(/[“”]/g, '"')             // smart double quotes → "
+    .replace(/[–—−]/g, "-")     // en-dash / em-dash / minus → -
+    .replace(/[   ]/g, " ")     // non-breaking spaces → space
+    .replace(/\s+/g, " ")                         // collapse all whitespace runs
+    .trim()
+    .toLowerCase();
+}
+
+function docHasChunk(docMarkdown: string, chunkContent: string): boolean {
+  const haystack = normalizeForMatch(docMarkdown);
+  const needle = normalizeForMatch(chunkContent);
+  if (needle.length === 0) return true; // empty content shouldn't false-flag
+  return haystack.includes(needle);
+}
+
 /**
  * Per-document AI semantic decomposition.
  *
@@ -71,7 +96,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("user_id, anonymous_id, edit_mode, allowed_emails, semantic_chunks, decomposed_at")
+    .select("user_id, anonymous_id, edit_mode, allowed_emails, semantic_chunks, decomposed_at, markdown")
     .eq("id", id)
     .single();
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -92,7 +117,18 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   if (!doc.semantic_chunks) {
     return NextResponse.json({ error: "No decomposition cached" }, { status: 404 });
   }
-  return NextResponse.json({ semanticChunks: doc.semantic_chunks, generatedAt: doc.decomposed_at });
+  // Re-verify each cached chunk against the CURRENT markdown — the cached
+  // `found` flag was computed at decomposition time. If the user has since
+  // edited the source doc, that's the only condition that should make a
+  // chunk Stale. Re-check here using the same normalized matcher used at
+  // write time so behaviour is symmetric.
+  type ChunkLike = { content: string; found?: boolean };
+  type CachedChunks = { chunks: ChunkLike[] } & Record<string, unknown>;
+  const cached = doc.semantic_chunks as CachedChunks | null;
+  const reverified = cached
+    ? { ...cached, chunks: cached.chunks.map((c) => ({ ...c, found: docHasChunk(doc.markdown, c.content) })) }
+    : cached;
+  return NextResponse.json({ semanticChunks: reverified, generatedAt: doc.decomposed_at });
 }
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
@@ -160,11 +196,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
     if (!result) return NextResponse.json({ error: "AI extraction failed" }, { status: 500 });
 
-    // Verify chunk content is actually findable in the source. AI sometimes
-    // paraphrases despite the prompt — flag those so the editor can fall back
-    // to "open in source" instead of in-place edit.
+    // Verify chunk content can still be located in the source. AI commonly
+    // tweaks whitespace, smart quotes, or dash style despite the prompt —
+    // a strict `markdown.includes(content)` check then false-flags chunks
+    // as Stale even though the user never edited the source. Stale should
+    // mean "the source DOC was changed after decomposition," not "the AI
+    // paraphrased a comma." docHasChunk normalizes both sides before
+    // substring testing.
     for (const c of result.chunks) {
-      c.found = doc.markdown.includes(c.content);
+      c.found = docHasChunk(doc.markdown, c.content);
     }
     result.version = 1;
 

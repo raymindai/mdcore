@@ -211,7 +211,7 @@ async function buildLayout(
 
       if (decomposition && decomposition.chunks.length > 0) {
         // ── AI semantic decomposition path ──
-        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: decomposition.chunks.length });
+        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: decomposition.chunks.length, index: i + 1 });
 
         const chunkIdMap = new Map<string, string>();
         decomposition.chunks.forEach(c => {
@@ -253,7 +253,7 @@ async function buildLayout(
       } else {
         // ── Fallback: heading-based section tree ──
         const sections = parseSections(doc.markdown);
-        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: sections.length });
+        addNode(rootId, "sectionRoot", { title: doc.title || "Untitled", docId: doc.id, sectionCount: sections.length, index: i + 1 });
 
         const sectionIds: string[] = [];
         sections.forEach((s) => {
@@ -617,26 +617,35 @@ function FlowingEdge({ sourceX, sourceY, targetX, targetY, sourcePosition, targe
 
 const edgeTypes: EdgeTypes = { default: FlowingEdge };
 
-// ─── Section Root Node — slim header that takes a decomposed doc's place ───
-// Same #fb923c brand orange as DocumentCardNode so the legend's "Documents"
-// chip applies to both representations of the same primitive.
+// ─── Section Root Node — slim header for a decomposed doc ───
+// Mirrors DocumentCardNode's header exactly (number → FileText → title) so
+// toggling Decompose doesn't redesign the header out from under the user.
+// The only difference is the chunk-count chip on the right + a flat layout
+// (no body / no preview, since those move into the chunk children below).
 function SectionRootNode({ data }: { data: any }) {
   const DOC_COLOR = "#fb923c";
-  const DOC_COLOR_DIM = "rgba(251,146,60,0.15)";
   return (
-    <div className="rounded-xl px-3 py-2 flex items-center gap-2" style={{
+    <div className="rounded-xl overflow-hidden" style={{
       width: 280,
-      background: DOC_COLOR_DIM,
+      background: "var(--surface)",
       border: `1.5px solid ${DOC_COLOR}`,
       boxShadow: "0 0 0 3px rgba(251,146,60,0.10), 0 4px 16px rgba(0,0,0,0.25)",
     }}>
       <Handle type="target" position={Position.Left} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
       <Handle type="source" position={Position.Right} style={{ background: DOC_COLOR, width: 8, height: 8, border: "2px solid var(--surface)" }} />
-      <Layers width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
-      <span className="text-body font-bold truncate flex-1" style={{ color: "var(--text-primary)" }}>{data.title}</span>
-      <span className="text-caption px-1.5 py-0.5 rounded shrink-0 font-medium tabular-nums" style={{ background: DOC_COLOR, color: "#000" }}>
-        {data.sectionCount}
-      </span>
+
+      <div className="px-3 py-2 flex items-center gap-2" style={{ background: "rgba(251,146,60,0.08)" }}>
+        {typeof data.index === "number" && (
+          <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 10, color: DOC_COLOR, fontWeight: 700, letterSpacing: 0.3 }}>
+            {String(data.index).padStart(2, "0")}
+          </span>
+        )}
+        <FileText width={12} height={12} style={{ color: DOC_COLOR, flexShrink: 0 }} />
+        <span className="font-semibold truncate flex-1" style={{ fontSize: 12, color: "var(--text-primary)" }}>{data.title}</span>
+        <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.4, color: DOC_COLOR, padding: "1px 5px", borderRadius: 3, background: "rgba(251,146,60,0.15)" }}>
+          {data.sectionCount} chunks
+        </span>
+      </div>
     </div>
   );
 }
