@@ -8455,7 +8455,7 @@ ${clone.innerHTML}
                     }}
                   >
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
-                    <span className="hidden sm:inline">AI</span>
+                    <span className="hidden sm:inline">Chat</span>
                   </button>
                 </Tooltip>
               );
@@ -11239,7 +11239,7 @@ ${clone.innerHTML}
                     {aiProcessing ? <Loader2 width={11} height={11} className="animate-spin" /> : <Sparkles width={11} height={11} />}
                     {aiProcessing ? <span className="text-caption hidden sm:inline">
                       {(({ polish: "Polishing", summary: "Summarizing", tldr: "Generating", translate: "Translating", chat: "Editing" } as Record<string, string>)[aiProcessing as string]) || "Processing"}...
-                    </span> : <span className="hidden sm:inline text-caption">AI</span>}
+                    </span> : <span className="hidden sm:inline text-caption">Chat</span>}
                   </button>
                   {!showAIPanel && !aiProcessing && (
                     <div className="absolute top-full right-0 mt-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
@@ -11610,22 +11610,22 @@ ${clone.innerHTML}
                   >
                     <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[3px] h-8" style={{ background: "var(--text-faint)", borderRadius: 2, opacity: 0.3 }} />
                   </div>
-                  <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full">
                   {/* Mode indicator + actions header. The bar carries the
                       mode color so the surface itself signals which
                       assistant you're talking to without reading text. */}
                   <div
-                    className="flex items-center justify-between px-3 py-2 shrink-0 gap-3"
+                    className="flex items-center justify-between px-3 py-2 shrink-0 gap-2"
                     style={{
                       borderBottom: "1px solid var(--border-dim)",
-                      background: `linear-gradient(to right, ${mode.accentDim}, transparent 70%)`,
+                      background: `linear-gradient(to right, ${mode.accentDim}, transparent 60%)`,
                     }}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span
                         className="flex items-center justify-center shrink-0"
                         style={{
-                          width: 22, height: 22, borderRadius: 6,
+                          width: 24, height: 24, borderRadius: 6,
                           background: mode.accentDim,
                           color: mode.accent,
                         }}
@@ -11634,29 +11634,12 @@ ${clone.innerHTML}
                       </span>
                       <div className="flex flex-col min-w-0">
                         <span className="text-caption font-semibold leading-tight" style={{ color: mode.accent }}>{mode.label}</span>
-                        <span className="text-caption leading-tight truncate" style={{ color: "var(--text-faint)", fontSize: 10 }} title={mode.scope}>
+                        <span className="leading-tight truncate" style={{ color: "var(--text-faint)", fontSize: 10 }} title={mode.scope}>
                           {mode.scope}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {/* Hub-mode toggle — only when the user has a public hub_slug.
-                          Switches the panel between the per-doc/bundle assistant
-                          (auto) and the ontology-grounded Hub Assistant. */}
-                      {hubSlug && (
-                        <button
-                          onClick={() => setAiPanelMode(prev => prev === "hub" ? "auto" : "hub")}
-                          className="flex items-center gap-1 px-1.5 h-5 rounded text-caption font-medium transition-colors hover:bg-[var(--menu-hover)]"
-                          style={{
-                            color: isHubMode ? "var(--accent)" : "var(--text-muted)",
-                            background: isHubMode ? "var(--accent-dim)" : "transparent",
-                          }}
-                          title={isHubMode ? "Switch to per-doc assistant" : "Switch to Hub Assistant (whole-hub ontology)"}
-                        >
-                          <Network width={9} height={9} />
-                          Hub
-                        </button>
-                      )}
+                    <div className="flex items-center gap-1 shrink-0">
                       {aiChatHistory.length > 0 && !isHubMode && !isBundleMode && (
                         <button
                           onClick={() => setAiChatHistory([])}
@@ -11688,6 +11671,45 @@ ${clone.innerHTML}
                       </button>
                     </div>
                   </div>
+                  {/* Mode switcher — prominent two-tab pill so users can flip
+                      between the per-doc/bundle assistant (auto) and the
+                      whole-hub assistant. Only rendered when the user has a
+                      hub_slug (otherwise hub mode is unreachable anyway). */}
+                  {hubSlug && (
+                    <div className="px-2 pt-2 shrink-0">
+                      <div
+                        className="flex items-center p-0.5 rounded-lg"
+                        style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
+                      >
+                        <button
+                          onClick={() => setAiPanelMode("auto")}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
+                          style={{
+                            background: !isHubMode ? "var(--surface)" : "transparent",
+                            color: !isHubMode ? (isBundleMode ? "#38bdf8" : "var(--accent)") : "var(--text-faint)",
+                            boxShadow: !isHubMode ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
+                          }}
+                          title={isBundleMode ? "Talking to this bundle" : "Talking to this document"}
+                        >
+                          {isBundleMode ? <Layers width={11} height={11} /> : <Sparkles width={11} height={11} />}
+                          {isBundleMode ? "Bundle" : "Document"}
+                        </button>
+                        <button
+                          onClick={() => setAiPanelMode("hub")}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-caption font-semibold transition-colors"
+                          style={{
+                            background: isHubMode ? "#a78bfa" : "transparent",
+                            color: isHubMode ? "#fff" : "var(--text-faint)",
+                            boxShadow: isHubMode ? "0 1px 4px rgba(167,139,250,0.4)" : "none",
+                          }}
+                          title="Talk to your whole hub (ontology-grounded)"
+                        >
+                          <Network width={11} height={11} />
+                          Hub
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {/* Hub mode → ontology-grounded chat over the whole hub */}
                   {isHubMode && hubSlug && (
                     <HubChat
