@@ -51,19 +51,23 @@ export async function GET(
     }
   }
 
+  const isDocOwner =
+    !!(requesterId && doc.user_id && requesterId === doc.user_id) ||
+    !!(requesterAnonId && doc.anonymous_id && requesterAnonId === doc.anonymous_id);
+
   // Email-restricted access
   const allowedEmails: string[] = doc.allowed_emails || [];
   if (allowedEmails.length > 0) {
     const requesterEmail = verified?.email || req.headers.get("x-user-email") || "";
-    const isOwner = !!(requesterId && doc.user_id && requesterId === doc.user_id);
     const isAllowed = allowedEmails.some(e => e.toLowerCase() === requesterEmail.toLowerCase());
-    if (!isOwner && !isAllowed) {
+    if (!isDocOwner && !isAllowed) {
       return NextResponse.json({ error: "Access restricted", restricted: true }, { status: 403 });
     }
   }
 
-  // Password check (supports both salted "salt:hash" and legacy unsalted formats)
-  if (doc.password_hash) {
+  // Password check (supports both salted "salt:hash" and legacy unsalted formats).
+  // Owner bypasses — same rule as the main GET handler.
+  if (doc.password_hash && !isDocOwner) {
     const providedPassword = req.headers.get("x-document-password") || "";
     if (!providedPassword) {
       return NextResponse.json({ error: "Password required", passwordRequired: true }, { status: 401 });
