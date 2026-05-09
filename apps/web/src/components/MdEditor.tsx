@@ -2039,103 +2039,134 @@ function BundleCreatorModal({
           <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Pick documents to bundle, or ask AI to suggest from your hub.</p>
         </div>
         {/* AI Bundle Generation strip — describe what you want, AI picks from hub. */}
-        <div className="px-5 py-3 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <label className="text-caption font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
-            <span className="inline-flex items-center gap-1" style={{ color: "var(--accent)" }}><Sparkles width={12} height={12} aria-hidden /> Ask AI</span> <span style={{ color: "var(--text-faint)" }}>(optional)</span>
-          </label>
-          <div className="flex gap-2">
+        <div className="px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--border-dim)", background: "color-mix(in srgb, var(--accent-dim) 25%, var(--surface))" }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="flex items-center justify-center shrink-0"
+              style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
+              <Sparkles width={12} height={12} aria-hidden />
+            </span>
+            <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>Ask AI</span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>· optional</span>
+          </div>
+          <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+            Describe a topic and AI picks matching docs + writes a title from your hub.
+          </p>
+          {/* Combined input + submit button in a single rounded container —
+              one visual element, like a chat composer. */}
+          <div
+            className="flex items-stretch rounded-lg overflow-hidden"
+            style={{
+              background: "var(--background)",
+              border: `1px solid ${aiPrompt.trim() ? "var(--accent)" : "var(--border-dim)"}`,
+              transition: "border-color 120ms",
+            }}
+          >
             <input
               type="text"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !aiGenerating) askAI(); }}
               placeholder="e.g. notes on LLM memory architecture"
-              className="flex-1 px-3 py-1.5 rounded-md text-body outline-none"
-              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+              className="flex-1 px-3 py-2 text-body outline-none bg-transparent"
+              style={{ color: "var(--text-primary)" }}
               disabled={aiGenerating}
             />
             <button
               onClick={askAI}
               disabled={!aiPrompt.trim() || aiGenerating}
-              className="px-3 py-1.5 rounded-md text-caption font-medium shrink-0 transition-opacity"
+              className="flex items-center gap-1 px-3 text-caption font-semibold shrink-0 transition-colors"
               style={{
-                background: "var(--accent)",
-                color: "#000",
-                opacity: !aiPrompt.trim() || aiGenerating ? 0.4 : 1,
+                background: !aiPrompt.trim() || aiGenerating ? "transparent" : "var(--accent)",
+                color: !aiPrompt.trim() || aiGenerating ? "var(--text-faint)" : "#fff",
                 cursor: !aiPrompt.trim() || aiGenerating ? "not-allowed" : "pointer",
+                borderLeft: "1px solid var(--border-dim)",
               }}
             >
-              {aiGenerating ? "Thinking…" : "Ask AI"}
+              {aiGenerating ? (
+                <>
+                  <Loader2 width={11} height={11} className="animate-spin" />
+                  Thinking
+                </>
+              ) : (
+                <>
+                  <Sparkles width={11} height={11} />
+                  Ask
+                </>
+              )}
             </button>
           </div>
           {aiError && (
-            <p className="text-caption mt-2" style={{ color: "var(--color-danger)" }}>{aiError}</p>
+            <p className="text-caption mt-2.5" style={{ color: "var(--color-danger)" }}>{aiError}</p>
           )}
           {aiDescription && !aiError && (
-            <p className="text-caption mt-2 leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiDescription}</p>
+            <p className="text-caption mt-2.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiDescription}</p>
           )}
-          {/* Auto-generated prompt suggestions — click to fill + run.
-              Hidden once the user has run a generation (description set)
-              or while a generation is in flight. */}
+          {/* Suggestion list — vertical list with consistent row layout
+              instead of wrapped pills, which read as a cluttered row of
+              chips at typical prompt lengths. Each row is a one-click
+              "use this prompt" trigger with a hover state. */}
           {aiSuggestions.length > 0 && !aiGenerating && !aiDescription && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {aiSuggestions.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setAiPrompt(p);
-                    // Run on next tick so setAiPrompt commits before askAI
-                    // reads aiPrompt from its closure.
-                    setTimeout(() => {
+            <div className="mt-3">
+              <div className="text-caption uppercase tracking-wider mb-1.5" style={{ color: "var(--text-faint)", fontSize: 10, letterSpacing: "0.06em" }}>
+                Try
+              </div>
+              <div className="flex flex-col gap-1">
+                {aiSuggestions.map((p, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
                       setAiPrompt(p);
-                      // Inline call with explicit prompt — avoids waiting for
-                      // a re-render to push state into askAI's closure.
-                      (async () => {
-                        if (aiGenerating) return;
-                        setAiError(null);
-                        setAiGenerating(true);
-                        try {
-                          const res = await fetch("/api/bundles/ai-generate", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", ...authHeaders },
-                            body: JSON.stringify({ prompt: p }),
-                          });
-                          if (!res.ok) {
-                            const err = await res.json().catch(() => ({}));
-                            throw new Error(err.error || `Request failed (${res.status})`);
-                          }
-                          const data = await res.json();
-                          const suggestion = data?.suggestion;
-                          if (!suggestion) throw new Error("Empty response");
-                          if (suggestion.title) setTitle(suggestion.title);
-                          setAiDescription(suggestion.description || "");
-                          const picks: string[] = Array.isArray(suggestion.documents) ? suggestion.documents.map((d: { id: string }) => d.id) : [];
-                          setSelectedIds(picks);
-                          const ann: Record<string, string> = {};
-                          if (Array.isArray(suggestion.documents)) {
-                            for (const d of suggestion.documents as Array<{ id: string; annotation?: string }>) {
-                              if (d?.id && d.annotation) ann[d.id] = d.annotation;
+                      setTimeout(() => {
+                        setAiPrompt(p);
+                        (async () => {
+                          if (aiGenerating) return;
+                          setAiError(null);
+                          setAiGenerating(true);
+                          try {
+                            const res = await fetch("/api/bundles/ai-generate", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...authHeaders },
+                              body: JSON.stringify({ prompt: p }),
+                            });
+                            if (!res.ok) {
+                              const err = await res.json().catch(() => ({}));
+                              throw new Error(err.error || `Request failed (${res.status})`);
                             }
+                            const data = await res.json();
+                            const suggestion = data?.suggestion;
+                            if (!suggestion) throw new Error("Empty response");
+                            if (suggestion.title) setTitle(suggestion.title);
+                            setAiDescription(suggestion.description || "");
+                            const picks: string[] = Array.isArray(suggestion.documents) ? suggestion.documents.map((d: { id: string }) => d.id) : [];
+                            setSelectedIds(picks);
+                            const ann: Record<string, string> = {};
+                            if (Array.isArray(suggestion.documents)) {
+                              for (const d of suggestion.documents as Array<{ id: string; annotation?: string }>) {
+                                if (d?.id && d.annotation) ann[d.id] = d.annotation;
+                              }
+                            }
+                            setAiAnnotations(ann);
+                          } catch (err) {
+                            setAiError(err instanceof Error ? err.message : "AI generation failed");
+                          } finally {
+                            setAiGenerating(false);
                           }
-                          setAiAnnotations(ann);
-                        } catch (err) {
-                          setAiError(err instanceof Error ? err.message : "AI generation failed");
-                        } finally {
-                          setAiGenerating(false);
-                        }
-                      })();
-                    }, 0);
-                  }}
-                  className="text-caption px-2 py-1 rounded-full transition-colors"
-                  style={{
-                    background: "var(--toggle-bg)",
-                    color: "var(--text-secondary)",
-                    border: "1px solid var(--border-dim)",
-                  }}
-                >
-                  <Sparkles width={11} height={11} aria-hidden /> {p}
-                </button>
-              ))}
+                        })();
+                      }, 0);
+                    }}
+                    className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-caption transition-colors hover:bg-[var(--toggle-bg)] group/sug"
+                    style={{ color: "var(--text-secondary)", border: "1px solid transparent" }}
+                  >
+                    <Sparkles width={10} height={10} className="shrink-0 transition-colors group-hover/sug:text-[var(--accent)]" style={{ color: "var(--text-faint)" }} aria-hidden />
+                    <span className="flex-1 truncate">{p}</span>
+                    <span className="text-caption opacity-0 group-hover/sug:opacity-100 transition-opacity shrink-0" style={{ color: "var(--accent)", fontSize: 10 }}>
+                      Use →
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
