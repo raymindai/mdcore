@@ -11458,8 +11458,27 @@ ${clone.innerHTML}
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && activeTab?.kind !== "bundle" && (
-                <div className="absolute inset-0 flex items-center justify-center z-10" style={{ background: "var(--background)" }}>
-                  <MdfyLogo size={18} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "var(--background)", gap: 14 }}>
+                  <div className="mdfy-loader-pulse">
+                    <MdfyLogo size={26} />
+                  </div>
+                  <div className="mdfy-loader-bar" style={{ width: 96, height: 2, background: "var(--border-dim)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
+                    <div style={{ position: "absolute", top: 0, height: "100%", width: "40%", background: "var(--accent)", borderRadius: 1, animation: "mdfyLoaderBar 1.1s ease-in-out infinite" }} />
+                  </div>
+                  <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: "var(--text-faint)" }}>
+                    Loading
+                  </span>
+                  <style>{`
+                    @keyframes mdfyLoaderBar {
+                      0%   { left: -40%; }
+                      100% { left: 100%; }
+                    }
+                    @keyframes mdfyLoaderPulse {
+                      0%, 100% { opacity: 0.55; transform: scale(1); }
+                      50%      { opacity: 1;    transform: scale(1.04); }
+                    }
+                    .mdfy-loader-pulse { animation: mdfyLoaderPulse 1.6s ease-in-out infinite; }
+                  `}</style>
                 </div>
               )}
                 <TiptapLiveEditor

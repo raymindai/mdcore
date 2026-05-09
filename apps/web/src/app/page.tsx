@@ -8,37 +8,72 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   ssr: false,
   loading: () => (
     <div
-      className="flex flex-col items-center justify-center h-screen gap-6"
-      style={{ background: "var(--background)" }}
+      className="flex flex-col items-center justify-center h-screen"
+      style={{ background: "var(--background)", gap: 18 }}
     >
-      {/* Logo */}
-      <MdfyLogo size={30} />
+      {/* Logo with subtle pulse — same vocabulary as the in-app doc
+          loading state, just one notch larger. */}
+      <div style={{ animation: "mdfyBootPulse 1.6s ease-in-out infinite" }}>
+        <MdfyLogo size={34} />
+      </div>
 
-      {/* SEO-friendly tagline */}
-      <h1 className="text-xs tracking-wide" style={{ color: "var(--text-faint)", fontWeight: 400 }}>
-        mdfy.app — Your Markdown, Beautifully Published.
+      {/* v6 tagline. The old "Your Markdown, Beautifully Published"
+          was the v5 messaging; v6 thesis is the personal knowledge hub. */}
+      <h1
+        className="text-center"
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--text-secondary)",
+          letterSpacing: 0.2,
+          maxWidth: 420,
+          padding: "0 24px",
+          lineHeight: 1.5,
+        }}
+      >
+        Personal knowledge hub for the AI era.
       </h1>
 
-      {/* Animated bar */}
+      {/* Indeterminate sliding-bar — fixed width track, the accent strip
+          travels left → right. Replaces the old expand/contract bar. */}
       <div
-        className="w-32 h-0.5 rounded-full overflow-hidden"
-        style={{ background: "var(--border-dim)" }}
+        style={{
+          width: 120,
+          height: 2,
+          background: "var(--border-dim)",
+          borderRadius: 1,
+          overflow: "hidden",
+          position: "relative",
+        }}
       >
         <div
-          className="h-full rounded-full"
           style={{
+            position: "absolute",
+            top: 0,
+            height: "100%",
+            width: "40%",
             background: "var(--accent)",
-            animation: "loadbar 1.2s ease-in-out infinite",
+            borderRadius: 1,
+            animation: "mdfyBootBar 1.1s ease-in-out infinite",
           }}
         />
       </div>
 
-      {/* CSS animation */}
+      <span
+        className="font-mono uppercase"
+        style={{ fontSize: 9, letterSpacing: 1.2, color: "var(--text-faint)" }}
+      >
+        Loading editor
+      </span>
+
       <style>{`
-        @keyframes loadbar {
-          0% { width: 0%; margin-left: 0%; }
-          50% { width: 60%; margin-left: 20%; }
-          100% { width: 0%; margin-left: 100%; }
+        @keyframes mdfyBootBar {
+          0%   { left: -40%; }
+          100% { left: 100%; }
+        }
+        @keyframes mdfyBootPulse {
+          0%, 100% { opacity: 0.55; transform: scale(1); }
+          50%      { opacity: 1;    transform: scale(1.05); }
         }
       `}</style>
     </div>
