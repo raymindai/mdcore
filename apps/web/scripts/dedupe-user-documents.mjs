@@ -94,14 +94,17 @@ if (!apply) {
   process.exit(0);
 }
 
-// 5. Soft-delete in batches of 100. Set deleted_at = now(); DO NOT touch
-//    bundle_documents — the bundle row will resolve to a 404 chunk if the
-//    deleted doc is the only copy, but that's OK because we're keeping the
-//    original (oldest) doc which still has the same content.
+// 5. Soft-delete in batches of 100. Set deleted_at = now() AND remove the
+//    doc from every bundle that references it — this matches the API's
+//    soft-delete handler so the script doesn't leave orphan
+//    bundle_documents rows that the API would have cleaned up. (We're
+//    keeping the OLDEST row in each group so any bundle that referenced a
+//    duplicate already has a sibling pointing to the same content.)
 console.log("");
 console.log(`Applying soft-delete to ${toDelete.length} document(s)...`);
 const now = new Date().toISOString();
 let deleted = 0;
+let detached = 0;
 for (let i = 0; i < toDelete.length; i += 100) {
   const batch = toDelete.slice(i, i + 100);
   const { error } = await s
@@ -112,9 +115,14 @@ for (let i = 0; i < toDelete.length; i += 100) {
     console.error(`Batch ${i / 100 + 1} failed:`, error.message);
     continue;
   }
+  const { count: detachedNow } = await s
+    .from("bundle_documents")
+    .delete({ count: "exact" })
+    .in("document_id", batch);
   deleted += batch.length;
-  console.log(`  ✓ ${deleted}/${toDelete.length}`);
+  detached += detachedNow || 0;
+  console.log(`  ✓ ${deleted}/${toDelete.length}  (bundle refs detached: ${detached})`);
 }
 
 console.log("");
-console.log(`Done. Soft-deleted ${deleted} document(s). The originals (oldest in each group) are preserved.`);
+console.log(`Done. Soft-deleted ${deleted} document(s) + detached ${detached} bundle reference(s). The originals (oldest in each group) are preserved.`);

@@ -338,6 +338,16 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to trash" }, { status: 500 });
+    // Also detach this doc from every bundle that references it. Without
+    // this, bundle_documents accumulates orphan rows that point at trashed
+    // docs — the bundle GET filters them out via deleted_at, so the user
+    // never sees the dangling member, but the link stays in the DB and
+    // shows up in audits + cross-doc analyses. Hard DELETE handles this
+    // automatically via the ON DELETE CASCADE FK; soft-delete needs to do
+    // it explicitly. Restoring from trash will not re-attach the doc to
+    // its old bundles — the user must add it back, which is the intended
+    // semantic for "trash means break this relationship".
+    await supabase.from("bundle_documents").delete().eq("document_id", id);
     return NextResponse.json({ ok: true });
   }
 
