@@ -60,6 +60,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many documents (max 50)" }, { status: 400 });
   }
 
+  // ─── Dedup window — same logic as POST /api/docs ─────────────────────
+  // If a bundle was just created (≤30s ago) by the same owner with the
+  // same title + description + member set, return THAT bundle instead of
+  // inserting a sibling. Catches multi-tab races, double-clicks, and
+  // network retries from the bundle-create UI / bookmarklet.
+  if ((userId || anonymousId)) {
+    try {
+      const sinceIso = new Date(Date.now() - 30_000).toISOString();
+      const ownerFilter = userId
+        ? { col: "user_id", val: userId }
+        : { col: "anonymous_id", val: anonymousId! };
+      const { data: recentBundles } = await supabase
+        .from("bundles")
+        .select("id, edit_token, title, description, created_at")
+        .eq(ownerFilter.col, ownerFilter.val)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      const candidates = (recentBundles || []).filter((b) =>
+        (b.title || null) === (title || null) &&
+        (b.description || null) === (description || null)
+      );
+      // For each candidate, also check that its member set matches the
+      // requested documentIds — different members = different bundle.
+      for (const cand of candidates) {
+        const { data: members } = await supabase
+          .from("bundle_documents")
+          .select("document_id")
+          .eq("bundle_id", cand.id);
+        const memberIds = new Set((members || []).map((m) => m.document_id));
+        const requestedIds = new Set(documentIds);
+        const sameSet = memberIds.size === requestedIds.size && [...requestedIds].every((id) => memberIds.has(id));
+        if (sameSet) {
+          return NextResponse.json({
+            id: cand.id,
+            editToken: cand.edit_token,
+            created_at: cand.created_at,
+            deduplicated: true,
+          });
+        }
+      }
+    } catch {
+      // Best-effort — never block creation if dedup lookup fails.
+    }
+  }
+
   const editToken = nanoid(32);
 
   // Password hash (same format as documents)
