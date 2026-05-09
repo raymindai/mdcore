@@ -9170,7 +9170,7 @@ ${clone.innerHTML}
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
               <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — anyone with the link can read</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared — password or specific people</span></div>
-              <div className="flex items-center gap-2"><Pencil width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Draft — work in progress, only you</span></div>
+              <div className="flex items-center gap-2"><Lock width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private — saved, only you can read</span></div>
               <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only — shared with you</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 12, height: 12 }}>
@@ -13570,6 +13570,21 @@ ${clone.innerHTML}
           onAllowedEditorsChange={(editors) => {
             setAllowedEditorsState(editors);
           }}
+          isPrivate={tabs.find(t => t.id === activeTabIdRef.current)?.isDraft === true}
+          onPublish={async () => {
+            const cid = docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId;
+            if (!cid || !user) return;
+            try {
+              const res = await fetch(`/api/docs/${cid}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "publish", userId: user.id }),
+              });
+              if (!res.ok) { showToast("Failed to publish", "error"); return; }
+              const curTabId = activeTabIdRef.current;
+              setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false } : t));
+            } catch { showToast("Failed to publish", "error"); }
+          }}
           onMakePrivate={async () => {
             const cid = docId || tabs.find(t => t.id === activeTabIdRef.current)?.cloudId;
             if (!cid || !user) return;
@@ -13593,7 +13608,6 @@ ${clone.innerHTML}
               setAllowedEditorsState([]);
               setDocEditMode("owner");
               setEditMode("owner");
-              setShowShareModal(false);
               showToast("Document is now private", "info");
             } catch { showToast("Failed to make private", "error"); }
           }}

@@ -1,31 +1,25 @@
 import { memo } from "react";
 import {
-  Eye, Globe, Pencil, Users, FileIcon,
+  Eye, Globe, Lock, Users, FileIcon,
 } from "lucide-react";
 import Tooltip from "@/components/Tooltip";
 
-// Doc icon — communicates ACCESS state (specifically: who can READ
-// this doc). Aligned with the actual read-permission gating in
-// GET /api/docs/[id]:
+// Doc icon — communicates ACCESS state (who can READ this doc).
+// There are exactly THREE access states a doc can be in (matching
+// ShareModal's "Who can read" radio + the Hub's owner view):
 //
-//   - is_draft=true            → owner only
-//   - allowed_emails set       → those emails + owner
-//   - password_hash set        → password required
-//   - otherwise (the default)  → anyone with the URL can read
-//
-// edit_mode only gates WRITE permissions, not reads — so a default
-// account-mode published doc is fully public for reading even though
-// ShareModal currently labels it "Restricted" (that label refers to
-// edit-restriction, not read-restriction; separate cleanup later).
-//
-// Five states:
-//   Globe   (accent) Public    — is_draft=false + no pw + no emails.
-//                                Same docs that show on /hub/<slug>.
+//   Lock    (faint)  Private   — only you (is_draft=true)
 //   Users   (blue)   Shared    — password OR specific people
-//   Pencil  (faint)  Draft     — is_draft=true (auto-saved, never
-//                                published)
-//   Eye     (faint)  View only — shared WITH you
-//   FileIcon(faint)  Local     — never synced to cloud
+//   Globe   (accent) Public    — anyone with the URL (is_draft=false,
+//                                no password, no email allow-list)
+//
+// Plus two contextual states:
+//   Eye      (faint) View only — someone else shared it WITH you
+//   FileIcon (faint) Local     — never synced to cloud
+//
+// "Draft" is intentionally NOT a category. A doc you've saved but
+// not shared is just Private (saved to cloud, only you can read).
+// Publishing isn't the goal — the goal is choosing who can read.
 
 function DocStatusIcon({ tab, isActive }: {
   tab: {
@@ -73,9 +67,10 @@ function DocStatusIcon({ tab, isActive }: {
     color = "var(--accent)";
     tip = "Public — anyone with the URL can read";
   } else if (tab.cloudId) {
-    Icon = Pencil;
+    // is_draft=true — saved to cloud but not shared. Only you can read.
+    Icon = Lock;
     color = "var(--text-faint)";
-    tip = "Draft — work in progress, only you can read";
+    tip = "Private — saved to cloud, only you can read";
   } else {
     Icon = FileIcon;
     color = "var(--text-faint)";

@@ -13,13 +13,23 @@ interface ShareModalProps {
   ownerEmail: string;
   ownerName?: string;
   currentEditMode: string;
+  /** True when the doc is currently is_draft=true on the server.
+   *  Drives the Private vs Shared/Public radio default and gates the
+   *  "Only me" option's selected state. */
+  isPrivate?: boolean;
   initialAllowedEmails: string[];
   initialAllowedEditors: string[];
   onClose: () => void;
   onEditModeChange: (mode: "owner" | "view" | "public") => void;
   onAllowedEmailsChange: (emails: string[]) => void;
   onAllowedEditorsChange?: (editors: string[]) => void;
+  /** Called when user picks "Only me" — caller PATCHes unpublish and
+   *  flips the local tab back to is_draft=true. */
   onMakePrivate?: () => void;
+  /** Called when user picks "Specific people" or "Anyone with the link"
+   *  while the doc is currently private — caller PATCHes publish to
+   *  flip is_draft=false. */
+  onPublish?: () => Promise<void>;
   // Optional overrides — used by bundle share to cascade access onto included docs
   // and to substitute the bundle URL for "Copy link". Defaults preserve doc behavior.
   setAllowedEmailsOverride?: (id: string, userId: string, emails: string[], editors: string[]) => Promise<{ allowedEmails: string[]; allowedEditors: string[] }>;
@@ -46,6 +56,8 @@ function ShareModal({
   onAllowedEmailsChange,
   onAllowedEditorsChange,
   onMakePrivate,
+  onPublish,
+  isPrivate,
   setAllowedEmailsOverride,
   changeEditModeOverride,
   shareUrlOverride,
@@ -57,20 +69,23 @@ function ShareModal({
   const [emailInput, setEmailInput] = useState("");
   const [emails, setEmails] = useState<string[]>(initialAllowedEmails);
   const [editors, setEditors] = useState<string[]>(initialAllowedEditors);
-  // Read access has two real states the user controls:
-  //   - "anyone": no email allow-list, no password → anyone with the
-  //     URL can read. This is the default for a published doc.
-  //   - "restricted-people": at least one email in allowed_emails →
-  //     only those people + the owner can read.
+  // Three real read-access states the user can pick — same vocabulary
+  // as DocStatusIcon and the Hub's owner view. There's no "Draft"
+  // anywhere; a saved doc just sits in the cloud as Private until the
+  // owner promotes it.
   //
-  // The previous `restricted` ↔ `anyone-view` toggle conflated reads
-  // with edit_mode (view vs owner), which doesn't actually affect
-  // read permissions in /api/docs/[id]. Now `restricted-people` only
-  // makes sense when there's a real restriction (emails set), and the
-  // option is disabled until the user adds at least one email.
-  const [generalAccess, setGeneralAccess] = useState<"anyone" | "restricted-people">(
-    initialAllowedEmails.length > 0 ? "restricted-people" : "anyone"
-  );
+  //   "private"           is_draft=true. Only owner can read.
+  //   "restricted-people" is_draft=false + allowed_emails non-empty.
+  //                       Only those people + owner can read.
+  //   "anyone"            is_draft=false + no pw + no emails. Anyone
+  //                       with the URL can read; listed on /hub/<slug>.
+  type Access = "private" | "restricted-people" | "anyone";
+  const computeInitial = (): Access => {
+    if (isPrivate) return "private";
+    if (initialAllowedEmails.length > 0) return "restricted-people";
+    return "anyone";
+  };
+  const [generalAccess, setGeneralAccess] = useState<Access>(computeInitial());
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,14 +152,25 @@ function ShareModal({
   }, [emails, editors, saveAccess, generalAccess]);
 
 
-  const handleAccessChange = useCallback(async (mode: "anyone" | "restricted-people") => {
-    // "Anyone": clear allowed_emails so the doc actually goes public.
-    // "Restricted-people": only meaningful when emails are present.
+  const handleAccessChange = useCallback(async (mode: Access) => {
+    // "Restricted-people" only makes sense when emails exist.
     if (mode === "restricted-people" && emails.length === 0) {
       showToast("Add at least one email above first.", "info");
       return;
     }
+    // "Only me" — just delegate to onMakePrivate. The caller PATCHes
+    // unpublish + flips local state.
+    if (mode === "private") {
+      setGeneralAccess("private");
+      if (onMakePrivate) onMakePrivate();
+      return;
+    }
     setGeneralAccess(mode);
+    // Promoting from Private → Shared/Public requires publish (flips
+    // is_draft=false on the server).
+    if (isPrivate && onPublish) {
+      try { await onPublish(); } catch { /* showToast handled in caller */ }
+    }
     if (mode === "anyone" && emails.length > 0) {
       // Drop the email allow-list so reads truly go public.
       setEmails([]);
@@ -152,10 +178,8 @@ function ShareModal({
       await saveAccess([], []);
     }
     try {
-      // We keep edit_mode steering for backwards compat with older
-      // clients (vscode/desktop) that branch on it. "Anyone" maps to
-      // edit_mode="view" (read-public, owner-only edits); "Restricted"
-      // keeps edit_mode="owner" (the legacy default).
+      // edit_mode is still flipped for backwards compat with vscode/desktop
+      // clients that branch on it. "anyone" → "view"; "restricted" → "owner".
       const editMode = mode === "anyone" ? "view" : "owner";
       await changeEditModeFn(docId, userId, editMode);
       onEditModeChange(editMode);
@@ -183,19 +207,9 @@ function ShareModal({
       ) : null}
       footer={
         <div className="flex items-center w-full" style={{ gap: "var(--space-2)" }}>
-          {onMakePrivate && (
-            <Button
-              variant="danger"
-              size="sm"
-              leadingIcon={<Lock width={12} height={12} />}
-              onClick={() => {
-                if (!confirm("Make this document private? This will remove all sharing settings and revoke access for everyone.")) return;
-                onMakePrivate();
-              }}
-            >
-              Make Private
-            </Button>
-          )}
+          {/* Standalone "Make Private" button removed — the same
+              action lives at the top of the modal as the "Only me"
+              radio. One source of truth for access state. */}
           <Button
             variant="secondary"
             size="sm"
@@ -314,11 +328,11 @@ function ShareModal({
           <div className="pb-4">{banner}</div>
         )}
 
-        {/* Read access — two real states. "Anyone" = no email
-            allow-list, no password. "Restricted to people" requires
-            at least one email above (disabled until then). The icons +
-            labels match the sidebar's DocStatusIcon vocabulary so the
-            toggle the user picks here is the icon they see there. */}
+        {/* Read access — three real states. The vocabulary matches
+            DocStatusIcon and the Hub's owner view exactly: Private /
+            Shared / Public. There's no "Draft" anywhere — a saved doc
+            just sits in the cloud as Private until the owner promotes
+            it. */}
         <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Who can read
@@ -326,10 +340,10 @@ function ShareModal({
           <div className="flex flex-col gap-1.5">
             {([
               {
-                value: "anyone" as const,
-                label: "Anyone with the link",
-                desc: "Anyone can read this doc by URL — listed on your hub.",
-                icon: <Globe width={16} height={16} strokeWidth={1.5} />,
+                value: "private" as const,
+                label: "Only me",
+                desc: "Saved to cloud — only you can read this URL.",
+                icon: <Lock width={16} height={16} strokeWidth={1.5} />,
                 disabled: false,
               },
               {
@@ -340,6 +354,13 @@ function ShareModal({
                   : `Only ${emails.length} person${emails.length === 1 ? "" : "s"} listed above + you can read.`,
                 icon: <Users width={16} height={16} strokeWidth={1.5} />,
                 disabled: emails.length === 0,
+              },
+              {
+                value: "anyone" as const,
+                label: "Anyone with the link",
+                desc: "Anyone can read this URL — listed on your hub.",
+                icon: <Globe width={16} height={16} strokeWidth={1.5} />,
+                disabled: false,
               },
             ]).map((opt) => {
               const selected = generalAccess === opt.value;
