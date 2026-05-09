@@ -3886,6 +3886,10 @@ export default function MdEditor() {
     // into the editor. Pending saves scheduled for the previous tab keep their original
     // cloudId/markdown args, so we don't cancel them — they will save to the correct doc.
     tabSwitchInFlightRef.current = true;
+    // Clear any sticky save error / conflict from the previous tab so
+    // the header doesn't show "Failed to save" on a doc the user has
+    // just opened (the error belonged to a different doc).
+    autoSave.clearError();
     // Update ref IMMEDIATELY so doRender uses correct tab ID
     activeTabIdRef.current = tab.id;
     setActiveTabId(tab.id);
@@ -5493,7 +5497,15 @@ export default function MdEditor() {
               if (t.isDraft === newDraft && t.isSharedByMe === newShared && t.isRestricted === newRestricted && t.source === newSource && t.folderId === newFolder && t.editMode === newEditMode && t.sharedWithCount === newSharedCount && t.viewCount === newViewCount && t.hasPassword === newHasPassword) return t;
               return { ...t, isDraft: newDraft, isSharedByMe: newShared, isRestricted: newRestricted, source: newSource, folderId: newFolder, editMode: newEditMode, sharedWithCount: newSharedCount, viewCount: newViewCount, hasPassword: newHasPassword };
             });
-            // Create tabs for server docs that don't have local tabs
+            // Create tabs for server docs that don't have local tabs.
+            // CRITICAL: also seed the share-state fields here. The
+            // existing-tab branch above already syncs them, but new
+            // server-only docs (the ones the user has never opened
+            // locally) used to come in with NO isRestricted /
+            // sharedWithCount / hasPassword data — so they all looked
+            // like Private (Cloud icon) regardless of actual sharing
+            // state. Founder spotted this on the MDs section: docs
+            // they HAD shared with people showed the Private icon.
             const existingCloudIds = new Set(updated.filter(t => t.cloudId).map(t => t.cloudId!));
             const newTabs = data.documents
               .filter((d: { id: string }) => !existingCloudIds.has(d.id))
@@ -5510,6 +5522,12 @@ export default function MdEditor() {
                 deleted: !!d.deleted_at,
                 deletedAt: d.deleted_at ? new Date(d.deleted_at).getTime() : undefined,
                 lastOpenedAt: d.updated_at ? new Date(d.updated_at).getTime() : d.created_at ? new Date(d.created_at).getTime() : Date.now(),
+                isSharedByMe: sharedDocIds.has(d.id),
+                isRestricted: restrictedIds.has(d.id),
+                editMode: editModeMap.get(d.id) || "token",
+                sharedWithCount: sharedCountMap.get(d.id) || 0,
+                viewCount: viewCountMap.get(d.id) || 0,
+                hasPassword: hasPasswordMap.get(d.id) || false,
               }));
             return [...updated, ...newTabs];
           });
@@ -9168,14 +9186,14 @@ ${clone.innerHTML}
               <div className="flex items-center gap-2"><span className="shrink-0 font-semibold" style={{ color: "var(--text-faint)", fontFamily: "'SF Mono', monospace" }}>SYNCED</span><span style={{ color: "var(--text-muted)" }}>From VS Code, Desktop, CLI, or MCP</span></div>
               <div className="my-1.5" style={{ borderTop: "1px solid var(--border-dim)" }} />
               <div className="font-semibold text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Document Icons</div>
-              <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "var(--accent)" }} /><span style={{ color: "var(--text-muted)" }}>Public — anyone with the link can read</span></div>
+              <div className="flex items-center gap-2"><Globe width={12} height={12} style={{ color: "#22c55e" }} /><span style={{ color: "var(--text-muted)" }}>Public — anyone with the link can read</span></div>
               <div className="flex items-center gap-2"><Users width={12} height={12} style={{ color: "#60a5fa" }} /><span style={{ color: "var(--text-muted)" }}>Shared — password or specific people</span></div>
               <div className="flex items-center gap-2"><Cloud width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>Private — saved to cloud, only you can read</span></div>
-              <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "var(--text-faint)" }} /><span style={{ color: "var(--text-muted)" }}>View only — shared with you</span></div>
+              <div className="flex items-center gap-2"><Eye width={12} height={12} style={{ color: "#a78bfa" }} /><span style={{ color: "var(--text-muted)" }}>View only — shared with you</span></div>
               <div className="flex items-center gap-2">
                 <div className="relative shrink-0" style={{ width: 12, height: 12 }}>
-                  <Globe width={12} height={12} style={{ color: "var(--accent)" }} />
-                  <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="var(--accent)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
+                  <Globe width={12} height={12} style={{ color: "#22c55e" }} />
+                  <svg className="absolute -bottom-[2px] -right-[2px]" width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3.5" fill="var(--toggle-bg)" /><path d="M2.5 4.2L3.5 5.2L5.5 3" stroke="#22c55e" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" /></svg>
                 </div>
                 <span style={{ color: "var(--text-muted)" }}>+ Synced (VS Code, Desktop, CLI, MCP)</span>
               </div>

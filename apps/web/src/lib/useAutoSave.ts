@@ -334,6 +334,16 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
     lastServerUpdatedAtRef.current = ts;
   }, []);
 
+  /**
+   * Clear the sticky `error` (and any conflict). Used when switching
+   * tabs / loading a new doc, since a stale error from a previous
+   * tab's failed save shouldn't keep showing in the header on a doc
+   * the user is now just opening.
+   */
+  const clearError = useCallback(() => {
+    setState((s) => (s.error == null && s.conflict == null ? s : { ...s, error: null, conflict: null }));
+  }, []);
+
   return {
     ...state,
     createDocument,
@@ -341,6 +351,7 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
     forceSave,
     dismissConflict,
     setLastServerUpdatedAt,
+    clearError,
     cancel,
   };
 }

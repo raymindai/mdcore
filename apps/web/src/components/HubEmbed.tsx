@@ -82,7 +82,7 @@ function relativeTime(iso: string | null | undefined): string {
 // Private (faint = only you). Using explicit colours so the tier the
 // user is looking at is always recognisable at a glance.
 const TIERS = {
-  public:  { label: "Public",  desc: "On your hub URL — anyone with the link can read", icon: Globe,        color: "var(--accent)", bg: "var(--accent-dim)" },
+  public:  { label: "Public",  desc: "On your hub URL — anyone with the link can read", icon: Globe,        color: "#22c55e",        bg: "rgba(34,197,94,0.14)" },
   shared:  { label: "Shared",  desc: "Restricted to specific people or password",         icon: Users,         color: "#60a5fa",       bg: "rgba(96,165,250,0.12)" },
   private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Cloud, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
 } as const;
@@ -293,7 +293,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
           const Icon = t.icon;
           return (
             <section key={tier} className="mb-10">
-              <div className="flex items-baseline gap-2 mb-3 pb-2" style={{ borderBottom: `1px solid ${t.color === "var(--accent)" ? "var(--accent-dim)" : t.bg}` }}>
+              <div className="flex items-baseline gap-2 mb-3 pb-2" style={{ borderBottom: `1px solid ${t.bg}` }}>
                 <span
                   className="flex items-center justify-center shrink-0"
                   style={{ width: 22, height: 22, borderRadius: 6, background: t.bg, color: t.color }}

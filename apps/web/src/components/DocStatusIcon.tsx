@@ -11,7 +11,7 @@ import Tooltip from "@/components/Tooltip";
 //   Cloud   (faint)  Private   — saved to cloud, only you can read
 //                                (is_draft=true)
 //   Users   (blue)   Shared    — password OR specific people
-//   Globe   (accent) Public    — anyone with the URL (is_draft=false,
+//   Globe   (green)  Public    — anyone with the URL (is_draft=false,
 //                                no password, no email allow-list)
 //
 // Plus two contextual states:
@@ -48,8 +48,12 @@ function DocStatusIcon({ tab, isActive }: {
   let tip: string;
 
   if (tab.permission === "readonly") {
+    // "Shared with you" — distinct purple so it doesn't blend into
+    // the rest of the faint icon set. The user's own docs use
+    // Cloud/Users/Globe; Eye purple says "this one came from
+    // someone else's hub".
     Icon = Eye;
-    color = "var(--text-faint)";
+    color = "#a78bfa";
     tip = "View only — shared with you";
   } else if (isPublished && (hasPassword || hasEmailRestriction)) {
     Icon = Users;
@@ -65,7 +69,7 @@ function DocStatusIcon({ tab, isActive }: {
     // label here refers to EDIT restrictions, not READ — cleanup of
     // that wording is a separate item.
     Icon = Globe;
-    color = "var(--accent)";
+    color = "#22c55e";
     tip = "Public — anyone with the URL can read";
   } else if (tab.cloudId) {
     // is_draft=true — saved to cloud but not shared. Only you can read.
