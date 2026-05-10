@@ -10188,14 +10188,21 @@ ${clone.innerHTML}
                           </div>
                         );
                       })}
-                      {/* Recent shared docs not yet open as tabs */}
+                      {/* Recent shared docs not yet open as tabs.
+                          Match the opened-tab color exactly — the
+                          color shouldn't change just because the
+                          user clicked once. The subtle "muted-when-
+                          unopened" treatment misled the eye into
+                          thinking the doc had brightened on click,
+                          when actually it was the same row swapping
+                          render paths. */}
                       {allExtra.map((doc) => (
                         <div
                           key={`shared-${doc.id}`}
                           role="button"
                           tabIndex={0}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--accent-dim)]"
-                          style={{ color: "var(--text-muted)" }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-secondary)" }}
                           onClick={async (e) => {
                             e.stopPropagation();
                             const existing = tabs.find(t => !t.deleted && t.cloudId === doc.id);
