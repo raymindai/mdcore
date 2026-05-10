@@ -9230,17 +9230,9 @@ ${clone.innerHTML}
                       <Layers width={12} height={12} style={{ color: "var(--text-faint)" }} />
                       <span className="flex-1">New bundle</span>
                     </button>
-                    <button onClick={() => {
-                      setShowLibraryNewMenu(false);
-                      const id = `folder-${Date.now()}`;
-                      setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "my" }]);
-                      fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
-                      setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
-                    }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <FolderPlus width={12} height={12} style={{ color: "var(--text-faint)" }} />
-                      <span className="flex-1">New folder</span>
-                    </button>
+                    {/* New folder removed from Library + — folders are
+                        per-section (MDs vs Bundles), so creation lives
+                        in each section header's toolbar now. */}
                     <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
                     <button
                       onClick={() => { setShowLibraryNewMenu(false); setShowImportModal(true); }}
@@ -9732,6 +9724,26 @@ ${clone.innerHTML}
                           </div>
                         </>)}
                       </div>
+                      {/* Section-level New folder — creates a folder
+                          scoped to bundles. Owner-only. */}
+                      {user?.id && (
+                        <Tooltip text="New folder">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMyBundles(true);
+                              const id = `folder-${Date.now()}`;
+                              setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "bundles" }]);
+                              fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "bundles" }) }).catch(() => {});
+                              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
+                            }}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            <FolderPlus width={11} height={11} />
+                          </button>
+                        </Tooltip>
+                      )}
                       {/* Section-level + — creates a bundle without bouncing
                           through the Library + menu. Owner-only; only
                           rendered for signed-in users. */}
@@ -10031,6 +10043,24 @@ ${clone.innerHTML}
                             </div>
                           </>)}
                         </div>
+                        {/* Section-level New folder — creates a folder
+                            scoped to MDs (section="my"). Owner-only. */}
+                        <Tooltip text="New folder">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMyDocs(true);
+                              const id = `folder-${Date.now()}`;
+                              setFolders(prev => [...prev, { id, name: "New Folder", collapsed: false, section: "my" }]);
+                              fetch("/api/user/folders", { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name: "New Folder", section: "my" }) }).catch(() => {});
+                              setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
+                            }}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            <FolderPlus width={11} height={11} />
+                          </button>
+                        </Tooltip>
                         {/* Section-level + on MDs — creates a new doc
                             inline. Same affordance as Library + → New
                             document, just one click closer to where the
@@ -12520,90 +12550,12 @@ ${clone.innerHTML}
                   `}</style>
                 </div>
               )}
-                {/* Compiled-doc banner — only when this doc was AI-
-                    synthesised from a bundle (compile_kind set).
-                    Shows EVERY bundle the doc has been compiled from
-                    (compile_from.sources can hold multiple after a
-                    Regenerate-from-different-bundle). The newest
-                    source is bolded as the "current" one — that's
-                    what the body in the editor reflects right now.
-                    Regenerate defaults to the current source; clicks
-                    on any other bundle name re-target the next
-                    Regenerate to that bundle. */}
-                {activeTab?.compileKind && activeTab?.cloudId && (() => {
-                  const sources = readCompileSources(activeTab.compileFrom, activeTab.compiledAt || null);
-                  if (sources.length === 0) return null;
-                  const currentSource = sources[sources.length - 1];
-                  const kindLabel = activeTab.compileKind === "memo" ? "Memo"
-                    : activeTab.compileKind === "faq" ? "FAQ"
-                    : activeTab.compileKind === "brief" ? "Brief"
-                    : "Synthesis";
-                  const isRecompiling = recompilingDocId === activeTab.cloudId;
-                  const openBundleTab = (bundleId: string, fallbackTitle: string) => {
-                    const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
-                    if (existing) { switchTab(existing.id); return; }
-                    const newId = `bundle-${bundleId}-${Date.now()}`;
-                    const newTab: Tab = { id: newId, kind: "bundle", bundleId, title: fallbackTitle, markdown: "" };
-                    setTabs(prev => [...prev, newTab]);
-                    switchTab(newId);
-                  };
-                  return (
-                    <div
-                      className="mx-auto flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg my-3"
-                      style={{
-                        maxWidth: 760,
-                        background: "var(--accent-dim)",
-                        border: "1px solid var(--border-dim)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      <Sparkles width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
-                      <span className="text-caption shrink-0">AI {kindLabel} compiled from</span>
-                      <div className="flex flex-wrap items-center gap-1 flex-1 min-w-0">
-                        {sources.map((src, idx) => {
-                          const b = bundles.find(x => x.id === src.bundleId);
-                          const label = b?.title || "Untitled Bundle";
-                          const isCurrent = src.bundleId === currentSource.bundleId;
-                          return (
-                            <span key={src.bundleId} className="inline-flex items-center gap-1">
-                              {idx > 0 && <span className="text-caption" style={{ color: "var(--text-faint)" }}>+</span>}
-                              {b ? (
-                                <button
-                                  onClick={() => openBundleTab(src.bundleId, label)}
-                                  className="text-caption underline underline-offset-2 hover:opacity-80"
-                                  style={{
-                                    color: "var(--accent)",
-                                    fontWeight: isCurrent ? 600 : 400,
-                                  }}
-                                  title={isCurrent ? "Current source — what the body reflects right now" : "Earlier source — open this bundle"}
-                                >
-                                  {label}{isCurrent && sources.length > 1 ? " ·" : ""}
-                                </button>
-                              ) : (
-                                <span className="text-caption" style={{ color: "var(--text-faint)" }}>(removed bundle)</span>
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <button
-                        onClick={() => { if (activeTab.cloudId && !isRecompiling) recompileDoc(activeTab.cloudId); }}
-                        disabled={isRecompiling}
-                        className="text-caption px-2.5 py-1 rounded shrink-0 transition-colors flex items-center gap-1.5"
-                        style={{
-                          background: "var(--accent)",
-                          color: "#fff",
-                          opacity: isRecompiling ? 0.5 : 1,
-                          cursor: isRecompiling ? "not-allowed" : "pointer",
-                        }}
-                        title={`Regenerate from ${bundles.find(x => x.id === currentSource.bundleId)?.title || "the current source bundle"}. Edits here will be overwritten.`}
-                      >
-                        {isRecompiling ? <Loader2 width={11} height={11} className="animate-spin" /> : <RefreshCw width={11} height={11} />}
-                        {isRecompiling ? "Regenerating…" : "Regenerate"}
-                      </button>
-                    </div>
-                  );
-                })()}
+                {/* Compiled-doc banner removed per founder feedback —
+                    the loud accent block above the body interrupted
+                    reading and the same info is implicit from the doc's
+                    source field. Regenerate is reachable from the
+                    sidebar right-click menu (Recompile / Recompile
+                    from another bundle). */}
                 {/* Bundle-membership banner — distinct from the
                     Compiled banner above. Tells the reader "this
                     doc lives inside N bundle(s)" so they know
