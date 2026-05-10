@@ -275,6 +275,45 @@ export default async function HubPage({ params, searchParams }: Props) {
                   View raw .md
                 </Link>
               </div>
+              {/* Wiki manifest links. Hermes-style triple — schema /
+                  index / log — plus the AI-oriented llms.txt files
+                  underneath them so agents can pick whichever shape
+                  fits their context. */}
+              <div className="mt-3 flex items-center gap-1.5 flex-wrap text-caption" style={{ color: "var(--text-muted)" }}>
+                <span style={{ color: "var(--text-faint)" }}>Wiki:</span>
+                <Link
+                  href={`/hub/${slug}/index.md`}
+                  target="_blank"
+                  className="px-2 py-0.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                >index.md</Link>
+                <Link
+                  href={`/hub/${slug}/SCHEMA.md`}
+                  target="_blank"
+                  className="px-2 py-0.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                >SCHEMA.md</Link>
+                <Link
+                  href={`/hub/${slug}/log.md`}
+                  target="_blank"
+                  className="px-2 py-0.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                >log.md</Link>
+                <span className="mx-1" style={{ color: "var(--border-dim)" }}>·</span>
+                <span style={{ color: "var(--text-faint)" }}>For AI:</span>
+                <Link
+                  href={`/hub/${slug}/llms.txt`}
+                  target="_blank"
+                  className="px-2 py-0.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                >llms.txt</Link>
+                <Link
+                  href={`/hub/${slug}/llms-full.txt`}
+                  target="_blank"
+                  className="px-2 py-0.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border-dim)" }}
+                >llms-full.txt</Link>
+              </div>
             </div>
           </div>
         </section>

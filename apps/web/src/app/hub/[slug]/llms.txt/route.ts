@@ -75,6 +75,15 @@ export async function GET(
     `Canonical hub URL: https://mdfy.app/hub/${slug}`
   );
   lines.push(
+    `Wiki manifest (concept-grouped TOC): https://mdfy.app/hub/${slug}/index.md`
+  );
+  lines.push(
+    `Wiki schema (what URLs are available + how to use them): https://mdfy.app/hub/${slug}/SCHEMA.md`
+  );
+  lines.push(
+    `Activity log (public events only): https://mdfy.app/hub/${slug}/log.md`
+  );
+  lines.push(
     `Index (full markdown listing): https://mdfy.app/raw/hub/${slug}?compact=1`
   );
   lines.push(
