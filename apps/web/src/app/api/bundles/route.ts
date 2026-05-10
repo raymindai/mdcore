@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { synthesizeBundle } from "@/lib/synthesize";
 import { appendHubLog } from "@/lib/hub-log";
+import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -202,25 +203,45 @@ async function runAutoSynthesis(
   if (!supabase) return;
   const result = await synthesizeBundle(supabase, bundleId, "wiki");
   if (!result) return;
-  const synthId = nanoid(8);
   const synthEditToken = nanoid(32);
   const now = new Date().toISOString();
   // Title invariant — title is always the markdown's H1.
   const { enforceTitleInvariant } = await import("@/lib/extract-title");
   const enforced = enforceTitleInvariant(result.markdown, "Synthesis");
-  await supabase.from("documents").insert({
-    id: synthId,
-    markdown: enforced.markdown,
-    title: enforced.title,
-    edit_token: synthEditToken,
-    user_id: userId,
-    edit_mode: "account",
-    is_draft: false,
-    source: "auto-synthesis",
-    compile_kind: "wiki",
-    compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
-    compiled_at: now,
-  });
+
+  // Same dedup contract docs/PDF/MCP use: pre-check, then handle the
+  // 23505 partial-UNIQUE race if two concurrent synthesis runs slip
+  // past the SELECT. Without these branches, a race leaves the user
+  // staring at a 500 even though the canonical row was just written.
+  const dupHit = await findRecentDuplicateDoc(supabase, { userId }, enforced.markdown, enforced.title);
+  if (dupHit) return; // canonical synthesis already exists for this content
+
+  // Retry on documents_pkey collisions (random nanoid collision); fall
+  // through silently when the strict dup-lock fires (canonical exists).
+  let insertError: { code?: string; message?: string } | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const synthId = nanoid(8);
+    const { error } = await supabase.from("documents").insert({
+      id: synthId,
+      markdown: enforced.markdown,
+      title: enforced.title,
+      edit_token: synthEditToken,
+      user_id: userId,
+      edit_mode: "account",
+      is_draft: false,
+      source: "auto-synthesis",
+      compile_kind: "wiki",
+      compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
+      compiled_at: now,
+    });
+    if (!error) return;
+    if (isStrictDupLockError(error)) return; // canonical exists, no-op
+    if (error.code === "23505") { insertError = error; continue; } // pkey collision, retry
+    insertError = error; break;
+  }
+  if (insertError) {
+    console.warn("auto-synthesis insert failed:", insertError.message);
+  }
 }
 
 export async function GET(req: NextRequest) {

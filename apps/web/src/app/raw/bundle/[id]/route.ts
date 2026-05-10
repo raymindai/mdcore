@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { permissionResponse } from "@/lib/permission-response";
-import { compactMarkdown, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 /**
  * v6 — Bundle URL → Bundle Spec v1.0 conformant markdown payload.
@@ -156,6 +157,18 @@ export async function GET(
 
   const joined = `${frontmatter}\n${sections.join("\n\n")}`;
   const body = compact ? compactMarkdown(joined) : joined;
+
+  const sig = extractRequestSignals(request);
+  logRawFetch({
+    route: "bundle",
+    resource: bundle.id,
+    compact,
+    bytes: Buffer.byteLength(body, "utf8"),
+    tokens: estimateTokens(body),
+    status: 200,
+    ua: sig.ua,
+    referer: sig.referer,
+  });
 
   return new NextResponse(body, {
     status: 200,

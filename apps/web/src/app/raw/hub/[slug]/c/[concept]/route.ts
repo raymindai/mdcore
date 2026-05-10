@@ -10,7 +10,8 @@
 
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
-import { compactMarkdown, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 export async function GET(
   request: Request,
@@ -140,6 +141,18 @@ export async function GET(
   );
 
   const body = (compact ? compactMarkdown : (s: string) => s)(`${frontmatter}\n${sections.join("\n\n")}\n`);
+
+  const sig = extractRequestSignals(request);
+  logRawFetch({
+    route: "hub_concept",
+    resource: `${slug}/c/${concept}`,
+    compact,
+    bytes: Buffer.byteLength(body, "utf8"),
+    tokens: estimateTokens(body),
+    status: 200,
+    ua: sig.ua,
+    referer: sig.referer,
+  });
 
   return new NextResponse(body, {
     status: 200,

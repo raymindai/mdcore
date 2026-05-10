@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { permissionResponse } from "@/lib/permission-response";
 import { verifyAuthToken } from "@/lib/verify-auth";
-import { compactMarkdown, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 // Public, AI-deployable representation of a single mdfy document.
 // Hit by:
@@ -83,6 +84,18 @@ export async function GET(
   const rawMarkdown = data.markdown || "";
   const md = compact ? compactMarkdown(rawMarkdown) : rawMarkdown;
   const body = `${frontmatter}\n${md}`;
+
+  const sig = extractRequestSignals(request);
+  logRawFetch({
+    route: "doc",
+    resource: id,
+    compact,
+    bytes: Buffer.byteLength(body, "utf8"),
+    tokens: estimateTokens(body),
+    status: 200,
+    ua: sig.ua,
+    referer: sig.referer,
+  });
 
   return new NextResponse(body, {
     status: 200,

@@ -435,14 +435,19 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Document expired" }, { status: 410 });
     }
 
-    // Permission check: only owner or editToken holder can save
+    // Permission check: owner, editToken holder, OR an email in
+    // allowed_editors. The Editor role from ShareModal writes into
+    // allowed_editors; without this check those promotions had no
+    // server-side effect.
     const isOwner =
       !!(userId && doc.user_id && userId === doc.user_id) ||
       !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
     const hasToken = !!(editToken && doc.edit_token === editToken);
-    const userEmail = body.userEmail || "";
+    const userEmail = body.userEmail || verified?.email || "";
+    const allowedEditors = (doc.allowed_editors || []) as string[];
+    const isAllowedEditor = !!userEmail && allowedEditors.some((e) => e.toLowerCase() === userEmail.toLowerCase());
 
-    if (!isOwner && !hasToken) {
+    if (!isOwner && !hasToken && !isAllowedEditor) {
       return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
     }
 
@@ -677,7 +682,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("edit_token, markdown, title, user_id, anonymous_id, edit_mode, expires_at")
+    .select("edit_token, markdown, title, user_id, anonymous_id, edit_mode, expires_at, allowed_editors")
     .eq("id", id)
     .single();
 
@@ -688,13 +693,18 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Document expired" }, { status: 410 });
   }
 
-  // Permission check: only owner or editToken holder can edit
+  // Permission check: owner, editToken holder, OR allowed_editors
+  // member. Mirrors the auto-save branch so an Editor promoted via
+  // ShareModal can actually commit changes here too.
   const isDocOwner =
     !!(userId && doc.user_id && userId === doc.user_id) ||
     !!(anonymousId && doc.anonymous_id && anonymousId === doc.anonymous_id);
   const hasEditToken = !!(editToken && doc.edit_token === editToken);
+  const userEmailDefault = body.userEmail || verified?.email || "";
+  const allowedEditorsDefault = (doc.allowed_editors || []) as string[];
+  const isAllowedEditorDefault = !!userEmailDefault && allowedEditorsDefault.some((e: string) => e.toLowerCase() === userEmailDefault.toLowerCase());
 
-  if (!isDocOwner && !hasEditToken) {
+  if (!isDocOwner && !hasEditToken && !isAllowedEditorDefault) {
     return NextResponse.json({ error: "Only the owner can edit this document" }, { status: 403 });
   }
 

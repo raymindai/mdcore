@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { synthesizeBundle } from "@/lib/synthesize";
 import { appendHubLog } from "@/lib/hub-log";
+import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -127,25 +128,39 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     try {
       const result = await synthesizeBundle(supabase, bundleId, "wiki");
       if (!result) return;
-      const synthId = nanoid(8);
       const synthEditToken = nanoid(32);
       const now = new Date().toISOString();
       // Title invariant — title is always the markdown's H1.
       const { enforceTitleInvariant } = await import("@/lib/extract-title");
       const enforced = enforceTitleInvariant(result.markdown, "Synthesis");
-      await supabase.from("documents").insert({
-        id: synthId,
-        markdown: enforced.markdown,
-        title: enforced.title,
-        edit_token: synthEditToken,
-        user_id: userId,
-        edit_mode: "account",
-        is_draft: false,
-        source: "auto-synthesis",
-        compile_kind: "wiki",
-        compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
-        compiled_at: now,
-      });
+
+      // Mirror docs/PDF/MCP dedup: pre-check + 23505 dup-lock branches
+      // so a concurrent accept doesn't leave a 500.
+      const dupHit = await findRecentDuplicateDoc(supabase, { userId }, enforced.markdown, enforced.title);
+      if (dupHit) return;
+
+      let insertError: { code?: string; message?: string } | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const synthId = nanoid(8);
+        const { error } = await supabase.from("documents").insert({
+          id: synthId,
+          markdown: enforced.markdown,
+          title: enforced.title,
+          edit_token: synthEditToken,
+          user_id: userId,
+          edit_mode: "account",
+          is_draft: false,
+          source: "auto-synthesis",
+          compile_kind: "wiki",
+          compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
+          compiled_at: now,
+        });
+        if (!error) return;
+        if (isStrictDupLockError(error)) return;
+        if (error.code === "23505") { insertError = error; continue; }
+        insertError = error; break;
+      }
+      if (insertError) console.warn("Suggestion auto-synthesis insert failed:", insertError.message);
     } catch (err) {
       console.warn("Suggestion auto-synthesis failed:", err);
     }

@@ -13013,6 +13013,40 @@ ${clone.innerHTML}
                   } catch {}
                 }}];
               })(),
+              // Compiled-doc actions — Recompile from source bundle and
+              // Open the source bundle in a tab. These were on the
+              // editor header earlier (commit f54f5be5 removed the
+              // top-bar badge); the founder asked to surface them on
+              // the doc context menu instead.
+              ...(() => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (!tab?.cloudId || !tab.compileKind) return [];
+                const bundleId = tab.compileFrom?.bundleId;
+                const items: Array<{ label: string; action: () => void; danger?: boolean }> = [
+                  { label: "---", action: () => {} },
+                  {
+                    label: recompilingDocId === tab.cloudId
+                      ? `Recompiling…`
+                      : `Recompile (${tab.compileKind})`,
+                    action: () => { if (tab.cloudId && recompilingDocId !== tab.cloudId) recompileDoc(tab.cloudId); },
+                  },
+                ];
+                if (bundleId) {
+                  items.push({
+                    label: "Open source bundle",
+                    action: () => {
+                      const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
+                      if (existing) { switchTab(existing.id); return; }
+                      const newId = `bundle-${bundleId}-${Date.now()}`;
+                      const b = bundles.find(x => x.id === bundleId);
+                      const newTab: Tab = { id: newId, kind: "bundle", bundleId, title: b?.title || "Untitled Bundle", markdown: "" };
+                      setTabs(prev => [...prev, newTab]);
+                      switchTab(newId);
+                    },
+                  });
+                }
+                return items;
+              })(),
               ...(folders.filter(f => !f.section || f.section === "my").length > 0 || tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [
                 { label: "---", action: () => {} },
                 { label: "Move to", action: () => {}, submenu: [

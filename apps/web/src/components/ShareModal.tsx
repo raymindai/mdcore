@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "react";
 import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
-import { Globe, Users, Cloud, Link2, X } from "lucide-react";
+import { Globe, Users, Cloud, Link2, X, Eye, Pencil } from "lucide-react";
 import { Button, ModalShell } from "@/components/ui";
 
 interface ShareModalProps {
@@ -151,6 +151,18 @@ function ShareModal({
     }
   }, [emails, editors, saveAccess, generalAccess]);
 
+  // Toggle whether an email is in the allowed_editors set. When
+  // promoted to editor, the row stays in allowed_emails (read access
+  // is implied by edit access). Demoting to viewer drops it from
+  // editors but keeps it in emails so the person can still read.
+  const toggleEditor = useCallback(async (email: string) => {
+    const isEditor = editors.includes(email);
+    const updatedEditors = isEditor ? editors.filter(e => e !== email) : [...editors, email];
+    setEditors(updatedEditors);
+    await saveAccess(emails, updatedEditors);
+    showToast(isEditor ? `${email} can now only view` : `${email} can now edit`, "success");
+  }, [editors, emails, saveAccess]);
+
 
   const handleAccessChange = useCallback(async (mode: Access) => {
     // "Restricted-people" only makes sense when emails exist.
@@ -289,36 +301,55 @@ function ShareModal({
                 </span>
               </div>
 
-              {/* Shared people */}
-              {emails.map((email) => (
-                <div
-                  key={email}
-                  className="flex items-center gap-3 px-3 py-2.5"
-                  style={{ borderBottom: "1px solid var(--border-dim)" }}
-                >
+              {/* Shared people. The role pill is toggleable —
+                  clicking it swaps Viewer ↔ Editor (writes
+                  allowed_editors). Read access is implied by being
+                  in this list at all; edit access is the explicit
+                  add-on. */}
+              {emails.map((email) => {
+                const isEditor = editors.includes(email);
+                return (
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-caption font-bold shrink-0"
-                    style={{ background: "var(--color-cool-dim)", color: "var(--color-cool)" }}
+                    key={email}
+                    className="flex items-center gap-3 px-3 py-2.5"
+                    style={{ borderBottom: "1px solid var(--border-dim)" }}
                   >
-                    {email[0]?.toUpperCase()}
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-caption font-bold shrink-0"
+                      style={{ background: "var(--color-cool-dim)", color: "var(--color-cool)" }}
+                    >
+                      {email[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
+                      <p className="text-caption" style={{ color: "var(--text-faint)" }}>
+                        {isEditor ? "Can read and edit" : "Can read only"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => toggleEditor(email)}
+                      title={isEditor ? "Demote to viewer (read-only)" : "Promote to editor (can edit)"}
+                      className="text-caption font-mono px-2 py-1 rounded shrink-0 transition-colors flex items-center gap-1.5 hover:bg-[var(--toggle-bg)]"
+                      style={{
+                        color: isEditor ? "var(--accent)" : "var(--text-muted)",
+                        background: isEditor ? "var(--accent-dim)" : "var(--toggle-bg)",
+                        border: `1px solid ${isEditor ? "var(--accent)" : "var(--border-dim)"}`,
+                      }}
+                    >
+                      {isEditor ? <Pencil width={11} height={11} /> : <Eye width={11} height={11} />}
+                      {isEditor ? "Editor" : "Viewer"}
+                    </button>
+                    <button
+                      onClick={() => removeEmail(email)}
+                      className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{ color: "var(--text-faint)" }}
+                      title="Remove access"
+                    >
+                      <X width={10} height={10} />
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
-                    <p className="text-caption" style={{ color: "var(--text-faint)" }}>Can view only</p>
-                  </div>
-                  <span className="text-caption font-mono px-2 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>
-                    Viewer
-                  </span>
-                  <button
-                    onClick={() => removeEmail(email)}
-                    className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                    style={{ color: "var(--text-faint)" }}
-                    title="Remove access"
-                  >
-                    <X width={10} height={10} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

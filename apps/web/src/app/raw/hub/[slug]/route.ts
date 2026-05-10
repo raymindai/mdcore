@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
-import { compactMarkdown, isCompactRequested, isDigestRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, isDigestRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 /**
  * v6 — Hub URL raw fetch.
@@ -79,6 +80,18 @@ export async function GET(
       profile,
       slug,
       compact,
+    });
+    const sig = extractRequestSignals(request);
+    logRawFetch({
+      route: "hub",
+      resource: slug,
+      compact,
+      digest: true,
+      bytes: Buffer.byteLength(body, "utf8"),
+      tokens: estimateTokens(body),
+      status: 200,
+      ua: sig.ua,
+      referer: sig.referer,
     });
     return new NextResponse(body, {
       status: 200,
@@ -177,6 +190,19 @@ export async function GET(
 
   const joined = `${frontmatter}\n${sections.join("\n\n")}\n`;
   const body = compact ? compactMarkdown(joined) : joined;
+
+  const sig = extractRequestSignals(request);
+  logRawFetch({
+    route: "hub",
+    resource: slug,
+    compact,
+    digest: false,
+    bytes: Buffer.byteLength(body, "utf8"),
+    tokens: estimateTokens(body),
+    status: 200,
+    ua: sig.ua,
+    referer: sig.referer,
+  });
 
   return new NextResponse(body, {
     status: 200,
