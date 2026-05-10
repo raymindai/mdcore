@@ -10769,15 +10769,16 @@ ${clone.innerHTML}
                           >
                             {o.title || "Untitled"}
                           </button>
-                          {/* Resolve button is absolutely positioned so
-                              it doesn't reserve flex space pre-hover —
-                              the title row uses the full width until
-                              the user hovers the row, then the button
-                              fades in over the trailing edge. */}
+                          {/* Resolve button — hidden in layout pre-hover
+                              and slotted into the flex flow on hover.
+                              Title's flex-1 shrinks to make room. No
+                              absolute positioning, no overlap. */}
                           <button
                             onClick={(e) => { e.stopPropagation(); resolveOrphan(o.id); }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded transition-opacity opacity-0 group-hover/lint:opacity-100 pointer-events-none group-hover/lint:pointer-events-auto"
-                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)", boxShadow: "0 0 0 4px var(--toggle-bg)" }}
+                            className="shrink-0 hidden group-hover/lint:inline-flex items-center px-2 py-0.5 rounded"
+                            style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 600, border: "1px solid var(--border-dim)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; }}
                             title="Re-extract concepts for this doc — usually fixes the orphan"
                           >
                             Resolve
@@ -10814,8 +10815,10 @@ ${clone.innerHTML}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); resolveDuplicate(p.a.id, p.a.title, p.b.id, p.b.title); }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded transition-opacity opacity-0 group-hover/lint:opacity-100 pointer-events-none group-hover/lint:pointer-events-auto"
-                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)", boxShadow: "0 0 0 4px var(--toggle-bg)" }}
+                            className="shrink-0 hidden group-hover/lint:inline-flex items-center px-2 py-0.5 rounded"
+                            style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 600, border: "1px solid var(--border-dim)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; }}
                             title="Move the older copy to Trash"
                           >
                             Resolve
@@ -10827,12 +10830,13 @@ ${clone.innerHTML}
                           …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
                         </div>
                       )}
-                      {/* Action row: Re-scan + Resolve All. Two equal-
-                          width bordered buttons sit side-by-side at the
-                          bottom — Re-scan is neutral, Resolve All is
-                          accent-tinted because it's the destructive /
-                          batch action. Both share the same hover style
-                          (border + label flip to accent). */}
+                      {/* Action row — both buttons share the neutral
+                          bordered style. Resolve All used to be
+                          accent-tinted but it read as "destructive
+                          primary CTA" which it isn't (Trash is
+                          restorable, the action is undo-friendly).
+                          Same weight as Re-scan; only the icon + label
+                          tell them apart. */}
                       <div className="flex items-center gap-1 mt-1">
                         <button
                           onClick={() => { reScan(); }}
@@ -10855,10 +10859,12 @@ ${clone.innerHTML}
                           disabled={lintLoading || (lintReport.orphans.length + lintReport.duplicates.length) === 0}
                           className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors disabled:opacity-50"
                           style={{
-                            background: "var(--accent-dim)",
-                            color: "var(--accent)",
-                            border: "1px solid var(--accent)",
+                            background: "var(--toggle-bg)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-dim)",
                           }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
                           title="Run Resolve on every finding — re-extract orphans, move duplicate pair's older copy to Trash"
                         >
                           <Check width={11} height={11} />
