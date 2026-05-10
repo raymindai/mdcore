@@ -11825,14 +11825,18 @@ ${clone.innerHTML}
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
               {isLoading && activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && (
+                // Visually identical to page.tsx's boot loader — same
+                // logo size, same bar dimensions, same caption — so
+                // when this overlay takes over from the boot loader
+                // (Next finishes downloading the editor bundle while
+                // we still need to fetch the first doc) it reads as
+                // ONE continuous loader instead of "logo flashed
+                // twice." The fade-in animation that lived here used
+                // to re-trigger on the takeover, which is what the
+                // founder saw as a second logo appearing.
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: "var(--background)", gap: 14 }}>
-                  {/* One-shot fade-in: opacity 0 → 1 with a small scale-up.
-                      No infinite pulse — once visible the logo just sits
-                      while the slide bar carries the "still working" signal. */}
-                  <div className="mdfy-loader-enter">
-                    <MdfyLogo size={26} />
-                  </div>
-                  <div className="mdfy-loader-bar" style={{ width: 96, height: 2, background: "var(--border-dim)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
+                  <MdfyLogo size={26} />
+                  <div style={{ width: 96, height: 2, background: "var(--border-dim)", borderRadius: 1, overflow: "hidden", position: "relative" }}>
                     <div style={{ position: "absolute", top: 0, height: "100%", width: "40%", background: "var(--accent)", borderRadius: 1, animation: "mdfyLoaderBar 1.1s ease-in-out infinite" }} />
                   </div>
                   <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: "var(--text-faint)" }}>
@@ -11843,11 +11847,6 @@ ${clone.innerHTML}
                       0%   { left: -40%; }
                       100% { left: 100%; }
                     }
-                    @keyframes mdfyLoaderEnter {
-                      from { opacity: 0; transform: scale(0.92); }
-                      to   { opacity: 1; transform: scale(1); }
-                    }
-                    .mdfy-loader-enter { animation: mdfyLoaderEnter 480ms ease-out both; }
                   `}</style>
                 </div>
               )}

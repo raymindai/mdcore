@@ -7,39 +7,28 @@ import WelcomeOverlay from "@/components/WelcomeOverlay";
 const MdEditor = dynamic(() => import("@/components/MdEditor"), {
   ssr: false,
   loading: () => (
+    // Boot loader — visually identical to MdEditor's inner doc
+    // loader (same logo size, same bar dimensions, same caption,
+    // same fade-in animation). When MdEditor finishes downloading
+    // and the inner loader takes over while the first doc fetches,
+    // the transition reads as ONE continuous boot screen. The old
+    // version sized this logo at 34 with a tagline below — the
+    // jump from "big logo + tagline" to "smaller logo + Loading"
+    // is what the founder saw as "logo appears twice".
+    //
+    // The brand tagline moved to the WelcomeOverlay so it surfaces
+    // at the right moment (first-run experience), not as a flash
+    // during boot.
     <div
       className="flex flex-col items-center justify-center h-screen"
-      style={{ background: "var(--background)", gap: 18 }}
+      style={{ background: "var(--background)", gap: 14 }}
     >
-      {/* One-shot fade-in: opacity 0 → 1 with a small scale-up. The
-          logo settles and the slide bar below carries the loading
-          signal — no infinite pulse on the mark itself. */}
       <div style={{ animation: "mdfyBootEnter 520ms ease-out both" }}>
-        <MdfyLogo size={34} />
+        <MdfyLogo size={26} />
       </div>
-
-      {/* v6 tagline. The old "Your Markdown, Beautifully Published"
-          was the v5 messaging; v6 thesis is the personal knowledge hub. */}
-      <h1
-        className="text-center"
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: "var(--text-secondary)",
-          letterSpacing: 0.2,
-          maxWidth: 420,
-          padding: "0 24px",
-          lineHeight: 1.5,
-        }}
-      >
-        Personal knowledge hub for the AI era.
-      </h1>
-
-      {/* Indeterminate sliding-bar — fixed width track, the accent strip
-          travels left → right. Replaces the old expand/contract bar. */}
       <div
         style={{
-          width: 120,
+          width: 96,
           height: 2,
           background: "var(--border-dim)",
           borderRadius: 1,
@@ -59,12 +48,11 @@ const MdEditor = dynamic(() => import("@/components/MdEditor"), {
           }}
         />
       </div>
-
       <span
         className="font-mono uppercase"
-        style={{ fontSize: 9, letterSpacing: 1.2, color: "var(--text-faint)" }}
+        style={{ fontSize: 9, letterSpacing: 1, color: "var(--text-faint)" }}
       >
-        Loading editor
+        Loading
       </span>
 
       <style>{`
