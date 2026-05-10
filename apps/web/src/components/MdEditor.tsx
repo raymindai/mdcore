@@ -1371,6 +1371,11 @@ const INITIAL_TABS: Tab[] = [
   ...EXAMPLE_TABS,
 ];
 
+// Fast lookup for "is this tab id one of the bundled examples?".
+// Used by the activeTabId restore logic to drop stale example-tab
+// ids that older sessions left in localStorage.
+const EXAMPLE_TAB_IDS = new Set(EXAMPLE_TABS.map(t => t.id));
+
 type ViewMode = "split" | "preview" | "editor";
 
 type Theme = "dark" | "light";
@@ -2887,8 +2892,15 @@ export default function MdEditor() {
   const [activeTabId, setActiveTabId] = useState(() => {
     if (typeof window === "undefined") return "";
     const saved = localStorage.getItem("mdfy-active-tab");
-    // First visit: no saved tab → return empty (show home screen)
-    return saved || "";
+    if (!saved) return "";
+    // Stale localStorage from older sessions can pin us on
+    // `tab-welcome` (or any example tab) — those are tutorial
+    // content reachable from the Guides section, but they should
+    // NEVER be the default landing surface on a return visit.
+    // If saved points at an example tab id, drop it so we fall
+    // through to the owned-doc / Home logic below.
+    if (saved.startsWith("tab-") && EXAMPLE_TAB_IDS.has(saved)) return "";
+    return saved;
   });
   const activeTabIdRef = useRef(activeTabId);
   const [reorderedTabId, setReorderedTabId] = useState<string | null>(null);
@@ -2898,18 +2910,18 @@ export default function MdEditor() {
   // (INITIAL_TABS[0] = tab-welcome). That meant every fresh load with
   // an empty / stale activeTabId would render the welcome blurb in the
   // editor before the user clicked anything — repeatedly, even on
-  // return visits. Now: only resolve the explicitly-set id, and only
-  // fall back to a tab the user actually owns (never an example). If
-  // none exists, activeTab is undefined and the Home overlay renders.
+  // return visits. Now: explicit lookup skips example tabs UNLESS the
+  // user has no own docs (in which case we still prefer Home over a
+  // sample), and the implicit fallback also skips examples.
   const activeTab = (() => {
+    const isOwn = (t: typeof tabs[number]) => !t.deleted && t.ownerEmail !== EXAMPLE_OWNER;
     const explicit = activeTabId ? tabs.find((t) => t.id === activeTabId) : undefined;
-    if (explicit) return explicit;
-    // Implicit fallback: pick a tab the user actually owns. Never
-    // fall back to an example tab — that's what made the Welcome
-    // blurb keep showing on every fresh visit, regardless of whether
-    // the user already had their own docs. If they have nothing of
-    // their own, this returns undefined and the Home overlay renders.
-    return tabs.find((t) => !t.deleted && t.ownerEmail !== EXAMPLE_OWNER);
+    // Honour an explicit click only when it points at an OWNED doc.
+    // Example tabs reached via Guides set activeTabId in this session;
+    // a page reload that lands us on an example is almost always
+    // stale state we should clear.
+    if (explicit && isOwn(explicit)) return explicit;
+    return tabs.find(isOwn);
   })();
 
   // Track active bundle's document IDs for sidebar highlighting.
@@ -10704,12 +10716,54 @@ ${clone.innerHTML}
                     }
                   };
 
+                  const resolveAll = async () => {
+                    if (!user?.id || !lintReport) return;
+                    const total = lintReport.orphans.length + lintReport.duplicates.length;
+                    if (total === 0) return;
+                    if (!confirm(`Resolve all ${total} finding${total === 1 ? "" : "s"}? This will re-run concept extraction on every orphan and move the older copy of each duplicate pair to Trash. You can restore from Trash if needed.`)) return;
+                    setLintLoading(true);
+                    let ok = 0;
+                    let failed = 0;
+                    // Orphans first — cheap, non-destructive.
+                    for (const o of lintReport.orphans) {
+                      try {
+                        const res = await fetch(`/api/docs/${o.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
+                        });
+                        if (res.ok) ok++; else failed++;
+                      } catch { failed++; }
+                    }
+                    // Duplicates — soft-delete the older copy of each pair.
+                    for (const p of lintReport.duplicates) {
+                      const targetTab = tabs.find((t) => t.cloudId === p.a.id);
+                      try {
+                        const res = await fetch(`/api/docs/${p.a.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify({ action: "soft-delete", userId: user.id, editToken: targetTab?.editToken }),
+                        });
+                        if (res.ok) {
+                          ok++;
+                          setTabs((prev) => prev.map((t) => t.cloudId === p.a.id ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                        } else failed++;
+                      } catch { failed++; }
+                    }
+                    showToast(failed > 0 ? `Resolved ${ok}, ${failed} failed` : `Resolved all ${ok}`, failed > 0 ? "error" : "success");
+                    // Give the ontology extractor a few seconds to land
+                    // its writes before we re-scan; orphan→linked is
+                    // async and would otherwise still show the same
+                    // findings.
+                    setTimeout(() => reScan(), 4000);
+                  };
+
                   return (
                     <div className="space-y-1 pb-2 pl-2 pr-2 pt-1.5">
                       {lintReport.orphans.slice(0, 8).map((o) => (
                         <div
                           key={`orphan-${o.id}`}
-                          className="group/lint flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          className="group/lint relative flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
                           style={{ color: "var(--text-muted)" }}
                           title="Orphan — not in any bundle, not linked from any other doc. Resolve re-runs concept extraction on this doc."
                         >
@@ -10730,10 +10784,15 @@ ${clone.innerHTML}
                           >
                             {o.title || "Untitled"}
                           </button>
+                          {/* Resolve button is absolutely positioned so
+                              it doesn't reserve flex space pre-hover —
+                              the title row uses the full width until
+                              the user hovers the row, then the button
+                              fades in over the trailing edge. */}
                           <button
                             onClick={(e) => { e.stopPropagation(); resolveOrphan(o.id); }}
-                            className="shrink-0 px-2 py-0.5 rounded transition-colors opacity-0 group-hover/lint:opacity-100"
-                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)" }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded transition-opacity opacity-0 group-hover/lint:opacity-100 pointer-events-none group-hover/lint:pointer-events-auto"
+                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)", boxShadow: "0 0 0 4px var(--toggle-bg)" }}
                             title="Re-extract concepts for this doc — usually fixes the orphan"
                           >
                             Resolve
@@ -10743,7 +10802,7 @@ ${clone.innerHTML}
                       {lintReport.duplicates.slice(0, 8).map((p) => (
                         <div
                           key={`dup-${p.a.id}-${p.b.id}`}
-                          className="group/lint flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          className="group/lint relative flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
                           style={{ color: "var(--text-muted)" }}
                           title={`Likely duplicate — distance ${p.distance.toFixed(3)}. Resolve moves the older copy to Trash and keeps the newer one.`}
                         >
@@ -10770,8 +10829,8 @@ ${clone.innerHTML}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); resolveDuplicate(p.a.id, p.a.title, p.b.id, p.b.title); }}
-                            className="shrink-0 px-2 py-0.5 rounded transition-colors opacity-0 group-hover/lint:opacity-100"
-                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)" }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded transition-opacity opacity-0 group-hover/lint:opacity-100 pointer-events-none group-hover/lint:pointer-events-auto"
+                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)", boxShadow: "0 0 0 4px var(--toggle-bg)" }}
                             title="Move the older copy to Trash"
                           >
                             Resolve
@@ -10783,27 +10842,44 @@ ${clone.innerHTML}
                           …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
                         </div>
                       )}
-                      {/* Re-scan — proper button now: bordered, padded,
-                          icon + label, hover state. Sits flush against
-                          the bottom of the list, full width, so it
-                          reads as "do this when you're done resolving"
-                          rather than a quiet link. */}
-                      <button
-                        onClick={() => { reScan(); }}
-                        disabled={lintLoading}
-                        className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors mt-1 disabled:opacity-50"
-                        style={{
-                          background: "var(--toggle-bg)",
-                          color: "var(--text-secondary)",
-                          border: "1px solid var(--border-dim)",
-                        }}
-                        onMouseEnter={(e) => { if (!lintLoading) { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
-                        title="Recompute orphans + duplicates from the current hub state"
-                      >
-                        <RefreshCw width={11} height={11} className={lintLoading ? "animate-spin" : ""} />
-                        {lintLoading ? "Re-scanning…" : "Re-scan hub"}
-                      </button>
+                      {/* Action row: Re-scan + Resolve All. Two equal-
+                          width bordered buttons sit side-by-side at the
+                          bottom — Re-scan is neutral, Resolve All is
+                          accent-tinted because it's the destructive /
+                          batch action. Both share the same hover style
+                          (border + label flip to accent). */}
+                      <div className="flex items-center gap-1 mt-1">
+                        <button
+                          onClick={() => { reScan(); }}
+                          disabled={lintLoading}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors disabled:opacity-50"
+                          style={{
+                            background: "var(--toggle-bg)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-dim)",
+                          }}
+                          onMouseEnter={(e) => { if (!lintLoading) { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+                          title="Recompute orphans + duplicates from the current hub state"
+                        >
+                          <RefreshCw width={11} height={11} className={lintLoading ? "animate-spin" : ""} />
+                          {lintLoading ? "Re-scanning…" : "Re-scan"}
+                        </button>
+                        <button
+                          onClick={resolveAll}
+                          disabled={lintLoading || (lintReport.orphans.length + lintReport.duplicates.length) === 0}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors disabled:opacity-50"
+                          style={{
+                            background: "var(--accent-dim)",
+                            color: "var(--accent)",
+                            border: "1px solid var(--accent)",
+                          }}
+                          title="Run Resolve on every finding — re-extract orphans, move duplicate pair's older copy to Trash"
+                        >
+                          <Check width={11} height={11} />
+                          Resolve all
+                        </button>
+                      </div>
                     </div>
                   );
                 })()}
