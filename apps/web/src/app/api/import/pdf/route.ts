@@ -115,13 +115,16 @@ export async function POST(req: NextRequest) {
     const candidateTitle = (pdfTitle && pdfTitle.trim()) || filename.replace(/\.pdf$/i, "");
     const sourceTag = `pdf:${filename}`;
 
-    // STRICT title invariant — H1 IS the title; cleaner output gets
-    // an H1 prepended when missing so DB.title and the rendered H1
-    // never diverge.
-    const { enforceTitleInvariant } = await import("@/lib/extract-title");
-    const enforced = enforceTitleInvariant(markdown, candidateTitle);
-    markdown = enforced.markdown;
-    const title: string = enforced.title;
+    // PDF import is the ONLY place we deliberately mutate the body
+    // before persisting: when the cleaner didn't yield an H1, we
+    // prepend the PDF's metadata title so the doc has one. This
+    // happens once at import time, not on every subsequent save.
+    const { extractTitleFromMd } = await import("@/lib/extract-title");
+    const detectedH1 = extractTitleFromMd(markdown);
+    if (!detectedH1 || detectedH1 === "Untitled") {
+      markdown = `# ${candidateTitle}\n\n${markdown}`;
+    }
+    const title: string = extractTitleFromMd(markdown);
 
     // Dedup: same caller, same content, within 30s — return that doc
     // instead of importing the same PDF twice (e.g., user clicks Import,

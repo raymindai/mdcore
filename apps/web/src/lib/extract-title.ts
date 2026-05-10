@@ -5,36 +5,33 @@ export function extractTitleFromMd(md: string): string {
 }
 
 /**
- * STRICT title invariant: a doc's title is its first H1. Always.
+ * Title invariant: title column must equal the body's first H1.
  *
- * Returns `{ markdown, title }` such that:
- *  - `markdown` always contains an H1 line (prepended if missing)
- *  - `title === extractTitleFromMd(markdown)` (never "Untitled" unless
- *    the actual H1 says "Untitled")
+ * NON-MUTATING. Returns `{ markdown, title }` where:
+ *  - `markdown` is returned UNCHANGED (no H1 ever prepended)
+ *  - `title === extractTitleFromMd(markdown)` ("Untitled" when the
+ *    body has no H1)
  *
- * Use at every doc-write boundary (web POST/PATCH, MCP create/update,
- * PDF import, share import, etc.) so the invariant holds regardless
- * of which client touches the row.
+ * Earlier this helper used to silently prepend `# <fallback>` when
+ * the body lacked an H1. That mutated user content on every save —
+ * a doc that had been captured from an AI without an H1 would gain
+ * an unwanted heading line on its very next autosave. Body
+ * mutation now requires explicit caller intent (rename via
+ * spliceH1, or import paths that prepend before calling).
  *
- * `fallbackTitle` is only used when the markdown lacks an H1. Pass
- * the user's intent (filename, supplied title, existing DB title) —
- * if it's empty too, we fall back to the literal "Untitled".
+ * `fallbackTitle` is accepted for source-compat only; it has no
+ * effect on the returned markdown or title. Callers that want a
+ * fallback name embedded in the body should prepend `# <name>\n\n`
+ * themselves before invoking this helper.
  */
 export function enforceTitleInvariant(
   markdown: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   fallbackTitle?: string | null,
 ): { markdown: string; title: string } {
   const md = markdown || "";
-  const detected = extractTitleFromMd(md);
-  if (detected && detected !== "Untitled") {
-    return { markdown: md, title: detected };
-  }
-  // Body has no H1 — prepend one. Trust an explicit fallback before
-  // resorting to the literal placeholder so the user keeps whatever
-  // name they had.
-  const fallback = (fallbackTitle || "").trim() || "Untitled";
-  const newMd = md.trim() ? `# ${fallback}\n\n${md}` : `# ${fallback}\n`;
-  return { markdown: newMd, title: fallback };
+  const title = extractTitleFromMd(md);
+  return { markdown: md, title };
 }
 
 /**

@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { enforceTitleInvariant, spliceH1 } from "@/lib/extract-title";
+import { extractTitleFromMd, spliceH1 } from "@/lib/extract-title";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -462,23 +462,17 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Update without creating version history
     const updatedAt = new Date().toISOString();
     const updates: Record<string, unknown> = { updated_at: updatedAt };
-    // STRICT title invariant — H1 is the title; nothing else is.
-    // - markdown supplied: ensure body has an H1 (prepend with the
-    //   client-sent title or doc.title if missing), then title := H1.
-    // - title only (rename without body change): splice the H1 in
-    //   the existing markdown to the new title, then title := H1.
-    // After either branch, updates.markdown is guaranteed to have an
-    // H1 and updates.title is literally that H1.
+    // Title invariant — title column = H1 of the body. NEVER mutate
+    // the body during a save (autosave or otherwise). The only path
+    // that intentionally rewrites the body is the title-only rename:
+    // there the user explicitly asked us to change the heading.
     if (markdown !== undefined) {
-      const fallback = (typeof title === "string" && title.trim()) ? title : (doc.title || "");
-      const enforced = enforceTitleInvariant(markdown, fallback);
-      updates.markdown = enforced.markdown;
-      updates.title = enforced.title;
+      updates.markdown = markdown;
+      updates.title = extractTitleFromMd(markdown);
     } else if (title !== undefined) {
       const splicedMd = spliceH1(doc.markdown || "", title);
-      const enforced = enforceTitleInvariant(splicedMd, title);
-      updates.markdown = enforced.markdown;
-      updates.title = enforced.title;
+      updates.markdown = splicedMd;
+      updates.title = extractTitleFromMd(splicedMd);
     }
     if (body.source) updates.source = body.source;
     if (body.folderId !== undefined) updates.folder_id = body.folderId || null;
@@ -725,18 +719,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     });
   }
 
-  // Update — same strict H1=title invariant as the auto-save branch.
+  // Update — same non-mutating rule as the auto-save branch.
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (markdown !== undefined) {
-    const fallback = (typeof title === "string" && title.trim()) ? title : (doc.title || "");
-    const enforced = enforceTitleInvariant(markdown, fallback);
-    updates.markdown = enforced.markdown;
-    updates.title = enforced.title;
+    updates.markdown = markdown;
+    updates.title = extractTitleFromMd(markdown);
   } else if (title !== undefined) {
     const splicedMd = spliceH1(doc.markdown || "", title);
-    const enforced = enforceTitleInvariant(splicedMd, title);
-    updates.markdown = enforced.markdown;
-    updates.title = enforced.title;
+    updates.markdown = splicedMd;
+    updates.title = extractTitleFromMd(splicedMd);
   }
 
   const { error } = await supabase.from("documents").update(updates).eq("id", id);

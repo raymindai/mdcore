@@ -8,7 +8,7 @@ import { appendHubLog } from "@/lib/hub-log";
 import { maybeRefreshSuggestions } from "@/lib/hub-suggestions";
 import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
 import { enqueueOntologyRefresh } from "@/lib/ontology-refresh";
-import { enforceTitleInvariant } from "@/lib/extract-title";
+import { extractTitleFromMd } from "@/lib/extract-title";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -64,13 +64,22 @@ export async function POST(req: NextRequest) {
   }
 
   const { password, expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
-  // STRICT title invariant — H1 IS the title, nothing else can be.
-  const enforced = enforceTitleInvariant(
-    typeof body.markdown === "string" ? body.markdown : "",
-    typeof body.title === "string" ? body.title : null,
-  );
-  const markdown: string = enforced.markdown;
-  const title: string = enforced.title;
+  // Title invariant: title column = H1 of body. We do NOT silently
+  // mutate the body during creation. The only exception is a fresh
+  // capture (POST) that passes a `title` hint with a body that
+  // genuinely lacks an H1 — this is import-time explicit intent so
+  // we prepend once, mirroring mdfy_create / PDF import. After that
+  // first write, no save ever rewrites the body.
+  const incomingMd = typeof body.markdown === "string" ? body.markdown : "";
+  const incomingHint = typeof body.title === "string" ? body.title.trim() : "";
+  const detectedH1 = extractTitleFromMd(incomingMd);
+  let markdown: string = incomingMd;
+  if ((!detectedH1 || detectedH1 === "Untitled") && incomingHint) {
+    markdown = incomingMd.trim()
+      ? `# ${incomingHint}\n\n${incomingMd}`
+      : `# ${incomingHint}\n`;
+  }
+  const title: string = extractTitleFromMd(markdown);
   let { userId } = body;
   let { anonymousId } = body;
 

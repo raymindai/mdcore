@@ -106,11 +106,18 @@ function createMcpServer(userId?: string) {
     async ({ markdown, title, draft }) => {
       if (!supabase) return errorResult("Storage not configured");
       const isDraft = draft ?? true;
-      // STRICT title invariant: H1 IS the title; nothing else can be.
-      const { enforceTitleInvariant } = await import("@/lib/extract-title");
-      const enforced = enforceTitleInvariant(markdown, title);
-      const storedMarkdown = enforced.markdown;
-      const storedTitle: string = enforced.title;
+      // mdfy_create is an import-time write, so body mutation here is
+      // explicit (not a silent autosave side-effect): if the body has
+      // no H1 and the caller supplied a title, prepend it as H1 so
+      // the new doc has a proper heading. Otherwise the body is
+      // stored verbatim and the title falls out of extractTitleFromMd.
+      const { extractTitleFromMd } = await import("@/lib/extract-title");
+      let storedMarkdown = markdown;
+      const detectedH1 = extractTitleFromMd(markdown);
+      if ((!detectedH1 || detectedH1 === "Untitled") && title && title.trim()) {
+        storedMarkdown = `# ${title.trim()}\n\n${markdown}`;
+      }
+      const storedTitle: string = extractTitleFromMd(storedMarkdown);
       // 30s same-content dedup so an MCP client that retries on transient
       // error (or an LLM that calls mdfy_create twice for the same output)
       // doesn't pile up a sibling row.
@@ -190,22 +197,17 @@ function createMcpServer(userId?: string) {
     },
     async ({ id, markdown, title }) => {
       if (!supabase) return errorResult("Storage not configured");
-      // STRICT title invariant — H1 IS the title. If the new body has
-      // no H1, fall back to the supplied title or the existing
-      // doc.title before resorting to literal "Untitled".
-      const { enforceTitleInvariant } = await import("@/lib/extract-title");
-      let fallback = (title && title.trim()) || "";
-      if (!fallback) {
-        const { data: existing } = await supabase
-          .from("documents")
-          .select("title")
-          .eq("id", id)
-          .single();
-        fallback = existing?.title || "";
+      // mdfy_update is a content replacement — we do NOT silently
+      // mutate the body. If the caller passes a body without H1 plus
+      // an explicit `title` argument, treat that as intent to set a
+      // heading and prepend it once. Otherwise the body wins.
+      const { extractTitleFromMd } = await import("@/lib/extract-title");
+      let storedMarkdown = markdown;
+      const detectedH1 = extractTitleFromMd(markdown);
+      if ((!detectedH1 || detectedH1 === "Untitled") && title && title.trim()) {
+        storedMarkdown = `# ${title.trim()}\n\n${markdown}`;
       }
-      const enforced = enforceTitleInvariant(markdown, fallback);
-      const storedMarkdown = enforced.markdown;
-      const storedTitle: string = enforced.title;
+      const storedTitle: string = extractTitleFromMd(storedMarkdown);
       const update: Record<string, unknown> = {
         markdown: storedMarkdown,
         title: storedTitle,
@@ -460,12 +462,15 @@ function createMcpServer(userId?: string) {
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         const docTitle = title || titleMatch?.[1].trim() || url;
         const rawMd = `> Source: ${url}\n\n` + htmlToMarkdownLite(html);
-        // Title invariant — derive from H1 if the imported page emits
-        // one, else prepend the page's <title> as the H1.
-        const { enforceTitleInvariant } = await import("@/lib/extract-title");
-        const enforced = enforceTitleInvariant(rawMd, docTitle);
-        const markdown = enforced.markdown;
-        const finalTitle = enforced.title;
+        // Import-time explicit prepend: if the converted body has no
+        // H1, surface the page's <title> as the doc heading. The
+        // helper is only invoked to read the resulting H1.
+        const { extractTitleFromMd } = await import("@/lib/extract-title");
+        const detectedH1 = extractTitleFromMd(rawMd);
+        const markdown = (!detectedH1 || detectedH1 === "Untitled")
+          ? `# ${docTitle}\n\n${rawMd}`
+          : rawMd;
+        const finalTitle = extractTitleFromMd(markdown);
         // Dedup: importing the same URL twice in quick succession should
         // not create a sibling — common when an LLM retries on transient
         // failure or an agent re-runs a tool call.
