@@ -215,6 +215,30 @@ Response 200:
 }
 \`\`\`
 
+### POST /api/import/notion
+Import a single Notion page using the caller's internal integration token. v1 — no OAuth, the user pastes the token per-call.
+
+Parameters:
+- token (string, required): Notion internal integration token (\`secret_…\` or \`ntn_…\`). The integration must have access to the page.
+- pageUrl (string) OR pageId (string): the page to import. Hyphenated UUID, bare 32-char id, or any notion.so URL containing one.
+
+Response 200:
+\`\`\`json
+{
+  "imported": 1,
+  "deduplicated": 0,
+  "failed": 0,
+  "docs": [
+    {
+      "id": "abc123",
+      "title": "My Page",
+      "notionPageId": "abcdef01-2345-6789-abcd-ef0123456789",
+      "pageUrl": "https://www.notion.so/My-Page-abcdef0123456789abcdef0123456789"
+    }
+  ]
+}
+\`\`\`
+
 ### POST /api/import/obsidian
 Import every .md file from an Obsidian vault uploaded as a .zip (multipart/form-data, file field).
 Caps: 10MB zipped, 80 files, 200KB per file. Skips dot-prefixed folders (.obsidian, .git, …) and macOS resource forks.

@@ -9181,6 +9181,59 @@ ${clone.innerHTML}
                         <Download width={11} height={11} /> Import Obsidian vault (.zip)…
                       </button>
                     )}
+                    {user?.id && (
+                      <button
+                        onClick={() => {
+                          setShowLibraryNewMenu(false);
+                          // Two-step inline input — token then page URL — so we don't
+                          // need a modal. Both stay in component state for the duration
+                          // of the request and aren't persisted anywhere on our side.
+                          setInlineInput({
+                            label: "Notion integration token (secret_…) — paste from notion.so/profile/integrations",
+                            defaultValue: "",
+                            onSubmit: async (token) => {
+                              setInlineInput(null);
+                              const t = token.trim();
+                              if (!t) return;
+                              setInlineInput({
+                                label: "Notion page URL (or page ID)",
+                                defaultValue: "",
+                                onSubmit: async (pageUrl) => {
+                                  setInlineInput(null);
+                                  const p = pageUrl.trim();
+                                  if (!p) return;
+                                  showToast("Importing from Notion…", "info");
+                                  try {
+                                    const res = await fetch("/api/import/notion", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json", ...authHeaders },
+                                      body: JSON.stringify({ token: t, pageUrl: p }),
+                                    });
+                                    const json = await res.json().catch(() => ({}));
+                                    if (!res.ok) { showToast(json.error || `Import failed (${res.status})`, "error"); return; }
+                                    const { imported = 0, deduplicated = 0, failed = 0 } = json as { imported?: number; deduplicated?: number; failed?: number };
+                                    const parts = [
+                                      imported > 0 ? `${imported} imported` : null,
+                                      deduplicated > 0 ? `${deduplicated} already in your hub` : null,
+                                      failed > 0 ? `${failed} failed` : null,
+                                    ].filter(Boolean);
+                                    showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
+                                    fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                                      .then((r) => (r.ok ? r.json() : null))
+                                      .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+                                      .catch(() => {});
+                                  } catch { showToast("Import failed", "error"); }
+                                },
+                              });
+                            },
+                          });
+                        }}
+                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <Download width={11} height={11} /> Import from Notion…
+                      </button>
+                    )}
                   </div>
                 </>)}
               </div>
@@ -12405,6 +12458,16 @@ ${clone.innerHTML}
                           setTabs(prev => [...prev, newTab]);
                           switchTab(newId);
                         }).catch(() => {});
+                      }}
+                      onDocCreated={(docId) => {
+                        // Refresh the sidebar so the just-saved Hub
+                        // Chat answer surfaces immediately instead of
+                        // waiting for the next manual refresh.
+                        fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                          .then((r) => (r.ok ? r.json() : null))
+                          .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+                          .catch(() => {});
+                        void docId;
                       }}
                     />
                   )}

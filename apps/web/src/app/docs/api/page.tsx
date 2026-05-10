@@ -199,6 +199,7 @@ const sidebarItems = [
   { id: "post-upload", label: "POST /api/upload" },
   { id: "post-import-github", label: "POST /api/import/github" },
   { id: "post-import-obsidian", label: "POST /api/import/obsidian" },
+  { id: "post-import-notion", label: "POST /api/import/notion" },
   { id: "post-hub-recall", label: "POST /api/hub/{slug}/recall" },
   { id: "raw-and-llms", label: "Raw + /llms.txt" },
   { id: "authentication", label: "Authentication" },
@@ -678,6 +679,51 @@ url = res.json()["url"]`}</CodeBlock>
       "id": "abc123",
       "title": "Daily Note",
       "path": "notes/Daily Note.md"
+    }
+  ]
+}`}</CodeBlock>
+          </EndpointBlock>
+
+          {/* ─── POST /api/import/notion ─── */}
+          <EndpointBlock
+            id="post-import-notion"
+            method="POST"
+            path="/api/import/notion"
+            description="Import a single Notion page using the caller's internal integration token. v1 — no OAuth; the user pastes the token per call. Same dedup contract as docs/PDF/GitHub/Obsidian so re-calling is idempotent."
+          >
+            <SubLabel>Parameters</SubLabel>
+            <div style={{ marginBottom: 24 }}>
+              <ParamRow name="token" type="string" required>
+                Notion internal integration token (<InlineCode>{"secret_…"}</InlineCode> or <InlineCode>{"ntn_…"}</InlineCode>). The integration must have access to the page.
+              </ParamRow>
+              <ParamRow name="pageUrl" type="string">
+                Notion page URL — anything from <InlineCode>{"notion.so/…"}</InlineCode> with a UUID in it.
+              </ParamRow>
+              <ParamRow name="pageId" type="string">
+                Alternative to pageUrl. Hyphenated UUID or bare 32-char id.
+              </ParamRow>
+            </div>
+
+            <SubLabel>Request - curl</SubLabel>
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/import/notion \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $JWT" \\
+  -d '{
+    "token": "secret_xxx",
+    "pageUrl": "https://www.notion.so/My-Page-abcdef0123456789abcdef0123456789"
+  }'`}</CodeBlock>
+
+            <SubLabel>Response 200</SubLabel>
+            <CodeBlock lang="json">{`{
+  "imported": 1,
+  "deduplicated": 0,
+  "failed": 0,
+  "docs": [
+    {
+      "id": "abc123",
+      "title": "My Page",
+      "notionPageId": "abcdef01-2345-6789-abcd-ef0123456789",
+      "pageUrl": "https://www.notion.so/My-Page-abcdef0123456789abcdef0123456789"
     }
   ]
 }`}</CodeBlock>

@@ -31,7 +31,8 @@
     "test:github-import-live": "npx tsx --env-file=.env.local scripts/test-github-import-live.ts",
     "test:obsidian-import": "npx tsx --env-file=.env.local scripts/test-obsidian-import.ts",
     "test:hub-manifests": "npx tsx --env-file=.env.local scripts/test-hub-manifests.ts",
-    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall && npm run test:github-import-live && npm run test:obsidian-import && npm run test:hub-manifests"
+    "test:notion-import": "npx tsx --env-file=.env.local scripts/test-notion-import.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall && npm run test:github-import-live && npm run test:obsidian-import && npm run test:hub-manifests && npm run test:notion-import"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

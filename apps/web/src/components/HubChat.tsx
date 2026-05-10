@@ -7,8 +7,9 @@
 // [doc:<id>] citation chips inline.
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { GitBranch, Sparkles, HelpCircle, Network } from "lucide-react";
+import { GitBranch, Sparkles, HelpCircle, Network, BookmarkPlus, Check } from "lucide-react";
 import ChatMarkdown from "@/components/ChatMarkdown";
+import { showToast } from "@/components/Toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -27,6 +28,11 @@ interface HubChatProps {
   /** Click handler for [doc:<id>] citation chips. Caller resolves the
    *  doc id (open as tab, navigate, etc.). */
   onCitationClick?: (docId: string) => void;
+  /** Optional: parent's hook to refresh the sidebar tabs after a
+   *  chat answer is saved as a new doc. Without this the new doc
+   *  appears on the next manual refresh — still safe, just less
+   *  immediate. */
+  onDocCreated?: (docId: string) => void;
 }
 
 const QUICK_ACTIONS = [
@@ -36,7 +42,7 @@ const QUICK_ACTIONS = [
   { label: "Gaps", icon: <HelpCircle width={11} height={11} />, question: "Based on my docs, what important questions am I NOT answering yet?" },
 ];
 
-export default function HubChat({ slug, hubName, conceptCount, accent, accentDim, onCitationClick }: HubChatProps) {
+export default function HubChat({ slug, hubName, conceptCount, accent, accentDim, onCitationClick, onDocCreated }: HubChatProps) {
   const themeAccent = accent || "var(--accent)";
   const themeAccentDim = accentDim || "var(--accent-dim)";
 
@@ -120,6 +126,58 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
     try { localStorage.removeItem(`mdfy-hub-chat-${slug}`); } catch { /* ignore */ }
   }, [slug]);
 
+  // Per-message save state — a Set of indices already saved this
+  // session so we can show the green check + disable the button
+  // without polling the server.
+  const [savedIndices, setSavedIndices] = useState<Set<number>>(new Set());
+
+  const saveAsDoc = useCallback(async (assistantIndex: number) => {
+    const assistant = messages[assistantIndex];
+    if (!assistant || assistant.role !== "assistant" || !assistant.content.trim()) return;
+    // The preceding user message — if any — gives us a real title.
+    // Fall back to a generic label if the user kicked off via a
+    // quick-action button and the array is empty before this point.
+    const prev = messages[assistantIndex - 1];
+    const userQ = prev && prev.role === "user" ? prev.content.trim() : "";
+    const rawTitle = userQ ? userQ.replace(/[\r\n]+/g, " ") : "Hub Chat — saved answer";
+    const title = rawTitle.length > 80 ? rawTitle.slice(0, 77) + "…" : rawTitle;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const body = [
+      `# ${title}`,
+      "",
+      userQ ? `> **Asked:** ${userQ}` : `> _Saved Hub Chat answer._`,
+      "",
+      assistant.content.trim(),
+      "",
+      "---",
+      `_Saved from Hub Chat on ${dateStr} · source: \`hub-chat:${slug}\`_`,
+      "",
+    ].join("\n");
+
+    try {
+      const res = await fetch("/api/docs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          markdown: body,
+          title,
+          isDraft: true, // land as draft — owner reviews before publishing
+          source: `hub-chat:${slug}`,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.id) {
+        showToast(json.error || "Couldn't save this answer", "error");
+        return;
+      }
+      setSavedIndices((prev) => { const next = new Set(prev); next.add(assistantIndex); return next; });
+      showToast("Saved as draft — open from your sidebar", "success");
+      onDocCreated?.(json.id);
+    } catch {
+      showToast("Couldn't save this answer", "error");
+    }
+  }, [messages, slug, onDocCreated]);
+
   // Listen for the global "new chat" event fired by the panel header
   // button so the user has a single, always-visible affordance.
   // Empty state is a no-op (no confirm dialog needed).
@@ -172,6 +230,10 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
                 isStreaming={isStreaming && i === messages.length - 1}
                 accent={themeAccent}
                 accentDim={themeAccentDim}
+                onSaveAsDoc={msg.role === "assistant" && !(isStreaming && i === messages.length - 1) && msg.content.trim().length > 40
+                  ? () => saveAsDoc(i)
+                  : undefined}
+                saved={savedIndices.has(i)}
               />
             ))}
             {error && (
@@ -221,7 +283,7 @@ export default function HubChat({ slug, hubName, conceptCount, accent, accentDim
   );
 }
 
-function MessageBubble({ message, onCitationClick, isStreaming }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
+function MessageBubble({ message, onCitationClick, isStreaming, onSaveAsDoc, saved }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string; onSaveAsDoc?: () => void; saved?: boolean }) {
   // Chat bubbles use the global mdfy orange uniformly — per-mode colour
   // already lives in the panel header so you know which assistant is
   // active; the bubble itself doesn't need to repeat that signal.
@@ -289,6 +351,22 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
         />
         {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: chatAccent, verticalAlign: "middle" }} />}
       </div>
+      {/* Save-as-doc — turns a useful answer into a durable wiki page.
+          Kept outside the bubble + minimal so it doesn't compete with
+          the answer content; activates only when the message is long
+          enough to be worth saving. */}
+      {onSaveAsDoc && (
+        <button
+          onClick={onSaveAsDoc}
+          disabled={saved}
+          className="self-start flex items-center gap-1 px-1.5 py-0.5 rounded text-caption transition-colors hover:bg-[var(--menu-hover)] disabled:cursor-default"
+          style={{ color: saved ? chatAccent : "var(--text-faint)", fontSize: 11 }}
+          title={saved ? "Saved to your hub as a draft" : "Save this answer as a draft document in your hub"}
+        >
+          {saved ? <Check width={10} height={10} /> : <BookmarkPlus width={10} height={10} />}
+          <span>{saved ? "Saved" : "Save as doc"}</span>
+        </button>
+      )}
     </div>
   );
 }
