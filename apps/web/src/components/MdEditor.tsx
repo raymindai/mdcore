@@ -8285,7 +8285,13 @@ ${clone.innerHTML}
               own rounded-lg div matches the sibling pills exactly. */}
           {hubSlug && (() => {
             const hubTabId = `hub-${hubSlug}`;
-            const isHubActive = activeTab?.id === hubTabId;
+            // The hub tab can stay in the tabs array (so the Hub view
+            // is preserved on close+reopen) while NOT being the
+            // visible view — in particular when the user clicks Home
+            // and the onboarding screen takes over. Treat Hub as
+            // inactive whenever onboarding is showing, so its pill
+            // doesn't stay highlighted in that state.
+            const isHubActive = !showOnboarding && activeTab?.id === hubTabId;
             return (
               <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
                 <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
@@ -10633,9 +10639,11 @@ ${clone.innerHTML}
                 {showAuthMenu && (
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
-                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999]"
+                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999] overflow-hidden"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                      {/* Profile header */}
+                      {/* Profile header — avatar + identity, no plan badge here.
+                          Plan stays on its own row below so the eye reads
+                          identity → plan → settings → footer in one column. */}
                       <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
                         <div className="flex items-center gap-2.5">
                           <img src={resolveAvatar(profile, user, 32)} alt="" className="w-8 h-8 rounded-full shrink-0" />
@@ -10645,39 +10653,33 @@ ${clone.innerHTML}
                           </div>
                         </div>
                       </div>
-                      {/* Plan info */}
-                      <div className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-caption font-medium" style={{ color: "var(--text-faint)" }}>Plan</span>
-                          <span className="text-caption px-1.5 py-0.5 rounded font-mono font-semibold" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
-                            {(profile?.plan || "free").toUpperCase()}
-                          </span>
-                        </div>
+                      {/* Plan row — one line, label + chip + upgrade arrow.
+                          The old version had a paragraph of marketing copy
+                          + a 4-line "Pro includes" bullet list inside the
+                          menu. Pro feature breakdown now lives behind the
+                          arrow CTA on a dedicated /pricing page; the menu
+                          is for navigation, not upsell. */}
+                      <div className="px-3 py-2 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                        <span className="text-caption font-medium" style={{ color: "var(--text-faint)" }}>Plan</span>
+                        <span
+                          className="text-caption px-1.5 py-0.5 rounded font-mono font-semibold"
+                          style={{
+                            background: profile?.plan === "pro" ? "var(--accent)" : "var(--toggle-bg)",
+                            color: profile?.plan === "pro" ? "#000" : "var(--text-secondary)",
+                          }}
+                        >
+                          {(profile?.plan || "free").toUpperCase()}
+                        </span>
+                        <span className="flex-1" />
                         {(!profile?.plan || profile.plan === "free") && (
-                          <>
-                            <div className="text-caption mb-2" style={{ color: "var(--text-faint)" }}>
-                              Unlimited documents, free forever.
-                            </div>
-                            <button
-                              onClick={() => { setShowAuthMenu(false); /* TODO: open pricing */ }}
-                              className="w-full py-1.5 rounded-md text-caption font-semibold transition-colors"
-                              style={{ background: "var(--accent)", color: "#000" }}
-                            >
-                              Upgrade to Pro
-                            </button>
-                            <div className="mt-1.5 text-caption space-y-0.5" style={{ color: "var(--text-faint)" }}>
-                              <div>Pro includes:</div>
-                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Custom domains</div>
-                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Analytics</div>
-                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> No watermark</div>
-                              <div className="flex items-center gap-1.5"><span style={{ color: "var(--accent)" }}>-</span> Priority support</div>
-                            </div>
-                          </>
-                        )}
-                        {profile?.plan === "pro" && (
-                          <div className="text-caption" style={{ color: "var(--text-faint)" }}>
-                            Full access to all features.
-                          </div>
+                          <button
+                            onClick={() => { setShowAuthMenu(false); window.open("/pricing", "_blank"); }}
+                            className="text-caption font-medium px-2 py-1 rounded transition-colors hover:bg-[var(--accent-dim)]"
+                            style={{ color: "var(--accent)" }}
+                            title="See Pro features"
+                          >
+                            Upgrade →
+                          </button>
                         )}
                       </div>
                       {/* Toggles: Guides & Sidebar mode */}
@@ -10772,12 +10774,14 @@ ${clone.innerHTML}
                           </div></div>
                         </div>
                       </div>
-                      {/* Account + Sign Out */}
+                      {/* Account section. Hub + Settings share one
+                          group; Sign Out lives below a divider so it
+                          can't be hit by accident next to a routine
+                          link. My Hub used to render in accent which
+                          made it look like an alert pinned in the
+                          menu — toned down to text-secondary, matches
+                          its sibling row. */}
                       <div className="py-1">
-                        {/* Hub link — only shown when the user has opted in.
-                            Owners often forget where their hub lives once
-                            they set it up; surface it next to Settings so
-                            the URL is a click away. */}
                         {(profile as { hub_slug?: string | null; hub_public?: boolean } | null)?.hub_public &&
                          (profile as { hub_slug?: string | null }).hub_slug && (
                           <button
@@ -10787,10 +10791,13 @@ ${clone.innerHTML}
                               if (slug) window.open(`/hub/${slug}`, "_blank");
                             }}
                             className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                            style={{ color: "var(--accent)" }}
+                            style={{ color: "var(--text-secondary)" }}
                           >
                             <Globe width={12} height={12} aria-hidden />
-                            My Hub <span className="font-mono ml-auto" style={{ color: "var(--text-faint)", fontSize: 10 }}>/hub/{(profile as { hub_slug?: string }).hub_slug}</span>
+                            <span className="flex-1">My Hub</span>
+                            <span className="font-mono" style={{ color: "var(--text-faint)", fontSize: 10 }}>
+                              /hub/{(profile as { hub_slug?: string }).hub_slug}
+                            </span>
                           </button>
                         )}
                         <button
@@ -10801,6 +10808,8 @@ ${clone.innerHTML}
                           <User width={12} height={12} />
                           Account Settings
                         </button>
+                      </div>
+                      <div className="py-1" style={{ borderTop: "1px solid var(--border-dim)" }}>
                         <button
                           onClick={() => {
                             signOut();
@@ -10819,7 +10828,7 @@ ${clone.innerHTML}
                             try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
                           }}
                           className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                          style={{ color: "var(--text-secondary)" }}
+                          style={{ color: "var(--text-faint)" }}
                         >
                           <LogOut width={12} height={12} />
                           Sign Out
@@ -13343,17 +13352,26 @@ ${clone.innerHTML}
       {/* mdfy AI structuring prompt */}
       {/* Sign In / Sign Up modal */}
       {showAuthMenu && !isAuthenticated && (
+        // Slim sign-in modal. Previous version was a 560px-wide
+        // dialog with a 3-column tier comparison (No Account / Beta /
+        // Pro) below the OAuth + email block. The comparison created
+        // decision friction at the wrong moment — and one of the
+        // listed Pro features ("Password protect") referred to a
+        // mode that no longer exists. Pricing tiers belong on
+        // /pricing, not in the sign-in dialog. This version: avatar
+        // → headline → OAuth → email → tiny "free during beta" line.
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={() => { setShowAuthMenu(false); setAuthEmailSent(false); }}>
-          <div className="rounded-xl w-[560px] max-w-[90vw] max-h-[90vh] overflow-y-auto" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 16px 64px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
-            {/* Header */}
-            <div className="px-6 pt-6 pb-4 text-center">
-              <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+          <div className="rounded-xl w-[400px] max-w-[92vw]" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 16px 64px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
+            <div className="px-6 pt-6 pb-4">
+              <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>
                 Sign in to <span style={{ color: "var(--accent)" }}>mdfy</span>.app
               </h2>
-              <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>Save, sync, and publish your documents</p>
+              <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>
+                Save, sync, and publish your knowledge hub.
+              </p>
             </div>
 
-            {/* OAuth buttons */}
+            {/* OAuth */}
             <div className="px-6 space-y-2">
               <button
                 onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }}
@@ -13373,14 +13391,12 @@ ${clone.innerHTML}
               </button>
             </div>
 
-            {/* Divider */}
             <div className="flex items-center gap-3 px-6 my-3">
               <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
-              <span className="text-caption" style={{ color: "var(--text-faint)" }}>OR</span>
+              <span className="text-caption" style={{ color: "var(--text-faint)" }}>or with email</span>
               <div className="flex-1 h-px" style={{ background: "var(--border-dim)" }} />
             </div>
 
-            {/* Email */}
             <div className="px-6 mb-4">
               {authEmailSent ? (
                 <div className="text-body text-center py-3 rounded-lg" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
@@ -13397,9 +13413,6 @@ ${clone.innerHTML}
                       if (e.key === "Enter" && authEmailInput.trim()) {
                         const result = await signInWithEmail(authEmailInput.trim());
                         if (!result.error) {
-                          // Demo accounts sign in instantly (no email step);
-                          // every other email still gets the "check your inbox"
-                          // confirmation card.
                           const instant = (result as { instant?: boolean }).instant;
                           if (!instant) setAuthEmailSent(true);
                           else setShowAuthMenu(false);
@@ -13429,63 +13442,15 @@ ${clone.innerHTML}
               )}
             </div>
 
-            {/* Divider */}
-            <div className="h-px mx-6" style={{ background: "var(--border-dim)" }} />
-
-            {/* Tiers comparison */}
-            <div className="px-6 py-4">
-              <div className="grid grid-cols-3 gap-2">
-                {/* Without account */}
-                <div className="rounded-lg p-3" style={{ border: "1px solid var(--border-dim)", opacity: 0.6 }}>
-                  <div className="text-caption font-bold mb-2" style={{ color: "var(--text-faint)" }}>No Account</div>
-                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-faint)" }}>
-                    <li className="flex items-start gap-1"><span>+</span>Instant rendering</li>
-                    <li className="flex items-start gap-1"><span>+</span>Import / Export</li>
-                    <li className="flex items-start gap-1"><span>+</span>Share via hash URL</li>
-                    <li className="flex items-start gap-1"><span>-</span>Local only</li>
-                    <li className="flex items-start gap-1"><span>-</span>No cloud sync</li>
-                    <li className="flex items-start gap-1"><span>-</span>No short URLs</li>
-                  </ul>
-                </div>
-                {/* Beta tier — everyone with an account, while we're testing */}
-                <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent-dim)" }}>
-                  <div className="flex items-center gap-1 mb-2">
-                    <span className="text-caption font-bold" style={{ color: "var(--text-primary)" }}>Beta</span>
-                    <span className="text-caption px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>FREE NOW</span>
-                  </div>
-                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-muted)" }}>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Unlimited documents</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Documents never expire</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Cloud sync</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Short URL sharing</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>AI mdfy structuring</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>All formats supported</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--text-faint)" }}>-</span><span style={{ color: "var(--text-faint)" }}>mdfy.app badge</span></li>
-                  </ul>
-                </div>
-                {/* Pro tier — kicks in after beta */}
-                <div className="rounded-lg p-3" style={{ border: "1px solid var(--accent)" }}>
-                  <div className="flex items-center gap-1 mb-2">
-                    <span className="text-caption font-bold" style={{ color: "var(--accent)" }}>Pro</span>
-                    <span className="text-caption px-1 py-0.5 rounded-full font-medium" style={{ background: "var(--toggle-bg)", color: "var(--text-faint)" }}>AFTER BETA</span>
-                  </div>
-                  <ul className="space-y-1.5 text-caption" style={{ color: "var(--text-muted)" }}>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Everything in Beta</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>No badge</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Custom domain</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>View analytics</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Password protect</li>
-                    <li className="flex items-start gap-1"><span style={{ color: "var(--accent)" }}>+</span>Priority AI mdfy</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 pb-5 text-center">
-              <p className="text-caption" style={{ color: "var(--text-faint)" }}>
-                Free during beta. No credit card required.
-              </p>
+            <div className="px-6 pb-5 flex items-center justify-between text-caption" style={{ color: "var(--text-faint)" }}>
+              <span>Free during beta — no card.</span>
+              <button
+                onClick={() => { setShowAuthMenu(false); window.open("/pricing", "_blank"); }}
+                className="hover:underline"
+                style={{ color: "var(--text-muted)" }}
+              >
+                What you get →
+              </button>
             </div>
           </div>
         </div>
