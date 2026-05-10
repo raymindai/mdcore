@@ -24,6 +24,7 @@ import Tooltip from "@/components/Tooltip";
 import SynthesisDiff from "@/components/SynthesisDiff";
 import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
+import RelatedDocsWidget from "@/components/RelatedDocsWidget";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { readCompileSources } from "@/lib/compile-sources";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -11954,6 +11955,22 @@ ${clone.innerHTML}
                     // Store original math syntax for replacement
                     mathOriginalRef.current = mode === "display" ? `$$${tex}$$` : `$${tex}$`;
                     setShowMathModal(true);
+                  }}
+                />
+                {/* Related docs — under the body so the user
+                    discovers it after they finish reading. Owner-
+                    only; gated on cloudId so non-cloud / sample
+                    docs don't show it. */}
+                <RelatedDocsWidget
+                  cloudId={activeTab?.cloudId}
+                  isOwner={!activeTab?.permission || activeTab.permission === "mine"}
+                  onOpenDoc={(docId) => {
+                    const existing = tabs.find((t) => t.cloudId === docId && !t.deleted);
+                    if (existing) { switchTab(existing.id); return; }
+                    const newId = `tab-${Date.now()}`;
+                    const newTab: Tab = { id: newId, title: "Loading…", markdown: "", cloudId: docId, permission: "mine" };
+                    setTabs((prev) => [...prev, newTab]);
+                    switchTab(newId);
                   }}
                 />
               </div>{/* end scrollable preview */}
