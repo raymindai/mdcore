@@ -317,7 +317,7 @@ export default function McpDocsPage() {
           {/* Tools */}
           <SectionHeading id="tools">All 25 Tools</SectionHeading>
           <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16 }}>
-            The hosted MCP exposes 25 tools across 7 categories.
+            The hosted MCP exposes 25 tools across 8 categories.
             Auth happens via the user&apos;s mdfy.app session (no API keys).
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 8, marginBottom: 24 }}>
@@ -326,9 +326,10 @@ export default function McpDocsPage() {
               { cat: "Append/Prepend", tools: ["mdfy_append", "mdfy_prepend"] },
               { cat: "Sections", tools: ["mdfy_outline", "mdfy_extract_section", "mdfy_replace_section"] },
               { cat: "Duplicate/Import", tools: ["mdfy_duplicate", "mdfy_import_url"] },
-              { cat: "Sharing", tools: ["mdfy_publish", "mdfy_set_password", "mdfy_set_expiry", "mdfy_set_allowed_emails", "mdfy_get_share_url"] },
+              { cat: "Sharing", tools: ["mdfy_publish", "mdfy_set_allowed_emails", "mdfy_get_share_url"] },
               { cat: "Versions", tools: ["mdfy_versions", "mdfy_restore_version", "mdfy_diff"] },
               { cat: "Stats/Folders", tools: ["mdfy_stats", "mdfy_recent", "mdfy_folder_list", "mdfy_folder_create", "mdfy_move_to_folder"] },
+              { cat: "Render", tools: ["mdfy_render_preview"] },
             ].map((g) => (
               <div key={g.cat} style={{ background: "var(--surface)", padding: "12px 14px", borderRadius: 8 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{g.cat}</div>

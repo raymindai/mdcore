@@ -126,16 +126,15 @@ mdfy publish README.md --draft
 # Publish with title
 mdfy publish README.md --title "My Document"
 
-# Publish with password
-mdfy publish README.md --password "secret"
+# Place in a specific folder
+mdfy publish README.md --folder "folder-uuid"
 
-# Publish with expiration
-mdfy publish README.md --expires 7d`}</CodeBlock>
+# Open in browser after publishing
+mdfy publish README.md --open`}</CodeBlock>
             <SubLabel>Options</SubLabel>
             <CommandRow cmd="--draft, -d" desc="Publish as draft (only visible to you)." />
             <CommandRow cmd="--title, -t" desc="Set document title." />
-            <CommandRow cmd="--password, -p" desc="Password-protect the document." />
-            <CommandRow cmd="--expires, -e" desc="Set expiration: 1h, 1d, 7d, 30d." />
+            <CommandRow cmd="--folder, -f" desc="Place document in a folder (folder UUID)." />
             <CommandRow cmd="--open, -o" desc="Open in browser after publishing." />
           </Card>
 
@@ -165,10 +164,7 @@ mdfy update abc123 README.md --message "Fixed typos"`}</CodeBlock>
 mdfy pull abc123
 
 # Save to file
-mdfy pull abc123 -o output.md
-
-# Pull with password
-mdfy pull abc123 --password "secret"`}</CodeBlock>
+mdfy pull abc123 -o output.md`}</CodeBlock>
           </Card>
 
           {/* delete */}
