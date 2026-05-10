@@ -2566,71 +2566,89 @@ textarea::selection {
    Vendor prefixes are required — Chromium uses ::-webkit-*,
    Firefox uses ::-moz-* — and they cannot be combined into a
    single selector. */
+/* Slim-track pattern: track lives ONLY in the track pseudo-elements
+   (NOT on the input itself), so the thumb sits on a clean 4px line
+   instead of floating above a 14px bar. The progress fill comes from
+   --mdfy-detail-progress, a CSS var the component sets inline based
+   on `(value - min) / (max - min)`. */
 .mdfy-detail-slider input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 14px;
-  border-radius: 7px;
+  height: 16px;       /* touch target only — the visible line is the track pseudo */
+  background: transparent;
   outline: none;
   cursor: grab;
-  /* background: set inline by the component to track the value */
+  padding: 0;
+  margin: 0;
 }
-.mdfy-detail-slider input[type="range"]:active {
-  cursor: grabbing;
+.mdfy-detail-slider input[type="range"]:active { cursor: grabbing; }
+.mdfy-detail-slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--background), 0 0 0 5px var(--accent-dim);
 }
-.mdfy-detail-slider input[type="range"]:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent-dim);
+.mdfy-detail-slider input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--background), 0 0 0 5px var(--accent-dim);
 }
 
-/* Webkit (Chrome, Safari, Edge) thumb */
+/* Webkit track */
+.mdfy-detail-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mdfy-detail-progress, var(--toggle-bg));
+}
+/* Webkit thumb — 14px circle, vertically centered on the 4px track
+   via negative margin (the standard CSS hack). The 3px background-
+   coloured outer ring isolates the thumb visually from the track
+   so the orange dot reads as a control, not a blob. */
 .mdfy-detail-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid var(--background);
-  box-shadow: 0 0 0 1px var(--accent);
+  border: none;
+  margin-top: -5px;
+  box-shadow: 0 0 0 3px var(--background), 0 1px 3px rgba(0, 0, 0, 0.35);
   cursor: grab;
-  transition: transform 120ms ease-out;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
 }
 .mdfy-detail-slider input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
+  transform: scale(1.12);
 }
 .mdfy-detail-slider input[type="range"]:active::-webkit-slider-thumb {
   cursor: grabbing;
   transform: scale(1.15);
 }
-.mdfy-detail-slider input[type="range"]::-webkit-slider-runnable-track {
-  height: 14px;
-  border-radius: 7px;
-  background: transparent;
-}
 
-/* Firefox thumb */
+/* Firefox track + thumb — Firefox positions the thumb on the track
+   without the margin-top hack, so we drop it. */
+.mdfy-detail-slider input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--toggle-bg);
+}
+.mdfy-detail-slider input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
 .mdfy-detail-slider input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid var(--background);
-  box-shadow: 0 0 0 1px var(--accent);
+  border: none;
+  box-shadow: 0 0 0 3px var(--background), 0 1px 3px rgba(0, 0, 0, 0.35);
   cursor: grab;
-  transition: transform 120ms ease-out;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
 }
 .mdfy-detail-slider input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.1);
+  transform: scale(1.12);
 }
 .mdfy-detail-slider input[type="range"]:active::-moz-range-thumb {
   cursor: grabbing;
   transform: scale(1.15);
-}
-.mdfy-detail-slider input[type="range"]::-moz-range-track {
-  height: 14px;
-  border-radius: 7px;
-  background: transparent;
 }
 .mdfy-loader-enter {
   animation: mdfyLoaderEnter 480ms ease-out both;

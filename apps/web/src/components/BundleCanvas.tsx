@@ -1809,8 +1809,12 @@ function CanvasMoreMenu({
               aria-label={`Detail level (1–5). Current: ${detailLabels[detail] || detail}`}
               style={{
                 width: "100%",
-                background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) 100%)`,
-              }}
+                // CSS var feeds the webkit track gradient — see globals.css
+                // .mdfy-detail-slider ::-webkit-slider-runnable-track.
+                // Firefox uses ::-moz-range-progress which is value-aware
+                // natively, so the var is ignored there.
+                ["--mdfy-detail-progress" as string]: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) 100%)`,
+              } as React.CSSProperties}
             />
             <span
               className="text-xs font-medium text-center"
