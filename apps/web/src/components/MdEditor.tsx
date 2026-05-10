@@ -11796,6 +11796,72 @@ ${clone.innerHTML}
                   `}</style>
                 </div>
               )}
+                {/* Compiled-doc banner — only when this doc was AI-
+                    synthesised from a bundle (compile_kind set). Shows
+                    one explicit sentence about what was synthesised
+                    and where from, and surfaces Recompile + Open
+                    source bundle as buttons here instead of burying
+                    them in the kebab menu. Discoverable + reversible
+                    via Versions. */}
+                {activeTab?.compileKind && activeTab?.cloudId && (() => {
+                  const bundleId = activeTab.compileFrom?.bundleId;
+                  const sourceBundle = bundleId ? bundles.find(b => b.id === bundleId) : null;
+                  const kindLabel = activeTab.compileKind === "memo" ? "Memo"
+                    : activeTab.compileKind === "faq" ? "FAQ"
+                    : activeTab.compileKind === "brief" ? "Brief"
+                    : "Synthesis";
+                  const isRecompiling = recompilingDocId === activeTab.cloudId;
+                  return (
+                    <div
+                      className="mx-auto flex items-center gap-3 px-3 py-2 rounded-lg my-3"
+                      style={{
+                        maxWidth: 760,
+                        background: "var(--accent-dim)",
+                        border: "1px solid var(--border-dim)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      <Sparkles width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
+                      <p className="text-caption flex-1 leading-snug">
+                        AI {kindLabel} compiled from{" "}
+                        {sourceBundle ? (
+                          <button
+                            onClick={() => {
+                              const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
+                              if (existing) { switchTab(existing.id); return; }
+                              const newId = `bundle-${bundleId}-${Date.now()}`;
+                              const newTab: Tab = { id: newId, kind: "bundle", bundleId: bundleId!, title: sourceBundle.title || "Untitled Bundle", markdown: "" };
+                              setTabs(prev => [...prev, newTab]);
+                              switchTab(newId);
+                            }}
+                            className="font-medium underline underline-offset-2 hover:opacity-80"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            {sourceBundle.title || "Untitled Bundle"}
+                          </button>
+                        ) : (
+                          <span style={{ color: "var(--text-faint)" }}>(source bundle removed)</span>
+                        )}
+                        . Edits here will be overwritten if you regenerate.
+                      </p>
+                      <button
+                        onClick={() => { if (activeTab.cloudId && !isRecompiling) recompileDoc(activeTab.cloudId); }}
+                        disabled={isRecompiling}
+                        className="text-caption px-2.5 py-1 rounded shrink-0 transition-colors flex items-center gap-1.5"
+                        style={{
+                          background: "var(--accent)",
+                          color: "#fff",
+                          opacity: isRecompiling ? 0.5 : 1,
+                          cursor: isRecompiling ? "not-allowed" : "pointer",
+                        }}
+                        title="Regenerate this synthesis from the latest source documents"
+                      >
+                        {isRecompiling ? <Loader2 width={11} height={11} className="animate-spin" /> : <RefreshCw width={11} height={11} />}
+                        {isRecompiling ? "Regenerating…" : "Regenerate"}
+                      </button>
+                    </div>
+                  );
+                })()}
                 <TiptapLiveEditor
                   ref={tiptapRef}
                   markdown={markdown}
@@ -13013,40 +13079,11 @@ ${clone.innerHTML}
                   } catch {}
                 }}];
               })(),
-              // Compiled-doc actions — Recompile from source bundle and
-              // Open the source bundle in a tab. These were on the
-              // editor header earlier (commit f54f5be5 removed the
-              // top-bar badge); the founder asked to surface them on
-              // the doc context menu instead.
-              ...(() => {
-                const tab = tabs.find(t => t.id === docContextMenu.tabId);
-                if (!tab?.cloudId || !tab.compileKind) return [];
-                const bundleId = tab.compileFrom?.bundleId;
-                const items: Array<{ label: string; action: () => void; danger?: boolean }> = [
-                  { label: "---", action: () => {} },
-                  {
-                    label: recompilingDocId === tab.cloudId
-                      ? `Recompiling…`
-                      : `Recompile (${tab.compileKind})`,
-                    action: () => { if (tab.cloudId && recompilingDocId !== tab.cloudId) recompileDoc(tab.cloudId); },
-                  },
-                ];
-                if (bundleId) {
-                  items.push({
-                    label: "Open source bundle",
-                    action: () => {
-                      const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
-                      if (existing) { switchTab(existing.id); return; }
-                      const newId = `bundle-${bundleId}-${Date.now()}`;
-                      const b = bundles.find(x => x.id === bundleId);
-                      const newTab: Tab = { id: newId, kind: "bundle", bundleId, title: b?.title || "Untitled Bundle", markdown: "" };
-                      setTabs(prev => [...prev, newTab]);
-                      switchTab(newId);
-                    },
-                  });
-                }
-                return items;
-              })(),
+              // Compiled-doc actions live as an inline banner inside
+              // the doc body now (CompiledDocBanner). The kebab is
+              // for generic doc actions only — Recompile is too heavy
+              // and "Open source bundle" too domain-specific to bury
+              // here.
               ...(folders.filter(f => !f.section || f.section === "my").length > 0 || tabs.find(t => t.id === docContextMenu.tabId)?.folderId ? [
                 { label: "---", action: () => {} },
                 { label: "Move to", action: () => {}, submenu: [

@@ -94,6 +94,29 @@ function ShareModal({
     inputRef.current?.focus();
   }, []);
 
+  // Re-sync local state when the parent hydrates the share state
+  // asynchronously. The modal is opened immediately on Share-click
+  // (no spinner) so the parent's first render passes the prior /
+  // empty values; the real allowed_emails / allowed_editors arrive a
+  // moment later via a background fetch. Without this effect the
+  // modal showed "Anyone with the link" for a doc that's actually
+  // restricted to specific people — the radio was frozen at mount.
+  useEffect(() => {
+    setEmails(initialAllowedEmails);
+  }, [initialAllowedEmails]);
+  useEffect(() => {
+    setEditors(initialAllowedEditors);
+  }, [initialAllowedEditors]);
+  useEffect(() => {
+    if (isPrivate) {
+      setGeneralAccess("private");
+    } else if (initialAllowedEmails.length > 0) {
+      setGeneralAccess("restricted-people");
+    } else {
+      setGeneralAccess("anyone");
+    }
+  }, [isPrivate, initialAllowedEmails]);
+
   const saveAccess = useCallback(async (newEmails: string[], newEditors: string[]) => {
     setSaving(true);
     try {
