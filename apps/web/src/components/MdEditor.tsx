@@ -25,6 +25,7 @@ import SynthesisDiff from "@/components/SynthesisDiff";
 import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import RelatedDocsWidget from "@/components/RelatedDocsWidget";
+import ImportModal from "@/components/ImportModal";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { readCompileSources } from "@/lib/compile-sources";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -2745,6 +2746,9 @@ export default function MdEditor() {
   // The PATCH happens optimistically: we update the tab state first
   // and fire the request in the background, reverting on error.
   const [intentMenuOpen, setIntentMenuOpen] = useState(false);
+  // Unified Import modal (replaces the old per-source inline-input
+  // prompts that hung off the Library + menu).
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showLint, setShowLint] = useState(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("mdfy-show-lint");
@@ -9165,15 +9169,23 @@ ${clone.innerHTML}
                 </Tooltip>
                 {showLibraryNewMenu && (<>
                   <div className="fixed inset-0 z-[9997]" onClick={() => setShowLibraryNewMenu(false)} />
-                  <div className="absolute top-full right-0 mt-1 w-44 rounded-lg shadow-xl py-1 z-[9998]"
-                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
+                  {/* Slim 4-item Library + menu. Anything more belongs in
+                      the unified Import modal (last item below). The old
+                      menu sprawled to 8+ rows mixing creation actions
+                      with per-source import flows, which broke the
+                      design and pushed Import primitives down the
+                      visual hierarchy. */}
+                  <div className="absolute top-full right-0 mt-1 w-48 rounded-lg py-1 z-[9998]"
+                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}>
                     <button onClick={() => { setShowLibraryNewMenu(false); addTab(); }}
                       className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <FileIcon width={11} height={11} /> New document
+                      <FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} />
+                      <span className="flex-1">New document</span>
                     </button>
                     <button onClick={() => { setShowLibraryNewMenu(false); setShowMyBundles(true); setBundleCreatorDocs([]); setShowBundleCreator(true); }}
                       className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <Layers width={11} height={11} /> New bundle
+                      <Layers width={12} height={12} style={{ color: "var(--text-faint)" }} />
+                      <span className="flex-1">New bundle</span>
                     </button>
                     <button onClick={() => {
                       setShowLibraryNewMenu(false);
@@ -9183,158 +9195,19 @@ ${clone.innerHTML}
                       setInlineInput({ label: "Folder name", defaultValue: "New Folder", onSubmit: (name) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id, name }) }).catch(() => {}); setInlineInput(null); }});
                     }}
                       className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <FolderPlus width={11} height={11} /> New folder
+                      <FolderPlus width={12} height={12} style={{ color: "var(--text-faint)" }} />
+                      <span className="flex-1">New folder</span>
                     </button>
                     <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                    <button onClick={() => { setShowLibraryNewMenu(false); importFileRef.current?.click(); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <Download width={11} height={11} /> Import files…
+                    <button
+                      onClick={() => { setShowLibraryNewMenu(false); setShowImportModal(true); }}
+                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      <Download width={12} height={12} style={{ color: "var(--accent)" }} />
+                      <span className="flex-1" style={{ color: "var(--text-primary)" }}>Import…</span>
+                      <span className="font-mono opacity-50" style={{ fontSize: 9, letterSpacing: 0.5 }}>5 SOURCES</span>
                     </button>
-                    {user?.id && (
-                      <button onClick={() => {
-                        setShowLibraryNewMenu(false);
-                        setInlineInput({
-                          label: "GitHub URL (repo, tree, or .md file)",
-                          defaultValue: "",
-                          onSubmit: async (u) => {
-                            setInlineInput(null);
-                            const url = u.trim();
-                            if (!url) return;
-                            showToast("Importing from GitHub…", "info");
-                            try {
-                              const res = await fetch("/api/import/github", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json", ...authHeaders },
-                                body: JSON.stringify({ url }),
-                              });
-                              const json = await res.json().catch(() => ({}));
-                              if (!res.ok) {
-                                showToast(json.error || `Import failed (${res.status})`, "error");
-                                return;
-                              }
-                              const { imported, deduplicated, failed } = json as { imported: number; deduplicated: number; failed: number };
-                              const parts = [
-                                imported > 0 ? `${imported} imported` : null,
-                                deduplicated > 0 ? `${deduplicated} already in your hub` : null,
-                                failed > 0 ? `${failed} failed` : null,
-                              ].filter(Boolean);
-                              showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
-                              // Force a sidebar refresh so the new docs appear.
-                              fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
-                                .then((r) => (r.ok ? r.json() : null))
-                                .then((data) => { if (data?.documents) setServerDocs(data.documents); })
-                                .catch(() => {});
-                            } catch { showToast("Import failed", "error"); }
-                          },
-                        });
-                      }}
-                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                        <Download width={11} height={11} /> Import from GitHub…
-                      </button>
-                    )}
-                    {user?.id && (
-                      <button
-                        onClick={() => { setShowLibraryNewMenu(false); obsidianFileRef.current?.click(); }}
-                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <Download width={11} height={11} /> Import Obsidian vault (.zip)…
-                      </button>
-                    )}
-                    {user?.id && (
-                      <button
-                        onClick={() => {
-                          setShowLibraryNewMenu(false);
-                          setInlineInput({
-                            label: "URL of the page to import (http or https)",
-                            defaultValue: "",
-                            onSubmit: async (u) => {
-                              setInlineInput(null);
-                              const url = u.trim();
-                              if (!url) return;
-                              showToast("Fetching URL…", "info");
-                              try {
-                                const res = await fetch("/api/import/url", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json", ...authHeaders },
-                                  body: JSON.stringify({ url }),
-                                });
-                                const json = await res.json().catch(() => ({}));
-                                if (!res.ok) { showToast(json.error || `Import failed (${res.status})`, "error"); return; }
-                                const { imported = 0, deduplicated = 0, failed = 0 } = json as { imported?: number; deduplicated?: number; failed?: number };
-                                const parts = [
-                                  imported > 0 ? `${imported} imported` : null,
-                                  deduplicated > 0 ? `${deduplicated} already in your hub` : null,
-                                  failed > 0 ? `${failed} failed` : null,
-                                ].filter(Boolean);
-                                showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
-                                fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
-                                  .then((r) => (r.ok ? r.json() : null))
-                                  .then((data) => { if (data?.documents) setServerDocs(data.documents); })
-                                  .catch(() => {});
-                              } catch { showToast("Import failed", "error"); }
-                            },
-                          });
-                        }}
-                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <Download width={11} height={11} /> Import from URL (any web page)…
-                      </button>
-                    )}
-                    {user?.id && (
-                      <button
-                        onClick={() => {
-                          setShowLibraryNewMenu(false);
-                          // Two-step inline input — token then page URL — so we don't
-                          // need a modal. Both stay in component state for the duration
-                          // of the request and aren't persisted anywhere on our side.
-                          setInlineInput({
-                            label: "Notion integration token (secret_…) — paste from notion.so/profile/integrations",
-                            defaultValue: "",
-                            onSubmit: async (token) => {
-                              setInlineInput(null);
-                              const t = token.trim();
-                              if (!t) return;
-                              setInlineInput({
-                                label: "Notion page URL (or page ID)",
-                                defaultValue: "",
-                                onSubmit: async (pageUrl) => {
-                                  setInlineInput(null);
-                                  const p = pageUrl.trim();
-                                  if (!p) return;
-                                  showToast("Importing from Notion…", "info");
-                                  try {
-                                    const res = await fetch("/api/import/notion", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json", ...authHeaders },
-                                      body: JSON.stringify({ token: t, pageUrl: p }),
-                                    });
-                                    const json = await res.json().catch(() => ({}));
-                                    if (!res.ok) { showToast(json.error || `Import failed (${res.status})`, "error"); return; }
-                                    const { imported = 0, deduplicated = 0, failed = 0 } = json as { imported?: number; deduplicated?: number; failed?: number };
-                                    const parts = [
-                                      imported > 0 ? `${imported} imported` : null,
-                                      deduplicated > 0 ? `${deduplicated} already in your hub` : null,
-                                      failed > 0 ? `${failed} failed` : null,
-                                    ].filter(Boolean);
-                                    showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
-                                    fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
-                                      .then((r) => (r.ok ? r.json() : null))
-                                      .then((data) => { if (data?.documents) setServerDocs(data.documents); })
-                                      .catch(() => {});
-                                  } catch { showToast("Import failed", "error"); }
-                                },
-                              });
-                            },
-                          });
-                        }}
-                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        <Download width={11} height={11} /> Import from Notion…
-                      </button>
-                    )}
                   </div>
                 </>)}
               </div>
@@ -9785,6 +9658,20 @@ ${clone.innerHTML}
                           </button>
                         </Tooltip>
                       )}
+                      {/* Section-level + — creates a bundle without bouncing
+                          through the Library + menu. Owner-only; only
+                          rendered for signed-in users. */}
+                      {user?.id && (
+                        <Tooltip text="New bundle">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowMyBundles(true); setBundleCreatorDocs([]); setShowBundleCreator(true); }}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            <Plus width={12} height={12} />
+                          </button>
+                        </Tooltip>
+                      )}
                       <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{bundles.length}</span>
                     </div>
                   );
@@ -10040,6 +9927,19 @@ ${clone.innerHTML}
                             </button>
                           </Tooltip>
                         )}
+                        {/* Section-level + on MDs — creates a new doc
+                            inline. Same affordance as Library + → New
+                            document, just one click closer to where the
+                            user is looking. */}
+                        <Tooltip text="New document">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowMyDocs(true); addTab(); }}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            <Plus width={12} height={12} />
+                          </button>
+                        </Tooltip>
                         <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{myTabCount}</span>
                       </div>
                     );
@@ -15484,6 +15384,31 @@ ${clone.innerHTML}
           />
         );
       })()}
+
+      {/* Unified Import modal — five sources, one polished dialog. */}
+      <ImportModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        authHeaders={authHeaders}
+        showToast={showToast}
+        onImported={() => {
+          fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+            .catch(() => {});
+        }}
+        onPickFiles={(files) => {
+          // Reuse the parent's import pipeline by assigning the
+          // chosen files into the hidden importFileRef and firing
+          // its change handler. Avoids duplicating the multi-format
+          // import code inside the modal.
+          if (!importFileRef.current) return;
+          const dt = new DataTransfer();
+          for (const f of files) dt.items.add(f);
+          importFileRef.current.files = dt.files;
+          importFileRef.current.dispatchEvent(new Event("change", { bubbles: true }));
+        }}
+      />
 
       {/* Bundle Creator Modal */}
       {showBundleCreator && (

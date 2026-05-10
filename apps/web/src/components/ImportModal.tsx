@@ -1,0 +1,460 @@
+"use client";
+
+// One modal, five ingest sources. Replaces the old pattern of five
+// separate inline-input prompts that fired from the Library + menu —
+// users couldn't see which sources existed without opening the menu,
+// each prompt looked different, and the menu itself sprawled.
+//
+// Now: a single "Import…" entry opens this modal. The user picks a
+// source from a card grid, the form fills the body of the modal,
+// they submit, the modal closes on success. State is local; the
+// parent supplies authHeaders + showToast + a refresh callback.
+
+import { useRef, useState, useCallback } from "react";
+import {
+  X,
+  Globe,
+  Upload,
+  FileText,
+  Loader2,
+} from "lucide-react";
+
+// GitHub mark — inline SVG so we don't pull a Lucide alias that may
+// not be in the locked-down lucide-react version this app uses.
+function GithubIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.83-.26.83-.58v-2c-3.33.72-4.03-1.6-4.03-1.6-.55-1.4-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.3 3.5 1 .1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.1-3.18 0 0 1.01-.32 3.31 1.23a11.46 11.46 0 0 1 6.02 0c2.3-1.55 3.31-1.23 3.31-1.23.64 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.58A12 12 0 0 0 12 .3" />
+    </svg>
+  );
+}
+
+export type ImportSource = "files" | "github" | "obsidian" | "url" | "notion";
+
+interface ImportModalProps {
+  open: boolean;
+  onClose: () => void;
+  authHeaders: Record<string, string>;
+  /** Toast for success/error notices. Same shape as the editor's
+   *  global showToast(message, kind). */
+  showToast: (message: string, kind?: "success" | "error" | "info") => void;
+  /** Called after any successful import so the parent can refresh
+   *  its document list / lint / etc. */
+  onImported?: () => void;
+  /** Called when the user picks "Files" + a list of File objects.
+   *  Files use the existing importFile() pipeline in the parent —
+   *  we just hand the files back. */
+  onPickFiles: (files: File[]) => void;
+  /** Source pre-selected when the modal opens. Use to deep-link the
+   *  modal to a specific tab (e.g. Add → Import GitHub). */
+  initialSource?: ImportSource | null;
+}
+
+interface SourceCard {
+  id: ImportSource;
+  label: string;
+  desc: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+// Obsidian's logo as a tiny inline SVG so we don't need an asset
+// pipeline for it. Matches the brand's purple gem outline.
+function ObsidianIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden>
+      <path d="M50 6 L88 32 L72 88 L28 88 L12 32 Z" stroke="currentColor" strokeWidth="6" strokeLinejoin="round" />
+      <path d="M50 30 L70 50 L60 76 L40 76 L30 50 Z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" opacity="0.55" />
+    </svg>
+  );
+}
+
+function NotionIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M8 8.5v7m0-7l8 7m0-7v7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const SOURCES: SourceCard[] = [
+  { id: "files",    label: "Files",            desc: "PDF, DOCX, MD, code — drag in or pick",  color: "#fb923c", icon: <Upload width={18} height={18} /> },
+  { id: "github",   label: "GitHub",           desc: "Repo, folder, or single .md URL",         color: "#fbbf24", icon: <GithubIcon size={18} /> },
+  { id: "obsidian", label: "Obsidian vault",   desc: "Drop a .zip of your vault",               color: "#a78bfa", icon: <ObsidianIcon size={18} /> },
+  { id: "url",      label: "URL",              desc: "Any web page — we extract the article",  color: "#60a5fa", icon: <Globe width={18} height={18} /> },
+  { id: "notion",   label: "Notion",           desc: "Integration token + page URL",            color: "#f472b6", icon: <NotionIcon size={18} /> },
+];
+
+export default function ImportModal({
+  open,
+  onClose,
+  authHeaders,
+  showToast,
+  onImported,
+  onPickFiles,
+  initialSource = null,
+}: ImportModalProps) {
+  const [active, setActive] = useState<ImportSource | null>(initialSource);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const obsidianRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const close = useCallback(() => {
+    if (busy) return;
+    setActive(null);
+    setError(null);
+    onClose();
+  }, [busy, onClose]);
+
+  const announce = useCallback((imp?: number, dedup?: number, fail?: number, skip?: number) => {
+    const parts = [
+      (imp ?? 0) > 0 ? `${imp} imported` : null,
+      (dedup ?? 0) > 0 ? `${dedup} already in your hub` : null,
+      (skip ?? 0) > 0 ? `${skip} skipped` : null,
+      (fail ?? 0) > 0 ? `${fail} failed` : null,
+    ].filter(Boolean);
+    showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", (fail ?? 0) > 0 ? "error" : "success");
+  }, [showToast]);
+
+  const submitGithub = useCallback(async (url: string) => {
+    if (!url.trim()) { setError("Paste a GitHub URL"); return; }
+    setBusy(true); setError(null);
+    showToast("Importing from GitHub…", "info");
+    try {
+      const res = await fetch("/api/import/github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json.error || `Import failed (${res.status})`); setBusy(false); return; }
+      announce(json.imported, json.deduplicated, json.failed);
+      onImported?.();
+      close();
+    } catch { setError("Import failed"); }
+    finally { setBusy(false); }
+  }, [authHeaders, announce, onImported, close, showToast]);
+
+  const submitUrl = useCallback(async (url: string) => {
+    if (!url.trim()) { setError("Paste a URL"); return; }
+    setBusy(true); setError(null);
+    showToast("Fetching URL…", "info");
+    try {
+      const res = await fetch("/api/import/url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json.error || `Import failed (${res.status})`); setBusy(false); return; }
+      announce(json.imported, json.deduplicated, json.failed);
+      onImported?.();
+      close();
+    } catch { setError("Import failed"); }
+    finally { setBusy(false); }
+  }, [authHeaders, announce, onImported, close, showToast]);
+
+  const submitNotion = useCallback(async (token: string, pageUrl: string) => {
+    if (!token.trim()) { setError("Paste your integration token"); return; }
+    if (!pageUrl.trim()) { setError("Paste a Notion page URL"); return; }
+    setBusy(true); setError(null);
+    showToast("Importing from Notion…", "info");
+    try {
+      const res = await fetch("/api/import/notion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ token: token.trim(), pageUrl: pageUrl.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json.error || `Import failed (${res.status})`); setBusy(false); return; }
+      announce(json.imported, json.deduplicated, json.failed);
+      onImported?.();
+      close();
+    } catch { setError("Import failed"); }
+    finally { setBusy(false); }
+  }, [authHeaders, announce, onImported, close, showToast]);
+
+  const submitObsidianZip = useCallback(async (file: File) => {
+    setBusy(true); setError(null);
+    showToast(`Importing ${file.name}…`, "info");
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const res = await fetch("/api/import/obsidian", {
+        method: "POST",
+        headers: { ...authHeaders },
+        body: form,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(json.error || `Import failed (${res.status})`); setBusy(false); return; }
+      announce(json.imported, json.deduplicated, json.failed, json.skipped);
+      onImported?.();
+      close();
+    } catch { setError("Import failed"); }
+    finally { setBusy(false); }
+  }, [authHeaders, announce, onImported, close, showToast]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[9999] px-4"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={close}
+    >
+      <div
+        className="w-full max-w-[560px] rounded-2xl overflow-hidden"
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => { if (!busy) { setActive(null); setError(null); } }}
+              className={`text-caption font-mono uppercase tracking-wider ${active ? "hover:text-[var(--accent)]" : "cursor-default"}`}
+              style={{ color: active ? "var(--text-muted)" : "var(--text-faint)", letterSpacing: 1.5, fontSize: 10 }}
+            >
+              {active ? "← Import" : "Import to your hub"}
+            </button>
+            {active && (
+              <>
+                <span style={{ color: "var(--border)", fontSize: 11 }}>/</span>
+                <span className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {SOURCES.find((s) => s.id === active)?.label}
+                </span>
+              </>
+            )}
+          </div>
+          <button onClick={close} disabled={busy} className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[var(--toggle-bg)] transition-colors disabled:opacity-40" style={{ color: "var(--text-muted)" }}>
+            <X width={14} height={14} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5">
+          {!active && (
+            <>
+              <p className="text-caption mb-4" style={{ color: "var(--text-muted)" }}>
+                Pull markdown into your hub from anywhere. Every doc lands as a
+                draft you can review before publishing.
+              </p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {SOURCES.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      if (s.id === "files") {
+                        // Files reuses the parent's import pipeline.
+                        // Open the native picker; the modal closes via the
+                        // parent's onPickFiles callback.
+                        fileRef.current?.click();
+                      } else if (s.id === "obsidian") {
+                        obsidianRef.current?.click();
+                      } else {
+                        setActive(s.id);
+                      }
+                    }}
+                    className="group flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all"
+                    style={{
+                      background: "var(--background)",
+                      border: "1px solid var(--border-dim)",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = s.color; (e.currentTarget as HTMLElement).style.boxShadow = `0 0 0 1px ${s.color}33`; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
+                  >
+                    <span
+                      className="shrink-0 flex items-center justify-center rounded-md"
+                      style={{ width: 32, height: 32, background: `${s.color}1a`, color: s.color }}
+                    >
+                      {s.icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>{s.label}</div>
+                      <div className="text-caption" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {active === "github" && (
+            <SimpleUrlForm
+              hint="Repo home, /tree/branch/path, /blob/branch/path, or raw.githubusercontent.com link. Up to 80 .md files, 200 KB each."
+              placeholder="https://github.com/owner/repo"
+              busy={busy}
+              error={error}
+              onSubmit={submitGithub}
+            />
+          )}
+
+          {active === "url" && (
+            <SimpleUrlForm
+              hint="Any public http(s) page. mdfy strips chrome (nav, footer, ads) and converts the main content."
+              placeholder="https://example.com/article"
+              busy={busy}
+              error={error}
+              onSubmit={submitUrl}
+            />
+          )}
+
+          {active === "notion" && (
+            <NotionForm
+              busy={busy}
+              error={error}
+              onSubmit={submitNotion}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Hidden file inputs — invoked via the source cards */}
+      <input
+        ref={obsidianRef}
+        type="file"
+        accept=".zip,application/zip"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.currentTarget.value = "";
+          if (file) submitObsidianZip(file);
+        }}
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          e.currentTarget.value = "";
+          if (files.length === 0) return;
+          // Hand off to the parent's import pipeline; close the modal.
+          onPickFiles(files);
+          close();
+        }}
+      />
+    </div>
+  );
+}
+
+function SimpleUrlForm({
+  hint,
+  placeholder,
+  busy,
+  error,
+  onSubmit,
+}: {
+  hint: string;
+  placeholder: string;
+  busy: boolean;
+  error: string | null;
+  onSubmit: (value: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(value); }} className="flex flex-col gap-3">
+      <p className="text-caption" style={{ color: "var(--text-muted)" }}>{hint}</p>
+      <input
+        autoFocus
+        type="url"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        disabled={busy}
+        className="px-3 py-2.5 rounded-md text-body outline-none transition-colors"
+        style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-dim)")}
+      />
+      {error && (
+        <div className="text-caption px-2 py-1.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+          {error}
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={busy || !value.trim()}
+        className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-body font-semibold transition-colors disabled:opacity-40"
+        style={{ background: "var(--accent)", color: "#000" }}
+      >
+        {busy ? <Loader2 width={14} height={14} className="animate-spin" /> : null}
+        {busy ? "Importing…" : "Import"}
+      </button>
+    </form>
+  );
+}
+
+function NotionForm({
+  busy,
+  error,
+  onSubmit,
+}: {
+  busy: boolean;
+  error: string | null;
+  onSubmit: (token: string, pageUrl: string) => void;
+}) {
+  const [token, setToken] = useState("");
+  const [pageUrl, setPageUrl] = useState("");
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(token, pageUrl); }} className="flex flex-col gap-3">
+      <p className="text-caption" style={{ color: "var(--text-muted)" }}>
+        Create an internal integration at{" "}
+        <a
+          href="https://www.notion.so/profile/integrations"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+          style={{ color: "var(--accent)" }}
+        >
+          notion.so/profile/integrations
+        </a>{" "}
+        and share the page with it. The token (<code className="font-mono" style={{ fontSize: 11 }}>secret_…</code>) is sent per-import and isn&apos;t stored.
+      </p>
+      <input
+        autoFocus
+        type="password"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder="secret_xxxxxxxxxxxxxxxxxxxxxxx"
+        disabled={busy}
+        className="px-3 py-2.5 rounded-md text-body outline-none transition-colors font-mono"
+        style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)", fontSize: 12 }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-dim)")}
+      />
+      <input
+        type="url"
+        value={pageUrl}
+        onChange={(e) => setPageUrl(e.target.value)}
+        placeholder="https://www.notion.so/My-Page-..."
+        disabled={busy}
+        className="px-3 py-2.5 rounded-md text-body outline-none transition-colors"
+        style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-dim)")}
+      />
+      {error && (
+        <div className="text-caption px-2 py-1.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.3)" }}>
+          {error}
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={busy || !token.trim() || !pageUrl.trim()}
+        className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-md text-body font-semibold transition-colors disabled:opacity-40"
+        style={{ background: "var(--accent)", color: "#000" }}
+      >
+        {busy ? <Loader2 width={14} height={14} className="animate-spin" /> : <FileText width={14} height={14} />}
+        {busy ? "Importing…" : "Import page"}
+      </button>
+    </form>
+  );
+}
