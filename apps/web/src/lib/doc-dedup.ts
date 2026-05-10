@@ -24,6 +24,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const DEDUP_WINDOW_MS = 30_000;
+// Loose-match window for anon captures. Audit 1 uncovered Chrome ext
+// captures producing 2-3 near-duplicate rows (whitespace-only diffs)
+// minutes apart — exact-md5 dedup let them through. Loose match
+// catches them. Authenticated users already use unbounded dedup, so
+// this only widens the anon path.
+export const DEDUP_LOOSE_WINDOW_MS = 5 * 60_000;
+const FINGERPRINT_LEN = 200;
+
+/** Cheap fingerprint for near-duplicate detection. */
+function fingerprintBody(md: string): string {
+  return md.replace(/\s+/g, " ").trim().slice(0, FINGERPRINT_LEN).toLowerCase();
+}
 
 /**
  * True when the supabase error is the partial UNIQUE index from
@@ -93,9 +105,22 @@ export async function findRecentDuplicateDoc(
     // (original) row, not the newest near-duplicate.
     q = q.order("created_at", { ascending: true }).limit(20);
     const { data: rows } = await q;
-    const hit = (rows || []).find((row) => row.markdown === markdown);
-    if (!hit) return null;
-    return { id: hit.id, edit_token: hit.edit_token, created_at: hit.created_at };
+    const exact = (rows || []).find((row) => row.markdown === markdown);
+    if (exact) return { id: exact.id, edit_token: exact.edit_token, created_at: exact.created_at };
+
+    // Loose match: same fingerprint within the loose window. Catches
+    // Chrome-ext capture races where the body differs by trailing
+    // whitespace or a punctuation tweak but represents the same paste.
+    const looseSinceIso = new Date(Date.now() - DEDUP_LOOSE_WINDOW_MS).toISOString();
+    const fp = fingerprintBody(markdown);
+    if (fp.length < 30) return null; // too short to fingerprint reliably
+    const loose = (rows || []).find((row) => {
+      if (!row.markdown) return false;
+      if (row.created_at < looseSinceIso) return false;
+      return fingerprintBody(row.markdown) === fp;
+    });
+    if (loose) return { id: loose.id, edit_token: loose.edit_token, created_at: loose.created_at };
+    return null;
   } catch {
     return null;
   }

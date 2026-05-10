@@ -16,7 +16,12 @@
     "audit:perm": "node --env-file=.env.local scripts/audit-permissions.mjs",
     "test:discover": "node --env-file=.env.local scripts/discover-test.mjs",
     "test:cross-refs": "tsx scripts/test-cross-refs.ts",
-    "test:cross-refs:integration": "node --env-file=.env.local scripts/cross-refs-integration.mjs"
+    "test:cross-refs:integration": "node --env-file=.env.local scripts/cross-refs-integration.mjs",
+    "test:title-invariant": "npx tsx scripts/test-title-invariant.ts",
+    "test:anti-template": "npx tsx scripts/test-anti-template.ts",
+    "test:dedup-fingerprint": "npx tsx scripts/test-dedup-fingerprint.ts",
+    "test:corruption-regression": "npx tsx --env-file=.env.local scripts/test-corruption-regression.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:corruption-regression"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

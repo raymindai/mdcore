@@ -4,6 +4,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { extractTitleFromMd, spliceH1 } from "@/lib/extract-title";
+import { evaluateAntiTemplateGuard } from "@/lib/anti-template-guard";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -459,6 +460,24 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Anti-template guard — if the client somehow tries to overwrite
+    // a non-template body with the welcome template, refuse. Belt
+    // and suspenders against the SAMPLE_WELCOME race that corrupted
+    // a dozen production docs before the client-side fix landed.
+    if (markdown !== undefined) {
+      const guard = evaluateAntiTemplateGuard({
+        incomingMarkdown: markdown,
+        existingMarkdown: doc.markdown,
+      });
+      if (guard.refuse) {
+        console.warn(`[anti-template-guard] refused PATCH on ${id}`, {
+          incomingBytes: markdown.length,
+          existingBytes: (doc.markdown || "").length,
+        });
+        return NextResponse.json({ error: guard.message, code: guard.reason }, { status: 409 });
+      }
+    }
+
     // Update without creating version history
     const updatedAt = new Date().toISOString();
     const updates: Record<string, unknown> = { updated_at: updatedAt };
@@ -717,6 +736,21 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       created_by: userId || null,
       change_summary: changeSummary || null,
     });
+  }
+
+  // Anti-template guard — same defense-in-depth as the auto-save branch.
+  if (markdown !== undefined) {
+    const guard = evaluateAntiTemplateGuard({
+      incomingMarkdown: markdown,
+      existingMarkdown: doc.markdown,
+    });
+    if (guard.refuse) {
+      console.warn(`[anti-template-guard] refused commit PATCH on ${id}`, {
+        incomingBytes: markdown.length,
+        existingBytes: (doc.markdown || "").length,
+      });
+      return NextResponse.json({ error: guard.message, code: guard.reason }, { status: 409 });
+    }
   }
 
   // Update — same non-mutating rule as the auto-save branch.
