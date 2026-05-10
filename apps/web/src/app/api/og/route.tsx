@@ -18,6 +18,22 @@ export async function GET(req: NextRequest) {
   const rawTitle = searchParams.get("title") || "";
   const featuresParam = searchParams.get("features") || "GFM,KaTeX,Mermaid,Code,Tables";
   const rawAuthor = searchParams.get("author") || "";
+  const hubSlug = searchParams.get("hub") || "";
+
+  // Hub mode short-circuit: when the OG is requested for a hub
+  // (?hub=<slug>) we render a specialised card with the wiki stats
+  // the caller passed (docs / concepts / tokens). The caller is
+  // /hub/[slug]/page.tsx which already has these numbers from its
+  // SSR fetch — we don't re-query Supabase from edge runtime.
+  if (hubSlug) {
+    return renderHubCard({
+      slug: hubSlug,
+      author: rawAuthor.length > 28 ? rawAuthor.slice(0, 25) + "..." : rawAuthor,
+      docCount: parseInt(searchParams.get("docs") || "0", 10) || 0,
+      conceptCount: parseInt(searchParams.get("concepts") || "0", 10) || 0,
+      tokenCount: parseInt(searchParams.get("tokens") || "0", 10) || 0,
+    });
+  }
 
   const hasTitle = rawTitle && rawTitle !== "Shared Document";
   const displayTitle = hasTitle
@@ -137,7 +153,7 @@ export async function GET(req: NextRequest) {
             <div style={{ display: "flex", alignItems: "baseline" }}>
               <span style={{ color: "#fb923c", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>md</span>
               <span style={{ color: "#fafafa", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>fy</span>
-              <span style={{ color: "#737373", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.cc</span>
+              <span style={{ color: "#737373", fontSize: hasTitle ? "44px" : "80px", fontWeight: 800, letterSpacing: "-1px" }}>.app</span>
             </div>
 
             {hasTitle ? (
@@ -205,5 +221,92 @@ export async function GET(req: NextRequest) {
       width: 1200,
       height: 630,
     },
+  );
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return String(n);
+}
+
+interface HubCardInput {
+  slug: string;
+  author: string;
+  docCount: number;
+  conceptCount: number;
+  tokenCount: number;
+}
+
+function renderHubCard({ slug, author, docCount, conceptCount, tokenCount }: HubCardInput) {
+  const headline = author ? `${author}'s knowledge hub` : `${slug}'s knowledge hub`;
+  const sub = "Karpathy's wiki — deployable to any AI";
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          position: "relative",
+          overflow: "hidden",
+          background: "linear-gradient(145deg, #0c0c0f 0%, #09090b 50%, #0a0a0e 100%)",
+        }}
+      >
+        {/* Soft accent glow */}
+        <div style={{ position: "absolute", top: "-220px", left: "-100px", width: "620px", height: "620px", borderRadius: "50%", background: "radial-gradient(circle, rgba(251,146,60,0.16) 0%, transparent 55%)", display: "flex" }} />
+        <div style={{ position: "absolute", bottom: "-240px", right: "-80px", width: "640px", height: "640px", borderRadius: "50%", background: "radial-gradient(circle, rgba(196,181,253,0.07) 0%, transparent 55%)", display: "flex" }} />
+
+        <div style={{ display: "flex", flexDirection: "column", width: "1040px", padding: "56px 64px", borderRadius: "28px", border: "1px solid rgba(255,255,255,0.08)", background: "linear-gradient(180deg, rgba(24,24,27,0.95) 0%, rgba(15,15,18,0.98) 100%)", boxShadow: "0 50px 100px rgba(0,0,0,0.6)" }}>
+          <div style={{ display: "flex", alignItems: "baseline", marginBottom: "10px" }}>
+            <span style={{ color: "#fb923c", fontSize: "30px", fontWeight: 800, letterSpacing: "-0.5px" }}>md</span>
+            <span style={{ color: "#fafafa", fontSize: "30px", fontWeight: 800, letterSpacing: "-0.5px" }}>fy</span>
+            <span style={{ color: "#52525b", fontSize: "30px", fontWeight: 800, letterSpacing: "-0.5px" }}>.app</span>
+            <span style={{ marginLeft: "16px", color: "#fb923c", fontSize: "14px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>Hub</span>
+          </div>
+
+          <div style={{ fontSize: "60px", fontWeight: 800, color: "#fafafa", lineHeight: 1.1, letterSpacing: "-2px", marginTop: "4px" }}>
+            {headline}
+          </div>
+
+          <div style={{ display: "flex", marginTop: "12px", color: "#a1a1aa", fontSize: "22px" }}>
+            mdfy.app/hub/{slug}
+          </div>
+
+          {/* Stat row */}
+          <div style={{ display: "flex", gap: "32px", marginTop: "44px" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ color: "#fafafa", fontSize: "52px", fontWeight: 800, letterSpacing: "-1.5px" }}>{formatNumber(docCount)}</span>
+              <span style={{ color: "#71717a", fontSize: "16px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: 600 }}>docs</span>
+            </div>
+            <div style={{ display: "flex", width: "1px", background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ color: "#fafafa", fontSize: "52px", fontWeight: 800, letterSpacing: "-1.5px" }}>{formatNumber(conceptCount)}</span>
+              <span style={{ color: "#71717a", fontSize: "16px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: 600 }}>concepts</span>
+            </div>
+            <div style={{ display: "flex", width: "1px", background: "rgba(255,255,255,0.08)" }} />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ color: "#fb923c", fontSize: "52px", fontWeight: 800, letterSpacing: "-1.5px" }}>~{formatNumber(tokenCount)}</span>
+              <span style={{ color: "#71717a", fontSize: "16px", textTransform: "uppercase", letterSpacing: "2px", fontWeight: 600 }}>tokens</span>
+            </div>
+          </div>
+
+          {/* Tagline */}
+          <div style={{ display: "flex", marginTop: "36px", color: "#a1a1aa", fontSize: "22px", fontWeight: 500 }}>
+            {sub}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ position: "absolute", bottom: "28px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ color: "#3f3f46", fontSize: "17px" }}>paste this URL into</span>
+          <span style={{ color: "#fb923c", fontSize: "17px", fontWeight: 700 }}>Claude · ChatGPT · Cursor · Codex</span>
+        </div>
+      </div>
+    ),
+    { width: 1200, height: 630 },
   );
 }

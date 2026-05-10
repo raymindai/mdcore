@@ -116,7 +116,27 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const author = hub.profile.display_name || slug;
   const title = `${author}'s knowledge hub — mdfy.app`;
   const description = hub.profile.hub_description ||
-    `${hub.docs.length} documents, ${hub.bundles.length} bundles. Personal knowledge hub for the AI era.`;
+    `${hub.docs.length} documents, ${hub.bundles.length} bundles. Karpathy's wiki, deployable to any AI.`;
+
+  // Compute the same stats the on-page banner shows so the
+  // hub-specific OG image can present them. We pass concept count
+  // as the bundle count for now (we don't fetch concept_index here
+  // to keep generateMetadata cheap) — the OG card labels them
+  // "docs · concepts · tokens", but the third number is the most
+  // load-bearing for AI users so we make sure it's right.
+  const totalWords = hub.docs.reduce(
+    (sum, d) => sum + (d.markdown || "").trim().split(/\s+/).filter(Boolean).length,
+    0,
+  );
+  const tokenEstimate = Math.round(totalWords * 1.3 + hub.docs.length * 8);
+  const ogParams = new URLSearchParams({
+    hub: slug,
+    author,
+    docs: String(hub.docs.length),
+    concepts: String(hub.bundles.length),
+    tokens: String(tokenEstimate),
+  });
+  const ogImage = `/api/og?${ogParams.toString()}`;
 
   return {
     title,
@@ -127,8 +147,14 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       url: `https://mdfy.app/hub/${slug}`,
       siteName: "mdfy.app",
       type: "profile",
+      images: [{ url: ogImage, width: 1200, height: 630 }],
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
     alternates: {
       canonical: `https://mdfy.app/hub/${slug}`,
       types: { "text/markdown": `https://mdfy.app/hub/${slug}.md` },

@@ -60,6 +60,7 @@ below returns plain markdown unless noted; cacheable; no auth required.
 - [\`/raw/hub/${slug}\`](${base}/raw/hub/${slug}) — whole-hub markdown listing.
 - [\`/raw/hub/${slug}?digest=1\`](${base}/raw/hub/${slug}?digest=1) — concept-clustered summary (fewer tokens).
 - [\`/raw/hub/${slug}/c/<concept>\`](${base}/raw/hub/${slug}/c/example) — per-concept passages across docs.
+- [\`/raw/hub/${slug}/lint.md\`](${base}/raw/hub/${slug}/lint.md) — orphan docs + likely-duplicate pairs (the wiki's health snapshot).
 - [\`/raw/<doc-id>\`](${base}/raw/abc123) — plain markdown for a single document.
 - [\`/raw/b/<bundle-id>\`](${base}/raw/b/abc123) — concatenated markdown for a bundle.
 

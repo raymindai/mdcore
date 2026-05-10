@@ -15,27 +15,30 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.app — Your personal knowledge hub for the AI era.",
+  title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
   description:
-    "Capture from anywhere. Bundle by topic. Deploy to any AI as a URL. Document, Bundle, Hub — every URL is a living document, deployable to Claude, ChatGPT, Cursor, anywhere.",
+    "You set the direction. mdfy structures the URL. Any AI reads it. Capture from ChatGPT, Claude, Notion, GitHub, Obsidian — your knowledge becomes a citable URL that Claude, ChatGPT, Cursor, and Codex all fetch the same way.",
   keywords: [
     "personal knowledge hub",
     "AI memory",
     "AI context",
-    "markdown",
+    "markdown wiki",
+    "LLM wiki",
+    "knowledge graph",
     "URL",
     "MCP",
     "Claude",
     "ChatGPT",
     "Cursor",
+    "Codex",
     "knowledge management",
   ],
   authors: [{ name: "mdfy", url: "https://mdfy.app" }],
   metadataBase: new URL("https://mdfy.app"),
   openGraph: {
-    title: "mdfy.app — Your personal knowledge hub for the AI era.",
+    title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
     description:
-      "Capture, Bundle, Deploy. One URL primitive at three scopes — Document, Bundle, Hub. Paste any URL into any AI as context.",
+      "You set the direction. mdfy structures the URL. Any AI reads it. The personal knowledge hub for the AI era.",
     url: "https://mdfy.app",
     siteName: "mdfy.app",
     type: "website",
@@ -43,9 +46,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.app — Your personal knowledge hub for the AI era.",
+    title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
     description:
-      "Capture, Bundle, Deploy. One URL primitive at three scopes. Deploy to any AI.",
+      "You set the direction. mdfy structures the URL. Any AI reads it.",
     images: ["/api/og"],
   },
   robots: {

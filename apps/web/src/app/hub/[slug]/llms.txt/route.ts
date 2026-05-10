@@ -84,6 +84,9 @@ export async function GET(
     `Activity log (public events only): https://mdfy.app/hub/${slug}/log.md`
   );
   lines.push(
+    `Lint report (orphan + duplicate findings): https://mdfy.app/raw/hub/${slug}/lint.md`
+  );
+  lines.push(
     `Index (full markdown listing): https://mdfy.app/raw/hub/${slug}?compact=1`
   );
   lines.push(

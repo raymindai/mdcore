@@ -1547,6 +1547,9 @@ interface Tab {
   // ({sources: [...]}). Use lib/compile-sources.ts → readCompileSources
   // to normalize at the read site instead of branching here.
   compileKind?: "memo" | "faq" | "brief";
+  // Hermes-style doc-type tag. Optional; null/undefined = uncategorised.
+  // Surfaced in raw exports + concept manifests; UI chip is a follow-up.
+  intent?: "note" | "definition" | "comparison" | "decision" | "question" | "reference" | null;
   compileFrom?: {
     bundleId?: string;
     docIds?: string[];
@@ -2727,6 +2730,19 @@ export default function MdEditor() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem("mdfy-show-trash") === "true";
   });
+  // Hub lint surface (Hermes Step 4: Review/Lint). Findings are
+  // computed server-side from concept_index + bundle_documents +
+  // embeddings; we cache them in component state so the section
+  // doesn't refetch on every keystroke. Fetched on mount when
+  // signed in, and re-fetched after operations that change the
+  // hub shape (doc create/delete/restore).
+  const [showLint, setShowLint] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("mdfy-show-lint");
+    return saved === null ? true : saved === "true";
+  });
+  const [lintReport, setLintReport] = useState<{ orphans: { id: string; title: string | null }[]; duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[]; totalDocs: number } | null>(null);
+  const [lintLoading, setLintLoading] = useState(false);
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number; section?: "my" | "bundles" } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -5539,6 +5555,17 @@ export default function MdEditor() {
         setBundles(data.bundles);
       })
       .catch(() => {});
+    // Hub lint — orphans + likely-duplicate pairs. Fired once on mount
+    // when the user is signed in. We don't poll; the user can re-run
+    // via the section's refresh button after an ingest / cleanup.
+    if (user?.id) {
+      setLintLoading(true);
+      fetch("/api/user/hub/lint", { headers: authHeaders })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
+        .catch(() => {})
+        .finally(() => setLintLoading(false));
+    }
     // Fetch user's own documents from server
     fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
       .then(res => res.ok ? res.json() : null)
@@ -9185,6 +9212,47 @@ ${clone.innerHTML}
                       <button
                         onClick={() => {
                           setShowLibraryNewMenu(false);
+                          setInlineInput({
+                            label: "URL of the page to import (http or https)",
+                            defaultValue: "",
+                            onSubmit: async (u) => {
+                              setInlineInput(null);
+                              const url = u.trim();
+                              if (!url) return;
+                              showToast("Fetching URL…", "info");
+                              try {
+                                const res = await fetch("/api/import/url", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json", ...authHeaders },
+                                  body: JSON.stringify({ url }),
+                                });
+                                const json = await res.json().catch(() => ({}));
+                                if (!res.ok) { showToast(json.error || `Import failed (${res.status})`, "error"); return; }
+                                const { imported = 0, deduplicated = 0, failed = 0 } = json as { imported?: number; deduplicated?: number; failed?: number };
+                                const parts = [
+                                  imported > 0 ? `${imported} imported` : null,
+                                  deduplicated > 0 ? `${deduplicated} already in your hub` : null,
+                                  failed > 0 ? `${failed} failed` : null,
+                                ].filter(Boolean);
+                                showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
+                                fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                                  .then((r) => (r.ok ? r.json() : null))
+                                  .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+                                  .catch(() => {});
+                              } catch { showToast("Import failed", "error"); }
+                            },
+                          });
+                        }}
+                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <Download width={11} height={11} /> Import from URL (any web page)…
+                      </button>
+                    )}
+                    {user?.id && (
+                      <button
+                        onClick={() => {
+                          setShowLibraryNewMenu(false);
                           // Two-step inline input — token then page URL — so we don't
                           // need a modal. Both stay in component state for the duration
                           // of the request and aren't persisted anywhere on our side.
@@ -10516,6 +10584,107 @@ ${clone.innerHTML}
               </>);
             })()}
 
+            {/* ── Section: NEEDS REVIEW (Hermes Step 4: lint).
+                  Surfaces orphan docs (not in any bundle, not linked
+                  from any other doc) and likely duplicate pairs.
+                  Only renders when there's at least one finding —
+                  empty hubs don't need to see an empty section. ── */}
+            {user?.id && lintReport && (lintReport.orphans.length + lintReport.duplicates.length) > 0 && (
+              <div className="shrink-0">
+                <div
+                  data-section-id="lint"
+                  className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                  style={{
+                    background: "color-mix(in srgb, var(--background) 25%, var(--surface) 75%)",
+                    borderTop: "1px solid var(--border)",
+                    borderBottom: showLint ? "1px solid var(--border)" : "none",
+                    position: "sticky", top: 0, zIndex: 10,
+                  }}
+                  onClick={() => { const next = !showLint; setShowLint(next); try { localStorage.setItem("mdfy-show-lint", String(next)); } catch {} }}
+                >
+                  <ChevronDown
+                    width={10} height={10}
+                    className={`shrink-0 transition-transform ${showLint ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                    style={{ transform: showLint ? "rotate(0deg)" : "rotate(-90deg)" }}
+                  />
+                  <span className={`flex-1 text-caption font-medium transition-colors ${showLint ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Needs review</span>
+                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{lintReport.orphans.length + lintReport.duplicates.length}</span>
+                </div>
+                {showLint && (
+                  <div className="space-y-0.5 pb-1.5 pl-2 pr-2 pt-1">
+                    {lintReport.orphans.slice(0, 8).map((o) => (
+                      <div
+                        key={`orphan-${o.id}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs cursor-pointer hover:bg-[var(--toggle-bg)] transition-colors"
+                        style={{ color: "var(--text-muted)" }}
+                        title="Orphan — not in any bundle, not linked from any other doc"
+                        onClick={() => {
+                          const existing = tabs.find(t => t.cloudId === o.id);
+                          if (existing) { switchTab(existing.id); return; }
+                          fetch(`/api/docs/${o.id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                            if (!d) return;
+                            const newId = `doc-${o.id}-${Date.now()}`;
+                            setTabs(prev => [...prev, { id: newId, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: o.id, isDraft: d.is_draft }]);
+                            switchTab(newId);
+                          }).catch(() => {});
+                        }}
+                      >
+                        <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>orphan</span>
+                        <span className="truncate flex-1">{o.title || "Untitled"}</span>
+                      </div>
+                    ))}
+                    {lintReport.duplicates.slice(0, 8).map((p) => (
+                      <div
+                        key={`dup-${p.a.id}-${p.b.id}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs cursor-pointer hover:bg-[var(--toggle-bg)] transition-colors"
+                        style={{ color: "var(--text-muted)" }}
+                        title={`Likely duplicate — distance ${p.distance.toFixed(3)}. Click to open both.`}
+                        onClick={() => {
+                          for (const id of [p.a.id, p.b.id]) {
+                            const existing = tabs.find(t => t.cloudId === id);
+                            if (existing) continue;
+                            fetch(`/api/docs/${id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                              if (!d) return;
+                              setTabs(prev => prev.some(t => t.cloudId === id) ? prev : [...prev, { id: `doc-${id}-${Date.now()}`, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: id, isDraft: d.is_draft }]);
+                            }).catch(() => {});
+                          }
+                          // Open the newer of the pair as the active tab.
+                          setTimeout(() => {
+                            const newer = tabs.find(t => t.cloudId === p.b.id);
+                            if (newer) switchTab(newer.id);
+                          }, 100);
+                        }}
+                      >
+                        <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--accent)", border: "1px solid var(--accent-dim)" }}>dup</span>
+                        <span className="truncate flex-1">{(p.a.title || "Untitled")} ↔ {(p.b.title || "Untitled")}</span>
+                      </div>
+                    ))}
+                    {(lintReport.orphans.length > 8 || lintReport.duplicates.length > 8) && (
+                      <div className="text-caption px-2.5 py-1" style={{ color: "var(--text-faint)" }}>
+                        …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
+                      </div>
+                    )}
+                    <button
+                      onClick={() => {
+                        setLintLoading(true);
+                        fetch("/api/user/hub/lint", { headers: authHeaders })
+                          .then((r) => (r.ok ? r.json() : null))
+                          .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
+                          .catch(() => {})
+                          .finally(() => setLintLoading(false));
+                      }}
+                      disabled={lintLoading}
+                      className="text-caption px-2.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)] disabled:opacity-50"
+                      style={{ color: "var(--text-faint)" }}
+                      title="Recompute lint"
+                    >
+                      {lintLoading ? "Recomputing…" : "Re-scan"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Section: GUIDES & EXAMPLES (above Trash so the
                   helper docs are reachable without scrolling past
                   the deleted-bin) ── */}
@@ -11514,18 +11683,20 @@ ${clone.innerHTML}
                     I bother" before "here's how it works." */}
                 <div className="mb-6">
                   <div className="flex items-baseline justify-between mb-2">
-                    <div className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>How people use mdfy</div>
+                    <div className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>What people put in mdfy</div>
                     <a href="/b/mdfy-in-practice" target="_blank" rel="noopener noreferrer" className="text-caption" style={{ color: "var(--text-faint)" }}>All cases &rarr;</a>
                   </div>
                   <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
-                    Four short Pain → Action → Result stories. Read in under a minute each.
+                    Concrete shapes the URL takes. Pick what fits your week.
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {([
-                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on the same context", url: "/case-cross-tool-handoff", color: "#fb923c" },
-                      { label: "CLAUDE.md onboarding", desc: "Every new chat loads your hub", url: "/case-claude-md-personal-context", color: "#fbbf24" },
-                      { label: "Share like Notion", desc: "AI conversation → teammate-readable URL", url: "/case-share-with-team", color: "#4ade80" },
-                      { label: "Personal LLM wiki", desc: "Karpathy's shape, automated", url: "/case-personal-llm-wiki", color: "#60a5fa" },
+                      { label: "Research notes", desc: "Papers + PDFs into one cited URL", url: "/case-research-notes", color: "#fb923c" },
+                      { label: "Meeting + interview log", desc: "Transcripts your AI can quote back", url: "/case-meetings-and-interviews", color: "#fbbf24" },
+                      { label: "Book + course notes", desc: "Chapter takeaways that compound", url: "/case-book-course-notes", color: "#4ade80" },
+                      { label: "Project decisions", desc: "Why you chose X, in one place", url: "/case-project-decisions", color: "#60a5fa" },
+                      { label: "Docs as a KB", desc: "Your team's docs, AI-readable", url: "/case-docs-as-kb", color: "#c4b5fd" },
+                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on shared context", url: "/case-cross-tool-handoff", color: "#f472b6" },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"

@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const { data, error } = await supabase
     .from("documents")
-    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token, deleted_at, source, compile_kind, compile_from, compiled_at")
+    .select("id, markdown, title, created_at, updated_at, view_count, password_hash, expires_at, edit_mode, user_id, anonymous_id, is_draft, allowed_emails, allowed_editors, edit_token, deleted_at, source, compile_kind, compile_from, compiled_at, intent")
     .eq("id", id)
     .single();
 
@@ -253,6 +253,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     folderId?: string | null;
     sortOrder?: number;
     expectedUpdatedAt?: string;
+    intent?: string | null;
   };
   try {
     body = await req.json();
@@ -529,6 +530,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
     if (body.source) updates.source = body.source;
     if (body.folderId !== undefined) updates.folder_id = body.folderId || null;
+    // Doc intent (note / definition / comparison / decision / question /
+    // reference). Null clears it. Anything else is silently ignored —
+    // the DB CHECK constraint also enforces this.
+    if (body.intent !== undefined) {
+      const allowed = new Set(["note", "definition", "comparison", "decision", "question", "reference"]);
+      if (body.intent === null) updates.intent = null;
+      else if (typeof body.intent === "string" && allowed.has(body.intent)) updates.intent = body.intent;
+    }
     // Track last editor
     if (userId) updates.last_editor_id = userId;
     if (userEmail) updates.last_editor_email = userEmail;

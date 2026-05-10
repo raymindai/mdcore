@@ -32,7 +32,8 @@
     "test:obsidian-import": "npx tsx --env-file=.env.local scripts/test-obsidian-import.ts",
     "test:hub-manifests": "npx tsx --env-file=.env.local scripts/test-hub-manifests.ts",
     "test:notion-import": "npx tsx --env-file=.env.local scripts/test-notion-import.ts",
-    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall && npm run test:github-import-live && npm run test:obsidian-import && npm run test:hub-manifests && npm run test:notion-import"
+    "test:url-import": "npx tsx --env-file=.env.local scripts/test-url-import.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall && npm run test:github-import-live && npm run test:obsidian-import && npm run test:hub-manifests && npm run test:notion-import && npm run test:url-import"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -72,6 +73,7 @@
     "elkjs": "^0.11.1",
     "highlight.js": "^11.11.1",
     "jszip": "^3.10.1",
+    "linkedom": "^0.18.12",
     "katex": "^0.16.40",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.12.0",
@@ -102,7 +104,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.14",
-    "linkedom": "^0.18.12",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
