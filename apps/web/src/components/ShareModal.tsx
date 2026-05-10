@@ -200,6 +200,22 @@ function ShareModal({
       if (onMakePrivate) onMakePrivate();
       return;
     }
+    // Switching to "Anyone with the link" while there are people in
+    // the access list USED to silently wipe allowed_emails +
+    // allowed_editors so the doc became read-public. Founder hit
+    // this — toggling between modes deleted the people they had
+    // explicitly invited, with no undo. Confirm before destroying
+    // that list.
+    if (mode === "anyone" && emails.length > 0) {
+      const confirmed = typeof window !== "undefined"
+        ? window.confirm(
+            `Switching to "Anyone with the link" will remove ${emails.length} ` +
+            `person${emails.length === 1 ? "" : "s"} from the access list. ` +
+            `Continue?`,
+          )
+        : true;
+      if (!confirmed) return;
+    }
     setGeneralAccess(mode);
     // Promoting from Private → Shared/Public requires publish (flips
     // is_draft=false on the server).
@@ -207,7 +223,8 @@ function ShareModal({
       try { await onPublish(); } catch { /* showToast handled in caller */ }
     }
     if (mode === "anyone" && emails.length > 0) {
-      // Drop the email allow-list so reads truly go public.
+      // Drop the email allow-list so reads truly go public — only
+      // reached after the explicit confirm above.
       setEmails([]);
       setEditors([]);
       await saveAccess([], []);
@@ -220,7 +237,7 @@ function ShareModal({
       onEditModeChange(editMode);
       showToast(mode === "restricted-people" ? "Restricted to people above" : "Anyone with the link can read", "success");
     } catch { showToast("Failed to change access", "error"); }
-  }, [docId, userId, onEditModeChange]);
+  }, [docId, userId, onEditModeChange, emails, editors, isPrivate, onMakePrivate, onPublish, changeEditModeFn, saveAccess]);
 
   const handleCopyLink = useCallback(async () => {
     const url = shareUrlOverride || `${window.location.origin}/${docId}`;
@@ -265,7 +282,7 @@ function ShareModal({
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Share with people
           </label>
-          <div className="flex gap-2">
+          <div className="flex items-stretch gap-2">
             <input
               ref={inputRef}
               type="text"
@@ -278,19 +295,23 @@ function ShareModal({
                 }
               }}
               placeholder="Add people by email..."
-              className="flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-colors"
+              className="flex-1 h-10 px-3 rounded-lg text-sm outline-none transition-colors"
               style={{
                 background: "var(--background)",
                 border: "1px solid var(--border)",
                 color: "var(--text-primary)",
               }}
             />
+            {/* h-10 wrapper forces the Button to match the input's
+                height. Button's size="md" is h-8 by design; the
+                inline height override only applies in this row. */}
             <Button
               variant={emailInput.trim() ? "primary" : "secondary"}
               size="md"
               onClick={() => emailInput.trim() && addEmail(emailInput)}
               disabled={!emailInput.trim() || saving}
               loading={saving}
+              className="!h-10"
             >
               Add
             </Button>

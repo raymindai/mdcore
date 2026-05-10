@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { password, expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
+  // `password` removed from the data model — see commit notes. The
+  // field is destructured for backward-compat with old clients but
+  // ignored downstream so no new password-protected docs are
+  // created.
+  const { expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
   // Title invariant: title column = H1 of body. We do NOT silently
   // mutate the body during creation. The only exception is a fresh
   // capture (POST) that passes a `title` hint with a body that
@@ -180,16 +184,8 @@ export async function POST(req: NextRequest) {
 
   const editToken = nanoid(32);
 
-  // Salted password hash (salt:base64-SHA-256)
-  let passwordHash: string | null = null;
-  if (password) {
-    const salt = crypto.randomUUID();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(salt + password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hash = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-    passwordHash = `${salt}:${hash}`;
-  }
+  // Password feature removed — new docs always have password_hash=null.
+  const passwordHash: string | null = null;
 
   // Expiration: expiresIn is in hours (user-specified only)
   const expiresAt = expiresIn

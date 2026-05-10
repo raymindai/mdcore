@@ -18,11 +18,8 @@ function textResult(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
 
-async function sha256Base64(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(input));
-  return btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-}
+// sha256Base64 helper removed alongside mdfy_set_password — no other
+// callers needed it.
 
 // Strip HTML tags + decode entities → plaintext markdown-ish
 function htmlToMarkdownLite(html: string): string {
@@ -508,21 +505,9 @@ function createMcpServer(userId?: string) {
 
   // ─── Sharing controls ───
 
-  server.tool(
-    "mdfy_set_password",
-    "Set or remove a password on a document",
-    {
-      id: z.string(),
-      password: z.string().describe("Password (empty string to remove)"),
-    },
-    async ({ id, password }) => {
-      if (!supabase) return errorResult("Storage not configured");
-      const passwordHash = password ? await sha256Base64(password) : null;
-      const { error } = await supabase.from("documents").update({ password_hash: passwordHash }).eq("id", id);
-      if (error) return errorResult(error.message);
-      return textResult(passwordHash ? `Password set on ${id}.` : `Password removed from ${id}.`);
-    }
-  );
+  // mdfy_set_password removed — password gating is no longer a
+  // supported access mode. The three real states are Private /
+  // Specific people only / Anyone with the link.
 
   server.tool(
     "mdfy_set_expiry",
