@@ -7,6 +7,7 @@ import { corsHeaders, ensureAnonymousCookie, readAnonymousCookie } from "@/lib/a
 import { appendHubLog } from "@/lib/hub-log";
 import { maybeRefreshSuggestions } from "@/lib/hub-suggestions";
 import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
+import { enqueueOntologyRefresh } from "@/lib/ontology-refresh";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -277,6 +278,30 @@ export async function POST(req: NextRequest) {
           await maybeRefreshSuggestions(supabase, ownerId);
         } catch (err) {
           console.warn("Suggestion refresh failed:", err);
+        }
+      });
+    }
+
+    // Fold this doc into the user's hub ontology after the response
+    // goes out. Per-doc cooldown inside enqueueOntologyRefresh damps
+    // autosave bursts. Auto-synthesis docs are excluded because they
+    // already represent a roll-up of other docs — re-extracting their
+    // concepts would double-count.
+    if (source !== "auto-synthesis") {
+      const ownerId = userId;
+      const docTitle = title || null;
+      const docMarkdown = markdown;
+      after(async () => {
+        try {
+          await enqueueOntologyRefresh({
+            supabase,
+            userId: ownerId,
+            docId: id,
+            title: docTitle,
+            markdown: docMarkdown,
+          });
+        } catch (err) {
+          console.warn("Ontology refresh failed:", err);
         }
       });
     }

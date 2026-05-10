@@ -137,6 +137,28 @@ function createMcpServer(userId?: string) {
         }
         return errorResult(`Failed to create: ${error.message}`);
       }
+      // Background ontology refresh so MCP-created docs flow into the
+      // hub's concept index just like web-created ones. Fire-and-forget.
+      if (userId) {
+        const ownerId = userId;
+        const docId = id;
+        const docTitle = title || null;
+        const docMarkdown = markdown;
+        void (async () => {
+          try {
+            const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+            await enqueueOntologyRefresh({
+              supabase,
+              userId: ownerId,
+              docId,
+              title: docTitle,
+              markdown: docMarkdown,
+            });
+          } catch (err) {
+            console.warn("Ontology refresh failed (mcp create):", err);
+          }
+        })();
+      }
       return textResult(`Document created:\n- URL: ${BASE_URL}/${id}\n- ID: ${id}\n- Status: ${isDraft ? "private draft" : "publicly accessible"}`);
     }
   );
@@ -167,6 +189,26 @@ function createMcpServer(userId?: string) {
       if (title) update.title = title;
       const { error } = await supabase.from("documents").update(update).eq("id", id);
       if (error) return errorResult(`Failed: ${error.message}`);
+      if (userId) {
+        const ownerId = userId;
+        const docId = id;
+        const docTitle = title || null;
+        const docMarkdown = markdown;
+        void (async () => {
+          try {
+            const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+            await enqueueOntologyRefresh({
+              supabase,
+              userId: ownerId,
+              docId,
+              title: docTitle,
+              markdown: docMarkdown,
+            });
+          } catch (err) {
+            console.warn("Ontology refresh failed (mcp update):", err);
+          }
+        })();
+      }
       return textResult(`Document ${id} updated.`);
     }
   );

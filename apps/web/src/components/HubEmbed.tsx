@@ -135,6 +135,12 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
   const [suggestions, setSuggestions] = useState<HubSuggestions | null>(null);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
+  // Ontology build state — surfaced only to the owner when concept_index
+  // is empty. The "Build ontology now" CTA fires the bulk extractor and
+  // shows live progress so the user knows the LLM is working.
+  const [ontologyBuilding, setOntologyBuilding] = useState(false);
+  const [ontologyProgress, setOntologyProgress] = useState<{ processed: number; concepts: number } | null>(null);
+  const [ontologyError, setOntologyError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,6 +225,58 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch { /* ignore */ }
+  };
+
+  // Bulk-extract concepts across the user's docs. Loops the endpoint in
+  // batches of 50 until `remaining: 0` so a hub with hundreds of docs
+  // gets fully indexed without a single fat request. Refreshes hub data
+  // + suggestions on completion so the new concept badges, digest size,
+  // and curation cards all appear immediately.
+  const buildOntology = async () => {
+    setOntologyBuilding(true);
+    setOntologyError(null);
+    setOntologyProgress({ processed: 0, concepts: 0 });
+    let totalProcessed = 0;
+    let totalConcepts = 0;
+    try {
+      // Cap at a few iterations so a runaway extractor never blocks the
+      // UI indefinitely — covers ~250 docs which is well above any
+      // realistic single-user hub at this point.
+      for (let i = 0; i < 5; i++) {
+        const res = await fetch(`/api/hub/${slug}/ontology/build`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ limit: 50 }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          setOntologyError(err.error || `Build failed (${res.status})`);
+          break;
+        }
+        const json = await res.json();
+        totalProcessed += json.processed || 0;
+        totalConcepts += json.conceptsWritten || 0;
+        setOntologyProgress({ processed: totalProcessed, concepts: totalConcepts });
+        if (json.remaining !== "more") break;
+      }
+      // Bust caches and refetch hub + suggestions so the new state lands.
+      hubDataCache.delete(slug);
+      const [hubRes, sugRes] = await Promise.all([
+        fetch(`/api/hub/${slug}`, { credentials: "include" }),
+        fetch(`/api/hub/${slug}/suggestions`, { credentials: "include" }),
+      ]);
+      if (hubRes.ok) {
+        const json = (await hubRes.json()) as HubData;
+        hubDataCache.set(slug, { data: json, ts: Date.now() });
+        setData(json);
+      }
+      if (sugRes.ok) setSuggestions(await sugRes.json());
+    } catch (err) {
+      setOntologyError(err instanceof Error ? err.message : "Build failed");
+    } finally {
+      setOntologyBuilding(false);
+    }
   };
 
   if (loading) {
@@ -340,6 +398,35 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                   Raw .md
                 </Link>
               </div>
+              {/* Token economy badge — author-facing feedback loop. The
+                  number is what an AI actually pays to read this hub.
+                  When the digest path is populated (concept_index has
+                  rows), we surface BOTH so authors can see how much
+                  cheaper the dense path is vs. the full index. */}
+              {(() => {
+                const totalWords = data.counts.totalWords ?? 0;
+                if (totalWords === 0) return null;
+                // ~1.3 tokens per English word is the conservative
+                // tiktoken average; slightly higher for mixed-language
+                // notes. Listings (titles, links) add ~8 tokens per doc.
+                const indexTokens = Math.round(totalWords * 1.3 + (data.counts.documents ?? 0) * 8);
+                // Digest packs concepts into ~25 tokens each (label +
+                // type + weight + 1-line + 2-3 doc links). Capped at 40
+                // concepts to match the renderDigest hard limit.
+                const conceptCount = Math.min(data.counts.concepts ?? 0, 40);
+                const digestTokens = conceptCount > 0 ? Math.round(conceptCount * 25 + 200) : 0;
+                const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+                return (
+                  <p
+                    className="text-caption mt-2 font-mono leading-relaxed"
+                    style={{ color: "var(--text-muted)", fontSize: 10 }}
+                    title="Estimated token cost when an AI fetches this hub. Lower = cheaper to cite. The digest path uses your concept ontology to answer broad queries without reading every doc."
+                  >
+                    ≈ {fmt(indexTokens)} tokens for the full index
+                    {digestTokens > 0 ? ` • ≈ ${fmt(digestTokens)} tokens via ?digest=1` : ""}
+                  </p>
+                );
+              })()}
             </div>
           </div>
         </section>
@@ -369,6 +456,58 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                 </div>
               );
             })}
+          </section>
+        )}
+
+        {/* ── Build-ontology CTA — owner-only, only when concept_index
+              is empty AND the hub already has docs to extract from.
+              Calling this populates concept_index/concept_relations so
+              the digest endpoint, suggestions, and per-concept pages
+              get something to show. Hidden once any concept exists so
+              we don't nag once the layer is bootstrapped. */}
+        {data.isOwner && (data.counts.concepts ?? 0) === 0 && (data.counts.documents > 0) && (
+          <section className="mb-8">
+            <div
+              className="px-4 py-4 rounded-xl flex items-start gap-3"
+              style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+            >
+              <span
+                className="flex items-center justify-center shrink-0 mt-0.5"
+                style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-dim)", color: "var(--accent)" }}
+              >
+                <Sparkles width={14} height={14} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-body font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Build your ontology
+                </p>
+                <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  Extract concepts across your {data.counts.documents} document{data.counts.documents === 1 ? "" : "s"} so an AI can answer &ldquo;what does this hub know about X?&rdquo; in a single fetch instead of reading every doc. Runs once, refreshes incrementally as you write.
+                </p>
+                {ontologyProgress && (
+                  <p className="text-caption mt-2 font-mono" style={{ color: ontologyError ? "#ef4444" : "var(--accent)" }}>
+                    {ontologyError
+                      ? ontologyError
+                      : ontologyBuilding
+                        ? `Extracting… ${ontologyProgress.processed} doc${ontologyProgress.processed === 1 ? "" : "s"}, ${ontologyProgress.concepts} concept${ontologyProgress.concepts === 1 ? "" : "s"}`
+                        : `Done — ${ontologyProgress.processed} doc${ontologyProgress.processed === 1 ? "" : "s"}, ${ontologyProgress.concepts} concept${ontologyProgress.concepts === 1 ? "" : "s"}`}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={buildOntology}
+                disabled={ontologyBuilding}
+                className="text-caption px-3 py-1.5 rounded shrink-0 transition-colors"
+                style={{
+                  background: "var(--accent)",
+                  color: "#fff",
+                  opacity: ontologyBuilding ? 0.5 : 1,
+                  cursor: ontologyBuilding ? "not-allowed" : "pointer",
+                }}
+              >
+                {ontologyBuilding ? "Building…" : "Build ontology"}
+              </button>
+            </div>
           </section>
         )}
 

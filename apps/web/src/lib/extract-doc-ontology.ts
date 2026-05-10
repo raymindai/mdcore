@@ -1,0 +1,296 @@
+// Per-document concept extraction.
+//
+// The bundle Analyze flow already populates concept_index from a
+// bundle's graph_data. That works once the user has built bundles, but
+// it leaves the hub's ontology blank until the first Analyze run. To
+// make "ask my hub" useful from doc 1, this lib lets us extract
+// concepts from a single document and merge them into concept_index +
+// concept_relations directly — no bundle required.
+//
+// Cheap path. Uses Haiku with a small JSON-only prompt; per-doc cost
+// is on the order of $0.001 for typical 1-2k word notes. Idempotent
+// on (user_id, normalized_label) so repeat extractions converge
+// instead of multiplying rows.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeConceptLabel } from "@/lib/build-concept-index";
+
+interface ExtractedConcept {
+  label: string;
+  type?: "concept" | "entity" | "tag";
+  weight?: number;
+  description?: string;
+}
+interface ExtractedRelation {
+  source: string;
+  target: string;
+  label?: string;
+  weight?: number;
+}
+interface ExtractedDoc {
+  concepts: ExtractedConcept[];
+  relations: ExtractedRelation[];
+}
+
+const PER_DOC_PROMPT = `You analyze ONE document and extract its key concepts.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "concepts": [
+    { "label": "Display name", "type": "concept|entity|tag", "weight": 1-5, "description": "One sentence: why this concept matters in THIS document" }
+  ],
+  "relations": [
+    { "source": "Concept A label", "target": "Concept B label", "label": "2-4 word relationship", "weight": 1-3 }
+  ]
+}
+
+RULES:
+- 5-15 concepts max. Quality over quantity. Skip filler.
+- Mix types thoughtfully:
+  - "concept" = abstract ideas, methodologies, principles
+  - "entity"  = specific products, technologies, companies, people, tools
+  - "tag"     = broad domains, topics
+- weight 1-5 (5 = central thesis of this doc, 1 = passing mention)
+- relations only between concepts you actually return. No orphan refs.
+- Use the SAME label string in relations as in concepts (case + spacing).
+- No prose, no fences, no commentary. JSON object only.`;
+
+export interface ExtractDocOntologyArgs {
+  supabase: SupabaseClient;
+  userId: string;
+  docId: string;
+  title: string;
+  markdown: string;
+  /** Override the default model picker. Mostly for tests. */
+  apiKey?: string;
+}
+
+export interface ExtractDocOntologyResult {
+  conceptsWritten: number;
+  relationsWritten: number;
+  skipped?: "empty" | "no_api_key" | "extract_failed";
+}
+
+/**
+ * Run a single-doc concept extraction and merge results into
+ * concept_index + concept_relations. Safe to call repeatedly — the
+ * unique constraint on (user_id, normalized_label) ensures convergence.
+ *
+ * Best-effort: if the LLM call fails, we skip silently. The caller
+ * should not let this block doc save.
+ */
+export async function extractDocOntology(
+  args: ExtractDocOntologyArgs,
+): Promise<ExtractDocOntologyResult> {
+  const { supabase, userId, docId, title, markdown } = args;
+  const trimmed = (markdown || "").trim();
+  if (trimmed.length < 200) {
+    return { conceptsWritten: 0, relationsWritten: 0, skipped: "empty" };
+  }
+
+  const extracted = await callExtractor(title, trimmed, args.apiKey);
+  if (!extracted) {
+    return { conceptsWritten: 0, relationsWritten: 0, skipped: "extract_failed" };
+  }
+
+  // 1. Upsert each concept node.
+  const idByLabel = new Map<string, number>();
+  let conceptsWritten = 0;
+  for (const c of extracted.concepts) {
+    const norm = normalizeConceptLabel(c.label || "");
+    if (!norm) continue;
+    const conceptType: "concept" | "entity" | "tag" = c.type === "entity" || c.type === "tag" ? c.type : "concept";
+
+    const { data: existing } = await supabase
+      .from("concept_index")
+      .select("id, doc_ids, weight, occurrence_count")
+      .eq("user_id", userId)
+      .eq("normalized_label", norm)
+      .maybeSingle();
+
+    if (existing) {
+      const newDocIds = Array.from(new Set([...(existing.doc_ids || []), docId]));
+      const newWeight = (existing.weight || 0) + (c.weight || 1);
+      const newOccurrence = (existing.occurrence_count || 0) + 1;
+      const { error } = await supabase
+        .from("concept_index")
+        .update({
+          label: c.label,
+          concept_type: conceptType,
+          description: c.description || undefined,
+          doc_ids: newDocIds,
+          weight: newWeight,
+          occurrence_count: newOccurrence,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (!error) {
+        idByLabel.set(c.label, existing.id);
+        conceptsWritten++;
+      }
+    } else {
+      const { data: inserted, error } = await supabase
+        .from("concept_index")
+        .insert({
+          user_id: userId,
+          label: c.label,
+          normalized_label: norm,
+          concept_type: conceptType,
+          weight: c.weight || 1,
+          description: c.description || null,
+          doc_ids: [docId],
+          bundle_ids: [],
+          occurrence_count: 1,
+        })
+        .select("id")
+        .single();
+      if (!error && inserted) {
+        idByLabel.set(c.label, inserted.id);
+        conceptsWritten++;
+      }
+    }
+  }
+
+  // 2. Upsert relations between concepts present in THIS doc. Evidence
+  //    is just `[docId]` since this single-doc extraction is the only
+  //    proof we have right now.
+  let relationsWritten = 0;
+  for (const r of extracted.relations) {
+    const srcId = idByLabel.get(r.source);
+    const tgtId = idByLabel.get(r.target);
+    if (!srcId || !tgtId || srcId === tgtId) continue;
+    const relLabel = (r.label || "related").trim().toLowerCase();
+
+    const { data: existingRel } = await supabase
+      .from("concept_relations")
+      .select("id, weight, evidence_doc_ids")
+      .eq("user_id", userId)
+      .eq("source_concept_id", srcId)
+      .eq("target_concept_id", tgtId)
+      .eq("relation_label", relLabel)
+      .maybeSingle();
+
+    if (existingRel) {
+      const mergedEvidence = Array.from(new Set([...(existingRel.evidence_doc_ids || []), docId]));
+      await supabase
+        .from("concept_relations")
+        .update({
+          weight: (existingRel.weight || 0) + (r.weight || 1),
+          evidence_doc_ids: mergedEvidence,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingRel.id);
+      relationsWritten++;
+    } else {
+      await supabase.from("concept_relations").insert({
+        user_id: userId,
+        source_concept_id: srcId,
+        target_concept_id: tgtId,
+        relation_label: relLabel,
+        weight: r.weight || 1,
+        evidence_doc_ids: [docId],
+      });
+      relationsWritten++;
+    }
+  }
+
+  return { conceptsWritten, relationsWritten };
+}
+
+async function callExtractor(title: string, markdown: string, overrideKey?: string): Promise<ExtractedDoc | null> {
+  const anthropicKey = overrideKey || process.env.ANTHROPIC_API_KEY;
+  const openaiKey = !anthropicKey ? process.env.OPENAI_API_KEY : null;
+  const geminiKey = !anthropicKey && !openaiKey ? process.env.GEMINI_API_KEY : null;
+  if (!anthropicKey && !openaiKey && !geminiKey) return null;
+
+  // Truncate to 8000 chars — covers 95% of personal notes; preserves
+  // beginning + ending which is where signal usually lives. Middle
+  // omitted so the model still sees both ends of the document.
+  const truncated = clipMiddle(markdown, 8000);
+  const userBlock = `Title: ${title || "Untitled"}\n\n${truncated}`;
+
+  try {
+    if (anthropicKey) {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2048,
+          system: "You return ONLY valid JSON matching the schema requested. No prose, no fences.",
+          messages: [{ role: "user", content: `${PER_DOC_PROMPT}\n\nDocument:\n${userBlock}` }],
+        }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "";
+      return parsePerDocJson(text);
+    }
+    if (openaiKey) {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: PER_DOC_PROMPT },
+            { role: "user", content: `Document:\n${userBlock}` },
+          ],
+          max_tokens: 2048,
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return parsePerDocJson(data.choices?.[0]?.message?.content || "");
+    }
+    if (geminiKey) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${PER_DOC_PROMPT}\n\nDocument:\n${userBlock}` }] }],
+            generationConfig: { maxOutputTokens: 2048, responseMimeType: "application/json" },
+          }),
+        },
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return parsePerDocJson(data.candidates?.[0]?.content?.parts?.[0]?.text || "");
+    }
+  } catch (err) {
+    console.warn("extractDocOntology API error:", err instanceof Error ? err.message : err);
+  }
+  return null;
+}
+
+function parsePerDocJson(text: string): ExtractedDoc | null {
+  let candidate = text.trim();
+  const fence = candidate.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fence) candidate = fence[1].trim();
+  const first = candidate.indexOf("{");
+  const last = candidate.lastIndexOf("}");
+  if (first >= 0 && last > first) candidate = candidate.slice(first, last + 1);
+  try {
+    const parsed = JSON.parse(candidate);
+    return {
+      concepts: Array.isArray(parsed.concepts) ? parsed.concepts : [],
+      relations: Array.isArray(parsed.relations) ? parsed.relations : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clipMiddle(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const head = text.slice(0, Math.floor(maxChars * 0.6));
+  const tail = text.slice(text.length - Math.floor(maxChars * 0.4));
+  return `${head}\n\n[…middle elided…]\n\n${tail}`;
+}

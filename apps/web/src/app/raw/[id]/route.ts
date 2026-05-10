@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { permissionResponse } from "@/lib/permission-response";
 import { verifyAuthToken } from "@/lib/verify-auth";
+import { compactMarkdown, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
 
 // Public, AI-deployable representation of a single mdfy document.
 // Hit by:
@@ -78,7 +79,10 @@ export async function GET(
     "",
   ].filter(Boolean).join("\n");
 
-  const body = `${frontmatter}\n${data.markdown || ""}`;
+  const compact = isCompactRequested(request.url);
+  const rawMarkdown = data.markdown || "";
+  const md = compact ? compactMarkdown(rawMarkdown) : rawMarkdown;
+  const body = `${frontmatter}\n${md}`;
 
   return new NextResponse(body, {
     status: 200,
@@ -92,6 +96,7 @@ export async function GET(
       // page, not the raw markdown.
       "Link": `<https://mdfy.app/${id}>; rel="canonical"`,
       "X-Document-ID": id,
+      ...tokenEconomyHeaders(body, { compact }),
     },
   });
 }

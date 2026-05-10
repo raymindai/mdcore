@@ -197,6 +197,26 @@ export async function POST(req: NextRequest) {
         summary: title,
         metadata: { source: sourceTag, pages, cleanedByAi },
       });
+      // Background ontology extraction — PDF imports are usually
+      // long-form so this is high-signal compared to short notes.
+      const ownerId = userId;
+      const docTitle = title;
+      const docMarkdown = markdown;
+      const docId = id;
+      void (async () => {
+        try {
+          const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+          await enqueueOntologyRefresh({
+            supabase,
+            userId: ownerId,
+            docId,
+            title: docTitle,
+            markdown: docMarkdown,
+          });
+        } catch (err) {
+          console.warn("Ontology refresh failed (PDF):", err);
+        }
+      })();
     }
 
     const res = NextResponse.json({

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { permissionResponse } from "@/lib/permission-response";
+import { compactMarkdown, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
 
 /**
  * v6 — Bundle URL → Bundle Spec v1.0 conformant markdown payload.
@@ -132,6 +133,8 @@ export async function GET(
   sections.push(`# ${bundle.title || "Untitled Bundle"}`);
   if (description) sections.push(`> ${description.split("\n").join("\n> ")}`);
 
+  const compact = isCompactRequested(request.url);
+
   let visibleIdx = 0;
   for (const bd of bundleDocs || []) {
     const d = byId.get(bd.document_id);
@@ -143,14 +146,16 @@ export async function GET(
     sections.push(`## ${visibleIdx}. ${docTitle}`);
     sections.push(`*Source: ${docUrl}*`);
     if (annotation) sections.push(`> ${annotation.split("\n").join("\n> ")}`);
-    sections.push(d!.markdown || "");
+    const docMd = d!.markdown || "";
+    sections.push(compact ? compactMarkdown(docMd) : docMd);
   }
 
   if (visibleIdx === 0) {
     sections.push("_This bundle currently exposes no public documents._");
   }
 
-  const body = `${frontmatter}\n${sections.join("\n\n")}`;
+  const joined = `${frontmatter}\n${sections.join("\n\n")}`;
+  const body = compact ? compactMarkdown(joined) : joined;
 
   return new NextResponse(body, {
     status: 200,
@@ -160,6 +165,7 @@ export async function GET(
       "Link": `<https://mdfy.app/b/${bundle.id}>; rel="canonical"`,
       "X-Bundle-ID": bundle.id,
       "X-Document-Count": String(includedCount),
+      ...tokenEconomyHeaders(body, { compact }),
     },
   });
 }

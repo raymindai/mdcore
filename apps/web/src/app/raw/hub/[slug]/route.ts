@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { compactMarkdown, isCompactRequested, isDigestRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
 
 /**
  * v6 — Hub URL raw fetch.
@@ -45,7 +46,7 @@ import { getSupabaseClient } from "@/lib/supabase";
  * leaks via the hub aggregate.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
@@ -64,6 +65,31 @@ export async function GET(
 
   if (!profile || !profile.hub_public) {
     return new NextResponse("Hub not found", { status: 404 });
+  }
+
+  const compact = isCompactRequested(request.url);
+  const digest = isDigestRequested(request.url);
+
+  // Digest mode bypasses the index entirely — produces a concept-clustered
+  // summary from concept_index that's an order of magnitude denser than
+  // the per-doc listing for "what does this person know about X" queries.
+  if (digest) {
+    const body = await renderDigest({
+      supabase,
+      profile,
+      slug,
+      compact,
+    });
+    return new NextResponse(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Cache-Control": "public, max-age=300, s-maxage=300, stale-while-revalidate=900",
+        "Link": `<https://mdfy.app/hub/${slug}>; rel="canonical"`,
+        "X-Hub-Slug": slug,
+        ...tokenEconomyHeaders(body, { compact, digest: true }),
+      },
+    });
   }
 
   const { data: docs } = await supabase
@@ -149,7 +175,8 @@ export async function GET(
     sections.push("_This hub doesn't have any public documents yet._");
   }
 
-  const body = `${frontmatter}\n${sections.join("\n\n")}\n`;
+  const joined = `${frontmatter}\n${sections.join("\n\n")}\n`;
+  const body = compact ? compactMarkdown(joined) : joined;
 
   return new NextResponse(body, {
     status: 200,
@@ -158,6 +185,7 @@ export async function GET(
       "Cache-Control": "public, max-age=120, s-maxage=120, stale-while-revalidate=600",
       "Link": `<https://mdfy.app/hub/${slug}>; rel="canonical"`,
       "X-Hub-Slug": slug,
+      ...tokenEconomyHeaders(body, { compact }),
     },
   });
 }
@@ -175,4 +203,120 @@ function formatRelativeDate(iso?: string | null): string {
   if (days === 1) return "yesterday";
   if (days <= 6) return `${days} days ago`;
   return formatDate(iso);
+}
+
+// ── Digest mode renderer ─────────────────────────────────────────────
+// Concept-clustered summary derived from concept_index. Massively denser
+// than the per-doc index for "what does this hub know about X" queries.
+// Fallback to a stub when concept_index is empty so the AI sees a clear
+// pointer to the full index rather than nothing.
+
+interface DigestProfile {
+  id: string;
+  display_name: string | null;
+  hub_slug: string | null;
+  hub_description: string | null;
+}
+
+interface ConceptRow {
+  id: number;
+  label: string;
+  concept_type: string | null;
+  description: string | null;
+  weight: number | null;
+  occurrence_count: number | null;
+  doc_ids: string[] | null;
+}
+
+interface DigestArgs {
+  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>;
+  profile: DigestProfile;
+  slug: string;
+  compact: boolean;
+}
+
+async function renderDigest({ supabase, profile, slug, compact }: DigestArgs): Promise<string> {
+  const author = (profile.display_name || slug).replace(/"/g, '\\"');
+  const description = (profile.hub_description || "").trim();
+
+  // Top concepts by weight × occurrence — central themes first. Capped
+  // at 40 so a 500-doc hub still fits comfortably under 4k tokens.
+  const { data: rawConcepts } = await supabase
+    .from("concept_index")
+    .select("id, label, concept_type, description, weight, occurrence_count, doc_ids")
+    .eq("user_id", profile.id)
+    .order("weight", { ascending: false })
+    .limit(40);
+  const concepts = (rawConcepts as ConceptRow[] | null) || [];
+
+  // Resolve doc titles in one round-trip, only for the docs referenced
+  // by the top concepts AND visible to the public (no draft, no
+  // password, no email allow-list).
+  const docIdSet = new Set<string>();
+  for (const c of concepts) for (const id of c.doc_ids || []) docIdSet.add(id);
+  let docTitleById = new Map<string, string>();
+  if (docIdSet.size > 0) {
+    const { data: docRows } = await supabase
+      .from("documents")
+      .select("id, title, is_draft, password_hash, allowed_emails, deleted_at")
+      .in("id", Array.from(docIdSet));
+    docTitleById = new Map(
+      (docRows || [])
+        .filter((d) => !d.is_draft && !d.deleted_at && !d.password_hash &&
+          !(Array.isArray(d.allowed_emails) && d.allowed_emails.length > 0))
+        .map((d) => [d.id, d.title || "Untitled"]),
+    );
+  }
+
+  const updatedAt = new Date().toISOString();
+
+  const frontmatter = [
+    "---",
+    "mdfy_bundle: 1",
+    "type: hub_digest",
+    `slug: ${slug}`,
+    `author: "${author}"`,
+    `url: https://mdfy.app/hub/${slug}`,
+    `concept_count: ${concepts.length}`,
+    `updated: ${updatedAt}`,
+    'source: "mdfy.app"',
+    "---",
+    "",
+  ].join("\n");
+
+  const sections: string[] = [];
+  sections.push(`# ${profile.display_name || slug}'s knowledge — concept digest`);
+  if (description) sections.push(`> ${description.split("\n").join("\n> ")}`);
+
+  if (concepts.length === 0) {
+    sections.push(
+      "_The ontology for this hub hasn't been built yet. Ask the owner to run **Build ontology** in their hub view, " +
+      `or fetch [the full index](https://mdfy.app/raw/hub/${slug}?compact=1) instead._`,
+    );
+  } else {
+    sections.push(
+      `_${concepts.length} concept${concepts.length === 1 ? "" : "s"} extracted across this hub. Each entry links to the supporting documents — fetch any of them as \`https://mdfy.app/raw/<id>?compact=1\` for the dense full text._`,
+    );
+
+    sections.push("## Concepts");
+    for (const c of concepts) {
+      const visibleDocs = (c.doc_ids || []).filter((id) => docTitleById.has(id)).slice(0, 6);
+      if (visibleDocs.length === 0) continue;
+      const meta = [
+        c.concept_type || "concept",
+        `weight ${Math.round(c.weight || 0)}`,
+        `${visibleDocs.length} doc${visibleDocs.length === 1 ? "" : "s"}`,
+      ].join(" • ");
+      sections.push(`### ${c.label}\n*${meta}*`);
+      if (c.description) sections.push(`> ${c.description.split("\n")[0]}`);
+      sections.push(visibleDocs.map((id) => `- [${docTitleById.get(id)}](https://mdfy.app/${id})`).join("\n"));
+    }
+  }
+
+  sections.push(
+    `---\n\n_Need everything? [Full hub index](https://mdfy.app/raw/hub/${slug}?compact=1) lists every public document. [llms.txt manifest](https://mdfy.app/hub/${slug}/llms.txt) explains how to crawl this hub._`,
+  );
+
+  const body = `${frontmatter}\n${sections.join("\n\n")}\n`;
+  return compact ? compactMarkdown(body) : body;
 }

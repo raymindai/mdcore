@@ -520,6 +520,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       } catch { /* notification is best-effort */ }
     }
 
+    // Fold the updated doc into the user's hub ontology. Per-doc 30-min
+    // cooldown inside enqueueOntologyRefresh keeps autosave bursts cheap.
+    if (markdown !== undefined && doc.user_id) {
+      const ownerId = doc.user_id;
+      const newTitle = title !== undefined ? title : doc.title;
+      const newMarkdown = markdown;
+      after(async () => {
+        try {
+          const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+          await enqueueOntologyRefresh({
+            supabase,
+            userId: ownerId,
+            docId: id,
+            title: newTitle,
+            markdown: newMarkdown,
+          });
+        } catch (err) {
+          console.warn("Ontology refresh failed (auto-save):", err);
+        }
+      });
+    }
+
     return NextResponse.json({ ok: true, updated_at: updatedAt });
   }
 
@@ -693,6 +715,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
   const { error } = await supabase.from("documents").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+
+  // Fold the committed update into the user's hub ontology. Same
+  // cooldown / delta gates as the auto-save path.
+  if (markdown !== undefined && doc.user_id) {
+    const ownerId = doc.user_id;
+    const newTitle = title !== undefined ? title : doc.title;
+    const newMarkdown = markdown;
+    after(async () => {
+      try {
+        const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+        await enqueueOntologyRefresh({
+          supabase,
+          userId: ownerId,
+          docId: id,
+          title: newTitle,
+          markdown: newMarkdown,
+        });
+      } catch (err) {
+        console.warn("Ontology refresh failed (commit):", err);
+      }
+    });
+  }
 
   return NextResponse.json({ ok: true, version: nextVersion });
 }
