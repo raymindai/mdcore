@@ -12884,6 +12884,11 @@ ${clone.innerHTML}
                   onSubmit: (trimmed) => {
                     setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, title: trimmed } : t));
                     if (tab.id === activeTabIdRef.current) {
+                      // Active tab: splice the H1 in the visible body so
+                      // the editor reflects the rename instantly. The
+                      // standard autoSave flow then PATCHes both
+                      // markdown + title; the server-side title
+                      // invariant keeps DB.title aligned with the H1.
                       const md = markdownRef.current;
                       const lines = md.split("\n");
                       const h1Idx = lines.findIndex(l => /^#\s+/.test(l));
@@ -12894,6 +12899,26 @@ ${clone.innerHTML}
                       doRender(newMd);
                       cmSetDocRef.current?.(newMd);
                       setTitle(trimmed);
+                    } else if (tab.cloudId) {
+                      // Non-active cloud tab: client doesn't have the
+                      // body loaded, so it can't splice locally. Send a
+                      // pure title PATCH — the server splices the H1
+                      // into the existing markdown so body and column
+                      // stay in lockstep, and the next loadTab won't
+                      // "snap" to a different title.
+                      const headers: Record<string, string> = { "Content-Type": "application/json", ...authHeadersRef.current };
+                      fetch(`/api/docs/${tab.cloudId}`, {
+                        method: "PATCH",
+                        headers,
+                        body: JSON.stringify({
+                          action: "auto-save",
+                          title: trimmed,
+                          userId: user?.id,
+                          userEmail: user?.email,
+                          anonymousId,
+                          editToken: tab.editToken,
+                        }),
+                      }).catch(() => {});
                     }
                     setInlineInput(null);
                   },

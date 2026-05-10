@@ -3,8 +3,42 @@ import { nanoid } from "nanoid";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { extractTitleFromMd } from "@/lib/extract-title";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+// Title invariant: a doc's title is its first H1. Always. Helpers
+// below enforce this server-side so any client (web auto-save, MCP,
+// PDF import, Chrome ext, VS Code, Desktop sync) converges on the
+// same rule without having to reimplement it.
+//
+// deriveTitleFromMarkdown — return the H1 if present, else null. Null
+// means "no opinion, keep whatever title was already there." Avoids
+// nuking a user-typed title just because they removed the H1 line
+// mid-edit.
+function deriveTitleFromMarkdown(markdown: string): string | null {
+  const t = extractTitleFromMd(markdown || "");
+  return t && t !== "Untitled" ? t : null;
+}
+
+// spliceH1Into — for rename flows that send a new title without
+// markdown. Replaces the existing H1 line with `# <newTitle>`, or
+// prepends one when the doc has no H1 yet. Keeps the rest of the body
+// byte-identical so we don't churn user content during a rename.
+function spliceH1Into(markdown: string, newTitle: string): string {
+  const md = markdown || "";
+  const lines = md.split("\n");
+  const h1Idx = lines.findIndex((l) => /^#\s+/.test(l));
+  if (h1Idx >= 0) {
+    lines[h1Idx] = `# ${newTitle}`;
+    return lines.join("\n");
+  }
+  // Empty doc or no H1 yet — prepend one with a blank line buffer.
+  if (lines.length === 0 || (lines.length === 1 && lines[0] === "")) {
+    return `# ${newTitle}\n`;
+  }
+  return `# ${newTitle}\n\n${md}`;
+}
 
 // Validate document ID: only alphanumeric, hyphen, underscore (nanoid charset)
 function isValidDocId(id: string): boolean {
@@ -461,8 +495,27 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     // Update without creating version history
     const updatedAt = new Date().toISOString();
     const updates: Record<string, unknown> = { updated_at: updatedAt };
-    if (markdown !== undefined) updates.markdown = markdown;
-    if (title !== undefined) updates.title = title;
+    // Title invariant — title is always the H1 of the markdown body.
+    // - markdown supplied: derive title from H1 (override any client title)
+    // - title only:        splice the H1 in the existing markdown so body
+    //                       and column converge.
+    // Without this, an MCP create with a custom title or a body edit that
+    // changed the H1 leaves DB.title and the rendered H1 diverged — and
+    // the next loadTab "snaps" the visible title to the H1, which looked
+    // like a glitch to the user.
+    if (markdown !== undefined) {
+      updates.markdown = markdown;
+      const derived = deriveTitleFromMarkdown(markdown);
+      if (derived) {
+        updates.title = derived;
+      } else if (title !== undefined) {
+        updates.title = title;
+      }
+    } else if (title !== undefined) {
+      const splicedMd = spliceH1Into(doc.markdown || "", title);
+      updates.markdown = splicedMd;
+      updates.title = title;
+    }
     if (body.source) updates.source = body.source;
     if (body.folderId !== undefined) updates.folder_id = body.folderId || null;
     // Track last editor
@@ -708,10 +761,21 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     });
   }
 
-  // Update
+  // Update — same title invariant as the auto-save branch.
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (markdown !== undefined) updates.markdown = markdown;
-  if (title !== undefined) updates.title = title;
+  if (markdown !== undefined) {
+    updates.markdown = markdown;
+    const derived = deriveTitleFromMarkdown(markdown);
+    if (derived) {
+      updates.title = derived;
+    } else if (title !== undefined) {
+      updates.title = title;
+    }
+  } else if (title !== undefined) {
+    const splicedMd = spliceH1Into(doc.markdown || "", title);
+    updates.markdown = splicedMd;
+    updates.title = title;
+  }
 
   const { error } = await supabase.from("documents").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });

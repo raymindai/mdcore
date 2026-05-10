@@ -106,14 +106,28 @@ function createMcpServer(userId?: string) {
     async ({ markdown, title, draft }) => {
       if (!supabase) return errorResult("Storage not configured");
       const isDraft = draft ?? true;
+      // Title invariant: title must equal the H1 of the markdown.
+      // - If markdown has an H1, derive title from it (override the
+      //   tool-supplied title — the body is the source of truth).
+      // - If not, prepend `# <suppliedTitle>` so the doc has an H1 and
+      //   the editor / sidebar / hub all agree on what to display.
+      const { extractTitleFromMd } = await import("@/lib/extract-title");
+      let storedMarkdown = markdown;
+      let storedTitle = title || null;
+      const bodyH1 = extractTitleFromMd(markdown);
+      if (bodyH1 && bodyH1 !== "Untitled") {
+        storedTitle = bodyH1;
+      } else if (storedTitle) {
+        storedMarkdown = `# ${storedTitle}\n\n${markdown}`;
+      }
       // 30s same-content dedup so an MCP client that retries on transient
       // error (or an LLM that calls mdfy_create twice for the same output)
       // doesn't pile up a sibling row.
       const dupHit = await findRecentDuplicateDoc(
         supabase,
         { userId },
-        markdown,
-        title || null,
+        storedMarkdown,
+        storedTitle,
       );
       if (dupHit) {
         return textResult(`Document already exists (deduplicated):\n- URL: ${BASE_URL}/${dupHit.id}\n- ID: ${dupHit.id}`);
@@ -121,7 +135,7 @@ function createMcpServer(userId?: string) {
       const id = nanoid(8);
       const editToken = nanoid(32);
       const { error } = await supabase.from("documents").insert({
-        id, markdown, title: title || null,
+        id, markdown: storedMarkdown, title: storedTitle,
         edit_token: editToken,
         user_id: userId || null,
         edit_mode: userId ? "account" : "token",
@@ -130,7 +144,7 @@ function createMcpServer(userId?: string) {
       if (error) {
         if (isStrictDupLockError(error)) {
           // Race lost — return the existing identical doc.
-          const survivor = await findRecentDuplicateDoc(supabase, { userId }, markdown, title || null);
+          const survivor = await findRecentDuplicateDoc(supabase, { userId }, storedMarkdown, storedTitle);
           if (survivor) {
             return textResult(`Document already exists (deduplicated):\n- URL: ${BASE_URL}/${survivor.id}\n- ID: ${survivor.id}`);
           }
@@ -142,8 +156,8 @@ function createMcpServer(userId?: string) {
       if (userId) {
         const ownerId = userId;
         const docId = id;
-        const docTitle = title || null;
-        const docMarkdown = markdown;
+        const docTitle = storedTitle;
+        const docMarkdown = storedMarkdown;
         void (async () => {
           try {
             const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
@@ -185,15 +199,26 @@ function createMcpServer(userId?: string) {
     },
     async ({ id, markdown, title }) => {
       if (!supabase) return errorResult("Storage not configured");
-      const update: Record<string, unknown> = { markdown, updated_at: new Date().toISOString() };
-      if (title) update.title = title;
+      // Title invariant — derive from H1 if present; otherwise prepend
+      // the supplied title as H1 so the body and stored title agree.
+      const { extractTitleFromMd } = await import("@/lib/extract-title");
+      let storedMarkdown = markdown;
+      let storedTitle = title;
+      const bodyH1 = extractTitleFromMd(markdown);
+      if (bodyH1 && bodyH1 !== "Untitled") {
+        storedTitle = bodyH1;
+      } else if (title) {
+        storedMarkdown = `# ${title}\n\n${markdown}`;
+      }
+      const update: Record<string, unknown> = { markdown: storedMarkdown, updated_at: new Date().toISOString() };
+      if (storedTitle) update.title = storedTitle;
       const { error } = await supabase.from("documents").update(update).eq("id", id);
       if (error) return errorResult(`Failed: ${error.message}`);
       if (userId) {
         const ownerId = userId;
         const docId = id;
-        const docTitle = title || null;
-        const docMarkdown = markdown;
+        const docTitle = storedTitle || null;
+        const docMarkdown = storedMarkdown;
         void (async () => {
           try {
             const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");

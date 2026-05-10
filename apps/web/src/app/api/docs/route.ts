@@ -8,6 +8,7 @@ import { appendHubLog } from "@/lib/hub-log";
 import { maybeRefreshSuggestions } from "@/lib/hub-suggestions";
 import { findRecentDuplicateDoc } from "@/lib/doc-dedup";
 import { enqueueOntologyRefresh } from "@/lib/ontology-refresh";
+import { extractTitleFromMd } from "@/lib/extract-title";
 
 /**
  * CORS preflight for cross-origin capture (bookmarklet on chatgpt.com,
@@ -62,7 +63,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { markdown = "", title, password, expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
+  const { markdown = "", password, expiresIn, editMode, isDraft, source, folderId, compileKind, compileFrom } = body;
+  // Title invariant: title is always the doc's first H1. If the
+  // markdown carries one, derive from it (overriding any client-sent
+  // value); if it doesn't, fall back to whatever the client supplied
+  // (PDF import, MCP, etc. usually pass a title even when they don't
+  // bother prepending an H1).
+  const h1Title = extractTitleFromMd(markdown || "");
+  const title: string | null = (h1Title && h1Title !== "Untitled")
+    ? h1Title
+    : (typeof body.title === "string" ? body.title : null);
   let { userId } = body;
   let { anonymousId } = body;
 

@@ -112,8 +112,24 @@ export async function POST(req: NextRequest) {
     }
 
     const editToken = nanoid(32);
-    const title = (pdfTitle && pdfTitle.trim()) || filename.replace(/\.pdf$/i, "");
+    const candidateTitle = (pdfTitle && pdfTitle.trim()) || filename.replace(/\.pdf$/i, "");
     const sourceTag = `pdf:${filename}`;
+
+    // Title invariant: title must equal the H1 of the markdown body.
+    // The LLM cleaner often emits a strong H1 from the PDF; trust it
+    // when present, otherwise prepend `# <candidateTitle>` so the body
+    // has one. Without this, the saved title (PDF metadata / filename)
+    // can disagree with the rendered H1, and the editor's loadTab
+    // would "snap" to the H1 the next time the doc is opened.
+    const { extractTitleFromMd } = await import("@/lib/extract-title");
+    const bodyH1 = extractTitleFromMd(markdown);
+    let title: string;
+    if (bodyH1 && bodyH1 !== "Untitled") {
+      title = bodyH1;
+    } else {
+      title = candidateTitle;
+      markdown = `# ${candidateTitle}\n\n${markdown}`;
+    }
 
     // Dedup: same caller, same content, within 30s — return that doc
     // instead of importing the same PDF twice (e.g., user clicks Import,
