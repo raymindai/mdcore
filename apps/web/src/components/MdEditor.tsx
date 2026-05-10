@@ -2749,6 +2749,12 @@ export default function MdEditor() {
   // Unified Import modal (replaces the old per-source inline-input
   // prompts that hung off the Library + menu).
   const [showImportModal, setShowImportModal] = useState(false);
+  // True while the sidebar refresh icon is spinning. Used to drive the
+  // animation on the ICON element only — the previous implementation
+  // toggled `animate-spin` on the button itself, which also rotated
+  // the hover-state rounded background, producing a "the whole button
+  // is spinning" effect.
+  const [refreshSpinning, setRefreshSpinning] = useState(false);
   const [showLint, setShowLint] = useState(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("mdfy-show-lint");
@@ -9194,8 +9200,10 @@ ${clone.innerHTML}
                   id="sidebar-refresh-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const btn = document.getElementById("sidebar-refresh-btn");
-                    if (btn) { btn.classList.add("animate-spin"); setTimeout(() => btn.classList.remove("animate-spin"), 600); }
+                    // Spin the icon (NOT the button) so the hover
+                    // background doesn't rotate along with it.
+                    setRefreshSpinning(true);
+                    setTimeout(() => setRefreshSpinning(false), 600);
                     if (user?.id) {
                       fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
                         .then(res => res.ok ? res.json() : null)
@@ -9217,7 +9225,7 @@ ${clone.innerHTML}
                   className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
                   style={{ color: "var(--text-faint)" }}
                 >
-                  <RefreshCw width={11} height={11} />
+                  <RefreshCw width={11} height={11} className={refreshSpinning ? "animate-spin" : ""} />
                 </button>
               </Tooltip>
               <Tooltip text="What do the icons and filters mean?">
