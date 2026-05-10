@@ -27,15 +27,28 @@ interface ExtractedRelation {
   label?: string;
   weight?: number;
 }
+/** Page-type labels we surface in the UI chip. Mirrors the
+ *  documents.intent CHECK constraint exactly (migration 030). The
+ *  classifier may return null when nothing fits cleanly. */
+export type DocIntent =
+  | "note"
+  | "definition"
+  | "comparison"
+  | "decision"
+  | "question"
+  | "reference";
+
 interface ExtractedDoc {
   concepts: ExtractedConcept[];
   relations: ExtractedRelation[];
+  intent: DocIntent | null;
 }
 
-const PER_DOC_PROMPT = `You analyze ONE document and extract its key concepts.
+const PER_DOC_PROMPT = `You analyze ONE document and return JSON with three things:
 
 Return ONLY valid JSON with this exact shape:
 {
+  "doc_intent": "note|definition|comparison|decision|question|reference",
   "concepts": [
     { "label": "Display name", "type": "concept|entity|tag", "weight": 1-5, "description": "One sentence: why this concept matters in THIS document" }
   ],
@@ -44,7 +57,16 @@ Return ONLY valid JSON with this exact shape:
   ]
 }
 
-RULES:
+DOC_INTENT — pick the ONE that best describes the document's primary shape:
+- "definition"  : the doc defines a concept, term, or system. Reads like "X is …".
+- "comparison"  : the doc compares two or more options / approaches.
+- "decision"    : the doc records a choice and the reasoning behind it (ADR-shaped).
+- "question"    : the doc poses an open question / unresolved investigation.
+- "reference"   : factual material the author goes back to (cheatsheet, API notes, playbook).
+- "note"        : everything else — meeting notes, journal-style writing, brainstorms.
+If genuinely uncertain, use "note". The user can override; default conservatively.
+
+CONCEPTS:
 - 5-15 concepts max. Quality over quantity. Skip filler.
 - Mix types thoughtfully:
   - "concept" = abstract ideas, methodologies, principles
@@ -54,6 +76,10 @@ RULES:
 - relations only between concepts you actually return. No orphan refs.
 - Use the SAME label string in relations as in concepts (case + spacing).
 - No prose, no fences, no commentary. JSON object only.`;
+
+const ALLOWED_INTENTS: Set<DocIntent> = new Set([
+  "note", "definition", "comparison", "decision", "question", "reference",
+]);
 
 export interface ExtractDocOntologyArgs {
   supabase: SupabaseClient;
@@ -68,6 +94,11 @@ export interface ExtractDocOntologyArgs {
 export interface ExtractDocOntologyResult {
   conceptsWritten: number;
   relationsWritten: number;
+  /** AI-inferred intent for this doc, or null when the model couldn't
+   *  classify it (empty doc, unparseable response, etc). The caller
+   *  decides whether to write it to the documents row — the convention
+   *  is "only set if doc.intent IS NULL" so user choices win. */
+  inferredIntent: DocIntent | null;
   skipped?: "empty" | "no_api_key" | "extract_failed";
 }
 
@@ -85,12 +116,12 @@ export async function extractDocOntology(
   const { supabase, userId, docId, title, markdown } = args;
   const trimmed = (markdown || "").trim();
   if (trimmed.length < 200) {
-    return { conceptsWritten: 0, relationsWritten: 0, skipped: "empty" };
+    return { conceptsWritten: 0, relationsWritten: 0, inferredIntent: null, skipped: "empty" };
   }
 
   const extracted = await callExtractor(title, trimmed, args.apiKey);
   if (!extracted) {
-    return { conceptsWritten: 0, relationsWritten: 0, skipped: "extract_failed" };
+    return { conceptsWritten: 0, relationsWritten: 0, inferredIntent: null, skipped: "extract_failed" };
   }
 
   // 1. Upsert each concept node.
@@ -194,7 +225,7 @@ export async function extractDocOntology(
     }
   }
 
-  return { conceptsWritten, relationsWritten };
+  return { conceptsWritten, relationsWritten, inferredIntent: extracted.intent };
 }
 
 async function callExtractor(title: string, markdown: string, overrideKey?: string): Promise<ExtractedDoc | null> {
@@ -279,9 +310,12 @@ function parsePerDocJson(text: string): ExtractedDoc | null {
   if (first >= 0 && last > first) candidate = candidate.slice(first, last + 1);
   try {
     const parsed = JSON.parse(candidate);
+    const rawIntent = typeof parsed.doc_intent === "string" ? parsed.doc_intent.toLowerCase().trim() : "";
+    const intent = ALLOWED_INTENTS.has(rawIntent as DocIntent) ? (rawIntent as DocIntent) : null;
     return {
       concepts: Array.isArray(parsed.concepts) ? parsed.concepts : [],
       relations: Array.isArray(parsed.relations) ? parsed.relations : [],
+      intent,
     };
   } catch {
     return null;

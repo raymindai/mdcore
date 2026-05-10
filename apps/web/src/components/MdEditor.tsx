@@ -11955,7 +11955,7 @@ ${clone.innerHTML}
                           fontWeight: 600,
                           letterSpacing: 0.3,
                         }}
-                        title={current ? `Type: ${current.hint}` : "Set a doc type — note / definition / comparison / decision / question / reference"}
+                        title={current ? `Type: ${current.hint} — click to change` : "Doc type — auto-set after the next concept refresh. Click to pick one now."}
                       >
                         <span>{current ? current.label : "+ Type"}</span>
                       </button>

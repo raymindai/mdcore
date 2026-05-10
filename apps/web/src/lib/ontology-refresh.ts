@@ -68,13 +68,31 @@ export async function enqueueOntologyRefresh(args: OntologyRefreshArgs): Promise
   docState.set(key, { lastAt: now, lastChars: md.length });
 
   try {
-    await extractDocOntology({
+    const result = await extractDocOntology({
       supabase,
       userId,
       docId,
       title: title || "Untitled",
       markdown: md,
     });
+    // AI-inferred doc intent. Only write when the row currently has
+    // NO intent set — never override a user's manual choice from
+    // the chip dropdown. This is the "alaesoecho-set, change if you
+    // want" behaviour the founder asked for.
+    if (result.inferredIntent) {
+      try {
+        const { data: row } = await supabase
+          .from("documents")
+          .select("intent")
+          .eq("id", docId)
+          .single();
+        if (row && (row.intent === null || row.intent === undefined)) {
+          await supabase.from("documents").update({ intent: result.inferredIntent }).eq("id", docId);
+        }
+      } catch {
+        /* best-effort — never let a writeback error block the refresh */
+      }
+    }
   } catch (err) {
     // Roll back the cooldown on failure so the next save retries
     // instead of waiting 30 minutes.
