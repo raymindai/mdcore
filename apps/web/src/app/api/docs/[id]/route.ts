@@ -188,6 +188,30 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     } catch { /* best-effort — don't block the read */ }
   }
 
+  // Bundle membership — surface every bundle that includes this
+  // doc so the editor can render an "in N bundles: …" banner.
+  // Owner-only by query: bundle_documents has no read RLS gate,
+  // but we filter to bundles the requester owns to avoid leaking
+  // others' titles via cross-references.
+  let inBundles: Array<{ id: string; title: string }> = [];
+  if (isOwnedByRequester) {
+    try {
+      const { data: links } = await supabase
+        .from("bundle_documents")
+        .select("bundle_id")
+        .eq("document_id", id);
+      const bundleIds = Array.from(new Set((links || []).map((l) => l.bundle_id)));
+      if (bundleIds.length > 0) {
+        const { data: bundleRows } = await supabase
+          .from("bundles")
+          .select("id, title")
+          .in("id", bundleIds)
+          .eq("user_id", data.user_id || "");
+        inBundles = (bundleRows || []).map((b) => ({ id: b.id, title: b.title || "Untitled Bundle" }));
+      }
+    } catch { /* ignore */ }
+  }
+
   return NextResponse.json({
     ...safeData,
     hasPassword,
@@ -196,6 +220,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     isCompileStale,
     latestSourceUpdatedAt,
     isEditor: isAllowedEditor,
+    inBundles,
     ...(isOwnedByRequester ? { editToken: data.edit_token, allowedEmails: data.allowed_emails || [], allowedEditors: data.allowed_editors || [] } : {}),
     ...(ownerEmail ? { ownerEmail } : {}),
   });

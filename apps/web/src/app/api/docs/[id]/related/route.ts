@@ -32,7 +32,13 @@ interface ConceptRow {
   weight: number | null;
 }
 
-interface DocStub { id: string; title: string | null; updated_at: string | null }
+interface DocStub {
+  id: string;
+  title: string | null;
+  updated_at: string | null;
+  is_draft: boolean | null;
+  allowed_emails: string[] | null;
+}
 
 interface RelatedRow {
   id: string;
@@ -40,6 +46,12 @@ interface RelatedRow {
   sharedConcepts: string[];
   overlap: number;
   updated_at: string | null;
+  // Status fields so the client can render DocStatusIcon without a
+  // second round-trip per row. We don't return password_hash; it
+  // would be a leak vector and is no longer a real access mode.
+  isDraft: boolean;
+  isRestricted: boolean;
+  sharedWithCount: number;
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
@@ -108,25 +120,43 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const candidateIds = ranked.map((r) => r.docId);
   const { data: docRows } = await supabase
     .from("documents")
-    .select("id, title, updated_at, deleted_at")
+    .select("id, title, updated_at, deleted_at, is_draft, allowed_emails")
     .in("id", candidateIds)
     .eq("user_id", userId)
     .is("deleted_at", null);
 
+  // Owner email so we can exclude self from sharedWithCount —
+  // mirrors the sidebar's hydration logic in MdEditor.
+  let ownerEmailLower = "";
+  try {
+    const { data: ownerUser } = await supabase.auth.admin.getUserById(userId);
+    ownerEmailLower = ownerUser?.user?.email?.toLowerCase() || "";
+  } catch { /* ignore */ }
+
   const docById = new Map<string, DocStub>(
-    (docRows || []).map((d) => [d.id, { id: d.id, title: d.title, updated_at: d.updated_at }]),
+    (docRows || []).map((d) => [d.id, {
+      id: d.id,
+      title: d.title,
+      updated_at: d.updated_at,
+      is_draft: d.is_draft ?? null,
+      allowed_emails: d.allowed_emails ?? null,
+    }]),
   );
 
   const related: RelatedRow[] = [];
   for (const r of ranked) {
     const doc = docById.get(r.docId);
     if (!doc) continue;
+    const others = (doc.allowed_emails || []).filter((e) => e.toLowerCase() !== ownerEmailLower);
     related.push({
       id: doc.id,
       title: doc.title || "Untitled",
       sharedConcepts: r.labels.slice(0, 5),
       overlap: r.count,
       updated_at: doc.updated_at,
+      isDraft: !!doc.is_draft,
+      isRestricted: others.length > 0,
+      sharedWithCount: others.length,
     });
     if (related.length >= limit) break;
   }

@@ -17,12 +17,16 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
+import DocStatusIcon from "@/components/DocStatusIcon";
 
 interface RelatedDoc {
   id: string;
   title: string;
   sharedConcepts: string[];
   overlap: number;
+  isDraft?: boolean;
+  isRestricted?: boolean;
+  sharedWithCount?: number;
 }
 
 interface RelatedDocsResponse {
@@ -111,6 +115,18 @@ export default function RelatedDocsWidget({ cloudId, isOwner, onOpenDoc }: Props
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface)"; }}
               >
+                <div className="shrink-0 mt-0.5">
+                  <DocStatusIcon
+                    tab={{
+                      isDraft: d.isDraft,
+                      isRestricted: d.isRestricted,
+                      sharedWithCount: d.sharedWithCount,
+                      cloudId: d.id,
+                      permission: "mine",
+                    }}
+                    isActive={false}
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>

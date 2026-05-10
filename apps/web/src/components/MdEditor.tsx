@@ -1526,6 +1526,11 @@ interface Tab {
     sources?: Array<{ bundleId: string; docIds: string[]; intent?: string | null; compiledAt?: string | null }>;
   };
   compiledAt?: string;
+  // Bundles that contain this doc as a member. Populated from the
+  // server's GET /api/docs/<id> inBundles field on tab load. Drives
+  // the "Member of N bundles" inline banner. Distinct from
+  // compileFrom (which is the doc's synthesis source).
+  inBundles?: Array<{ id: string; title: string }>;
   // True when this tab was added programmatically (synthesis / extract / etc.)
   // and the user hasn't opened it yet. Drives the pulsing orange dot in the
   // sidebar — cleared the first time the tab is activated. Persisted across
@@ -3072,6 +3077,18 @@ export default function MdEditor() {
   const [title, setTitle] = useState<string | undefined>();
   const [renderTime, setRenderTime] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  // Delayed loader visibility — only show the inner loader if
+  // isLoading stays true for more than 250ms. Fast renders (typical
+  // for the sample welcome doc and cached cloud docs) finish well
+  // under that, so the loader never flashes on initial mount or
+  // quick tab switches. Eliminates the "big logo flickered before
+  // UI" complaint without sacrificing the slower-fetch UX.
+  const [showInnerLoader, setShowInnerLoader] = useState(false);
+  useEffect(() => {
+    if (!isLoading) { setShowInnerLoader(false); return; }
+    const t = setTimeout(() => setShowInnerLoader(true), 250);
+    return () => clearTimeout(t);
+  }, [isLoading]);
   const [charCount, setCharCount] = useState(0);
   const [wordCount, setWordCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
@@ -4013,6 +4030,7 @@ export default function MdEditor() {
             compileKind: doc.compile_kind || undefined,
             compileFrom: doc.compile_from || undefined,
             compiledAt: doc.compiled_at || undefined,
+            inBundles: Array.isArray(doc.inBundles) ? doc.inBundles : undefined,
           } : x));
           // PREVIOUSLY: when server's stored title disagreed with the
           // first H1, loadTab fired a scheduleSave to push the H1 back.
@@ -4323,6 +4341,13 @@ export default function MdEditor() {
   const recentRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const recentFlipPending = useRef(false);
   const recentFlipRects = useRef<Map<string, DOMRect>>(new Map());
+  // Tracks which Recent ids have rendered at least once, so a new
+  // entry — opening a doc that wasn't in the list — can fade + slide
+  // in instead of popping into existence. Skips animating the very
+  // first paint (everything is "new" then) so the sidebar doesn't
+  // strobe on initial load.
+  const recentSeenIds = useRef<Set<string>>(new Set());
+  const recentFirstPaint = useRef(true);
   const captureRecentRects = useCallback(() => {
     recentFlipPending.current = true;
     const m = new Map<string, DOMRect>();
@@ -4332,32 +4357,56 @@ export default function MdEditor() {
     recentFlipRects.current = m;
   }, []);
   useLayoutEffect(() => {
-    if (!recentFlipPending.current) return;
-    recentFlipPending.current = false;
-    const prev = recentFlipRects.current;
-    if (prev.size === 0) return;
-    for (const [id, el] of recentRowRefs.current) {
-      if (!el) continue;
-      const before = prev.get(id);
-      if (!before) continue;
-      const after = el.getBoundingClientRect();
-      const dy = before.top - after.top;
-      if (Math.abs(dy) < 1) continue;
-      el.style.transition = "none";
-      el.style.transform = `translateY(${dy}px)`;
-      void el.offsetHeight; // force reflow so the next transform animates
-      requestAnimationFrame(() => {
-        el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
-        el.style.transform = "translateY(0)";
-        const onEnd = () => {
-          el.style.transition = "";
-          el.style.transform = "";
-          el.removeEventListener("transitionend", onEnd);
-        };
-        el.addEventListener("transitionend", onEnd);
-      });
+    if (recentFlipPending.current) {
+      recentFlipPending.current = false;
+      const prev = recentFlipRects.current;
+      if (prev.size > 0) {
+        for (const [id, el] of recentRowRefs.current) {
+          if (!el) continue;
+          const before = prev.get(id);
+          if (!before) continue;
+          const after = el.getBoundingClientRect();
+          const dy = before.top - after.top;
+          if (Math.abs(dy) < 1) continue;
+          el.style.transition = "none";
+          el.style.transform = `translateY(${dy}px)`;
+          void el.offsetHeight; // force reflow so the next transform animates
+          requestAnimationFrame(() => {
+            el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
+            el.style.transform = "translateY(0)";
+            const onEnd = () => {
+              el.style.transition = "";
+              el.style.transform = "";
+              el.removeEventListener("transitionend", onEnd);
+            };
+            el.addEventListener("transitionend", onEnd);
+          });
+        }
+        recentFlipRects.current.clear();
+      }
     }
-    recentFlipRects.current.clear();
+
+    // Enter animation for newly-arrived rows. Skip the first paint
+    // (every row is "new" on initial load → would strobe).
+    if (!recentFirstPaint.current) {
+      for (const [id, el] of recentRowRefs.current) {
+        if (!el) continue;
+        if (recentSeenIds.current.has(id)) continue;
+        recentSeenIds.current.add(id);
+        // CSS one-shot — fade + slide down 6px → settle. Cleared by
+        // animationend so subsequent renders don't carry stale styles.
+        el.style.animation = "mdfyRecentEnter 320ms cubic-bezier(0.4, 0, 0.2, 1) both";
+        const onAnimEnd = () => {
+          el.style.animation = "";
+          el.removeEventListener("animationend", onAnimEnd);
+        };
+        el.addEventListener("animationend", onAnimEnd);
+      }
+    } else {
+      // Initial paint — record everything as already-seen, no animation.
+      for (const id of recentRowRefs.current.keys()) recentSeenIds.current.add(id);
+      recentFirstPaint.current = false;
+    }
   });
 
   const handleDocClick = useCallback((tabId: string, e: React.MouseEvent) => {
@@ -11824,7 +11873,7 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
-              {isLoading && activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && (
+              {showInnerLoader && activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && (
                 // Visually identical to page.tsx's boot loader — same
                 // logo size, same bar dimensions, same caption — so
                 // when this overlay takes over from the boot loader
@@ -11934,6 +11983,50 @@ ${clone.innerHTML}
                     </div>
                   );
                 })()}
+                {/* Bundle-membership banner — distinct from the
+                    Compiled banner above. Tells the reader "this
+                    doc lives inside N bundle(s)" so they know
+                    where it gets pulled into a synthesis. Each
+                    bundle name is clickable. Owner-only (server
+                    only returns inBundles for the owner). */}
+                {activeTab?.inBundles && activeTab.inBundles.length > 0 && (
+                  <div
+                    className="mx-auto flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg my-3"
+                    style={{
+                      maxWidth: 760,
+                      background: "var(--surface)",
+                      border: "1px solid var(--border-dim)",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    <Layers width={14} height={14} className="shrink-0" style={{ color: "var(--text-muted)" }} />
+                    <span className="text-caption shrink-0">
+                      Member of {activeTab.inBundles.length} bundle{activeTab.inBundles.length === 1 ? "" : "s"}:
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                      {activeTab.inBundles.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => {
+                            const existing = tabs.find((t) => t.kind === "bundle" && t.bundleId === b.id);
+                            if (existing) { switchTab(existing.id); return; }
+                            const newId = `bundle-${b.id}-${Date.now()}`;
+                            const newTab: Tab = { id: newId, kind: "bundle", bundleId: b.id, title: b.title, markdown: "" };
+                            setTabs((prev) => [...prev, newTab]);
+                            switchTab(newId);
+                          }}
+                          className="text-caption px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--border-dim)",
+                          }}
+                        >
+                          {b.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <TiptapLiveEditor
                   ref={tiptapRef}
                   markdown={markdown}
