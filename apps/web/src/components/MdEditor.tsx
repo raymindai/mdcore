@@ -3424,6 +3424,8 @@ export default function MdEditor() {
   const [bundleContextMenu, setBundleContextMenu] = useState<{ x: number; y: number; bundleId: string; confirmDelete?: boolean } | null>(null);
   const [bundleShareModal, setBundleShareModal] = useState<{ bundleId: string } | null>(null);
   const [dragFolderId, setDragFolderId] = useState<string | null>(null);
+  // Global Library sort (legacy — drives the small Library-header
+  // button). Kept as a fallback / "set both at once" affordance.
   const [sortMode, setSortMode] = useState<"az" | "za" | "custom">(() => {
     if (typeof window === "undefined") return "az";
     const saved = localStorage.getItem("mdfy-sort-mode");
@@ -3432,6 +3434,32 @@ export default function MdEditor() {
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("mdfy-sort-mode", sortMode);
   }, [sortMode]);
+  // Per-section sort modes. The user wanted MD Bundles and MDs to
+  // sort independently — e.g. bundles by date, docs alphabetical.
+  // Includes "newest"/"oldest" (by lastOpenedAt) in addition to the
+  // legacy az/za/custom.
+  type SectionSortMode = "newest" | "oldest" | "az" | "za" | "custom";
+  const SECTION_SORT_OPTIONS: { value: SectionSortMode; label: string }[] = [
+    { value: "newest", label: "Newest first" },
+    { value: "oldest", label: "Oldest first" },
+    { value: "az",     label: "A → Z" },
+    { value: "za",     label: "Z → A" },
+    { value: "custom", label: "Custom (drag)" },
+  ];
+  const [mdsSortMode, setMdsSortMode] = useState<SectionSortMode>(() => {
+    if (typeof window === "undefined") return "newest";
+    const s = localStorage.getItem("mdfy-mds-sort");
+    return (s && SECTION_SORT_OPTIONS.find((o) => o.value === s)) ? (s as SectionSortMode) : "newest";
+  });
+  const [bundlesSortMode, setBundlesSortMode] = useState<SectionSortMode>(() => {
+    if (typeof window === "undefined") return "newest";
+    const s = localStorage.getItem("mdfy-bundles-sort");
+    return (s && SECTION_SORT_OPTIONS.find((o) => o.value === s)) ? (s as SectionSortMode) : "newest";
+  });
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mdfy-mds-sort", mdsSortMode); }, [mdsSortMode]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("mdfy-bundles-sort", bundlesSortMode); }, [bundlesSortMode]);
+  // Which section's sort menu is currently open (null = none).
+  const [openSortMenu, setOpenSortMenu] = useState<"mds" | "bundles" | null>(null);
   // Recently visited tabs (max 7, most-recent-first). Stored separately from
   // `tabs` so clicking a tab does NOT re-sort the main tree (jumpy UX).
   const [recentTabIds, setRecentTabIds] = useState<string[]>(() => {
@@ -9658,6 +9686,37 @@ ${clone.innerHTML}
                           </button>
                         </Tooltip>
                       )}
+                      {/* Section-level Sort — independent from MDs, so
+                          bundles can be sorted by date while docs are
+                          A-Z (or vice versa). */}
+                      <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <Tooltip text={`Sort bundles: ${SECTION_SORT_OPTIONS.find((o) => o.value === bundlesSortMode)?.label}`}>
+                          <button
+                            onClick={() => setOpenSortMenu((m) => m === "bundles" ? null : "bundles")}
+                            className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                            style={{ color: "var(--text-faint)" }}
+                          >
+                            <ArrowUpDown width={11} height={11} />
+                          </button>
+                        </Tooltip>
+                        {openSortMenu === "bundles" && (<>
+                          <div className="fixed inset-0 z-[9997]" onClick={() => setOpenSortMenu(null)} />
+                          <div className="absolute top-full right-0 mt-1 w-36 rounded-lg py-1 z-[9998]"
+                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
+                          >
+                            {SECTION_SORT_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => { setBundlesSortMode(opt.value); setOpenSortMenu(null); }}
+                                className="w-full text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                                style={{ color: bundlesSortMode === opt.value ? "var(--accent)" : "var(--text-secondary)", fontWeight: bundlesSortMode === opt.value ? 600 : 400 }}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </>)}
+                      </div>
                       {/* Section-level + — creates a bundle without bouncing
                           through the Library + menu. Owner-only; only
                           rendered for signed-in users. */}
@@ -9707,7 +9766,7 @@ ${clone.innerHTML}
                       selectedTabIds={new Set()}
                       activeBundleDocIds={new Set()}
                       sidebarSearch={sidebarSearchDebounced}
-                      sortMode={sortMode}
+                      sortMode={bundlesSortMode}
                       sidebarMode={sidebarMode}
                       docFilter={"all"}
                       dragTabId={dragTabId}
@@ -9927,6 +9986,36 @@ ${clone.innerHTML}
                             </button>
                           </Tooltip>
                         )}
+                        {/* Section-level Sort for MDs — independent
+                            from the bundles sort above. */}
+                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                          <Tooltip text={`Sort docs: ${SECTION_SORT_OPTIONS.find((o) => o.value === mdsSortMode)?.label}`}>
+                            <button
+                              onClick={() => setOpenSortMenu((m) => m === "mds" ? null : "mds")}
+                              className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--toggle-bg)]"
+                              style={{ color: "var(--text-faint)" }}
+                            >
+                              <ArrowUpDown width={11} height={11} />
+                            </button>
+                          </Tooltip>
+                          {openSortMenu === "mds" && (<>
+                            <div className="fixed inset-0 z-[9997]" onClick={() => setOpenSortMenu(null)} />
+                            <div className="absolute top-full right-0 mt-1 w-36 rounded-lg py-1 z-[9998]"
+                              style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
+                            >
+                              {SECTION_SORT_OPTIONS.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => { setMdsSortMode(opt.value); setOpenSortMenu(null); }}
+                                  className="w-full text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                                  style={{ color: mdsSortMode === opt.value ? "var(--accent)" : "var(--text-secondary)", fontWeight: mdsSortMode === opt.value ? 600 : 400 }}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </>)}
+                        </div>
                         {/* Section-level + on MDs — creates a new doc
                             inline. Same affordance as Library + → New
                             document, just one click closer to where the
@@ -9996,7 +10085,7 @@ ${clone.innerHTML}
                         selectedTabIds={selectedTabIds}
                         activeBundleDocIds={activeBundleDocIds}
                         sidebarSearch={sidebarSearchDebounced}
-                        sortMode={sortMode}
+                        sortMode={mdsSortMode}
                         sidebarMode={sidebarMode}
                         docFilter={docFilter}
                         dragTabId={dragTabId}

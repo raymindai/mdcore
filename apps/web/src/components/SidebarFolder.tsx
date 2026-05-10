@@ -84,7 +84,7 @@ export interface SidebarFolderTreeProps {
   selectedTabIds: Set<string>;
   activeBundleDocIds: Set<string>;
   sidebarSearch: string;
-  sortMode: "az" | "za" | "custom";
+  sortMode: "az" | "za" | "custom" | "newest" | "oldest";
   sidebarMode: string;
   docFilter: "all" | "private" | "shared" | "synced";
   dragTabId: string | null;
@@ -202,6 +202,8 @@ function sortTabs(tabs: SidebarTabItem[], sortMode: SidebarFolderTreeProps["sort
   return [...tabs].sort((a, b) => {
     if (sortMode === "custom") return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     if (sortMode === "za") return (b.title || "").localeCompare(a.title || "");
+    if (sortMode === "newest") return (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0);
+    if (sortMode === "oldest") return (a.lastOpenedAt ?? 0) - (b.lastOpenedAt ?? 0);
     return (a.title || "").localeCompare(b.title || "");
   });
 }
@@ -210,6 +212,9 @@ function sortFolders(folders: SidebarFolderItem[], sortMode: SidebarFolderTreePr
   return [...folders].sort((a, b) => {
     if (sortMode === "custom") return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     if (sortMode === "za") return b.name.localeCompare(a.name);
+    // Folders don't carry timestamps; for newest/oldest we fall back
+    // to alphabetical (custom users can drag-reorder if they want).
+    if (sortMode === "newest" || sortMode === "oldest") return a.name.localeCompare(b.name);
     return a.name.localeCompare(b.name);
   });
 }

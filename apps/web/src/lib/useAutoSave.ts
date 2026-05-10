@@ -262,19 +262,23 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
               },
             }));
           } else if (res.status === 403) {
-            // Refresh already attempted; surface the SERVER's reason
-            // string so we don't blame "session expired" when the real
-            // cause is a permission change (doc is no longer ours,
-            // editor was demoted, etc). Falls back to the generic
-            // session-expired copy only when the server didn't supply
-            // a specific error string.
+            // 403 has two shapes:
+            //   - permission: the doc is read-only for this caller
+            //     (not owner, not editor). The editor UI already
+            //     shows a "View only" banner above the body, so a
+            //     duplicate error in the footer is just noise —
+            //     swallow it silently.
+            //   - session: bearer token didn't verify. Surface the
+            //     "sign in again" hint only when the server didn't
+            //     send a permission-specific message.
             const errBody = await res.json().catch(() => ({}));
             const serverMsg = typeof errBody?.error === "string" ? errBody.error : "";
             const looksLikePermission = /owner|edit access|editor|restricted/i.test(serverMsg);
-            const friendly = looksLikePermission
-              ? `${serverMsg}. You can keep reading; saves are paused.`
-              : "Sign in again to keep editing — your session expired.";
-            setState((s) => ({ ...s, isSaving: false, error: friendly }));
+            if (looksLikePermission) {
+              setState((s) => ({ ...s, isSaving: false, error: null }));
+            } else {
+              setState((s) => ({ ...s, isSaving: false, error: "Sign in again to keep editing — your session expired." }));
+            }
           } else {
             const err = await res.json().catch(() => ({}));
             setState((s) => ({ ...s, isSaving: false, error: err.error || "Save failed" }));
