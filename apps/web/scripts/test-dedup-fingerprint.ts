@@ -2,6 +2,8 @@
 // We test the fingerprinting + DEDUP_LOOSE_WINDOW_MS contract without
 // touching the database.
 
+export {}; // mark as module so top-level `let pass / fail` are scoped to this file
+
 // Re-implement fingerprint locally to keep this test pure (mirrors
 // doc-dedup.ts).
 function fingerprintBody(md: string, len = 200): string {
