@@ -11876,19 +11876,25 @@ ${clone.innerHTML}
                 <div className="mb-6">
                   <div className="flex items-baseline justify-between mb-2">
                     <div className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)" }}>What people put in mdfy</div>
-                    <a href="/b/mdfy-in-practice" target="_blank" rel="noopener noreferrer" className="text-caption" style={{ color: "var(--text-faint)" }}>All cases &rarr;</a>
+                    <a href="/about#use-cases" target="_blank" rel="noopener noreferrer" className="text-caption" style={{ color: "var(--text-faint)" }}>All cases &rarr;</a>
                   </div>
                   <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
                     Concrete shapes the URL takes. Pick what fits your week.
                   </p>
                   <div className="grid grid-cols-2 gap-1.5">
+                    {/* All cards link to /about#use-cases for now — the
+                        per-case detail pages haven't been written yet,
+                        so we point at the unified About section so the
+                        user gets the same thesis + examples rather than
+                        a 404. Replace individual urls when case pages
+                        ship. */}
                     {([
-                      { label: "Research notes", desc: "Papers + PDFs into one cited URL", url: "/case-research-notes", color: "#fb923c" },
-                      { label: "Meeting + interview log", desc: "Transcripts your AI can quote back", url: "/case-meetings-and-interviews", color: "#fbbf24" },
-                      { label: "Book + course notes", desc: "Chapter takeaways that compound", url: "/case-book-course-notes", color: "#4ade80" },
-                      { label: "Project decisions", desc: "Why you chose X, in one place", url: "/case-project-decisions", color: "#60a5fa" },
-                      { label: "Docs as a KB", desc: "Your team's docs, AI-readable", url: "/case-docs-as-kb", color: "#c4b5fd" },
-                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on shared context", url: "/case-cross-tool-handoff", color: "#f472b6" },
+                      { label: "Research notes", desc: "Papers + PDFs into one cited URL", url: "/about#use-cases", color: "#fb923c" },
+                      { label: "Meeting + interview log", desc: "Transcripts your AI can quote back", url: "/about#use-cases", color: "#fbbf24" },
+                      { label: "Book + course notes", desc: "Chapter takeaways that compound", url: "/about#use-cases", color: "#4ade80" },
+                      { label: "Project decisions", desc: "Why you chose X, in one place", url: "/about#use-cases", color: "#60a5fa" },
+                      { label: "Docs as a KB", desc: "Your team's docs, AI-readable", url: "/about#use-cases", color: "#c4b5fd" },
+                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on shared context", url: "/about#use-cases", color: "#f472b6" },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
@@ -11933,8 +11939,8 @@ ${clone.innerHTML}
                       { label: "Trending", desc: "Popular GitHub projects", url: "/discover", color: "#fb923c", icon: <Zap width={14} height={14} /> },
                       { label: "Documentation", desc: "API and SDK reference", url: "/docs", color: "#60a5fa", icon: <FileText width={14} height={14} /> },
                       { label: "Plugins", desc: "Chrome, VS Code, Mac, CLI", url: "/plugins", color: "#4ade80", icon: <Download width={14} height={14} /> },
-                      { label: "How it works", desc: "Architecture, end to end", url: "/how-mdfy-works", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
-                      { label: "mdfy Memory", desc: "How memory works under the hood", url: "/mdfy-memory", color: "#a78bfa", icon: <Sparkles width={14} height={14} /> },
+                      { label: "How it works", desc: "Architecture, end to end", url: "/about#how-it-works", color: "#c4b5fd", icon: <HelpCircle width={14} height={14} /> },
+                      { label: "mdfy Memory", desc: "How memory works under the hood", url: "/about#memory", color: "#a78bfa", icon: <Sparkles width={14} height={14} /> },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"

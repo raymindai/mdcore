@@ -197,7 +197,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
       </section>
 
       {/* ───────── ECOSYSTEM ───────── */}
-      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+      <section id="how-it-works" style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px", scrollMarginTop: 80 }}>
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
           {t.ecosystem.heading}
         </h2>
@@ -488,8 +488,8 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
         </div>
       </section>
 
-      {/* ───────── 6. BEFORE / WITH MDFY ───────── */}
-      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px" }}>
+      {/* ───────── 6. BEFORE / WITH MDFY (anchored as #use-cases) ───────── */}
+      <section id="use-cases" style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px", scrollMarginTop: 80 }}>
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
           {t.before_after.heading}
         </h2>
@@ -529,7 +529,9 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
       </div>
 
       {/* ───────── 7. VISION: WHERE MDFY IS GOING ───────── */}
-      <section id="vision" style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px", scrollMarginTop: 80 }}>
+      <section id="vision" data-secondary-anchor="memory" style={{ maxWidth: 1080, margin: "0 auto", padding: "0 24px 80px", scrollMarginTop: 80 }}>
+        {/* `#memory` also lands here — the AI Memory thesis is the heart of the Vision section. */}
+        <span id="memory" style={{ position: "absolute", marginTop: -80 }} aria-hidden />
         <h2 style={{ fontSize: 13, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent)", marginBottom: 12, fontFamily: "var(--font-geist-mono), monospace" }}>
           {t.vision.heading}
         </h2>
