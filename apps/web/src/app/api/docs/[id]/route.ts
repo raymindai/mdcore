@@ -161,24 +161,28 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   // Compile staleness: a synthesis doc (compile_from set) is stale when
   // any of its source docs were updated AFTER the synthesis was compiled.
-  // Surfaces an `isCompileStale` flag the editor can use to badge the
-  // Recompile button without the client needing to fetch sources itself.
+  // Aggregates docIds across ALL source bundles (compile_from.sources)
+  // so multi-source compiled docs flag stale on any branch.
   let isCompileStale = false;
   let latestSourceUpdatedAt: string | null = null;
-  const compileFrom = data.compile_from as { docIds?: string[]; bundleId?: string } | null;
-  if (data.compile_kind && data.compiled_at && compileFrom?.docIds && Array.isArray(compileFrom.docIds) && compileFrom.docIds.length > 0) {
+  if (data.compile_kind && data.compiled_at && data.compile_from) {
     try {
-      const { data: sourceRows } = await supabase
-        .from("documents")
-        .select("updated_at")
-        .in("id", compileFrom.docIds)
-        .is("deleted_at", null)
-        .order("updated_at", { ascending: false })
-        .limit(1);
-      if (sourceRows && sourceRows.length > 0) {
-        latestSourceUpdatedAt = sourceRows[0].updated_at;
-        if (new Date(latestSourceUpdatedAt!).getTime() > new Date(data.compiled_at).getTime()) {
-          isCompileStale = true;
+      const { readCompileSources } = await import("@/lib/compile-sources");
+      const sources = readCompileSources(data.compile_from, data.compiled_at);
+      const allSourceDocIds = Array.from(new Set(sources.flatMap((s) => s.docIds)));
+      if (allSourceDocIds.length > 0) {
+        const { data: sourceRows } = await supabase
+          .from("documents")
+          .select("updated_at")
+          .in("id", allSourceDocIds)
+          .is("deleted_at", null)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+        if (sourceRows && sourceRows.length > 0) {
+          latestSourceUpdatedAt = sourceRows[0].updated_at;
+          if (new Date(latestSourceUpdatedAt!).getTime() > new Date(data.compiled_at).getTime()) {
+            isCompileStale = true;
+          }
         }
       }
     } catch { /* best-effort — don't block the read */ }

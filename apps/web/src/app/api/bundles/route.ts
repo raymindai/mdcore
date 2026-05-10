@@ -231,7 +231,7 @@ async function runAutoSynthesis(
       is_draft: false,
       source: "auto-synthesis",
       compile_kind: "wiki",
-      compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
+      compile_from: { sources: [{ bundleId, docIds: result.sourceDocIds, intent: result.intent ?? null, compiledAt: now }] },
       compiled_at: now,
     });
     if (!error) return;

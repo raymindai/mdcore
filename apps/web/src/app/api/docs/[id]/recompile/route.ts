@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { synthesizeBundle, type SynthesisKind } from "@/lib/synthesize";
+import { readCompileSources, appendCompileSource, currentCompileSource } from "@/lib/compile-sources";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
   const { data: doc } = await supabase
     .from("documents")
-    .select("user_id, anonymous_id, edit_token, compile_kind, compile_from, edit_mode")
+    .select("user_id, anonymous_id, edit_token, compile_kind, compile_from, edit_mode, compiled_at")
     .eq("id", id)
     .single();
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -49,8 +50,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const compileFrom = doc.compile_from as { bundleId?: string; intent?: string | null };
-  if (!compileFrom?.bundleId) {
+  // Resolve which source bundle to recompile from. The doc may have
+  // history of multiple sources (compile_from.sources[]) — by default
+  // we pick the LAST one (the one that produced the current body).
+  // Caller can override via body.bundleId to regenerate from any
+  // historical source bundle.
+  const sources = readCompileSources(doc.compile_from, doc.compiled_at);
+  const requestedBundleId = (typeof body === "object" && body && (body as { bundleId?: string }).bundleId) || undefined;
+  const targetSource = requestedBundleId
+    ? sources.find((s) => s.bundleId === requestedBundleId) || null
+    : currentCompileSource(doc.compile_from, doc.compiled_at);
+  if (!targetSource?.bundleId) {
     return NextResponse.json({ error: "Source bundle missing from compile metadata" }, { status: 400 });
   }
   const kind = doc.compile_kind as SynthesisKind;
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   const isPreview = req.nextUrl.searchParams.get("preview") === "1";
 
   try {
-    const result = await synthesizeBundle(supabase, compileFrom.bundleId, kind, compileFrom.intent ?? undefined);
+    const result = await synthesizeBundle(supabase, targetSource.bundleId, kind, targetSource.intent ?? undefined);
     if (!result) return NextResponse.json({ error: "Recompile failed (bundle empty or AI down)" }, { status: 500 });
 
     if (isPreview) {
@@ -86,18 +96,25 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const now = new Date().toISOString();
     // Title invariant — recompile rewrites the body, so re-derive title
     // from the new H1. Falls back to the existing doc.title if the
-    // synthesizer somehow returned a body without an H1 (rare, but the
-    // helper guards against the divergence regardless).
+    // synthesizer somehow returned a body without an H1.
     const { enforceTitleInvariant } = await import("@/lib/extract-title");
     const { data: existingTitle } = await supabase.from("documents").select("title").eq("id", id).single();
     const enforced = enforceTitleInvariant(result.markdown, existingTitle?.title || "Synthesis");
+    // Append (and dedupe) the source onto compile_from.sources so the
+    // doc keeps a history of every bundle it's been compiled from.
+    const newCompileFrom = appendCompileSource(doc.compile_from, {
+      bundleId: targetSource.bundleId,
+      docIds: result.sourceDocIds,
+      intent: result.intent ?? null,
+      compiledAt: now,
+    }, doc.compiled_at);
     const { error: updateErr } = await supabase
       .from("documents")
       .update({
         markdown: enforced.markdown,
         title: enforced.title,
         compiled_at: now,
-        compile_from: { ...compileFrom, docIds: result.sourceDocIds, intent: result.intent },
+        compile_from: newCompileFrom,
         updated_at: now,
       })
       .eq("id", id);
