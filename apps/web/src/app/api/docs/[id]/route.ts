@@ -386,6 +386,43 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ok: true, version: nextVersion });
   }
 
+  // ─── Action: refresh-concepts — re-run ontology extraction for one doc.
+  //     Owner-only. Used by the "Needs review" sidebar's Resolve
+  //     button on orphan findings: a doc that isn't in concept_index
+  //     usually just hasn't been processed yet, so kicking the
+  //     refresher pulls it into the ontology and the orphan goes
+  //     away on the next re-scan. ───
+  if (body.action === "refresh-concepts") {
+    const { userId } = body;
+    if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("user_id, title, markdown")
+      .eq("id", id)
+      .single();
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (doc.user_id !== userId) {
+      return NextResponse.json({ error: "Only the owner can refresh concepts" }, { status: 403 });
+    }
+    try {
+      const { enqueueOntologyRefresh } = await import("@/lib/ontology-refresh");
+      // Force = true: bypass the cooldown / delta gate. The Resolve
+      // button is an explicit user request — they want it to run NOW,
+      // not "maybe in 30 minutes after the next save".
+      await enqueueOntologyRefresh({
+        supabase,
+        userId,
+        docId: id,
+        title: doc.title || "",
+        markdown: doc.markdown || "",
+        force: true,
+      });
+    } catch (err) {
+      return NextResponse.json({ error: "Concept refresh failed", detail: (err as Error).message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   // ─── Action: soft-delete (move to trash) ───
   if (body.action === "soft-delete") {
     const { data: doc } = await supabase

@@ -10631,78 +10631,182 @@ ${clone.innerHTML}
                   <span className={`flex-1 text-caption font-medium transition-colors ${showLint ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Needs review</span>
                   <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{lintReport.orphans.length + lintReport.duplicates.length}</span>
                 </div>
-                {showLint && (
-                  <div className="space-y-0.5 pb-1.5 pl-2 pr-2 pt-1">
-                    {lintReport.orphans.slice(0, 8).map((o) => (
-                      <div
-                        key={`orphan-${o.id}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs cursor-pointer hover:bg-[var(--toggle-bg)] transition-colors"
-                        style={{ color: "var(--text-muted)" }}
-                        title="Orphan — not in any bundle, not linked from any other doc"
-                        onClick={() => {
-                          const existing = tabs.find(t => t.cloudId === o.id);
-                          if (existing) { switchTab(existing.id); return; }
-                          fetch(`/api/docs/${o.id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
-                            if (!d) return;
-                            const newId = `doc-${o.id}-${Date.now()}`;
-                            setTabs(prev => [...prev, { id: newId, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: o.id, isDraft: d.is_draft }]);
-                            switchTab(newId);
-                          }).catch(() => {});
+                {showLint && (() => {
+                  // Mutating actions kept inside this IIFE so the outer
+                  // section doesn't grow a forest of inline handlers.
+                  // `resolvingId` is the doc id currently being resolved
+                  // — used to disable the row's Resolve button while
+                  // the request is in flight.
+                  const reScan = () => {
+                    setLintLoading(true);
+                    return fetch("/api/user/hub/lint", { headers: authHeaders })
+                      .then((r) => (r.ok ? r.json() : null))
+                      .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
+                      .catch(() => {})
+                      .finally(() => setLintLoading(false));
+                  };
+                  const resolveOrphan = async (docId: string) => {
+                    // Orphan auto-fix: re-run concept extraction. If the
+                    // ontology gains a link, the doc drops off the list
+                    // on the next re-scan. If it stays orphan after this
+                    // the user needs to actually edit / categorise.
+                    if (!user?.id) return;
+                    try {
+                      const res = await fetch(`/api/docs/${docId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", ...authHeaders },
+                        body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
+                      });
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => ({}));
+                        showToast(j.error || "Couldn't refresh concepts", "error");
+                        return;
+                      }
+                      showToast("Refreshing concepts… re-scan in a few seconds", "success");
+                      // Optimistically drop the row immediately so the
+                      // user gets the "resolved" feeling. Background
+                      // extraction can take a few seconds; the next
+                      // re-scan will reflect the real state.
+                      setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => x.id !== docId) } : prev);
+                      setTimeout(reScan, 4000);
+                    } catch {
+                      showToast("Couldn't refresh concepts", "error");
+                    }
+                  };
+                  const resolveDuplicate = async (aId: string, aTitle: string | null, bId: string, bTitle: string | null) => {
+                    // Dup auto-fix: soft-delete the OLDER doc (the .a
+                    // side of the pair — id-sorted, which is roughly
+                    // time-ordered for nanoid). Newer copy stays as
+                    // canonical. Restore from Trash if wrong.
+                    const targetTitle = aTitle || aId;
+                    if (!confirm(`Move "${targetTitle}" to Trash and keep "${bTitle || bId}" as the canonical copy?`)) return;
+                    const targetTab = tabs.find((t) => t.cloudId === aId);
+                    try {
+                      const res = await fetch(`/api/docs/${aId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", ...authHeaders },
+                        body: JSON.stringify({ action: "soft-delete", userId: user?.id, editToken: targetTab?.editToken }),
+                      });
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => ({}));
+                        showToast(j.error || "Couldn't move to Trash", "error");
+                        return;
+                      }
+                      showToast(`Moved "${targetTitle}" to Trash`, "success");
+                      // Reflect locally: mark the tab as deleted if open,
+                      // drop the pair from the lint list, and re-scan
+                      // soon so the server numbers catch up.
+                      setTabs((prev) => prev.map((t) => t.cloudId === aId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                      setLintReport((prev) => prev ? { ...prev, duplicates: prev.duplicates.filter((x) => x.a.id !== aId || x.b.id !== bId) } : prev);
+                      setTimeout(reScan, 1500);
+                    } catch {
+                      showToast("Couldn't move to Trash", "error");
+                    }
+                  };
+
+                  return (
+                    <div className="space-y-1 pb-2 pl-2 pr-2 pt-1.5">
+                      {lintReport.orphans.slice(0, 8).map((o) => (
+                        <div
+                          key={`orphan-${o.id}`}
+                          className="group/lint flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          style={{ color: "var(--text-muted)" }}
+                          title="Orphan — not in any bundle, not linked from any other doc. Resolve re-runs concept extraction on this doc."
+                        >
+                          <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>orphan</span>
+                          <button
+                            onClick={() => {
+                              const existing = tabs.find((t) => t.cloudId === o.id);
+                              if (existing) { switchTab(existing.id); return; }
+                              fetch(`/api/docs/${o.id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                                if (!d) return;
+                                const newId = `doc-${o.id}-${Date.now()}`;
+                                setTabs(prev => [...prev, { id: newId, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: o.id, isDraft: d.is_draft }]);
+                                switchTab(newId);
+                              }).catch(() => {});
+                            }}
+                            className="truncate flex-1 text-left bg-transparent hover:underline"
+                            style={{ color: "inherit" }}
+                          >
+                            {o.title || "Untitled"}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); resolveOrphan(o.id); }}
+                            className="shrink-0 px-2 py-0.5 rounded transition-colors opacity-0 group-hover/lint:opacity-100"
+                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)" }}
+                            title="Re-extract concepts for this doc — usually fixes the orphan"
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      ))}
+                      {lintReport.duplicates.slice(0, 8).map((p) => (
+                        <div
+                          key={`dup-${p.a.id}-${p.b.id}`}
+                          className="group/lint flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          style={{ color: "var(--text-muted)" }}
+                          title={`Likely duplicate — distance ${p.distance.toFixed(3)}. Resolve moves the older copy to Trash and keeps the newer one.`}
+                        >
+                          <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--accent)", border: "1px solid var(--accent-dim)" }}>dup</span>
+                          <button
+                            onClick={() => {
+                              for (const id of [p.a.id, p.b.id]) {
+                                const existing = tabs.find(t => t.cloudId === id);
+                                if (existing) continue;
+                                fetch(`/api/docs/${id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                                  if (!d) return;
+                                  setTabs(prev => prev.some(t => t.cloudId === id) ? prev : [...prev, { id: `doc-${id}-${Date.now()}`, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: id, isDraft: d.is_draft }]);
+                                }).catch(() => {});
+                              }
+                              setTimeout(() => {
+                                const newer = tabs.find(t => t.cloudId === p.b.id);
+                                if (newer) switchTab(newer.id);
+                              }, 100);
+                            }}
+                            className="truncate flex-1 text-left bg-transparent hover:underline"
+                            style={{ color: "inherit" }}
+                          >
+                            {(p.a.title || "Untitled")} ↔ {(p.b.title || "Untitled")}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); resolveDuplicate(p.a.id, p.a.title, p.b.id, p.b.title); }}
+                            className="shrink-0 px-2 py-0.5 rounded transition-colors opacity-0 group-hover/lint:opacity-100"
+                            style={{ background: "var(--accent-dim)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--accent)" }}
+                            title="Move the older copy to Trash"
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      ))}
+                      {(lintReport.orphans.length > 8 || lintReport.duplicates.length > 8) && (
+                        <div className="text-caption px-2.5 py-1" style={{ color: "var(--text-faint)" }}>
+                          …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
+                        </div>
+                      )}
+                      {/* Re-scan — proper button now: bordered, padded,
+                          icon + label, hover state. Sits flush against
+                          the bottom of the list, full width, so it
+                          reads as "do this when you're done resolving"
+                          rather than a quiet link. */}
+                      <button
+                        onClick={() => { reScan(); }}
+                        disabled={lintLoading}
+                        className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors mt-1 disabled:opacity-50"
+                        style={{
+                          background: "var(--toggle-bg)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border-dim)",
                         }}
+                        onMouseEnter={(e) => { if (!lintLoading) { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; } }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
+                        title="Recompute orphans + duplicates from the current hub state"
                       >
-                        <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>orphan</span>
-                        <span className="truncate flex-1">{o.title || "Untitled"}</span>
-                      </div>
-                    ))}
-                    {lintReport.duplicates.slice(0, 8).map((p) => (
-                      <div
-                        key={`dup-${p.a.id}-${p.b.id}`}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs cursor-pointer hover:bg-[var(--toggle-bg)] transition-colors"
-                        style={{ color: "var(--text-muted)" }}
-                        title={`Likely duplicate — distance ${p.distance.toFixed(3)}. Click to open both.`}
-                        onClick={() => {
-                          for (const id of [p.a.id, p.b.id]) {
-                            const existing = tabs.find(t => t.cloudId === id);
-                            if (existing) continue;
-                            fetch(`/api/docs/${id}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
-                              if (!d) return;
-                              setTabs(prev => prev.some(t => t.cloudId === id) ? prev : [...prev, { id: `doc-${id}-${Date.now()}`, kind: "doc", title: d.title || "Untitled", markdown: d.markdown || "", cloudId: id, isDraft: d.is_draft }]);
-                            }).catch(() => {});
-                          }
-                          // Open the newer of the pair as the active tab.
-                          setTimeout(() => {
-                            const newer = tabs.find(t => t.cloudId === p.b.id);
-                            if (newer) switchTab(newer.id);
-                          }, 100);
-                        }}
-                      >
-                        <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--accent)", border: "1px solid var(--accent-dim)" }}>dup</span>
-                        <span className="truncate flex-1">{(p.a.title || "Untitled")} ↔ {(p.b.title || "Untitled")}</span>
-                      </div>
-                    ))}
-                    {(lintReport.orphans.length > 8 || lintReport.duplicates.length > 8) && (
-                      <div className="text-caption px-2.5 py-1" style={{ color: "var(--text-faint)" }}>
-                        …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
-                      </div>
-                    )}
-                    <button
-                      onClick={() => {
-                        setLintLoading(true);
-                        fetch("/api/user/hub/lint", { headers: authHeaders })
-                          .then((r) => (r.ok ? r.json() : null))
-                          .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
-                          .catch(() => {})
-                          .finally(() => setLintLoading(false));
-                      }}
-                      disabled={lintLoading}
-                      className="text-caption px-2.5 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)] disabled:opacity-50"
-                      style={{ color: "var(--text-faint)" }}
-                      title="Recompute lint"
-                    >
-                      {lintLoading ? "Recomputing…" : "Re-scan"}
-                    </button>
-                  </div>
-                )}
+                        <RefreshCw width={11} height={11} className={lintLoading ? "animate-spin" : ""} />
+                        {lintLoading ? "Re-scanning…" : "Re-scan hub"}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
