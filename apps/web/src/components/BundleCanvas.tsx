@@ -1788,51 +1788,93 @@ function CanvasMoreMenu({
           {onCopyContext && menuItem("Copy bundle as context", "Concatenated markdown for the AI of your choice", Copy, onCopyContext)}
           {onRequestAddDocs && menuItem("Add documents…", "Pick from your library to extend this bundle", FilePlus2, onRequestAddDocs)}
           <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
-          {/* Detail level — vertical radio list. The previous
-              segmented stepper smashed five orange tiles together
-              (visually a phone number) with no clear "current"
-              affordance — founder feedback. A radio list matches
-              the synthesize section's vertical rhythm above and
-              makes each level self-explanatory in one glance. */}
-          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-1)" }}>
-            <div className="flex items-center justify-between" style={{ padding: "var(--space-1) var(--space-2)" }}>
-              <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Detail level</span>
+          {/* Detail level — discrete horizontal slider. Track with
+              5 evenly-spaced dots; the active dot grows + fills
+              with the accent color so the current state is
+              unmistakable. Numbers sit below each dot for direct
+              reference. The current label sits to the right of the
+              header, large + accent, so the dot's identity is
+              spelled out without making the user scan a tooltip.
+              The previous version stacked 5 orange tiles together
+              with no gap (visually a phone number) — this fixes
+              the affordance while keeping it horizontal. */}
+          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Detail level</span>
+              <span className="text-xs font-medium truncate" style={{ color: "var(--accent)" }}>
+                {detailLabels[detail] || `Level ${detail}`}
+              </span>
             </div>
-            {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => {
-              const active = detail === lvl;
-              return (
-                <button
+            {/* Slider track + dots */}
+            <div className="relative" style={{ height: 28, padding: "0 6px" }}>
+              {/* Track behind the dots */}
+              <div
+                className="absolute"
+                style={{
+                  top: 9,
+                  left: 12,
+                  right: 12,
+                  height: 2,
+                  borderRadius: 2,
+                  background: "var(--toggle-bg)",
+                }}
+              />
+              {/* Filled portion of the track up to the active dot */}
+              <div
+                className="absolute transition-all"
+                style={{
+                  top: 9,
+                  left: 12,
+                  width: `calc((100% - 24px) * ${(detail - 1) / 4})`,
+                  height: 2,
+                  borderRadius: 2,
+                  background: "var(--accent)",
+                }}
+              />
+              {/* Dots */}
+              <div className="absolute inset-0 flex items-center justify-between" style={{ padding: "0 6px" }}>
+                {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => {
+                  const active = detail === lvl;
+                  const passed = lvl < detail;
+                  return (
+                    <Tooltip key={lvl} text={detailLabels[lvl] || `Level ${lvl}`} position="top">
+                      <button
+                        onClick={() => setDetail(lvl)}
+                        className="relative flex items-center justify-center transition-all"
+                        aria-label={`Detail level ${lvl}: ${detailLabels[lvl] || ""}`}
+                        aria-pressed={active}
+                        style={{
+                          width: active ? 16 : 12,
+                          height: active ? 16 : 12,
+                          borderRadius: "50%",
+                          background: passed || active ? "var(--accent)" : "var(--surface)",
+                          border: `1.5px solid ${active ? "var(--accent)" : passed ? "var(--accent)" : "var(--border)"}`,
+                          cursor: "pointer",
+                          padding: 0,
+                          boxShadow: active ? "0 0 0 3px var(--accent-dim)" : "none",
+                        }}
+                      />
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Number labels under each dot */}
+            <div className="flex items-center justify-between font-mono tabular-nums" style={{ fontSize: 9, padding: "0 6px", color: "var(--text-faint)" }}>
+              {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => (
+                <span
                   key={lvl}
-                  onClick={() => setDetail(lvl)}
-                  className="flex items-center gap-2 text-left transition-colors"
                   style={{
-                    padding: "var(--space-1) var(--space-2)",
-                    borderRadius: 4,
-                    background: active ? "var(--accent-dim)" : "transparent",
-                    color: active ? "var(--accent)" : "var(--text-secondary)",
-                    cursor: "pointer",
+                    width: 16,
+                    textAlign: "center",
+                    color: detail === lvl ? "var(--accent)" : "var(--text-faint)",
+                    fontWeight: detail === lvl ? 600 : 400,
                   }}
-                  onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
-                  onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  <span
-                    className="shrink-0 flex items-center justify-center rounded-full"
-                    style={{
-                      width: 14,
-                      height: 14,
-                      border: `1.5px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                      background: active ? "var(--accent)" : "transparent",
-                    }}
-                  >
-                    {active && <span className="rounded-full" style={{ width: 5, height: 5, background: "#000" }} />}
-                  </span>
-                  <span className="font-mono tabular-nums shrink-0" style={{ fontSize: 10, color: active ? "var(--accent)" : "var(--text-faint)", width: 10 }}>{lvl}</span>
-                  <span className="text-xs flex-1 truncate" style={{ fontWeight: active ? 600 : 400 }}>
-                    {detailLabels[lvl] || `Level ${lvl}`}
-                  </span>
-                </button>
-              );
-            })}
+                  {lvl}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}
