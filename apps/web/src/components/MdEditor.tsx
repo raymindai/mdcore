@@ -4460,19 +4460,23 @@ export default function MdEditor() {
   // strobe on initial load.
   const recentSeenIds = useRef<Set<string>>(new Set());
   const recentFirstPaint = useRef(true);
-  const captureRecentRects = useCallback(() => {
-    recentFlipPending.current = true;
-    const m = new Map<string, DOMRect>();
-    for (const [id, el] of recentRowRefs.current) {
-      if (el) m.set(id, el.getBoundingClientRect());
-    }
-    recentFlipRects.current = m;
-  }, []);
+  // captureRecentRects is now a no-op kept for source compat with the
+  // call sites in handleDocClick — the FLIP rects are captured
+  // automatically by the useLayoutEffect below, so callers no longer
+  // need to remember to fire it before changing state. The export
+  // remains so we don't have to edit half a dozen handlers; it just
+  // does nothing now.
+  const captureRecentRects = useCallback(() => { /* auto-captured below */ }, []);
+
+  // Auto-FLIP for the Recent list. Runs after EVERY render: compares
+  // each row's current rect against the rect captured during the
+  // previous render, and animates the delta with an inverse-then-zero
+  // transform. The capture is also done here, so a state change
+  // anywhere in the app — clicking a bundle in MD Bundles, opening a
+  // doc from search, switching via keyboard — will animate the Recent
+  // reorder without the call site having to remember.
   useLayoutEffect(() => {
-    if (!recentFlipPending.current) return;
-    recentFlipPending.current = false;
     const prev = recentFlipRects.current;
-    if (prev.size === 0) return;
     for (const [id, el] of recentRowRefs.current) {
       if (!el) continue;
       const before = prev.get(id);
@@ -4482,7 +4486,7 @@ export default function MdEditor() {
       if (Math.abs(dy) < 1) continue;
       el.style.transition = "none";
       el.style.transform = `translateY(${dy}px)`;
-      void el.offsetHeight; // force reflow so the next transform animates
+      void el.offsetHeight;
       requestAnimationFrame(() => {
         el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
         el.style.transform = "translateY(0)";
@@ -4494,7 +4498,12 @@ export default function MdEditor() {
         el.addEventListener("transitionend", onEnd);
       });
     }
-    recentFlipRects.current.clear();
+    // Recapture for the next render's FLIP.
+    const next = new Map<string, DOMRect>();
+    for (const [id, el] of recentRowRefs.current) {
+      if (el) next.set(id, el.getBoundingClientRect());
+    }
+    recentFlipRects.current = next;
   });
 
   // Sync the seen-ids ref AFTER each render so the next render's
