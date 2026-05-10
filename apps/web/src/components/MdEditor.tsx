@@ -2049,7 +2049,7 @@ function BundleCreatorModal({
               <Sparkles width={12} height={12} aria-hidden />
             </span>
             <span className="text-caption font-semibold" style={{ color: "var(--accent)" }}>Ask AI</span>
-            <span className="text-caption" style={{ color: "var(--text-faint)" }}>· optional</span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>— optional</span>
           </div>
           <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Describe a topic and AI picks matching docs + writes a title from your hub.
@@ -8355,7 +8355,12 @@ ${clone.innerHTML}
             // they return to a doc).
             const active = !showOnboarding && activeTab?.kind !== "hub" && viewMode === mode;
             const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
-            const disabled = showOnboarding && !hasActiveDoc;
+            // Disable clicks on Hub too — the view modes (Live/Split/Source)
+            // don't apply to the hub view, so accepting a click would be a
+            // no-op visually while persisting a hidden state change for the
+            // next doc open. Onboarding without a tab also keeps them
+            // disabled (legacy behaviour).
+            const disabled = activeTab?.kind === "hub" || (showOnboarding && !hasActiveDoc);
             return (
               <button
                 key={mode}
@@ -11801,7 +11806,7 @@ ${clone.innerHTML}
                       accent,
                       accentDim,
                       scope: hubConceptCount > 0
-                        ? `${hubConceptCount} concepts · whole hub`
+                        ? `${hubConceptCount} concepts — whole hub`
                         : "ontology not built yet",
                     }
                   : isBundleMode
@@ -11812,7 +11817,7 @@ ${clone.innerHTML}
                         accent,
                         accentDim,
                         scope: activeBundle
-                          ? `${activeBundle.documentCount} doc${activeBundle.documentCount === 1 ? "" : "s"} · ${activeBundle.title || "Untitled"}`
+                          ? `${activeBundle.documentCount} doc${activeBundle.documentCount === 1 ? "" : "s"} — ${activeBundle.title || "Untitled"}`
                           : (activeTab?.title || "this bundle"),
                       }
                     : {
@@ -11822,7 +11827,7 @@ ${clone.innerHTML}
                         accent,
                         accentDim,
                         scope: activeTab?.title
-                          ? `${activeTab.title}${docWordCount > 0 ? ` · ${docWordCount.toLocaleString()} word${docWordCount === 1 ? "" : "s"}` : ""}`
+                          ? `${activeTab.title}${docWordCount > 0 ? ` — ${docWordCount.toLocaleString()} word${docWordCount === 1 ? "" : "s"}` : ""}`
                           : (docWordCount > 0 ? `${docWordCount.toLocaleString()} words` : "draft"),
                       };
                 // Helpers for the radio tab clicks: clicking Document /

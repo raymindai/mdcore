@@ -364,7 +364,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     {totalCounts[tier]}
                   </div>
                   <div className="text-caption mt-0.5" style={{ color: "var(--text-faint)" }}>
-                    {ov ? `${ov.bundles[tier].length} bundle${ov.bundles[tier].length === 1 ? "" : "s"} · ${ov.documents[tier].length} doc${ov.documents[tier].length === 1 ? "" : "s"}` : ""}
+                    {ov ? `${ov.bundles[tier].length} bundle${ov.bundles[tier].length === 1 ? "" : "s"}, ${ov.documents[tier].length} doc${ov.documents[tier].length === 1 ? "" : "s"}` : ""}
                   </div>
                 </div>
               );
@@ -677,7 +677,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
               {bundles.length > 0 && (
                 <div className="mb-4">
                   <div className="text-caption uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)", fontSize: 10 }}>
-                    Bundles · {bundles.length}
+                    Bundles ({bundles.length})
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {bundles.map((b) => (
@@ -709,7 +709,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
               {docs.length > 0 && (
                 <div>
                   <div className="text-caption uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)", fontSize: 10 }}>
-                    Docs · {docs.length}
+                    Docs ({docs.length})
                   </div>
                   <ul className="space-y-0.5">
                     {docs.slice(0, 30).map((d) => (
@@ -753,7 +753,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
             <header className="flex items-baseline justify-between mb-3">
               <h2 className="text-heading" style={{ color: "var(--accent)" }}>Public</h2>
               <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-                {data.counts.bundles} bundle{data.counts.bundles === 1 ? "" : "s"} · {data.counts.documents} doc{data.counts.documents === 1 ? "" : "s"}
+                {data.counts.bundles} bundle{data.counts.bundles === 1 ? "" : "s"}, {data.counts.documents} doc{data.counts.documents === 1 ? "" : "s"}
               </span>
             </header>
             <ul className="space-y-1">

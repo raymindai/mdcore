@@ -82,7 +82,7 @@ function DocStatusIcon({ tab, isActive }: {
     tip = "Local — not saved to cloud yet";
   }
 
-  if (isSynced) tip += ` · synced from ${tab.source}`;
+  if (isSynced) tip += ` — synced from ${tab.source}`;
 
   return (
     <Tooltip text={tip}>
