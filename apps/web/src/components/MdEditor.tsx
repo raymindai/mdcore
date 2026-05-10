@@ -2855,7 +2855,16 @@ export default function MdEditor() {
   }, [bundles]);
 
 
-  const initialMd = activeTab?.markdown || SAMPLE_WELCOME;
+  // CRITICAL: never seed a cloud doc's editor with SAMPLE_WELCOME.
+  // If activeTab has a cloudId but its body hasn't been hydrated yet
+  // (rehydrate fetch in flight), substituting the sample causes
+  // Tiptap's first onUpdate to autosave the sample over the real
+  // doc — which is exactly how Project Acme / Claude Memory /
+  // AI Bundle docs got their bodies replaced with the welcome blurb.
+  // Use empty string instead; the editor stays blank until the fetch
+  // returns, after which setMarkdownRaw fills it in.
+  const initialMd = activeTab?.markdown
+    || (activeTab?.cloudId ? "" : SAMPLE_WELCOME);
   const [markdown, setMarkdownRaw] = useState(initialMd);
   const undoStack = useRef<string[]>([initialMd]);
   const redoStack = useRef<string[]>([]);
@@ -2958,6 +2967,14 @@ export default function MdEditor() {
     if (val !== markdownRef.current) return;
     const currentTab = tabs.find(t => t.id === activeTabIdRef.current);
     if (currentTab?.cloudId && !currentTab.readonly && !currentTab.deleted) {
+      // CRITICAL: refuse to save while the tab's body hasn't been
+      // hydrated from the server yet. An empty tab.markdown means the
+      // rehydrate fetch is still in flight; any val we have right now
+      // is either the editor's seed (used to be SAMPLE_WELCOME!) or
+      // a Tiptap-normalized version of it. Saving would clobber the
+      // real doc body with the seed — which is the failure mode that
+      // produced the "Welcome to [mdfy.app]..." corruption.
+      if (!currentTab.markdown) return;
       // Hold off saving while a tab switch is mid-flight. handleTiptapChange
       // already gates on this flag for direct edits, but other call sites
       // (undo/redo, paste, programmatic setMarkdown) come straight through
@@ -5292,6 +5309,17 @@ export default function MdEditor() {
     const emptyCloudTabs = tabs.filter(t => t.cloudId && !t.markdown && !t.readonly && !t.deleted);
     if (emptyCloudTabs.length === 0) return;
 
+    // Suppress autosave for the duration of the rehydrate. Without
+    // this, Tiptap's first onUpdate (autolink normalization of the
+    // editor's seed content) can race ahead of the fetch and PATCH
+    // the cloud doc with seed content. triggerAutoSave already
+    // refuses to save when tab.markdown is empty (the primary
+    // guard); this flag layers a second guard that survives between
+    // the moment we call setMarkdownRaw(doc.markdown) and the
+    // moment React reconciles tab.markdown.
+    const wasInFlight = tabSwitchInFlightRef.current;
+    tabSwitchInFlightRef.current = true;
+
     (async () => {
       for (const tab of emptyCloudTabs) {
         try {
@@ -5316,6 +5344,8 @@ export default function MdEditor() {
           }
         } catch { /* silent — localStorage still has the tab metadata */ }
       }
+      // Drop the autosave gate after the React state update settles.
+      queueMicrotask(() => { tabSwitchInFlightRef.current = wasInFlight; });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading]);
