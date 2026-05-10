@@ -261,10 +261,11 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
   return (
     <div className="h-full overflow-auto">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* ── Eyebrow + identity ──────────────────────────────────── */}
-        <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: "var(--accent)" }}>
-          Public knowledge hub
-        </div>
+        {/* ── Identity row. The eyebrow "Public knowledge hub"
+              previously sat above this header, but the slug pill
+              (/hub/<slug>) and the Deploy-to-AI block already say
+              the same thing — removing it keeps the page top
+              quieter. */}
         <header className="flex items-start gap-4 mb-8">
           <img
             src={data.hub.avatar_url || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(slug)}`}
