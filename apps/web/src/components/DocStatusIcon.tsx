@@ -10,17 +10,23 @@ import Tooltip from "@/components/Tooltip";
 //
 //   Cloud   (faint)  Private   — saved to cloud, only you can read
 //                                (is_draft=true)
-//   Users   (blue)   Shared    — password OR specific people
-//   Globe   (green)  Public    — anyone with the URL (is_draft=false,
-//                                no password, no email allow-list)
+//   Users   (blue)   Shared    — published + specific people only
+//                                (allowed_emails / allowed_editors)
+//   Globe   (green)  Public    — published, no allow-list
+//                                (is_draft=false, allowed_emails empty)
 //
 // Plus two contextual states:
 //   Eye      (faint) View only — someone else shared it WITH you
 //   FileIcon (faint) Local     — never synced to cloud
 //
+// Password as a fourth axis was removed (commit 5a056bc5) — the
+// icon used to flip to Users when password_hash was set, even with
+// no allow-list, which diverged from ShareModal's radio (which only
+// reads allowed_emails). Now both surfaces look at the same field.
+//
 // "Draft" is intentionally NOT a category. A doc you've saved but
-// not shared is just Private (saved to cloud, only you can read).
-// Publishing isn't the goal — the goal is choosing who can read.
+// not shared is just Private. Publishing isn't the goal — the goal
+// is choosing who can read.
 
 function DocStatusIcon({ tab, isActive }: {
   tab: {
@@ -32,6 +38,9 @@ function DocStatusIcon({ tab, isActive }: {
     permission?: string;
     isRestricted?: boolean;
     isSharedByMe?: boolean;
+    /** Accepted but ignored — password feature was removed.
+     *  Callers can still pass it (API responses include it) but it
+     *  no longer influences the rendered icon. */
     hasPassword?: boolean;
   };
   isActive: boolean;
@@ -40,7 +49,6 @@ function DocStatusIcon({ tab, isActive }: {
 
   const isPublished = tab.isDraft === false;
   const hasEmailRestriction = (tab.sharedWithCount ?? 0) > 0 || tab.isRestricted === true;
-  const hasPassword = tab.hasPassword === true;
   const isSynced = tab.source && ["vscode", "desktop", "cli", "mcp"].includes(tab.source);
 
   let Icon: typeof Globe;
@@ -55,14 +63,14 @@ function DocStatusIcon({ tab, isActive }: {
     Icon = Eye;
     color = "#a78bfa";
     tip = "View only — shared with you";
-  } else if (isPublished && (hasPassword || hasEmailRestriction)) {
+  } else if (isPublished && hasEmailRestriction) {
+    // Shared with specific people via allowed_emails / allowed_editors.
+    // Password as a separate access mode was removed (see commit
+    // 5a056bc5) so the icon now derives entirely from the email
+    // allow-list, matching ShareModal's three-tier radio.
     Icon = Users;
     color = "#60a5fa";
-    tip = hasPassword && hasEmailRestriction
-      ? "Shared — password + specific people"
-      : hasPassword
-        ? "Shared — password protected"
-        : "Shared — with specific people";
+    tip = "Shared — with specific people";
   } else if (isPublished) {
     // Default published state — read-public. Anyone with the URL can
     // open it; it's listed on the hub. ShareModal's "Restricted"
