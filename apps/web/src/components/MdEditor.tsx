@@ -2736,6 +2736,10 @@ export default function MdEditor() {
   // doesn't refetch on every keystroke. Fetched on mount when
   // signed in, and re-fetched after operations that change the
   // hub shape (doc create/delete/restore).
+  // Doc intent chip dropdown — toggled from the LIVE bar; owner-only.
+  // The PATCH happens optimistically: we update the tab state first
+  // and fire the request in the background, reverting on error.
+  const [intentMenuOpen, setIntentMenuOpen] = useState(false);
   const [showLint, setShowLint] = useState(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("mdfy-show-lint");
@@ -4078,6 +4082,7 @@ export default function MdEditor() {
             compileFrom: doc.compile_from || undefined,
             compiledAt: doc.compiled_at || undefined,
             inBundles: Array.isArray(doc.inBundles) ? doc.inBundles : undefined,
+            intent: doc.intent || null,
           } : x));
           // PREVIOUSLY: when server's stored title disagreed with the
           // first H1, loadTab fired a scheduleSave to push the H1 back.
@@ -11777,7 +11782,107 @@ ${clone.innerHTML}
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
               style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || activeTab?.kind === "hub") ? "none" : undefined }}
             >
-              <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
+              <div className="flex items-center gap-2 shrink-0 min-w-0">
+                <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
+                {/* Doc intent chip (Hermes Step 4 / page-type tag).
+                    Shown for the doc owner only. No intent → faint
+                    "+ Type" pill; intent set → coloured pill with X
+                    to clear. PATCH /api/docs/{id} { intent } updates
+                    the row; we apply optimistically and revert on
+                    HTTP failure. */}
+                {activeTab?.cloudId && isOwner && (() => {
+                  const intent = activeTab.intent || null;
+                  const options: Array<{ value: "note" | "definition" | "comparison" | "decision" | "question" | "reference"; label: string; hint: string; color: string }> = [
+                    { value: "note",       label: "Note",       hint: "General notes, no specific shape",    color: "#a1a1aa" },
+                    { value: "definition", label: "Definition", hint: "Defines a concept or term",          color: "#60a5fa" },
+                    { value: "comparison", label: "Comparison", hint: "Compares two or more alternatives",  color: "#fbbf24" },
+                    { value: "decision",   label: "Decision",   hint: "Records a choice + why",             color: "#4ade80" },
+                    { value: "question",   label: "Question",   hint: "Open question / something to resolve", color: "#c4b5fd" },
+                    { value: "reference",  label: "Reference",  hint: "Reference material — read often",    color: "#f472b6" },
+                  ];
+                  const current = options.find((o) => o.value === intent);
+                  const applyIntent = (next: typeof intent) => {
+                    if (!activeTab?.cloudId) return;
+                    const cloudId = activeTab.cloudId;
+                    const prev = activeTab.intent || null;
+                    // Optimistic update + close menu.
+                    setTabs((all) => all.map((t) => t.id === activeTab.id ? { ...t, intent: next || undefined } : t));
+                    setIntentMenuOpen(false);
+                    fetch(`/api/docs/${cloudId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", ...authHeaders },
+                      body: JSON.stringify({ intent: next, userId: user?.id, editToken: activeTab.editToken }),
+                    }).then((r) => {
+                      if (!r.ok) {
+                        // Revert if the server refused (likely permission).
+                        setTabs((all) => all.map((t) => t.id === activeTab.id ? { ...t, intent: prev || undefined } : t));
+                        showToast("Couldn't update doc type", "error");
+                      }
+                    }).catch(() => {
+                      setTabs((all) => all.map((t) => t.id === activeTab.id ? { ...t, intent: prev || undefined } : t));
+                    });
+                  };
+                  return (
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setIntentMenuOpen((v) => !v)}
+                        className="flex items-center gap-1 h-5 px-1.5 rounded-md text-caption transition-colors hover:bg-[var(--toggle-bg)] normal-case"
+                        style={{
+                          color: current ? current.color : "var(--text-faint)",
+                          border: `1px solid ${current ? current.color + "44" : "var(--border-dim)"}`,
+                          background: current ? current.color + "11" : "transparent",
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: 0.3,
+                        }}
+                        title={current ? `Type: ${current.hint}` : "Set a doc type — note / definition / comparison / decision / question / reference"}
+                      >
+                        <span>{current ? current.label : "+ Type"}</span>
+                      </button>
+                      {intentMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-[9998]" onClick={() => setIntentMenuOpen(false)} />
+                          <div
+                            className="absolute top-full left-0 mt-1 w-56 rounded-lg py-1 z-[9999]"
+                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+                          >
+                            <div className="px-3 py-1.5 text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)", borderBottom: "1px solid var(--border-dim)", fontSize: 9 }}>
+                              Doc type
+                            </div>
+                            {options.map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => applyIntent(opt.value)}
+                                className="w-full flex items-start gap-2 px-3 py-1.5 text-left hover:bg-[var(--menu-hover)] transition-colors normal-case"
+                                style={{ background: intent === opt.value ? "var(--menu-hover)" : "transparent" }}
+                              >
+                                <span className="shrink-0 mt-1" style={{ width: 6, height: 6, borderRadius: 3, background: opt.color, display: "inline-block" }} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-body font-medium" style={{ color: intent === opt.value ? opt.color : "var(--text-primary)" }}>{opt.label}</div>
+                                  <div className="text-caption" style={{ color: "var(--text-faint)", fontSize: 10 }}>{opt.hint}</div>
+                                </div>
+                                {intent === opt.value && <Check width={11} height={11} className="shrink-0 mt-1" style={{ color: opt.color }} />}
+                              </button>
+                            ))}
+                            {intent && (
+                              <>
+                                <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
+                                <button
+                                  onClick={() => applyIntent(null)}
+                                  className="w-full text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)] transition-colors normal-case"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
+                                  Clear doc type
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
               <div className="flex items-center gap-1 normal-case shrink-0 flex-nowrap">
                 {/* Toolbar toggle — icon with hint popover for new users */}
                 {canEdit && <div className="relative group">

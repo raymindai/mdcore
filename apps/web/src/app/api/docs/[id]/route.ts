@@ -811,6 +811,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     updates.markdown = splicedMd;
     updates.title = extractTitleFromMd(splicedMd);
   }
+  // Doc intent — same allow-list + null-clears as the auto-save path.
+  if (body.intent !== undefined) {
+    const allowed = new Set(["note", "definition", "comparison", "decision", "question", "reference"]);
+    if (body.intent === null) updates.intent = null;
+    else if (typeof body.intent === "string" && allowed.has(body.intent)) updates.intent = body.intent;
+  }
 
   const { error } = await supabase.from("documents").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: "Failed to update" }, { status: 500 });
