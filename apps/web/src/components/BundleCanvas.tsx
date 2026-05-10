@@ -1788,91 +1788,76 @@ function CanvasMoreMenu({
           {onCopyContext && menuItem("Copy bundle as context", "Concatenated markdown for the AI of your choice", Copy, onCopyContext)}
           {onRequestAddDocs && menuItem("Add documents…", "Pick from your library to extend this bundle", FilePlus2, onRequestAddDocs)}
           <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
-          {/* Detail level — discrete horizontal slider. Track with
-              5 evenly-spaced dots; the active dot grows + fills
-              with the accent color so the current state is
-              unmistakable. Numbers sit below each dot for direct
-              reference. The current label sits to the right of the
-              header, large + accent, so the dot's identity is
-              spelled out without making the user scan a tooltip.
-              The previous version stacked 5 orange tiles together
-              with no gap (visually a phone number) — this fixes
-              the affordance while keeping it horizontal. */}
-          <div className="flex flex-col" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}>
+          {/* Detail level — real <input type="range"> slider. The
+              previous version was just five buttons spaced along a
+              line; the founder rightly called it not-a-slider. A
+              native range input gives us drag, keyboard arrows,
+              touch, and free a11y, while custom CSS pseudo-elements
+              keep it on-brand. Ticks underneath show the discrete
+              stops; the header right shows the current label. */}
+          <div className="flex flex-col mdfy-detail-slider" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Detail level</span>
               <span className="text-xs font-medium truncate" style={{ color: "var(--accent)" }}>
                 {detailLabels[detail] || `Level ${detail}`}
               </span>
             </div>
-            {/* Slider track + dots */}
-            <div className="relative" style={{ height: 28, padding: "0 6px" }}>
-              {/* Track behind the dots */}
-              <div
-                className="absolute"
+            <div className="relative" style={{ padding: "4px 0" }}>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={detail}
+                onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
+                aria-label={`Detail level (1–5). Current: ${detailLabels[detail] || detail}`}
                 style={{
-                  top: 9,
-                  left: 12,
-                  right: 12,
-                  height: 2,
-                  borderRadius: 2,
-                  background: "var(--toggle-bg)",
+                  width: "100%",
+                  // The track is rendered via CSS pseudo-elements
+                  // (see globals.css .mdfy-detail-slider rules)
+                  // so the gradient % stays in sync with the value.
+                  background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) 100%)`,
                 }}
               />
-              {/* Filled portion of the track up to the active dot */}
-              <div
-                className="absolute transition-all"
-                style={{
-                  top: 9,
-                  left: 12,
-                  width: `calc((100% - 24px) * ${(detail - 1) / 4})`,
-                  height: 2,
-                  borderRadius: 2,
-                  background: "var(--accent)",
-                }}
-              />
-              {/* Dots */}
-              <div className="absolute inset-0 flex items-center justify-between" style={{ padding: "0 6px" }}>
-                {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => {
-                  const active = detail === lvl;
-                  const passed = lvl < detail;
-                  return (
-                    <Tooltip key={lvl} text={detailLabels[lvl] || `Level ${lvl}`} position="top">
-                      <button
-                        onClick={() => setDetail(lvl)}
-                        className="relative flex items-center justify-center transition-all"
-                        aria-label={`Detail level ${lvl}: ${detailLabels[lvl] || ""}`}
-                        aria-pressed={active}
-                        style={{
-                          width: active ? 16 : 12,
-                          height: active ? 16 : 12,
-                          borderRadius: "50%",
-                          background: passed || active ? "var(--accent)" : "var(--surface)",
-                          border: `1.5px solid ${active ? "var(--accent)" : passed ? "var(--accent)" : "var(--border)"}`,
-                          cursor: "pointer",
-                          padding: 0,
-                          boxShadow: active ? "0 0 0 3px var(--accent-dim)" : "none",
-                        }}
-                      />
-                    </Tooltip>
-                  );
-                })}
+              {/* Tick marks aligned with each step. The first/last
+                  ticks center on the slider end-stops; the middle
+                  three on the 25/50/75% positions. */}
+              <div className="absolute inset-x-0 flex justify-between pointer-events-none" style={{ top: 4, height: 14, padding: "0 7px" }}>
+                {[1, 2, 3, 4, 5].map((lvl) => (
+                  <span
+                    key={lvl}
+                    style={{
+                      width: 2,
+                      height: 6,
+                      marginTop: 4,
+                      borderRadius: 1,
+                      background: lvl <= detail ? "rgba(0,0,0,0.45)" : "var(--border)",
+                    }}
+                  />
+                ))}
               </div>
             </div>
-            {/* Number labels under each dot */}
-            <div className="flex items-center justify-between font-mono tabular-nums" style={{ fontSize: 9, padding: "0 6px", color: "var(--text-faint)" }}>
+            {/* Number labels under each tick */}
+            <div className="flex items-center justify-between font-mono tabular-nums" style={{ fontSize: 9, padding: "0 4px" }}>
               {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => (
-                <span
+                <button
                   key={lvl}
+                  onClick={() => setDetail(lvl)}
+                  className="transition-colors"
+                  aria-label={`Jump to level ${lvl}: ${detailLabels[lvl] || ""}`}
                   style={{
-                    width: 16,
-                    textAlign: "center",
+                    width: 14,
+                    height: 14,
+                    padding: 0,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
                     color: detail === lvl ? "var(--accent)" : "var(--text-faint)",
                     fontWeight: detail === lvl ? 600 : 400,
                   }}
                 >
                   {lvl}
-                </span>
+                </button>
               ))}
             </div>
           </div>

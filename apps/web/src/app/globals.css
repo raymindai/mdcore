@@ -2549,6 +2549,82 @@ textarea::selection {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Bundle Canvas Detail Level slider ──
+   Native <input type="range"> styled to match the mdfy palette.
+   Track is rendered via the inline `background: linear-gradient`
+   on the input (so the filled portion follows the value). Thumb
+   is a draggable accent circle.
+
+   Vendor prefixes are required — Chromium uses ::-webkit-*,
+   Firefox uses ::-moz-* — and they cannot be combined into a
+   single selector. */
+.mdfy-detail-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  outline: none;
+  cursor: grab;
+  /* background: set inline by the component to track the value */
+}
+.mdfy-detail-slider input[type="range"]:active {
+  cursor: grabbing;
+}
+.mdfy-detail-slider input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* Webkit (Chrome, Safari, Edge) thumb */
+.mdfy-detail-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: grab;
+  transition: transform 120ms ease-out;
+}
+.mdfy-detail-slider input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+.mdfy-detail-slider input[type="range"]:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+.mdfy-detail-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 14px;
+  border-radius: 7px;
+  background: transparent;
+}
+
+/* Firefox thumb */
+.mdfy-detail-slider input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: grab;
+  transition: transform 120ms ease-out;
+}
+.mdfy-detail-slider input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+.mdfy-detail-slider input[type="range"]:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
+}
+.mdfy-detail-slider input[type="range"]::-moz-range-track {
+  height: 14px;
+  border-radius: 7px;
+  background: transparent;
+}
 .mdfy-loader-enter {
   animation: mdfyLoaderEnter 480ms ease-out both;
 }
