@@ -175,6 +175,16 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
         }
         inflightRef.current = true;
         setState((s) => ({ ...s, isSaving: true }));
+        // Reset the refresh guard at the START of every save attempt.
+        // The guard exists to prevent infinite refresh loops within a
+        // single save, NOT to permanently disable refresh across saves.
+        // The earlier logic only reset it on a non-403 response, which
+        // meant: once a single save ended on 403, every subsequent save
+        // would skip the refresh+retry step and surface "Session
+        // expired" — even if a fresh JWT was readily available. That
+        // produced the "I just refreshed and it still says Session
+        // expired" loop.
+        refreshedThisRoundRef.current = false;
 
         try {
           const patchBody: Record<string, unknown> = {
@@ -252,8 +262,19 @@ export function useAutoSave(opts: AutoSaveOptions = {}) {
               },
             }));
           } else if (res.status === 403) {
-            // Refresh already attempted; user is genuinely signed out.
-            setState((s) => ({ ...s, isSaving: false, error: "Session expired. Refresh to continue editing." }));
+            // Refresh already attempted; surface the SERVER's reason
+            // string so we don't blame "session expired" when the real
+            // cause is a permission change (doc is no longer ours,
+            // editor was demoted, etc). Falls back to the generic
+            // session-expired copy only when the server didn't supply
+            // a specific error string.
+            const errBody = await res.json().catch(() => ({}));
+            const serverMsg = typeof errBody?.error === "string" ? errBody.error : "";
+            const looksLikePermission = /owner|edit access|editor|restricted/i.test(serverMsg);
+            const friendly = looksLikePermission
+              ? `${serverMsg}. You can keep reading; saves are paused.`
+              : "Sign in again to keep editing — your session expired.";
+            setState((s) => ({ ...s, isSaving: false, error: friendly }));
           } else {
             const err = await res.json().catch(() => ({}));
             setState((s) => ({ ...s, isSaving: false, error: err.error || "Save failed" }));
