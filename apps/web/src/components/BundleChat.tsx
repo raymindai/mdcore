@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CheckSquare, Scale, HelpCircle, RotateCcw, Layers, ScrollText } from "lucide-react";
+import { CheckSquare, Scale, HelpCircle, Layers, ScrollText } from "lucide-react";
 import ChatMarkdown from "@/components/ChatMarkdown";
 
 interface Message {
@@ -147,11 +147,24 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, accen
 
   // Kept for potential future textarea use; the input is now single-line.
 
-  const clearChat = () => {
-    if (!confirm("Clear chat history?")) return;
+  const clearChat = useCallback((skipConfirm = false) => {
+    if (!skipConfirm && !confirm("Start a new chat? Current conversation will be cleared.")) return;
     setMessages([]);
+    setError(null);
+    setInput("");
     try { localStorage.removeItem(`mdfy-chat-${bundleId}`); } catch { /* ignore */ }
-  };
+  }, [bundleId]);
+
+  // Listen for the global "new chat" event fired by the panel header
+  // so the user has a single always-visible "New chat" affordance.
+  useEffect(() => {
+    const handler = () => {
+      if (messages.length === 0) return;
+      clearChat();
+    };
+    window.addEventListener("mdfy-newchat-bundle", handler);
+    return () => window.removeEventListener("mdfy-newchat-bundle", handler);
+  }, [clearChat, messages.length]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 min-w-0">
@@ -231,14 +244,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, accen
             className="flex-1 text-caption bg-transparent min-w-0"
             style={{ color: "var(--text-secondary)", border: "none", outline: "none" }}
           />
-          {messages.length > 0 && (
-            <button type="button" onClick={clearChat}
-              className="shrink-0 flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
-              style={{ color: "var(--text-faint)" }}
-              title="Clear chat history">
-              <RotateCcw width={9} height={9} />
-            </button>
-          )}
+          {/* Inline reset removed — panel header now owns the "New chat" affordance. */}
           <button type="submit" disabled={!input.trim() || isStreaming}
             className="shrink-0 p-1.5 rounded-md transition-colors"
             style={{ background: input.trim() && !isStreaming ? themeAccent : "transparent", color: input.trim() && !isStreaming ? "#fff" : "var(--text-faint)" }}

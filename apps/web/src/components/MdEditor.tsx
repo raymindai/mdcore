@@ -40,7 +40,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -522,6 +522,16 @@ cat report.md | mdfy publish
 pbpaste | mdfy publish
 \`\`\`
 
+### Import from GitHub
+
+Paste a GitHub URL — repo home, a folder, a single file, or a \`raw.githubusercontent.com/...\` link. mdfy fetches every \`.md\` it finds (capped at 80 files / 200 KB each) and creates one doc per file, dropping them into a single bundle so you can open the whole repo as a thinking surface.
+
+Works on:
+- \`github.com/owner/repo\` — repo root, recursive
+- \`github.com/owner/repo/tree/main/docs\` — single folder
+- \`github.com/owner/repo/blob/main/README.md\` — single file
+- \`raw.githubusercontent.com/owner/repo/main/path.md\` — raw
+
 ### Import via Chrome Extension
 
 Click the mdfy button on ChatGPT, Claude, or Gemini to capture AI conversations directly.
@@ -607,6 +617,18 @@ Changes are highlighted in orange and fade after 3 seconds.
 ## Document Outline
 
 Click the **Outline** button to see your document structure. All headings (H1-H6) are listed with hierarchy. Click any heading to scroll directly to it.
+
+## Related in your hub
+
+Under every doc you own, mdfy lists **other docs in your hub that share concepts** with the one you're reading — ranked by overlap, with the shared concept labels shown as chips. Built from the auto-extracted concept index, owner-only, and refreshed in the background. No manual wiki maintenance.
+
+## Hub recall + reranker
+
+Open the AI panel in **Hub** mode to chat across your whole hub. Recall fetches candidate chunks via hybrid search (vector + keyword) and a Haiku-based reranker reorders them so the answer cites your most-on-topic passages, not just the lexically nearest ones. Citations link back to the source doc.
+
+## llms.txt + token economy
+
+Every public hub auto-publishes a [\`/llms.txt\`](https://mdfy.app) manifest and a \`/llms-full.txt\` dense bundle so AI agents can discover and ingest your hub the way they do any other site. Append \`?compact\` or \`?digest\` to any \`/raw/\` URL to fetch the same content at a fraction of the token cost — same answer, smaller bill.
 
 ## Image Gallery
 
@@ -10384,7 +10406,48 @@ ${clone.innerHTML}
               </>);
             })()}
 
-            {/* ── Section: TRASH (now ABOVE Guides) ── */}
+            {/* ── Section: GUIDES & EXAMPLES (above Trash so the
+                  helper docs are reachable without scrolling past
+                  the deleted-bin) ── */}
+            {showExamples && (() => {
+              const exampleTabs = memoExampleTabs;
+              return (
+                <div className="shrink-0">
+                  <div
+                    data-section-id="guides"
+                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "color-mix(in srgb, var(--background) 25%, var(--surface) 75%)", borderTop: "1px solid var(--border)", borderBottom: !examplesCollapsed ? "1px solid var(--border)" : "none", position: "sticky", top: 0, zIndex: 10 }}
+                    onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
+                  >
+                    <ChevronDown
+                      width={10} height={10}
+                      className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
+                      style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+                    />
+                    <span className={`flex-1 text-caption font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
+                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{exampleTabs.length}</span>
+                  </div>
+                  {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                    {exampleTabs.map(tab => (
+                      <div
+                        key={tab.id}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${tab.id === activeTabId ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
+                        style={{
+                          color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
+                        }}
+                        onClick={(e) => handleDocClick(tab.id, e)}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
+                      >
+                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                        <span className="truncate flex-1">{tab.title || "Untitled"}</span>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
+              );
+            })()}
+
+            {/* ── Section: TRASH (bottom of the sidebar) ── */}
             {(() => {
               // Trash: all deleted documents (mine + shared I removed from list)
               const trashTabs = memoTrashTabs;
@@ -10485,44 +10548,6 @@ ${clone.innerHTML}
               </>);
             })()}
 
-            {/* ── Section: GUIDES & EXAMPLES (now BELOW Trash) ── */}
-            {showExamples && (() => {
-              const exampleTabs = memoExampleTabs;
-              return (
-                <div className="shrink-0">
-                  <div
-                    data-section-id="guides"
-                    className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
-                    style={{ background: "color-mix(in srgb, var(--background) 25%, var(--surface) 75%)", borderTop: "1px solid var(--border)", borderBottom: !examplesCollapsed ? "1px solid var(--border)" : "none", position: "sticky", top: 0, zIndex: 10 }}
-                    onClick={() => { const next = !examplesCollapsed; setExamplesCollapsed(next); localStorage.setItem("mdfy-examples-collapsed", String(next)); }}
-                  >
-                    <ChevronDown
-                      width={10} height={10}
-                      className={`shrink-0 transition-transform ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover/sec:text-[var(--accent)]"}`}
-                      style={{ transform: examplesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
-                    />
-                    <span className={`flex-1 text-caption font-medium transition-colors ${!examplesCollapsed ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Guides & Examples</span>
-                    <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{exampleTabs.length}</span>
-                  </div>
-                  {!examplesCollapsed && <div className="space-y-0.5 pb-1 pl-2 pr-2">
-                    {exampleTabs.map(tab => (
-                      <div
-                        key={tab.id}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md cursor-pointer group text-xs transition-colors ${tab.id === activeTabId ? "bg-[var(--accent-dim)]" : "hover:bg-[var(--toggle-bg)]"}`}
-                        style={{
-                          color: tab.id === activeTabId ? "var(--text-primary)" : "var(--text-secondary)",
-                        }}
-                        onClick={(e) => handleDocClick(tab.id, e)}
-                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
-                      >
-                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
-                        <span className="truncate flex-1">{tab.title || "Untitled"}</span>
-                      </div>
-                    ))}
-                  </div>}
-                </div>
-              );
-            })()}
           </div>
 
           {/* Section navigator — sections that are off-screen below the viewport
@@ -10535,8 +10560,8 @@ ${clone.innerHTML}
               { id: "bundles", label: "Bundles", count: bundles.length },
               { id: "mds", label: "MDs", count: memoAllMyTabs.length },
               { id: "shared", label: "Shared", count: tabs.filter(t => !t.deleted && (t.permission === "readonly" || t.permission === "editable")).length },
-              { id: "trash", label: "Trash", count: memoTrashTabs.length },
               { id: "guides", label: "Guides", count: memoExampleTabs.length },
+              { id: "trash", label: "Trash", count: memoTrashTabs.length },
             ];
             return (
               <div className="shrink-0 flex items-center gap-1 px-2 py-1.5 overflow-x-auto" style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
@@ -11732,7 +11757,9 @@ ${clone.innerHTML}
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
-                  right: showAIPanel ? aiPanelWidth : (showOutlinePanel ? "min(260px, 40%)" : (showImagePanel ? 320 : 0)),
+                  // Hub view doesn't show the outline panel (no markdown to outline),
+                  // so don't reserve space for it even if the toggle is persisted on.
+                  right: showAIPanel ? aiPanelWidth : (showImagePanel ? 320 : 0),
                   background: "var(--background)",
                 }}
               >
@@ -11791,10 +11818,10 @@ ${clone.innerHTML}
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
-                  // Leave room for the right-side Assistant panel when open so
-                  // the bundle viewer doesn't cover it. Other right panels
-                  // (Outline/Image) use fixed widths matching their actual layout.
-                  right: showAIPanel ? aiPanelWidth : (showOutlinePanel ? "min(260px, 40%)" : (showImagePanel ? 320 : 0)),
+                  // Leave room for the right-side Assistant or Image panel when open.
+                  // Bundle view has no markdown to outline, so we never render the
+                  // outline panel here — don't reserve space for it either.
+                  right: showAIPanel ? aiPanelWidth : (showImagePanel ? 320 : 0),
                   background: "var(--background)",
                 }}
               >
@@ -12200,16 +12227,29 @@ ${clone.innerHTML}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {aiChatHistory.length > 0 && !isHubMode && !isBundleMode && (
-                        <button
-                          onClick={() => setAiChatHistory([])}
-                          className="flex items-center justify-center w-5 h-5 rounded transition-colors hover:bg-[var(--menu-hover)]"
-                          style={{ color: "var(--text-faint)" }}
-                          title="Clear chat history"
-                        >
-                          <RotateCcw width={9} height={9} />
-                        </button>
-                      )}
+                      {/* Always-visible "New chat" affordance — clears the
+                          history of whichever chat is currently active.
+                          Doc mode mutates local state directly; hub/bundle
+                          fire a window event the chat components listen
+                          for (so we don't need to thread refs through). */}
+                      <button
+                        onClick={() => {
+                          if (isHubMode) {
+                            window.dispatchEvent(new CustomEvent("mdfy-newchat-hub"));
+                          } else if (isBundleMode) {
+                            window.dispatchEvent(new CustomEvent("mdfy-newchat-bundle"));
+                          } else {
+                            if (aiChatHistory.length > 0 && !confirm("Start a new chat? Current conversation will be cleared.")) return;
+                            setAiChatHistory([]);
+                          }
+                        }}
+                        className="flex items-center gap-1 h-5 px-1.5 rounded text-caption font-medium transition-colors hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-muted)" }}
+                        title="Start a new chat"
+                      >
+                        <MessageSquarePlus width={11} height={11} />
+                        <span className="hidden sm:inline">New</span>
+                      </button>
                       {undoStack.current.length > 1 && !isHubMode && !isBundleMode && (
                         <button
                           onClick={() => { undo(); setAiChatHistory(prev => [...prev, { role: "ai", text: "Reverted to previous version." }]); }}
@@ -12491,7 +12531,7 @@ ${clone.innerHTML}
                 </div>
               ); })()}
               {/* ─── Outline Panel (side-by-side) ─── */}
-              {showOutlinePanel && (
+              {showOutlinePanel && activeTab?.kind !== "hub" && activeTab?.kind !== "bundle" && (
                 <div
                   className="flex flex-col shrink-0"
                   style={{ width: "min(260px, 40%)", background: "var(--surface)", borderLeft: "1px solid var(--border)" }}

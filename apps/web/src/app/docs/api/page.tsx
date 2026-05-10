@@ -194,8 +194,12 @@ const sidebarItems = [
   { id: "get-docs-id", label: "GET /api/docs/{id}" },
   { id: "patch-docs-id", label: "PATCH /api/docs/{id}" },
   { id: "head-docs-id", label: "HEAD /api/docs/{id}" },
+  { id: "get-related", label: "GET /api/docs/{id}/related" },
   { id: "get-user-documents", label: "GET /api/user/documents" },
   { id: "post-upload", label: "POST /api/upload" },
+  { id: "post-import-github", label: "POST /api/import/github" },
+  { id: "post-hub-recall", label: "POST /api/hub/{slug}/recall" },
+  { id: "raw-and-llms", label: "Raw + /llms.txt" },
   { id: "authentication", label: "Authentication" },
   { id: "rate-limits", label: "Rate Limits" },
   { id: "errors", label: "Errors" },
@@ -290,16 +294,10 @@ export default function ApiDocsPage() {
                 Draft status. Default: <InlineCode>{"false"}</InlineCode>. Draft documents are only visible to the owner.
               </ParamRow>
               <ParamRow name="source" type="string">
-                Source identifier: <InlineCode>{"api"}</InlineCode>, <InlineCode>{"web"}</InlineCode>, <InlineCode>{"vscode"}</InlineCode>, <InlineCode>{"mcp"}</InlineCode>, <InlineCode>{"cli"}</InlineCode>.
-              </ParamRow>
-              <ParamRow name="password" type="string">
-                Password-protect the document. Readers must provide this to view.
-              </ParamRow>
-              <ParamRow name="expiresIn" type="string">
-                Time until document expires: <InlineCode>{"1h"}</InlineCode>, <InlineCode>{"1d"}</InlineCode>, <InlineCode>{"7d"}</InlineCode>, <InlineCode>{"30d"}</InlineCode>. Omit for permanent.
+                Source identifier: <InlineCode>{"api"}</InlineCode>, <InlineCode>{"web"}</InlineCode>, <InlineCode>{"vscode"}</InlineCode>, <InlineCode>{"mcp"}</InlineCode>, <InlineCode>{"cli"}</InlineCode>, or <InlineCode>{"github:<owner>/<repo>"}</InlineCode> for GitHub imports.
               </ParamRow>
               <ParamRow name="editMode" type="string">
-                Who can edit: <InlineCode>{"token"}</InlineCode> (default, requires editToken), <InlineCode>{"anyone"}</InlineCode>, <InlineCode>{"authenticated"}</InlineCode>.
+                Who can edit: <InlineCode>{"owner"}</InlineCode> (default for signed-in users), <InlineCode>{"token"}</InlineCode> (anyone with editToken), <InlineCode>{"view"}</InlineCode> (read-only for everyone but the owner).
               </ParamRow>
               <ParamRow name="folderId" type="string">
                 Place the document in a specific folder.
@@ -350,18 +348,15 @@ data = res.json()`}</CodeBlock>
             id="get-docs-id"
             method="GET"
             path="/api/docs/{id}"
-            description="Read a document by ID. Draft documents require owner authentication. Password-protected documents require the x-document-password header."
+            description="Read a document by ID. Draft documents and email-restricted shares require owner or invitee authentication."
           >
             <SubLabel>Headers (optional)</SubLabel>
             <div style={{ marginBottom: 24 }}>
               <ParamRow name="x-user-id" type="string">
                 User UUID for ownership verification.
               </ParamRow>
-              <ParamRow name="x-document-password" type="string">
-                Password for protected documents.
-              </ParamRow>
               <ParamRow name="x-user-email" type="string">
-                User email for identification.
+                User email for identification (matches against the doc's allowed_emails / allowed_editors).
               </ParamRow>
               <ParamRow name="Authorization" type="string">
                 Bearer token for OAuth-authenticated requests.
@@ -369,11 +364,7 @@ data = res.json()`}</CodeBlock>
             </div>
 
             <SubLabel>Request - curl</SubLabel>
-            <CodeBlock lang="bash">{`curl https://mdfy.app/api/docs/abc123
-
-# With password:
-curl https://mdfy.app/api/docs/abc123 \\
-  -H "x-document-password: mysecret"`}</CodeBlock>
+            <CodeBlock lang="bash">{`curl https://mdfy.app/api/docs/abc123`}</CodeBlock>
 
             <SubLabel>Request - JavaScript</SubLabel>
             <CodeBlock lang="javascript">{`const res = await fetch("https://mdfy.app/api/docs/abc123");
@@ -394,10 +385,9 @@ doc = res.json()`}</CodeBlock>
   "updated_at": "2026-04-15T01:00:00Z",
   "view_count": 42,
   "is_draft": false,
-  "editMode": "token",
+  "editMode": "owner",
   "isOwner": true,
-  "editToken": "tok_...",
-  "hasPassword": false
+  "editToken": "tok_..."
 }`}</CodeBlock>
           </EndpointBlock>
 
@@ -429,7 +419,7 @@ doc = res.json()`}</CodeBlock>
                 Version note describing the change.
               </ParamRow>
               <ParamRow name="editMode" type="string">
-                Change edit mode: <InlineCode>{"token"}</InlineCode>, <InlineCode>{"anyone"}</InlineCode>, <InlineCode>{"authenticated"}</InlineCode>.
+                Change edit mode: <InlineCode>{"owner"}</InlineCode>, <InlineCode>{"token"}</InlineCode>, or <InlineCode>{"view"}</InlineCode>.
               </ParamRow>
             </div>
 
@@ -584,6 +574,155 @@ url = res.json()["url"]`}</CodeBlock>
 }`}</CodeBlock>
           </EndpointBlock>
 
+          {/* ─── GET /api/docs/{id}/related ─── */}
+          <EndpointBlock
+            id="get-related"
+            method="GET"
+            path="/api/docs/{id}/related"
+            description="Return up to N other docs from the caller's hub that share concepts with this doc. Owner-only — overlap leaks titles otherwise."
+          >
+            <SubLabel>Query parameters</SubLabel>
+            <div style={{ marginBottom: 24 }}>
+              <ParamRow name="limit" type="number">
+                Max results to return. Default 5, capped at 20.
+              </ParamRow>
+            </div>
+
+            <SubLabel>Request - curl</SubLabel>
+            <CodeBlock lang="bash">{`curl https://mdfy.app/api/docs/abc123/related?limit=5 \\
+  -H "Authorization: Bearer $JWT"`}</CodeBlock>
+
+            <SubLabel>Response 200</SubLabel>
+            <CodeBlock lang="json">{`{
+  "id": "abc123",
+  "related": [
+    {
+      "id": "def456",
+      "title": "Related doc",
+      "sharedConcepts": ["AI memory", "knowledge hub"],
+      "overlap": 2,
+      "isDraft": false,
+      "isRestricted": false,
+      "sharedWithCount": 0,
+      "updated_at": "2026-04-15T01:00:00Z"
+    }
+  ]
+}`}</CodeBlock>
+          </EndpointBlock>
+
+          {/* ─── POST /api/import/github ─── */}
+          <EndpointBlock
+            id="post-import-github"
+            method="POST"
+            path="/api/import/github"
+            description="Import every .md file from a GitHub repo, folder, or single file. Caps: 80 files, 200KB per file. Creates one doc per file plus a bundle that groups them."
+          >
+            <SubLabel>Parameters</SubLabel>
+            <div style={{ marginBottom: 24 }}>
+              <ParamRow name="url" type="string" required>
+                GitHub URL — repo home, /tree/branch/path, /blob/branch/path, or raw.githubusercontent.com link.
+              </ParamRow>
+            </div>
+
+            <SubLabel>Request - curl</SubLabel>
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/import/github \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $JWT" \\
+  -d '{ "url": "https://github.com/owner/repo/tree/main/docs" }'`}</CodeBlock>
+
+            <SubLabel>Response 200</SubLabel>
+            <CodeBlock lang="json">{`{
+  "imported": 12,
+  "skipped": 0,
+  "bundleId": "bnd_abc123",
+  "docs": [
+    { "id": "doc_001", "title": "README", "path": "README.md" }
+  ]
+}`}</CodeBlock>
+          </EndpointBlock>
+
+          {/* ─── POST /api/hub/{slug}/recall ─── */}
+          <EndpointBlock
+            id="post-hub-recall"
+            method="POST"
+            path="/api/hub/{slug}/recall"
+            description="Hybrid retrieval over the public docs in a hub. Combines vector + keyword search; pass rerank: true to reorder candidates with a Haiku-based cross-encoder for higher precision."
+          >
+            <SubLabel>Parameters</SubLabel>
+            <div style={{ marginBottom: 24 }}>
+              <ParamRow name="query" type="string" required>
+                The natural-language question or search phrase.
+              </ParamRow>
+              <ParamRow name="k" type="number">
+                Number of results to return. Default 8.
+              </ParamRow>
+              <ParamRow name="rerank" type="boolean">
+                When true, fetch <InlineCode>{"k * 4"}</InlineCode> candidates first then rerank with Anthropic Haiku. Slower but more precise.
+              </ParamRow>
+            </div>
+
+            <SubLabel>Request - curl</SubLabel>
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/hub/your-slug/recall \\
+  -H "Content-Type: application/json" \\
+  -d '{ "query": "how do bundles work?", "k": 6, "rerank": true }'`}</CodeBlock>
+
+            <SubLabel>Response 200</SubLabel>
+            <CodeBlock lang="json">{`{
+  "matches": [
+    {
+      "doc_id": "abc123",
+      "title": "Bundles overview",
+      "passage": "A bundle groups related docs into…",
+      "score": 0.84
+    }
+  ],
+  "meta": { "reranked": true }
+}`}</CodeBlock>
+          </EndpointBlock>
+
+          {/* ─── Raw + /llms.txt ─── */}
+          <SectionHeading id="raw-and-llms">Raw + /llms.txt</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            Every public mdfy URL also exposes a clean-markdown variant for AI agents.
+            Append <InlineCode>{"?compact"}</InlineCode> or <InlineCode>{"?digest"}</InlineCode> to cut tokens — the answer is the same; the bill is smaller.
+          </p>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: 14,
+              padding: "20px 24px",
+              marginBottom: 24,
+            }}
+          >
+            <ParamRow name="/raw/{id}" type="GET">
+              Plain markdown for a single document.
+            </ParamRow>
+            <ParamRow name="/raw/b/{bundleId}" type="GET">
+              Concatenated markdown for a bundle.
+            </ParamRow>
+            <ParamRow name="/raw/hub/{slug}" type="GET">
+              Whole-hub markdown. <InlineCode>{"?digest=1"}</InlineCode> returns a concept-clustered summary.
+            </ParamRow>
+            <ParamRow name="/raw/hub/{slug}/c/{concept}" type="GET">
+              Per-concept passage page across all docs in the hub.
+            </ParamRow>
+            <ParamRow name="/hub/{slug}/llms.txt" type="GET">
+              Manifest the agent can fetch first to understand what's available.
+            </ParamRow>
+            <ParamRow name="/hub/{slug}/llms-full.txt" type="GET">
+              Dense whole-hub bundle (default 80k tokens, override with <InlineCode>{"?cap="}</InlineCode>).
+            </ParamRow>
+          </div>
+
           {/* ─── Authentication ─── */}
           <SectionHeading id="authentication">Authentication</SectionHeading>
           <p
@@ -699,9 +838,9 @@ url = res.json()["url"]`}</CodeBlock>
             <div style={{ marginBottom: 16 }}>
               <ParamRow name="400" type="error">Bad Request. Missing required fields or invalid parameters.</ParamRow>
               <ParamRow name="401" type="error">Unauthorized. Invalid or missing edit token / credentials.</ParamRow>
-              <ParamRow name="403" type="error">Forbidden. Password required or wrong password.</ParamRow>
+              <ParamRow name="403" type="error">Forbidden. Insufficient permissions for this resource.</ParamRow>
               <ParamRow name="404" type="error">Not Found. Document does not exist or has been deleted.</ParamRow>
-              <ParamRow name="410" type="error">Gone. Document has expired.</ParamRow>
+              <ParamRow name="409" type="error">Conflict. Anti-template guard refused the write (would overwrite real content with boilerplate).</ParamRow>
               <ParamRow name="429" type="error">Too Many Requests. Rate limit exceeded.</ParamRow>
               <ParamRow name="500" type="error">Internal Server Error. Please retry or contact support.</ParamRow>
             </div>

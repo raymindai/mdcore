@@ -22,10 +22,8 @@ Parameters:
 - markdown (string, required): Markdown content
 - title (string, optional): Document title
 - isDraft (boolean, default false): Draft status
-- source (string, optional): Source identifier ("api", "web", "vscode", "mcp", "cli")
-- password (string, optional): Password-protect the document
-- expiresIn (string, optional): Expiration time ("1h", "1d", "7d", "30d")
-- editMode (string, optional): "token" (default), "anyone", "authenticated"
+- source (string, optional): Source identifier ("api", "web", "vscode", "mcp", "cli", "github:<owner>/<repo>")
+- editMode (string, optional): "owner" (default for signed-in), "token" (anyone with editToken), "view" (read-only)
 - folderId (string, optional): Folder to place document in
 - userId (string, optional): User UUID for ownership
 
@@ -50,8 +48,7 @@ Read a document by ID.
 
 Headers (optional):
 - x-user-id: User UUID for ownership verification
-- x-document-password: Password for protected documents
-- x-user-email: User email for identification
+- x-user-email: User email (matches against allowed_emails / allowed_editors)
 - x-anonymous-id: Anonymous user ID
 - Authorization: Bearer <token>
 
@@ -70,10 +67,9 @@ Response 200:
   "updated_at": "2026-04-15T01:00:00Z",
   "view_count": 42,
   "is_draft": false,
-  "editMode": "token",
+  "editMode": "owner",
   "isOwner": true,
-  "editToken": "tok_...",
-  "hasPassword": false
+  "editToken": "tok_..."
 }
 \`\`\`
 
@@ -170,13 +166,86 @@ Response 200:
 }
 \`\`\`
 
+### GET /api/docs/{id}/related
+Find docs in the caller's hub that share concepts with this one. Owner-only.
+
+Query: limit (number, default 5, max 20)
+
+Response 200:
+\`\`\`json
+{
+  "id": "abc123",
+  "related": [
+    {
+      "id": "def456",
+      "title": "Related doc",
+      "sharedConcepts": ["AI memory", "knowledge hub"],
+      "overlap": 2,
+      "isDraft": false,
+      "isRestricted": false,
+      "sharedWithCount": 0,
+      "updated_at": "2026-04-15T01:00:00Z"
+    }
+  ]
+}
+\`\`\`
+
+### POST /api/import/github
+Import every .md from a GitHub repo, folder, or file. Caps: 80 files / 200KB each.
+Creates one doc per file plus a bundle that groups them.
+
+Parameters:
+- url (string, required): github.com URL — repo home, /tree/branch/path, /blob/branch/path, or raw.githubusercontent.com link
+
+Response 200:
+\`\`\`json
+{
+  "imported": 12,
+  "skipped": 0,
+  "bundleId": "bnd_abc123",
+  "docs": [
+    { "id": "doc_001", "title": "README", "path": "README.md" }
+  ]
+}
+\`\`\`
+
+### POST /api/hub/{slug}/recall
+Hybrid retrieval (vector + keyword) over the public docs in a hub.
+Pass rerank: true to reorder candidates with a Haiku-based cross-encoder.
+
+Parameters:
+- query (string, required): natural-language question or search phrase
+- k (number, default 8): number of results to return
+- rerank (boolean, default false): when true, fetch k * 4 candidates first then rerank
+
+Response 200:
+\`\`\`json
+{
+  "matches": [
+    { "doc_id": "abc123", "title": "Bundles overview", "passage": "...", "score": 0.84 }
+  ],
+  "meta": { "reranked": true }
+}
+\`\`\`
+
+## Raw + /llms.txt (token-economy URLs for AI agents)
+
+Every public mdfy URL also exposes a clean-markdown variant. Append ?compact or ?digest to cut tokens.
+
+- GET /raw/{id} — plain markdown for a single document
+- GET /raw/b/{bundleId} — concatenated markdown for a bundle
+- GET /raw/hub/{slug} — whole-hub markdown; ?digest=1 returns a concept-clustered summary
+- GET /raw/hub/{slug}/c/{concept} — per-concept passages across all docs in the hub
+- GET /hub/{slug}/llms.txt — manifest the agent fetches first to understand what's available
+- GET /hub/{slug}/llms-full.txt — dense whole-hub bundle (default 80k tokens, override with ?cap=)
+
 ## Error Codes
 
 - 400: Bad Request - Missing required fields or invalid parameters
 - 401: Unauthorized - Invalid or missing edit token / credentials
-- 403: Forbidden - Password required or wrong password
+- 403: Forbidden - Insufficient permissions for this resource
 - 404: Not Found - Document does not exist or deleted
-- 410: Gone - Document has expired
+- 409: Conflict - Anti-template guard refused the write (would overwrite real content with boilerplate)
 - 429: Too Many Requests - Rate limit exceeded (Retry-After header included)
 - 500: Internal Server Error
 
@@ -281,8 +350,6 @@ Duplicate/Import:
 
 Sharing:
 - mdfy_publish(id, published): Toggle public/private
-- mdfy_set_password(id, password): Set/remove password
-- mdfy_set_expiry(id, expiresInHours): Set/clear expiration
 - mdfy_set_allowed_emails(id, emails): Restrict to email allowlist
 - mdfy_get_share_url(id): Get URL + access metadata
 

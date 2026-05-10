@@ -137,9 +137,7 @@ const client = new MdfyClient({
             <CodeBlock lang="typescript">{`const result = await client.publish("# Hello World", {
   title: "My Document",
   isDraft: false,
-  password: "optional-secret",
-  expiresIn: "7d",
-  editMode: "token",
+  editMode: "owner",
   folderId: "folder-uuid",
 });
 
@@ -156,12 +154,7 @@ console.log(result.url);       // "https://mdfy.app/abc123"`}</CodeBlock>
 console.log(doc.markdown);    // "# Hello World"
 console.log(doc.title);       // "My Document"
 console.log(doc.view_count);  // 42
-console.log(doc.is_draft);    // false
-
-// With password
-const doc2 = await client.pull("abc123", {
-  password: "secret",
-});`}</CodeBlock>
+console.log(doc.is_draft);    // false`}</CodeBlock>
           </Card>
 
           {/* client.update() */}

@@ -34,13 +34,13 @@ const slides: Slide[] = [
     // when the badge wraps on narrow viewports.
     badge: "Personal knowledge hub\nfor the AI era",
     title: "Your AI memory,\nowned by you.",
-    desc: "ChatGPT, Claude, and Cursor all forget you between sessions. mdfy is the URL that doesn't.",
+    desc: "ChatGPT, Claude, and Cursor forget you between sessions. mdfy is the URL that remembers — owned by you, readable by every AI.",
     icon: null,
   },
   {
     step: "01",
     title: "Capture anything.",
-    desc: "Paste a ChatGPT share URL or a Claude conversation link. Drop a PDF, DOCX, or code file. mdfy converts each into clean markdown — one click, permanent URL, no signup.",
+    desc: "Paste a ChatGPT or Claude share link. Drop a PDF, DOCX, or code file. Pull a GitHub repo of `.md` files. Each becomes clean markdown at a permanent URL — no signup, no formatting cleanup.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
@@ -50,7 +50,7 @@ const slides: Slide[] = [
   {
     step: "02",
     title: "Captures become a hub.",
-    desc: "Everything you save lives at one URL: mdfy.app/hub/you. Bundles group related docs. A semantic graph shows how it all connects.",
+    desc: "Everything you save lives at one URL: mdfy.app/hub/you. Bundles group related docs, a concept index links them, and Related-in-your-hub surfaces the connections you didn't draw yourself.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" /><circle cx="4" cy="6" r="2" /><circle cx="20" cy="6" r="2" /><circle cx="4" cy="18" r="2" /><circle cx="20" cy="18" r="2" /><path d="M6 7l4 3M18 7l-4 3M6 17l4-3M18 17l-4-3" />
@@ -60,7 +60,7 @@ const slides: Slide[] = [
   {
     step: "03",
     title: "Paste the URL.\nAny AI reads it.",
-    desc: "Drop your hub URL into Claude, ChatGPT, Cursor, or Codex — they fetch the markdown and load your full personal context.",
+    desc: "Drop your hub URL into Claude, ChatGPT, Cursor, or Codex. They fetch the markdown directly — and /llms.txt + ?compact keep the token cost low.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
@@ -74,11 +74,11 @@ const slides: Slide[] = [
     icon: null,
     surfaces: [
       { name: "Claude Code", desc: "/mdfy capture, bundle, hub", color: "#fb923c" },
-      { name: "Cursor", desc: "Same actions, .mdc rule", color: "#fbbf24" },
+      { name: "Cursor", desc: ".mdc rule + project context", color: "#fbbf24" },
       { name: "Codex CLI", desc: "AGENTS.md block, idempotent", color: "#4ade80" },
-      { name: "Aider", desc: "conventions.md", color: "#60a5fa" },
+      { name: "Aider", desc: "CONVENTIONS.md", color: "#60a5fa" },
       { name: "Chrome", desc: "Capture from any web AI", color: "#c4b5fd" },
-      { name: "VS Code, Mac, CLI, MCP", desc: "Native everywhere else", color: "#f472b6" },
+      { name: "VS Code · Mac · CLI · MCP", desc: "Native everywhere else", color: "#f472b6" },
     ],
   },
 ];
