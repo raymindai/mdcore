@@ -2894,7 +2894,23 @@ export default function MdEditor() {
   const [reorderedTabId, setReorderedTabId] = useState<string | null>(null);
   const sidebarItemRectsRef = useRef<Map<string, DOMRect>>(new Map());
   activeTabIdRef.current = activeTabId;
-  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+  // activeTab fallback was `tabs[0]` which is the Welcome example tab
+  // (INITIAL_TABS[0] = tab-welcome). That meant every fresh load with
+  // an empty / stale activeTabId would render the welcome blurb in the
+  // editor before the user clicked anything — repeatedly, even on
+  // return visits. Now: only resolve the explicitly-set id, and only
+  // fall back to a tab the user actually owns (never an example). If
+  // none exists, activeTab is undefined and the Home overlay renders.
+  const activeTab = (() => {
+    const explicit = activeTabId ? tabs.find((t) => t.id === activeTabId) : undefined;
+    if (explicit) return explicit;
+    // Implicit fallback: pick a tab the user actually owns. Never
+    // fall back to an example tab — that's what made the Welcome
+    // blurb keep showing on every fresh visit, regardless of whether
+    // the user already had their own docs. If they have nothing of
+    // their own, this returns undefined and the Home overlay renders.
+    return tabs.find((t) => !t.deleted && t.ownerEmail !== EXAMPLE_OWNER);
+  })();
 
   // Track active bundle's document IDs for sidebar highlighting.
   // Uses full authHeaders (Bearer token + anonymous id) so the server recognises

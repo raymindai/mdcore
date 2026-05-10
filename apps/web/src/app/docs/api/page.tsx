@@ -358,7 +358,7 @@ data = res.json()`}</CodeBlock>
                 User UUID for ownership verification.
               </ParamRow>
               <ParamRow name="x-user-email" type="string">
-                User email for identification (matches against the doc's allowed_emails / allowed_editors).
+                User email for identification (matches against the doc&apos;s allowed_emails / allowed_editors).
               </ParamRow>
               <ParamRow name="Authorization" type="string">
                 Bearer token for OAuth-authenticated requests.
@@ -804,7 +804,7 @@ url = res.json()["url"]`}</CodeBlock>
               Per-concept passage page across all docs in the hub.
             </ParamRow>
             <ParamRow name="/hub/{slug}/llms.txt" type="GET">
-              Manifest the agent can fetch first to understand what's available.
+              Manifest the agent can fetch first to understand what&apos;s available.
             </ParamRow>
             <ParamRow name="/hub/{slug}/llms-full.txt" type="GET">
               Dense whole-hub bundle (default 80k tokens, override with <InlineCode>{"?cap="}</InlineCode>).
