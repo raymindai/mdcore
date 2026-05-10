@@ -549,13 +549,13 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                           </span>
                         </div>
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                          But it's connected to{" "}
+                          But it&apos;s connected to{" "}
                           {s.neighbors.slice(0, 3).map((n, i) => (
                             <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
                               {i > 0 ? ", " : ""}{n}
                             </span>
                           ))}
-                          {" "}— concepts you've explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
+                          {" "}— concepts you&apos;ve explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
