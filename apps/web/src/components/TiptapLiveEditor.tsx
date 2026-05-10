@@ -583,6 +583,15 @@ function buildCodeBlockNodeView({ node, HTMLAttributes, getPos, editor }: any) {
 }
 
 // ─── Math decoration plugin: render $...$ and $$...$$ as KaTeX widgets ───
+// Meta key callers can use to force the math plugin to rebuild its
+// decorations on a transaction that doesn't naturally docChange. The
+// editor mounts with empty content, then setContent injects the real
+// body — under React StrictMode (or any extra re-render before the
+// markdown-it parser finishes patching) the apply call could miss
+// the docChange that produced the math text. Dispatching a
+// transaction with `forceMath: true` after mount guarantees one
+// more build pass.
+const MDFY_MATH_FORCE_META = "mdfyMathForceRebuild";
 function createMathPlugin() {
   const key = new PluginKey("mdfy-math");
   const buildDecorations = (doc: any) => {
@@ -631,7 +640,11 @@ function createMathPlugin() {
     key,
     state: {
       init: (_: any, { doc }: any) => buildDecorations(doc),
-      apply: (tr: any, old: any) => tr.docChanged ? buildDecorations(tr.doc) : old,
+      apply: (tr: any, old: any) => {
+        if (tr.docChanged) return buildDecorations(tr.doc);
+        if (tr.getMeta(MDFY_MATH_FORCE_META)) return buildDecorations(tr.doc);
+        return old;
+      },
     },
     props: { decorations(state: any) { return this.getState(state); } },
   });
@@ -1028,6 +1041,15 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         ed.commands.setContent(initialBodyRef.current);
         isSettingContent.current = false;
       }
+      // Force a math-decoration rebuild on the next frame. Covers the
+      // race where init ran with the empty placeholder doc and any
+      // intermediate transaction's apply missed the docChange (e.g.
+      // StrictMode double-mount, parser patch ordering).
+      requestAnimationFrame(() => {
+        try {
+          ed.view.dispatch(ed.view.state.tr.setMeta(MDFY_MATH_FORCE_META, true));
+        } catch { /* editor may have been destroyed during HMR */ }
+      });
 
       return () => { ed.destroy(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1056,6 +1078,17 @@ const TiptapLiveEditorInner = forwardRef<TiptapLiveEditorHandle, TiptapLiveEdito
         // markdown-it renderer is patched (no <thead>/<tbody>)
         editor.commands.setContent(body || "<p></p>");
         isSettingContent.current = false;
+        // Force a math rebuild on the frame after setContent — same
+        // safety net as the initial mount path. The decoration
+        // build that runs synchronously inside setContent uses the
+        // post-transaction doc, but a follow-up paint with the
+        // explicit meta is cheap insurance against any paint where
+        // KaTeX widgets weren't yet wired in.
+        requestAnimationFrame(() => {
+          try {
+            editor.view.dispatch(editor.view.state.tr.setMeta(MDFY_MATH_FORCE_META, true));
+          } catch { /* editor may have been destroyed */ }
+        });
       },
       getMarkdown: () => {
         if (!editor) return markdown;

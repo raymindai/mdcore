@@ -80,6 +80,9 @@ export async function GET(
   lines.push(
     `Concept digest (densest summary): https://mdfy.app/raw/hub/${slug}?digest=1&compact=1`
   );
+  lines.push(
+    `Full text (every doc concatenated, capped to fit a context window): https://mdfy.app/hub/${slug}/llms-full.txt`
+  );
   lines.push("");
   lines.push(`Hub size: ~${totalTokens.toLocaleString()} tokens across ${visibleDocs.length} public documents.`);
   lines.push(

@@ -44,8 +44,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = await getDocument(id);
   if (!doc) return { robots: { index: false, follow: false } };
 
-  // Don't reveal content in OG if password-protected
-  const isProtected = !!doc.password_hash;
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
   const isRestricted = (doc.allowed_emails || []).length > 0;
 
@@ -53,16 +51,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Expired — mdfy.app", robots: { index: false, follow: false } };
   }
 
-  // Don't index private content
-  const noIndex = isProtected || isRestricted;
+  // Don't index restricted content. The password gate was removed,
+  // so the only "don't index" reason is allowed_emails restriction.
+  const noIndex = isRestricted;
 
-  const title = isProtected ? "Protected Document" : (doc.title || "Shared Document");
-  const description = isProtected
-    ? "This document is password protected."
-    : doc.markdown.slice(0, 200).replace(/[#*_`\n]/g, " ").trim();
+  const title = doc.title || "Shared Document";
+  const description = doc.markdown.slice(0, 200).replace(/[#*_`\n]/g, " ").trim();
 
   // Detect which features the doc actually uses, for dynamic OG pills.
-  const md = isProtected ? "" : doc.markdown;
+  const md = doc.markdown;
   const features: string[] = [];
   if (/```mermaid/.test(md)) features.push("Mermaid");
   if (/\$\$[\s\S]+?\$\$|(?:^|\s)\$[^$\n]+\$/.test(md)) features.push("KaTeX");
@@ -71,8 +68,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (/!\[.*?\]\(/.test(md)) features.push("Images");
   if (features.length === 0) features.push("GFM");
 
-  // Author attribution (only when not protected and we have a display name)
-  const authorParam = !isProtected && doc.ownerName ? `&author=${encodeURIComponent(doc.ownerName)}` : "";
+  // Author attribution
+  const authorParam = doc.ownerName ? `&author=${encodeURIComponent(doc.ownerName)}` : "";
   const ogImageUrl = `https://mdfy.app/api/og?title=${encodeURIComponent(title)}&features=${encodeURIComponent(features.slice(0, 5).join(","))}${authorParam}`;
 
   return {
@@ -126,11 +123,10 @@ export default async function DocPage({ params }: Props) {
   }
 
   const isExpired = doc.expires_at && new Date(doc.expires_at) < new Date();
-  const isProtected = !!doc.password_hash;
   const isRestricted = (doc.allowed_emails || []).length > 0;
   const isDraft = !!(doc as { isDraft?: boolean }).isDraft;
 
-  const visibleMarkdown = isExpired ? "" : (isProtected ? "" : (isRestricted || isDraft ? "" : doc.markdown));
+  const visibleMarkdown = isExpired || isRestricted || isDraft ? "" : doc.markdown;
 
   return (
     <div>
@@ -138,8 +134,7 @@ export default async function DocPage({ params }: Props) {
       <ClientViewer
         id={doc.id}
         markdown={visibleMarkdown}
-        title={isExpired ? "Expired" : (isProtected ? "Protected Document" : doc.title)}
-        isProtected={isProtected}
+        title={isExpired ? "Expired" : doc.title}
         isExpired={!!isExpired}
         isRestricted={isRestricted || isDraft}
         showBadge={doc.ownerPlan !== "pro"}

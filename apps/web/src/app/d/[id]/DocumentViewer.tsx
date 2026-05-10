@@ -15,7 +15,6 @@ export default function DocumentViewer({
   id,
   markdown: initialMarkdown,
   title: initialTitle,
-  isProtected = false,
   isExpired = false,
   isRestricted = false,
   showBadge = true,
@@ -24,6 +23,8 @@ export default function DocumentViewer({
   id: string;
   markdown: string;
   title: string | null;
+  /** Deprecated — password feature removed. Accepted for source-compat
+   *  with older callers but ignored. */
   isProtected?: boolean;
   isExpired?: boolean;
   isRestricted?: boolean;
@@ -33,12 +34,15 @@ export default function DocumentViewer({
   const [html, setHtml] = useState("");
   const [markdown, setMarkdown] = useState(initialMarkdown);
   const [title, setTitle] = useState(initialTitle);
-  const [isLoading, setIsLoading] = useState(!isExpired && !isProtected);
+  const [isLoading, setIsLoading] = useState(!isExpired);
   const [theme, setThemeState] = useState<Theme>("dark");
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState(false);
   const [copiedMd, setCopiedMd] = useState(false);
-  const [unlocked, setUnlocked] = useState(!isProtected && !isRestricted);
+  // The viewer used to gate rendering behind a password OR a
+  // restricted-email check. Password access mode was removed
+  // (commits 5a056bc5 / 41a61ce5); the only remaining gate is
+  // isRestricted (allowed_emails), where the auth check below
+  // calls setUnlocked(true) once the caller's session matches.
+  const [unlocked, setUnlocked] = useState(!isRestricted);
   // Defer the access gate UNTIL client-side auth check finishes — otherwise
   // owners see "You need access" flash for ~500ms before the redirect to /
   const [authChecked, setAuthChecked] = useState(!isRestricted);
@@ -117,26 +121,7 @@ export default function DocumentViewer({
     setTimeout(() => setCopied(false), 2000);
   }, []);
 
-  // Unlock with password
-  const handleUnlock = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/docs/${id}`, {
-        headers: { "x-document-password": passwordInput },
-      });
-      if (res.ok) {
-        const doc = await res.json();
-        setMarkdown(doc.markdown);
-        setTitle(doc.title);
-        setUnlocked(true);
-        setIsLoading(true);
-        setPasswordError(false);
-      } else {
-        setPasswordError(true);
-      }
-    } catch {
-      setPasswordError(true);
-    }
-  }, [id, passwordInput]);
+  // handleUnlock removed — password access mode no longer exists.
 
   // Render markdown via WASM
   useEffect(() => {
@@ -234,7 +219,7 @@ export default function DocumentViewer({
 
   // Supabase Realtime: subscribe to document changes
   useEffect(() => {
-    if (!unlocked || isProtected || isExpired) return;
+    if (!unlocked || isExpired) return;
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return; // fallback polling handles it below
 
@@ -274,12 +259,12 @@ export default function DocumentViewer({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [id, unlocked, isProtected, isExpired]);
+  }, [id, unlocked, isExpired]);
 
   // Fallback polling if Supabase Realtime is not available
   const lastUpdatedRef = useRef<string>("");
   useEffect(() => {
-    if (!unlocked || isProtected || isExpired) return;
+    if (!unlocked || isExpired) return;
     const supabase = getSupabaseBrowserClient();
     if (supabase) return; // Realtime handles it
 
@@ -305,7 +290,7 @@ export default function DocumentViewer({
     poll();
     const interval = setInterval(poll, 60000);
     return () => clearInterval(interval);
-  }, [id, unlocked, isProtected, isExpired]);
+  }, [id, unlocked, isExpired]);
 
   // Compact pill style every action button shares.
   const actionBtn = "h-7 px-2.5 rounded-md text-caption font-medium flex items-center gap-1.5 transition-colors";
@@ -479,39 +464,6 @@ export default function DocumentViewer({
               Create your own
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3l5 5-5 5"/></svg>
             </Link>
-          </div>
-        ) : !unlocked ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
-              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
-            </svg>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>This document is password protected</p>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
-                onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-                placeholder="Enter password"
-                className="px-3 py-2 rounded-md text-sm outline-none"
-                style={{
-                  background: "var(--surface)",
-                  border: `1px solid ${passwordError ? "#ef4444" : "var(--border)"}`,
-                  color: "var(--text-primary)",
-                }}
-                autoFocus
-              />
-              <button
-                onClick={handleUnlock}
-                className="px-4 py-2 rounded-md text-sm font-mono"
-                style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-              >
-                Unlock
-              </button>
-            </div>
-            {passwordError && (
-              <p className="text-xs" style={{ color: "#ef4444" }}>Wrong password</p>
-            )}
           </div>
         ) : isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">

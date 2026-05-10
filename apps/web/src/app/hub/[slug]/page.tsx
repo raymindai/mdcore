@@ -225,6 +225,29 @@ export default async function HubPage({ params, searchParams }: Props) {
             <span className="text-display font-bold tabular-nums" style={{ color: "var(--accent)" }}>{recent.length}</span>
             <span className="text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>This week</span>
           </div>
+          {(() => {
+            // Token-economy badge for visitors. Same heuristic the
+            // owner sees inside HubEmbed: ~1.3 tokens / English word
+            // plus ~8 tokens of listing overhead per doc. Visitors
+            // see this so they can decide "is this hub cheap to
+            // cite?" before pasting the URL into an LLM.
+            const totalWords = hub.docs.reduce(
+              (sum, d) => sum + (d.markdown || "").trim().split(/\s+/).filter(Boolean).length,
+              0,
+            );
+            if (totalWords === 0) return null;
+            const indexTokens = Math.round(totalWords * 1.3 + hub.docs.length * 8);
+            const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+            return (
+              <>
+                <div className="w-px h-10" style={{ background: "var(--border-dim)" }} />
+                <div className="flex flex-col" title="Estimated tokens an AI spends fetching this hub's full index. Lower = cheaper to cite.">
+                  <span className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>≈ {fmt(indexTokens)}</span>
+                  <span className="text-caption uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>tokens</span>
+                </div>
+              </>
+            );
+          })()}
         </section>
 
         {/* Deploy-to-AI panel */}

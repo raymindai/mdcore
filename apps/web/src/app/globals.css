@@ -1789,11 +1789,24 @@ textarea::selection {
 .tiptap table {
   border-collapse: separate;
   border-spacing: 0;
-  width: 100%;
+  /* Tables now expand to fit their content rather than getting
+     squashed into the editor width. The editor's parent has
+     overflow-x: auto (.tiptap rule below), so wide tables scroll
+     horizontally without truncating cells. Was: width: 100%. */
+  width: auto;
+  max-width: none;
+  min-width: 100%;
   margin: 0.75rem 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+}
+/* Editor container — let it scroll horizontally when a child block
+   (typically a wide table or a long line of inline code) exceeds
+   the container width. Paragraphs still wrap normally; only blocks
+   that genuinely overflow trigger the scrollbar. */
+.tiptap {
+  overflow-x: auto;
 }
 .tiptap th, .tiptap td {
   border-bottom: 1px solid var(--border);
