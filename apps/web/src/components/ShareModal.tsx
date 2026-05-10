@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, memo, type ReactNode } from "react";
 import { setAllowedEmails as defaultSetAllowedEmails, changeEditMode as defaultChangeEditMode, copyToClipboard } from "@/lib/share";
 import { showToast } from "@/components/Toast";
-import { Globe, Users, Cloud, Link2, X, Eye, Pencil } from "lucide-react";
+import { Globe, Users, Cloud, Link2, X, ChevronDown } from "lucide-react";
 import { Button, ModalShell } from "@/components/ui";
 
 interface ShareModalProps {
@@ -366,23 +366,42 @@ function ShareModal({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{email}</p>
-                      <p className="text-caption" style={{ color: "var(--text-faint)" }}>
-                        {isEditor ? "Can read and edit" : "Can read only"}
-                      </p>
                     </div>
-                    <button
-                      onClick={() => toggleEditor(email)}
-                      title={isEditor ? "Demote to viewer (read-only)" : "Promote to editor (can edit)"}
-                      className="text-caption font-mono px-2 py-1 rounded shrink-0 transition-colors flex items-center gap-1.5 hover:bg-[var(--toggle-bg)]"
-                      style={{
-                        color: isEditor ? "var(--accent)" : "var(--text-muted)",
-                        background: isEditor ? "var(--accent-dim)" : "var(--toggle-bg)",
-                        border: `1px solid ${isEditor ? "var(--accent)" : "var(--border-dim)"}`,
-                      }}
-                    >
-                      {isEditor ? <Pencil width={11} height={11} /> : <Eye width={11} height={11} />}
-                      {isEditor ? "Editor" : "Viewer"}
-                    </button>
+                    {/* Permission picker — native <select> so it
+                        unambiguously reads as a control with
+                        options. The previous chip looked like a
+                        passive label and people couldn't tell it
+                        was clickable, let alone what clicking did.
+                        Now: explicit dropdown with chevron, two
+                        labelled choices ("Can view" / "Can edit"),
+                        and the verb ("Can…") makes the permission
+                        verbatim instead of forcing the reader to
+                        translate "Editor" → "can edit". */}
+                    <div className="relative shrink-0">
+                      <select
+                        value={isEditor ? "edit" : "view"}
+                        onChange={(e) => {
+                          const wantEditor = e.target.value === "edit";
+                          if (wantEditor !== isEditor) toggleEditor(email);
+                        }}
+                        className="appearance-none text-caption font-medium pl-2.5 pr-7 py-1 rounded outline-none cursor-pointer transition-colors"
+                        style={{
+                          background: "var(--toggle-bg)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border-dim)",
+                        }}
+                        aria-label={`Permission for ${email}`}
+                      >
+                        <option value="view">Can view</option>
+                        <option value="edit">Can edit</option>
+                      </select>
+                      <ChevronDown
+                        width={11}
+                        height={11}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+                        style={{ color: "var(--text-muted)" }}
+                      />
+                    </div>
                     <button
                       onClick={() => removeEmail(email)}
                       className="w-5 h-5 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
