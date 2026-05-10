@@ -1788,78 +1788,36 @@ function CanvasMoreMenu({
           {onCopyContext && menuItem("Copy bundle as context", "Concatenated markdown for the AI of your choice", Copy, onCopyContext)}
           {onRequestAddDocs && menuItem("Add documents…", "Pick from your library to extend this bundle", FilePlus2, onRequestAddDocs)}
           <div style={{ height: 1, background: "var(--border-dim)", margin: "var(--space-1) 0" }} />
-          {/* Detail level — real <input type="range"> slider. The
-              previous version was just five buttons spaced along a
-              line; the founder rightly called it not-a-slider. A
-              native range input gives us drag, keyboard arrows,
-              touch, and free a11y, while custom CSS pseudo-elements
-              keep it on-brand. Ticks underneath show the discrete
-              stops; the header right shows the current label. */}
+          {/* Detail level — minimal redesign per founder's last
+              note: just the title row, the slider, and the
+              current level name below it. No tick marks, no
+              number row, no inline level label on the title row.
+              The slider's filled-track + thumb position tell you
+              where you are; the centered label below names what
+              you're looking at. */}
           <div className="flex flex-col mdfy-detail-slider" style={{ padding: "var(--space-2) var(--space-3)", gap: "var(--space-2)" }}>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-mono uppercase shrink-0" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>Detail level</span>
-              <span className="text-xs font-medium truncate" style={{ color: "var(--accent)" }}>
-                {detailLabels[detail] || `Level ${detail}`}
-              </span>
-            </div>
-            <div className="relative" style={{ padding: "4px 0" }}>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                step={1}
-                value={detail}
-                onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
-                aria-label={`Detail level (1–5). Current: ${detailLabels[detail] || detail}`}
-                style={{
-                  width: "100%",
-                  // The track is rendered via CSS pseudo-elements
-                  // (see globals.css .mdfy-detail-slider rules)
-                  // so the gradient % stays in sync with the value.
-                  background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) 100%)`,
-                }}
-              />
-              {/* Tick marks aligned with each step. The first/last
-                  ticks center on the slider end-stops; the middle
-                  three on the 25/50/75% positions. */}
-              <div className="absolute inset-x-0 flex justify-between pointer-events-none" style={{ top: 4, height: 14, padding: "0 7px" }}>
-                {[1, 2, 3, 4, 5].map((lvl) => (
-                  <span
-                    key={lvl}
-                    style={{
-                      width: 2,
-                      height: 6,
-                      marginTop: 4,
-                      borderRadius: 1,
-                      background: lvl <= detail ? "rgba(0,0,0,0.45)" : "var(--border)",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-            {/* Number labels under each tick */}
-            <div className="flex items-center justify-between font-mono tabular-nums" style={{ fontSize: 9, padding: "0 4px" }}>
-              {([1, 2, 3, 4, 5] as DetailLevel[]).map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setDetail(lvl)}
-                  className="transition-colors"
-                  aria-label={`Jump to level ${lvl}: ${detailLabels[lvl] || ""}`}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    padding: 0,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: detail === lvl ? "var(--accent)" : "var(--text-faint)",
-                    fontWeight: detail === lvl ? 600 : 400,
-                  }}
-                >
-                  {lvl}
-                </button>
-              ))}
-            </div>
+            <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}>
+              Detail level
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              step={1}
+              value={detail}
+              onChange={(e) => setDetail(Number(e.target.value) as DetailLevel)}
+              aria-label={`Detail level (1–5). Current: ${detailLabels[detail] || detail}`}
+              style={{
+                width: "100%",
+                background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) ${((detail - 1) / 4) * 100}%, var(--toggle-bg) 100%)`,
+              }}
+            />
+            <span
+              className="text-xs font-medium text-center"
+              style={{ color: "var(--accent)" }}
+            >
+              {detailLabels[detail] || `Level ${detail}`}
+            </span>
           </div>
         </div>
       )}

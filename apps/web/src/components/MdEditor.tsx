@@ -4357,55 +4357,46 @@ export default function MdEditor() {
     recentFlipRects.current = m;
   }, []);
   useLayoutEffect(() => {
-    if (recentFlipPending.current) {
-      recentFlipPending.current = false;
-      const prev = recentFlipRects.current;
-      if (prev.size > 0) {
-        for (const [id, el] of recentRowRefs.current) {
-          if (!el) continue;
-          const before = prev.get(id);
-          if (!before) continue;
-          const after = el.getBoundingClientRect();
-          const dy = before.top - after.top;
-          if (Math.abs(dy) < 1) continue;
-          el.style.transition = "none";
-          el.style.transform = `translateY(${dy}px)`;
-          void el.offsetHeight; // force reflow so the next transform animates
-          requestAnimationFrame(() => {
-            el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
-            el.style.transform = "translateY(0)";
-            const onEnd = () => {
-              el.style.transition = "";
-              el.style.transform = "";
-              el.removeEventListener("transitionend", onEnd);
-            };
-            el.addEventListener("transitionend", onEnd);
-          });
-        }
-        recentFlipRects.current.clear();
-      }
-    }
-
-    // Enter animation for newly-arrived rows. Skip the first paint
-    // (every row is "new" on initial load → would strobe).
-    if (!recentFirstPaint.current) {
-      for (const [id, el] of recentRowRefs.current) {
-        if (!el) continue;
-        if (recentSeenIds.current.has(id)) continue;
-        recentSeenIds.current.add(id);
-        // CSS one-shot — fade + slide down 6px → settle. Cleared by
-        // animationend so subsequent renders don't carry stale styles.
-        el.style.animation = "mdfyRecentEnter 320ms cubic-bezier(0.4, 0, 0.2, 1) both";
-        const onAnimEnd = () => {
-          el.style.animation = "";
-          el.removeEventListener("animationend", onAnimEnd);
+    if (!recentFlipPending.current) return;
+    recentFlipPending.current = false;
+    const prev = recentFlipRects.current;
+    if (prev.size === 0) return;
+    for (const [id, el] of recentRowRefs.current) {
+      if (!el) continue;
+      const before = prev.get(id);
+      if (!before) continue;
+      const after = el.getBoundingClientRect();
+      const dy = before.top - after.top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+      void el.offsetHeight; // force reflow so the next transform animates
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
+        el.style.transform = "translateY(0)";
+        const onEnd = () => {
+          el.style.transition = "";
+          el.style.transform = "";
+          el.removeEventListener("transitionend", onEnd);
         };
-        el.addEventListener("animationend", onAnimEnd);
-      }
-    } else {
-      // Initial paint — record everything as already-seen, no animation.
-      for (const id of recentRowRefs.current.keys()) recentSeenIds.current.add(id);
-      recentFirstPaint.current = false;
+        el.addEventListener("transitionend", onEnd);
+      });
+    }
+    recentFlipRects.current.clear();
+  });
+
+  // Sync the seen-ids ref AFTER each render so the next render's
+  // entering-ids set is computed against this render's roster.
+  // Skips the very first paint (we record everything as seen so
+  // the boot doesn't strobe N rows fading in at once).
+  useEffect(() => {
+    for (const id of recentRowRefs.current.keys()) recentSeenIds.current.add(id);
+    if (recentFirstPaint.current) recentFirstPaint.current = false;
+    // Drop ids that are no longer rendered so a tab opened, removed,
+    // and re-opened animates again.
+    const live = new Set(recentRowRefs.current.keys());
+    for (const id of [...recentSeenIds.current]) {
+      if (!live.has(id)) recentSeenIds.current.delete(id);
     }
   });
 
@@ -9413,6 +9404,14 @@ ${clone.innerHTML}
                 .filter((r): r is Extract<RecentEntry, { kind: "tab" }> => r.kind === "tab")
                 .map(r => r.tab); // legacy alias for count display
               void recentTabs;
+              // Decide which Recent rows are entering THIS commit.
+              // Computed at render time (not in an effect) so the
+              // CSS class is on the element from its first paint —
+              // avoids the "appear at full opacity then fade in"
+              // flicker that an effect-applied animation produces.
+              const recentEnteringIds: Set<string> = recentFirstPaint.current
+                ? new Set<string>()
+                : new Set(recentEntries.map((r) => r.id).filter((id) => !recentSeenIds.current.has(id)));
               return (
                 <div className="shrink-0">
                   <div
@@ -9444,7 +9443,7 @@ ${clone.innerHTML}
                                   if (el) recentRowRefs.current.set(entry.id, el);
                                   else recentRowRefs.current.delete(entry.id);
                                 }}
-                                className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                                className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent${recentEnteringIds.has(entry.id) ? " mdfy-recent-enter" : ""}`}
                                 style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                                 onClick={() => {
                                   // If already at the top of Recent, plain switch.
@@ -9484,7 +9483,7 @@ ${clone.innerHTML}
                                 if (el) recentRowRefs.current.set(tab.id, el);
                                 else recentRowRefs.current.delete(tab.id);
                               }}
-                              className="flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent"
+                              className={`flex items-center gap-1.5 py-1 rounded-md cursor-pointer text-xs transition-colors hover:bg-[var(--toggle-bg)] group/recent${recentEnteringIds.has(tab.id) ? " mdfy-recent-enter" : ""}`}
                               style={{ paddingLeft: 6, paddingRight: 6, color: "var(--text-secondary)" }}
                               onClick={(e) => handleDocClick(tab.id, e)}
                               title={displayTitle}
