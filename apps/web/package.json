@@ -26,7 +26,9 @@
     "test:github-import": "npx tsx scripts/test-github-import.ts",
     "test:reranker": "npx tsx scripts/test-reranker.ts",
     "test:passage-extract": "npx tsx scripts/test-passage-extract.ts",
-    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server"
+    "test:related": "npx tsx --env-file=.env.local scripts/test-related.ts",
+    "test:hub-recall": "npx tsx --env-file=.env.local scripts/test-hub-recall.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { embedText, prepareEmbeddingInput, vectorToSql } from "@/lib/embeddings";
 import { rerank } from "@/lib/reranker";
+import { logRecall } from "@/lib/recall-telemetry";
 
 // Phase 1 — public Recall API.
 //
@@ -46,7 +47,10 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const t0 = Date.now();
   const { slug } = await params;
+  const ua = request.headers.get("user-agent")?.replace(/[\r\n]+/g, " ") || null;
+  const referer = request.headers.get("referer")?.replace(/[\r\n]+/g, " ") || null;
   if (!SLUG_RE.test(slug)) {
     return NextResponse.json({ error: "invalid_slug" }, { status: 400 });
   }
@@ -79,6 +83,9 @@ export async function POST(
   // Pull a wider first-pass when reranking — gives the cross-encoder
   // more candidates to reorder before we truncate to `k`.
   const fetchK = useRerank ? Math.min(MAX_K, k * 4) : k;
+  let embedMs = 0;
+  let searchMs = 0;
+  let rerankMs = 0;
 
   // Resolve hub → owner user_id; only public hubs are eligible.
   const { data: profile } = await supabase
@@ -87,22 +94,40 @@ export async function POST(
     .eq("hub_slug", slug)
     .single();
   if (!profile || !profile.hub_public) {
+    logRecall({
+      slug, questionChars: question.length, level, hybrid,
+      rerankRequested: useRerank, reranked: false, k, fetchK,
+      resultCount: 0, embedMs: 0, searchMs: 0, rerankMs: 0,
+      totalMs: Date.now() - t0, status: 404, errorCode: "hub_not_public",
+      ua, referer,
+    });
     return NextResponse.json({ error: "hub_not_public" }, { status: 404 });
   }
 
   // Embed the question. Best-effort; if the embedding provider is
   // unreachable we fail loud so the caller can decide what to do.
   let queryVec: number[];
+  const tEmbed = Date.now();
   try {
     queryVec = await embedText(prepareEmbeddingInput(null, question));
   } catch (err) {
+    embedMs = Date.now() - tEmbed;
+    logRecall({
+      slug, questionChars: question.length, level, hybrid,
+      rerankRequested: useRerank, reranked: false, k, fetchK,
+      resultCount: 0, embedMs, searchMs: 0, rerankMs: 0,
+      totalMs: Date.now() - t0, status: 502, errorCode: "embedding_failed",
+      ua, referer,
+    });
     return NextResponse.json(
       { error: "embedding_failed", detail: (err as Error).message },
       { status: 502 },
     );
   }
+  embedMs = Date.now() - tEmbed;
 
   let results: unknown[];
+  const tSearch = Date.now();
 
   if (level === "bundle") {
     const { data: rows, error } = await supabase.rpc("match_public_hub_bundles", {
@@ -111,6 +136,14 @@ export async function POST(
       match_count: fetchK,
     });
     if (error) {
+      searchMs = Date.now() - tSearch;
+      logRecall({
+        slug, questionChars: question.length, level, hybrid,
+        rerankRequested: useRerank, reranked: false, k, fetchK,
+        resultCount: 0, embedMs, searchMs, rerankMs: 0,
+        totalMs: Date.now() - t0, status: 500, errorCode: "search_failed",
+        ua, referer,
+      });
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
     }
 
@@ -141,6 +174,14 @@ export async function POST(
       match_count: fetchK,
     });
     if (error) {
+      searchMs = Date.now() - tSearch;
+      logRecall({
+        slug, questionChars: question.length, level, hybrid,
+        rerankRequested: useRerank, reranked: false, k, fetchK,
+        resultCount: 0, embedMs, searchMs, rerankMs: 0,
+        totalMs: Date.now() - t0, status: 500, errorCode: "search_failed",
+        ua, referer,
+      });
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
     }
 
@@ -180,6 +221,14 @@ export async function POST(
       match_count: fetchK,
     });
     if (error) {
+      searchMs = Date.now() - tSearch;
+      logRecall({
+        slug, questionChars: question.length, level, hybrid,
+        rerankRequested: useRerank, reranked: false, k, fetchK,
+        resultCount: 0, embedMs, searchMs, rerankMs: 0,
+        totalMs: Date.now() - t0, status: 500, errorCode: "search_failed",
+        ua, referer,
+      });
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
     }
 
@@ -215,6 +264,14 @@ export async function POST(
       match_count: fetchK,
     });
     if (error) {
+      searchMs = Date.now() - tSearch;
+      logRecall({
+        slug, questionChars: question.length, level, hybrid,
+        rerankRequested: useRerank, reranked: false, k, fetchK,
+        resultCount: 0, embedMs, searchMs, rerankMs: 0,
+        totalMs: Date.now() - t0, status: 500, errorCode: "search_failed",
+        ua, referer,
+      });
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
     }
 
@@ -246,6 +303,8 @@ export async function POST(
     });
   }
 
+  searchMs = Date.now() - tSearch;
+
   // Optional cross-encoder rerank pass. Each result gets a
   // `rerank_score` 0..1 and the array is reordered descending by
   // it. Falls back to the first-pass ordering when no reranker
@@ -263,7 +322,9 @@ export async function POST(
       ),
       _ref: r,
     }));
+    const tRerank = Date.now();
     const ranked = await rerank(question, candidates);
+    rerankMs = Date.now() - tRerank;
     if (ranked.length > 0) {
       reranked = true;
       results = ranked.map((rr) => ({
@@ -279,6 +340,15 @@ export async function POST(
     results = results.slice(0, k);
   }
 
+  const resultCount = Array.isArray(results) ? results.length : 0;
+  logRecall({
+    slug, questionChars: question.length, level, hybrid,
+    rerankRequested: useRerank, reranked, k, fetchK,
+    resultCount, embedMs, searchMs, rerankMs,
+    totalMs: Date.now() - t0, status: 200,
+    ua, referer,
+  });
+
   return NextResponse.json(
     {
       hub: { slug, display_name: profile.display_name || slug },
@@ -292,6 +362,12 @@ export async function POST(
         k,
         hybrid,
         reranked,
+        timing_ms: {
+          embed: embedMs,
+          search: searchMs,
+          rerank: rerankMs,
+          total: Date.now() - t0,
+        },
       },
     },
     {
