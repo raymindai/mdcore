@@ -106,20 +106,11 @@ function createMcpServer(userId?: string) {
     async ({ markdown, title, draft }) => {
       if (!supabase) return errorResult("Storage not configured");
       const isDraft = draft ?? true;
-      // Title invariant: title must equal the H1 of the markdown.
-      // - If markdown has an H1, derive title from it (override the
-      //   tool-supplied title — the body is the source of truth).
-      // - If not, prepend `# <suppliedTitle>` so the doc has an H1 and
-      //   the editor / sidebar / hub all agree on what to display.
-      const { extractTitleFromMd } = await import("@/lib/extract-title");
-      let storedMarkdown = markdown;
-      let storedTitle = title || null;
-      const bodyH1 = extractTitleFromMd(markdown);
-      if (bodyH1 && bodyH1 !== "Untitled") {
-        storedTitle = bodyH1;
-      } else if (storedTitle) {
-        storedMarkdown = `# ${storedTitle}\n\n${markdown}`;
-      }
+      // STRICT title invariant: H1 IS the title; nothing else can be.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(markdown, title);
+      const storedMarkdown = enforced.markdown;
+      const storedTitle: string = enforced.title;
       // 30s same-content dedup so an MCP client that retries on transient
       // error (or an LLM that calls mdfy_create twice for the same output)
       // doesn't pile up a sibling row.
@@ -199,19 +190,27 @@ function createMcpServer(userId?: string) {
     },
     async ({ id, markdown, title }) => {
       if (!supabase) return errorResult("Storage not configured");
-      // Title invariant — derive from H1 if present; otherwise prepend
-      // the supplied title as H1 so the body and stored title agree.
-      const { extractTitleFromMd } = await import("@/lib/extract-title");
-      let storedMarkdown = markdown;
-      let storedTitle = title;
-      const bodyH1 = extractTitleFromMd(markdown);
-      if (bodyH1 && bodyH1 !== "Untitled") {
-        storedTitle = bodyH1;
-      } else if (title) {
-        storedMarkdown = `# ${title}\n\n${markdown}`;
+      // STRICT title invariant — H1 IS the title. If the new body has
+      // no H1, fall back to the supplied title or the existing
+      // doc.title before resorting to literal "Untitled".
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      let fallback = (title && title.trim()) || "";
+      if (!fallback) {
+        const { data: existing } = await supabase
+          .from("documents")
+          .select("title")
+          .eq("id", id)
+          .single();
+        fallback = existing?.title || "";
       }
-      const update: Record<string, unknown> = { markdown: storedMarkdown, updated_at: new Date().toISOString() };
-      if (storedTitle) update.title = storedTitle;
+      const enforced = enforceTitleInvariant(markdown, fallback);
+      const storedMarkdown = enforced.markdown;
+      const storedTitle: string = enforced.title;
+      const update: Record<string, unknown> = {
+        markdown: storedMarkdown,
+        title: storedTitle,
+        updated_at: new Date().toISOString(),
+      };
       const { error } = await supabase.from("documents").update(update).eq("id", id);
       if (error) return errorResult(`Failed: ${error.message}`);
       if (userId) {
@@ -306,11 +305,19 @@ function createMcpServer(userId?: string) {
     },
     async ({ id, content, separator }) => {
       if (!supabase) return errorResult("Storage not configured");
-      const { data, error: readErr } = await supabase.from("documents").select("markdown").eq("id", id).single();
+      const { data, error: readErr } = await supabase.from("documents").select("markdown, title").eq("id", id).single();
       if (readErr || !data) return errorResult("Document not found");
       const sep = separator ?? "\n\n";
       const newMd = data.markdown + sep + content;
-      const { error } = await supabase.from("documents").update({ markdown: newMd, updated_at: new Date().toISOString() }).eq("id", id);
+      // Enforce H1=title invariant — append-style writes can move
+      // the H1 line if the prefix didn't already have one.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(newMd, data.title || "");
+      const { error } = await supabase.from("documents").update({
+        markdown: enforced.markdown,
+        title: enforced.title,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
       if (error) return errorResult(error.message);
       return textResult(`Appended ${content.length} chars to ${id}.`);
     }
@@ -322,10 +329,18 @@ function createMcpServer(userId?: string) {
     { id: z.string(), content: z.string() },
     async ({ id, content }) => {
       if (!supabase) return errorResult("Storage not configured");
-      const { data, error: readErr } = await supabase.from("documents").select("markdown").eq("id", id).single();
+      const { data, error: readErr } = await supabase.from("documents").select("markdown, title").eq("id", id).single();
       if (readErr || !data) return errorResult("Document not found");
       const newMd = content + "\n\n" + data.markdown;
-      const { error } = await supabase.from("documents").update({ markdown: newMd, updated_at: new Date().toISOString() }).eq("id", id);
+      // Prepending content may introduce a new H1; the invariant
+      // helper picks it up so the stored title follows.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(newMd, data.title || "");
+      const { error } = await supabase.from("documents").update({
+        markdown: enforced.markdown,
+        title: enforced.title,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
       if (error) return errorResult(error.message);
       return textResult(`Prepended ${content.length} chars to ${id}.`);
     }
@@ -376,14 +391,21 @@ function createMcpServer(userId?: string) {
     },
     async ({ id, heading, newContent }) => {
       if (!supabase) return errorResult("Storage not configured");
-      const { data, error: readErr } = await supabase.from("documents").select("markdown").eq("id", id).single();
+      const { data, error: readErr } = await supabase.from("documents").select("markdown, title").eq("id", id).single();
       if (readErr || !data) return errorResult("Document not found");
       const section = findSection(data.markdown, heading);
       if (!section) return errorResult(`Section "${heading}" not found`);
       const lines = data.markdown.split("\n");
       const newLines = [...lines.slice(0, section.start), ...newContent.split("\n"), ...lines.slice(section.end)];
       const newMd = newLines.join("\n");
-      const { error } = await supabase.from("documents").update({ markdown: newMd, updated_at: new Date().toISOString() }).eq("id", id);
+      // Replacing a section can drop or alter the H1 line — re-derive.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(newMd, data.title || "");
+      const { error } = await supabase.from("documents").update({
+        markdown: enforced.markdown,
+        title: enforced.title,
+        updated_at: new Date().toISOString(),
+      }).eq("id", id);
       if (error) return errorResult(error.message);
       return textResult(`Section "${heading}" replaced in ${id}.`);
     }
@@ -405,8 +427,13 @@ function createMcpServer(userId?: string) {
       const newId = nanoid(8);
       const editToken = nanoid(32);
       const newTitle = title || `Copy of ${data.title || "Untitled"}`;
+      // Splice the new title into the body's H1 so the duplicate
+      // satisfies the title=H1 invariant from the moment it lands.
+      const { spliceH1, enforceTitleInvariant } = await import("@/lib/extract-title");
+      const splicedMd = spliceH1(data.markdown || "", newTitle);
+      const enforced = enforceTitleInvariant(splicedMd, newTitle);
       const { error } = await supabase.from("documents").insert({
-        id: newId, markdown: data.markdown, title: newTitle,
+        id: newId, markdown: enforced.markdown, title: enforced.title,
         edit_token: editToken,
         user_id: userId || null,
         edit_mode: userId ? "account" : "token",
@@ -432,7 +459,13 @@ function createMcpServer(userId?: string) {
         const html = await res.text();
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         const docTitle = title || titleMatch?.[1].trim() || url;
-        const markdown = `> Source: ${url}\n\n` + htmlToMarkdownLite(html);
+        const rawMd = `> Source: ${url}\n\n` + htmlToMarkdownLite(html);
+        // Title invariant — derive from H1 if the imported page emits
+        // one, else prepend the page's <title> as the H1.
+        const { enforceTitleInvariant } = await import("@/lib/extract-title");
+        const enforced = enforceTitleInvariant(rawMd, docTitle);
+        const markdown = enforced.markdown;
+        const finalTitle = enforced.title;
         // Dedup: importing the same URL twice in quick succession should
         // not create a sibling — common when an LLM retries on transient
         // failure or an agent re-runs a tool call.
@@ -440,7 +473,7 @@ function createMcpServer(userId?: string) {
           supabase,
           { userId },
           markdown,
-          docTitle,
+          finalTitle,
         );
         if (dupHit) {
           return textResult(`Already imported ${url} (deduplicated)\n→ ${BASE_URL}/${dupHit.id}\nID: ${dupHit.id}`);
@@ -448,7 +481,7 @@ function createMcpServer(userId?: string) {
         const newId = nanoid(8);
         const editToken = nanoid(32);
         const { error } = await supabase.from("documents").insert({
-          id: newId, markdown, title: docTitle,
+          id: newId, markdown, title: finalTitle,
           edit_token: editToken,
           user_id: userId || null,
           edit_mode: userId ? "account" : "token",
@@ -456,7 +489,7 @@ function createMcpServer(userId?: string) {
         });
         if (error) {
           if (isStrictDupLockError(error)) {
-            const survivor = await findRecentDuplicateDoc(supabase, { userId }, markdown, docTitle);
+            const survivor = await findRecentDuplicateDoc(supabase, { userId }, markdown, finalTitle);
             if (survivor) return textResult(`Already imported ${url} (deduplicated)\n→ ${BASE_URL}/${survivor.id}\nID: ${survivor.id}`);
           }
           return errorResult(`Failed to save: ${error.message}`);
@@ -585,8 +618,13 @@ function createMcpServer(userId?: string) {
       const { data: version, error: vErr } = await supabase.from("document_versions")
         .select("markdown, title").eq("id", versionId).single();
       if (vErr || !version) return errorResult("Version not found");
+      // Older versions may pre-date the title=H1 invariant; enforce it
+      // on restore so the doc lands consistent regardless of when the
+      // version was captured.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(version.markdown, version.title || "");
       const { error } = await supabase.from("documents")
-        .update({ markdown: version.markdown, title: version.title, updated_at: new Date().toISOString() })
+        .update({ markdown: enforced.markdown, title: enforced.title, updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) return errorResult(error.message);
       return textResult(`Restored ${id} to version ${versionId}.`);

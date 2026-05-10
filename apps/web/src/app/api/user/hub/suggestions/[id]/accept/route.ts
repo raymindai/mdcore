@@ -130,11 +130,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       const synthId = nanoid(8);
       const synthEditToken = nanoid(32);
       const now = new Date().toISOString();
-      const synthTitle = (result.markdown.match(/^\s*#\s+(.+)$/m)?.[1] || "Synthesis").trim().slice(0, 120);
+      // Title invariant — title is always the markdown's H1.
+      const { enforceTitleInvariant } = await import("@/lib/extract-title");
+      const enforced = enforceTitleInvariant(result.markdown, "Synthesis");
       await supabase.from("documents").insert({
         id: synthId,
-        markdown: result.markdown,
-        title: synthTitle,
+        markdown: enforced.markdown,
+        title: enforced.title,
         edit_token: synthEditToken,
         user_id: userId,
         edit_mode: "account",

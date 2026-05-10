@@ -205,10 +205,13 @@ async function runAutoSynthesis(
   const synthId = nanoid(8);
   const synthEditToken = nanoid(32);
   const now = new Date().toISOString();
+  // Title invariant — title is always the markdown's H1.
+  const { enforceTitleInvariant } = await import("@/lib/extract-title");
+  const enforced = enforceTitleInvariant(result.markdown, "Synthesis");
   await supabase.from("documents").insert({
     id: synthId,
-    markdown: result.markdown,
-    title: extractFirstHeading(result.markdown) || "Synthesis",
+    markdown: enforced.markdown,
+    title: enforced.title,
     edit_token: synthEditToken,
     user_id: userId,
     edit_mode: "account",
@@ -218,11 +221,6 @@ async function runAutoSynthesis(
     compile_from: { bundleId, docIds: result.sourceDocIds, intent: result.intent },
     compiled_at: now,
   });
-}
-
-function extractFirstHeading(md: string): string | null {
-  const m = md.match(/^\s*#\s+(.+)$/m);
-  return m ? m[1].trim().slice(0, 120) : null;
 }
 
 export async function GET(req: NextRequest) {

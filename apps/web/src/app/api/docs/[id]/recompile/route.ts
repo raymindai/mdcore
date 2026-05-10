@@ -84,11 +84,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const now = new Date().toISOString();
-    // Update doc with fresh markdown + bump compile metadata
+    // Title invariant — recompile rewrites the body, so re-derive title
+    // from the new H1. Falls back to the existing doc.title if the
+    // synthesizer somehow returned a body without an H1 (rare, but the
+    // helper guards against the divergence regardless).
+    const { enforceTitleInvariant } = await import("@/lib/extract-title");
+    const { data: existingTitle } = await supabase.from("documents").select("title").eq("id", id).single();
+    const enforced = enforceTitleInvariant(result.markdown, existingTitle?.title || "Synthesis");
     const { error: updateErr } = await supabase
       .from("documents")
       .update({
-        markdown: result.markdown,
+        markdown: enforced.markdown,
+        title: enforced.title,
         compiled_at: now,
         compile_from: { ...compileFrom, docIds: result.sourceDocIds, intent: result.intent },
         updated_at: now,
