@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Layers, Copy, Check, ExternalLink, Globe, Eye, Cloud, Users,
-  ShieldAlert,
+  ShieldAlert, Sparkles, ArrowUpRight, Lightbulb,
 } from "lucide-react";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import MdfyLogo from "@/components/MdfyLogo";
@@ -65,10 +65,22 @@ interface HubData {
   } | null;
 }
 
+interface PromoteSuggestion { type: "promote"; docId: string; title: string; sharedConcepts: string[] }
+interface BundleSuggestion { type: "bundle"; concept: string; docIds: string[]; docTitles: string[] }
+interface ThinSuggestion { type: "thin"; concept: string; docId: string; docTitle: string; neighbors: string[] }
+interface HubSuggestions {
+  promote: PromoteSuggestion[];
+  bundles: BundleSuggestion[];
+  thin: ThinSuggestion[];
+}
+
 interface HubEmbedProps {
   slug: string;
   onOpenDoc?: (docId: string) => void;
   onOpenBundle?: (bundleId: string) => void;
+  /** Open the Bundle Creator pre-filled with the supplied doc ids.
+   *  Used by the "Bundle these N docs about X" suggestion card. */
+  onCreateBundleFromDocs?: (docIds: string[], suggestedTitle?: string) => void;
 }
 
 // Module-level cache. The hub tab unmounts whenever the user switches
@@ -101,7 +113,7 @@ const TIERS = {
   private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Cloud, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
 } as const;
 
-export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProps) {
+export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundleFromDocs }: HubEmbedProps) {
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
   const cachedEntry = hubDataCache.get(slug);
@@ -112,6 +124,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
   // to render. With a snapshot we revalidate in the background.
   const [loading, setLoading] = useState(!cachedEntry);
   const [copied, setCopied] = useState(false);
+  const [suggestions, setSuggestions] = useState<HubSuggestions | null>(null);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +169,40 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
   void cacheIsFresh; // referenced only to suppress unused-var if linter complains
+
+  // Fetch AI curation suggestions in parallel with hub data. Owner-only;
+  // 403 for non-owners is silently ignored (suggestions section just
+  // doesn't render).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/hub/${slug}/suggestions`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j) setSuggestions(j as HubSuggestions); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  const dismissSuggestion = (key: string) => {
+    setDismissedSuggestions((prev) => new Set([...prev, key]));
+  };
+  const promoteDoc = async (docId: string) => {
+    setBusySuggestionId(`promote:${docId}`);
+    try {
+      const res = await fetch(`/api/docs/${docId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "publish" }),
+      });
+      if (res.ok) {
+        // Bust hub cache so next paint shows the doc in Public.
+        hubDataCache.delete(slug);
+        // Optimistic: drop the suggestion locally.
+        dismissSuggestion(`promote:${docId}`);
+      }
+    } catch { /* ignore */ }
+    finally { setBusySuggestionId(null); }
+  };
 
   const copyUrl = async () => {
     if (!data) return;
@@ -313,6 +362,218 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle }: HubEmbedProp
             })}
           </section>
         )}
+
+        {/* ── AI suggestions — promote drafts, bundle clusters, expand
+              underexplored concepts. Heuristic, no LLM call. Cards are
+              dismissable; "Promote" publishes inline; "Bundle these"
+              opens BundleCreator pre-filled. */}
+        {suggestions && (() => {
+          const promoteCards = (suggestions.promote || [])
+            .filter((s) => !dismissedSuggestions.has(`promote:${s.docId}`));
+          const bundleCards = (suggestions.bundles || [])
+            .filter((s) => !dismissedSuggestions.has(`bundle:${s.concept.toLowerCase()}`));
+          const thinCards = (suggestions.thin || [])
+            .filter((s) => !dismissedSuggestions.has(`thin:${s.concept.toLowerCase()}`));
+          if (promoteCards.length === 0 && bundleCards.length === 0 && thinCards.length === 0) return null;
+          return (
+            <section className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  className="flex items-center justify-center shrink-0"
+                  style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
+                >
+                  <Sparkles width={12} height={12} />
+                </span>
+                <h2 className="text-heading" style={{ color: "var(--accent)" }}>Suggestions</h2>
+                <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>
+                  Curated from your concept index — heuristic, no LLM call
+                </span>
+              </div>
+              <div className="space-y-2">
+                {promoteCards.map((s) => {
+                  const key = `promote:${s.docId}`;
+                  const busy = busySuggestionId === key;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                    >
+                      <span
+                        className="flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(34,197,94,0.14)", color: "#22c55e" }}
+                        title="Promote — publish this draft"
+                      >
+                        <ArrowUpRight width={14} height={14} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#22c55e", fontSize: 9, letterSpacing: "0.08em" }}>
+                            Promote
+                          </span>
+                          <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>{s.title}</span>
+                        </div>
+                        <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                          Shares concepts with your published docs:{" "}
+                          {s.sharedConcepts.slice(0, 3).map((c, i) => (
+                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
+                              {i > 0 ? ", " : ""}{c}
+                            </span>
+                          ))}
+                          . Publishing makes it part of your hub.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => promoteDoc(s.docId)}
+                          disabled={busy}
+                          className="text-caption px-2.5 py-1 rounded transition-colors"
+                          style={{
+                            background: "var(--accent)",
+                            color: "#fff",
+                            opacity: busy ? 0.4 : 1,
+                            cursor: busy ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {busy ? "…" : "Publish"}
+                        </button>
+                        <button
+                          onClick={() => onOpenDoc?.(s.docId)}
+                          className="text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                        >
+                          Open
+                        </button>
+                        <button
+                          onClick={() => dismissSuggestion(key)}
+                          className="text-caption px-1.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Dismiss"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {bundleCards.map((s) => {
+                  const key = `bundle:${s.concept.toLowerCase()}`;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                    >
+                      <span
+                        className="flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(56,189,248,0.14)", color: "#38bdf8" }}
+                        title="Bundle suggestion"
+                      >
+                        <Layers width={14} height={14} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#38bdf8", fontSize: 9, letterSpacing: "0.08em" }}>
+                            Bundle
+                          </span>
+                          <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                            {s.docIds.length} docs about “{s.concept}”
+                          </span>
+                        </div>
+                        <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                          Including:{" "}
+                          {s.docTitles.slice(0, 3).map((t, i) => (
+                            <span key={i}>
+                              {i > 0 ? ", " : ""}<em style={{ color: "var(--text-primary)" }}>{t}</em>
+                            </span>
+                          ))}
+                          {s.docIds.length > s.docTitles.length ? `, +${s.docIds.length - s.docTitles.length} more` : ""}.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => onCreateBundleFromDocs?.(s.docIds, s.concept)}
+                          disabled={!onCreateBundleFromDocs}
+                          className="text-caption px-2.5 py-1 rounded transition-colors"
+                          style={{
+                            background: "#38bdf8",
+                            color: "#fff",
+                            opacity: !onCreateBundleFromDocs ? 0.4 : 1,
+                            cursor: !onCreateBundleFromDocs ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Create bundle
+                        </button>
+                        <button
+                          onClick={() => dismissSuggestion(key)}
+                          className="text-caption px-1.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Dismiss"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {thinCards.map((s) => {
+                  const key = `thin:${s.concept.toLowerCase()}`;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                      style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                    >
+                      <span
+                        className="flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(167,139,250,0.14)", color: "#a78bfa" }}
+                        title="Underexplored concept"
+                      >
+                        <Lightbulb width={14} height={14} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: "0.08em" }}>
+                            Expand
+                          </span>
+                          <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                            “{s.concept}” appears in only 1 doc
+                          </span>
+                        </div>
+                        <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                          But it's connected to{" "}
+                          {s.neighbors.slice(0, 3).map((n, i) => (
+                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
+                              {i > 0 ? ", " : ""}{n}
+                            </span>
+                          ))}
+                          {" "}— concepts you've explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => onOpenDoc?.(s.docId)}
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)", background: "var(--accent-dim)" }}
+                        >
+                          Open
+                        </button>
+                        <button
+                          onClick={() => dismissSuggestion(key)}
+                          className="text-caption px-1.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-faint)" }}
+                          title="Dismiss"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ── Owner view — three sections by access tier, bundles
               above docs in each section. Non-owner falls through to

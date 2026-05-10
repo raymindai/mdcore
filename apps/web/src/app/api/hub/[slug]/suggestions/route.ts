@@ -131,15 +131,15 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   const sortedConcepts = [...concepts].sort((a, b) => b.occurrence_count - a.occurrence_count);
   for (const c of sortedConcepts) {
     if (seenBundleConcepts.has(c.label.toLowerCase())) continue;
-    const conceptDocIds = (c.doc_ids || []).filter((id) => docMap.has(id));
+    const conceptDocIds = ((c.doc_ids || []) as string[]).filter((id: string) => docMap.has(id));
     if (conceptDocIds.length < 3) continue;
-    const unbundled = conceptDocIds.filter((id) => !bundledDocIds.has(id));
+    const unbundled = conceptDocIds.filter((id: string) => !bundledDocIds.has(id));
     if (unbundled.length < 3) continue;
     bundleSuggestions.push({
       type: "bundle",
       concept: c.label,
       docIds: unbundled.slice(0, 8),
-      docTitles: unbundled.slice(0, 3).map((id) => docMap.get(id)?.title || "Untitled"),
+      docTitles: unbundled.slice(0, 3).map((id: string) => docMap.get(id)?.title || "Untitled"),
     });
     seenBundleConcepts.add(c.label.toLowerCase());
     if (bundleSuggestions.length >= 5) break;

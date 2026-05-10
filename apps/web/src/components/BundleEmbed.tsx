@@ -18,6 +18,13 @@ import Tooltip from "@/components/Tooltip";
 import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
 import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, Zap, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
 
+// Module-level cache so re-mounting a bundle tab paints instantly
+// (stale-while-revalidate). Same pattern as HubEmbed. Cleared on full
+// page reload; survives tab switches within a session. The fetch
+// always fires after mount so a snapshot more than ~1 minute old
+// gets refreshed before the user notices it's stale.
+const bundleDataCache = new Map<string, { data: any; ts: number }>();
+
 // Mirror of the AI route's response shape — kept inline to avoid a public type.
 export interface SemanticChunk {
   id: string;
@@ -124,9 +131,26 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
     documentSummary?: string;
   } | null>(null);
 
-  // Fetch bundle data
+  // Fetch bundle data — stale-while-revalidate. If we already have a
+  // snapshot in the module cache, paint it instantly and skip the
+  // loading spinner; the network refresh runs in the background and
+  // updates state when it returns.
   useEffect(() => {
-    setIsLoading(true);
+    const cached = bundleDataCache.get(bundleId);
+    if (cached) {
+      const data = cached.data;
+      setDocuments(data.documents || []);
+      if (data.editToken) setEditToken(data.editToken);
+      if (data.graph_data) setAiGraph(data.graph_data);
+      if (typeof data.intent === "string") setBundleIntent(data.intent);
+      setBundleIsOwner(!!data.isOwner);
+      setGraphGeneratedAt(data.graph_generated_at || null);
+      setEmbeddingUpdatedAt(data.embedding_updated_at || null);
+      setIsAnalysisStale(!!data.isAnalysisStale);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     // Prefer parent auth headers (Bearer JWT for signed-in users) — fall back
     // to localStorage for the standalone bundle viewer.
     let headers: Record<string, string> = {};
@@ -143,6 +167,7 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       .then(res => res.ok ? res.json() : null)
       .then(async (data) => {
         if (!data) { setIsLoading(false); return; }
+        bundleDataCache.set(bundleId, { data, ts: Date.now() });
         setDocuments(data.documents || []);
         if (data.editToken) setEditToken(data.editToken);
         if (data.graph_data) setAiGraph(data.graph_data);

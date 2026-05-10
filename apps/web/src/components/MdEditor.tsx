@@ -11585,6 +11585,18 @@ ${clone.innerHTML}
                 <div className="flex-1 min-w-0">
                   <HubEmbed
                     slug={activeTab.hubSlug}
+                    onCreateBundleFromDocs={(docIds) => {
+                      // Pre-fill BundleCreator with the suggested doc IDs.
+                      // Resolve to full {id, title} pairs from local tabs +
+                      // serverDocs so the modal shows real titles, not bare ids.
+                      const resolved = docIds.map((id) => {
+                        const tab = tabs.find((t) => t.cloudId === id);
+                        if (tab) return { id, title: tab.title || "Untitled" };
+                        return { id, title: id };
+                      });
+                      setBundleCreatorDocs(resolved);
+                      setShowBundleCreator(true);
+                    }}
                     onOpenDoc={(docId) => {
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }
