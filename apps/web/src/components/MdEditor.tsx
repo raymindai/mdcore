@@ -9147,33 +9147,9 @@ ${clone.innerHTML}
               <span style={{ color: "var(--accent)" }} className="shrink-0">LIBRARY</span>
             </div>
             <div className="flex items-stretch gap-0.5 shrink-0">
-              <div className="relative">
-                <Tooltip text={`Sort: ${{ az: "A → Z", za: "Z → A", custom: "Custom" }[sortMode]}`}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowSortMenu(prev => !prev); }}
-                    className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    <ArrowUpDown width={11} height={11} />
-                  </button>
-                </Tooltip>
-                {showSortMenu && (<>
-                  <div className="fixed inset-0 z-[9997]" onClick={(e) => { e.stopPropagation(); setShowSortMenu(false); }} />
-                  <div className="absolute top-full right-0 mt-1 w-36 rounded-lg shadow-xl py-1 z-[9998]"
-                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.4)" }}>
-                    {([["az", "A → Z"], ["za", "Z → A"], ["custom", "Custom"]] as const).map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={(e) => { e.stopPropagation(); setSortMode(key); setShowSortMenu(false); }}
-                        className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)]"
-                        style={{ color: sortMode === key ? "var(--accent)" : "var(--text-secondary)", fontWeight: sortMode === key ? 600 : 400 }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </>)}
-              </div>
+              {/* Library-level sort removed — each section (MDs,
+                  MD Bundles) has its own sort dropdown in its header
+                  now, which makes the global one redundant. */}
               {(() => {
                 const allFolders = folders;
                 const anyOpen = allFolders.some(f => !f.collapsed) || showRecent || showMyBundles || showMyDocs || showSharedDocs || showTrash;
@@ -9200,52 +9176,19 @@ ${clone.innerHTML}
                   </Tooltip>
                 );
               })()}
-              <div className="relative">
-                <Tooltip text="Create new…">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowLibraryNewMenu(prev => !prev); }}
-                    className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
-                    style={{ color: "var(--text-faint)" }}
-                  >
-                    <Plus width={12} height={12} />
-                  </button>
-                </Tooltip>
-                {showLibraryNewMenu && (<>
-                  <div className="fixed inset-0 z-[9997]" onClick={() => setShowLibraryNewMenu(false)} />
-                  {/* Slim 4-item Library + menu. Anything more belongs in
-                      the unified Import modal (last item below). The old
-                      menu sprawled to 8+ rows mixing creation actions
-                      with per-source import flows, which broke the
-                      design and pushed Import primitives down the
-                      visual hierarchy. */}
-                  <div className="absolute top-full right-0 mt-1 w-48 rounded-lg py-1 z-[9998]"
-                    style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}>
-                    <button onClick={() => { setShowLibraryNewMenu(false); addTab(); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <FileIcon width={12} height={12} style={{ color: "var(--text-faint)" }} />
-                      <span className="flex-1">New document</span>
-                    </button>
-                    <button onClick={() => { setShowLibraryNewMenu(false); setShowMyBundles(true); setBundleCreatorDocs([]); setShowBundleCreator(true); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
-                      <Layers width={12} height={12} style={{ color: "var(--text-faint)" }} />
-                      <span className="flex-1">New bundle</span>
-                    </button>
-                    {/* New folder removed from Library + — folders are
-                        per-section (MDs vs Bundles), so creation lives
-                        in each section header's toolbar now. */}
-                    <div className="my-1" style={{ borderTop: "1px solid var(--border-dim)" }} />
-                    <button
-                      onClick={() => { setShowLibraryNewMenu(false); setShowImportModal(true); }}
-                      className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      <Download width={12} height={12} style={{ color: "var(--accent)" }} />
-                      <span className="flex-1" style={{ color: "var(--text-primary)" }}>Import…</span>
-                      <span className="font-mono opacity-50" style={{ fontSize: 9, letterSpacing: 0.5 }}>5 SOURCES</span>
-                    </button>
-                  </div>
-                </>)}
-              </div>
+              {/* Direct Import button — replaces the old + dropdown.
+                  New document / New bundle are now reachable from
+                  each section's own + button, so the Library header
+                  doesn't need to mediate them. One click → modal. */}
+              <Tooltip text="Import from Files, GitHub, Obsidian, URL, or Notion">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowImportModal(true); }}
+                  className="w-6 h-6 rounded flex items-center justify-center transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  <Download width={12} height={12} />
+                </button>
+              </Tooltip>
               <Tooltip text="Refresh from server">
                 <button
                   id="sidebar-refresh-btn"
