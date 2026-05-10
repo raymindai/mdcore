@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { getServerUserId } from "@/lib/supabase-server";
+import { readHubLog } from "@/lib/hub-log";
 
 /**
  * v6 — Hub URL API.
@@ -229,6 +230,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     ownerView = { bundles: bundleCards, documents: docCards };
   }
 
+  // Recent activity feed — last 12 hub_log events for the owner. Same
+  // owner-only gate as ownerView. Public visitors get no activity.
+  let recentActivity: Array<{ id: number; event: string; targetType: string | null; targetId: string | null; summary: string | null; ts: string }> | null = null;
+  if (isOwner) {
+    try {
+      const rows = await readHubLog(profile.id, 12);
+      recentActivity = rows.map((r) => ({
+        id: r.id,
+        event: r.event_type,
+        targetType: r.target_type,
+        targetId: r.target_id,
+        summary: r.summary,
+        ts: r.created_at,
+      }));
+    } catch { /* ignore — table may not be populated yet */ }
+  }
+
   return NextResponse.json({
     hub: {
       slug: profile.hub_slug,
@@ -256,5 +274,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     lastUpdated,
     ownerView,
     isOwner,
+    recentActivity,
   });
 }

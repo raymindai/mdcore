@@ -63,6 +63,14 @@ interface HubData {
     bundles: { public: BundleCard[]; shared: BundleCard[]; private: BundleCard[] };
     documents: { public: DocCard[]; shared: DocCard[]; private: DocCard[] };
   } | null;
+  recentActivity?: Array<{
+    id: number;
+    event: string;
+    targetType: string | null;
+    targetId: string | null;
+    summary: string | null;
+    ts: string;
+  }> | null;
 }
 
 interface PromoteSuggestion { type: "promote"; docId: string; title: string; sharedConcepts: string[] }
@@ -574,6 +582,70 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
             </section>
           );
         })()}
+
+        {/* ── Recent activity (last 12 events from hub_log) ── */}
+        {data.recentActivity && data.recentActivity.length > 0 && (
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="flex items-center justify-center shrink-0"
+                style={{ width: 22, height: 22, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+              >
+                <Eye width={12} height={12} />
+              </span>
+              <h2 className="text-heading" style={{ color: "var(--text-secondary)" }}>Recent activity</h2>
+              <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>
+                Last {data.recentActivity.length} events
+              </span>
+            </div>
+            <ul className="space-y-0.5">
+              {data.recentActivity.map((evt) => {
+                const labels: Record<string, string> = {
+                  "doc.created": "Created",
+                  "doc.updated": "Updated",
+                  "doc.deleted": "Deleted",
+                  "doc.imported": "Imported",
+                  "bundle.created": "Bundle created",
+                  "bundle.deleted": "Bundle deleted",
+                  "synthesis.created": "Synthesised",
+                  "synthesis.updated": "Resynthesised",
+                  "schema.updated": "Schema updated",
+                };
+                const label = labels[evt.event] || evt.event;
+                const isClickable = evt.targetId && (evt.targetType === "document" || evt.targetType === "bundle");
+                const onClick = isClickable
+                  ? () => {
+                      if (evt.targetType === "document") onOpenDoc?.(evt.targetId!);
+                      else if (evt.targetType === "bundle") onOpenBundle?.(evt.targetId!);
+                    }
+                  : undefined;
+                return (
+                  <li key={evt.id}>
+                    <button
+                      onClick={onClick}
+                      disabled={!onClick}
+                      className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{ cursor: isClickable ? "pointer" : "default" }}
+                    >
+                      <span
+                        className="text-caption font-mono uppercase tracking-wider shrink-0"
+                        style={{ color: "var(--accent)", fontSize: 9, letterSpacing: "0.06em", minWidth: 64 }}
+                      >
+                        {label}
+                      </span>
+                      <span className="flex-1 truncate text-caption" style={{ color: "var(--text-primary)" }}>
+                        {evt.summary || (evt.targetId ? evt.targetId : "—")}
+                      </span>
+                      <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                        {relativeTime(evt.ts)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {/* ── Owner view — three sections by access tier, bundles
               above docs in each section. Non-owner falls through to
