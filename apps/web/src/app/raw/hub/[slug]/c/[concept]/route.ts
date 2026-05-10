@@ -120,12 +120,33 @@ export async function GET(
   if (docs.length === 0) {
     sections.push("_No publicly accessible documents reference this concept._");
   } else {
-    sections.push("## Source documents");
+    // Per-doc passages — the actual paragraphs where the concept
+    // appears, not just a one-line snippet. This is what makes the
+    // page citable on its own without the AI having to fetch every
+    // doc separately.
+    sections.push("## What the hub says about this concept");
+    let runningChars = 0;
+    const PAGE_CHAR_BUDGET = 24_000; // ~6k tokens — fits in any model
     for (const d of docs) {
-      const snippet = oneLineSnippet(d.markdown || "", conceptRow.label);
+      const passages = extractPassagesFor(d.markdown || "", conceptRow.label, 3, 320);
       sections.push(`### [${d.title || "Untitled"}](https://mdfy.app/${d.id})`);
-      if (snippet) sections.push(`> ${snippet}`);
-      sections.push(`*Fetch full markdown: \`https://mdfy.app/raw/${d.id}?compact=1\`*`);
+      if (passages.length === 0) {
+        sections.push(`*No paragraph-level passage extracted — the concept may appear only in a heading or list.*`);
+      } else {
+        for (const p of passages) {
+          const block = `> ${p.replace(/\n/g, " ")}`;
+          // Soft budget cap — once we cross it, stop adding new
+          // passages but keep the doc heading (so the AI knows the
+          // doc exists and can fetch it directly).
+          if (runningChars + block.length > PAGE_CHAR_BUDGET) {
+            sections.push(`*…more passages available — fetch \`https://mdfy.app/raw/${d.id}?compact=1\` for the full doc.*`);
+            break;
+          }
+          sections.push(block);
+          runningChars += block.length;
+        }
+      }
+      sections.push(`*Full doc: \`https://mdfy.app/raw/${d.id}?compact=1\`*`);
     }
   }
 
@@ -176,22 +197,44 @@ function labelToSlug(label: string): string {
     .replace(/^-|-$/g, "");
 }
 
-// Pull the first sentence that mentions the concept label, capped at
-// 220 chars. Falls back to the doc's opening line. The intent is "give
-// the AI the line that justifies this doc being on the concept page,"
-// not a full summary.
-function oneLineSnippet(markdown: string, conceptLabel: string): string {
-  if (!markdown) return "";
-  const stripped = markdown
-    .replace(/^---[\s\S]*?---\n?/, "") // drop frontmatter if any
-    .replace(/^#+\s+.+$/gm, "")        // drop heading lines
-    .replace(/^\s*[-*+]\s+/gm, "")     // simplify bullets
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!stripped) return "";
-  const needle = conceptLabel.toLowerCase();
-  const sentences = stripped.split(/(?<=[.!?])\s+/);
-  const hit = sentences.find((s) => s.toLowerCase().includes(needle));
-  const chosen = hit || sentences[0] || stripped;
-  return chosen.slice(0, 220) + (chosen.length > 220 ? "…" : "");
+// Extract the paragraphs in `markdown` that mention `conceptLabel`,
+// returning up to `maxPassages`, each clipped to `maxChars`. Sorts
+// by mention density so the most concept-dense passages come first.
+//
+// Why paragraphs (not sentences): a sentence containing the term
+// often sits inside a paragraph that explains it; pulling the whole
+// paragraph gives the LLM enough context to cite without having to
+// fetch the doc.
+function extractPassagesFor(markdown: string, conceptLabel: string, maxPassages: number, maxChars: number): string[] {
+  if (!markdown) return [];
+  const needle = conceptLabel.toLowerCase().trim();
+  if (!needle) return [];
+
+  const cleaned = markdown
+    .replace(/^---[\s\S]*?---\n?/, "")     // drop frontmatter
+    .replace(/```[\s\S]*?```/g, "")        // drop code fences (rarely cite-worthy)
+    .replace(/^\s*[-*+]\s+/gm, "");        // simplify bullet markers
+
+  // Paragraph split — markdown paragraphs are blank-line separated.
+  const paragraphs = cleaned
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter((p) => p.length > 20);
+
+  type Scored = { text: string; mentions: number };
+  const scored: Scored[] = [];
+  const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  for (const p of paragraphs) {
+    const matches = p.match(re);
+    if (!matches) continue;
+    scored.push({ text: p, mentions: matches.length });
+  }
+
+  // Sort descending by mention count, tiebreak by paragraph length
+  // (slightly longer = usually more context, but cap at maxChars).
+  scored.sort((a, b) => b.mentions - a.mentions || b.text.length - a.text.length);
+
+  return scored.slice(0, maxPassages).map((s) =>
+    s.text.length > maxChars ? s.text.slice(0, maxChars - 1) + "…" : s.text,
+  );
 }

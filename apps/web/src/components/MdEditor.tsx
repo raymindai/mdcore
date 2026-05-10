@@ -9052,6 +9052,48 @@ ${clone.innerHTML}
                       className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
                       <Download width={11} height={11} /> Import files…
                     </button>
+                    {user?.id && (
+                      <button onClick={() => {
+                        setShowLibraryNewMenu(false);
+                        setInlineInput({
+                          label: "GitHub URL (repo, tree, or .md file)",
+                          defaultValue: "",
+                          onSubmit: async (u) => {
+                            setInlineInput(null);
+                            const url = u.trim();
+                            if (!url) return;
+                            showToast("Importing from GitHub…", "info");
+                            try {
+                              const res = await fetch("/api/import/github", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", ...authHeaders },
+                                body: JSON.stringify({ url }),
+                              });
+                              const json = await res.json().catch(() => ({}));
+                              if (!res.ok) {
+                                showToast(json.error || `Import failed (${res.status})`, "error");
+                                return;
+                              }
+                              const { imported, deduplicated, failed } = json as { imported: number; deduplicated: number; failed: number };
+                              const parts = [
+                                imported > 0 ? `${imported} imported` : null,
+                                deduplicated > 0 ? `${deduplicated} already in your hub` : null,
+                                failed > 0 ? `${failed} failed` : null,
+                              ].filter(Boolean);
+                              showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
+                              // Force a sidebar refresh so the new docs appear.
+                              fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                                .then((r) => (r.ok ? r.json() : null))
+                                .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+                                .catch(() => {});
+                            } catch { showToast("Import failed", "error"); }
+                          },
+                        });
+                      }}
+                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]" style={{ color: "var(--text-secondary)" }}>
+                        <Download width={11} height={11} /> Import from GitHub…
+                      </button>
+                    )}
                   </div>
                 </>)}
               </div>

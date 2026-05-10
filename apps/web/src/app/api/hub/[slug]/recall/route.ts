@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { embedText, prepareEmbeddingInput, vectorToSql } from "@/lib/embeddings";
+import { rerank } from "@/lib/reranker";
 
 // Phase 1 — public Recall API.
 //
@@ -34,6 +35,11 @@ interface PublicHubRecallBody {
   /** When true on level="chunk", merges BM25 + vector cosine via
    *  reciprocal rank fusion (Phase 4). No effect on doc/bundle levels. */
   hybrid?: boolean;
+  /** When true, runs a cross-encoder rerank pass on the first-pass
+   *  candidates before truncating to k. Doubles the per-call cost
+   *  (one Anthropic Haiku request) but materially improves
+   *  precision on ambiguous queries. */
+  rerank?: boolean;
 }
 
 export async function POST(
@@ -69,6 +75,10 @@ export async function POST(
   const level: "doc" | "chunk" | "bundle" =
     body.level === "chunk" || body.level === "bundle" ? body.level : "doc";
   const hybrid = !!body.hybrid && level === "chunk";
+  const useRerank = !!body.rerank;
+  // Pull a wider first-pass when reranking — gives the cross-encoder
+  // more candidates to reorder before we truncate to `k`.
+  const fetchK = useRerank ? Math.min(MAX_K, k * 4) : k;
 
   // Resolve hub → owner user_id; only public hubs are eligible.
   const { data: profile } = await supabase
@@ -98,7 +108,7 @@ export async function POST(
     const { data: rows, error } = await supabase.rpc("match_public_hub_bundles", {
       query_embedding: vectorToSql(queryVec),
       p_hub_user_id: profile.id,
-      match_count: k,
+      match_count: fetchK,
     });
     if (error) {
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
@@ -128,7 +138,7 @@ export async function POST(
       query_text: question,
       query_embedding: vectorToSql(queryVec),
       p_hub_user_id: profile.id,
-      match_count: k,
+      match_count: fetchK,
     });
     if (error) {
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
@@ -167,7 +177,7 @@ export async function POST(
     const { data: rows, error } = await supabase.rpc("match_public_hub_chunks", {
       query_embedding: vectorToSql(queryVec),
       p_hub_user_id: profile.id,
-      match_count: k,
+      match_count: fetchK,
     });
     if (error) {
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
@@ -202,7 +212,7 @@ export async function POST(
     const { data: rows, error } = await supabase.rpc("match_public_hub_docs", {
       query_embedding: vectorToSql(queryVec),
       p_hub_user_id: profile.id,
-      match_count: k,
+      match_count: fetchK,
     });
     if (error) {
       return NextResponse.json({ error: "search_failed", detail: error.message }, { status: 500 });
@@ -236,6 +246,39 @@ export async function POST(
     });
   }
 
+  // Optional cross-encoder rerank pass. Each result gets a
+  // `rerank_score` 0..1 and the array is reordered descending by
+  // it. Falls back to the first-pass ordering when no reranker
+  // provider is configured (lib/reranker handles that gracefully).
+  let reranked = false;
+  if (useRerank && Array.isArray(results) && results.length > 1) {
+    type Anyish = Record<string, unknown>;
+    const candidates = (results as Anyish[]).map((r, idx) => ({
+      id: String((r.chunk_id ?? r.id ?? idx) as string | number),
+      text: String(
+        (r.markdown as string | undefined)
+          ?? (r.snippet as string | undefined)
+          ?? (r.description as string | undefined)
+          ?? "",
+      ),
+      _ref: r,
+    }));
+    const ranked = await rerank(question, candidates);
+    if (ranked.length > 0) {
+      reranked = true;
+      results = ranked.map((rr) => ({
+        ...(rr.candidate as { _ref: Anyish })._ref,
+        rerank_score: Number(rr.score.toFixed(4)),
+      }));
+    }
+  }
+
+  // Always truncate to the requested k AFTER any rerank, so the
+  // caller gets exactly the top-k they asked for.
+  if (Array.isArray(results) && results.length > k) {
+    results = results.slice(0, k);
+  }
+
   return NextResponse.json(
     {
       hub: { slug, display_name: profile.display_name || slug },
@@ -248,6 +291,7 @@ export async function POST(
         dim: 1536,
         k,
         hybrid,
+        reranked,
       },
     },
     {

@@ -23,7 +23,10 @@
     "test:corruption-regression": "npx tsx --env-file=.env.local scripts/test-corruption-regression.ts",
     "test:s6-server": "npx tsx --env-file=.env.local scripts/test-s6-server.ts",
     "test:compile-sources": "npx tsx scripts/test-compile-sources.ts",
-    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:corruption-regression && npm run test:s6-server"
+    "test:github-import": "npx tsx scripts/test-github-import.ts",
+    "test:reranker": "npx tsx scripts/test-reranker.ts",
+    "test:passage-extract": "npx tsx scripts/test-passage-extract.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
