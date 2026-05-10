@@ -28,7 +28,9 @@
     "test:passage-extract": "npx tsx scripts/test-passage-extract.ts",
     "test:related": "npx tsx --env-file=.env.local scripts/test-related.ts",
     "test:hub-recall": "npx tsx --env-file=.env.local scripts/test-hub-recall.ts",
-    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall"
+    "test:github-import-live": "npx tsx --env-file=.env.local scripts/test-github-import-live.ts",
+    "test:obsidian-import": "npx tsx --env-file=.env.local scripts/test-obsidian-import.ts",
+    "test:corruption": "npm run test:title-invariant && npm run test:anti-template && npm run test:dedup-fingerprint && npm run test:compile-sources && npm run test:github-import && npm run test:reranker && npm run test:passage-extract && npm run test:corruption-regression && npm run test:s6-server && npm run test:related && npm run test:hub-recall && npm run test:github-import-live && npm run test:obsidian-import"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -67,6 +69,7 @@
     "diff": "^9.0.0",
     "elkjs": "^0.11.1",
     "highlight.js": "^11.11.1",
+    "jszip": "^3.10.1",
     "katex": "^0.16.40",
     "lucide-react": "^1.8.0",
     "mammoth": "^1.12.0",

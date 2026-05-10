@@ -532,6 +532,12 @@ Works on:
 - \`github.com/owner/repo/blob/main/README.md\` — single file
 - \`raw.githubusercontent.com/owner/repo/main/path.md\` — raw
 
+### Import an Obsidian vault
+
+Pick **Import Obsidian vault (.zip)** in the sidebar's + menu and upload your vault as a ZIP. mdfy walks every \`.md\` file (capped at 80 files / 200 KB each), skips Obsidian's config folders (\`.obsidian/\`, \`.git/\`, macOS resource forks), and imports each note as a draft doc. Re-uploading the same vault deduplicates instead of creating copies — safe to re-run.
+
+> v1 doesn't follow \`[[wikilinks]]\` or rewrite attachments — they come through as plain text. The concept index will still connect notes that share concepts once the ontology refresh catches up.
+
 ### Import via Chrome Extension
 
 Click the mdfy button on ChatGPT, Claude, or Gemini to capture AI conversations directly.
@@ -3357,6 +3363,9 @@ export default function MdEditor() {
   }, []);
 
   const importFileRef = useRef<HTMLInputElement>(null);
+  // Separate ref for Obsidian ZIP uploads so the ZIP picker doesn't
+  // appear in the same accept list as the document import picker.
+  const obsidianFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
   const [docContextMenu, setDocContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; folderId: string; confirmDelete?: boolean } | null>(null);
@@ -9163,6 +9172,15 @@ ${clone.innerHTML}
                         <Download width={11} height={11} /> Import from GitHub…
                       </button>
                     )}
+                    {user?.id && (
+                      <button
+                        onClick={() => { setShowLibraryNewMenu(false); obsidianFileRef.current?.click(); }}
+                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-caption hover:bg-[var(--menu-hover)]"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        <Download width={11} height={11} /> Import Obsidian vault (.zip)…
+                      </button>
+                    )}
                   </div>
                 </>)}
               </div>
@@ -9252,6 +9270,45 @@ ${clone.innerHTML}
             </div>
           </div>
           </div>
+          {/* Hidden file input for Obsidian vault ZIP. Separate from
+              the main import input so the system picker shows only
+              .zip files when the user picks the Obsidian path. */}
+          <input
+            ref={obsidianFileRef}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.currentTarget.value = ""; // reset so re-picking the same file fires change
+              if (!file) return;
+              if (!user?.id) { showToast("Sign in to import an Obsidian vault", "error"); return; }
+              const form = new FormData();
+              form.append("file", file);
+              showToast(`Importing ${file.name}…`, "info");
+              try {
+                const res = await fetch("/api/import/obsidian", {
+                  method: "POST",
+                  headers: { ...authHeaders },
+                  body: form,
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) { showToast(json.error || `Import failed (${res.status})`, "error"); return; }
+                const { imported = 0, deduplicated = 0, failed = 0, skipped = 0 } = json as { imported?: number; deduplicated?: number; failed?: number; skipped?: number };
+                const parts = [
+                  imported > 0 ? `${imported} imported` : null,
+                  deduplicated > 0 ? `${deduplicated} already in your hub` : null,
+                  skipped > 0 ? `${skipped} skipped` : null,
+                  failed > 0 ? `${failed} failed` : null,
+                ].filter(Boolean);
+                showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
+                fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
+                  .then((r) => (r.ok ? r.json() : null))
+                  .then((data) => { if (data?.documents) setServerDocs(data.documents); })
+                  .catch(() => {});
+              } catch { showToast("Import failed", "error"); }
+            }}
+          />
           {/* Hidden file input for import */}
           <input
             ref={importFileRef}

@@ -202,9 +202,35 @@ Response 200:
 {
   "imported": 12,
   "skipped": 0,
-  "bundleId": "bnd_abc123",
+  "deduplicated": 2,
+  "failed": 0,
   "docs": [
-    { "id": "doc_001", "title": "README", "path": "README.md" }
+    {
+      "id": "abc123",
+      "title": "README",
+      "path": "README.md",
+      "sourceUrl": "https://github.com/owner/repo/blob/main/README.md"
+    }
+  ]
+}
+\`\`\`
+
+### POST /api/import/obsidian
+Import every .md file from an Obsidian vault uploaded as a .zip (multipart/form-data, file field).
+Caps: 10MB zipped, 80 files, 200KB per file. Skips dot-prefixed folders (.obsidian, .git, …) and macOS resource forks.
+
+Multipart field:
+- file (required): .zip containing your vault
+
+Response 200:
+\`\`\`json
+{
+  "imported": 12,
+  "skipped": 0,
+  "deduplicated": 2,
+  "failed": 0,
+  "docs": [
+    { "id": "abc123", "title": "Daily Note", "path": "notes/Daily Note.md" }
   ]
 }
 \`\`\`

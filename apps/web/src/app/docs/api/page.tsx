@@ -198,6 +198,7 @@ const sidebarItems = [
   { id: "get-user-documents", label: "GET /api/user/documents" },
   { id: "post-upload", label: "POST /api/upload" },
   { id: "post-import-github", label: "POST /api/import/github" },
+  { id: "post-import-obsidian", label: "POST /api/import/obsidian" },
   { id: "post-hub-recall", label: "POST /api/hub/{slug}/recall" },
   { id: "raw-and-llms", label: "Raw + /llms.txt" },
   { id: "authentication", label: "Authentication" },
@@ -634,9 +635,50 @@ url = res.json()["url"]`}</CodeBlock>
             <CodeBlock lang="json">{`{
   "imported": 12,
   "skipped": 0,
-  "bundleId": "bnd_abc123",
+  "deduplicated": 2,
+  "failed": 0,
   "docs": [
-    { "id": "doc_001", "title": "README", "path": "README.md" }
+    {
+      "id": "abc123",
+      "title": "README",
+      "path": "README.md",
+      "sourceUrl": "https://github.com/owner/repo/blob/main/README.md"
+    }
+  ]
+}`}</CodeBlock>
+          </EndpointBlock>
+
+          {/* ─── POST /api/import/obsidian ─── */}
+          <EndpointBlock
+            id="post-import-obsidian"
+            method="POST"
+            path="/api/import/obsidian"
+            description="Import every .md file from an Obsidian vault uploaded as a .zip (multipart/form-data, file field). Caps: 10MB zipped, 80 files, 200KB per file. Skips dot-prefixed folders (.obsidian, .git, …) and macOS resource forks."
+          >
+            <SubLabel>Multipart fields</SubLabel>
+            <div style={{ marginBottom: 24 }}>
+              <ParamRow name="file" type="file" required>
+                A .zip containing your vault. The file name (minus extension) is recorded as the vault label.
+              </ParamRow>
+            </div>
+
+            <SubLabel>Request - curl</SubLabel>
+            <CodeBlock lang="bash">{`curl -X POST https://mdfy.app/api/import/obsidian \\
+  -H "Authorization: Bearer $JWT" \\
+  -F "file=@MyVault.zip"`}</CodeBlock>
+
+            <SubLabel>Response 200</SubLabel>
+            <CodeBlock lang="json">{`{
+  "imported": 12,
+  "skipped": 0,
+  "deduplicated": 2,
+  "failed": 0,
+  "docs": [
+    {
+      "id": "abc123",
+      "title": "Daily Note",
+      "path": "notes/Daily Note.md"
+    }
   ]
 }`}</CodeBlock>
           </EndpointBlock>

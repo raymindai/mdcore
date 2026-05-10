@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { getServerUserId } from "@/lib/supabase-server";
+import { logRelated } from "@/lib/recall-telemetry";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -55,13 +56,18 @@ interface RelatedRow {
 }
 
 export async function GET(req: NextRequest, { params }: RouteParams) {
+  const t0 = Date.now();
   const { id } = await params;
   const supabase = getSupabaseClient();
   if (!supabase) return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
 
   const verified = await verifyAuthToken(req.headers.get("authorization"));
   const userId = verified?.userId || req.headers.get("x-user-id") || (await getServerUserId());
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const limit = Math.max(1, Math.min(MAX_LIMIT, parseInt(req.nextUrl.searchParams.get("limit") || "", 10) || DEFAULT_LIMIT));
+  if (!userId) {
+    logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 401, errorCode: "unauthorized" });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
   // Confirm the caller owns this doc — a stranger could otherwise
   // probe overlap to learn doc titles.
@@ -71,22 +77,24 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     .eq("id", id)
     .single();
   if (!doc || doc.user_id !== userId) {
+    logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 403, errorCode: "forbidden" });
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const limit = Math.max(1, Math.min(MAX_LIMIT, parseInt(req.nextUrl.searchParams.get("limit") || "", 10) || DEFAULT_LIMIT));
-
   // 1. Fetch every concept that includes THIS doc in its doc_ids.
   //    `cs` (contains) on text[] is the fast path for this lookup.
+  const tConcept = Date.now();
   const { data: concepts } = await supabase
     .from("concept_index")
     .select("label, doc_ids, weight")
     .eq("user_id", userId)
     .contains("doc_ids", [id])
     .limit(200);
+  const conceptFetchMs = Date.now() - tConcept;
 
   const rows = (concepts || []) as ConceptRow[];
   if (rows.length === 0) {
+    logRelated({ docId: id, callerIsOwner: true, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
     return NextResponse.json({ id, related: [] });
   }
 
@@ -107,6 +115,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   if (overlap.size === 0) {
+    logRelated({ docId: id, callerIsOwner: true, conceptCount: rows.length, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
     return NextResponse.json({ id, related: [] });
   }
 
@@ -118,12 +127,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     .slice(0, limit * 3); // pull a wider slice — some may be deleted / drafts we filter below
 
   const candidateIds = ranked.map((r) => r.docId);
+  const tJoin = Date.now();
   const { data: docRows } = await supabase
     .from("documents")
     .select("id, title, updated_at, deleted_at, is_draft, allowed_emails")
     .in("id", candidateIds)
     .eq("user_id", userId)
     .is("deleted_at", null);
+  const joinMs = Date.now() - tJoin;
 
   // Owner email so we can exclude self from sharedWithCount —
   // mirrors the sidebar's hydration logic in MdEditor.
@@ -161,5 +172,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     if (related.length >= limit) break;
   }
 
+  logRelated({
+    docId: id,
+    callerIsOwner: true,
+    conceptCount: rows.length,
+    candidateCount: overlap.size,
+    resultCount: related.length,
+    limit,
+    conceptFetchMs,
+    joinMs,
+    totalMs: Date.now() - t0,
+    status: 200,
+  });
   return NextResponse.json({ id, related });
 }

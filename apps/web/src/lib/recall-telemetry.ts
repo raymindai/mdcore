@@ -33,6 +33,46 @@ export interface RecallTelemetryEvent {
 const MAX_UA = 120;
 const MAX_REFERER = 200;
 
+// Related-docs endpoint telemetry. Same shape spirit as the recall
+// log line — JSON, ts, durations split by phase — so dashboards can
+// treat both endpoints uniformly.
+export interface RelatedTelemetryEvent {
+  docId: string;
+  callerIsOwner: boolean;
+  conceptCount: number;       // rows fetched from concept_index
+  candidateCount: number;     // distinct other-doc ids found
+  resultCount: number;        // rows actually returned (<= limit)
+  limit: number;
+  conceptFetchMs: number;
+  joinMs: number;
+  totalMs: number;
+  status: number;
+  errorCode?: string;
+}
+
+export function logRelated(event: RelatedTelemetryEvent): void {
+  try {
+    const payload = {
+      kind: "related_docs",
+      ts: new Date().toISOString(),
+      doc_id: event.docId,
+      owner: event.callerIsOwner,
+      concepts: event.conceptCount,
+      candidates: event.candidateCount,
+      results: event.resultCount,
+      limit: event.limit,
+      concept_fetch_ms: event.conceptFetchMs,
+      join_ms: event.joinMs,
+      total_ms: event.totalMs,
+      status: event.status,
+      ...(event.errorCode ? { error: event.errorCode } : {}),
+    };
+    console.log(`[related] ${JSON.stringify(payload)}`);
+  } catch {
+    /* never throw from telemetry */
+  }
+}
+
 export function logRecall(event: RecallTelemetryEvent): void {
   try {
     const payload = {
