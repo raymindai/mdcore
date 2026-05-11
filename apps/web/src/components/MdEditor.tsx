@@ -12690,16 +12690,6 @@ ${clone.innerHTML}
                       switchTab(newId);
                     }}
                     onExpandConcept={(concept, sourceDocId, neighbors) => {
-                      // Mirrors the role Publish plays on Promote rows.
-                      // Spawns a fresh local draft seeded with the
-                      // underexplored concept as the title + a single H1
-                      // so the editor has something to render. Autosave
-                      // picks the tab up from there once the user
-                      // types — we don't pre-POST it. Neighbours feed a
-                      // small html-comment hint at the top so the user
-                      // sees what concept neighbourhood mdfy suggested
-                      // they cross-link into; comments don't render in
-                      // preview so they only matter while drafting.
                       setShowHub(false);
                       const newId = `local-expand-${Date.now()}`;
                       const neighbourHint = neighbors.length > 0
@@ -12715,6 +12705,61 @@ ${clone.innerHTML}
                       };
                       setTabs(prev => [...prev, newTab]);
                       switchTab(newId);
+                    }}
+                    lintReport={lintReport}
+                    curatorOrphanEnabled={curatorSettings.orphan}
+                    curatorDuplicateEnabled={curatorSettings.duplicate}
+                    lintResolved={lintResolved}
+                    onResolveOrphan={async (docId, docTitle) => {
+                      // Orphan auto-fix: refresh-concepts. If the
+                      // extractor turns up shared concepts the doc
+                      // drops off the orphan list on the next scan.
+                      // Inlined here (and in the sidebar's Needs
+                      // Review) so the Hub surface stays decoupled —
+                      // a refactor to lift these into useCallback can
+                      // come later when there's a third caller.
+                      if (!user?.id) return;
+                      try {
+                        const res = await fetch(`/api/docs/${docId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
+                        });
+                        if (!res.ok) {
+                          const j = await res.json().catch(() => ({}));
+                          showToast(j.error || "Couldn't refresh concepts", "error");
+                          return;
+                        }
+                        showToast(`Re-extracting concepts for "${docTitle || "Untitled"}".`, "success");
+                        setLintResolved((prev) => ({ ...prev, orphans: new Set([...prev.orphans, docId]) }));
+                        setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => x.id !== docId) } : prev);
+                      } catch {
+                        showToast("Couldn't refresh concepts", "error");
+                      }
+                    }}
+                    onResolveDuplicate={async (aId, aTitle, bId, bTitle) => {
+                      const targetTitle = aTitle || aId;
+                      if (!confirm(`Move "${targetTitle}" to Trash and keep "${bTitle || bId}" as the canonical copy?\n\nYou can restore from Trash if wrong.`)) return;
+                      const targetTab = tabs.find((t) => t.cloudId === aId);
+                      try {
+                        const res = await fetch(`/api/docs/${aId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify({ action: "soft-delete", userId: user?.id, editToken: targetTab?.editToken }),
+                        });
+                        if (!res.ok) {
+                          const j = await res.json().catch(() => ({}));
+                          showToast(j.error || "Couldn't move to Trash", "error");
+                          return;
+                        }
+                        showToast(`Moved "${targetTitle}" to Trash.`, "success");
+                        const pairKey = `${aId}|${bId}`;
+                        setLintResolved((prev) => ({ ...prev, duplicates: new Set([...prev.duplicates, pairKey]) }));
+                        setTabs((prev) => prev.map((t) => t.cloudId === aId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
+                        setLintReport((prev) => prev ? { ...prev, duplicates: prev.duplicates.filter((x) => x.a.id !== aId || x.b.id !== bId) } : prev);
+                      } catch {
+                        showToast("Couldn't move to Trash", "error");
+                      }
                     }}
                   />
                 </div>

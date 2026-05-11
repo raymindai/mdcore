@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Layers, Copy, Check, ExternalLink, Globe, Eye, Cloud, Users,
-  ShieldAlert, Sparkles, ArrowUpRight, Lightbulb,
+  ShieldAlert, Sparkles, ArrowUpRight, Lightbulb, FileWarning,
 } from "lucide-react";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import MdfyLogo from "@/components/MdfyLogo";
@@ -82,6 +82,19 @@ interface HubSuggestions {
   thin: ThinSuggestion[];
 }
 
+// Curator lint shapes — duck-typed against the parent's state so
+// callers don't have to import @/lib/hub-lint just to wire the props.
+interface HubLintReport {
+  orphans: { id: string; title: string | null }[];
+  duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[];
+  totalDocs: number;
+}
+interface HubLintResolved {
+  orphans: Set<string>;
+  /** Pair key encoded as "aId|bId". */
+  duplicates: Set<string>;
+}
+
 interface HubEmbedProps {
   slug: string;
   onOpenDoc?: (docId: string) => void;
@@ -94,6 +107,17 @@ interface HubEmbedProps {
    *  into it immediately. Mirrors the role Publish plays on Promote
    *  rows: one click, the suggested action happens. */
   onExpandConcept?: (concept: string, sourceDocId: string, neighbors: string[]) => void;
+  /** Curator findings (Needs Review) + which signals the user has
+   *  enabled in Settings. Same data the editor sidebar reads; we
+   *  surface it on the hub overview too so the hub reflects what
+   *  auto-management has flagged, not just what's been suggested.
+   *  When the props are absent the section just doesn't render. */
+  lintReport?: HubLintReport | null;
+  curatorOrphanEnabled?: boolean;
+  curatorDuplicateEnabled?: boolean;
+  lintResolved?: HubLintResolved;
+  onResolveOrphan?: (docId: string, docTitle: string | null) => void;
+  onResolveDuplicate?: (aId: string, aTitle: string | null, bId: string, bTitle: string | null) => void;
 }
 
 // Module-level cache. The hub tab unmounts whenever the user switches
@@ -126,7 +150,19 @@ const TIERS = {
   private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Cloud, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
 } as const;
 
-export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundleFromDocs, onExpandConcept }: HubEmbedProps) {
+export default function HubEmbed({
+  slug,
+  onOpenDoc,
+  onOpenBundle,
+  onCreateBundleFromDocs,
+  onExpandConcept,
+  lintReport,
+  curatorOrphanEnabled,
+  curatorDuplicateEnabled,
+  lintResolved,
+  onResolveOrphan,
+  onResolveDuplicate,
+}: HubEmbedProps) {
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
   const cachedEntry = hubDataCache.get(slug);
@@ -526,6 +562,134 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
             </div>
           </section>
         )}
+
+        {/* ── Needs Review — curator findings (orphan + duplicate
+              detections). Same data the editor sidebar's Needs
+              Review section reads; surfaced here so the hub view
+              reflects what auto-management has flagged, not just
+              what's been suggested. Founder ask: this content
+              belongs in Hub too, not only behind the sidebar.
+              Gated on the user's Settings toggles (orphan /
+              duplicate) and the parent-provided lintResolved set
+              so a row stays hidden after Resolve. Section renders
+              ONLY when at least one finding is visible. ──────── */}
+        {lintReport && (() => {
+          const visibleOrphans = curatorOrphanEnabled
+            ? lintReport.orphans.filter((o) => !lintResolved?.orphans.has(o.id))
+            : [];
+          const visibleDuplicates = curatorDuplicateEnabled
+            ? lintReport.duplicates.filter((p) => !lintResolved?.duplicates.has(`${p.a.id}|${p.b.id}`))
+            : [];
+          const total = visibleOrphans.length + visibleDuplicates.length;
+          if (total === 0) return null;
+          return (
+            <section className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  className="flex items-center justify-center shrink-0"
+                  style={{ width: 22, height: 22, borderRadius: 6, background: "rgba(245,158,11,0.14)", color: "#f59e0b" }}
+                >
+                  <ShieldAlert width={12} height={12} />
+                </span>
+                <h2 className="text-heading" style={{ color: "var(--text-primary)" }}>Needs review</h2>
+                <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
+                  {total} finding{total === 1 ? "" : "s"}
+                </span>
+                <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>
+                  Toggle signals in Settings → Auto-management
+                </span>
+              </div>
+              <div className="space-y-2">
+                {visibleOrphans.map((o) => (
+                  <div
+                    key={`orphan:${o.id}`}
+                    className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                  >
+                    <span
+                      className="flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
+                      title="Orphan doc — not in any bundle, not linked elsewhere, no shared concepts"
+                    >
+                      <FileWarning width={14} height={14} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 min-w-0">
+                        <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                          {o.title || "Untitled"}
+                        </span>
+                      </div>
+                      <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        Not in any bundle, not linked from another doc, no shared concepts. Resolve re-runs concept extraction — it&apos;ll drop off the list if it actually shares concepts with something.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onResolveOrphan && (
+                        <button
+                          onClick={() => onResolveOrphan(o.id, o.title)}
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                        >
+                          Resolve
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onOpenDoc?.(o.id)}
+                        className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {visibleDuplicates.map((p) => (
+                  <div
+                    key={`dup:${p.a.id}|${p.b.id}`}
+                    className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                  >
+                    <span
+                      className="flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
+                      title={`Likely duplicate — cosine distance ${p.distance.toFixed(3)}`}
+                    >
+                      <Copy width={14} height={14} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 min-w-0">
+                        <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                          {(p.a.title || "Untitled")} ↔ {(p.b.title || "Untitled")}
+                        </span>
+                      </div>
+                      <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        Embedding distance {p.distance.toFixed(3)}. Resolve moves the older copy to Trash and keeps the newer as canonical — restorable from Trash if wrong.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onResolveDuplicate && (
+                        <button
+                          onClick={() => onResolveDuplicate(p.a.id, p.a.title, p.b.id, p.b.title)}
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                        >
+                          Resolve
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onOpenDoc?.(p.a.id)}
+                        className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                      >
+                        Open older
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ── AI suggestions — promote drafts, bundle clusters, expand
               underexplored concepts. Heuristic, no LLM call. Cards are
