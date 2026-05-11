@@ -210,7 +210,7 @@ export default function BundleOverview({
                 Deploy this bundle to any AI
               </p>
               <p className="text-caption mt-0.5" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. Default = compact bundle digest with inline links to each doc; the AI follows them as it needs. Add <code className="font-mono">?full=1</code> to inline every doc&apos;s body up front.
+                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. Default = compact bundle digest with the canvas analysis (themes, insights, concepts) plus inline links to each doc. Add <code className="font-mono">?full=1</code> to inline every doc&apos;s body, <code className="font-mono">?graph=0</code> to drop the analysis.
               </p>
             </div>
           </div>

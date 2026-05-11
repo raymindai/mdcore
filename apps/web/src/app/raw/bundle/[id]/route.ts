@@ -57,7 +57,7 @@ export async function GET(
   // we only need draft/password/allowed_emails gating here.
   const { data: bundle } = await supabase
     .from("bundles")
-    .select("id, title, description, is_draft, password_hash, allowed_emails, updated_at, user_id")
+    .select("id, title, description, is_draft, password_hash, allowed_emails, updated_at, user_id, graph_data, graph_generated_at, intent")
     .eq("id", id)
     .single();
 
@@ -114,8 +114,48 @@ export async function GET(
   const title = (bundle.title || "Untitled Bundle").replace(/"/g, '\\"');
   const updated = bundle.updated_at ? new Date(bundle.updated_at).toISOString() : "";
   const description = (bundle.description || "").trim();
+  const intent = (bundle.intent as string | null | undefined) || "";
 
   const includedCount = (bundleDocs || []).filter(bd => isFetchable(byId.get(bd.document_id))).length;
+
+  // ─── Graph analysis ───────────────────────────────────────────
+  // ai_graph stores the canvas's cross-doc analysis: themes,
+  // insights, gaps, connections, per-doc summaries, and a
+  // node-edge sub-graph. v6 thesis is that THIS analysis is the
+  // bundle URL's real value over a plain doc list — paste the URL
+  // into Claude/ChatGPT/Cursor and the AI receives the prior AI's
+  // work alongside the doc inventory, instead of having to redo it.
+  // Vector embeddings stay server-side (numerics aren't useful to
+  // an LLM); the markdown serialization below carries only the
+  // text outputs the analysis produced.
+  //
+  // Toggle off with ?graph=0 if the caller wants the doc-list-only
+  // digest (analysis can be heavy for some bundles).
+  type Graph = {
+    summary?: string;
+    themes?: string[];
+    insights?: string[];
+    gaps?: string[];
+    keyTakeaways?: string[];
+    connections?: Array<{ doc1?: string; doc2?: string; relationship?: string }>;
+    documentSummaries?: Record<string, string>;
+    nodes?: Array<{ id: string; label: string; type: string; weight?: number; documentId?: string }>;
+    edges?: Array<{ source: string; target: string; label?: string; type?: string }>;
+  };
+  const graph = (bundle.graph_data as Graph | null) || null;
+  const graphParam = new URL(request.url).searchParams.get("graph");
+  const graphRequested = graphParam !== "0" && graphParam !== "false" && graphParam !== "off";
+  const graphGeneratedAt = bundle.graph_generated_at as string | null | undefined;
+  // Stale check: if any member doc was edited after the graph was
+  // generated, the analysis reflects an old snapshot. Surface that
+  // as a warning so the AI can weigh the analysis appropriately
+  // (a stale theme of "doc X is the canonical version" is misleading
+  // if doc X has since been rewritten).
+  const latestDocMs = docs.reduce((m, d) => {
+    const t = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+    return t > m ? t : m;
+  }, 0);
+  const isAnalysisStale = !!(graphGeneratedAt && latestDocMs > new Date(graphGeneratedAt).getTime());
 
   const frontmatter = [
     "---",
@@ -125,6 +165,8 @@ export async function GET(
     `url: https://mdfy.app/b/${bundle.id}`,
     `document_count: ${includedCount}`,
     updated ? `updated: ${updated}` : null,
+    graphGeneratedAt && graphRequested ? `analysis_generated_at: ${new Date(graphGeneratedAt).toISOString()}` : null,
+    graphRequested && isAnalysisStale ? "analysis_stale: true" : null,
     'source: "mdfy.app"',
     "---",
     "",
@@ -133,13 +175,97 @@ export async function GET(
   const sections: string[] = [];
   sections.push(`# ${bundle.title || "Untitled Bundle"}`);
   if (description) sections.push(`> ${description.split("\n").join("\n> ")}`);
+  if (intent) sections.push(`**Intent:** ${intent}`);
+
+  // ─── Graph analysis serialization (markdown, default-on) ───
+  // Pure-text outputs of the canvas's AI analysis. Pasted with
+  // the bundle URL, the consuming AI gets the prior AI's narrative
+  // + a concept sub-graph it can navigate. Embeddings stay
+  // server-side; this is the digest of what the embeddings + LLM
+  // analysis already produced.
+  const renderGraphSections = (g: Graph): string[] => {
+    const out: string[] = [];
+    if (isAnalysisStale) {
+      out.push(`> ⚠ _Analysis may be stale — one or more member docs were edited after the last analysis run. Re-run the canvas to refresh._`);
+    }
+    if (g.summary && g.summary.trim()) {
+      out.push("## Summary");
+      out.push(g.summary.trim());
+    }
+    if (Array.isArray(g.themes) && g.themes.length > 0) {
+      out.push("## Themes");
+      out.push(g.themes.map((t) => `- ${t}`).join("\n"));
+    }
+    if (Array.isArray(g.insights) && g.insights.length > 0) {
+      out.push("## Cross-document insights");
+      out.push(g.insights.map((s) => `- ${s}`).join("\n"));
+    }
+    if (Array.isArray(g.keyTakeaways) && g.keyTakeaways.length > 0) {
+      out.push("## Key takeaways");
+      out.push(g.keyTakeaways.map((s) => `- ${s}`).join("\n"));
+    }
+    if (Array.isArray(g.gaps) && g.gaps.length > 0) {
+      out.push("## Open questions / gaps");
+      out.push(g.gaps.map((s) => `- ${s}`).join("\n"));
+    }
+    if (Array.isArray(g.connections) && g.connections.length > 0) {
+      out.push("## Notable connections");
+      const docTitleById = new Map<string, string>();
+      for (const d of docs) docTitleById.set(d.id, d.title || "Untitled");
+      const lines: string[] = [];
+      for (const c of g.connections.slice(0, 12)) {
+        const a = docTitleById.get(c.doc1 || "") || c.doc1 || "?";
+        const b = docTitleById.get(c.doc2 || "") || c.doc2 || "?";
+        const rel = (c.relationship || "").trim();
+        lines.push(`- **${a}** ↔ **${b}**${rel ? ` — ${rel}` : ""}`);
+      }
+      out.push(lines.join("\n"));
+    }
+    // Concept sub-graph: nodes typed as concept + edges between
+    // concepts, rendered as bullets. This is the bundle-scope
+    // ontology — distinct from the hub-wide concept_index.
+    if (Array.isArray(g.nodes) && g.nodes.length > 0) {
+      const conceptNodes = g.nodes.filter((n) => n.type === "concept");
+      if (conceptNodes.length > 0) {
+        out.push("## Concepts (this bundle)");
+        const docTitleById = new Map<string, string>();
+        for (const d of docs) docTitleById.set(d.id, d.title || "Untitled");
+        const conceptLines: string[] = [];
+        for (const n of conceptNodes.slice(0, 25)) {
+          const docTitle = n.documentId ? docTitleById.get(n.documentId) : null;
+          const src = docTitle ? ` (from **${docTitle}**)` : "";
+          conceptLines.push(`- **${n.label}**${src}`);
+        }
+        out.push(conceptLines.join("\n"));
+        // Edges restricted to concept↔concept for narrative weight.
+        const conceptIds = new Set(conceptNodes.map((n) => n.id));
+        const conceptEdges = (g.edges || []).filter((e) => conceptIds.has(e.source) && conceptIds.has(e.target));
+        if (conceptEdges.length > 0) {
+          out.push("## Concept relations");
+          const labelById = new Map(conceptNodes.map((n) => [n.id, n.label] as const));
+          const edgeLines: string[] = [];
+          for (const e of conceptEdges.slice(0, 25)) {
+            const a = labelById.get(e.source) || e.source;
+            const b = labelById.get(e.target) || e.target;
+            edgeLines.push(`- **${a}** ↔ **${b}**${e.label ? ` — ${e.label}` : ""}`);
+          }
+          out.push(edgeLines.join("\n"));
+        }
+      }
+    }
+    return out;
+  };
+
+  if (graphRequested && graph) {
+    const graphMd = renderGraphSections(graph);
+    if (graphMd.length > 0) sections.push(...graphMd);
+  }
 
   const compact = isCompactRequested(request.url);
-  // Digest-first: by default the bundle's raw payload is JUST the
-  // doc list (titles + annotations + links). The AI follows the
-  // links per-doc as needed. ?full=1 returns the legacy behaviour
-  // where every doc body is concatenated inline — multi-x heavier,
-  // sometimes blows past context windows for big bundles.
+  // Digest-first: by default the bundle's raw payload is the
+  // analysis + the doc list (titles + annotations + links). The
+  // AI follows the links per-doc as needed. ?full=1 returns the
+  // legacy behaviour where every doc body is concatenated inline.
   const fullMode = isFullRequested(request.url);
 
   let visibleIdx = 0;
