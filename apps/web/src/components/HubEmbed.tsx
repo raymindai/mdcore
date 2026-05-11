@@ -351,10 +351,16 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
           </div>
         </header>
 
-        {/* ── Deploy-to-AI — the WHY of Hub ───────────────────────── */}
+        {/* ── Deploy-to-AI — the WHY of Hub. Border tone: the
+              accent-dim fill already signals "this is the
+              headline action"; layering a full var(--accent)
+              orange border on top read as a warning callout
+              ("too strong, especially the border" — founder).
+              Border drops to var(--border-dim) so the panel
+              still stands apart but doesn't shout. ─────────── */}
         <section
           className="mb-8 px-5 py-4 rounded-xl"
-          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)" }}
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--border-dim)" }}
         >
           <div className="flex items-start gap-3">
             <Globe width={18} height={18} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />

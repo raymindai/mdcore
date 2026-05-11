@@ -188,7 +188,7 @@ export default function BundleOverview({
         {/* ─── Deploy panel ─── */}
         <section
           className="mb-7 rounded-xl"
-          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", padding: "16px 18px" }}
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--border-dim)", padding: "16px 18px" }}
         >
           <div className="flex items-start gap-2.5 mb-2">
             <Sparkles width={16} height={16} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
