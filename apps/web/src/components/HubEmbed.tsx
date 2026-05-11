@@ -537,6 +537,24 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                   Curated from your concept index — heuristic, no LLM call
                 </span>
               </div>
+              {/* Suggestion rows — colour discipline:
+                    - Cards are flat surface + dim border. No coloured
+                      tints on icon containers (was green/blue/purple
+                      backgrounds — too noisy when stacked).
+                    - The type marker (PROMOTE / BUNDLE / EXPAND) keeps
+                      a small uppercase label so the row's purpose is
+                      readable, but it shares the muted text colour
+                      everything else uses; the icon glyph carries the
+                      semantic load.
+                    - Concept names in the body drop the accent orange
+                      and use italic with the primary text colour
+                      instead — same emphasis, no extra hue.
+                    - Every action button uses the same bordered-neutral
+                      style. Filled coloured buttons ("Publish",
+                      "Create bundle") were the loudest thing in the
+                      list; founder asked for them gone. The lead
+                      action keeps a slightly stronger text colour so
+                      it still reads as primary inside the row. */}
               <div className="space-y-2">
                 {promoteCards.map((s) => {
                   const key = `promote:${s.docId}`;
@@ -549,14 +567,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(34,197,94,0.14)", color: "#22c55e" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                         title="Promote — publish this draft"
                       >
                         <ArrowUpRight width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#22c55e", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
                             Promote
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>{s.title}</span>
@@ -564,9 +582,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           Shares concepts with your published docs:{" "}
                           {s.sharedConcepts.slice(0, 3).map((c, i) => (
-                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
+                            <em key={i} style={{ color: "var(--text-primary)" }}>
                               {i > 0 ? ", " : ""}{c}
-                            </span>
+                            </em>
                           ))}
                           . Publishing makes it part of your hub.
                         </p>
@@ -575,10 +593,10 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <button
                           onClick={() => promoteDoc(s.docId)}
                           disabled={busy}
-                          className="text-caption px-2.5 py-1 rounded transition-colors"
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{
-                            background: "var(--accent)",
-                            color: "#fff",
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--border-dim)",
                             opacity: busy ? 0.4 : 1,
                             cursor: busy ? "not-allowed" : "pointer",
                           }}
@@ -614,14 +632,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(56,189,248,0.14)", color: "#38bdf8" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                         title="Bundle suggestion"
                       >
                         <Layers width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#38bdf8", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
                             Bundle
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
@@ -642,10 +660,10 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <button
                           onClick={() => onCreateBundleFromDocs?.(s.docIds, s.concept)}
                           disabled={!onCreateBundleFromDocs}
-                          className="text-caption px-2.5 py-1 rounded transition-colors"
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{
-                            background: "#38bdf8",
-                            color: "#fff",
+                            color: "var(--text-primary)",
+                            border: "1px solid var(--border-dim)",
                             opacity: !onCreateBundleFromDocs ? 0.4 : 1,
                             cursor: !onCreateBundleFromDocs ? "not-allowed" : "pointer",
                           }}
@@ -674,14 +692,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(167,139,250,0.14)", color: "#a78bfa" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
                         title="Underexplored concept"
                       >
                         <Lightbulb width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
                             Expand
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
@@ -691,9 +709,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           But it&apos;s connected to{" "}
                           {s.neighbors.slice(0, 3).map((n, i) => (
-                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
+                            <em key={i} style={{ color: "var(--text-primary)" }}>
                               {i > 0 ? ", " : ""}{n}
-                            </span>
+                            </em>
                           ))}
                           {" "}— concepts you&apos;ve explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
                         </p>
@@ -702,7 +720,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <button
                           onClick={() => onOpenDoc?.(s.docId)}
                           className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                          style={{ color: "var(--accent)", border: "1px solid var(--accent-dim)", background: "var(--accent-dim)" }}
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
                         >
                           Open
                         </button>
