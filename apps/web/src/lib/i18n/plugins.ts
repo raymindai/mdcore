@@ -13,7 +13,7 @@ const texts = {
       h1_prefix: "Bring ",
       h1_accent: "mdfy",
       h1_suffix: " everywhere.",
-      sub: "Capture from any AI, preview in Finder, publish from your editor. Every document gets a permanent URL \u2014 editable, versioned, and readable by humans and AIs across every platform.",
+      sub: "Six surfaces, one hub. Capture from any AI, edit anywhere, deploy the same URL to Claude, ChatGPT, Cursor, and Codex. Every plugin writes into the same hub \u2014 your AI memory stays portable across every tool.",
     },
 
     useCases: {
@@ -319,7 +319,7 @@ const texts = {
       h1_prefix: "",
       h1_accent: "mdfy",
       h1_suffix: "를 어디서든.",
-      sub: "어떤 AI에서든 캡처하고, Finder에서 미리보고, 에디터에서 퍼블리시하세요. 모든 문서는 영구 URL을 가지며 \u2014 편집, 버전 관리, 모든 플랫폼에서 사람과 AI가 읽을 수 있습니다.",
+      sub: "6개 surface, 하나의 허브. 어떤 AI에서든 캡처하고, 어디서든 편집하고, 같은 URL을 Claude·ChatGPT·Cursor·Codex에 deploy 하세요. 모든 플러그인이 같은 허브로 쌓이며 \u2014 AI 메모리가 도구를 갈아끼워도 그대로 유지됩니다.",
     },
 
     useCases: {
