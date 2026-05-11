@@ -20,10 +20,12 @@ import { ArrowLeft, Trash2, Loader2, X, Check } from "lucide-react";
 import Link from "next/link";
 import {
   CURATOR_OPTIONS,
+  AUTO_LEVELS,
   defaultCuratorSettings,
   loadCuratorSettings,
   saveCuratorSettings,
   type CuratorSettings,
+  type AutoLevel,
 } from "@/lib/curator-options";
 import {
   ACCENT_COLORS,
@@ -90,7 +92,7 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   };
   const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
   useEffect(() => { setCuratorSettings(loadCuratorSettings()); }, []);
-  const toggleCurator = (id: keyof CuratorSettings, next: boolean | string) => {
+  const toggleCurator = <K extends keyof CuratorSettings>(id: K, next: CuratorSettings[K]) => {
     setCuratorSettings((prev) => {
       const updated = { ...prev, [id]: next } as CuratorSettings;
       saveCuratorSettings(updated);
@@ -546,39 +548,60 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             Curator signals scan your hub and surface findings in Needs Review. With auto-management ON, safe findings are resolved for you on the trigger you pick; destructive ones (like duplicate trash) still ask first. With it OFF, findings just surface and you act on them by hand.
           </p>
 
-          {/* Master switch — ON means enabled signals auto-resolve on
-              the configured trigger. OFF means findings just surface
-              for manual review (current default behaviour). */}
-          <div className="flex items-start gap-3 px-3 py-3 mb-3 rounded-lg" style={{ border: "1px solid var(--border-dim)", background: curatorSettings.autoEnabled ? "var(--accent-dim)" : "var(--surface)" }}>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold" style={{ color: curatorSettings.autoEnabled ? "var(--accent)" : "var(--text-primary)" }}>
-                Auto-resolve findings
-              </div>
-              <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--text-muted)" }}>
-                When ON, mdfy acts on findings for you instead of waiting for clicks. Safe actions (concept refresh for orphans) run silently; destructive actions (duplicate trash) still prompt.
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={curatorSettings.autoEnabled}
-                onChange={(e) => toggleCurator("autoEnabled", e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 rounded-full transition-colors" style={{ background: curatorSettings.autoEnabled ? "var(--accent)" : "var(--border-dim)" }}>
-                <div className="w-4 h-4 rounded-full transition-transform" style={{
-                  background: "#fff",
-                  transform: `translate(${curatorSettings.autoEnabled ? 18 : 2}px, 2px)`,
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-                }} />
-              </div>
-            </label>
+          {/* Aggressiveness — four-step scale. "Off" is current
+              manual-only behaviour; each step up widens the action
+              matrix. Irreversible actions (public publish, external
+              link rewrites, hard delete) are NEVER automated even at
+              Aggressive — every auto-action is recoverable from
+              Trash. The dots act as a slider indicator so the scale
+              reads as continuous, not four equal radio options. */}
+          <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-faint)" }}>
+            Aggressiveness
+          </label>
+          <div className="rounded-lg overflow-hidden mb-4" style={{ border: "1px solid var(--border-dim)" }}>
+            {AUTO_LEVELS.map((lvl, idx) => {
+              const active = curatorSettings.autoLevel === lvl.id;
+              const isLast = idx === AUTO_LEVELS.length - 1;
+              return (
+                <button
+                  key={lvl.id}
+                  onClick={() => toggleCurator("autoLevel", lvl.id)}
+                  className="w-full flex items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{
+                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
+                    background: active ? "var(--accent-dim)" : "transparent",
+                  }}
+                >
+                  <span className="flex items-center gap-0.5 shrink-0 mt-1" aria-hidden>
+                    {[0, 1, 2, 3].map((i) => (
+                      <span
+                        key={i}
+                        className="rounded-full"
+                        style={{
+                          width: 6,
+                          height: 6,
+                          background: i <= idx ? (active ? "var(--accent)" : "var(--text-muted)") : "var(--border-dim)",
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-semibold" style={{ color: active ? "var(--accent)" : "var(--text-primary)" }}>{lvl.label}</span>
+                      <span className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>{lvl.shortDesc}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                      {lvl.longDesc}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Trigger — when does auto-resolution fire. Disabled
-              visually when the master is off so users can't tweak a
-              setting that has no effect. */}
-          <div className="mb-4" style={{ opacity: curatorSettings.autoEnabled ? 1 : 0.5 }}>
+          {/* Trigger — when does auto-resolution fire. Greyed when
+              level is Off since the trigger has no effect. */}
+          <div className="mb-4" style={{ opacity: curatorSettings.autoLevel === "off" ? 0.5 : 1 }}>
             <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-faint)" }}>
               Trigger
             </label>
@@ -589,17 +612,18 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
                 { v: "interval", label: "Every 30 min", desc: "Background scan" },
               ] as const).map(({ v, label, desc }) => {
                 const active = curatorSettings.autoTrigger === v;
+                const enabled = curatorSettings.autoLevel !== "off";
                 return (
                   <button
                     key={v}
-                    onClick={() => curatorSettings.autoEnabled && toggleCurator("autoTrigger", v)}
-                    disabled={!curatorSettings.autoEnabled}
+                    onClick={() => enabled && toggleCurator("autoTrigger", v)}
+                    disabled={!enabled}
                     className="flex flex-col items-start gap-0.5 px-3 py-2 rounded-md text-left transition-colors"
                     style={{
                       background: active ? "var(--accent-dim)" : "var(--surface)",
                       border: `1px solid ${active ? "var(--accent)" : "var(--border-dim)"}`,
                       color: active ? "var(--accent)" : "var(--text-secondary)",
-                      cursor: curatorSettings.autoEnabled ? "pointer" : "not-allowed",
+                      cursor: enabled ? "pointer" : "not-allowed",
                     }}
                   >
                     <span className="text-xs font-medium">{label}</span>

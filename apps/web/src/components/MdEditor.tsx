@@ -27,7 +27,7 @@ import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import RelatedDocsWidget from "@/components/RelatedDocsWidget";
 import ImportModal from "@/components/ImportModal";
-import { loadCuratorSettings, type CuratorSettings, defaultCuratorSettings } from "@/lib/curator-options";
+import { loadCuratorSettings, autoHandles, type CuratorSettings, defaultCuratorSettings } from "@/lib/curator-options";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { readCompileSources } from "@/lib/compile-sources";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -2896,30 +2896,61 @@ export default function MdEditor() {
   const autoResolveSafeFindings = useCallback(async () => {
     if (lintRunningAutoRef.current) return;
     if (!user?.id || !lintReport) return;
-    if (!curatorSettings.autoEnabled) return;
-    if (!curatorSettings.orphan) return;
-    const orphans = lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id));
-    if (orphans.length === 0) return;
+    if (curatorSettings.autoLevel === "off") return;
     lintRunningAutoRef.current = true;
-    let resolved = 0;
-    for (const o of orphans) {
-      try {
-        const res = await fetch(`/api/docs/${o.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", ...authHeaders },
-          body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
-        });
-        if (res.ok) resolved++;
-      } catch { /* ignore individual failures; next pass retries */ }
+    let orphansResolved = 0;
+    let duplicatesResolved = 0;
+    // Orphan refresh — handled at every level above Off.
+    if (curatorSettings.orphan && autoHandles(curatorSettings.autoLevel, "orphan-refresh")) {
+      const orphans = lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id));
+      for (const o of orphans) {
+        try {
+          const res = await fetch(`/api/docs/${o.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
+          });
+          if (res.ok) orphansResolved++;
+        } catch { /* ignore; next pass retries */ }
+      }
+      if (orphansResolved > 0) {
+        const ids = orphans.slice(0, orphansResolved).map((o) => o.id);
+        setLintResolved((prev) => ({ ...prev, orphans: new Set([...prev.orphans, ...ids]) }));
+        setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => !ids.includes(x.id)) } : prev);
+      }
     }
-    if (resolved > 0) {
-      const ids = orphans.slice(0, resolved).map((o) => o.id);
-      setLintResolved((prev) => ({ ...prev, orphans: new Set([...prev.orphans, ...ids]) }));
-      setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => !ids.includes(x.id)) } : prev);
-      showToast(`Auto-managed ${resolved} orphan${resolved === 1 ? "" : "s"} — concepts re-extracted.`, "info");
+    // Duplicate trash — Aggressive only. Soft-deletes the older copy
+    // of each pair; recoverable from Trash. We do NOT prompt here —
+    // the user picked Aggressive knowing this acts without asking.
+    if (curatorSettings.duplicate && autoHandles(curatorSettings.autoLevel, "duplicate-trash")) {
+      const dups = lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`));
+      for (const p of dups) {
+        try {
+          const res = await fetch(`/api/docs/${p.a.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({ action: "soft-delete", userId: user.id }),
+          });
+          if (res.ok) {
+            duplicatesResolved++;
+            const pairKey = `${p.a.id}|${p.b.id}`;
+            setLintResolved((prev) => ({ ...prev, duplicates: new Set([...prev.duplicates, pairKey]) }));
+            setLintReport((prev) => prev ? { ...prev, duplicates: prev.duplicates.filter((x) => x.a.id !== p.a.id || x.b.id !== p.b.id) } : prev);
+          }
+        } catch { /* ignore; next pass retries */ }
+      }
+    }
+    // Single toast summarising the run so the user always knows
+    // what auto-management did. Skipped when nothing happened.
+    const total = orphansResolved + duplicatesResolved;
+    if (total > 0) {
+      const parts: string[] = [];
+      if (orphansResolved > 0) parts.push(`${orphansResolved} orphan${orphansResolved === 1 ? "" : "s"} refreshed`);
+      if (duplicatesResolved > 0) parts.push(`${duplicatesResolved} duplicate${duplicatesResolved === 1 ? "" : "s"} trashed`);
+      showToast(`Auto-managed: ${parts.join(", ")}.`, "info");
     }
     lintRunningAutoRef.current = false;
-  }, [user?.id, lintReport, curatorSettings.autoEnabled, curatorSettings.orphan, lintResolved.orphans, authHeaders]);
+  }, [user?.id, lintReport, curatorSettings.autoLevel, curatorSettings.orphan, curatorSettings.duplicate, lintResolved.orphans, lintResolved.duplicates, authHeaders]);
   // (Trigger useEffects for showHub on-open / interval live further
   //  down — see the block right after the showHub state declaration.
   //  TS doesn't allow forward-referencing a let/const in the same
@@ -3884,10 +3915,10 @@ export default function MdEditor() {
   // autoResolveSafeFindings short-circuits when there's nothing to do.
   useEffect(() => {
     if (curatorSettings.autoTrigger !== "interval") return;
-    if (!curatorSettings.autoEnabled) return;
+    if (curatorSettings.autoLevel === "off") return;
     const id = setInterval(() => { autoResolveSafeFindings(); }, 30 * 60 * 1000);
     return () => clearInterval(id);
-  }, [curatorSettings.autoTrigger, curatorSettings.autoEnabled, autoResolveSafeFindings]);
+  }, [curatorSettings.autoTrigger, curatorSettings.autoLevel, autoResolveSafeFindings]);
   // Account Settings overlay — same overlay treatment as Hub. Founder
   // ask: Settings shouldn't open as a separate page navigation, it
   // should layer in-place. /settings still works for deep links but
