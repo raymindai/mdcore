@@ -43,7 +43,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Sun, Cloud, MessageSquarePlus,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Smile, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8669,7 +8669,7 @@ ${clone.innerHTML}
             }}
             title="Start (Alt+H)"
           >
-            <Sun width={13} height={13} />
+            <Smile width={13} height={13} />
             <span>Start</span>
           </button>
           {hubSlug && (() => {
@@ -11852,11 +11852,53 @@ ${clone.innerHTML}
             <div className="flex-1 overflow-y-auto flex flex-col" style={{ background: "var(--background)" }}>
               {/* Width + padding match HubEmbed and BundleOverview
                   (max-w-3xl, px-6 py-10) so the three "destination"
-                  surfaces — Home, Hub, Bundle — share a consistent
-                  content frame. Earlier max-w-xl + my-auto centered a
-                  narrower column, which read like a different surface
-                  family from Hub/doc. */}
+                  surfaces — Start, Hub, Bundle — share a consistent
+                  content frame. */}
               <div className="w-full max-w-3xl mx-auto px-6 py-10">
+
+                {/* Greeting header — same shape as HubEmbed /
+                    BundleOverview headers (tinted badge + big title +
+                    soft caption) so Start reads as part of the same
+                    destination family. The greeting itself is time-
+                    of-day aware; the name falls back through profile
+                    display_name → email prefix → "there" so it never
+                    renders an empty slot. Signed-out users see a
+                    plain "Welcome to mdfy" line instead — no fake
+                    name. */}
+                {(() => {
+                  const hour = new Date().getHours();
+                  const timeGreeting =
+                    hour < 5 ? "Up late"
+                    : hour < 12 ? "Good morning"
+                    : hour < 18 ? "Good afternoon"
+                    : hour < 22 ? "Good evening"
+                    : "Up late";
+                  const displayName = profile?.display_name?.trim()
+                    || (user?.email ? user.email.split("@")[0] : "");
+                  const isSignedIn = isAuthenticated && !!user;
+                  return (
+                    <header className="flex items-start gap-4 mb-8">
+                      <span
+                        className="flex items-center justify-center shrink-0 rounded-2xl"
+                        style={{ width: 56, height: 56, background: "var(--accent-dim)", color: "var(--accent)" }}
+                      >
+                        <Smile width={28} height={28} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+                          {isSignedIn
+                            ? (displayName ? `${timeGreeting}, ${displayName}` : timeGreeting)
+                            : "Welcome to mdfy"}
+                        </h1>
+                        <p className="text-body mt-1.5" style={{ color: "var(--text-secondary)" }}>
+                          {isSignedIn
+                            ? "Pick up where you left off, or start something new."
+                            : "Your AI memory, deployable to any AI."}
+                        </p>
+                      </div>
+                    </header>
+                  );
+                })()}
 
                 {/* Knowledge-compounds stats — gated on the thinking-surface
                     flag because it surfaces concept counts that don't make
