@@ -695,21 +695,53 @@ function FlyoutMenu({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // When the user OPENS the flyout by clicking the row (rather than
+  // hovering), we lock it open and dismiss only on outside click. The
+  // founder repeatedly reported the previous hover-only flyout "not
+  // appearing when clicked" — touch + impatient-mouse users never
+  // triggered a stable hover. With clickLocked the row is a regular
+  // toggle that stays put once opened.
+  const [clickLocked, setClickLocked] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!clickLocked || !open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setClickLocked(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [clickLocked, open]);
+
   const cancelClose = () => {
     if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
   };
   const scheduleClose = () => {
+    // Hover-close timer is suppressed while click-locked — the outside
+    // click handler takes over the dismissal job.
+    if (clickLocked) return;
     cancelClose();
     closeTimerRef.current = setTimeout(() => setOpen(false), 120);
   };
   return (
     <div
+      ref={wrapperRef}
       className="relative"
       onMouseEnter={() => { cancelClose(); setOpen(true); }}
       onMouseLeave={scheduleClose}
     >
       <button
+        onClick={() => {
+          // Toggle, and flip into click-locked mode so the flyout
+          // doesn't die under the hover-close timer the moment the
+          // cursor moves off the row.
+          setOpen((o) => !o);
+          setClickLocked(true);
+        }}
         className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
         style={{ color: "var(--text-secondary)" }}
       >
