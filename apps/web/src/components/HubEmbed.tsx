@@ -538,23 +538,23 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                 </span>
               </div>
               {/* Suggestion rows — colour discipline:
-                    - Cards are flat surface + dim border. No coloured
-                      tints on icon containers (was green/blue/purple
-                      backgrounds — too noisy when stacked).
-                    - The type marker (PROMOTE / BUNDLE / EXPAND) keeps
-                      a small uppercase label so the row's purpose is
-                      readable, but it shares the muted text colour
-                      everything else uses; the icon glyph carries the
-                      semantic load.
-                    - Concept names in the body drop the accent orange
-                      and use italic with the primary text colour
-                      instead — same emphasis, no extra hue.
-                    - Every action button uses the same bordered-neutral
-                      style. Filled coloured buttons ("Publish",
-                      "Create bundle") were the loudest thing in the
-                      list; founder asked for them gone. The lead
-                      action keeps a slightly stronger text colour so
-                      it still reads as primary inside the row. */}
+                    - Card body stays flat surface + dim border so it
+                      doesn't fight the doc list below.
+                    - The type marker (icon container + uppercase
+                      label) keeps its semantic colour so the user can
+                      tell PROMOTE from BUNDLE from EXPAND at a glance
+                      — green / sky / violet, dimmed onto translucent
+                      backgrounds so the colour reads as a tag, not a
+                      headline.
+                    - Concept names in the body keep the accent orange
+                      so the "this is what links the suggestion to
+                      your hub" signal stays visible.
+                    - Action buttons all use the same bordered-neutral
+                      style — no filled colour fills. The lead action
+                      keeps text-primary so it still reads as primary
+                      inside the row, but it never carries a colour
+                      fill ("Publish"-style buttons are explicitly
+                      out per founder rule). */}
               <div className="space-y-2">
                 {promoteCards.map((s) => {
                   const key = `promote:${s.docId}`;
@@ -567,14 +567,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(34,197,94,0.12)", color: "#22c55e" }}
                         title="Promote — publish this draft"
                       >
                         <ArrowUpRight width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#22c55e", fontSize: 9, letterSpacing: "0.08em" }}>
                             Promote
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>{s.title}</span>
@@ -582,9 +582,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           Shares concepts with your published docs:{" "}
                           {s.sharedConcepts.slice(0, 3).map((c, i) => (
-                            <em key={i} style={{ color: "var(--text-primary)" }}>
+                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
                               {i > 0 ? ", " : ""}{c}
-                            </em>
+                            </span>
                           ))}
                           . Publishing makes it part of your hub.
                         </p>
@@ -632,14 +632,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(56,189,248,0.12)", color: "#38bdf8" }}
                         title="Bundle suggestion"
                       >
                         <Layers width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#38bdf8", fontSize: 9, letterSpacing: "0.08em" }}>
                             Bundle
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
@@ -692,14 +692,14 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                     >
                       <span
                         className="flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ width: 24, height: 24, borderRadius: 6, background: "var(--toggle-bg)", color: "var(--text-muted)" }}
+                        style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(167,139,250,0.12)", color: "#a78bfa" }}
                         title="Underexplored concept"
                       >
                         <Lightbulb width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: "0.08em" }}>
+                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: "0.08em" }}>
                             Expand
                           </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
@@ -709,9 +709,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                           But it&apos;s connected to{" "}
                           {s.neighbors.slice(0, 3).map((n, i) => (
-                            <em key={i} style={{ color: "var(--text-primary)" }}>
+                            <span key={i} className="font-mono" style={{ color: "var(--accent)" }}>
                               {i > 0 ? ", " : ""}{n}
-                            </em>
+                            </span>
                           ))}
                           {" "}— concepts you&apos;ve explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
                         </p>
