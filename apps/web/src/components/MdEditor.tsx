@@ -8575,22 +8575,23 @@ ${clone.innerHTML}
               </div>
             );
           })()}
-          {/* Hub — sits between [Back/Forward] and [Home + views] so the
-              nav-arrow group leads the cluster (browser-style) and Hub
-              reads as a destination, not a history control. The pill
-              always shows its label (no sm: hide) so mobile users see a
-              recognisable "Hub" target — icon-only was missed on phones. */}
+          {/* Hub + Home + view modes — one combined group. Hub and Home
+              are both top-level destinations (where am I?) so they share
+              a pill border with the view modes that follow, keeping the
+              cluster down to two visual groups: [Back/Forward] and
+              [Hub | Home | views]. A 1px divider separates Hub from
+              Home so the two nav targets still read as distinct. The
+              Hub pill always shows its label (no sm: hide) so mobile
+              users see a recognisable "Hub" target. */}
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {hubSlug && (() => {
             const hubTabId = `hub-${hubSlug}`;
-            // The hub tab can stay in the tabs array (so the Hub view
-            // is preserved on close+reopen) while NOT being the
-            // visible view — in particular when the user clicks Home
-            // and the onboarding screen takes over. Treat Hub as
-            // inactive whenever onboarding is showing, so its pill
-            // doesn't stay highlighted in that state.
+            // Treat Hub as inactive when onboarding is showing so the
+            // pill doesn't stay highlighted while the tab is hidden
+            // behind the Home screen.
             const isHubActive = !showOnboarding && activeTab?.id === hubTabId;
             return (
-              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+              <>
                 <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
                   <button
                     onClick={() => {
@@ -8630,11 +8631,10 @@ ${clone.innerHTML}
                     <span>Hub</span>
                   </button>
                 </Tooltip>
-              </div>
+                <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+              </>
             );
           })()}
-          {/* Home + view modes — own group */}
-          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {/* Home */}
           <button
             onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
