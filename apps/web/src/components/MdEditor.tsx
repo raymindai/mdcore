@@ -2793,7 +2793,7 @@ export default function MdEditor() {
   });
   const [showMyDocs, setShowMyDocs] = useState(true);
   const [showMyBundles, setShowMyBundles] = useState(true);
-  const [bundleView, setBundleView] = useState<"canvas" | "list">("canvas");
+  const [bundleView, setBundleView] = useState<"overview" | "canvas" | "list">("overview");
   const [showBundleChat, setShowBundleChat] = useState(false);
   const [activeBundleDocIds, setActiveBundleDocIds] = useState<Set<string>>(new Set());
   const [showSharedDocs, setShowSharedDocs] = useState(() => {
@@ -8632,8 +8632,9 @@ ${clone.innerHTML}
                   itself (sidebar, status icons, "New bundle" button) so the
                   two no longer share a glyph. */}
               {([
-                { mode: "canvas" as const, label: "Canvas", shortcut: "1", icon: <Network width={13} height={13} /> },
-                { mode: "list" as const, label: "List", shortcut: "2", icon: <List width={13} height={13} /> },
+                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <Globe width={13} height={13} /> },
+                { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
+                { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
               const active = !showOnboarding && bundleView === mode;
               return (
@@ -12491,6 +12492,7 @@ ${clone.innerHTML}
                   <BundleEmbed
                     bundleId={activeTab.bundleId}
                     view={bundleView}
+                    onChangeView={(v) => setBundleView(v)}
                     aiPanelOpen={showAIPanel}
                     onSelectNodeInfo={() => setShowAIPanel(false)}
                     authHeaders={authHeaders}

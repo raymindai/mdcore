@@ -1,0 +1,297 @@
+"use client";
+
+// Bundle overview — mini-hub shape for a single bundle. Mirrors the
+// HubEmbed layout (Deploy panel + stats + grouped docs) so a bundle
+// reads as "a hub with a topic" rather than a folder. Picked up when
+// `view === "overview"` in BundleEmbed's parent.
+//
+// What it shows:
+//   1. Header — bundle title + description + member count
+//   2. Deploy panel — bundle URL + Copy + View as visitor + Raw + token estimate
+//   3. Stat strip — total docs / total tokens / discoveries-run state
+//   4. Documents list — click to open as tab
+//
+// What it doesn't (yet):
+//   - Per-doc concept overlap (lives in canvas)
+//   - Suggestions (TODO once we have a /api/bundles/[id]/suggestions surface)
+
+import { useEffect, useState, useMemo } from "react";
+import { Layers, Copy, Check, Eye, ExternalLink, FileText, Globe, Cloud, Users, Sparkles } from "lucide-react";
+
+interface BundleDoc {
+  id: string;
+  title: string | null;
+  markdown: string;
+  updated_at: string;
+  isDraft?: boolean;
+  sharedWithCount?: number;
+}
+
+interface BundleOverviewProps {
+  bundleId: string;
+  bundleTitle: string;
+  bundleDescription?: string | null;
+  bundleIntent?: string | null;
+  bundleIsDraft?: boolean;
+  bundleAllowedEmails?: string[];
+  documents: BundleDoc[];
+  /** Whether AI discoveries have been run on this bundle. */
+  hasDiscoveries?: boolean;
+  /** Whether AI has built a knowledge graph for this bundle. */
+  hasGraph?: boolean;
+  onOpenDoc?: (docId: string) => void;
+  onSwitchToCanvas?: () => void;
+  onSwitchToList?: () => void;
+}
+
+// Cheap token estimate — 1.3 tokens / word + 8 token listing overhead per doc.
+// Mirrors the same heuristic the hub page header uses so users see a
+// consistent number across both surfaces.
+function estimateBundleTokens(docs: BundleDoc[]): number {
+  let words = 0;
+  for (const d of docs) {
+    const w = (d.markdown || "").trim().split(/\s+/).filter(Boolean).length;
+    words += w;
+  }
+  return Math.round(words * 1.3 + docs.length * 8);
+}
+
+function fmtCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
+
+export default function BundleOverview({
+  bundleId,
+  bundleTitle,
+  bundleDescription,
+  bundleIntent,
+  bundleIsDraft,
+  bundleAllowedEmails,
+  documents,
+  hasDiscoveries,
+  hasGraph,
+  onOpenDoc,
+  onSwitchToCanvas,
+  onSwitchToList,
+}: BundleOverviewProps) {
+  const [copied, setCopied] = useState(false);
+
+  const bundleUrl = useMemo(() => `https://mdfy.app/b/${bundleId}`, [bundleId]);
+
+  // Access classification — same vocabulary the hub uses:
+  //   Public  = !draft && no allowed_emails
+  //   Shared  = !draft && allowed_emails.length > 0
+  //   Private = draft (only owner can view via the editor)
+  const accessKind = useMemo<"public" | "shared" | "private">(() => {
+    if (bundleIsDraft) return "private";
+    if (bundleAllowedEmails && bundleAllowedEmails.length > 0) return "shared";
+    return "public";
+  }, [bundleIsDraft, bundleAllowedEmails]);
+
+  const tokens = useMemo(() => estimateBundleTokens(documents), [documents]);
+  const totalWords = useMemo(() => documents.reduce((s, d) => s + (d.markdown || "").split(/\s+/).filter(Boolean).length, 0), [documents]);
+
+  const accessIcon = accessKind === "public" ? <Globe width={14} height={14} /> : accessKind === "shared" ? <Users width={14} height={14} /> : <Cloud width={14} height={14} />;
+  const accessLabel = accessKind === "public" ? "PUBLIC" : accessKind === "shared" ? "SHARED" : "PRIVATE";
+  const accessColor = accessKind === "public" ? "#4ade80" : accessKind === "shared" ? "#60a5fa" : "var(--text-faint)";
+
+  const [showCopyHint, setShowCopyHint] = useState(false);
+  useEffect(() => { if (!showCopyHint) return; const t = setTimeout(() => setShowCopyHint(false), 1600); return () => clearTimeout(t); }, [showCopyHint]);
+
+  return (
+    <div className="h-full overflow-y-auto" style={{ background: "var(--background)" }}>
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        {/* ─── Header ─── */}
+        <header className="flex items-start gap-4 mb-7">
+          <div
+            className="shrink-0 flex items-center justify-center rounded-2xl"
+            style={{ width: 56, height: 56, background: "var(--accent-dim)", color: "var(--accent)" }}
+          >
+            <Layers width={28} height={28} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+              {bundleTitle || "Untitled bundle"}
+            </h1>
+            <p className="text-caption mt-1 font-mono" style={{ color: "var(--text-faint)" }}>
+              /b/{bundleId}
+            </p>
+            {bundleDescription && (
+              <p className="text-body mt-2.5" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                {bundleDescription}
+              </p>
+            )}
+            {bundleIntent && (
+              <p className="text-caption mt-2 italic" style={{ color: "var(--text-faint)" }}>
+                Intent: {bundleIntent}
+              </p>
+            )}
+          </div>
+        </header>
+
+        {/* ─── Deploy panel ─── */}
+        <section
+          className="mb-7 rounded-xl"
+          style={{ background: "var(--accent-dim)", border: "1px solid var(--accent)", padding: "16px 18px" }}
+        >
+          <div className="flex items-start gap-2.5 mb-2">
+            <Sparkles width={16} height={16} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
+            <div>
+              <p className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>
+                Deploy this bundle to any AI
+              </p>
+              <p className="text-caption" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                Paste the URL into Claude, ChatGPT, or Cursor. The AI fetches every doc in the bundle as one merged context.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap mt-3">
+            <code
+              className="text-caption px-2.5 py-1.5 rounded font-mono flex-1 min-w-0 truncate"
+              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+              title={bundleUrl}
+            >
+              {bundleUrl}
+            </code>
+            <button
+              onClick={() => {
+                if (typeof navigator === "undefined") return;
+                navigator.clipboard.writeText(bundleUrl).then(() => {
+                  setCopied(true);
+                  setShowCopyHint(true);
+                  setTimeout(() => setCopied(false), 1200);
+                });
+              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption font-medium transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ background: "var(--background)", color: copied ? "var(--accent)" : "var(--text-primary)", border: "1px solid var(--border-dim)" }}
+            >
+              {copied ? <Check width={12} height={12} /> : <Copy width={12} height={12} />}
+              {copied ? "Copied" : "Copy URL"}
+            </button>
+            <a
+              href={bundleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+            >
+              <Eye width={12} height={12} />
+              View as visitor
+            </a>
+            <a
+              href={`/raw/b/${bundleId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+            >
+              <ExternalLink width={11} height={11} />
+              Raw .md
+            </a>
+          </div>
+          <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)" }}>
+            ≈ {tokens.toLocaleString()} tokens for the full bundle
+          </p>
+        </section>
+
+        {/* ─── Stat strip ─── */}
+        <section className="grid grid-cols-3 gap-2 mb-7">
+          <div
+            className="rounded-lg px-4 py-3.5"
+            style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+          >
+            <div className="flex items-center gap-1.5 mb-1.5" style={{ color: accessColor }}>
+              {accessIcon}
+              <span className="text-caption font-mono uppercase tracking-wider font-semibold">{accessLabel}</span>
+            </div>
+            <div className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>
+              {fmtCount(documents.length)}
+            </div>
+            <div className="text-caption" style={{ color: "var(--text-faint)" }}>
+              {documents.length === 1 ? "document" : "documents"}
+            </div>
+          </div>
+          <div
+            className="rounded-lg px-4 py-3.5"
+            style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+          >
+            <div className="flex items-center gap-1.5 mb-1.5" style={{ color: "var(--text-muted)" }}>
+              <FileText width={14} height={14} />
+              <span className="text-caption font-mono uppercase tracking-wider font-semibold">WORDS</span>
+            </div>
+            <div className="text-display font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>
+              {fmtCount(totalWords)}
+            </div>
+            <div className="text-caption" style={{ color: "var(--text-faint)" }}>
+              total prose
+            </div>
+          </div>
+          <div
+            className="rounded-lg px-4 py-3.5"
+            style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+          >
+            <div className="flex items-center gap-1.5 mb-1.5" style={{ color: hasDiscoveries ? "var(--accent)" : "var(--text-faint)" }}>
+              <Sparkles width={14} height={14} />
+              <span className="text-caption font-mono uppercase tracking-wider font-semibold">AI</span>
+            </div>
+            <div className="text-body font-semibold" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+              {hasDiscoveries ? "Analyzed" : hasGraph ? "Graph ready" : "Not analyzed"}
+            </div>
+            <button
+              onClick={() => onSwitchToCanvas?.()}
+              className="text-caption mt-0.5 transition-colors hover:underline"
+              style={{ color: "var(--text-faint)" }}
+            >
+              {hasDiscoveries ? "Open canvas →" : "Run analysis →"}
+            </button>
+          </div>
+        </section>
+
+        {/* ─── Documents ─── */}
+        <section className="mb-8">
+          <header className="flex items-baseline justify-between mb-3">
+            <h2 className="text-heading" style={{ color: "var(--accent)" }}>
+              Documents
+            </h2>
+            <button
+              onClick={() => onSwitchToList?.()}
+              className="text-caption transition-colors hover:underline"
+              style={{ color: "var(--text-faint)" }}
+            >
+              List view →
+            </button>
+          </header>
+          {documents.length === 0 ? (
+            <div className="text-caption px-3 py-6 rounded-lg text-center" style={{ color: "var(--text-faint)", background: "var(--surface)", border: "1px dashed var(--border-dim)" }}>
+              No documents in this bundle yet.
+            </div>
+          ) : (
+            <ul className="space-y-1">
+              {documents.map((d) => {
+                const wordCount = (d.markdown || "").split(/\s+/).filter(Boolean).length;
+                return (
+                  <li key={d.id}>
+                    <button
+                      onClick={() => onOpenDoc?.(d.id)}
+                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors group hover:bg-[var(--toggle-bg)]"
+                      style={{ border: "1px solid var(--border-dim)" }}
+                    >
+                      <FileText width={13} height={13} className="shrink-0" style={{ color: "var(--accent)" }} />
+                      <span className="flex-1 truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                        {d.title || "Untitled"}
+                      </span>
+                      <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                        {fmtCount(wordCount)} words
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

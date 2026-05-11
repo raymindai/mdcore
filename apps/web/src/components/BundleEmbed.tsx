@@ -16,6 +16,7 @@ import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
 import { FEATURES } from "@/lib/feature-flags";
 import Tooltip from "@/components/Tooltip";
 import { Button, Chip, Badge, ModalShell, EmptyState } from "@/components/ui";
+import BundleOverview from "@/components/BundleOverview";
 import { Layers, AlertTriangle, HelpCircle, GitBranch, Sparkles, Lightbulb, Zap, CheckSquare, Tag, FileText, X as XIcon } from "lucide-react";
 
 // Module-level cache so re-mounting a bundle tab paints instantly
@@ -62,7 +63,11 @@ interface BundleDocument {
 
 interface BundleEmbedProps {
   bundleId: string;
-  view?: "canvas" | "list";
+  view?: "overview" | "canvas" | "list";
+  /** Called by the overview's "Open canvas" / "List view" deep-links
+   *  so the parent (MdEditor) can switch the bundleView state.
+   *  Without this, those buttons are no-ops. */
+  onChangeView?: (view: "overview" | "canvas" | "list") => void;
   onOpenDoc?: (docId: string) => void;
   // External "AI panel is open" signal — when true, the canvas auto-closes
   // its NodeInfoPanel (right side). Used to keep the right side of the screen
@@ -84,11 +89,17 @@ interface BundleEmbedProps {
   authHeaders?: Record<string, string>;
 }
 
-export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPanelOpen, onSelectNodeInfo, onDocCreated, authHeaders: parentAuthHeaders }: BundleEmbedProps) {
+export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, onOpenDoc, aiPanelOpen, onSelectNodeInfo, onDocCreated, authHeaders: parentAuthHeaders }: BundleEmbedProps) {
   const [documents, setDocuments] = useState<BundleDocument[]>([]);
   const [aiGraph, setAiGraph] = useState<any>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
   const [bundleIntent, setBundleIntent] = useState<string>("");
+  // Bundle metadata used by the overview-mode header + Deploy panel.
+  // Populated from the /api/bundles/[id] response alongside intent.
+  const [bundleTitle, setBundleTitle] = useState<string>("");
+  const [bundleDescription, setBundleDescription] = useState<string | null>(null);
+  const [bundleIsDraft, setBundleIsDraft] = useState<boolean>(false);
+  const [bundleAllowedEmails, setBundleAllowedEmails] = useState<string[]>([]);
   const [bundleIsOwner, setBundleIsOwner] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,6 +154,10 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
       if (data.editToken) setEditToken(data.editToken);
       if (data.graph_data) setAiGraph(data.graph_data);
       if (typeof data.intent === "string") setBundleIntent(data.intent);
+      if (typeof data.title === "string") setBundleTitle(data.title);
+      if (typeof data.description === "string" || data.description === null) setBundleDescription(data.description);
+      if (typeof data.is_draft === "boolean") setBundleIsDraft(data.is_draft);
+      if (Array.isArray(data.allowed_emails)) setBundleAllowedEmails(data.allowed_emails);
       setBundleIsOwner(!!data.isOwner);
       setGraphGeneratedAt(data.graph_generated_at || null);
       setEmbeddingUpdatedAt(data.embedding_updated_at || null);
@@ -172,6 +187,10 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
         if (data.editToken) setEditToken(data.editToken);
         if (data.graph_data) setAiGraph(data.graph_data);
         if (typeof data.intent === "string") setBundleIntent(data.intent);
+        if (typeof data.title === "string") setBundleTitle(data.title);
+        if (typeof data.description === "string" || data.description === null) setBundleDescription(data.description);
+        if (typeof data.is_draft === "boolean") setBundleIsDraft(data.is_draft);
+        if (Array.isArray(data.allowed_emails)) setBundleAllowedEmails(data.allowed_emails);
         setBundleIsOwner(!!data.isOwner);
         setGraphGeneratedAt(data.graph_generated_at || null);
         setEmbeddingUpdatedAt(data.embedding_updated_at || null);
@@ -1021,6 +1040,25 @@ export default function BundleEmbed({ bundleId, view = "canvas", onOpenDoc, aiPa
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>Loading bundle...</span>
         </div>
       </div>
+    );
+  }
+
+  if (view === "overview") {
+    return (
+      <BundleOverview
+        bundleId={bundleId}
+        bundleTitle={bundleTitle}
+        bundleDescription={bundleDescription}
+        bundleIntent={bundleIntent}
+        bundleIsDraft={bundleIsDraft}
+        bundleAllowedEmails={bundleAllowedEmails}
+        documents={documents.map(d => ({ id: d.id, title: d.title, markdown: d.markdown, updated_at: d.updated_at }))}
+        hasDiscoveries={!!aiGraph && (aiGraph.themes?.length > 0 || aiGraph.insights?.length > 0)}
+        hasGraph={!!aiGraph}
+        onOpenDoc={onOpenDoc}
+        onSwitchToCanvas={() => onChangeView?.("canvas")}
+        onSwitchToList={() => onChangeView?.("list")}
+      />
     );
   }
 
