@@ -541,12 +541,24 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
             for (const d of data.ownerView.documents.shared) docAccess.set(d.id, "shared");
             for (const d of data.ownerView.documents.private) docAccess.set(d.id, "private");
           }
-          const InlineDocStatus = ({ docId }: { docId: string | undefined }) => {
+          // Two layouts for the inline doc-status glyph:
+          //   "block" — used inside a flex row next to the title. Sized
+          //   to match the title (14px) and lets the parent's gap
+          //   handle spacing, so no marginRight (was double-spacing
+          //   with the parent's gap-2 + the icon's marginRight,
+          //   leaving an empty gap to the right of the icon).
+          //   "inline" — used mid-sentence inside body text. Smaller
+          //   (11px), inline-flow with a manual 3px right margin so
+          //   the doc title that follows sits close to it.
+          const InlineDocStatus = ({ docId, variant = "inline" }: { docId: string | undefined; variant?: "inline" | "block" }) => {
             if (!docId) return null;
             const kind = docAccess.get(docId);
             if (!kind) return null;
             const Icon = kind === "public" ? Globe : kind === "shared" ? Users : Cloud;
             const color = kind === "public" ? "#22c55e" : kind === "shared" ? "#60a5fa" : "var(--text-faint)";
+            if (variant === "block") {
+              return <Icon width={14} height={14} className="shrink-0" style={{ color }} />;
+            }
             return (
               <Icon
                 width={11}
@@ -607,7 +619,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 min-w-0">
-                          <InlineDocStatus docId={s.docId} />
+                          <InlineDocStatus docId={s.docId} variant="block" />
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>{s.title}</span>
                         </div>
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
