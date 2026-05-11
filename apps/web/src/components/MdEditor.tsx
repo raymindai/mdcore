@@ -3111,13 +3111,17 @@ export default function MdEditor() {
     if (typeof window === "undefined") return "";
     const saved = localStorage.getItem("mdfy-active-tab");
     if (!saved) return "";
-    // Stale localStorage from older sessions can pin us on
-    // `tab-welcome` (or any example tab) — those are tutorial
-    // content reachable from the Guides section, but they should
-    // NEVER be the default landing surface on a return visit.
-    // If saved points at an example tab id, drop it so we fall
-    // through to the owned-doc / Home logic below.
+    // Stale localStorage from older sessions can pin us on either
+    //   1) `tab-welcome` (or any example tutorial tab), or
+    //   2) `hub-<slug>` from when Hub used to live as a tab (it's
+    //      an overlay now, so no tab matches that id any more).
+    // Both cases leave activeTab undefined on lookup → initialMd
+    // falls back to SAMPLE_WELCOME → the editor renders the
+    // tutorial blurb on refresh even for users with their own
+    // docs. Drop those ids here so we fall through to the
+    // owned-doc / Home logic below.
     if (saved.startsWith("tab-") && EXAMPLE_TAB_IDS.has(saved)) return "";
+    if (saved.startsWith("hub-")) return "";
     return saved;
   });
   const activeTabIdRef = useRef(activeTabId);
@@ -3175,8 +3179,15 @@ export default function MdEditor() {
   // AI Bundle docs got their bodies replaced with the welcome blurb.
   // Use empty string instead; the editor stays blank until the fetch
   // returns, after which setMarkdownRaw fills it in.
+  //
+  // Also: when there's NO activeTab at all (rare — happens when
+  // Hub used to be the active "tab" and that id is now stale, or
+  // when localStorage has examples only), don't fall back to
+  // SAMPLE_WELCOME either. The Start screen handles the empty-
+  // state case; the editor staying blank prevents the
+  // "# Welcome to mdfy.app" blurb from auto-rendering on refresh.
   const initialMd = activeTab?.markdown
-    || (activeTab?.cloudId ? "" : SAMPLE_WELCOME);
+    || (activeTab ? "" : "");
   const [markdown, setMarkdownRaw] = useState(initialMd);
   const undoStack = useRef<string[]>([initialMd]);
   const redoStack = useRef<string[]>([]);
