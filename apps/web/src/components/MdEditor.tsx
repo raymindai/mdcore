@@ -2867,12 +2867,17 @@ export default function MdEditor() {
     const saved = localStorage.getItem("mdfy-show-lint");
     return saved === null ? true : saved === "true";
   });
-  const [lintReport, setLintReport] = useState<{ orphans: { id: string; title: string | null }[]; duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[]; totalDocs: number } | null>(null);
+  const [lintReport, setLintReport] = useState<{
+    orphans: { id: string; title: string | null }[];
+    duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[];
+    titleMismatches: { id: string; title: string | null; topConcept: string; concepts: string[] }[];
+    totalDocs: number;
+  } | null>(null);
   const [lintLoading, setLintLoading] = useState(false);
   // Track resolved findings within this session so they stay hidden
   // even if a re-scan returns them (backend concept-extraction is
   // async and can lag). Cleared on hard refresh.
-  const [lintResolved, setLintResolved] = useState<{ orphans: Set<string>; duplicates: Set<string> }>({ orphans: new Set(), duplicates: new Set() });
+  const [lintResolved, setLintResolved] = useState<{ orphans: Set<string>; duplicates: Set<string>; titleMismatches: Set<string> }>({ orphans: new Set(), duplicates: new Set(), titleMismatches: new Set() });
   // User's curator preferences — drives which lint categories show
   // up in Needs Review. Hydrated from localStorage on mount and
   // refreshed whenever Settings broadcasts a change so the section
@@ -5903,7 +5908,7 @@ export default function MdEditor() {
       setLintLoading(true);
       fetch("/api/user/hub/lint", { headers: authHeaders })
         .then((r) => (r.ok ? r.json() : null))
-        .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
+        .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], titleMismatches: data.titleMismatches || [], totalDocs: data.totalDocs || 0 }); })
         .catch(() => {})
         .finally(() => setLintLoading(false));
     }
@@ -10944,7 +10949,7 @@ ${clone.innerHTML}
                     setLintLoading(true);
                     return fetch("/api/user/hub/lint", { headers: authHeaders })
                       .then((r) => (r.ok ? r.json() : null))
-                      .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], totalDocs: data.totalDocs || 0 }); })
+                      .then((data) => { if (data) setLintReport({ orphans: data.orphans || [], duplicates: data.duplicates || [], titleMismatches: data.titleMismatches || [], totalDocs: data.totalDocs || 0 }); })
                       .catch(() => {})
                       .finally(() => setLintLoading(false));
                   };
@@ -10952,7 +10957,7 @@ ${clone.innerHTML}
                   // findings the backend still considers open come back.
                   // Available via long-press / shift-click on Re-scan
                   // (kept implicit so the default UX is forgiving).
-                  void (() => setLintResolved({ orphans: new Set(), duplicates: new Set() }));
+                  void (() => setLintResolved({ orphans: new Set(), duplicates: new Set(), titleMismatches: new Set() }));
                   const resolveOrphan = async (docId: string, docTitle: string | null) => {
                     // Orphan auto-fix: re-run concept extraction. The
                     // concept extractor pulls concepts from the doc;
@@ -11048,6 +11053,7 @@ ${clone.innerHTML}
                     // rows don't flash back when the delayed re-scan
                     // races with the backend concept extraction.
                     setLintResolved((prev) => ({
+                      ...prev,
                       orphans: new Set([...prev.orphans, ...resolvedOrphanIds]),
                       duplicates: new Set([...prev.duplicates, ...resolvedDupKeys]),
                     }));
@@ -12789,6 +12795,30 @@ ${clone.innerHTML}
                     lintReport={lintReport}
                     curatorOrphanEnabled={curatorSettings.orphan}
                     curatorDuplicateEnabled={curatorSettings.duplicate}
+                    curatorTitleMismatchEnabled={curatorSettings["title-mismatch"]}
+                    onResolveTitleMismatch={(docId) => {
+                      // Renaming via AI isn't wired yet; opening the
+                      // doc lets the user edit the H1 manually, which
+                      // is the source of truth for the title.
+                      setShowHub(false);
+                      const existing = tabs.find(t => t.cloudId === docId);
+                      if (existing) { switchTab(existing.id); return; }
+                      fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
+                        if (!d) return;
+                        const newId = `doc-${docId}-${Date.now()}`;
+                        const newTab: Tab = {
+                          id: newId, kind: "doc",
+                          title: d.title || "Untitled",
+                          markdown: d.markdown || "",
+                          cloudId: docId,
+                          isDraft: d.is_draft,
+                          shared: !d.isOwner,
+                          readonly: !d.isOwner && d.editMode !== "public",
+                        };
+                        setTabs(prev => [...prev, newTab]);
+                        switchTab(newId);
+                      }).catch(() => {});
+                    }}
                     lintResolved={lintResolved}
                     onResolveOrphan={async (docId, docTitle) => {
                       // Orphan auto-fix: refresh-concepts. If the
@@ -12841,6 +12871,9 @@ ${clone.innerHTML}
                         showToast("Couldn't move to Trash", "error");
                       }
                     }}
+                    autoLevel={curatorSettings.autoLevel}
+                    autoTrigger={curatorSettings.autoTrigger}
+                    onAutoResolveRun={autoResolveSafeFindings}
                   />
                 </div>
               </div>

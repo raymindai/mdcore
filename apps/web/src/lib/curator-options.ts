@@ -64,7 +64,7 @@ export const CURATOR_OPTIONS: CuratorOption[] = [
     id: "title-mismatch",
     label: "Title / body mismatch",
     description: "Title doesn't mention the doc's central concept. Common after AI capture picked a generic header.",
-    shipped: false,
+    shipped: true,
     defaultEnabled: false,
   },
   {

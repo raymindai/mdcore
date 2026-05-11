@@ -35,11 +35,24 @@ export interface DuplicatePair {
   distance: number;
 }
 
+export interface TitleMismatch {
+  id: string;
+  title: string | null;
+  /** A representative concept the doc IS about but the title
+   *  doesn't reflect. Caller can show this as a "consider
+   *  renaming to X" hint. */
+  topConcept: string;
+  /** All concept labels associated with this doc — handy for the
+   *  resolve UI to surface alternatives. */
+  concepts: string[];
+}
+
 export interface LintReport {
   computedAt: string;
   totalDocs: number;
   orphans: OrphanDoc[];
   duplicates: DuplicatePair[];
+  titleMismatches: TitleMismatch[];
 }
 
 const DUPLICATE_DISTANCE_THRESHOLD = 0.18; // cosine; tuned for "likely-overlapping content"
@@ -125,14 +138,24 @@ export async function computeLintReport(
   // definition ignored concept_index entirely.
   const { data: cx } = await supabase
     .from("concept_index")
-    .select("doc_ids")
+    .select("label, doc_ids")
     .eq("user_id", userId);
+  type ConceptRow = { label: string; doc_ids: string[] | null };
+  const conceptRows = (cx as ConceptRow[] | null) ?? [];
   const conceptCount = new Map<string, number>();
-  for (const row of (cx as { doc_ids: string[] | null }[] | null) ?? []) {
+  // Also build a per-doc concept inventory so the title-mismatch
+  // check below can ask "does this doc's title cover any of its
+  // concepts?" without re-querying.
+  const docConcepts = new Map<string, { label: string; coverage: number }[]>();
+  for (const row of conceptRows) {
     const ids = row.doc_ids || [];
-    if (ids.length < 2) continue; // single-doc concept doesn't count as a cross-link
+    if (ids.length >= 2) {
+      for (const id of ids) conceptCount.set(id, (conceptCount.get(id) || 0) + 1);
+    }
     for (const id of ids) {
-      conceptCount.set(id, (conceptCount.get(id) || 0) + 1);
+      const list = docConcepts.get(id) || [];
+      list.push({ label: row.label, coverage: ids.length });
+      docConcepts.set(id, list);
     }
   }
   const conceptLinked = new Set<string>([...conceptCount.keys()]);
@@ -140,6 +163,29 @@ export async function computeLintReport(
   const orphans: OrphanDoc[] = liveDocs
     .filter((d) => !inBundle.has(d.id) && !referenced.has(d.id) && !conceptLinked.has(d.id))
     .map((d) => ({ id: d.id, title: d.title, updatedAt: d.updated_at }));
+
+  // Title mismatch — a doc has 2+ concepts but the title contains
+  // none of them. Common after AI capture picks a generic header
+  // like "Untitled" or "Chat with Claude". We pick the most-
+  // distinctive concept (lowest coverage = appears in fewest other
+  // docs) as the suggested rename hint. Skip docs with no title or
+  // no concepts since there's nothing actionable.
+  const titleMismatches: TitleMismatch[] = [];
+  for (const d of liveDocs) {
+    const concepts = docConcepts.get(d.id);
+    if (!concepts || concepts.length < 2) continue;
+    const titleLc = (d.title || "").toLowerCase().trim();
+    if (!titleLc) continue;
+    const anyMatch = concepts.some((c) => titleLc.includes(c.label.toLowerCase()));
+    if (anyMatch) continue;
+    const sorted = [...concepts].sort((a, b) => a.coverage - b.coverage);
+    titleMismatches.push({
+      id: d.id,
+      title: d.title,
+      topConcept: sorted[0].label,
+      concepts: sorted.map((c) => c.label),
+    });
+  }
 
   // Semantic duplicates. Iterate per doc and look for close neighbors.
   // Symmetric pairs are deduped by always reporting (older, newer).
@@ -193,6 +239,7 @@ export async function computeLintReport(
     totalDocs: liveDocs.length,
     orphans,
     duplicates,
+    titleMismatches,
   };
 }
 
@@ -228,6 +275,20 @@ export function formatLintMarkdown(report: LintReport): string {
       lines.push(
         `- [${aT}](https://mdfy.app/${p.a.id}) and [${bT}](https://mdfy.app/${p.b.id}). Distance ${p.distance.toFixed(3)}.`,
       );
+    }
+  }
+  lines.push("");
+
+  lines.push(`## Title mismatches (${report.titleMismatches.length})`);
+  lines.push("");
+  if (report.titleMismatches.length === 0) {
+    lines.push("_No title mismatches. Every doc's title reflects at least one of its concepts._");
+  } else {
+    lines.push("Docs whose title doesn't mention any of the concepts the doc actually covers. Consider renaming.");
+    lines.push("");
+    for (const m of report.titleMismatches) {
+      const t = m.title || "Untitled";
+      lines.push(`- [${t}](https://mdfy.app/${m.id}) — consider mentioning **${m.topConcept}**.`);
     }
   }
   lines.push("");

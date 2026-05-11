@@ -87,12 +87,14 @@ interface HubSuggestions {
 interface HubLintReport {
   orphans: { id: string; title: string | null }[];
   duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[];
+  titleMismatches: { id: string; title: string | null; topConcept: string; concepts: string[] }[];
   totalDocs: number;
 }
 interface HubLintResolved {
   orphans: Set<string>;
   /** Pair key encoded as "aId|bId". */
   duplicates: Set<string>;
+  titleMismatches: Set<string>;
 }
 
 interface HubEmbedProps {
@@ -115,9 +117,18 @@ interface HubEmbedProps {
   lintReport?: HubLintReport | null;
   curatorOrphanEnabled?: boolean;
   curatorDuplicateEnabled?: boolean;
+  curatorTitleMismatchEnabled?: boolean;
   lintResolved?: HubLintResolved;
   onResolveOrphan?: (docId: string, docTitle: string | null) => void;
   onResolveDuplicate?: (aId: string, aTitle: string | null, bId: string, bTitle: string | null) => void;
+  onResolveTitleMismatch?: (docId: string, docTitle: string | null, suggestedConcept: string) => void;
+  /** Auto-management settings — drives the status panel above
+   *  Needs Review. When omitted, the panel doesn't render. */
+  autoLevel?: "off" | "conservative" | "standard" | "aggressive";
+  autoTrigger?: "manual" | "on-open" | "interval";
+  /** Run the auto-management pass right now. Wired to the panel's
+   *  "Run now" button. */
+  onAutoResolveRun?: () => void;
 }
 
 // Module-level cache. The hub tab unmounts whenever the user switches
@@ -159,9 +170,14 @@ export default function HubEmbed({
   lintReport,
   curatorOrphanEnabled,
   curatorDuplicateEnabled,
+  curatorTitleMismatchEnabled,
   lintResolved,
   onResolveOrphan,
   onResolveDuplicate,
+  onResolveTitleMismatch,
+  autoLevel,
+  autoTrigger,
+  onAutoResolveRun,
 }: HubEmbedProps) {
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
@@ -568,6 +584,63 @@ export default function HubEmbed({
           </section>
         )}
 
+        {/* ── Auto-management status — compact card above Needs
+              Review showing the current aggressiveness level + when
+              it fires + a one-click "Run now" so users can kick a
+              pass without crossing back to Settings. Renders only
+              when the parent supplied the autoLevel prop (older
+              callers that don't wire it just don't see the panel). */}
+        {autoLevel && (() => {
+          const levelMeta: Record<string, { label: string; tone: string }> = {
+            "off":          { label: "Off",          tone: "var(--text-faint)" },
+            "conservative": { label: "Conservative", tone: "#22c55e" },
+            "standard":     { label: "Standard",     tone: "#38bdf8" },
+            "aggressive":   { label: "Aggressive",   tone: "#f59e0b" },
+          };
+          const meta = levelMeta[autoLevel] || levelMeta["off"];
+          const triggerLabel =
+            autoTrigger === "on-open"  ? "fires when Hub opens"
+            : autoTrigger === "interval" ? "fires every 30 min"
+            : "manual only";
+          const dotCount = autoLevel === "off" ? 0 : autoLevel === "conservative" ? 1 : autoLevel === "standard" ? 2 : 3;
+          return (
+            <section
+              className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+            >
+              <span className="flex items-center gap-0.5 shrink-0" aria-hidden>
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="rounded-full"
+                    style={{ width: 6, height: 6, background: i < dotCount ? meta.tone : "var(--border-dim)" }}
+                  />
+                ))}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-caption">
+                  <span className="font-semibold" style={{ color: meta.tone }}>Auto-management: {meta.label}</span>
+                  <span style={{ color: "var(--text-faint)" }}> · {triggerLabel}</span>
+                </div>
+                <div className="text-caption" style={{ color: "var(--text-muted)" }}>
+                  {autoLevel === "off"
+                    ? "Findings surface here for manual resolve. Bump to Conservative+ in Settings to auto-handle the safe ones."
+                    : "Reversible actions only — Trash always restores. Irreversible actions (publishing, external rewrites) always ask."}
+                </div>
+              </div>
+              {onAutoResolveRun && autoLevel !== "off" && (
+                <button
+                  onClick={onAutoResolveRun}
+                  className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)] shrink-0"
+                  style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                >
+                  Run now
+                </button>
+              )}
+            </section>
+          );
+        })()}
+
         {/* ── Needs Review — curator findings (orphan + duplicate
               detections). Same data the editor sidebar's Needs
               Review section reads; surfaced here so the hub view
@@ -585,7 +658,10 @@ export default function HubEmbed({
           const visibleDuplicates = curatorDuplicateEnabled
             ? lintReport.duplicates.filter((p) => !lintResolved?.duplicates.has(`${p.a.id}|${p.b.id}`))
             : [];
-          const total = visibleOrphans.length + visibleDuplicates.length;
+          const visibleTitleMismatches = curatorTitleMismatchEnabled
+            ? (lintReport.titleMismatches || []).filter((m) => !lintResolved?.titleMismatches.has(m.id))
+            : [];
+          const total = visibleOrphans.length + visibleDuplicates.length + visibleTitleMismatches.length;
           if (total === 0) return null;
           return (
             <section className="mb-8">
@@ -687,6 +763,50 @@ export default function HubEmbed({
                         style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
                       >
                         Open older
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {visibleTitleMismatches.map((m) => (
+                  <div
+                    key={`title:${m.id}`}
+                    className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+                  >
+                    <span
+                      className="flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}
+                      title="Title mismatch — title doesn't reflect the doc's concepts"
+                    >
+                      <FileWarning width={14} height={14} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 min-w-0">
+                        <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                          {m.title || "Untitled"}
+                        </span>
+                      </div>
+                      <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                        Title doesn&apos;t mention any of this doc&apos;s concepts. Consider renaming to surface <span className="font-mono" style={{ color: "var(--accent)" }}>{m.topConcept}</span>
+                        {m.concepts.length > 1 ? ` (or ${m.concepts.slice(1, 3).map((c) => c).join(", ")})` : ""}.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {onResolveTitleMismatch && (
+                        <button
+                          onClick={() => onResolveTitleMismatch(m.id, m.title, m.topConcept)}
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                        >
+                          Rename
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onOpenDoc?.(m.id)}
+                        className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                        style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                      >
+                        Open
                       </button>
                     </div>
                   </div>
