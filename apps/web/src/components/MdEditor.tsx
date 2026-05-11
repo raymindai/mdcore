@@ -3940,6 +3940,11 @@ export default function MdEditor() {
   // should layer in-place. /settings still works for deep links but
   // the profile-menu entry now toggles this overlay instead.
   const [showSettings, setShowSettings] = useState(false);
+  // Optional deep-link target when opening Settings. Hub's
+  // "Auto-management" link sets this to "auto-management" so the
+  // overlay opens on that tab instead of the user's last-active
+  // one. Cleared the next time Settings closes.
+  const [settingsInitialSection, setSettingsInitialSection] = useState<string | undefined>(undefined);
   const [toolbarHintDismissed, setToolbarHintDismissed] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("mdfy-toolbar-hint-dismissed") : true);
   // Document view count (owner only)
   const [viewCount, setViewCount] = useState(0);
@@ -12720,7 +12725,10 @@ ${clone.innerHTML}
                 }}
               >
                 <div className="flex-1 min-w-0">
-                  <SettingsEmbed onClose={() => setShowSettings(false)} />
+                  <SettingsEmbed
+                    onClose={() => { setShowSettings(false); setSettingsInitialSection(undefined); }}
+                    initialSection={settingsInitialSection as "profile" | "appearance" | "auto-management" | "hub" | "danger" | undefined}
+                  />
                 </div>
               </div>
             )}
@@ -12885,6 +12893,11 @@ ${clone.innerHTML}
                     autoLevel={curatorSettings.autoLevel}
                     autoTrigger={curatorSettings.autoTrigger}
                     onAutoResolveRun={autoResolveSafeFindings}
+                    onOpenAutoSettings={() => {
+                      setShowHub(false);
+                      setSettingsInitialSection("auto-management");
+                      setShowSettings(true);
+                    }}
                   />
                 </div>
               </div>

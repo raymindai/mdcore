@@ -129,6 +129,8 @@ interface HubEmbedProps {
   /** Run the auto-management pass right now. Wired to the panel's
    *  "Run now" button. */
   onAutoResolveRun?: () => void;
+  /** Deep-link to the auto-management section of Settings. */
+  onOpenAutoSettings?: () => void;
 }
 
 // Module-level cache. The hub tab unmounts whenever the user switches
@@ -178,6 +180,7 @@ export default function HubEmbed({
   autoLevel,
   autoTrigger,
   onAutoResolveRun,
+  onOpenAutoSettings,
 }: HubEmbedProps) {
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
@@ -628,15 +631,26 @@ export default function HubEmbed({
                     : "Reversible actions only — Trash always restores. Irreversible actions (publishing, external rewrites) always ask."}
                 </div>
               </div>
-              {onAutoResolveRun && autoLevel !== "off" && (
-                <button
-                  onClick={onAutoResolveRun}
-                  className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)] shrink-0"
-                  style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                >
-                  Run now
-                </button>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {onOpenAutoSettings && (
+                  <button
+                    onClick={onOpenAutoSettings}
+                    className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                  >
+                    Settings
+                  </button>
+                )}
+                {onAutoResolveRun && autoLevel !== "off" && (
+                  <button
+                    onClick={onAutoResolveRun}
+                    className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                    style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                  >
+                    Run now
+                  </button>
+                )}
+              </div>
             </section>
           );
         })()}

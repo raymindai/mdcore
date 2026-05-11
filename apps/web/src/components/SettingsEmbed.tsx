@@ -16,7 +16,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
-import { ArrowLeft, Trash2, Loader2, X, Check } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2, Check } from "lucide-react";
 import Link from "next/link";
 import {
   CURATOR_OPTIONS,
@@ -34,18 +34,14 @@ import {
   type ColorScheme,
 } from "@/lib/theme-options";
 
-// Avatar styles offered to the user. DiceBear hosts these as SVG;
-// "oauth" means "use whatever Google/GitHub gave us" (the photo
-// the auth provider passed through user_metadata.avatar_url).
+// Avatar styles offered to the user. Founder direction: keep it
+// to two — the OAuth photo (whatever Google/GitHub passed through
+// user_metadata.avatar_url; the user changes it on that platform,
+// not here) and a deterministic Identicon (DiceBear). The earlier
+// roster of 8 DiceBear styles was decision-fatigue.
 const AVATAR_STYLES: { id: string; label: string; dicebearStyle?: string }[] = [
-  { id: "oauth",      label: "Photo" },
-  { id: "identicon",  label: "Identicon",  dicebearStyle: "identicon" },
-  { id: "avataaars",  label: "Avataaars",  dicebearStyle: "avataaars" },
-  { id: "bottts",     label: "Bots",       dicebearStyle: "bottts" },
-  { id: "fun-emoji",  label: "Fun emoji",  dicebearStyle: "fun-emoji" },
-  { id: "notionists", label: "Notionists", dicebearStyle: "notionists" },
-  { id: "lorelei",    label: "Lorelei",    dicebearStyle: "lorelei" },
-  { id: "thumbs",     label: "Thumbs",     dicebearStyle: "thumbs" },
+  { id: "oauth",     label: "Photo" },
+  { id: "identicon", label: "Identicon", dicebearStyle: "identicon" },
 ];
 
 function dicebearStyleUrl(style: string, seed: string, size = 80): string {
@@ -82,16 +78,23 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: "danger",          label: "Danger" },
 ];
 
-export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
+export default function SettingsEmbed({ onClose, initialSection }: { onClose?: () => void; initialSection?: SettingsSection }) {
   const { user, profile, loading: authLoading, accessToken, isAuthenticated, signOut } = useAuth();
   // One section visible at a time. Founder feedback: stacking
   // everything on one column made sections blur together; tabs
   // give each its own surface. Persisted to localStorage so a
   // refresh keeps the user where they were.
   const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    if (initialSection) return initialSection;
     if (typeof window === "undefined") return "profile";
     return (localStorage.getItem("mdfy-settings-section") as SettingsSection) || "profile";
   });
+  // If parent passes a fresh initialSection mid-mount (e.g. Hub's
+  // "Settings" deep-link reopens the same overlay with a different
+  // section), honour that.
+  useEffect(() => {
+    if (initialSection) setActiveSection(initialSection);
+  }, [initialSection]);
   useEffect(() => {
     try { localStorage.setItem("mdfy-settings-section", activeSection); } catch {}
   }, [activeSection]);
@@ -362,20 +365,12 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
           lives inside the Profile section now so the page header is
           one consistent voice across all five tabs. */}
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* Close (overlay) or back arrow (page) sits at the top
-            left, mirroring how Hub/Bundle Overview lead with their
-            close affordance on the corresponding surface. */}
-        <div className="flex items-center justify-between mb-6">
-          {onClose ? (
-            <button
-              onClick={onClose}
-              className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
-              style={{ color: "var(--text-muted)" }}
-              title="Close (Esc)"
-            >
-              <X width={16} height={16} />
-            </button>
-          ) : (
+        {/* Page route gets a back arrow at top-left. Overlay
+            doesn't need a close affordance here — Home / Hub /
+            view-mode pills in the toolbar already dismiss the
+            overlay, and double-affordance was reading as clutter. */}
+        {!onClose && (
+          <div className="flex items-center justify-between mb-6">
             <Link
               href="/"
               className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
@@ -383,8 +378,8 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             >
               <ArrowLeft width={16} height={16} />
             </Link>
-          )}
-        </div>
+          </div>
+        )}
         <header className="mb-8">
           <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.1 }}>
             Settings
