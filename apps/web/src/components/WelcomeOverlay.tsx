@@ -32,8 +32,8 @@ const slides: Slide[] = [
     // Explicit line break: "Personal knowledge hub" / "for the AI era"
     // sits clean on two lines instead of orphaning "ERA" on its own
     // when the badge wraps on narrow viewports.
-    badge: "Karpathy's wiki,\ndeployable to any AI",
-    title: "You set the direction.\nWe structure the URL.",
+    badge: "Personal knowledge hub\nfor the AI era",
+    title: "Your AI memory,\nowned as a URL.",
     desc: "ChatGPT, Claude, and Cursor forget you between sessions. mdfy turns what you write into a URL any AI can read — you decide the shape, mdfy keeps the index.",
     icon: null,
   },

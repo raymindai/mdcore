@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   authors: [{ name: "mdfy", url: "https://mdfy.app" }],
   metadataBase: new URL("https://mdfy.app"),
   openGraph: {
-    title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
+    title: "mdfy.app — Your AI memory, owned as a URL.",
     description:
       "You set the direction. mdfy structures the URL. Any AI reads it. The personal knowledge hub for the AI era.",
     url: "https://mdfy.app",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
+    title: "mdfy.app — Your AI memory, owned as a URL.",
     description:
       "You set the direction. mdfy structures the URL. Any AI reads it.",
     images: ["/api/og"],
