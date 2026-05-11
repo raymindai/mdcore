@@ -3534,17 +3534,18 @@ function BundleListView({
             return (
             <article key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
               <div className="flex items-start gap-3 mb-3">
-                {/* Doc number — mono digit with a slim accent left-bar,
-                    no filled chip. The earlier orange-square block was
-                    competing with the title for attention. */}
+                {/* Doc number — typographic only. No chip, no side
+                    bar (founder rejected the accent left-bar style).
+                    A plain zero-padded mono numeral in the muted
+                    text colour reads as a chapter index without
+                    fighting the title. */}
                 <span
-                  className="font-mono tabular-nums shrink-0 pl-2"
+                  className="font-mono tabular-nums shrink-0"
                   style={{
-                    color: "var(--accent)",
+                    color: "var(--text-faint)",
                     fontSize: 22,
-                    fontWeight: 600,
-                    lineHeight: 1.1,
-                    borderLeft: "2px solid var(--accent)",
+                    fontWeight: 500,
+                    lineHeight: 1.15,
                     paddingTop: 1,
                   }}
                 >
