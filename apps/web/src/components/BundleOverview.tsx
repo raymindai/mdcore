@@ -242,7 +242,7 @@ export default function BundleOverview({
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
               <Eye width={11} height={11} />
               View as visitor
@@ -252,7 +252,7 @@ export default function BundleOverview({
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
               <ExternalLink width={11} height={11} />
               Raw .md

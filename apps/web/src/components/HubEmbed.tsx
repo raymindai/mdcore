@@ -438,12 +438,17 @@ export default function HubEmbed({
               <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
             </span>
           </button>
+          {/* Secondary actions sit on the surface-tinted card, so a
+              bordered-only treatment fades into the card background.
+              Adding var(--background) fill puts them one step darker
+              than the surrounding card; the dim border still says
+              "secondary action, not the lead". */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Link
               href={`/hub/${slug}`}
               target="_blank"
               className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
               <Eye width={11} height={11} />
               View as visitor
@@ -452,7 +457,7 @@ export default function HubEmbed({
               href={`/hub/${slug}.md`}
               target="_blank"
               className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
               <ExternalLink width={11} height={11} />
               Raw .md
