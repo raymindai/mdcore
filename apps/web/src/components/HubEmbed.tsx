@@ -182,6 +182,23 @@ export default function HubEmbed({
   onAutoResolveRun,
   onOpenAutoSettings,
 }: HubEmbedProps) {
+  // Needs Review + Suggestions default to COLLAPSED when auto-
+  // management is on — the assumption is mdfy is handling them
+  // for you, so the user shouldn't have to scroll past detailed
+  // lists every Hub visit. When auto-management is off, both
+  // sections default OPEN so manual triage is still front-and-
+  // centre. The user can toggle each independently and that
+  // override persists for the session via the click state.
+  const autoOn = !!autoLevel && autoLevel !== "off";
+  const [needsReviewCollapsed, setNeedsReviewCollapsed] = useState(autoOn);
+  const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(autoOn);
+  // Re-evaluate the default whenever the level flips between off
+  // and on. Doesn't fight a deliberate user toggle within a
+  // session because we only nudge when level itself changes.
+  useEffect(() => {
+    setNeedsReviewCollapsed(autoOn);
+    setSuggestionsCollapsed(autoOn);
+  }, [autoOn]);
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
   const cachedEntry = hubDataCache.get(slug);
@@ -679,7 +696,10 @@ export default function HubEmbed({
           if (total === 0) return null;
           return (
             <section className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setNeedsReviewCollapsed((v) => !v)}
+                className="w-full flex items-center gap-2 mb-3 text-left transition-colors hover:opacity-90"
+              >
                 <span
                   className="flex items-center justify-center shrink-0"
                   style={{ width: 22, height: 22, borderRadius: 6, background: "rgba(245,158,11,0.14)", color: "#f59e0b" }}
@@ -690,10 +710,16 @@ export default function HubEmbed({
                 <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
                   {total} finding{total === 1 ? "" : "s"}
                 </span>
-                <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>
-                  Toggle signals in Settings → Auto-management
+                <span className="text-caption ml-auto flex items-center gap-2" style={{ color: "var(--text-faint)" }}>
+                  {autoOn && needsReviewCollapsed && (
+                    <span style={{ color: "var(--text-muted)" }}>auto-managed</span>
+                  )}
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ transform: needsReviewCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                    <path d="M3 4.5L6 7.5L9 4.5" />
+                  </svg>
                 </span>
-              </div>
+              </button>
+              {!needsReviewCollapsed && (
               <div className="space-y-2">
                 {visibleOrphans.map((o) => (
                   <div
@@ -826,6 +852,7 @@ export default function HubEmbed({
                   </div>
                 ))}
               </div>
+              )}
             </section>
           );
         })()}
@@ -881,9 +908,13 @@ export default function HubEmbed({
               />
             );
           };
+          const totalSuggestions = promoteCards.length + bundleCards.length + thinCards.length;
           return (
             <section className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setSuggestionsCollapsed((v) => !v)}
+                className="w-full flex items-center gap-2 mb-3 text-left transition-colors hover:opacity-90"
+              >
                 <span
                   className="flex items-center justify-center shrink-0"
                   style={{ width: 22, height: 22, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
@@ -891,10 +922,19 @@ export default function HubEmbed({
                   <Sparkles width={12} height={12} />
                 </span>
                 <h2 className="text-heading" style={{ color: "var(--accent)" }}>Suggestions</h2>
-                <span className="text-caption ml-auto" style={{ color: "var(--text-faint)" }}>
-                  Curated from your concept index — heuristic, no LLM call
+                <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)" }}>
+                  {totalSuggestions} item{totalSuggestions === 1 ? "" : "s"}
                 </span>
-              </div>
+                <span className="text-caption ml-auto flex items-center gap-2" style={{ color: "var(--text-faint)" }}>
+                  {autoOn && suggestionsCollapsed && (
+                    <span style={{ color: "var(--text-muted)" }}>auto-managed</span>
+                  )}
+                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ transform: suggestionsCollapsed ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                    <path d="M3 4.5L6 7.5L9 4.5" />
+                  </svg>
+                </span>
+              </button>
+              {!suggestionsCollapsed && (<>
               {/* Suggestion rows — colour discipline:
                     - Card body stays flat surface + dim border.
                     - Type marker = coloured icon container only (no
@@ -1106,6 +1146,7 @@ export default function HubEmbed({
                   );
                 })}
               </div>
+              </>)}
             </section>
           );
         })()}
