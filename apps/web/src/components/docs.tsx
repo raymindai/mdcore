@@ -142,10 +142,14 @@ export function SubLabel({ children }: { children: string }) {
 }
 
 /* ─── DocsNav ─── */
-export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "plugins" | "docs"; lang?: "en" | "ko" } = {}) {
+export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "plugins" | "docs" | "hubs"; lang?: "en" | "ko" } = {}) {
   const prefix = lang === "ko" ? "/ko" : "";
+  // Hubs link is EN-only for now (the /hubs page itself doesn't have
+  // a Korean route yet, and translating the user-supplied hub names
+  // doesn't help anyway).
   const navItems = [
     { label: "About", href: `${prefix}/about`, key: "about" },
+    { label: "Hubs", href: `/hubs`, key: "hubs" },
     { label: "Plugins", href: `${prefix}/plugins`, key: "plugins" },
     { label: "Docs", href: `${prefix}/docs`, key: "docs" },
   ];
@@ -155,6 +159,7 @@ export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "
     about: { en: "/about", ko: "/ko/about" },
     plugins: { en: "/plugins", ko: "/ko/plugins" },
     docs: { en: "/docs", ko: "/ko/docs" },
+    hubs: { en: "/hubs", ko: "/hubs" },
   };
   const currentPaths = langSwitchPaths[active] || langSwitchPaths.about;
   return (
