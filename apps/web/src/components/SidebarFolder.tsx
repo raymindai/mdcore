@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, memo, type ReactNode } from "react";
+import { useState, useMemo, memo, useRef, useLayoutEffect, type ReactNode } from "react";
 import { ChevronDown, Folder, FolderOpen, MoreHorizontal, FilePlus2, FolderPlus } from "lucide-react";
 import Tooltip from "@/components/Tooltip";
 
@@ -692,6 +692,62 @@ export default function SidebarFolderTree(props: SidebarFolderTreeProps) {
     [tree.rootFolders, sortMode, folders],
   );
 
+  // FLIP reorder animation for every tab row in the tree, regardless of
+  // which section rendered it. The Recent list got this first; founder
+  // feedback was that flipping the sort mode (or renaming a doc that
+  // changes its A→Z slot) in the MDs/Bundles/Shared sections felt jumpy
+  // because rows just teleported. Each TabRow tags itself with
+  // data-sidebar-tab-id, so a single post-render pass queries them in
+  // visual order, compares against the captured previous order, and
+  // applies an inverted translate animated back to identity for rows
+  // whose top changed by more than 1px. Re-captures every render so
+  // unrelated commits don't strand stale rects.
+  const treeRef = useRef<HTMLDivElement>(null);
+  const lastOrderRef = useRef<string>("");
+  const lastRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  useLayoutEffect(() => {
+    const root = treeRef.current;
+    if (!root) return;
+    const rows = Array.from(root.querySelectorAll<HTMLElement>("[data-sidebar-tab-id]"));
+    const orderKey = rows.map(r => r.dataset.sidebarTabId).join("|");
+    const isFirstPaint = lastOrderRef.current === "";
+    const changed = !isFirstPaint && orderKey !== lastOrderRef.current;
+
+    if (changed) {
+      const prev = lastRectsRef.current;
+      for (const el of rows) {
+        const id = el.dataset.sidebarTabId;
+        if (!id) continue;
+        const before = prev.get(id);
+        if (!before) continue;
+        const after = el.getBoundingClientRect();
+        const dy = before.top - after.top;
+        if (Math.abs(dy) < 1) continue;
+        el.style.transition = "none";
+        el.style.transform = `translateY(${dy}px)`;
+        void el.offsetHeight;
+        requestAnimationFrame(() => {
+          el.style.transition = "transform 280ms cubic-bezier(0.4, 0, 0.2, 1)";
+          el.style.transform = "translateY(0)";
+          const onEnd = () => {
+            el.style.transition = "";
+            el.style.transform = "";
+            el.removeEventListener("transitionend", onEnd);
+          };
+          el.addEventListener("transitionend", onEnd);
+        });
+      }
+    }
+
+    const next = new Map<string, DOMRect>();
+    for (const el of rows) {
+      const id = el.dataset.sidebarTabId;
+      if (id) next.set(id, el.getBoundingClientRect());
+    }
+    lastRectsRef.current = next;
+    lastOrderRef.current = orderKey;
+  });
+
   // Explicit, visible "Move to root" drop slot at the bottom of the tree. Shows
   // only while something is being dragged and the dragged item isn't already at root.
   const [rootHover, setRootHover] = useState(false);
@@ -704,7 +760,7 @@ export default function SidebarFolderTree(props: SidebarFolderTreeProps) {
   const showRootSlot = (draggingTab || draggingFolder) && !itemAlreadyAtRoot;
 
   return (
-    <div>
+    <div ref={treeRef}>
       {/* Root-level tabs (no folder) — rendered ABOVE folders so loose items
           surface first (matches the long-standing docs-section UX). Sections that
           render their own root list separately set includeRootTabs={false}. */}

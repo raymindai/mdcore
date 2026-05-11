@@ -42,7 +42,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud, MessageSquarePlus,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, LayoutGrid, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -1604,6 +1604,11 @@ interface Tab {
   isDraft?: boolean;       // auto-saved but not yet published
   permission?: "mine" | "editable" | "readonly";  // for sidebar badge
   editMode?: string;       // "owner" | "token" | "view" | "public"
+  // Cached server share state — populated whenever we fetch the doc
+  // and used to open ShareModal instantly with the right defaults
+  // instead of showing a stale empty list while a fresh GET resolves.
+  allowedEmails?: string[];
+  allowedEditors?: string[];
   sharedWithCount?: number; // number of non-owner people shared with
   isSharedByMe?: boolean;  // legacy: I've shared this doc with others
   isRestricted?: boolean;  // legacy: shared with specific people
@@ -2486,12 +2491,18 @@ function BundleShareModal({
   const [revertDocIds, setRevertDocIds] = useState<Set<string>>(new Set());
   const [reverting, setReverting] = useState(false);
 
-  // Load bundle + docs to derive current shared state
+  // Load bundle + docs to derive current shared state. The bundle row
+  // now owns its own allowed_emails list (cascaded on every email
+  // change), so we read it directly off the bundle response instead
+  // of doing a second sequential GET against the first published
+  // member doc. That second fetch was the load-time culprit: the
+  // modal opened with a stale "Anyone with the link" default for up
+  // to ~2 seconds until that follow-up resolved.
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/bundles/${bundleId}`, { headers: authHeaders })
       .then(r => r.ok ? r.json() : null)
-      .then(async data => {
+      .then(data => {
         if (cancelled || !data?.documents) return;
         const docList: BundleDocStatus[] = data.documents.map((d: BundleDocStatus) => ({
           id: d.id,
@@ -2502,20 +2513,12 @@ function BundleShareModal({
         }));
         setDocs(docList);
 
-        // Derive bundle's effective edit mode from majority of published docs (or first doc).
         const publishedDocs = docList.filter(d => !d.is_draft);
         const sample = publishedDocs[0] || docList[0];
         if (sample) setEditMode(sample.edit_mode || "owner");
 
-        // Fetch allowed_emails from the first published doc as the canonical list
-        if (sample && !sample.is_draft) {
-          try {
-            const docRes = await fetch(`/api/docs/${sample.id}`, { headers: authHeaders });
-            if (docRes.ok) {
-              const doc = await docRes.json();
-              if (Array.isArray(doc.allowedEmails)) setAllowedEmails(doc.allowedEmails);
-            }
-          } catch { /* ignore */ }
+        if (Array.isArray(data.allowed_emails)) {
+          setAllowedEmails(data.allowed_emails);
         }
       })
       .catch(() => {})
@@ -4185,10 +4188,14 @@ export default function MdEditor() {
     setIsSharedDoc(tab.permission === "readonly" || tab.permission === "editable");
     setIsOwner(tab.permission === "mine" || !tab.permission);
     setIsEditor(false);
-    // Reset share modal state + view count for the new tab
+    // Reset share modal state + view count for the new tab. Hydrate
+    // the allowed-email/editor lists from the tab's cached values so
+    // a tab we've already opened once renders the right ShareModal
+    // defaults the instant Share is clicked — no skeleton flicker
+    // from a stale empty list while the GET refresh resolves.
     setViewCount(0);
-    setAllowedEmailsState([]);
-    setAllowedEditorsState([]);
+    setAllowedEmailsState(tab.allowedEmails ?? []);
+    setAllowedEditorsState(tab.allowedEditors ?? []);
     // Fetch view count for cloud docs (suppress 500 errors in console)
     if (tab.cloudId && (tab.permission === "mine" || !tab.permission)) {
       fetch(`/api/docs/${tab.cloudId}`, { method: "HEAD", headers: { "x-no-view-count": "1" } })
@@ -5469,6 +5476,8 @@ export default function MdEditor() {
               editMode: doc.editMode || "token",
               sharedWithCount: othersCount,
               ownerEmail: doc.ownerEmail || undefined,
+              allowedEmails: Array.isArray(doc.allowedEmails) ? doc.allowedEmails : undefined,
+              allowedEditors: Array.isArray(doc.allowedEditors) ? doc.allowedEditors : undefined,
             };
 
             // Render content immediately (don't depend on setTabs callback timing)
@@ -7546,11 +7555,16 @@ export default function MdEditor() {
 
     const isMine = !currentTab?.permission || currentTab.permission === "mine";
     if (cid && isMine && isAuthenticated && user) {
-      // Open modal immediately with a skeleton — data loads in background.
-      setShareModalLoading(true);
+      // If the tab already carries the authoritative share state from
+      // a prior fetch, open the modal instantly with no skeleton — the
+      // ShareModal renders the real permissions on its first paint.
+      // Otherwise fall back to the skeleton + background fetch so the
+      // user doesn't briefly see the stale "Anyone with the link"
+      // default that the empty state used to flash for ~2 seconds.
+      const hasCache = !!currentTab?.allowedEmails || !!currentTab?.allowedEditors;
+      setShareModalLoading(!hasCache);
       setShowShareModal(true);
 
-      // Background: sync title + fetch current sharing state (do NOT auto-publish)
       (async () => {
         if (title) {
           fetch(`/api/docs/${cid}`, {
@@ -7574,6 +7588,8 @@ export default function MdEditor() {
               isRestricted: shareOthersCount > 0,
               editMode: doc.editMode,
               sharedWithCount: shareOthersCount,
+              allowedEmails: Array.isArray(doc.allowedEmails) ? doc.allowedEmails : t.allowedEmails,
+              allowedEditors: Array.isArray(doc.allowedEditors) ? doc.allowedEditors : t.allowedEditors,
             } : t));
           }
         } catch { /* ignore */ }
@@ -8518,68 +8534,6 @@ ${clone.innerHTML}
           className="flex items-center gap-1.5 shrink-0 pointer-events-auto"
           style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
-          {/* Hub — leftmost pill in the centre cluster. Sits OUTSIDE
-              both the [Back|Forward] and [Home + views] groups so it
-              never disrupts those layouts. h-6 + 1px border in its
-              own rounded-lg div matches the sibling pills exactly. */}
-          {hubSlug && (() => {
-            const hubTabId = `hub-${hubSlug}`;
-            // The hub tab can stay in the tabs array (so the Hub view
-            // is preserved on close+reopen) while NOT being the
-            // visible view — in particular when the user clicks Home
-            // and the onboarding screen takes over. Treat Hub as
-            // inactive whenever onboarding is showing, so its pill
-            // doesn't stay highlighted in that state.
-            const isHubActive = !showOnboarding && activeTab?.id === hubTabId;
-            return (
-              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-                <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
-                  <button
-                    onClick={() => {
-                      if (isHubActive) {
-                        const fallback = recentTabIds
-                          .map(id => tabs.find(t => t.id === id))
-                          .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
-                          || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
-                        setTabs(prev => prev.filter(t => t.id !== hubTabId));
-                        setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
-                        if (fallback) switchTab(fallback.id);
-                        else setShowOnboarding(true);
-                        return;
-                      }
-                      setShowOnboarding(false);
-                      setTabs(prev => {
-                        if (prev.some(t => t.id === hubTabId)) return prev;
-                        const newTab: Tab = {
-                          id: hubTabId,
-                          kind: "hub",
-                          hubSlug,
-                          title: "My Hub",
-                          markdown: "",
-                        };
-                        return [...prev, newTab];
-                      });
-                      queueMicrotask(() => switchTab(hubTabId));
-                      // Do NOT push the hub tab into Recent — Hub is
-                      // always reachable via its dedicated toolbar
-                      // button, so polluting Recent with it would crowd
-                      // out the doc/bundle entries that benefit from
-                      // recency tracking.
-                    }}
-                    className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
-                    style={{
-                      background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
-                      color: isHubActive ? "var(--accent)" : "var(--text-muted)",
-                    }}
-                    aria-pressed={isHubActive}
-                  >
-                    <LayoutDashboard width={13} height={13} />
-                    <span className="hidden sm:inline">Hub</span>
-                  </button>
-                </Tooltip>
-              </div>
-            );
-          })()}
           {/* Back / Forward — own group, separate from Home */}
           {(() => {
             void navTick; // re-evaluate on history tick
@@ -8621,6 +8575,64 @@ ${clone.innerHTML}
               </div>
             );
           })()}
+          {/* Hub — sits between [Back/Forward] and [Home + views] so the
+              nav-arrow group leads the cluster (browser-style) and Hub
+              reads as a destination, not a history control. The pill
+              always shows its label (no sm: hide) so mobile users see a
+              recognisable "Hub" target — icon-only was missed on phones. */}
+          {hubSlug && (() => {
+            const hubTabId = `hub-${hubSlug}`;
+            // The hub tab can stay in the tabs array (so the Hub view
+            // is preserved on close+reopen) while NOT being the
+            // visible view — in particular when the user clicks Home
+            // and the onboarding screen takes over. Treat Hub as
+            // inactive whenever onboarding is showing, so its pill
+            // doesn't stay highlighted in that state.
+            const isHubActive = !showOnboarding && activeTab?.id === hubTabId;
+            return (
+              <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+                <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
+                  <button
+                    onClick={() => {
+                      if (isHubActive) {
+                        const fallback = recentTabIds
+                          .map(id => tabs.find(t => t.id === id))
+                          .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
+                          || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
+                        setTabs(prev => prev.filter(t => t.id !== hubTabId));
+                        setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
+                        if (fallback) switchTab(fallback.id);
+                        else setShowOnboarding(true);
+                        return;
+                      }
+                      setShowOnboarding(false);
+                      setTabs(prev => {
+                        if (prev.some(t => t.id === hubTabId)) return prev;
+                        const newTab: Tab = {
+                          id: hubTabId,
+                          kind: "hub",
+                          hubSlug,
+                          title: "My Hub",
+                          markdown: "",
+                        };
+                        return [...prev, newTab];
+                      });
+                      queueMicrotask(() => switchTab(hubTabId));
+                    }}
+                    className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
+                    style={{
+                      background: isHubActive ? "var(--accent-dim)" : "var(--toggle-bg)",
+                      color: isHubActive ? "var(--accent)" : "var(--text-muted)",
+                    }}
+                    aria-pressed={isHubActive}
+                  >
+                    <LayoutDashboard width={13} height={13} />
+                    <span>Hub</span>
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })()}
           {/* Home + view modes — own group */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {/* Home */}
@@ -8647,7 +8659,7 @@ ${clone.innerHTML}
                   itself (sidebar, status icons, "New bundle" button) so the
                   two no longer share a glyph. */}
               {([
-                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <Globe width={13} height={13} /> },
+                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <LayoutGrid width={13} height={13} /> },
                 { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
@@ -14535,10 +14547,13 @@ ${clone.innerHTML}
           }}
           onAllowedEmailsChange={(emails) => {
             setAllowedEmailsState(emails);
-            // Publish + update tab state when sharing with specific people
+            // Publish + update tab state when sharing with specific people.
+            // Also persist the new list into the tab cache so the next
+            // Share-modal open renders this state instantly, not the
+            // pre-edit one.
             const curTabId = activeTabIdRef.current;
             const othersEmails = emails.filter(e => e.toLowerCase() !== (user?.email || "").toLowerCase());
-            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isRestricted: othersEmails.length > 0, sharedWithCount: othersEmails.length } : t));
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, isDraft: false, isRestricted: othersEmails.length > 0, sharedWithCount: othersEmails.length, allowedEmails: emails } : t));
             const cid = docId || tabs.find(t => t.id === curTabId)?.cloudId;
             if (cid && user) {
               fetch(`/api/docs/${cid}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "publish", userId: user.id }) }).catch(() => {});
@@ -14546,6 +14561,8 @@ ${clone.innerHTML}
           }}
           onAllowedEditorsChange={(editors) => {
             setAllowedEditorsState(editors);
+            const curTabId = activeTabIdRef.current;
+            setTabs(prev => prev.map(t => t.id === curTabId ? { ...t, allowedEditors: editors } : t));
           }}
           isPrivate={tabs.find(t => t.id === activeTabIdRef.current)?.isDraft === true}
           onPublish={async () => {

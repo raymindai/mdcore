@@ -16,7 +16,7 @@
 //   - Suggestions (TODO once we have a /api/bundles/[id]/suggestions surface)
 
 import { useEffect, useState, useMemo } from "react";
-import { Layers, Copy, Check, Eye, ExternalLink, FileText, Globe, Cloud, Users, Sparkles } from "lucide-react";
+import { Layers, Copy, Check, Eye, ExternalLink, FileText, Globe, Cloud, Users, Sparkles, AlertTriangle, Clock } from "lucide-react";
 
 interface BundleDoc {
   id: string;
@@ -25,6 +25,10 @@ interface BundleDoc {
   updated_at: string;
   isDraft?: boolean;
   sharedWithCount?: number;
+  /** AI-written one-line summary for this doc inside the bundle.
+   *  Surfaced under the doc title when present so the user can scan
+   *  the bundle's contents without opening each doc. */
+  annotation?: string | null;
 }
 
 interface BundleOverviewProps {
@@ -39,9 +43,35 @@ interface BundleOverviewProps {
   hasDiscoveries?: boolean;
   /** Whether AI has built a knowledge graph for this bundle. */
   hasGraph?: boolean;
+  /** Server-side flag — true when any member doc has been edited
+   *  after the last analysis run, so the graph reflects a stale
+   *  snapshot. Drives a banner CTA to re-run. */
+  isAnalysisStale?: boolean;
+  /** Counts surfaced from the persisted ai_graph. The AI stat card
+   *  uses them to read as "12 themes · 7 insights" instead of a
+   *  vague "Analyzed". Falls back to the bool flag when absent. */
+  themeCount?: number;
+  insightCount?: number;
+  /** Most recent member-doc updated_at — used in the header so the
+   *  user can tell at a glance how fresh the bundle is without
+   *  scanning every row. */
+  lastUpdatedAt?: string | null;
   onOpenDoc?: (docId: string) => void;
   onSwitchToCanvas?: () => void;
   onSwitchToList?: () => void;
+}
+
+// Compact relative time. Mirrors HubEmbed's helper so freshness reads
+// the same on both surfaces. "just now" under a minute; minute/hour/day
+// granularity up to a week; absolute month-day after that.
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return "just now";
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  if (ms < 7 * 86_400_000) return `${Math.floor(ms / 86_400_000)}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 // Cheap token estimate — 1.3 tokens / word + 8 token listing overhead per doc.
@@ -71,6 +101,10 @@ export default function BundleOverview({
   documents,
   hasDiscoveries,
   hasGraph,
+  isAnalysisStale,
+  themeCount,
+  insightCount,
+  lastUpdatedAt,
   onOpenDoc,
   onSwitchToCanvas,
   onSwitchToList,
@@ -127,6 +161,27 @@ export default function BundleOverview({
                 Intent: {bundleIntent}
               </p>
             )}
+            {/* Metadata strip — counts + freshness in one line so the
+                user sees at a glance whether the bundle is fresh
+                without scanning the docs list. */}
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-caption font-mono" style={{ color: "var(--text-faint)" }}>
+                <Layers width={11} height={11} />
+                {documents.length} {documents.length === 1 ? "doc" : "docs"}
+              </span>
+              {lastUpdatedAt && (
+                <span className="inline-flex items-center gap-1 text-caption font-mono" style={{ color: "var(--text-faint)" }}>
+                  <Clock width={11} height={11} />
+                  Updated {relativeTime(lastUpdatedAt)}
+                </span>
+              )}
+              {accessKind === "shared" && bundleAllowedEmails && bundleAllowedEmails.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-caption font-mono" style={{ color: "#60a5fa" }}>
+                  <Users width={11} height={11} />
+                  Shared with {bundleAllowedEmails.length}
+                </span>
+              )}
+            </div>
           </div>
         </header>
 
@@ -180,7 +235,7 @@ export default function BundleOverview({
               View as visitor
             </a>
             <a
-              href={`/raw/b/${bundleId}`}
+              href={`/b/${bundleId}.md`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption font-mono transition-colors hover:bg-[var(--toggle-bg)]"
@@ -234,10 +289,30 @@ export default function BundleOverview({
             <div className="flex items-center gap-1.5 mb-1.5" style={{ color: hasDiscoveries ? "var(--accent)" : "var(--text-faint)" }}>
               <Sparkles width={14} height={14} />
               <span className="text-caption font-mono uppercase tracking-wider font-semibold">AI</span>
+              {hasDiscoveries && isAnalysisStale && (
+                <span
+                  className="text-caption font-mono px-1 rounded uppercase tracking-wider"
+                  style={{ background: "rgba(245,158,11,0.18)", color: "#f59e0b", fontSize: 9, fontWeight: 700, marginLeft: "auto" }}
+                  title="Member docs have changed since the last analysis"
+                >
+                  STALE
+                </span>
+              )}
             </div>
-            <div className="text-body font-semibold" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
-              {hasDiscoveries ? "Analyzed" : hasGraph ? "Graph ready" : "Not analyzed"}
-            </div>
+            {/* Concrete counts when we have them; falls back to a
+                status label so the card stays readable for bundles
+                that haven't been analyzed yet. */}
+            {hasDiscoveries && (themeCount || insightCount) ? (
+              <div className="text-body font-semibold tabular-nums" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+                {themeCount ? `${themeCount} theme${themeCount === 1 ? "" : "s"}` : null}
+                {themeCount && insightCount ? <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> · </span> : null}
+                {insightCount ? `${insightCount} insight${insightCount === 1 ? "" : "s"}` : null}
+              </div>
+            ) : (
+              <div className="text-body font-semibold" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+                {hasDiscoveries ? "Analyzed" : hasGraph ? "Graph ready" : "Not analyzed"}
+              </div>
+            )}
             <button
               onClick={() => onSwitchToCanvas?.()}
               className="text-caption mt-0.5 transition-colors hover:underline"
@@ -247,6 +322,34 @@ export default function BundleOverview({
             </button>
           </div>
         </section>
+
+        {/* Stale analysis banner — surfaces the same signal the canvas
+            shows, but on the overview surface so users see it before
+            opening the canvas tab. Only renders when there IS an
+            analysis and member docs have moved on since then. */}
+        {hasDiscoveries && isAnalysisStale && (
+          <section
+            className="mb-7 rounded-lg flex items-start gap-2.5 px-4 py-3"
+            style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.35)" }}
+          >
+            <AlertTriangle width={16} height={16} className="shrink-0 mt-0.5" style={{ color: "#f59e0b" }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>
+                Analysis is out of date
+              </p>
+              <p className="text-caption" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                One or more member docs have changed since the last run. Open the canvas and re-run analysis to refresh themes and insights.
+              </p>
+            </div>
+            <button
+              onClick={() => onSwitchToCanvas?.()}
+              className="shrink-0 text-caption font-medium px-2.5 py-1 rounded transition-colors hover:bg-[rgba(245,158,11,0.18)]"
+              style={{ color: "#f59e0b", border: "1px solid rgba(245,158,11,0.5)" }}
+            >
+              Re-run →
+            </button>
+          </section>
+        )}
 
         {/* ─── Documents ─── */}
         <section className="mb-8">
@@ -267,21 +370,43 @@ export default function BundleOverview({
               No documents in this bundle yet.
             </div>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {documents.map((d) => {
                 const wordCount = (d.markdown || "").split(/\s+/).filter(Boolean).length;
+                const annotation = (d.annotation || "").trim();
+                const updated = relativeTime(d.updated_at);
                 return (
                   <li key={d.id}>
                     <button
                       onClick={() => onOpenDoc?.(d.id)}
-                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors group hover:bg-[var(--toggle-bg)]"
+                      className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-md transition-colors group hover:bg-[var(--toggle-bg)]"
                       style={{ border: "1px solid var(--border-dim)" }}
                     >
-                      <FileText width={13} height={13} className="shrink-0" style={{ color: "var(--accent)" }} />
-                      <span className="flex-1 truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
-                        {d.title || "Untitled"}
-                      </span>
-                      <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                      <FileText width={13} height={13} className="shrink-0 mt-1" style={{ color: "var(--accent)" }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
+                            {d.title || "Untitled"}
+                          </span>
+                          {updated && (
+                            <span className="text-caption font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
+                              {updated}
+                            </span>
+                          )}
+                        </div>
+                        {annotation && (
+                          <p className="text-caption mt-1" style={{ color: "var(--text-muted)", lineHeight: 1.45 }}>
+                            <span
+                              className="font-mono uppercase mr-1.5"
+                              style={{ color: "var(--accent)", fontWeight: 700, fontSize: 9, letterSpacing: 0.5 }}
+                            >
+                              AI
+                            </span>
+                            {annotation}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-caption font-mono shrink-0 mt-1" style={{ color: "var(--text-faint)" }}>
                         {fmtCount(wordCount)} words
                       </span>
                     </button>

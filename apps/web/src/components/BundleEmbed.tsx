@@ -1052,9 +1052,29 @@ export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, o
         bundleIntent={bundleIntent}
         bundleIsDraft={bundleIsDraft}
         bundleAllowedEmails={bundleAllowedEmails}
-        documents={documents.map(d => ({ id: d.id, title: d.title, markdown: d.markdown, updated_at: d.updated_at }))}
+        documents={documents.map(d => ({
+          id: d.id,
+          title: d.title,
+          markdown: d.markdown,
+          updated_at: d.updated_at,
+          annotation: d.annotation ?? null,
+        }))}
         hasDiscoveries={!!aiGraph && (aiGraph.themes?.length > 0 || aiGraph.insights?.length > 0)}
         hasGraph={!!aiGraph}
+        isAnalysisStale={isAnalysisStale}
+        themeCount={Array.isArray(aiGraph?.themes) ? aiGraph.themes.length : 0}
+        insightCount={Array.isArray(aiGraph?.insights) ? aiGraph.insights.length : 0}
+        lastUpdatedAt={
+          documents.length > 0
+            ? new Date(
+                Math.max(
+                  ...documents
+                    .map(d => (d.updated_at ? new Date(d.updated_at).getTime() : 0))
+                    .filter(t => t > 0),
+                ),
+              ).toISOString()
+            : null
+        }
         onOpenDoc={onOpenDoc}
         onSwitchToCanvas={() => onChangeView?.("canvas")}
         onSwitchToList={() => onChangeView?.("list")}
