@@ -3993,6 +3993,11 @@ export default function MdEditor() {
   const [cmdSearchResults, setCmdSearchResults] = useState<Array<{ id: string; title: string; snippet: string }>>([]);
   const [isCmdSearching, setIsCmdSearching] = useState(false);
   const cmdSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Keyboard selection cursor across the flat (sectioned) result
+  // list. Reset to 0 whenever the query or results change so Enter
+  // always runs the top-listed item by default.
+  const [cmdSelectedIdx, setCmdSelectedIdx] = useState(0);
+  useEffect(() => { setCmdSelectedIdx(0); }, [cmdSearch, cmdSearchResults]);
   const [showExamples, setShowExamples] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("mdfy-show-examples") !== "false";
@@ -15846,124 +15851,199 @@ ${clone.innerHTML}
       )}
 
       {showCommandPalette && (() => {
-        const commands = [
-          { label: "New Document", action: () => addTab() },
-          { label: "Polish with AI", action: () => handleAIAction("polish") },
-          { label: "AI Summary", action: () => handleAIAction("summary") },
-          { label: "AI TL;DR", action: () => handleAIAction("tldr") },
-          { label: "AI Translate", action: () => setShowAIPanel(true) },
-          { label: "Toggle Theme", action: () => toggleTheme() },
-          { label: "Toggle Sidebar", action: () => setShowSidebar(prev => !prev) },
-          { label: "Toggle Toolbar", action: () => setShowToolbar(prev => !prev) },
-          { label: "Share Document", action: () => handleShare() },
-          { label: "Export as Markdown", action: () => handleDownloadMd() },
-          { label: "Export as PDF", action: () => handleExportPdf() },
-          { label: "Version History", action: () => handleToggleHistory() },
-          { label: "Open AI Panel", action: () => { setShowAIPanel(true); setShowOutlinePanel(false); setShowImagePanel(false); } },
+        // ── Command palette — sectioned, keyboard-driven ──
+        // The palette pulls items from five sources and groups
+        // them so the user sees Surfaces / Recent / Commands /
+        // Documents / Bundles in one place. Keyboard arrows step
+        // through the flattened list; Enter runs the highlighted
+        // item. Each item has its own glyph so the source is
+        // legible at a glance.
+        type PaletteItem = {
+          id: string;
+          label: string;
+          hint?: string;
+          icon: React.ReactNode;
+          kbd?: string;
+          action: () => void;
+        };
+        const closePalette = () => { setShowCommandPalette(false); setCmdSearch(""); };
+        const openDocById = (docId: string, title?: string) => {
+          const tabId = `cloud-${docId}`;
+          const exists = tabs.find(t => t.id === tabId || t.cloudId === docId);
+          if (exists) { switchTab(exists.id); return; }
+          setTabs(prev => [...prev, { id: tabId, title: title || "Untitled", markdown: "", cloudId: docId, isDraft: true, permission: "mine" as const }]);
+          setTimeout(() => switchTab(tabId), 50);
+        };
+        const openBundleById = (bundleId: string, title?: string) => {
+          const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
+          if (existing) { switchTab(existing.id); return; }
+          const newId = `bundle-${bundleId}-${Date.now()}`;
+          setTabs(prev => [...prev, { id: newId, kind: "bundle", bundleId, title: title || "Untitled bundle", markdown: "" }]);
+          setTimeout(() => switchTab(newId), 50);
+        };
+
+        // Surfaces — always-available navigation targets.
+        const surfaces: PaletteItem[] = [
+          { id: "surface-start", label: "Start", hint: "Personal workspace", icon: <Smile width={13} height={13} />, action: () => { setShowOnboarding(true); setShowHub(false); setShowSettings(false); } },
+          ...(hubSlug ? [{ id: "surface-hub", label: "Hub", hint: `/hub/${hubSlug}`, icon: <LayoutDashboard width={13} height={13} />, action: () => { setShowOnboarding(false); setShowSettings(false); setShowHub(true); } }] : []),
+          { id: "surface-settings", label: "Settings", hint: "Profile, appearance, auto-management", icon: <Settings width={13} height={13} />, action: () => { setShowOnboarding(false); setShowHub(false); setShowSettings(true); } },
         ];
-        const q = cmdSearch.toLowerCase();
-        const filtered = q ? commands.filter(c => c.label.toLowerCase().includes(q)) : commands;
+
+        // Recent (last 5 visited tabs, excluding hub-overlay ids)
+        const recentItems: PaletteItem[] = recentTabIds
+          .map(id => tabs.find(t => t.id === id))
+          .filter((t): t is Tab => !!t && !t.deleted && !t.readonly)
+          .slice(0, 5)
+          .map(t => ({
+            id: `recent-${t.id}`,
+            label: t.title || "Untitled",
+            hint: t.kind === "bundle" ? "Bundle" : "Recent doc",
+            icon: t.kind === "bundle" ? <Layers width={13} height={13} /> : <FileText width={13} height={13} />,
+            action: () => switchTab(t.id),
+          }));
+
+        // Commands — actions the user can run regardless of surface.
+        const commands: PaletteItem[] = [
+          { id: "cmd-new-doc",      label: "New document",        hint: "Blank canvas", icon: <FileText width={13} height={13} />,        action: () => addTab() },
+          { id: "cmd-new-bundle",   label: "New bundle",          hint: "Pick docs",    icon: <Layers width={13} height={13} />,          action: () => { setBundleCreatorDocs([]); setShowBundleCreator(true); } },
+          { id: "cmd-toggle-theme", label: "Toggle dark / light", hint: "Mode",         icon: <LayoutDashboard width={13} height={13} />, action: () => toggleTheme() },
+          { id: "cmd-toggle-sidebar", label: "Toggle sidebar",    hint: "Library rail", icon: <List width={13} height={13} />,            action: () => setShowSidebar(prev => !prev) },
+          { id: "cmd-toggle-toolbar", label: "Toggle formatting toolbar", hint: "Above editor", icon: <AlignLeft width={13} height={13} />, action: () => setShowToolbar(prev => !prev) },
+          { id: "cmd-ai-polish",    label: "Polish with AI",      hint: "Active doc",   icon: <Sparkles width={13} height={13} />,        action: () => handleAIAction("polish") },
+          { id: "cmd-ai-summary",   label: "AI summary",          hint: "Active doc",   icon: <Sparkles width={13} height={13} />,        action: () => handleAIAction("summary") },
+          { id: "cmd-ai-tldr",      label: "AI TL;DR",            hint: "Active doc",   icon: <Sparkles width={13} height={13} />,        action: () => handleAIAction("tldr") },
+          { id: "cmd-ai-panel",     label: "Open Assistant",      hint: "AI chat",      icon: <MessageSquarePlus width={13} height={13} />, action: () => { setShowAIPanel(true); setShowOutlinePanel(false); setShowImagePanel(false); } },
+          { id: "cmd-share",        label: "Share document",      hint: "Permissions",  icon: <Globe width={13} height={13} />,           action: () => handleShare() },
+          { id: "cmd-export-md",    label: "Export as Markdown",  hint: ".md file",     icon: <FileText width={13} height={13} />,        action: () => handleDownloadMd() },
+          { id: "cmd-export-pdf",   label: "Export as PDF",       hint: ".pdf file",    icon: <FileText width={13} height={13} />,        action: () => handleExportPdf() },
+          { id: "cmd-history",      label: "Version history",     hint: "Active doc",   icon: <Clock width={13} height={13} />,           action: () => handleToggleHistory() },
+        ];
+
+        // Filter all sections against the query (substring on label or hint).
+        const q = cmdSearch.trim().toLowerCase();
+        const match = (item: PaletteItem) => !q || item.label.toLowerCase().includes(q) || (item.hint || "").toLowerCase().includes(q);
+        const matchedSurfaces = surfaces.filter(match);
+        const matchedRecent = q ? [] : recentItems; // Recent only shown on empty query
+        const matchedCommands = commands.filter(match);
+
+        // Bundles — local list, filtered by query.
+        const matchedBundles: PaletteItem[] = (q ? bundles : bundles.slice(0, 5))
+          .filter(b => !q || (b.title || "").toLowerCase().includes(q) || (b.description || "").toLowerCase().includes(q))
+          .slice(0, 8)
+          .map(b => ({
+            id: `bundle-${b.id}`,
+            label: b.title || "Untitled bundle",
+            hint: b.description || `${b.documentCount} docs`,
+            icon: <Layers width={13} height={13} />,
+            action: () => openBundleById(b.id, b.title),
+          }));
+
+        // Server document search — only fires when query >= 3 chars.
+        const matchedDocs: PaletteItem[] = cmdSearchResults.map(r => ({
+          id: `doc-${r.id}`,
+          label: r.title || "Untitled",
+          hint: (r.snippet || "").slice(0, 80),
+          icon: <FileText width={13} height={13} />,
+          action: () => openDocById(r.id, r.title),
+        }));
+
+        const groups: { heading: string; items: PaletteItem[] }[] = [];
+        if (matchedRecent.length) groups.push({ heading: "Recent",    items: matchedRecent });
+        if (matchedSurfaces.length) groups.push({ heading: "Surfaces", items: matchedSurfaces });
+        if (matchedCommands.length) groups.push({ heading: "Commands", items: matchedCommands });
+        if (matchedBundles.length) groups.push({ heading: "Bundles", items: matchedBundles });
+        if (matchedDocs.length) groups.push({ heading: "Documents", items: matchedDocs });
+
+        const flatItems = groups.flatMap(g => g.items);
+        const selectedIdx = Math.min(cmdSelectedIdx, Math.max(0, flatItems.length - 1));
+
         return (
           <div
             className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh]"
             style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
-            onClick={() => { setShowCommandPalette(false); setCmdSearch(""); }}
+            onClick={closePalette}
           >
             <div
-              className="w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg rounded-xl shadow-2xl overflow-hidden"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,0.4)" }}
               onClick={e => e.stopPropagation()}
-              onKeyDown={e => { if (e.key === "Escape") { setShowCommandPalette(false); setCmdSearch(""); } }}
             >
-              <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                <Search width={14} height={14} style={{ color: "var(--text-faint)" }} />
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Search documents or type a command..."
-                  className="w-full bg-transparent outline-none text-sm"
+                  placeholder="Jump to a doc, bundle, surface, or command…"
+                  className="flex-1 bg-transparent outline-none text-sm"
                   style={{ color: "var(--text-primary)" }}
                   value={cmdSearch}
                   onChange={e => setCmdSearch(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                      if (cmdSearchResults.length > 0 && filtered.length === 0) {
-                        // Open first search result
-                        const r = cmdSearchResults[0];
-                        const tabId = `cloud-${r.id}`;
-                        const exists = tabs.find(t => t.id === tabId || t.cloudId === r.id);
-                        if (exists) { switchTab(exists.id); }
-                        else {
-                          setTabs(prev => [...prev, { id: tabId, title: r.title || "Untitled", markdown: "", cloudId: r.id, isDraft: true, permission: "mine" as const }]);
-                          setTimeout(() => switchTab(tabId), 50);
-                        }
-                      } else if (filtered.length > 0) {
-                        filtered[0].action();
-                      }
-                      setShowCommandPalette(false);
-                      setCmdSearch("");
+                    if (e.key === "Escape") { e.preventDefault(); closePalette(); return; }
+                    if (e.nativeEvent.isComposing) return;
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setCmdSelectedIdx((idx) => Math.min(flatItems.length - 1, idx + 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setCmdSelectedIdx((idx) => Math.max(0, idx - 1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const item = flatItems[selectedIdx];
+                      if (item) { item.action(); closePalette(); }
                     }
                   }}
                 />
+                <span className="text-caption font-mono px-1.5 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>ESC</span>
               </div>
-              <div className="max-h-80 overflow-y-auto py-1">
-                {filtered.length === 0 && cmdSearchResults.length === 0 && !isCmdSearching ? (
-                  <div className="px-4 py-3 text-body" style={{ color: "var(--text-faint)" }}>No matching commands</div>
-                ) : (<>
-                  {filtered.map((cmd, i) => (
-                    <button
-                      key={cmd.label}
-                      className={`w-full text-left px-4 py-2 text-body transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2 ${i === 0 && !cmdSearchResults.length ? "bg-[var(--menu-hover)]" : ""}`}
-                      style={{ color: "var(--text-primary)" }}
-                      onClick={() => { cmd.action(); setShowCommandPalette(false); setCmdSearch(""); }}
-                    >
-                      {cmd.label}
-                    </button>
-                  ))}
-                  {cmdSearch.length >= 3 && (
-                    <>
-                      {isCmdSearching && (
-                        <div className="px-4 py-2 text-caption flex items-center gap-2" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none" }}>
-                          <span className="inline-block animate-spin" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
-                          Searching documents...
+              <div className="max-h-[60vh] overflow-y-auto py-1">
+                {flatItems.length === 0 && !isCmdSearching ? (
+                  <div className="px-4 py-6 text-caption text-center" style={{ color: "var(--text-faint)" }}>
+                    Nothing matches <span className="font-mono" style={{ color: "var(--text-muted)" }}>{cmdSearch}</span>. Try a doc title, bundle name, or command.
+                  </div>
+                ) : (
+                  groups.map((g) => {
+                    const offset = groups.slice(0, groups.indexOf(g)).reduce((n, gg) => n + gg.items.length, 0);
+                    return (
+                      <div key={g.heading} className="mb-1">
+                        <div className="px-4 py-1.5 text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-faint)", fontSize: 9, letterSpacing: 0.8 }}>
+                          {g.heading}
                         </div>
-                      )}
-                      {!isCmdSearching && cmdSearchResults.length > 0 && (
-                        <>
-                          <div className="px-4 py-1.5 text-caption font-semibold uppercase" style={{ color: "var(--text-faint)", borderTop: filtered.length ? "1px solid var(--border-dim)" : "none", letterSpacing: "0.5px" }}>
-                            Documents ({cmdSearchResults.length})
-                          </div>
-                          {cmdSearchResults.map(r => (
+                        {g.items.map((item, i) => {
+                          const flatIdx = offset + i;
+                          const active = flatIdx === selectedIdx;
+                          return (
                             <button
-                              key={r.id}
-                              className="w-full text-left px-4 py-2 text-body transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
-                              style={{ color: "var(--text-primary)" }}
-                              onClick={() => {
-                                const tabId = `cloud-${r.id}`;
-                                const exists = tabs.find(t => t.id === tabId || t.cloudId === r.id);
-                                if (exists) {
-                                  switchTab(exists.id);
-                                } else {
-                                  const newTab = { id: tabId, title: r.title || "Untitled", markdown: "", cloudId: r.id, isDraft: true, permission: "mine" as const };
-                                  setTabs(prev => [...prev, newTab]);
-                                  setTimeout(() => switchTab(tabId), 50);
-                                }
-                                setShowCommandPalette(false);
-                                setCmdSearch("");
-                              }}
+                              key={item.id}
+                              onMouseEnter={() => setCmdSelectedIdx(flatIdx)}
+                              onClick={() => { item.action(); closePalette(); }}
+                              className="w-full text-left px-4 py-2 text-sm flex items-center gap-2.5 transition-colors"
+                              style={{ background: active ? "var(--accent-dim)" : "transparent", color: active ? "var(--accent)" : "var(--text-primary)" }}
                             >
-                              <Search width={12} height={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                              <span className="truncate">{r.title}</span>
-                              <span className="ml-auto text-caption shrink-0" style={{ color: "var(--text-faint)" }}>{(r.snippet || "").slice(0, 40)}</span>
+                              <span className="shrink-0" style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>{item.icon}</span>
+                              <span className="flex-1 min-w-0 flex items-baseline gap-2">
+                                <span className="truncate">{item.label}</span>
+                                {item.hint && <span className="text-caption truncate" style={{ color: "var(--text-faint)" }}>{item.hint}</span>}
+                              </span>
+                              {item.kbd && <span className="text-caption font-mono px-1.5 py-0.5 rounded shrink-0" style={{ color: "var(--text-faint)", background: "var(--toggle-bg)" }}>{item.kbd}</span>}
                             </button>
-                          ))}
-                        </>
-                      )}
-                    </>
-                  )}
-                </>)}
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+                {isCmdSearching && (
+                  <div className="px-4 py-2 text-caption flex items-center gap-2" style={{ color: "var(--text-faint)" }}>
+                    <span className="inline-block animate-spin" style={{ width: 10, height: 10, border: "1.5px solid var(--text-faint)", borderTopColor: "transparent", borderRadius: "50%" }} />
+                    Searching documents…
+                  </div>
+                )}
               </div>
-              <div className="px-4 py-2 text-caption" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
-                Press Enter to run, Esc to dismiss
+              <div className="px-4 py-2 text-caption flex items-center gap-3" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
+                <span className="flex items-center gap-1"><span className="font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)" }}>↑↓</span>navigate</span>
+                <span className="flex items-center gap-1"><span className="font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)" }}>↵</span>open</span>
+                <span className="flex items-center gap-1"><span className="font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--toggle-bg)" }}>esc</span>dismiss</span>
               </div>
             </div>
           </div>
