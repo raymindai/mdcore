@@ -76,6 +76,26 @@ const quickStartCards = [
 
 const exploreCards = [
   {
+    title: "Import surfaces",
+    desc: "Pull markdown from GitHub repos, Notion pages, Obsidian vaults, or any web URL into your hub.",
+    href: "/docs/api#post-import-github",
+  },
+  {
+    title: "Hub recall + reranker",
+    desc: "Semantic + keyword search over a hub's public docs. Optional Haiku-based cross-encoder rerank.",
+    href: "/docs/api#post-hub-recall",
+  },
+  {
+    title: "Hub manifests",
+    desc: "Every public hub auto-publishes index.md, SCHEMA.md, log.md, and llms.txt — AI-discoverable.",
+    href: "/docs/api#raw-and-llms",
+  },
+  {
+    title: "Related docs",
+    desc: "Owner-only concept-overlap recommendation per doc. Surfaces cross-doc connections automatically.",
+    href: "/docs/api#get-related",
+  },
+  {
     title: "Publish from AI",
     desc: "Claude (MCP), ChatGPT (Custom GPT), Chrome Extension. Say \"publish this\" in any AI.",
     href: "https://chatgpt.com/g/g-69e2832dd74081919c09a9f8d03adc59-mdfy-publish-documents",
