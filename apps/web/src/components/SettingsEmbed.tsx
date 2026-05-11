@@ -34,16 +34,42 @@ import {
   type ColorScheme,
 } from "@/lib/theme-options";
 
+// Avatar styles offered to the user. DiceBear hosts these as SVG;
+// "oauth" means "use whatever Google/GitHub gave us" (the photo
+// the auth provider passed through user_metadata.avatar_url).
+const AVATAR_STYLES: { id: string; label: string; dicebearStyle?: string }[] = [
+  { id: "oauth",      label: "Photo" },
+  { id: "identicon",  label: "Identicon",  dicebearStyle: "identicon" },
+  { id: "avataaars",  label: "Avataaars",  dicebearStyle: "avataaars" },
+  { id: "bottts",     label: "Bots",       dicebearStyle: "bottts" },
+  { id: "fun-emoji",  label: "Fun emoji",  dicebearStyle: "fun-emoji" },
+  { id: "notionists", label: "Notionists", dicebearStyle: "notionists" },
+  { id: "lorelei",    label: "Lorelei",    dicebearStyle: "lorelei" },
+  { id: "thumbs",     label: "Thumbs",     dicebearStyle: "thumbs" },
+];
+
+function dicebearStyleUrl(style: string, seed: string, size = 80): string {
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
+}
+
 function dicebearUrl(seed: string, size = 80): string {
-  return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
+  return dicebearStyleUrl("identicon", seed, size);
 }
 
 function resolveAvatar(
-  profile: { avatar_url?: string | null } | null,
+  profile: { avatar_url?: string | null; avatar_style?: string | null } | null,
   user: { email?: string; user_metadata?: { avatar_url?: string } } | null,
   size = 80
 ): string {
-  return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
+  const style = profile?.avatar_style;
+  const seed = user?.email || "user";
+  // Explicit style override always wins (so a picked DiceBear
+  // beats the OAuth photo when the user has picked one).
+  if (style && style !== "oauth") {
+    const desc = AVATAR_STYLES.find((s) => s.id === style);
+    if (desc?.dicebearStyle) return dicebearStyleUrl(desc.dicebearStyle, seed, size);
+  }
+  return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(seed, size);
 }
 
 type SettingsSection = "profile" | "appearance" | "auto-management" | "hub" | "danger";
@@ -73,6 +99,8 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [avatarStyle, setAvatarStyle] = useState<string>("oauth");
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -178,11 +206,24 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     if (profile?.display_name) setDisplayName(profile.display_name);
-    const p = profile as { hub_slug?: string | null; hub_public?: boolean; hub_description?: string | null } | null;
+    const p = profile as { hub_slug?: string | null; hub_public?: boolean; hub_description?: string | null; avatar_style?: string | null } | null;
     if (p?.hub_slug) setHubSlug(p.hub_slug);
     if (typeof p?.hub_public === "boolean") setHubPublic(p.hub_public);
     if (p?.hub_description) setHubDescription(p.hub_description);
+    if (p?.avatar_style) setAvatarStyle(p.avatar_style);
   }, [profile]);
+
+  const selectAvatarStyle = useCallback(async (style: string) => {
+    setAvatarStyle(style);
+    setAvatarPickerOpen(false);
+    if (!user) return;
+    try {
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      await supabase.from("profiles").update({ avatar_style: style }).eq("id", user.id);
+    } catch { /* ignore */ }
+  }, [user]);
 
   const handleSaveHub = useCallback(async () => {
     if (!user) return;
@@ -263,6 +304,30 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
     document.documentElement.setAttribute("data-theme", newTheme);
     try { localStorage.setItem("mdfy-theme", newTheme); } catch {}
   };
+  // Hover-preview helpers for Theme — applies the candidate to the
+  // <html> attribute without flipping React state. Leave restores
+  // the user's actual selection.
+  const previewTheme = (t: "dark" | "light") => {
+    if (typeof document === "undefined") return;
+    document.documentElement.setAttribute("data-theme", t);
+  };
+  const restoreTheme = () => previewTheme(theme);
+  // Combined preview: apply scheme + theme together so Skin Theme
+  // rows can showcase "this is what nord+dark looks like" and
+  // "this is what nord+light looks like" as two distinct hover
+  // targets within the same row.
+  const previewSchemeTheme = (s: ColorScheme, t: "dark" | "light") => {
+    applyScheme(s);
+    previewTheme(t);
+  };
+  const restoreSchemeTheme = () => {
+    applyScheme(skinScheme);
+    previewTheme(theme);
+  };
+  const selectSchemeWithTheme = (s: ColorScheme, t: "dark" | "light") => {
+    selectScheme(s);
+    handleThemeChange(t);
+  };
 
   if (authLoading) {
     return (
@@ -293,14 +358,15 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
     <div className="h-full overflow-y-auto" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
       {/* Frame matches HubEmbed and BundleOverview (max-w-3xl, px-6
           py-10) so Settings reads as part of the same destination
-          family. The avatar leads the header so the surface starts
-          with identity, the same way Hub/Bundle Overview start with
-          their primitive's identity glyph + name. */}
+          family. Page title is "Settings"; identity (avatar + name)
+          lives inside the Profile section now so the page header is
+          one consistent voice across all five tabs. */}
       <div className="max-w-3xl mx-auto px-6 py-10">
-        {/* Close affordance — only when rendered as overlay. The
-            page route gets a back-arrow on the heading row instead. */}
-        {onClose && (
-          <div className="flex justify-end mb-4">
+        {/* Close (overlay) or back arrow (page) sits at the top
+            left, mirroring how Hub/Bundle Overview lead with their
+            close affordance on the corresponding surface. */}
+        <div className="flex items-center justify-between mb-6">
+          {onClose ? (
             <button
               onClick={onClose}
               className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
@@ -309,49 +375,37 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             >
               <X width={16} height={16} />
             </button>
-          </div>
-        )}
-        <header className="flex items-start gap-4 mb-8">
-          {!onClose && (
+          ) : (
             <Link
               href="/"
-              className="flex items-center justify-center w-8 h-8 mt-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)] shrink-0"
+              className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
               style={{ color: "var(--text-muted)" }}
             >
               <ArrowLeft width={16} height={16} />
             </Link>
           )}
-          <img
-            src={resolveAvatar(profile, user, 56)}
-            alt=""
-            className="w-14 h-14 rounded-2xl shrink-0"
-            style={{ border: "1px solid var(--border)" }}
-          />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
-              {profile?.display_name || user?.email?.split("@")[0] || "Account"}
-            </h1>
-            <p className="text-body mt-1" style={{ color: "var(--text-secondary)" }}>
-              {user?.email}
-            </p>
-            <p className="text-caption font-mono mt-1.5" style={{ color: "var(--text-faint)" }}>
-              {(profile?.plan || "free").toUpperCase()} plan
-            </p>
-          </div>
+        </div>
+        <header className="mb-8">
+          <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.1 }}>
+            Settings
+          </h1>
+          <p className="text-body mt-1.5" style={{ color: "var(--text-secondary)" }}>
+            Tune your account, hub, and how mdfy auto-manages your knowledge.
+          </p>
         </header>
 
         {/* Section tabs — horizontal nav. Active tab carries the
-            accent underline; clicking switches the section below.
-            Persists to localStorage so a refresh lands the user
-            back where they were. */}
-        <nav className="flex items-center gap-0.5 mb-8 overflow-x-auto" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+            accent underline. No overflow-x-auto on the desktop
+            width; tabs fit cleanly. Wraps to two rows on narrow
+            viewports rather than showing a scrollbar. */}
+        <nav className="flex items-center gap-0.5 mb-6 flex-wrap" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           {SETTINGS_SECTIONS.map((s) => {
             const active = activeSection === s.id;
             return (
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
-                className="px-3 py-2 text-caption font-medium shrink-0 transition-colors"
+                className="px-3.5 py-2.5 text-sm font-medium shrink-0 transition-colors"
                 style={{
                   color: active ? "var(--accent)" : "var(--text-muted)",
                   borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
@@ -367,34 +421,113 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
         {/* ── Profile section ── */}
         {activeSection === "profile" && (<>
 
-        {/* Display Name */}
-        <div className="mb-6">
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
-            Display Name
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              placeholder="Your name"
-              className="flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-colors"
-              style={{
-                background: "var(--input-bg, var(--surface))",
-                border: "1px solid var(--border)",
-                color: "var(--text-primary)",
-              }}
-            />
-            <button
-              onClick={handleSaveDisplayName}
-              disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{ background: "var(--accent)", color: "#000", opacity: saving ? 0.6 : 1 }}
-            >
-              {saving ? "Saving..." : saved ? "Saved" : "Save"}
-            </button>
+        {/* Identity card — circle avatar + click-to-change overlay.
+            The avatar shows whatever style the user has picked
+            (or the OAuth photo by default). Clicking the avatar
+            opens a small picker with the available DiceBear
+            styles. Below sits the display-name input. */}
+        <section
+          className="rounded-xl p-5 mb-6"
+          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+        >
+          <div className="flex items-start gap-4 mb-5">
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setAvatarPickerOpen((v) => !v)}
+                className="block rounded-full overflow-hidden transition-transform hover:scale-[1.02]"
+                style={{ width: 72, height: 72, border: "2px solid var(--border)" }}
+                title="Change avatar style"
+              >
+                <img
+                  src={resolveAvatar({ ...profile, avatar_style: avatarStyle } as { avatar_url?: string | null; avatar_style?: string | null }, user, 72)}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </button>
+              {/* Camera badge — affordance that the avatar is
+                  clickable. */}
+              <span
+                aria-hidden
+                className="absolute rounded-full flex items-center justify-center pointer-events-none"
+                style={{ right: -2, bottom: -2, width: 22, height: 22, background: "var(--accent)", border: "2px solid var(--surface)", color: "#000" }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                {profile?.display_name || user?.email?.split("@")[0] || "Account"}
+              </div>
+              <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+                {user?.email}
+              </div>
+              <div className="text-caption font-mono mt-2 inline-flex items-center px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                {(profile?.plan || "free").toUpperCase()}
+              </div>
+            </div>
           </div>
-        </div>
+
+          {avatarPickerOpen && (
+            <div className="mb-5 rounded-lg p-3" style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
+              <div className="text-xs font-medium uppercase tracking-wide mb-2.5" style={{ color: "var(--text-faint)" }}>
+                Pick a style
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {AVATAR_STYLES.map((s) => {
+                  const active = avatarStyle === s.id;
+                  const previewUrl = s.id === "oauth"
+                    ? (user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", 48))
+                    : dicebearStyleUrl(s.dicebearStyle!, user?.email || "user", 48);
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => selectAvatarStyle(s.id)}
+                      className="flex flex-col items-center gap-1.5 p-2 rounded-md transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{
+                        background: active ? "var(--accent-dim)" : "transparent",
+                        border: `1px solid ${active ? "var(--accent)" : "var(--border-dim)"}`,
+                      }}
+                    >
+                      <img src={previewUrl} alt="" className="rounded-full" style={{ width: 36, height: 36, border: "1px solid var(--border)" }} />
+                      <span className="text-[10px]" style={{ color: active ? "var(--accent)" : "var(--text-muted)" }}>{s.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+              Display name
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Your name"
+                className="flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-colors"
+                style={{
+                  background: "var(--background)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                }}
+              />
+              <button
+                onClick={handleSaveDisplayName}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ background: "var(--accent)", color: "#000", opacity: saving ? 0.6 : 1 }}
+              >
+                {saving ? "Saving..." : saved ? "Saved" : "Save"}
+              </button>
+            </div>
+          </div>
+        </section>
 
         </>)}
 
@@ -402,10 +535,8 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
         {activeSection === "hub" && (<>
 
         {/* Hub URL — opt-in public knowledge hub */}
-        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--accent)" }}>
-            Knowledge Hub
-          </label>
+        <section className="mb-2">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Knowledge Hub</h2>
           <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             A single URL pointing to all your public docs and bundles — paste it into any AI to deploy your entire hub as context. Disabled by default.
           </p>
@@ -479,7 +610,7 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
               </Link>
             )}
           </div>
-        </div>
+        </section>
 
         </>)}
 
@@ -514,99 +645,99 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
         {/* ── Appearance section ── */}
         {activeSection === "appearance" && (<>
 
-        {/* Theme */}
-        <div className="mb-8">
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
-            Theme
-          </label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleThemeChange("dark")}
-              className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: theme === "dark" ? "var(--accent-dim)" : "var(--surface)",
-                border: `1px solid ${theme === "dark" ? "var(--accent)" : "var(--border)"}`,
-                color: theme === "dark" ? "var(--accent)" : "var(--text-secondary)",
-              }}
-            >
-              Dark
-            </button>
-            <button
-              onClick={() => handleThemeChange("light")}
-              className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: theme === "light" ? "var(--accent-dim)" : "var(--surface)",
-                border: `1px solid ${theme === "light" ? "var(--accent)" : "var(--border)"}`,
-                color: theme === "light" ? "var(--accent)" : "var(--text-secondary)",
-              }}
-            >
-              Light
-            </button>
-          </div>
-        </div>
-
-        {/* Skin Theme — eight presets, each shown with a dark-mode and
-            a light-mode swatch so the user sees both ends of the scheme.
-            Hovering a row applies the scheme via data-scheme on the
-            root element (whole UI re-themes); leaving the row restores
-            the active selection. Clicking saves it. */}
-        <div className="mb-8">
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
-            Skin Theme
-          </label>
+        {/* Mode (formerly "Theme") — Dark vs Light. Hover previews
+            apply live so the user sees the swap before clicking. */}
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Mode</h2>
           <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
-            Hover a theme to preview the whole UI; click to keep it.
+            Light or dark canvas. Hover to preview, click to keep.
           </p>
-          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
-            {COLOR_SCHEMES.map((s, idx) => {
-              const isSelected = skinScheme === s.name;
-              const isLast = idx === COLOR_SCHEMES.length - 1;
+          <div className="flex gap-2">
+            {(["dark", "light"] as const).map((t) => {
+              const active = theme === t;
               return (
                 <button
-                  key={s.name}
-                  onClick={() => selectScheme(s.name)}
-                  onMouseEnter={() => applyScheme(s.name)}
-                  onMouseLeave={() => applyScheme(skinScheme)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--toggle-bg)]"
+                  key={t}
+                  onClick={() => handleThemeChange(t)}
+                  onMouseEnter={() => previewTheme(t)}
+                  onMouseLeave={restoreTheme}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                   style={{
-                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
-                    background: isSelected ? "var(--accent-dim)" : "transparent",
+                    background: active ? "var(--accent-dim)" : "var(--surface)",
+                    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                    color: active ? "var(--accent)" : "var(--text-secondary)",
                   }}
                 >
-                  {/* Dual swatch — dark BG + light BG of the scheme,
-                      both carrying the scheme's signature hue so the
-                      user sees how it sits over each canvas. */}
-                  <span className="flex items-center gap-1 shrink-0" title={`${s.label} — ${s.desc}`}>
-                    <span
-                      className="rounded-md flex items-center justify-center"
-                      style={{ width: 22, height: 22, background: s.darkBg, border: "1px solid var(--border-dim)" }}
-                    >
-                      <span className="rounded-full" style={{ width: 9, height: 9, background: s.preview }} />
-                    </span>
-                    <span
-                      className="rounded-md flex items-center justify-center"
-                      style={{ width: 22, height: 22, background: s.lightBg, border: "1px solid var(--border-dim)" }}
-                    >
-                      <span className="rounded-full" style={{ width: 9, height: 9, background: s.preview }} />
-                    </span>
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{s.label}</div>
-                    <div className="text-xs" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
-                  </div>
-                  {isSelected && (
-                    <Check width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
-                  )}
+                  {t === "dark" ? "Dark" : "Light"}
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
+
+        {/* Skin Theme — each preset offers TWO clickable variants
+            (dark + light). Hovering either previews scheme + mode
+            together; clicking commits both. The label shows which
+            (scheme, mode) pair is the currently active one. */}
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Skin Theme</h2>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+            Each row offers a dark and a light pick — hover to preview the entire UI re-skinning live, click to keep that scheme + mode.
+          </p>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+            {COLOR_SCHEMES.map((s, idx) => {
+              const isSchemeSelected = skinScheme === s.name;
+              const isLast = idx === COLOR_SCHEMES.length - 1;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center gap-3 px-3 py-2.5"
+                  style={{
+                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
+                    background: isSchemeSelected ? "var(--accent-dim)" : "transparent",
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(["dark", "light"] as const).map((mode) => {
+                      const active = isSchemeSelected && theme === mode;
+                      const bg = mode === "dark" ? s.darkBg : s.lightBg;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={() => selectSchemeWithTheme(s.name, mode)}
+                          onMouseEnter={() => previewSchemeTheme(s.name, mode)}
+                          onMouseLeave={restoreSchemeTheme}
+                          className="rounded-md flex items-center justify-center transition-transform hover:scale-[1.05]"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            background: bg,
+                            border: active ? "1.5px solid var(--accent)" : "1px solid var(--border-dim)",
+                          }}
+                          title={`${s.label} — ${mode}`}
+                        >
+                          <span className="rounded-full" style={{ width: 11, height: 11, background: s.preview }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium" style={{ color: isSchemeSelected ? "var(--accent)" : "var(--text-primary)" }}>{s.label}</div>
+                    <div className="text-xs" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
+                  </div>
+                  {isSchemeSelected && (
+                    <Check width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* Key Color — eight accents. Each row shows the dark-mode
             tone next to the light-mode tone so the user sees both
             variants; hovering applies the accent globally. */}
-        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+        <section className="mb-2">
           <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
             Key Color
           </label>
@@ -652,7 +783,7 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
               );
             })}
           </div>
-        </div>
+        </section>
 
         </>)}
 
@@ -660,10 +791,8 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
         {activeSection === "auto-management" && (<>
 
         {/* Auto-management — Curator toggle list */}
-        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--accent)" }}>
-            Auto-management
-          </label>
+        <section className="mb-2">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Auto-management</h2>
           <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
             Curator signals scan your hub and surface findings in Needs Review. With auto-management ON, safe findings are resolved for you on the trigger you pick; destructive ones (like duplicate trash) still ask first. With it OFF, findings just surface and you act on them by hand.
           </p>
@@ -816,7 +945,7 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
           <p className="text-xs mt-3" style={{ color: "var(--text-faint)" }}>
             Synced to your account — settings follow you across devices. Local cache stays in case you go offline.
           </p>
-        </div>
+        </section>
 
         </>)}
 
@@ -824,23 +953,85 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             adjacent). Re-open the profile fragment for it. */}
         {activeSection === "profile" && (<>
 
-        {/* Plan Info */}
-        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
-            Plan
-          </label>
-          <div className="flex items-center gap-2">
-            <span
-              className="text-xs px-2 py-1 rounded font-mono font-semibold"
-              style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
-            >
-              {(profile?.plan || "free").toUpperCase()}
-            </span>
-            <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-              Unlimited documents, free forever.
-            </span>
-          </div>
-        </div>
+        {/* Plan — current tier badge + side-by-side comparison of
+            Free vs Pro with the upgrade CTA. Pro card is the
+            primary call-to-action; Free card just confirms what
+            the user already has. Both cards keep the bordered-
+            surface style the rest of Settings uses; the Pro card
+            adds an accent border so the eye lands on it. */}
+        <section className="mb-2">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Plan</h2>
+          <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+            You&apos;re on the <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{(profile?.plan || "free").toUpperCase()}</span> plan. Free covers the core workflow; Pro adds custom domain, branding, and viewer analytics.
+          </p>
+          {(() => {
+            const isPro = profile?.plan === "pro";
+            const FREE_FEATURES = [
+              "Unlimited docs, bundles, and hubs",
+              "Deploy to any AI (Claude, ChatGPT, Cursor)",
+              "Auto-management (curator findings)",
+              "Cross-device sync",
+            ];
+            const PRO_FEATURES = [
+              "Everything in Free",
+              "Custom domain (yourname.mdfy.app)",
+              "Remove mdfy badge from public hub",
+              "Viewer analytics (who opened, how long)",
+              "Priority concept extraction + larger limits",
+            ];
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Free</span>
+                    {!isPro && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>
+                        CURRENT
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$0 · forever</p>
+                  <ul className="space-y-1.5">
+                    {FREE_FEATURES.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                        <Check width={11} height={11} className="shrink-0 mt-0.5" style={{ color: "var(--text-muted)" }} />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-xl p-4 relative" style={{ background: "var(--surface)", border: `1px solid ${isPro ? "var(--accent)" : "var(--border)"}` }}>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Pro</span>
+                    {isPro ? (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>CURRENT</span>
+                    ) : (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.14)", color: "#f59e0b" }}>UPGRADE</span>
+                    )}
+                  </div>
+                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$8/mo · cancel any time</p>
+                  <ul className="space-y-1.5 mb-3">
+                    {PRO_FEATURES.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                        <Check width={11} height={11} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {!isPro && (
+                    <button
+                      onClick={() => window.open("/pricing", "_blank")}
+                      className="w-full px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      style={{ background: "var(--accent)", color: "#000" }}
+                    >
+                      Upgrade to Pro
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </section>
 
         </>)}
 
