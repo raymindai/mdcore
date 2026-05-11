@@ -381,7 +381,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
           </div>
         )}
         <header className="mb-8">
-          <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.1 }}>
+          <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
             Settings
           </h1>
           <p className="text-body mt-1.5" style={{ color: "var(--text-secondary)" }}>
@@ -496,7 +496,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
           )}
 
           <div>
-            <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+            <label className="block text-caption font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
               Display name
             </label>
             <div className="flex gap-2">
@@ -531,8 +531,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
 
         {/* Hub URL — opt-in public knowledge hub */}
         <section className="mb-2">
-          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Knowledge Hub</h2>
-          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Knowledge Hub</h2>
+          <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             A single URL pointing to all your public docs and bundles — paste it into any AI to deploy your entire hub as context. Disabled by default.
           </p>
           <label className="flex items-center gap-2 mb-3 cursor-pointer">
@@ -619,7 +619,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
 
         {/* Email (read-only) */}
         <div className="mb-6">
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+          <label className="block text-caption font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
             Email
           </label>
           <div
@@ -643,8 +643,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
         {/* Mode (formerly "Theme") — Dark vs Light. Hover previews
             apply live so the user sees the swap before clicking. */}
         <section className="mb-6">
-          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Mode</h2>
-          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Mode</h2>
+          <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Light or dark canvas. Hover to preview, click to keep.
           </p>
           <div className="flex gap-2">
@@ -675,8 +675,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             together; clicking commits both. The label shows which
             (scheme, mode) pair is the currently active one. */}
         <section className="mb-6">
-          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Skin Theme</h2>
-          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Skin Theme</h2>
+          <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Each row offers a dark and a light pick — hover to preview the entire UI re-skinning live, click to keep that scheme + mode.
           </p>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -733,10 +733,10 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             tone next to the light-mode tone so the user sees both
             variants; hovering applies the accent globally. */}
         <section className="mb-2">
-          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+          <label className="block text-caption font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
             Key Color
           </label>
-          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+          <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Hover a color to preview it across the UI; click to keep it.
           </p>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -787,8 +787,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
 
         {/* Auto-management — Curator toggle list */}
         <section className="mb-2">
-          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Auto-management</h2>
-          <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Auto-management</h2>
+          <p className="text-caption leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
             Curator signals scan your hub and surface findings in Needs Review. With auto-management ON, safe findings are resolved for you on the trigger you pick; destructive ones (like duplicate trash) still ask first. With it OFF, findings just surface and you act on them by hand.
           </p>
 
@@ -955,8 +955,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             surface style the rest of Settings uses; the Pro card
             adds an accent border so the eye lands on it. */}
         <section className="mb-2">
-          <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Plan</h2>
-          <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Plan</h2>
+          <p className="text-caption leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
             You&apos;re on the <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{(profile?.plan || "free").toUpperCase()}</span> plan. Free covers the core workflow; Pro adds custom domain, branding, and viewer analytics.
           </p>
           {(() => {
