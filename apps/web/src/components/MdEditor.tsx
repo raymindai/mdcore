@@ -6061,10 +6061,18 @@ export default function MdEditor() {
   // Subscribe to document updates when a cloud document is active in the editor.
   // If local is clean → auto-pull; if dirty → show toast with Pull/Ignore.
   const realtimeLastSaveRef = useRef<number>(0); // timestamp of our own last save
+  // Transient "Saved" pill state — flips true when autoSave reports a
+  // successful save, then drops back to false after 2.5s so the
+  // header indicator doesn't camp on screen for the whole session.
+  // The lastSaved Date itself stays around (other code reads it for
+  // stale-conflict checks); this is just a UI fade flag.
+  const [recentlySaved, setRecentlySaved] = useState(false);
   useEffect(() => {
-    // Mark our own save timestamp whenever autoSave completes
     if (autoSave.lastSaved) {
       realtimeLastSaveRef.current = autoSave.lastSaved.getTime();
+      setRecentlySaved(true);
+      const t = setTimeout(() => setRecentlySaved(false), 2500);
+      return () => clearTimeout(t);
     }
   }, [autoSave.lastSaved]);
 
@@ -8618,11 +8626,13 @@ ${clone.innerHTML}
                 <span style={{ color: "#ef4444" }}>{autoSave.error}</span>
               </>
             )}
-            {autoSave.lastSaved && !autoSave.isSaving && !autoSave.error && (
-              <>
-                <CircleCheck width={11} height={11} style={{ color: "#22c55e" }} />
-                <span style={{ color: "var(--text-faint)" }}>Saved</span>
-              </>
+            {recentlySaved && !autoSave.isSaving && !autoSave.error && (
+              <span className="transition-opacity duration-500" style={{ opacity: 1 }}>
+                <span className="inline-flex items-center gap-1">
+                  <CircleCheck width={11} height={11} style={{ color: "#22c55e" }} />
+                  <span style={{ color: "var(--text-faint)" }}>Saved</span>
+                </span>
+              </span>
             )}
           </span>
           {/* "Compiled — Memo/FAQ/Brief" badge + "Update synthesis"
@@ -12577,7 +12587,7 @@ ${clone.innerHTML}
             )}
             {/* Toolbar hint for new users — visible only in Live view when toolbar is hidden */}
             {/* Toolbar hint removed — now integrated into toolbar toggle button */}
-            {(activeTab?.readonly || activeTab?.permission === "readonly") && (
+            {(activeTab?.readonly || activeTab?.permission === "readonly") && !showHub && !showSettings && !showOnboarding && (
               <div
                 className="flex items-center justify-between gap-3 px-3 py-2 text-caption"
                 style={{
