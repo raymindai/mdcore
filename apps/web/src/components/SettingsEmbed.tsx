@@ -153,17 +153,27 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
     if (a === "orange") document.documentElement.removeAttribute("data-accent");
     else document.documentElement.setAttribute("data-accent", a);
   };
+  // Broadcast helper — tells MdEditor's useTheme to re-read from
+  // localStorage so the profile menu's FlyoutMenu reflects the new
+  // selection. Without this the menu still shows the OLD scheme /
+  // accent because we update DOM + localStorage but not useTheme's
+  // React state.
+  const broadcastThemeChange = () => {
+    try { window.dispatchEvent(new CustomEvent("mdfy-theme-changed")); } catch { /* ignore */ }
+  };
   const selectScheme = (s: ColorScheme) => {
     setSkinScheme(s);
     applyScheme(s);
     try { localStorage.setItem("mdfy-scheme", s); } catch {}
     syncPrefToProfile("color_scheme", s);
+    broadcastThemeChange();
   };
   const selectAccent = (a: AccentColor) => {
     setKeyColor(a);
     applyAccent(a);
     try { localStorage.setItem("mdfy-accent", a); } catch {}
     syncPrefToProfile("accent_color", a);
+    broadcastThemeChange();
   };
   const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
   useEffect(() => {
@@ -306,6 +316,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
     setTheme(newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
     try { localStorage.setItem("mdfy-theme", newTheme); } catch {}
+    try { window.dispatchEvent(new CustomEvent("mdfy-theme-changed")); } catch { /* ignore */ }
   };
   // Hover-preview helpers for Theme — applies the candidate to the
   // <html> attribute without flipping React state. Leave restores

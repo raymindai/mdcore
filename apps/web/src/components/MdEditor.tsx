@@ -1570,6 +1570,29 @@ function useTheme() {
     }
   }, [colorScheme]);
 
+  // Cross-component sync — when SettingsEmbed (or any future caller)
+  // changes the saved theme/accent/scheme without going through this
+  // hook's setters, it dispatches "mdfy-theme-changed" so the values
+  // re-hydrate from localStorage here. Without this, the profile
+  // menu's FlyoutMenu (which reads colorScheme/accentColor from
+  // useTheme) shows the OLD selection after the user picked a new
+  // one in Settings.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onSync = () => {
+      try {
+        const nextTheme = (localStorage.getItem("mdfy-theme") as Theme) || "dark";
+        const nextAccent = (localStorage.getItem("mdfy-accent") as AccentColor) || "orange";
+        const nextScheme = (localStorage.getItem("mdfy-scheme") as ColorScheme) || "default";
+        setThemeState(nextTheme);
+        setAccentColorState(nextAccent);
+        setColorSchemeState(nextScheme);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("mdfy-theme-changed", onSync);
+    return () => window.removeEventListener("mdfy-theme-changed", onSync);
+  }, []);
+
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
     document.documentElement.setAttribute("data-theme", t);
