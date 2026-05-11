@@ -10748,8 +10748,8 @@ ${clone.innerHTML}
                       {lintReport.orphans.slice(0, 8).map((o) => (
                         <div
                           key={`orphan-${o.id}`}
-                          className="group/lint relative flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
-                          style={{ color: "var(--text-muted)" }}
+                          className="group/lint relative flex items-center gap-1.5 px-2 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          style={{ color: "var(--text-muted)", height: 28 }}
                           title="Orphan — not in any bundle, not linked from any other doc. Resolve re-runs concept extraction on this doc."
                         >
                           <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>orphan</span>
@@ -10788,8 +10788,8 @@ ${clone.innerHTML}
                       {lintReport.duplicates.slice(0, 8).map((p) => (
                         <div
                           key={`dup-${p.a.id}-${p.b.id}`}
-                          className="group/lint relative flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
-                          style={{ color: "var(--text-muted)" }}
+                          className="group/lint relative flex items-center gap-1.5 px-2 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
+                          style={{ color: "var(--text-muted)", height: 28 }}
                           title={`Likely duplicate — distance ${p.distance.toFixed(3)}. Resolve moves the older copy to Trash and keeps the newer one.`}
                         >
                           <span className="shrink-0 px-1 rounded-sm font-mono uppercase" style={{ fontSize: 8, letterSpacing: 0.5, color: "var(--accent)", border: "1px solid var(--accent-dim)" }}>dup</span>
