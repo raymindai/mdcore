@@ -673,6 +673,74 @@ Your documents sync across all 7 mdfy channels:
 Same URL, same content, everywhere.
 `;
 
+/**
+ * Profile-menu flyout row. Renders a hover-target row + an absolutely-
+ * positioned submenu that opens to the right. Uses a controlled
+ * `open` state with a 120ms close-delay so the cursor can cross the
+ * gap between the row and the submenu without dropping hover. The
+ * earlier Tailwind `group-hover` version dropped the submenu the
+ * moment the cursor left the row's exact bounds — common cause of
+ * "hover doesn't work" on nested menus.
+ */
+function FlyoutMenu({
+  label,
+  icon,
+  width,
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  width: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => setOpen(false), 120);
+  };
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => { cancelClose(); setOpen(true); }}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        <span className="flex items-center gap-2">
+          {icon}
+          {label}
+        </span>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
+      </button>
+      {open && (
+        <div
+          className="absolute left-full bottom-0 pl-2 z-[9999]"
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        >
+          <div
+            className="rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
+            style={{
+              width,
+              background: "var(--menu-bg)",
+              border: "1px solid var(--border)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Truncate title respecting grapheme clusters (emoji-safe) */
 function truncateTitle(title: string, max: number): string {
   if (title.length <= max) return title;
@@ -2807,6 +2875,12 @@ export default function MdEditor() {
     }
   });
   const [showShareModal, setShowShareModal] = useState(false);
+  // True while the Share modal is open and the parent is rehydrating
+  // the doc's authoritative permission state from the server. Drives
+  // the ShareModal's skeleton — without it the modal would render
+  // with stale "Anyone with the link" defaults for ~2s, then flip to
+  // the real state, which read as a bug.
+  const [shareModalLoading, setShareModalLoading] = useState(false);
   const [showViewerShareModal, setShowViewerShareModal] = useState(false);
   const [allowedEmails, setAllowedEmailsState] = useState<string[]>([]);
   const [allowedEditors, setAllowedEditorsState] = useState<string[]>([]);
@@ -7457,7 +7531,8 @@ export default function MdEditor() {
 
     const isMine = !currentTab?.permission || currentTab.permission === "mine";
     if (cid && isMine && isAuthenticated && user) {
-      // Open modal immediately — data loads in background
+      // Open modal immediately with a skeleton — data loads in background.
+      setShareModalLoading(true);
       setShowShareModal(true);
 
       // Background: sync title + fetch current sharing state (do NOT auto-publish)
@@ -7487,6 +7562,7 @@ export default function MdEditor() {
             } : t));
           }
         } catch { /* ignore */ }
+        finally { setShareModalLoading(false); }
       })();
       return;
     }
@@ -11227,70 +11303,59 @@ ${clone.innerHTML}
                           </span>
                         </button>
                       </div>
-                      {/* Appearance: Skin Theme first, then Key Color */}
+                      {/* Appearance: Skin Theme first, then Key Color.
+                          Flyouts use a controlled hoverFlyout state +
+                          120ms close-delay so the mouse can travel
+                          across the gap between row and submenu
+                          without losing hover. The earlier Tailwind
+                          group-hover version dropped the submenu the
+                          moment the cursor left the row's exact
+                          bounding box. */}
                       <div className="py-1" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-                        {/* Skin Theme — flyout */}
-                        <div className="relative group/skin">
-                          <button
-                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            <span className="flex items-center gap-2">
-                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12"/><path d="M6 6v8"/></svg>
-                              Skin Theme
-                            </span>
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
-                          </button>
-                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/skin:block z-[9999]"><div className="w-40 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
-                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
-                            {COLOR_SCHEMES.map(s => (
-                              <button
-                                key={s.name}
-                                onClick={() => setColorScheme(s.name)}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-[var(--menu-hover)]"
-                                style={{ color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)" }}
-                              >
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview, outline: colorScheme === s.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
-                                <span>
-                                  <span className="text-caption block" style={{ fontWeight: colorScheme === s.name ? 600 : 400 }}>{s.label}</span>
-                                  <span className="text-caption block" style={{ color: "var(--text-faint)" }}>{s.desc}</span>
-                                </span>
-                              </button>
-                            ))}
-                          </div></div>
-                        </div>
-                        {/* Key Color — flyout */}
-                        <div className="relative group/keycolor">
-                          <button
-                            className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center justify-between"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />
-                              Key Color
-                            </span>
-                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
-                          </button>
-                          <div className="absolute left-full bottom-0 pl-2 hidden group-hover/keycolor:block z-[9999]"><div className="w-32 rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
-                            style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                            <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
-                            {ACCENT_COLORS.map(c => (
-                              <button
-                                key={c.name}
-                                onClick={() => { setAccentColor(c.name); }}
-                                className="w-full flex items-center gap-2 px-3 py-1 text-caption transition-colors hover:bg-[var(--menu-hover)] text-left"
-                                style={{
-                                  color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
-                                  fontWeight: accentColor === c.name ? 600 : 400,
-                                }}
-                              >
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
-                                {c.label}
-                              </button>
-                            ))}
-                          </div></div>
-                        </div>
+                        {/* Skin Theme */}
+                        <FlyoutMenu
+                          label="Skin Theme"
+                          icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12"/><path d="M6 6v8"/></svg>}
+                          width={160}
+                        >
+                          <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Skin Theme</div>
+                          {COLOR_SCHEMES.map(s => (
+                            <button
+                              key={s.name}
+                              onClick={() => setColorScheme(s.name)}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-[var(--menu-hover)]"
+                              style={{ color: colorScheme === s.name ? "var(--accent)" : "var(--text-secondary)" }}
+                            >
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.preview, outline: colorScheme === s.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
+                              <span>
+                                <span className="text-caption block" style={{ fontWeight: colorScheme === s.name ? 600 : 400 }}>{s.label}</span>
+                                <span className="text-caption block" style={{ color: "var(--text-faint)" }}>{s.desc}</span>
+                              </span>
+                            </button>
+                          ))}
+                        </FlyoutMenu>
+                        {/* Key Color */}
+                        <FlyoutMenu
+                          label="Key Color"
+                          icon={<span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "var(--accent)" }} />}
+                          width={128}
+                        >
+                          <div className="text-caption font-mono uppercase tracking-wider mb-1 px-3 pt-1" style={{ color: "var(--text-faint)" }}>Key Color</div>
+                          {ACCENT_COLORS.map(c => (
+                            <button
+                              key={c.name}
+                              onClick={() => { setAccentColor(c.name); }}
+                              className="w-full flex items-center gap-2 px-3 py-1 text-caption transition-colors hover:bg-[var(--menu-hover)] text-left"
+                              style={{
+                                color: accentColor === c.name ? "var(--accent)" : "var(--text-secondary)",
+                                fontWeight: accentColor === c.name ? 600 : 400,
+                              }}
+                            >
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: theme === "dark" ? c.dark : c.light, outline: accentColor === c.name ? "1.5px solid var(--accent)" : "1px solid var(--border)", outlineOffset: "1px" }} />
+                              {c.label}
+                            </button>
+                          ))}
+                        </FlyoutMenu>
                       </div>
                       {/* Account section. Hub + Settings share one
                           group; Sign Out lives below a divider so it
@@ -14408,6 +14473,7 @@ ${clone.innerHTML}
           currentEditMode={docEditMode}
           initialAllowedEmails={allowedEmails}
           initialAllowedEditors={allowedEditors}
+          loading={shareModalLoading}
           onClose={() => {
             setShowShareModal(false);
             const curTabId = activeTabIdRef.current;

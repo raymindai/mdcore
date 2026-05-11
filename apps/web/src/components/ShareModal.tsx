@@ -40,6 +40,13 @@ interface ShareModalProps {
   banner?: ReactNode;
   // Title for the dialog header. Defaults to `Share "<title>"`.
   headerTitle?: string;
+  /** When true, the modal body renders a thin skeleton instead of
+   *  the live access controls. Callers flip this to true while they
+   *  rehydrate the doc's authoritative permission state from the
+   *  server — otherwise the modal opens with stale "Anyone with
+   *  the link" defaults and flips to the real state ~2s later, which
+   *  read as a bug. */
+  loading?: boolean;
 }
 
 function ShareModal({
@@ -63,6 +70,7 @@ function ShareModal({
   shareUrlOverride,
   banner,
   headerTitle,
+  loading = false,
 }: ShareModalProps) {
   const setAllowedEmailsFn = setAllowedEmailsOverride || defaultSetAllowedEmails;
   const changeEditModeFn = changeEditModeOverride || defaultChangeEditMode;
@@ -277,8 +285,34 @@ function ShareModal({
       }
     >
       <div>
+        {/* Loading skeleton — replaces the access controls while the
+            parent rehydrates the doc's authoritative state. Previously
+            the modal would render with stale "Anyone with the link"
+            defaults for ~2s, then flicker to the real state when the
+            fetch returned. Now nothing user-actionable shows until
+            we know the truth. */}
+        {loading && (
+          <div className="py-2" aria-busy="true">
+            <div className="text-caption mb-3" style={{ color: "var(--text-faint)" }}>Loading share settings…</div>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="mb-2 rounded-lg"
+                style={{
+                  height: i === 0 ? 40 : 32,
+                  background: "linear-gradient(90deg, var(--surface) 0%, var(--toggle-bg) 50%, var(--surface) 100%)",
+                  backgroundSize: "200% 100%",
+                  animation: "mdfy-skeleton 1.4s ease-in-out infinite",
+                  opacity: 0.7,
+                }}
+              />
+            ))}
+            <style>{`@keyframes mdfy-skeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+          </div>
+        )}
+
         {/* Add people */}
-        <div className="pb-4">
+        {!loading && <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Share with people
           </label>
@@ -316,10 +350,10 @@ function ShareModal({
               Add
             </Button>
           </div>
-        </div>
+        </div>}
 
         {/* People with access */}
-        {(emails.length > 0 || true) && (
+        {!loading && (emails.length > 0 || true) && (
           <div className="pb-4">
             <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
               People with access
@@ -418,7 +452,7 @@ function ShareModal({
         )}
 
         {/* Optional banner slot — bundle share uses this for cascade warning */}
-        {banner && (
+        {!loading && banner && (
           <div className="pb-4">{banner}</div>
         )}
 
@@ -427,7 +461,7 @@ function ShareModal({
             Shared / Public. There's no "Draft" anywhere — a saved doc
             just sits in the cloud as Private until the owner promotes
             it. */}
-        <div className="pb-4">
+        {!loading && <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Who can read
           </label>
@@ -486,7 +520,7 @@ function ShareModal({
               );
             })}
           </div>
-        </div>
+        </div>}
 
       </div>
     </ModalShell>
