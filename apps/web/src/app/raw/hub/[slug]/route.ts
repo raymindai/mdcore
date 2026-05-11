@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
-import { compactMarkdown, estimateTokens, isCompactRequested, isDigestRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, isDigestRequested, isFullRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
 import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 /**
@@ -69,11 +69,17 @@ export async function GET(
   }
 
   const compact = isCompactRequested(request.url);
-  const digest = isDigestRequested(request.url);
+  // Digest is now the DEFAULT for hub URLs — the concept-clustered
+  // summary is ~30-40x cheaper for AI to consume and gives the same
+  // navigation surface (inline links to dive deeper as needed).
+  // Callers that explicitly want the per-doc listing can opt out
+  // with ?full=1 (or the legacy ?digest=0). Legacy ?digest=1 still
+  // works as a no-op since digest is already the default.
+  const digest = !isFullRequested(request.url);
+  // Reference the legacy helper so the import stays exercised; the
+  // value is already implicit in the default.
+  void isDigestRequested;
 
-  // Digest mode bypasses the index entirely — produces a concept-clustered
-  // summary from concept_index that's an order of magnitude denser than
-  // the per-doc listing for "what does this person know about X" queries.
   if (digest) {
     const body = await renderDigest({
       supabase,

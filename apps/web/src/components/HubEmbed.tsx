@@ -209,6 +209,9 @@ export default function HubEmbed({
   // to render. With a snapshot we revalidate in the background.
   const [loading, setLoading] = useState(!cachedEntry);
   const [copied, setCopied] = useState(false);
+  // Separate state for the "?full=1" copy button so the two pills
+  // don't share a single "Copied" green flash.
+  const [copiedFull, setCopiedFull] = useState(false);
   const [suggestions, setSuggestions] = useState<HubSuggestions | null>(null);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
@@ -301,6 +304,14 @@ export default function HubEmbed({
       await navigator.clipboard.writeText(data.hub.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+  const copyFullUrl = async () => {
+    if (!data) return;
+    try {
+      await navigator.clipboard.writeText(`${data.hub.url}?full=1`);
+      setCopiedFull(true);
+      setTimeout(() => setCopiedFull(false), 1500);
     } catch { /* ignore */ }
   };
 
@@ -451,16 +462,26 @@ export default function HubEmbed({
                 Deploy this hub to any AI
               </p>
               <p className="text-caption leading-relaxed mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches a structured index and follows inline links.
+                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches a structured index and follows inline links to dive deeper as needed.
               </p>
             </div>
           </div>
-          {/* URL row — full-width pill with the URL on the left and
-              an embedded copy affordance on the right. Single border
-              instead of the previous URL-box + Copy-pill seam. */}
+          {/* Primary URL — digest by default. Compact concept-clustered
+              summary, ~30-40x cheaper than the per-doc index, and the
+              AI can still dive into individual docs via the inline
+              links. Use the second pill below for the full per-doc
+              index when you want the AI to see everything up-front. */}
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
+              Digest · default
+            </span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+              compact concept map · cheap to paste
+            </span>
+          </div>
           <button
             onClick={copyUrl}
-            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-2"
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
             style={{
               background: "var(--background)",
               color: copied ? "#22c55e" : "var(--text-primary)",
@@ -472,6 +493,33 @@ export default function HubEmbed({
             <span className="flex items-center gap-1 shrink-0" style={{ color: copied ? "#22c55e" : "var(--text-faint)" }}>
               {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
               <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            </span>
+          </button>
+          {/* Secondary URL — full per-doc index. Same hub, but every
+              doc's metadata expanded inline. Heavier; only use when
+              the AI needs to see the whole library up front. */}
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.5 }}>
+              Full index · ?full=1
+            </span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+              every doc inline · heavier
+            </span>
+          </div>
+          <button
+            onClick={copyFullUrl}
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
+            style={{
+              background: "var(--background)",
+              color: copiedFull ? "#22c55e" : "var(--text-muted)",
+              border: `1px solid ${copiedFull ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+            }}
+            title="Copy URL (full index)"
+          >
+            <span className="flex-1 text-left truncate">{data.hub.url}?full=1</span>
+            <span className="flex items-center gap-1 shrink-0" style={{ color: copiedFull ? "#22c55e" : "var(--text-faint)" }}>
+              {copiedFull ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+              <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
           {/* Secondary actions sit on the surface-tinted card, so a
@@ -513,12 +561,11 @@ export default function HubEmbed({
             const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
             return (
               <p
-                className="text-caption mt-2.5 font-mono leading-relaxed"
+                className="text-caption mt-1 font-mono leading-relaxed"
                 style={{ color: "var(--text-faint)", fontSize: 10 }}
-                title="Estimated token cost when an AI fetches this hub. Lower = cheaper to cite. The digest path uses your concept ontology to answer broad queries without reading every doc."
+                title="Estimated tokens an AI pays to consume this hub. The digest path uses your concept ontology so broad queries can be answered without reading every doc."
               >
-                ≈ {fmt(indexTokens)} tokens for the full index
-                {digestTokens > 0 ? ` • ≈ ${fmt(digestTokens)} tokens via ?digest=1` : ""}
+                {digestTokens > 0 ? `Digest ≈ ${fmt(digestTokens)} tokens · ` : ""}Full ≈ {fmt(indexTokens)} tokens
               </p>
             );
           })()}

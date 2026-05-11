@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { permissionResponse } from "@/lib/permission-response";
-import { compactMarkdown, estimateTokens, isCompactRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
+import { compactMarkdown, estimateTokens, isCompactRequested, isFullRequested, tokenEconomyHeaders } from "@/lib/markdown-compact";
 import { extractRequestSignals, logRawFetch } from "@/lib/raw-telemetry";
 
 /**
@@ -135,6 +135,12 @@ export async function GET(
   if (description) sections.push(`> ${description.split("\n").join("\n> ")}`);
 
   const compact = isCompactRequested(request.url);
+  // Digest-first: by default the bundle's raw payload is JUST the
+  // doc list (titles + annotations + links). The AI follows the
+  // links per-doc as needed. ?full=1 returns the legacy behaviour
+  // where every doc body is concatenated inline — multi-x heavier,
+  // sometimes blows past context windows for big bundles.
+  const fullMode = isFullRequested(request.url);
 
   let visibleIdx = 0;
   for (const bd of bundleDocs || []) {
@@ -144,15 +150,27 @@ export async function GET(
     const docTitle = d!.title || "Untitled";
     const docUrl = `https://mdfy.app/${d!.id}`;
     const annotation = (bd.annotation || "").trim();
-    sections.push(`## ${visibleIdx}. ${docTitle}`);
-    sections.push(`*Source: ${docUrl}*`);
-    if (annotation) sections.push(`> ${annotation.split("\n").join("\n> ")}`);
-    const docMd = d!.markdown || "";
-    sections.push(compact ? compactMarkdown(docMd) : docMd);
+    if (fullMode) {
+      sections.push(`## ${visibleIdx}. ${docTitle}`);
+      sections.push(`*Source: ${docUrl}*`);
+      if (annotation) sections.push(`> ${annotation.split("\n").join("\n> ")}`);
+      const docMd = d!.markdown || "";
+      sections.push(compact ? compactMarkdown(docMd) : docMd);
+    } else {
+      // Digest row — single line per doc with the title as a link
+      // and the annotation (if any) as a continuation. Mirrors the
+      // hub digest's terse shape; AI follows the link for the body.
+      const annotationSuffix = annotation ? ` — ${annotation.replace(/\s+/g, " ")}` : "";
+      sections.push(`${visibleIdx}. [${docTitle}](${docUrl})${annotationSuffix}`);
+    }
   }
 
   if (visibleIdx === 0) {
     sections.push("_This bundle currently exposes no public documents._");
+  }
+
+  if (!fullMode && visibleIdx > 0) {
+    sections.push("\n_Digest view — follow any link above to fetch that doc's full markdown. Add `?full=1` to this URL for the concatenated payload._");
   }
 
   const joined = `${frontmatter}\n${sections.join("\n\n")}`;
@@ -163,6 +181,7 @@ export async function GET(
     route: "bundle",
     resource: bundle.id,
     compact,
+    digest: !fullMode,
     bytes: Buffer.byteLength(body, "utf8"),
     tokens: estimateTokens(body),
     status: 200,
@@ -178,7 +197,8 @@ export async function GET(
       "Link": `<https://mdfy.app/b/${bundle.id}>; rel="canonical"`,
       "X-Bundle-ID": bundle.id,
       "X-Document-Count": String(includedCount),
-      ...tokenEconomyHeaders(body, { compact }),
+      "X-Mdfy-Mode": fullMode ? "full" : "digest",
+      ...tokenEconomyHeaders(body, { compact, digest: !fullMode }),
     },
   });
 }

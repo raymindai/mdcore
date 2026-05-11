@@ -108,3 +108,17 @@ export function isDigestRequested(url: string | URL): boolean {
   const v = (u.searchParams.get("digest") || "").toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
+
+// Opt-OUT of the new digest-first defaults. `?full=1` on hub or
+// bundle URLs returns the heavy, full-content payload instead of
+// the lightweight digest. Also accepts `?digest=0` for symmetry.
+export function isFullRequested(url: string | URL): boolean {
+  const u = typeof url === "string" ? new URL(url) : url;
+  const full = (u.searchParams.get("full") || "").toLowerCase();
+  if (full === "1" || full === "true" || full === "yes" || full === "on") return true;
+  const digest = u.searchParams.get("digest");
+  if (digest !== null && (digest === "0" || digest.toLowerCase() === "false" || digest.toLowerCase() === "off")) {
+    return true;
+  }
+  return false;
+}

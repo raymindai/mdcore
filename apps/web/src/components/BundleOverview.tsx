@@ -110,6 +110,7 @@ export default function BundleOverview({
   onSwitchToList,
 }: BundleOverviewProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedFull, setCopiedFull] = useState(false);
 
   const bundleUrl = useMemo(() => `https://mdfy.app/b/${bundleId}`, [bundleId]);
 
@@ -209,9 +210,17 @@ export default function BundleOverview({
                 Deploy this bundle to any AI
               </p>
               <p className="text-caption mt-0.5" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches every doc in the bundle as one merged context.
+                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. Default = compact bundle digest with inline links to each doc; the AI follows them as it needs. Add <code className="font-mono">?full=1</code> to inline every doc&apos;s body up front.
               </p>
             </div>
+          </div>
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
+              Digest · default
+            </span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+              title + annotation + links
+            </span>
           </div>
           <button
             onClick={() => {
@@ -222,7 +231,7 @@ export default function BundleOverview({
                 setTimeout(() => setCopied(false), 1200);
               });
             }}
-            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-2"
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
             style={{
               background: "var(--background)",
               color: copied ? "#22c55e" : "var(--text-primary)",
@@ -234,6 +243,36 @@ export default function BundleOverview({
             <span className="flex items-center gap-1 shrink-0" style={{ color: copied ? "#22c55e" : "var(--text-faint)" }}>
               {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
               <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            </span>
+          </button>
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.5 }}>
+              Full markdown · ?full=1
+            </span>
+            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+              every doc body inline · heavier
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof navigator === "undefined") return;
+              navigator.clipboard.writeText(`${bundleUrl}?full=1`).then(() => {
+                setCopiedFull(true);
+                setTimeout(() => setCopiedFull(false), 1200);
+              });
+            }}
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
+            style={{
+              background: "var(--background)",
+              color: copiedFull ? "#22c55e" : "var(--text-muted)",
+              border: `1px solid ${copiedFull ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+            }}
+            title={`Copy ${bundleUrl}?full=1`}
+          >
+            <span className="flex-1 text-left truncate">{bundleUrl}?full=1</span>
+            <span className="flex items-center gap-1 shrink-0" style={{ color: copiedFull ? "#22c55e" : "var(--text-faint)" }}>
+              {copiedFull ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+              <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
           <div className="flex items-center gap-1.5 flex-wrap">
