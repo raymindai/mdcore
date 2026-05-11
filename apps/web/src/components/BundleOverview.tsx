@@ -185,67 +185,80 @@ export default function BundleOverview({
           </div>
         </header>
 
-        {/* ─── Deploy panel ─── */}
+        {/* ─── Deploy panel ───
+            Surface-tinted card (matches the stat strip below and the
+            Hub's Deploy panel — consistent tonal family). URL row is
+            full-width with embedded copy; secondary actions sit on
+            their own row in bordered-neutral pills. The Sparkles
+            glyph that previously led the panel is replaced with a
+            tinted Globe-style badge that matches Hub's deploy header
+            so both surfaces read the same. */}
         <section
           className="mb-7 rounded-xl"
-          style={{ background: "var(--accent-dim)", border: "1px solid var(--border-dim)", padding: "16px 18px" }}
+          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", padding: "16px 18px" }}
         >
-          <div className="flex items-start gap-2.5 mb-2">
-            <Sparkles width={16} height={16} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-            <div>
+          <div className="flex items-start gap-3 mb-3">
+            <span
+              className="flex items-center justify-center shrink-0 mt-0.5"
+              style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
+              <Sparkles width={14} height={14} />
+            </span>
+            <div className="min-w-0 flex-1">
               <p className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>
                 Deploy this bundle to any AI
               </p>
-              <p className="text-caption" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Paste the URL into Claude, ChatGPT, or Cursor. The AI fetches every doc in the bundle as one merged context.
+              <p className="text-caption mt-0.5" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches every doc in the bundle as one merged context.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap mt-3">
-            <code
-              className="text-caption px-2.5 py-1.5 rounded font-mono flex-1 min-w-0 truncate"
-              style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-              title={bundleUrl}
-            >
-              {bundleUrl}
-            </code>
-            <button
-              onClick={() => {
-                if (typeof navigator === "undefined") return;
-                navigator.clipboard.writeText(bundleUrl).then(() => {
-                  setCopied(true);
-                  setShowCopyHint(true);
-                  setTimeout(() => setCopied(false), 1200);
-                });
-              }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption font-medium transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ background: "var(--background)", color: copied ? "var(--accent)" : "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-            >
-              {copied ? <Check width={12} height={12} /> : <Copy width={12} height={12} />}
-              {copied ? "Copied" : "Copy URL"}
-            </button>
+          <button
+            onClick={() => {
+              if (typeof navigator === "undefined") return;
+              navigator.clipboard.writeText(bundleUrl).then(() => {
+                setCopied(true);
+                setShowCopyHint(true);
+                setTimeout(() => setCopied(false), 1200);
+              });
+            }}
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-2"
+            style={{
+              background: "var(--background)",
+              color: copied ? "#22c55e" : "var(--text-primary)",
+              border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+            }}
+            title={`Copy ${bundleUrl}`}
+          >
+            <span className="flex-1 text-left truncate">{bundleUrl}</span>
+            <span className="flex items-center gap-1 shrink-0" style={{ color: copied ? "#22c55e" : "var(--text-faint)" }}>
+              {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            </span>
+          </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <a
               href={bundleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
+              className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
               style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
-              <Eye width={12} height={12} />
+              <Eye width={11} height={11} />
               View as visitor
             </a>
             <a
               href={`/b/${bundleId}.md`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption font-mono transition-colors hover:bg-[var(--toggle-bg)]"
+              className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
               style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
             >
               <ExternalLink width={11} height={11} />
               Raw .md
             </a>
           </div>
-          <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)" }}>
+          <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)", fontSize: 10 }}>
             ≈ {tokens.toLocaleString()} tokens for the full bundle
           </p>
         </section>

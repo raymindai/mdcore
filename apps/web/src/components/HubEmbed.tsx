@@ -351,95 +351,100 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
           </div>
         </header>
 
-        {/* ── Deploy-to-AI — the WHY of Hub. Border tone: the
-              accent-dim fill already signals "this is the
-              headline action"; layering a full var(--accent)
-              orange border on top read as a warning callout
-              ("too strong, especially the border" — founder).
-              Border drops to var(--border-dim) so the panel
-              still stands apart but doesn't shout. ─────────── */}
+        {/* ── Deploy-to-AI — the WHY of Hub.
+              Design pass (founder feedback "배경색, 보더, 내부
+              버튼들 전부 이상함"): drop the accent-dim fill that
+              made the panel read as a warning callout — switch
+              to var(--surface) so it sits in the same tonal
+              family as the stat strip and the doc rows below.
+              The URL is displayed as a single full-width row
+              with a copy icon embedded at the right edge (no
+              separate code-box border + copy-pill seam). The
+              secondary actions (View as visitor / Raw .md) live
+              on their own row, sharing the bordered-neutral
+              style used everywhere else. ─────────────────────── */}
         <section
           className="mb-8 px-5 py-4 rounded-xl"
-          style={{ background: "var(--accent-dim)", border: "1px solid var(--border-dim)" }}
+          style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
         >
-          <div className="flex items-start gap-3">
-            <Globe width={18} height={18} className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
+          <div className="flex items-start gap-3 mb-3">
+            <span
+              className="flex items-center justify-center shrink-0 mt-0.5"
+              style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
+            >
+              <Globe width={14} height={14} />
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="text-body font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+              <p className="text-body font-semibold" style={{ color: "var(--text-primary)" }}>
                 Deploy this hub to any AI
               </p>
-              <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              <p className="text-caption leading-relaxed mt-0.5" style={{ color: "var(--text-secondary)" }}>
                 Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. The AI fetches a structured index and follows inline links.
               </p>
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <code
-                  className="text-caption px-2 py-1 rounded font-mono"
-                  style={{ background: "var(--background)", color: "var(--text-primary)", border: "1px solid var(--border-dim)" }}
-                >
-                  {data.hub.url}
-                </code>
-                <button
-                  onClick={copyUrl}
-                  className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors"
-                  style={{
-                    background: copied ? "rgba(34,197,94,0.15)" : "var(--background)",
-                    color: copied ? "#22c55e" : "var(--text-primary)",
-                    border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
-                  }}
-                >
-                  {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
-                  {copied ? "Copied" : "Copy URL"}
-                </button>
-                <Link
-                  href={`/hub/${slug}`}
-                  target="_blank"
-                  className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                >
-                  <Eye width={11} height={11} />
-                  View as visitor
-                </Link>
-                <Link
-                  href={`/hub/${slug}.md`}
-                  target="_blank"
-                  className="flex items-center gap-1 text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-                >
-                  <ExternalLink width={11} height={11} />
-                  Raw .md
-                </Link>
-              </div>
-              {/* Token economy badge — author-facing feedback loop. The
-                  number is what an AI actually pays to read this hub.
-                  When the digest path is populated (concept_index has
-                  rows), we surface BOTH so authors can see how much
-                  cheaper the dense path is vs. the full index. */}
-              {(() => {
-                const totalWords = data.counts.totalWords ?? 0;
-                if (totalWords === 0) return null;
-                // ~1.3 tokens per English word is the conservative
-                // tiktoken average; slightly higher for mixed-language
-                // notes. Listings (titles, links) add ~8 tokens per doc.
-                const indexTokens = Math.round(totalWords * 1.3 + (data.counts.documents ?? 0) * 8);
-                // Digest packs concepts into ~25 tokens each (label +
-                // type + weight + 1-line + 2-3 doc links). Capped at 40
-                // concepts to match the renderDigest hard limit.
-                const conceptCount = Math.min(data.counts.concepts ?? 0, 40);
-                const digestTokens = conceptCount > 0 ? Math.round(conceptCount * 25 + 200) : 0;
-                const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-                return (
-                  <p
-                    className="text-caption mt-2 font-mono leading-relaxed"
-                    style={{ color: "var(--text-muted)", fontSize: 10 }}
-                    title="Estimated token cost when an AI fetches this hub. Lower = cheaper to cite. The digest path uses your concept ontology to answer broad queries without reading every doc."
-                  >
-                    ≈ {fmt(indexTokens)} tokens for the full index
-                    {digestTokens > 0 ? ` • ≈ ${fmt(digestTokens)} tokens via ?digest=1` : ""}
-                  </p>
-                );
-              })()}
             </div>
           </div>
+          {/* URL row — full-width pill with the URL on the left and
+              an embedded copy affordance on the right. Single border
+              instead of the previous URL-box + Copy-pill seam. */}
+          <button
+            onClick={copyUrl}
+            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-2"
+            style={{
+              background: "var(--background)",
+              color: copied ? "#22c55e" : "var(--text-primary)",
+              border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+            }}
+            title="Copy URL"
+          >
+            <span className="flex-1 text-left truncate">{data.hub.url}</span>
+            <span className="flex items-center gap-1 shrink-0" style={{ color: copied ? "#22c55e" : "var(--text-faint)" }}>
+              {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            </span>
+          </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link
+              href={`/hub/${slug}`}
+              target="_blank"
+              className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+            >
+              <Eye width={11} height={11} />
+              View as visitor
+            </Link>
+            <Link
+              href={`/hub/${slug}.md`}
+              target="_blank"
+              className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+            >
+              <ExternalLink width={11} height={11} />
+              Raw .md
+            </Link>
+          </div>
+          {/* Token economy badge — author-facing feedback loop. The
+              number is what an AI actually pays to read this hub.
+              When the digest path is populated (concept_index has
+              rows), we surface BOTH so authors can see how much
+              cheaper the dense path is vs. the full index. */}
+          {(() => {
+            const totalWords = data.counts.totalWords ?? 0;
+            if (totalWords === 0) return null;
+            const indexTokens = Math.round(totalWords * 1.3 + (data.counts.documents ?? 0) * 8);
+            const conceptCount = Math.min(data.counts.concepts ?? 0, 40);
+            const digestTokens = conceptCount > 0 ? Math.round(conceptCount * 25 + 200) : 0;
+            const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+            return (
+              <p
+                className="text-caption mt-2.5 font-mono leading-relaxed"
+                style={{ color: "var(--text-faint)", fontSize: 10 }}
+                title="Estimated token cost when an AI fetches this hub. Lower = cheaper to cite. The digest path uses your concept ontology to answer broad queries without reading every doc."
+              >
+                ≈ {fmt(indexTokens)} tokens for the full index
+                {digestTokens > 0 ? ` • ≈ ${fmt(digestTokens)} tokens via ?digest=1` : ""}
+              </p>
+            );
+          })()}
         </section>
 
         {/* ── Stat strip — counts by access tier ──────────────────── */}
