@@ -90,9 +90,9 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   };
   const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
   useEffect(() => { setCuratorSettings(loadCuratorSettings()); }, []);
-  const toggleCurator = (id: keyof CuratorSettings, next: boolean) => {
+  const toggleCurator = (id: keyof CuratorSettings, next: boolean | string) => {
     setCuratorSettings((prev) => {
-      const updated = { ...prev, [id]: next };
+      const updated = { ...prev, [id]: next } as CuratorSettings;
       saveCuratorSettings(updated);
       try { window.dispatchEvent(new CustomEvent("mdfy-curator-settings-changed", { detail: updated })); } catch { /* ignore */ }
       return updated;
@@ -543,8 +543,76 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             Auto-management
           </label>
           <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
-            Curator signals run when your hub re-scans. Toggle each one to decide what shows up in Needs Review. Disabled signals are silent; enabled signals surface findings you can Resolve in one click.
+            Curator signals scan your hub and surface findings in Needs Review. With auto-management ON, safe findings are resolved for you on the trigger you pick; destructive ones (like duplicate trash) still ask first. With it OFF, findings just surface and you act on them by hand.
           </p>
+
+          {/* Master switch — ON means enabled signals auto-resolve on
+              the configured trigger. OFF means findings just surface
+              for manual review (current default behaviour). */}
+          <div className="flex items-start gap-3 px-3 py-3 mb-3 rounded-lg" style={{ border: "1px solid var(--border-dim)", background: curatorSettings.autoEnabled ? "var(--accent-dim)" : "var(--surface)" }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold" style={{ color: curatorSettings.autoEnabled ? "var(--accent)" : "var(--text-primary)" }}>
+                Auto-resolve findings
+              </div>
+              <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--text-muted)" }}>
+                When ON, mdfy acts on findings for you instead of waiting for clicks. Safe actions (concept refresh for orphans) run silently; destructive actions (duplicate trash) still prompt.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+              <input
+                type="checkbox"
+                checked={curatorSettings.autoEnabled}
+                onChange={(e) => toggleCurator("autoEnabled", e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 rounded-full transition-colors" style={{ background: curatorSettings.autoEnabled ? "var(--accent)" : "var(--border-dim)" }}>
+                <div className="w-4 h-4 rounded-full transition-transform" style={{
+                  background: "#fff",
+                  transform: `translate(${curatorSettings.autoEnabled ? 18 : 2}px, 2px)`,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                }} />
+              </div>
+            </label>
+          </div>
+
+          {/* Trigger — when does auto-resolution fire. Disabled
+              visually when the master is off so users can't tweak a
+              setting that has no effect. */}
+          <div className="mb-4" style={{ opacity: curatorSettings.autoEnabled ? 1 : 0.5 }}>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-faint)" }}>
+              Trigger
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { v: "manual", label: "Manual", desc: "Only when you click" },
+                { v: "on-open", label: "On hub open", desc: "Each Hub visit" },
+                { v: "interval", label: "Every 30 min", desc: "Background scan" },
+              ] as const).map(({ v, label, desc }) => {
+                const active = curatorSettings.autoTrigger === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => curatorSettings.autoEnabled && toggleCurator("autoTrigger", v)}
+                    disabled={!curatorSettings.autoEnabled}
+                    className="flex flex-col items-start gap-0.5 px-3 py-2 rounded-md text-left transition-colors"
+                    style={{
+                      background: active ? "var(--accent-dim)" : "var(--surface)",
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border-dim)"}`,
+                      color: active ? "var(--accent)" : "var(--text-secondary)",
+                      cursor: curatorSettings.autoEnabled ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    <span className="text-xs font-medium">{label}</span>
+                    <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+            Signals
+          </div>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
             {CURATOR_OPTIONS.map((opt, idx) => {
               const enabled = curatorSettings[opt.id];

@@ -2887,6 +2887,43 @@ export default function MdEditor() {
     window.addEventListener("mdfy-curator-settings-changed", onChange as EventListener);
     return () => window.removeEventListener("mdfy-curator-settings-changed", onChange as EventListener);
   }, []);
+  // Auto-resolve any "safe" curator findings — currently just
+  // orphans, which trigger a non-destructive refresh-concepts
+  // PATCH. Duplicates stay manual because soft-deleting requires
+  // the user to confirm the merge direction. Stored as a ref so
+  // the autoResolve effects can call into it without re-rendering.
+  const lintRunningAutoRef = useRef(false);
+  const autoResolveSafeFindings = useCallback(async () => {
+    if (lintRunningAutoRef.current) return;
+    if (!user?.id || !lintReport) return;
+    if (!curatorSettings.autoEnabled) return;
+    if (!curatorSettings.orphan) return;
+    const orphans = lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id));
+    if (orphans.length === 0) return;
+    lintRunningAutoRef.current = true;
+    let resolved = 0;
+    for (const o of orphans) {
+      try {
+        const res = await fetch(`/api/docs/${o.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
+        });
+        if (res.ok) resolved++;
+      } catch { /* ignore individual failures; next pass retries */ }
+    }
+    if (resolved > 0) {
+      const ids = orphans.slice(0, resolved).map((o) => o.id);
+      setLintResolved((prev) => ({ ...prev, orphans: new Set([...prev.orphans, ...ids]) }));
+      setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => !ids.includes(x.id)) } : prev);
+      showToast(`Auto-managed ${resolved} orphan${resolved === 1 ? "" : "s"} — concepts re-extracted.`, "info");
+    }
+    lintRunningAutoRef.current = false;
+  }, [user?.id, lintReport, curatorSettings.autoEnabled, curatorSettings.orphan, lintResolved.orphans, authHeaders]);
+  // (Trigger useEffects for showHub on-open / interval live further
+  //  down — see the block right after the showHub state declaration.
+  //  TS doesn't allow forward-referencing a let/const in the same
+  //  function, so the effects sit alongside the state.)
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number; section?: "my" | "bundles" } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -3834,6 +3871,23 @@ export default function MdEditor() {
   // meant clicking Hub deselected whatever was in the sidebar — that's
   // the founder complaint this state replaces.
   const [showHub, setShowHub] = useState(false);
+  // Auto-resolve trigger A — fires when the Hub overlay opens and
+  // the user picked "on-open" as their auto-management trigger. The
+  // overlay opening is the user's intent-signal that they care
+  // about the curator state right now — good moment to clean up.
+  useEffect(() => {
+    if (!showHub) return;
+    if (curatorSettings.autoTrigger !== "on-open") return;
+    autoResolveSafeFindings();
+  }, [showHub, curatorSettings.autoTrigger, autoResolveSafeFindings]);
+  // Auto-resolve trigger B — background interval. Cheap because
+  // autoResolveSafeFindings short-circuits when there's nothing to do.
+  useEffect(() => {
+    if (curatorSettings.autoTrigger !== "interval") return;
+    if (!curatorSettings.autoEnabled) return;
+    const id = setInterval(() => { autoResolveSafeFindings(); }, 30 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [curatorSettings.autoTrigger, curatorSettings.autoEnabled, autoResolveSafeFindings]);
   // Account Settings overlay — same overlay treatment as Hub. Founder
   // ask: Settings shouldn't open as a separate page navigation, it
   // should layer in-place. /settings still works for deep links but

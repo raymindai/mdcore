@@ -99,10 +99,38 @@ export const CURATOR_OPTIONS: CuratorOption[] = [
 
 const STORAGE_KEY = "mdfy-curator-settings";
 
-export type CuratorSettings = Record<CuratorOptionId, boolean>;
+// Auto-management trigger — when the system attempts to act on the
+// findings the curator surfaces. The per-signal toggles still govern
+// WHICH signals run; this governs WHEN auto-resolution fires.
+//
+//   manual    — surface only. User clicks Resolve / Resolve All to act.
+//   on-open   — every time the Hub overlay opens, auto-resolve safe
+//               signals (orphan refresh-concepts), notify on destructive
+//               ones (duplicate soft-delete still asks).
+//   interval  — every 30 minutes while the app is in the foreground.
+export type AutoTrigger = "manual" | "on-open" | "interval";
+
+// CuratorSettings was a flat Record<id, boolean>. It now needs to
+// carry the per-signal toggles AND two orchestration knobs (master
+// auto-enabled + trigger). The shape is split out so consumers
+// keep the same `.orphan` / `.duplicate` access pattern they had
+// before — the eight signal booleans live at the top level and the
+// orchestration fields sit alongside them.
+export interface CuratorSettings extends Record<CuratorOptionId, boolean> {
+  /** Master switch. When true, enabled signals auto-resolve on
+   *  the configured trigger. When false, findings only surface;
+   *  user resolves manually. Default off so a new account doesn't
+   *  silently mutate docs. */
+  autoEnabled: boolean;
+  /** When auto-resolution fires. Ignored when autoEnabled is false. */
+  autoTrigger: AutoTrigger;
+}
 
 export function defaultCuratorSettings(): CuratorSettings {
-  const out = {} as CuratorSettings;
+  const out = {
+    autoEnabled: false,
+    autoTrigger: "on-open" as AutoTrigger,
+  } as CuratorSettings;
   for (const opt of CURATOR_OPTIONS) out[opt.id] = opt.defaultEnabled;
   return out;
 }
@@ -116,6 +144,10 @@ export function loadCuratorSettings(): CuratorSettings {
     const merged = defaultCuratorSettings();
     for (const opt of CURATOR_OPTIONS) {
       if (typeof parsed[opt.id] === "boolean") merged[opt.id] = parsed[opt.id]!;
+    }
+    if (typeof parsed.autoEnabled === "boolean") merged.autoEnabled = parsed.autoEnabled;
+    if (parsed.autoTrigger === "manual" || parsed.autoTrigger === "on-open" || parsed.autoTrigger === "interval") {
+      merged.autoTrigger = parsed.autoTrigger;
     }
     return merged;
   } catch {
