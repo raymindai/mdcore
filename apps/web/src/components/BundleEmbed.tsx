@@ -3615,10 +3615,13 @@ function BundleListView({
                     cursor: canEdit ? "pointer" : "default",
                   }}
                   disabled={!canEdit}
-                  title={canEdit ? "Edit note" : undefined}
+                  title={canEdit ? "Edit this note — explains why the doc belongs in this bundle" : "Note: why this doc belongs in this bundle"}
                 >
+                  <div className="text-caption font-mono uppercase tracking-wider mb-0.5" style={{ color: "var(--accent)", fontSize: 9, letterSpacing: 0.6 }}>
+                    Why this doc belongs
+                  </div>
                   <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                    <span className="font-mono uppercase" style={{ color: "var(--accent)", fontWeight: 700, fontSize: 10, letterSpacing: 0.5, marginRight: 6 }}>AI</span>{doc.annotation}
+                    {doc.annotation}
                   </p>
                 </button>
               ) : canEdit ? (
@@ -3626,8 +3629,9 @@ function BundleListView({
                   onClick={() => startEdit(doc)}
                   className="text-caption mb-4 px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                   style={{ color: "var(--text-faint)", border: "1px dashed var(--border-dim)" }}
+                  title="Add a one-line note explaining why this doc is in this bundle. Sent to the AI as context."
                 >
-                  + Add note for this doc
+                  + Note why this doc belongs
                 </button>
               ) : null}
               <div className="mdcore-rendered prose prose-invert" dangerouslySetInnerHTML={{ __html: renderedDocs.get(doc.id) || "" }} />

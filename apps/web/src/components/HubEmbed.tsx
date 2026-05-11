@@ -140,8 +140,37 @@ interface HubEmbedProps {
 // while a background revalidation refreshes silently. 60-second TTL
 // keeps the data reasonably fresh without doing the round-trip on
 // every back-button press.
+// Module-level + sessionStorage-backed cache so opening the Hub
+// overlay paints from cache on every visit within a session, AND
+// survives a page reload. Module map is the hot path; on first
+// hit per page load we rehydrate it from sessionStorage. TTL was
+// 60s — bumped to 5 minutes so the "stale-while-revalidate"
+// background refresh doesn't fire on every casual reopen.
 const hubDataCache = new Map<string, { data: HubData; ts: number }>();
-const HUB_CACHE_TTL_MS = 60_000;
+const HUB_CACHE_TTL_MS = 5 * 60_000;
+const HUB_CACHE_KEY = "mdfy-hub-data-cache-v1";
+
+if (typeof window !== "undefined" && hubDataCache.size === 0) {
+  try {
+    const raw = sessionStorage.getItem(HUB_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, { data: HubData; ts: number }>;
+      for (const [slug, entry] of Object.entries(parsed)) {
+        if (entry && entry.data && typeof entry.ts === "number") {
+          hubDataCache.set(slug, entry);
+        }
+      }
+    }
+  } catch { /* ignore */ }
+}
+function persistHubCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const obj: Record<string, { data: HubData; ts: number }> = {};
+    for (const [k, v] of hubDataCache.entries()) obj[k] = v;
+    sessionStorage.setItem(HUB_CACHE_KEY, JSON.stringify(obj));
+  } catch { /* quota / disabled */ }
+}
 
 function relativeTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -248,6 +277,7 @@ export default function HubEmbed({
         }
         const json = (await res.json()) as HubData;
         hubDataCache.set(slug, { data: json, ts: Date.now() });
+        persistHubCache();
         if (!cancelled) {
           setData(json);
           setLoading(false);
@@ -291,6 +321,7 @@ export default function HubEmbed({
       if (res.ok) {
         // Bust hub cache so next paint shows the doc in Public.
         hubDataCache.delete(slug);
+        persistHubCache();
         // Optimistic: drop the suggestion locally.
         dismissSuggestion(`promote:${docId}`);
       }
@@ -357,6 +388,7 @@ export default function HubEmbed({
       if (hubRes.ok) {
         const json = (await hubRes.json()) as HubData;
         hubDataCache.set(slug, { data: json, ts: Date.now() });
+        persistHubCache();
         setData(json);
       }
       if (sugRes.ok) setSuggestions(await sugRes.json());
