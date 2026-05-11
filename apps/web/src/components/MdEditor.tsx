@@ -14,6 +14,7 @@ import {
 import MdCanvas from "@/components/MdCanvas";
 import BundleEmbed from "@/components/BundleEmbed";
 import HubEmbed from "@/components/HubEmbed";
+import SettingsEmbed from "@/components/SettingsEmbed";
 import BundleChat from "@/components/BundleChat";
 import HubChat from "@/components/HubChat";
 import SidebarFolderTree from "@/components/SidebarFolder";
@@ -3831,6 +3832,11 @@ export default function MdEditor() {
   // meant clicking Hub deselected whatever was in the sidebar — that's
   // the founder complaint this state replaces.
   const [showHub, setShowHub] = useState(false);
+  // Account Settings overlay — same overlay treatment as Hub. Founder
+  // ask: Settings shouldn't open as a separate page navigation, it
+  // should layer in-place. /settings still works for deep links but
+  // the profile-menu entry now toggles this overlay instead.
+  const [showSettings, setShowSettings] = useState(false);
   const [toolbarHintDismissed, setToolbarHintDismissed] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("mdfy-toolbar-hint-dismissed") : true);
   // Document view count (owner only)
   const [viewCount, setViewCount] = useState(0);
@@ -4433,10 +4439,11 @@ export default function MdEditor() {
   const [navTick, setNavTick] = useState(0); // forces re-render when history changes
 
   const switchTab = useCallback((tabId: string) => {
-    // Any explicit tab switch dismisses the Hub overlay — the user is
-    // leaving Hub to view that tab. Mirrors the showOnboarding=false
-    // calls scattered across the tab-open paths.
+    // Any explicit tab switch dismisses the Hub + Settings overlays —
+    // the user is leaving them to view that tab. Mirrors the
+    // showOnboarding=false calls scattered across the tab-open paths.
     setShowHub(false);
+    setShowSettings(false);
     // Flush any pending WYSIWYG edits before switching
     if (wysiwygDebounce.current) {
       clearTimeout(wysiwygDebounce.current);
@@ -8660,6 +8667,7 @@ ${clone.innerHTML}
                         return;
                       }
                       setShowOnboarding(false);
+                      setShowSettings(false);
                       setShowHub(true);
                     }}
                     className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
@@ -8679,7 +8687,7 @@ ${clone.innerHTML}
           })()}
           {/* Home */}
           <button
-            onClick={() => { setShowOnboarding(true); setShowHub(false); if (viewMode === "editor") setViewMode("preview"); }}
+            onClick={() => { setShowOnboarding(true); setShowHub(false); setShowSettings(false); if (viewMode === "editor") setViewMode("preview"); }}
             className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
             style={{
               background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
@@ -8727,9 +8735,9 @@ ${clone.innerHTML}
               // the bundle is hidden, so the pill must NOT stay
               // highlighted (was the visible asymmetry between Home
               // and Hub: Home cleared the highlight, Hub didn't).
-              const active = !showOnboarding && !showHub && bundleView === mode;
+              const active = !showOnboarding && !showHub && !showSettings && bundleView === mode;
               return (
-                <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); setShowHub(false); }} title={`${label} (Alt+${shortcut})`}
+                <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); setShowHub(false); setShowSettings(false); }} title={`${label} (Alt+${shortcut})`}
                   className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                   style={{
                     background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
@@ -8758,18 +8766,17 @@ ${clone.innerHTML}
             // Onboarding nothing is rendering at viewMode, so the pills
             // stay inactive (the user's last choice persists for when
             // they return to a doc).
-            const active = !showOnboarding && !showHub && viewMode === mode;
+            const active = !showOnboarding && !showHub && !showSettings && viewMode === mode;
             const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
-            // Disable clicks when Hub or Onboarding (without a real doc)
-            // is the visible surface — view modes (Live/Split/Source)
-            // don't apply to either, so accepting a click would be a
-            // no-op visually while persisting a hidden state change for
-            // the next doc open.
-            const disabled = showHub || (showOnboarding && !hasActiveDoc);
+            // Disable clicks when an overlay surface (Hub / Settings)
+            // is on top, or when Onboarding is showing without a real
+            // doc to return to. View modes don't apply on those
+            // surfaces so a click would be a hidden no-op.
+            const disabled = showHub || showSettings || (showOnboarding && !hasActiveDoc);
             return (
               <button
                 key={mode}
-                onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); setShowHub(false); } }}
+                onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); setShowHub(false); setShowSettings(false); } }}
                 disabled={disabled}
                 title={`${label} (Alt+${shortcut})`}
                 className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
@@ -11488,7 +11495,12 @@ ${clone.innerHTML}
                           </button>
                         )}
                         <button
-                          onClick={() => { setShowAuthMenu(false); window.open("/settings", "_blank"); }}
+                          onClick={() => {
+                            setShowAuthMenu(false);
+                            setShowOnboarding(false);
+                            setShowHub(false);
+                            setShowSettings(true);
+                          }}
                           className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-secondary)" }}
                         >
@@ -12522,12 +12534,29 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 flex min-h-0 relative">
+            {/* Account Settings — overlay, same mental model as Hub.
+                Founder ask: settings shouldn't open as a new page; it
+                should layer in-place so closing it puts you right back
+                where you were. */}
+            {showSettings && (
+              <div
+                className="absolute top-0 bottom-0 left-0 z-10 flex"
+                style={{
+                  right: showAIPanel ? aiPanelWidth : (showImagePanel ? 320 : 0),
+                  background: "var(--background)",
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <SettingsEmbed onClose={() => setShowSettings(false)} />
+                </div>
+              </div>
+            )}
             {/* Hub — overlay rendering keyed off showHub, not a tab in
                 tabs[]. Activates on top of whatever the user was last
                 on (doc or bundle), so the sidebar selection for that
                 tab stays intact. Same overlay slot as BundleEmbed —
                 respects the right-side panels. */}
-            {showHub && hubSlug && !showOnboarding && (
+            {showHub && hubSlug && !showOnboarding && !showSettings && (
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
@@ -12615,7 +12644,7 @@ ${clone.innerHTML}
                 </div>
               </div>
             )}
-            {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && !showHub && (
+            {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && !showHub && !showSettings && (
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
