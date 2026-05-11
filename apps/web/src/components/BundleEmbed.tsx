@@ -1087,9 +1087,12 @@ export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, o
       <BundleListView
         documents={documents}
         bundleId={bundleId}
+        bundleTitle={bundleTitle}
+        bundleDescription={bundleDescription}
         authHeaders={parentAuthHeaders}
         canEdit={bundleIsOwner}
         onOpenDoc={onOpenDoc}
+        onSwitchToBundle={() => onChangeView?.("overview")}
         onAnnotationSaved={(docId, annotation) => {
           setDocuments(prev => prev.map(d => d.id === docId ? { ...d, annotation } : d));
         }}
@@ -3278,21 +3281,61 @@ function DecomposeListPaneBody({ bridge, decomp }: { bridge: DecomposeBridge; de
 function BundleListView({
   documents,
   bundleId,
+  bundleTitle,
+  bundleDescription,
   authHeaders,
   canEdit,
   onOpenDoc,
+  onSwitchToBundle,
   onAnnotationSaved,
 }: {
   documents: BundleDocument[];
   bundleId: string;
+  bundleTitle?: string;
+  bundleDescription?: string | null;
   authHeaders?: Record<string, string>;
   canEdit?: boolean;
   onOpenDoc?: (docId: string) => void;
+  onSwitchToBundle?: () => void;
   onAnnotationSaved?: (docId: string, annotation: string | null) => void;
 }) {
   const [renderedDocs, setRenderedDocs] = useState<Map<string, string>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(documents[0]?.id || null);
+  // Reading progress (0-1) — drives the slim progress bar at the
+  // top of the main area so users can see how far they are in a
+  // multi-doc bundle. Computed from the scroll position of the
+  // rendering container against its total scroll height.
+  const [progress, setProgress] = useState(0);
+  // Local TOC filter so the sidebar can be searched. Empty = show
+  // all. Case-insensitive title match (also matches annotation).
+  const [tocFilter, setTocFilter] = useState("");
+  // Per-doc copy-state — used to flash the inline Copy URL button.
+  const [copiedDocId, setCopiedDocId] = useState<string | null>(null);
+  // Per-doc word counts memoised once per documents change so the
+  // TOC rows + section headers can both reuse the value without
+  // recounting on every render.
+  const wordCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const d of documents) {
+      m.set(d.id, (d.markdown || "").trim().split(/\s+/).filter(Boolean).length);
+    }
+    return m;
+  }, [documents]);
+  const totalWords = useMemo(() => {
+    let n = 0;
+    for (const c of wordCounts.values()) n += c;
+    return n;
+  }, [wordCounts]);
+  const filteredDocs = useMemo(() => {
+    const q = tocFilter.trim().toLowerCase();
+    if (!q) return documents;
+    return documents.filter((d) => {
+      const t = (d.title || "").toLowerCase();
+      const a = (d.annotation || "").toLowerCase();
+      return t.includes(q) || a.includes(q);
+    });
+  }, [documents, tocFilter]);
 
   // Local edit state — keyed by docId. While the user is typing, we don't
   // round-trip to the server; commit on blur.
@@ -3349,7 +3392,7 @@ function BundleListView({
     return () => { cancelled = true; };
   }, [documents]);
 
-  // Track which doc is active in viewport
+  // Track which doc is active in viewport + reading progress
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -3366,10 +3409,27 @@ function BundleListView({
         }
       });
       if (closestId) setActiveDocId(closestId);
+      // Progress = scrolled / max-scrollable. Clamped to [0,1]
+      // so the bar never overshoots even with overscroll bounce.
+      const max = container.scrollHeight - container.clientHeight;
+      const pct = max > 0 ? Math.min(1, Math.max(0, container.scrollTop / max)) : 0;
+      setProgress(pct);
     };
     container.addEventListener("scroll", onScroll);
+    // Initial read so the bar isn't empty before the first scroll.
+    onScroll();
     return () => container.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [renderedDocs]);
+
+  const copyDocUrl = async (docId: string) => {
+    if (typeof navigator === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(`https://mdfy.app/${docId}`);
+      setCopiedDocId(docId);
+      setTimeout(() => setCopiedDocId((v) => v === docId ? null : v), 1200);
+    } catch { /* ignore */ }
+  };
+  const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
   const scrollToDoc = (docId: string) => {
     const el = containerRef.current?.querySelector(`[data-doc-section="${docId}"]`);
@@ -3377,38 +3437,133 @@ function BundleListView({
   };
 
   return (
-    <div className="w-full h-full flex" style={{ background: "var(--background)" }}>
-      {/* TOC sidebar */}
-      <div className="shrink-0 w-56 overflow-auto" style={{ borderRight: "1px solid var(--border-dim)" }}>
-        <div className="px-3 py-3">
-          <h3 className="text-caption font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>Contents</h3>
-          {documents.map((doc, i) => (
-            <button key={doc.id} onClick={() => scrollToDoc(doc.id)}
-              className="w-full text-left px-2.5 py-1.5 rounded-md flex items-center gap-2 transition-colors hover:bg-[var(--toggle-bg)] mb-0.5"
-              style={{ background: activeDocId === doc.id ? "var(--accent-dim)" : "transparent" }}>
-              <span className="text-caption font-mono w-4 shrink-0" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
-              <span className="text-xs truncate flex-1" style={{ color: activeDocId === doc.id ? "var(--accent)" : "var(--text-secondary)", fontWeight: activeDocId === doc.id ? 600 : 400 }}>{doc.title || "Untitled"}</span>
-            </button>
-          ))}
-        </div>
+    <div className="w-full h-full flex flex-col" style={{ background: "var(--background)" }}>
+      {/* Reading-progress bar — slim accent stripe pinned to the top
+          of the main area. Drives no semantic behaviour; the user
+          can see how far they are through the bundle without
+          having to scan the TOC. */}
+      <div className="shrink-0 h-0.5" style={{ background: "var(--border-dim)" }}>
+        <div className="h-full transition-all duration-150" style={{ background: "var(--accent)", width: `${(progress * 100).toFixed(1)}%` }} />
       </div>
+      <div className="flex-1 flex min-h-0">
+      {/* ─── TOC sidebar — search, per-doc word counts, active-row
+            highlight. Width matches the Hub overview sidebar so all
+            three bundle views share one rhythm. ─── */}
+      <aside className="shrink-0 w-64 overflow-auto" style={{ borderRight: "1px solid var(--border-dim)" }}>
+        <div className="px-3 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-caption font-semibold uppercase tracking-wider" style={{ color: "var(--text-faint)" }}>Contents</h3>
+            {onSwitchToBundle && (
+              <button
+                onClick={onSwitchToBundle}
+                className="text-caption transition-colors hover:underline"
+                style={{ color: "var(--text-faint)" }}
+                title="Back to Bundle overview"
+              >
+                ← Bundle
+              </button>
+            )}
+          </div>
+          <input
+            type="text"
+            value={tocFilter}
+            onChange={(e) => setTocFilter(e.target.value)}
+            placeholder="Filter…"
+            className="w-full text-xs px-2.5 py-1.5 rounded-md outline-none mb-3"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          />
+          {filteredDocs.length === 0 ? (
+            <p className="text-caption px-2" style={{ color: "var(--text-faint)" }}>No matches.</p>
+          ) : (
+            filteredDocs.map((doc) => {
+              const i = documents.indexOf(doc);
+              const isActive = activeDocId === doc.id;
+              return (
+                <button
+                  key={doc.id}
+                  onClick={() => scrollToDoc(doc.id)}
+                  className="w-full text-left px-2.5 py-2 rounded-md flex items-start gap-2 transition-colors hover:bg-[var(--toggle-bg)] mb-0.5"
+                  style={{ background: isActive ? "var(--accent-dim)" : "transparent" }}
+                >
+                  <span className="text-caption font-mono w-4 shrink-0 mt-0.5 tabular-nums" style={{ color: "var(--text-faint)" }}>{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs truncate" style={{ color: isActive ? "var(--accent)" : "var(--text-secondary)", fontWeight: isActive ? 600 : 400 }}>
+                      {doc.title || "Untitled"}
+                    </div>
+                    <div className="text-caption mt-0.5 tabular-nums" style={{ color: "var(--text-faint)" }}>
+                      {fmt(wordCounts.get(doc.id) || 0)} words
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+          <div className="text-caption mt-3 pt-3 tabular-nums" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border-dim)" }}>
+            {documents.length} {documents.length === 1 ? "doc" : "docs"}, {fmt(totalWords)} words total
+          </div>
+        </div>
+      </aside>
 
-      {/* Sequential rendering */}
+      {/* ─── Sequential rendering ─── */}
       <div className="flex-1 overflow-auto" ref={containerRef}>
-        <div className="max-w-3xl mx-auto px-8 py-8">
+        <div className="max-w-3xl mx-auto px-8 py-10">
+          {/* Bundle header — same shape as HubEmbed / BundleOverview
+              so List opens with a recognisable destination frame
+              before the doc sequence starts. */}
+          <header className="mb-10">
+            <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+              {bundleTitle || "Untitled bundle"}
+            </h1>
+            {bundleDescription && (
+              <p className="text-body mt-2" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                {bundleDescription}
+              </p>
+            )}
+            <p className="text-caption font-mono mt-3" style={{ color: "var(--text-faint)" }}>
+              /b/{bundleId}{"   "}{documents.length} {documents.length === 1 ? "doc" : "docs"}, {fmt(totalWords)} words
+            </p>
+          </header>
+          {documents.length === 0 && (
+            <div className="text-caption px-3 py-10 rounded-lg text-center" style={{ color: "var(--text-faint)", background: "var(--surface)", border: "1px dashed var(--border-dim)" }}>
+              No documents in this bundle yet.
+            </div>
+          )}
           {documents.map((doc, i) => {
             const isEditing = editingDocId === doc.id;
             const hasAnnotation = !!(doc.annotation && doc.annotation.trim());
             return (
-            <div key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-caption font-mono w-6 h-6 flex items-center justify-center rounded" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
-                <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{doc.title || "Untitled"}</h2>
-                {onOpenDoc && (
-                  <button onClick={() => onOpenDoc(doc.id)} className="ml-auto text-caption px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]" style={{ color: "var(--text-faint)", border: "1px solid var(--border-dim)" }}>
-                    Open
+            <article key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-caption font-mono w-7 h-7 flex items-center justify-center rounded shrink-0 tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)", lineHeight: 1.25 }}>{doc.title || "Untitled"}</h2>
+                  <div className="flex items-center gap-3 mt-1 text-caption" style={{ color: "var(--text-faint)" }}>
+                    <span className="tabular-nums">{fmt(wordCounts.get(doc.id) || 0)} words</span>
+                    {doc.updated_at && (
+                      <span>Updated {new Date(doc.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                    )}
+                    <span className="font-mono">/{doc.id}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => copyDocUrl(doc.id)}
+                    className="text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                    style={{ color: copiedDocId === doc.id ? "var(--accent)" : "var(--text-muted)", border: `1px solid ${copiedDocId === doc.id ? "var(--accent)" : "var(--border-dim)"}` }}
+                    title="Copy doc URL"
+                  >
+                    {copiedDocId === doc.id ? "Copied" : "Copy URL"}
                   </button>
-                )}
+                  {onOpenDoc && (
+                    <button
+                      onClick={() => onOpenDoc(doc.id)}
+                      className="text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
+                    >
+                      Open
+                    </button>
+                  )}
+                </div>
               </div>
               {/* Annotation row — "why this doc belongs in the bundle." Editable
                   inline for owners, read-only for viewers. Empty + non-owner
@@ -3465,10 +3620,16 @@ function BundleListView({
                 </button>
               ) : null}
               <div className="mdcore-rendered prose prose-invert" dangerouslySetInnerHTML={{ __html: renderedDocs.get(doc.id) || "" }} />
-            </div>
+            </article>
             );
           })}
+          {documents.length > 0 && (
+            <div className="text-caption text-center py-6" style={{ color: "var(--text-faint)" }}>
+              End of bundle
+            </div>
+          )}
         </div>
+      </div>
       </div>
     </div>
   );
