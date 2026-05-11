@@ -697,19 +697,51 @@ function FlyoutMenu({
 }) {
   const [open, setOpen] = useState(false);
   // When the user OPENS the flyout by clicking the row (rather than
-  // hovering), we lock it open and dismiss only on outside click. The
-  // founder repeatedly reported the previous hover-only flyout "not
-  // appearing when clicked" — touch + impatient-mouse users never
-  // triggered a stable hover. With clickLocked the row is a regular
-  // toggle that stays put once opened.
+  // hovering), we lock it open and dismiss only on outside click.
   const [clickLocked, setClickLocked] = useState(false);
+  // Position of the flyout panel in viewport coordinates. Computed
+  // from the trigger row's getBoundingClientRect so the panel — which
+  // we portal into document.body to escape the parent auth menu's
+  // overflow-hidden — can sit just to the right of the row. Without
+  // the portal, the panel was clipped invisible the moment it tried
+  // to extend past the auth menu's bounds; that's why earlier clicks
+  // didn't appear to do anything.
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const computePos = () => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    // Right of the row, 8px gap. Bottom-aligned to the row so the
+    // panel grows upward (the rows sit near the bottom of the auth
+    // menu so this prevents the panel running off-screen).
+    setPos({ top: r.bottom, left: r.right + 8 });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    computePos();
+    const onScroll = () => computePos();
+    const onResize = () => computePos();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!clickLocked || !open) return;
     const onDown = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      const insideWrapper = wrapperRef.current?.contains(t);
+      const insidePanel = panelRef.current?.contains(t);
+      if (!insideWrapper && !insidePanel) {
         setOpen(false);
         setClickLocked(false);
       }
@@ -722,12 +754,11 @@ function FlyoutMenu({
     if (closeTimerRef.current) { clearTimeout(closeTimerRef.current); closeTimerRef.current = null; }
   };
   const scheduleClose = () => {
-    // Hover-close timer is suppressed while click-locked — the outside
-    // click handler takes over the dismissal job.
     if (clickLocked) return;
     cancelClose();
     closeTimerRef.current = setTimeout(() => setOpen(false), 120);
   };
+
   return (
     <div
       ref={wrapperRef}
@@ -736,10 +767,8 @@ function FlyoutMenu({
       onMouseLeave={scheduleClose}
     >
       <button
+        ref={buttonRef}
         onClick={() => {
-          // Toggle, and flip into click-locked mode so the flyout
-          // doesn't die under the hover-close timer the moment the
-          // cursor moves off the row.
           setOpen((o) => !o);
           setClickLocked(true);
         }}
@@ -752,24 +781,27 @@ function FlyoutMenu({
         </span>
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 1.5L5.5 4L3 6.5"/></svg>
       </button>
-      {open && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
-          className="absolute left-full bottom-0 pl-2 z-[9999]"
+          ref={panelRef}
+          className="rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            transform: "translateY(-100%)",
+            width,
+            zIndex: 10000,
+            background: "var(--menu-bg)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          }}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
         >
-          <div
-            className="rounded-lg shadow-xl py-1 max-h-[calc(100vh-40px)] overflow-y-auto"
-            style={{
-              width,
-              background: "var(--menu-bg)",
-              border: "1px solid var(--border)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
-          >
-            {children}
-          </div>
-        </div>
+          {children}
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -11856,15 +11888,15 @@ ${clone.innerHTML}
                   content frame. */}
               <div className="w-full max-w-3xl mx-auto px-6 py-10">
 
-                {/* Greeting header — same shape as HubEmbed /
-                    BundleOverview headers (tinted badge + big title +
-                    soft caption) so Start reads as part of the same
-                    destination family. The greeting itself is time-
-                    of-day aware; the name falls back through profile
-                    display_name → email prefix → "there" so it never
-                    renders an empty slot. Signed-out users see a
-                    plain "Welcome to mdfy" line instead — no fake
-                    name. */}
+                {/* Greeting header — time-of-day aware title plus a
+                    soft caption. No leading badge icon (founder ask):
+                    the toolbar Start pill already carries the Smile
+                    glyph; repeating it 56px tall right under the
+                    toolbar was redundant. The greeting falls through
+                    profile.display_name → email prefix → bare time
+                    string so it never renders an empty name slot.
+                    Signed-out users see "Welcome to mdfy" + the
+                    deploy-to-any-AI subtitle. */}
                 {(() => {
                   const hour = new Date().getHours();
                   const timeGreeting =
@@ -11877,25 +11909,17 @@ ${clone.innerHTML}
                     || (user?.email ? user.email.split("@")[0] : "");
                   const isSignedIn = isAuthenticated && !!user;
                   return (
-                    <header className="flex items-start gap-4 mb-8">
-                      <span
-                        className="flex items-center justify-center shrink-0 rounded-2xl"
-                        style={{ width: 56, height: 56, background: "var(--accent-dim)", color: "var(--accent)" }}
-                      >
-                        <Smile width={28} height={28} />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
-                          {isSignedIn
-                            ? (displayName ? `${timeGreeting}, ${displayName}` : timeGreeting)
-                            : "Welcome to mdfy"}
-                        </h1>
-                        <p className="text-body mt-1.5" style={{ color: "var(--text-secondary)" }}>
-                          {isSignedIn
-                            ? "Pick up where you left off, or start something new."
-                            : "Your AI memory, deployable to any AI."}
-                        </p>
-                      </div>
+                    <header className="mb-8">
+                      <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+                        {isSignedIn
+                          ? (displayName ? `${timeGreeting}, ${displayName}` : timeGreeting)
+                          : "Welcome to mdfy"}
+                      </h1>
+                      <p className="text-body mt-1.5" style={{ color: "var(--text-secondary)" }}>
+                        {isSignedIn
+                          ? "Pick up where you left off, or start something new."
+                          : "Your AI memory, deployable to any AI."}
+                      </p>
                     </header>
                   );
                 })()}
