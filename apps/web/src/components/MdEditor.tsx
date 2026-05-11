@@ -12578,7 +12578,7 @@ ${clone.innerHTML}
                 </div>
               </div>
             )}
-            {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && (
+            {activeTab?.kind === "bundle" && activeTab.bundleId && !showOnboarding && !showHub && (
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
