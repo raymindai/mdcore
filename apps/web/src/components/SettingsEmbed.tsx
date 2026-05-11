@@ -16,7 +16,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
-import { ArrowLeft, Trash2, Loader2, X } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2, X, Check } from "lucide-react";
 import Link from "next/link";
 import {
   CURATOR_OPTIONS,
@@ -25,6 +25,12 @@ import {
   saveCuratorSettings,
   type CuratorSettings,
 } from "@/lib/curator-options";
+import {
+  ACCENT_COLORS,
+  COLOR_SCHEMES,
+  type AccentColor,
+  type ColorScheme,
+} from "@/lib/theme-options";
 
 function dicebearUrl(seed: string, size = 80): string {
   return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
@@ -47,6 +53,41 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Skin Theme + Key Color — selected and hover-preview values. The
+  // hover-preview path writes the data-scheme / data-accent
+  // attributes directly so the whole UI re-themes instantly; on
+  // mouseleave we restore the attributes to whatever the user has
+  // actually selected. Selection writes localStorage so MdEditor's
+  // useTheme picks the same value up on its next mount.
+  const [skinScheme, setSkinScheme] = useState<ColorScheme>("default");
+  const [keyColor, setKeyColor] = useState<AccentColor>("orange");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const s = (localStorage.getItem("mdfy-scheme") as ColorScheme) || "default";
+    const a = (localStorage.getItem("mdfy-accent") as AccentColor) || "orange";
+    setSkinScheme(s);
+    setKeyColor(a);
+  }, []);
+  const applyScheme = (s: ColorScheme) => {
+    if (typeof document === "undefined") return;
+    if (s === "default") document.documentElement.removeAttribute("data-scheme");
+    else document.documentElement.setAttribute("data-scheme", s);
+  };
+  const applyAccent = (a: AccentColor) => {
+    if (typeof document === "undefined") return;
+    if (a === "orange") document.documentElement.removeAttribute("data-accent");
+    else document.documentElement.setAttribute("data-accent", a);
+  };
+  const selectScheme = (s: ColorScheme) => {
+    setSkinScheme(s);
+    applyScheme(s);
+    try { localStorage.setItem("mdfy-scheme", s); } catch {}
+  };
+  const selectAccent = (a: AccentColor) => {
+    setKeyColor(a);
+    applyAccent(a);
+    try { localStorage.setItem("mdfy-accent", a); } catch {}
+  };
   const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
   useEffect(() => { setCuratorSettings(loadCuratorSettings()); }, []);
   const toggleCurator = (id: keyof CuratorSettings, next: boolean) => {
@@ -180,10 +221,16 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="h-full overflow-y-auto" style={{ background: "var(--background)", color: "var(--text-primary)" }}>
-      <div className="max-w-lg mx-auto px-4 py-8">
-        {/* Header — back arrow on the page route, X on the overlay. */}
-        <div className="flex items-center gap-3 mb-8">
-          {onClose ? (
+      {/* Frame matches HubEmbed and BundleOverview (max-w-3xl, px-6
+          py-10) so Settings reads as part of the same destination
+          family. The avatar leads the header so the surface starts
+          with identity, the same way Hub/Bundle Overview start with
+          their primitive's identity glyph + name. */}
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        {/* Close affordance — only when rendered as overlay. The
+            page route gets a back-arrow on the heading row instead. */}
+        {onClose && (
+          <div className="flex justify-end mb-4">
             <button
               onClick={onClose}
               className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
@@ -192,27 +239,36 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             >
               <X width={16} height={16} />
             </button>
-          ) : (
-            <Link href="/" className="flex items-center justify-center w-8 h-8 rounded-md transition-colors hover:bg-[var(--accent-dim)]" style={{ color: "var(--text-muted)" }}>
+          </div>
+        )}
+        <header className="flex items-start gap-4 mb-8">
+          {!onClose && (
+            <Link
+              href="/"
+              className="flex items-center justify-center w-8 h-8 mt-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)] shrink-0"
+              style={{ color: "var(--text-muted)" }}
+            >
               <ArrowLeft width={16} height={16} />
             </Link>
           )}
-          <h1 className="text-lg font-semibold">Account Settings</h1>
-        </div>
-
-        {/* Avatar */}
-        <div className="flex items-center gap-4 mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
           <img
-            src={resolveAvatar(profile, user, 64)}
+            src={resolveAvatar(profile, user, 56)}
             alt=""
-            className="w-16 h-16 rounded-full shrink-0"
-            style={{ border: "2px solid var(--border)" }}
+            className="w-14 h-14 rounded-2xl shrink-0"
+            style={{ border: "1px solid var(--border)" }}
           />
-          <div>
-            <div className="font-medium">{profile?.display_name || user?.email?.split("@")[0]}</div>
-            <div className="text-sm" style={{ color: "var(--text-faint)" }}>{user?.email}</div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-display font-bold tracking-tight" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
+              {profile?.display_name || user?.email?.split("@")[0] || "Account"}
+            </h1>
+            <p className="text-body mt-1" style={{ color: "var(--text-secondary)" }}>
+              {user?.email}
+            </p>
+            <p className="text-caption font-mono mt-1.5" style={{ color: "var(--text-faint)" }}>
+              {(profile?.plan || "free").toUpperCase()} plan
+            </p>
           </div>
-        </div>
+        </header>
 
         {/* Display Name */}
         <div className="mb-6">
@@ -369,6 +425,115 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             >
               Light
             </button>
+          </div>
+        </div>
+
+        {/* Skin Theme — eight presets, each shown with a dark-mode and
+            a light-mode swatch so the user sees both ends of the scheme.
+            Hovering a row applies the scheme via data-scheme on the
+            root element (whole UI re-themes); leaving the row restores
+            the active selection. Clicking saves it. */}
+        <div className="mb-8">
+          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+            Skin Theme
+          </label>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+            Hover a theme to preview the whole UI; click to keep it.
+          </p>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+            {COLOR_SCHEMES.map((s, idx) => {
+              const isSelected = skinScheme === s.name;
+              const isLast = idx === COLOR_SCHEMES.length - 1;
+              return (
+                <button
+                  key={s.name}
+                  onClick={() => selectScheme(s.name)}
+                  onMouseEnter={() => applyScheme(s.name)}
+                  onMouseLeave={() => applyScheme(skinScheme)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{
+                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
+                    background: isSelected ? "var(--accent-dim)" : "transparent",
+                  }}
+                >
+                  {/* Dual swatch — dark BG + light BG of the scheme,
+                      both carrying the scheme's signature hue so the
+                      user sees how it sits over each canvas. */}
+                  <span className="flex items-center gap-1 shrink-0" title={`${s.label} — ${s.desc}`}>
+                    <span
+                      className="rounded-md flex items-center justify-center"
+                      style={{ width: 22, height: 22, background: s.darkBg, border: "1px solid var(--border-dim)" }}
+                    >
+                      <span className="rounded-full" style={{ width: 9, height: 9, background: s.preview }} />
+                    </span>
+                    <span
+                      className="rounded-md flex items-center justify-center"
+                      style={{ width: 22, height: 22, background: s.lightBg, border: "1px solid var(--border-dim)" }}
+                    >
+                      <span className="rounded-full" style={{ width: 9, height: 9, background: s.preview }} />
+                    </span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{s.label}</div>
+                    <div className="text-xs" style={{ color: "var(--text-faint)" }}>{s.desc}</div>
+                  </div>
+                  {isSelected && (
+                    <Check width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Key Color — eight accents. Each row shows the dark-mode
+            tone next to the light-mode tone so the user sees both
+            variants; hovering applies the accent globally. */}
+        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+            Key Color
+          </label>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
+            Hover a color to preview it across the UI; click to keep it.
+          </p>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+            {ACCENT_COLORS.map((c, idx) => {
+              const isSelected = keyColor === c.name;
+              const isLast = idx === ACCENT_COLORS.length - 1;
+              return (
+                <button
+                  key={c.name}
+                  onClick={() => selectAccent(c.name)}
+                  onMouseEnter={() => applyAccent(c.name)}
+                  onMouseLeave={() => applyAccent(keyColor)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[var(--toggle-bg)]"
+                  style={{
+                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
+                    background: isSelected ? "var(--accent-dim)" : "transparent",
+                  }}
+                >
+                  <span className="flex items-center gap-1 shrink-0" title={`${c.label} — dark / light variants`}>
+                    <span
+                      className="rounded-md"
+                      style={{ width: 22, height: 22, background: c.dark, border: "1px solid var(--border-dim)" }}
+                    />
+                    <span
+                      className="rounded-md"
+                      style={{ width: 22, height: 22, background: c.light, border: "1px solid var(--border-dim)" }}
+                    />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{c.label}</div>
+                    <div className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>
+                      Dark {c.dark} · Light {c.light}
+                    </div>
+                  </div>
+                  {isSelected && (
+                    <Check width={14} height={14} className="shrink-0" style={{ color: "var(--accent)" }} />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

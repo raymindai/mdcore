@@ -43,7 +43,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Smile, Cloud, MessageSquarePlus,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Smile, Settings, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -1515,43 +1515,13 @@ type ViewMode = "split" | "preview" | "editor";
 
 type Theme = "dark" | "light";
 
-type AccentColor = "orange" | "blue" | "purple" | "pink" | "green" | "teal" | "red" | "yellow";
-
-type ColorScheme = "default" | "nord" | "dracula" | "solarized" | "monokai" | "onedark" | "paper" | "ocean";
-
-const ACCENT_COLORS: { name: AccentColor; label: string; dark: string; light: string }[] = [
-  { name: "orange", label: "Orange", dark: "#fb923c", light: "#ea580c" },
-  { name: "blue", label: "Blue", dark: "#60a5fa", light: "#2563eb" },
-  { name: "purple", label: "Purple", dark: "#a78bfa", light: "#7c3aed" },
-  { name: "pink", label: "Pink", dark: "#f472b6", light: "#ec4899" },
-  { name: "green", label: "Green", dark: "#4ade80", light: "#16a34a" },
-  { name: "teal", label: "Teal", dark: "#2dd4bf", light: "#0d9488" },
-  { name: "red", label: "Red", dark: "#f87171", light: "#dc2626" },
-  { name: "yellow", label: "Yellow", dark: "#fbbf24", light: "#d97706" },
-];
-
-const COLOR_SCHEMES: { name: ColorScheme; label: string; preview: string; desc: string }[] = [
-  { name: "default", label: "Default", preview: "#fb923c", desc: "Warm zinc + orange" },
-  { name: "nord", label: "Nord", preview: "#88c0d0", desc: "Arctic frost" },
-  { name: "dracula", label: "Dracula", preview: "#bd93f9", desc: "Dark purple" },
-  { name: "solarized", label: "Solarized", preview: "#2aa198", desc: "Warm teal" },
-  { name: "monokai", label: "Monokai", preview: "#ffd866", desc: "Warm gold" },
-  { name: "onedark", label: "One Dark", preview: "#61afef", desc: "Cool blue" },
-  { name: "paper", label: "Paper", preview: "#d4a373", desc: "Warm sepia" },
-  { name: "ocean", label: "Ocean", preview: "#06b6d4", desc: "Deep sea" },
-];
-
-// Mapping from scheme to its natural accent color name
-const SCHEME_ACCENT_MAP: Record<ColorScheme, AccentColor> = {
-  default: "orange",
-  nord: "teal",
-  dracula: "purple",
-  solarized: "teal",
-  monokai: "yellow",
-  onedark: "blue",
-  paper: "orange",
-  ocean: "teal",
-};
+import {
+  ACCENT_COLORS,
+  COLOR_SCHEMES,
+  SCHEME_ACCENT_MAP,
+  type AccentColor,
+  type ColorScheme,
+} from "@/lib/theme-options";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
@@ -11380,11 +11350,11 @@ ${clone.innerHTML}
                 <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
               </div>
             ) : isAuthenticated ? (
-              <div className="relative">
+              <div className="relative flex items-center gap-1">
                 <button
                   onClick={() => setShowAuthMenu(!showAuthMenu)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
-                  title="Account settings"
+                  className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
+                  title="Account menu"
                 >
                   <img src={resolveAvatar(profile, user, 20)} alt="" className="w-5 h-5 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0 text-left">
@@ -11393,6 +11363,21 @@ ${clone.innerHTML}
                   </div>
                   <ChevronDown width={10} height={10} style={{ color: "var(--text-faint)" }} />
                 </button>
+                {/* Direct gear → opens the Settings overlay without
+                    routing through the profile menu. The profile
+                    menu still has its own Account Settings row;
+                    this is the one-click shortcut for users who
+                    just want to jump straight into preferences. */}
+                <Tooltip text="Account settings" position="top">
+                  <button
+                    onClick={() => { setShowOnboarding(false); setShowHub(false); setShowSettings(true); }}
+                    className="shrink-0 flex items-center justify-center w-7 h-7 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
+                    style={{ color: "var(--text-faint)" }}
+                    aria-label="Account settings"
+                  >
+                    <Settings width={14} height={14} />
+                  </button>
+                </Tooltip>
                 {showAuthMenu && (
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
@@ -12264,7 +12249,7 @@ ${clone.innerHTML}
             <div
               data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || showHub) ? "none" : undefined }}
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || showHub || showSettings || showOnboarding) ? "none" : undefined }}
             >
               <div className="flex items-center gap-2 shrink-0 min-w-0">
                 <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
