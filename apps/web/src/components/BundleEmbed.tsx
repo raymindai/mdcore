@@ -3534,7 +3534,22 @@ function BundleListView({
             return (
             <article key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
               <div className="flex items-start gap-3 mb-3">
-                <span className="text-caption font-mono w-7 h-7 flex items-center justify-center rounded shrink-0 tabular-nums" style={{ background: "var(--accent)", color: "#000" }}>{i + 1}</span>
+                {/* Doc number — mono digit with a slim accent left-bar,
+                    no filled chip. The earlier orange-square block was
+                    competing with the title for attention. */}
+                <span
+                  className="font-mono tabular-nums shrink-0 pl-2"
+                  style={{
+                    color: "var(--accent)",
+                    fontSize: 22,
+                    fontWeight: 600,
+                    lineHeight: 1.1,
+                    borderLeft: "2px solid var(--accent)",
+                    paddingTop: 1,
+                  }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xl font-bold" style={{ color: "var(--text-primary)", lineHeight: 1.25 }}>{doc.title || "Untitled"}</h2>
                   <div className="flex items-center gap-3 mt-1 text-caption" style={{ color: "var(--text-faint)" }}>
