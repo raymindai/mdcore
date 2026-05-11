@@ -473,10 +473,10 @@ export default function HubEmbed({
               index when you want the AI to see everything up-front. */}
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
-              Digest · default
+              Digest <span style={{ color: "var(--text-faint)" }}>(default)</span>
             </span>
             <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              compact concept map · cheap to paste
+              compact concept map, cheap to paste
             </span>
           </div>
           <button
@@ -500,10 +500,10 @@ export default function HubEmbed({
               the AI needs to see the whole library up front. */}
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.5 }}>
-              Full index · ?full=1
+              Full index <span style={{ color: "var(--text-faint)" }}>(?full=1)</span>
             </span>
             <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              every doc inline · heavier
+              every doc inline, heavier
             </span>
           </div>
           <button
@@ -565,7 +565,7 @@ export default function HubEmbed({
                 style={{ color: "var(--text-faint)", fontSize: 10 }}
                 title="Estimated tokens an AI pays to consume this hub. The digest path uses your concept ontology so broad queries can be answered without reading every doc."
               >
-                {digestTokens > 0 ? `Digest ≈ ${fmt(digestTokens)} tokens · ` : ""}Full ≈ {fmt(indexTokens)} tokens
+                {digestTokens > 0 ? `Digest ≈ ${fmt(digestTokens)} tokens   ` : ""}Full ≈ {fmt(indexTokens)} tokens
               </p>
             );
           })()}
@@ -690,7 +690,7 @@ export default function HubEmbed({
               <div className="min-w-0 flex-1">
                 <div className="text-caption">
                   <span className="font-semibold" style={{ color: meta.tone }}>Auto-management: {meta.label}</span>
-                  <span style={{ color: "var(--text-faint)" }}> · {triggerLabel}</span>
+                  <span style={{ color: "var(--text-faint)" }}> {triggerLabel}</span>
                 </div>
                 <div className="text-caption" style={{ color: "var(--text-muted)" }}>
                   {autoLevel === "off"

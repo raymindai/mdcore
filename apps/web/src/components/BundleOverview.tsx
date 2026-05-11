@@ -216,10 +216,10 @@ export default function BundleOverview({
           </div>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
-              Digest · default
+              Digest <span style={{ color: "var(--text-faint)" }}>(default)</span>
             </span>
             <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              title + annotation + links
+              title, annotation, links
             </span>
           </div>
           <button
@@ -247,10 +247,10 @@ export default function BundleOverview({
           </button>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.5 }}>
-              Full markdown · ?full=1
+              Full markdown <span style={{ color: "var(--text-faint)" }}>(?full=1)</span>
             </span>
             <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              every doc body inline · heavier
+              every doc body inline, heavier
             </span>
           </div>
           <button
@@ -297,9 +297,20 @@ export default function BundleOverview({
               Raw .md
             </a>
           </div>
-          <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)", fontSize: 10 }}>
-            ≈ {tokens.toLocaleString()} tokens for the full bundle
-          </p>
+          {/* Token economy line — matches Hub's layout. Digest cost
+              = bundle frontmatter (~50 tokens) + per-doc title +
+              link + optional annotation (~35 tokens each). Full =
+              annotation + body inline (uses the cheap word-count
+              estimator the bundle already computes). */}
+          {(() => {
+            const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+            const digestTokens = 50 + documents.length * 35;
+            return (
+              <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)", fontSize: 10 }}>
+                Digest ≈ {fmt(digestTokens)} tokens   Full ≈ {fmt(tokens)} tokens
+              </p>
+            );
+          })()}
         </section>
 
         {/* ─── Stat strip ─── */}
@@ -357,7 +368,7 @@ export default function BundleOverview({
             {hasDiscoveries && (themeCount || insightCount) ? (
               <div className="text-body font-semibold tabular-nums" style={{ color: "var(--text-primary)", lineHeight: 1.2 }}>
                 {themeCount ? `${themeCount} theme${themeCount === 1 ? "" : "s"}` : null}
-                {themeCount && insightCount ? <span style={{ color: "var(--text-faint)", fontWeight: 400 }}> · </span> : null}
+                {themeCount && insightCount ? <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>, </span> : null}
                 {insightCount ? `${insightCount} insight${insightCount === 1 ? "" : "s"}` : null}
               </div>
             ) : (

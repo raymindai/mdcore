@@ -530,8 +530,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
         {activeSection === "hub" && (<>
 
         {/* Hub URL — opt-in public knowledge hub */}
-        <section className="mb-2">
-          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Knowledge Hub</h2>
+        <section className="mb-10">
+          <h2 className="text-base font-semibold mb-1.5" style={{ color: "var(--text-primary)", letterSpacing: "-0.005em" }}>Knowledge Hub</h2>
           <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             A single URL pointing to all your public docs and bundles — paste it into any AI to deploy your entire hub as context. Disabled by default.
           </p>
@@ -551,8 +551,19 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                 <label className="block text-xs font-medium mb-1" style={{ color: "var(--text-faint)" }}>
                   Slug (3–32 chars, lowercase, hyphens/underscores allowed)
                 </label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs px-2 py-2 rounded-lg" style={{ color: "var(--text-faint)", background: "var(--input-bg, var(--surface))", border: "1px solid var(--border)" }}>
+                {/* Slug input — single bordered group so the prefix
+                    label and the input share the exact same height
+                    (founder caught the mismatched py-on-different-
+                    font-sizes version of this). One border around
+                    both, internal divider between them. */}
+                <div
+                  className="flex items-stretch rounded-lg overflow-hidden"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)" }}
+                >
+                  <span
+                    className="text-xs flex items-center px-3 shrink-0 font-mono"
+                    style={{ color: "var(--text-faint)", borderRight: "1px solid var(--border)" }}
+                  >
                     mdfy.app/hub/
                   </span>
                   <input
@@ -561,8 +572,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                     onChange={e => setHubSlug(e.target.value.toLowerCase())}
                     placeholder="your-handle"
                     maxLength={32}
-                    className="flex-1 px-3 py-2 rounded-lg text-sm outline-none font-mono"
-                    style={{ background: "var(--input-bg, var(--surface))", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                    className="flex-1 min-w-0 px-3 py-2 text-sm outline-none font-mono"
+                    style={{ background: "transparent", color: "var(--text-primary)" }}
                   />
                 </div>
               </div>
@@ -642,8 +653,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
 
         {/* Mode (formerly "Theme") — Dark vs Light. Hover previews
             apply live so the user sees the swap before clicking. */}
-        <section className="mb-6">
-          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Mode</h2>
+        <section className="mb-10">
+          <h2 className="text-base font-semibold mb-1.5" style={{ color: "var(--text-primary)", letterSpacing: "-0.005em" }}>Mode</h2>
           <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Light or dark canvas. Hover to preview, click to keep.
           </p>
@@ -674,8 +685,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             (dark + light). Hovering either previews scheme + mode
             together; clicking commits both. The label shows which
             (scheme, mode) pair is the currently active one. */}
-        <section className="mb-6">
-          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Skin Theme</h2>
+        <section className="mb-10">
+          <h2 className="text-base font-semibold mb-1.5" style={{ color: "var(--text-primary)", letterSpacing: "-0.005em" }}>Skin Theme</h2>
           <p className="text-caption leading-relaxed mb-3" style={{ color: "var(--text-muted)" }}>
             Each row offers a dark and a light pick — hover to preview the entire UI re-skinning live, click to keep that scheme + mode.
           </p>
@@ -732,7 +743,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
         {/* Key Color — eight accents. Each row shows the dark-mode
             tone next to the light-mode tone so the user sees both
             variants; hovering applies the accent globally. */}
-        <section className="mb-2">
+        <section className="mb-10">
           <label className="block text-caption font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
             Key Color
           </label>
@@ -768,7 +779,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{c.label}</div>
                     <div className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>
-                      Dark {c.dark} · Light {c.light}
+                      Dark {c.dark} / Light {c.light}
                     </div>
                   </div>
                   {isSelected && (
@@ -786,8 +797,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
         {activeSection === "auto-management" && (<>
 
         {/* Auto-management — Curator toggle list */}
-        <section className="mb-2">
-          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Auto-management</h2>
+        <section className="mb-10">
+          <h2 className="text-base font-semibold mb-1.5" style={{ color: "var(--text-primary)", letterSpacing: "-0.005em" }}>Auto-management</h2>
           <p className="text-caption leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
             Curator signals scan your hub and surface findings in Needs Review. With auto-management ON, safe findings are resolved for you on the trigger you pick; destructive ones (like duplicate trash) still ask first. With it OFF, findings just surface and you act on them by hand.
           </p>
@@ -799,10 +810,10 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
               Aggressive — every auto-action is recoverable from
               Trash. The dots act as a slider indicator so the scale
               reads as continuous, not four equal radio options. */}
-          <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-faint)" }}>
+          <h3 className="text-sm font-semibold mb-2 mt-2" style={{ color: "var(--text-secondary)" }}>
             Aggressiveness
-          </label>
-          <div className="rounded-lg overflow-hidden mb-4" style={{ border: "1px solid var(--border-dim)" }}>
+          </h3>
+          <div className="rounded-lg overflow-hidden mb-6" style={{ border: "1px solid var(--border-dim)" }}>
             {AUTO_LEVELS.map((lvl, idx) => {
               const active = curatorSettings.autoLevel === lvl.id;
               const isLast = idx === AUTO_LEVELS.length - 1;
@@ -845,10 +856,10 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
 
           {/* Trigger — when does auto-resolution fire. Greyed when
               level is Off since the trigger has no effect. */}
-          <div className="mb-4" style={{ opacity: curatorSettings.autoLevel === "off" ? 0.5 : 1 }}>
-            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-faint)" }}>
+          <div className="mb-6" style={{ opacity: curatorSettings.autoLevel === "off" ? 0.5 : 1 }}>
+            <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>
               Trigger
-            </label>
+            </h3>
             <div className="grid grid-cols-3 gap-1.5">
               {([
                 { v: "manual", label: "Manual", desc: "Only when you click" },
@@ -878,9 +889,9 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             </div>
           </div>
 
-          <div className="text-xs font-mono uppercase tracking-wider mb-2" style={{ color: "var(--text-faint)" }}>
+          <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--text-secondary)" }}>
             Signals
-          </div>
+          </h3>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
             {CURATOR_OPTIONS.map((opt, idx) => {
               const enabled = curatorSettings[opt.id];
@@ -954,8 +965,8 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             the user already has. Both cards keep the bordered-
             surface style the rest of Settings uses; the Pro card
             adds an accent border so the eye lands on it. */}
-        <section className="mb-2">
-          <h2 className="text-heading mb-1" style={{ color: "var(--text-primary)" }}>Plan</h2>
+        <section className="mb-10">
+          <h2 className="text-base font-semibold mb-1.5" style={{ color: "var(--text-primary)", letterSpacing: "-0.005em" }}>Plan</h2>
           <p className="text-caption leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
             You&apos;re on the <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{(profile?.plan || "free").toUpperCase()}</span> plan. Free covers the core workflow; Pro adds custom domain, branding, and viewer analytics.
           </p>
@@ -985,7 +996,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                       </span>
                     )}
                   </div>
-                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$0 · forever</p>
+                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$0 forever</p>
                   <ul className="space-y-1.5">
                     {FREE_FEATURES.map((f) => (
                       <li key={f} className="flex items-start gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -1004,7 +1015,7 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                       <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.14)", color: "#f59e0b" }}>UPGRADE</span>
                     )}
                   </div>
-                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$8/mo · cancel any time</p>
+                  <p className="text-xs mb-3" style={{ color: "var(--text-faint)" }}>$8/mo, cancel any time</p>
                   <ul className="space-y-1.5 mb-3">
                     {PRO_FEATURES.map((f) => (
                       <li key={f} className="flex items-start gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
