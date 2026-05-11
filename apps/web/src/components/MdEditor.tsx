@@ -8688,21 +8688,16 @@ ${clone.innerHTML}
             const isSettings = showSettings;
             const isHub = !isStart && !isSettings && showHub && !!hubSlug;
             const isBundle = !isStart && !isSettings && !showHub && ct?.kind === "bundle" && !!ct?.bundleId;
-            // Pick the surface-specific label + URL. Start +
-            // Settings don't have a "copy a deep link" semantic, so
-            // the chip becomes a non-copy badge in those modes (the
-            // host page's URL still resolves to root or /settings
-            // — but the chip's job here is to confirm what surface
-            // the user is on, not give them a paste target).
+            // Pick the surface-specific label + URL. Start has no
+            // meaningful URL to display (root /) so we hide the chip
+            // entirely on that surface (founder ask). Settings still
+            // shows a non-copyable badge as an orientation cue.
             let labelPrefix = "/";
             let labelId = "";
             let fullUrl = "";
             let copyable = true;
             if (isStart) {
-              labelPrefix = "";
-              labelId = "Start";
-              fullUrl = "https://mdfy.app/";
-              copyable = false;
+              return null;
             } else if (isSettings) {
               labelPrefix = "/";
               labelId = "settings";
