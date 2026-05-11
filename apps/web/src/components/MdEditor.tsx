@@ -42,7 +42,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, LayoutGrid, Cloud, MessageSquarePlus,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8575,14 +8575,13 @@ ${clone.innerHTML}
               </div>
             );
           })()}
-          {/* Hub + Home + view modes — one combined group. Hub and Home
-              are both top-level destinations (where am I?) so they share
-              a pill border with the view modes that follow, keeping the
-              cluster down to two visual groups: [Back/Forward] and
-              [Hub | Home | views]. A 1px divider separates Hub from
-              Home so the two nav targets still read as distinct. The
-              Hub pill always shows its label (no sm: hide) so mobile
-              users see a recognisable "Hub" target. */}
+          {/* Hub + Home — start-page group. Both buttons are
+              "destinations you start from" (Home = your private
+              workspace landing; Hub = the public face), so they share
+              one rounded-lg pill with a 1px divider between them. The
+              view-mode pills (Live/Split/Source or Overview/Canvas/List)
+              live in a SEPARATE group below — they describe how the
+              current tab is rendered, not where the user is going. */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {hubSlug && (() => {
             const hubTabId = `hub-${hubSlug}`;
@@ -8646,7 +8645,15 @@ ${clone.innerHTML}
             title="Home (Alt+H)"
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
+            <span className="hidden sm:inline">Home</span>
           </button>
+          </div>
+          {/* View modes — own group, separate from the start-page pills.
+              Describes how the current tab is rendered. Bundle tabs get
+              [Overview | Canvas | List]; everything else gets
+              [Live | Split | Source] so the toolbar slot count stays
+              consistent across kinds. */}
+          <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {/* View buttons — different per tab kind. Bundle tabs get
               [Canvas | List]; everything else (doc + hub + onboarding)
               keeps [Live | Split | Source] so the toolbar layout stays
@@ -8654,12 +8661,16 @@ ${clone.innerHTML}
               choice persists for when the user returns to a doc tab. */}
           {activeTab?.kind === "bundle" ? (
             <>
-              {/* Bundle: Canvas / List. Canvas uses Network (graph nodes
-                  + edges) — Layers stays reserved for the Bundle primitive
-                  itself (sidebar, status icons, "New bundle" button) so the
-                  two no longer share a glyph. */}
+              {/* Bundle view modes — each glyph picked so no two pills in
+                  the toolbar share a shape:
+                    Overview → BookOpen (open-book V).  Distinct from
+                      Hub's LayoutDashboard grid — earlier LayoutGrid
+                      read too close to the Hub icon.
+                    Canvas   → Network (nodes + edges).
+                    List     → List (hamburger lines).
+                  Layers stays reserved for the Bundle primitive itself. */}
               {([
-                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <LayoutGrid width={13} height={13} /> },
+                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <BookOpen width={13} height={13} /> },
                 { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
@@ -8722,7 +8733,7 @@ ${clone.innerHTML}
             );
           })
           )}
-          </div>{/* end Home + view modes group */}
+          </div>{/* end view-modes group */}
         </div>{/* end center cluster */}
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 justify-end" style={{ position: "relative", zIndex: 2 }}>
