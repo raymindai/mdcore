@@ -2940,6 +2940,10 @@ export default function MdEditor() {
             const seenIds = new Set<string>();
             const seenCloudIds = new Set<string>();
             const deduped = parsed.filter((t: Tab) => {
+              // Drop legacy hub tabs — Hub is now an overlay, not a tab.
+              // Any leftover hub-<slug> entries from earlier sessions are
+              // stale and would re-create the deselect-on-click bug.
+              if (t.kind === "hub" || (typeof t.id === "string" && t.id.startsWith("hub-"))) return false;
               if (seenIds.has(t.id)) return false;
               seenIds.add(t.id);
               if (t.cloudId) {
@@ -3787,6 +3791,14 @@ export default function MdEditor() {
     } catch {}
     return false;
   });
+  // Hub overlay — same mental model as showOnboarding. The Hub button
+  // shows the public hub view on top of the current tab WITHOUT
+  // changing activeTabId, so opening Hub from a bundle keeps that
+  // bundle "selected" in the sidebar (and one click on the bundle row
+  // brings you right back). Earlier Hub lived as its own tab, which
+  // meant clicking Hub deselected whatever was in the sidebar — that's
+  // the founder complaint this state replaces.
+  const [showHub, setShowHub] = useState(false);
   const [toolbarHintDismissed, setToolbarHintDismissed] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("mdfy-toolbar-hint-dismissed") : true);
   // Document view count (owner only)
   const [viewCount, setViewCount] = useState(0);
@@ -4389,6 +4401,10 @@ export default function MdEditor() {
   const [navTick, setNavTick] = useState(0); // forces re-render when history changes
 
   const switchTab = useCallback((tabId: string) => {
+    // Any explicit tab switch dismisses the Hub overlay — the user is
+    // leaving Hub to view that tab. Mirrors the showOnboarding=false
+    // calls scattered across the tab-open paths.
+    setShowHub(false);
     // Flush any pending WYSIWYG edits before switching
     if (wysiwygDebounce.current) {
       clearTimeout(wysiwygDebounce.current);
@@ -8595,40 +8611,24 @@ ${clone.innerHTML}
               current tab is rendered, not where the user is going. */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
           {hubSlug && (() => {
-            const hubTabId = `hub-${hubSlug}`;
-            // Treat Hub as inactive when onboarding is showing so the
-            // pill doesn't stay highlighted while the tab is hidden
-            // behind the Home screen.
-            const isHubActive = !showOnboarding && activeTab?.id === hubTabId;
+            // Hub is an overlay (like Home / showOnboarding), not a
+            // tab. The button toggles showHub and leaves activeTabId
+            // untouched, so the bundle/doc the user was on stays
+            // highlighted in the sidebar and clicking the row brings
+            // it back instantly. Mutually exclusive with the Home
+            // overlay — opening one closes the other.
+            const isHubActive = showHub && !showOnboarding;
             return (
               <>
                 <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
                   <button
                     onClick={() => {
                       if (isHubActive) {
-                        const fallback = recentTabIds
-                          .map(id => tabs.find(t => t.id === id))
-                          .find((t): t is Tab => !!t && t.id !== hubTabId && !t.deleted)
-                          || tabs.find(t => t.id !== hubTabId && !t.deleted && !t.readonly);
-                        setTabs(prev => prev.filter(t => t.id !== hubTabId));
-                        setRecentTabIds(prev => prev.filter(id => id !== hubTabId));
-                        if (fallback) switchTab(fallback.id);
-                        else setShowOnboarding(true);
+                        setShowHub(false);
                         return;
                       }
                       setShowOnboarding(false);
-                      setTabs(prev => {
-                        if (prev.some(t => t.id === hubTabId)) return prev;
-                        const newTab: Tab = {
-                          id: hubTabId,
-                          kind: "hub",
-                          hubSlug,
-                          title: "My Hub",
-                          markdown: "",
-                        };
-                        return [...prev, newTab];
-                      });
-                      queueMicrotask(() => switchTab(hubTabId));
+                      setShowHub(true);
                     }}
                     className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                     style={{
@@ -8647,7 +8647,7 @@ ${clone.innerHTML}
           })()}
           {/* Home */}
           <button
-            onClick={() => { setShowOnboarding(true); if (viewMode === "editor") setViewMode("preview"); }}
+            onClick={() => { setShowOnboarding(true); setShowHub(false); if (viewMode === "editor") setViewMode("preview"); }}
             className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
             style={{
               background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
@@ -8721,18 +8721,18 @@ ${clone.innerHTML}
             // Onboarding nothing is rendering at viewMode, so the pills
             // stay inactive (the user's last choice persists for when
             // they return to a doc).
-            const active = !showOnboarding && activeTab?.kind !== "hub" && viewMode === mode;
+            const active = !showOnboarding && !showHub && viewMode === mode;
             const hasActiveDoc = tabs.some(t => t.id === activeTabId && !t.deleted);
-            // Disable clicks on Hub too — the view modes (Live/Split/Source)
-            // don't apply to the hub view, so accepting a click would be a
-            // no-op visually while persisting a hidden state change for the
-            // next doc open. Onboarding without a tab also keeps them
-            // disabled (legacy behaviour).
-            const disabled = activeTab?.kind === "hub" || (showOnboarding && !hasActiveDoc);
+            // Disable clicks when Hub or Onboarding (without a real doc)
+            // is the visible surface — view modes (Live/Split/Source)
+            // don't apply to either, so accepting a click would be a
+            // no-op visually while persisting a hidden state change for
+            // the next doc open.
+            const disabled = showHub || (showOnboarding && !hasActiveDoc);
             return (
               <button
                 key={mode}
-                onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); } }}
+                onClick={() => { if (!disabled) { setViewMode(mode); setShowOnboarding(false); setShowHub(false); } }}
                 disabled={disabled}
                 title={`${label} (Alt+${shortcut})`}
                 className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
@@ -12129,7 +12129,7 @@ ${clone.innerHTML}
             <div
               data-print-hide
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
-              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || activeTab?.kind === "hub") ? "none" : undefined }}
+              style={{ color: "var(--text-muted)", borderBottom: "1px solid var(--border-dim)", cursor: "default", display: (activeTab?.kind === "bundle" || showHub) ? "none" : undefined }}
             >
               <div className="flex items-center gap-2 shrink-0 min-w-0">
                 <span className="shrink-0" style={{ color: "var(--accent)" }}>LIVE</span>
@@ -12485,22 +12485,22 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 flex min-h-0 relative">
-            {/* Hub tab — in-editor view of /hub/<slug>. Same overlay slot
-                as BundleEmbed so it covers the editor preview while
-                respecting the right-side panels. */}
-            {activeTab?.kind === "hub" && activeTab.hubSlug && !showOnboarding && (
+            {/* Hub — overlay rendering keyed off showHub, not a tab in
+                tabs[]. Activates on top of whatever the user was last
+                on (doc or bundle), so the sidebar selection for that
+                tab stays intact. Same overlay slot as BundleEmbed —
+                respects the right-side panels. */}
+            {showHub && hubSlug && !showOnboarding && (
               <div
                 className="absolute top-0 bottom-0 left-0 z-10 flex"
                 style={{
-                  // Hub view doesn't show the outline panel (no markdown to outline),
-                  // so don't reserve space for it even if the toggle is persisted on.
                   right: showAIPanel ? aiPanelWidth : (showImagePanel ? 320 : 0),
                   background: "var(--background)",
                 }}
               >
                 <div className="flex-1 min-w-0">
                   <HubEmbed
-                    slug={activeTab.hubSlug}
+                    slug={hubSlug}
                     onCreateBundleFromDocs={(docIds) => {
                       // Pre-fill BundleCreator with the suggested doc IDs.
                       // Resolve to full {id, title} pairs from local tabs +
@@ -12514,6 +12514,7 @@ ${clone.innerHTML}
                       setShowBundleCreator(true);
                     }}
                     onOpenDoc={(docId) => {
+                      setShowHub(false);
                       const existing = tabs.find(t => t.cloudId === docId);
                       if (existing) { switchTab(existing.id); return; }
                       fetch(`/api/docs/${docId}`, { headers: authHeaders }).then(r => r.ok ? r.json() : null).then(d => {
@@ -12533,6 +12534,7 @@ ${clone.innerHTML}
                       }).catch(() => {});
                     }}
                     onOpenBundle={(bundleId) => {
+                      setShowHub(false);
                       const existing = tabs.find(t => t.kind === "bundle" && t.bundleId === bundleId);
                       if (existing) { switchTab(existing.id); return; }
                       const b = bundles.find(x => x.id === bundleId);
@@ -12619,7 +12621,7 @@ ${clone.innerHTML}
                 concepts that also appear in OTHER docs, surface a pill row
                 so the user can jump to the cross-doc context. Only shown for
                 regular doc tabs (not bundles, not onboarding). */}
-            {activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && !showOnboarding && relatedConcepts.length > 0 && (
+            {activeTab?.kind !== "bundle" && !showHub && !showOnboarding && relatedConcepts.length > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 flex-wrap shrink-0"
                 style={{ borderBottom: "1px solid var(--border-dim)", background: "var(--toggle-bg)" }}>
                 <span className="text-caption font-semibold uppercase tracking-wider shrink-0" style={{ color: "var(--text-faint)" }}>
@@ -12644,7 +12646,7 @@ ${clone.innerHTML}
               </div>
             )}
             <div className="flex-1 overflow-auto relative" ref={previewRef}>
-              {showInnerLoader && activeTab?.kind !== "bundle" && activeTab?.kind !== "hub" && (
+              {showInnerLoader && activeTab?.kind !== "bundle" && !showHub && (
                 // Visually identical to page.tsx's boot loader — same
                 // logo size, same bar dimensions, same caption — so
                 // when this overlay takes over from the boot loader
@@ -12760,16 +12762,17 @@ ${clone.innerHTML}
                 />
               </div>{/* end scrollable preview */}
               {/* ─── AI Panel (side-by-side) ─── */}
-              {showAIPanel && (canEdit || activeTab?.kind === "bundle" || activeTab?.kind === "hub" || (aiPanelMode === "hub" && hubSlug)) && (() => {
+              {showAIPanel && (canEdit || activeTab?.kind === "bundle" || showHub || (aiPanelMode === "hub" && hubSlug)) && (() => {
                 // Three assistants — Document, Bundle, Hub. All share the
                 // mdfy orange palette; the radio tabs above the panel are
                 // the single source of mode identity. The header below
                 // just shows "what the active assistant is working with"
                 // (title + word count, doc count + bundle name, concept
                 // count). No per-mode colour.
-                // When the hub tab is open, the chat snaps to Hub mode
-                // automatically — no need for the user to flip the radio.
-                const isHubMode = !!hubSlug && (aiPanelMode === "hub" || activeTab?.kind === "hub");
+                // When the Hub overlay is showing, the chat snaps to Hub
+                // mode automatically — no need for the user to flip the
+                // radio. (showHub replaced the old hub-tab path.)
+                const isHubMode = !!hubSlug && (aiPanelMode === "hub" || showHub);
                 const isBundleMode = !isHubMode && activeTab?.kind === "bundle";
                 const activeBundle = isBundleMode ? bundles.find(b => b.id === activeTab?.bundleId) : null;
                 const docWordCount = !isHubMode && !isBundleMode ? markdown.trim().split(/\s+/).filter(Boolean).length : 0;
@@ -13199,7 +13202,7 @@ ${clone.innerHTML}
                 </div>
               ); })()}
               {/* ─── Outline Panel (side-by-side) ─── */}
-              {showOutlinePanel && activeTab?.kind !== "hub" && activeTab?.kind !== "bundle" && (
+              {showOutlinePanel && !showHub && activeTab?.kind !== "bundle" && (
                 <div
                   className="flex flex-col shrink-0"
                   style={{ width: "min(260px, 40%)", background: "var(--surface)", borderLeft: "1px solid var(--border)" }}
