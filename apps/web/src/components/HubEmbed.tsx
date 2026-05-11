@@ -640,7 +640,10 @@ export default function HubEmbed({
                 className="text-caption px-3 py-1.5 rounded shrink-0 transition-colors"
                 style={{
                   background: "var(--accent)",
-                  color: "#fff",
+                  // Matches every other accent-fill button in Settings /
+                  // BundleOverview / Hub — black text on the accent
+                  // works in both light + dark across the eight schemes.
+                  color: "#000",
                   opacity: ontologyBuilding ? 0.5 : 1,
                   cursor: ontologyBuilding ? "not-allowed" : "pointer",
                 }}

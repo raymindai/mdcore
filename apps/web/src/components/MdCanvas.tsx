@@ -565,9 +565,21 @@ function MdCanvas({
         return;
       }
 
+      // Mermaid theming follows the page's active mode. Earlier this
+      // was hardcoded to the dark palette, which left light-mode users
+      // looking at black-on-charcoal diagrams on a cream page. We now
+      // peek at <html data-theme> at render time and pick the
+      // matching variable set.
+      const isLight = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
       mermaid.initialize({
-        startOnLoad: false, securityLevel: "loose", theme: "dark",
-        themeVariables: {
+        startOnLoad: false, securityLevel: "loose", theme: isLight ? "default" : "dark",
+        themeVariables: isLight ? {
+          primaryColor: "#ea580c", primaryTextColor: "#09090b", primaryBorderColor: "#c2410c",
+          lineColor: "#71717a", secondaryColor: "#f4f4f5", tertiaryColor: "#faf9f7",
+          background: "#faf9f7", mainBkg: "#f4f4f5", nodeBorder: "#e4e4e7",
+          clusterBkg: "#faf9f7", titleColor: "#09090b", edgeLabelBackground: "#ffffff",
+          pie1: "#ea580c", pie2: "#2563eb", pie3: "#16a34a", pie4: "#7c3aed", pie5: "#ec4899",
+        } : {
           primaryColor: "#fb923c", primaryTextColor: "#fafafa", primaryBorderColor: "#ea580c",
           lineColor: "#71717a", secondaryColor: "#27272a", tertiaryColor: "#18181b",
           background: "#09090b", mainBkg: "#27272a", nodeBorder: "#3f3f46",
