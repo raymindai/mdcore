@@ -8690,9 +8690,14 @@ ${clone.innerHTML}
                 { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
-              const active = !showOnboarding && bundleView === mode;
+              // Active highlight requires the bundle to actually be the
+              // visible surface — when Home or Hub is overlaid on top,
+              // the bundle is hidden, so the pill must NOT stay
+              // highlighted (was the visible asymmetry between Home
+              // and Hub: Home cleared the highlight, Hub didn't).
+              const active = !showOnboarding && !showHub && bundleView === mode;
               return (
-                <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); }} title={`${label} (Alt+${shortcut})`}
+                <button key={mode} onClick={() => { setBundleView(mode); setShowOnboarding(false); setShowHub(false); }} title={`${label} (Alt+${shortcut})`}
                   className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
                   style={{
                     background: active ? "var(--accent-dim)" : "var(--toggle-bg)",
