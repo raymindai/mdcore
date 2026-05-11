@@ -3533,20 +3533,15 @@ function BundleListView({
             const hasAnnotation = !!(doc.annotation && doc.annotation.trim());
             return (
             <article key={doc.id} data-doc-section={doc.id} className="mb-12 pb-8" style={{ borderBottom: i < documents.length - 1 ? "1px solid var(--border-dim)" : "none" }}>
-              <div className="flex items-start gap-3 mb-3">
-                {/* Doc number — typographic only. No chip, no side
-                    bar (founder rejected the accent left-bar style).
-                    A plain zero-padded mono numeral in the muted
-                    text colour reads as a chapter index without
-                    fighting the title. */}
+              <div className="flex items-start gap-2.5 mb-3">
+                {/* Doc number — small mono index, quieter than the
+                    title. Section number should sit BELOW the title
+                    in visual weight, not compete with it. */}
                 <span
-                  className="font-mono tabular-nums shrink-0"
+                  className="font-mono tabular-nums shrink-0 text-caption"
                   style={{
                     color: "var(--text-faint)",
-                    fontSize: 22,
-                    fontWeight: 500,
-                    lineHeight: 1.15,
-                    paddingTop: 1,
+                    paddingTop: 6,
                   }}
                 >
                   {String(i + 1).padStart(2, "0")}
