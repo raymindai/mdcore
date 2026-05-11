@@ -3568,7 +3568,13 @@ export default function MdEditor() {
     if (typeof window === "undefined") return [];
     try {
       const saved = localStorage.getItem("mdfy-recent-tabs");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        // Strip any leftover hub tab ids from older sessions — the
+        // policy is now "Hub never enters Recent", so we drop them
+        // on load instead of letting them linger forever.
+        return Array.isArray(arr) ? arr.filter((id: string) => typeof id === "string" && !id.startsWith("hub-")) : [];
+      }
     } catch { /* ignore */ }
     return [];
   });
@@ -3579,10 +3585,15 @@ export default function MdEditor() {
   }, [recentTabIds]);
   // Always reflect the active tab at the top of Recent — including on initial
   // mount, history-driven navigation, or any non-click switch. Idempotent: skips
-  // when activeTabId is already first.
+  // when activeTabId is already first. Hub tabs are excluded: the Hub button
+  // in the centre toolbar is always reachable, so seeing "My Hub" eat a slot
+  // in Recent pushes out the doc/bundle entries that actually benefit from
+  // recency tracking. handleDocClick has the same skip; this effect is the
+  // catch-all path (switchTab call from the Hub button, history nav, etc.).
   useEffect(() => {
     if (!activeTabId) return;
     if (isDraggingSidebarRef.current) return;
+    if (activeTabId.startsWith("hub-")) return;
     setRecentTabIds(prev => prev[0] === activeTabId ? prev : [activeTabId, ...prev.filter(id => id !== activeTabId)].slice(0, 7));
   }, [activeTabId]);
   const [showRecent, setShowRecent] = useState(() => {
@@ -8579,7 +8590,7 @@ ${clone.innerHTML}
               "destinations you start from" (Home = your private
               workspace landing; Hub = the public face), so they share
               one rounded-lg pill with a 1px divider between them. The
-              view-mode pills (Live/Split/Source or Overview/Canvas/List)
+              view-mode pills (Live/Split/Source or Bundle/Canvas/List)
               live in a SEPARATE group below — they describe how the
               current tab is rendered, not where the user is going. */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -8650,7 +8661,7 @@ ${clone.innerHTML}
           </div>
           {/* View modes — own group, separate from the start-page pills.
               Describes how the current tab is rendered. Bundle tabs get
-              [Overview | Canvas | List]; everything else gets
+              [Bundle | Canvas | List]; everything else gets
               [Live | Split | Source] so the toolbar slot count stays
               consistent across kinds. */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
@@ -8663,14 +8674,19 @@ ${clone.innerHTML}
             <>
               {/* Bundle view modes — each glyph picked so no two pills in
                   the toolbar share a shape:
-                    Overview → BookOpen (open-book V).  Distinct from
-                      Hub's LayoutDashboard grid — earlier LayoutGrid
-                      read too close to the Hub icon.
-                    Canvas   → Network (nodes + edges).
-                    List     → List (hamburger lines).
-                  Layers stays reserved for the Bundle primitive itself. */}
+                    Bundle  → BookOpen (open-book V).  The bundle's own
+                      identity surface — deploy URL, stats, member docs.
+                      Naming it after the primitive itself (instead of
+                      the more generic "Overview") makes the tab read as
+                      "this IS the bundle" rather than a meta-view.
+                    Canvas  → Network (nodes + edges).
+                    List    → List (hamburger lines).
+                  Layers stays reserved for the Bundle primitive itself
+                  in the sidebar/status icons; this pill uses BookOpen
+                  so the toolbar doesn't repeat that glyph. The mode id
+                  remains "overview" internally — pure label rename. */}
               {([
-                { mode: "overview" as const, label: "Overview", shortcut: "1", icon: <BookOpen width={13} height={13} /> },
+                { mode: "overview" as const, label: "Bundle", shortcut: "1", icon: <BookOpen width={13} height={13} /> },
                 { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
@@ -11775,7 +11791,13 @@ ${clone.innerHTML}
           {showOnboarding ? (
             /* ─── Start Screen ─── */
             <div className="flex-1 overflow-y-auto flex flex-col" style={{ background: "var(--background)" }}>
-              <div className="w-full max-w-xl mx-auto my-auto px-5 py-8">
+              {/* Width + padding match HubEmbed and BundleOverview
+                  (max-w-3xl, px-6 py-10) so the three "destination"
+                  surfaces — Home, Hub, Bundle — share a consistent
+                  content frame. Earlier max-w-xl + my-auto centered a
+                  narrower column, which read like a different surface
+                  family from Hub/doc. */}
+              <div className="w-full max-w-3xl mx-auto px-6 py-10">
 
                 {/* Knowledge-compounds stats — gated on the thinking-surface
                     flag because it surfaces concept counts that don't make
