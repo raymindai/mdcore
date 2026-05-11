@@ -5,6 +5,13 @@ import { useAuth } from "@/lib/useAuth";
 import { buildAuthHeaders } from "@/lib/auth-fetch";
 import { ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import {
+  CURATOR_OPTIONS,
+  defaultCuratorSettings,
+  loadCuratorSettings,
+  saveCuratorSettings,
+  type CuratorSettings,
+} from "@/lib/curator-options";
 
 function dicebearUrl(seed: string, size = 80): string {
   return `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(seed)}&size=${size}`;
@@ -27,6 +34,21 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Curator (auto-management) toggles. Per-user list of which signals
+  // run in Needs Review. Stored in localStorage until we promote to
+  // a profiles column for cross-device sync.
+  const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
+  useEffect(() => { setCuratorSettings(loadCuratorSettings()); }, []);
+  const toggleCurator = (id: keyof CuratorSettings, next: boolean) => {
+    setCuratorSettings((prev) => {
+      const updated = { ...prev, [id]: next };
+      saveCuratorSettings(updated);
+      // Broadcast so the editor's Needs Review section can re-filter
+      // without a full reload.
+      try { window.dispatchEvent(new CustomEvent("mdfy-curator-settings-changed", { detail: updated })); } catch { /* ignore */ }
+      return updated;
+    });
+  };
 
   // Hub URL state
   const [hubSlug, setHubSlug] = useState("");
@@ -328,6 +350,78 @@ export default function SettingsPage() {
               Light
             </button>
           </div>
+        </div>
+
+        {/* Auto-management — Curator toggle list */}
+        <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+            Auto-management
+          </label>
+          <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+            Curator signals run when your hub re-scans. Toggle each one to decide what shows up in Needs Review. Disabled signals are silent; enabled signals surface findings you can Resolve in one click.
+          </p>
+          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+            {CURATOR_OPTIONS.map((opt, idx) => {
+              const enabled = curatorSettings[opt.id];
+              const isLast = idx === CURATOR_OPTIONS.length - 1;
+              return (
+                <div
+                  key={opt.id}
+                  className="flex items-start gap-3 px-3 py-3"
+                  style={{
+                    borderBottom: isLast ? "none" : "1px solid var(--border-dim)",
+                    background: enabled && opt.shipped ? "var(--surface)" : "transparent",
+                    opacity: opt.shipped ? 1 : 0.6,
+                  }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{opt.label}</span>
+                      {!opt.shipped && (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider"
+                          style={{ background: "var(--toggle-bg)", color: "var(--text-faint)", letterSpacing: 1 }}
+                        >
+                          Coming soon
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>{opt.description}</p>
+                  </div>
+                  {/* Toggle — pure CSS switch. Disabled (un-clickable)
+                      for not-yet-shipped options so the user can see
+                      they're coming but can't expect them to fire. */}
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1" style={{ cursor: opt.shipped ? "pointer" : "not-allowed" }}>
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={(e) => opt.shipped && toggleCurator(opt.id, e.target.checked)}
+                      disabled={!opt.shipped}
+                      className="sr-only peer"
+                    />
+                    <div
+                      className="w-9 h-5 rounded-full transition-colors"
+                      style={{
+                        background: enabled && opt.shipped ? "var(--accent)" : "var(--border-dim)",
+                      }}
+                    >
+                      <div
+                        className="w-4 h-4 rounded-full transition-transform"
+                        style={{
+                          background: "#fff",
+                          transform: `translate(${enabled && opt.shipped ? 18 : 2}px, 2px)`,
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                        }}
+                      />
+                    </div>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs mt-3" style={{ color: "var(--text-faint)" }}>
+            Stored locally for now. Per-account sync arrives in a later release.
+          </p>
         </div>
 
         {/* Plan Info */}

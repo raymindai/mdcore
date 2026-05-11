@@ -26,6 +26,7 @@ import { Button, Badge, ModalShell } from "@/components/ui";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import RelatedDocsWidget from "@/components/RelatedDocsWidget";
 import ImportModal from "@/components/ImportModal";
+import { loadCuratorSettings, type CuratorSettings, defaultCuratorSettings } from "@/lib/curator-options";
 import { extractTitleFromMd } from "@/lib/extract-title";
 import { readCompileSources } from "@/lib/compile-sources";
 import { useCodeMirror } from "@/components/useCodeMirror";
@@ -2834,6 +2835,20 @@ export default function MdEditor() {
   // even if a re-scan returns them (backend concept-extraction is
   // async and can lag). Cleared on hard refresh.
   const [lintResolved, setLintResolved] = useState<{ orphans: Set<string>; duplicates: Set<string> }>({ orphans: new Set(), duplicates: new Set() });
+  // User's curator preferences — drives which lint categories show
+  // up in Needs Review. Hydrated from localStorage on mount and
+  // refreshed whenever Settings broadcasts a change so the section
+  // updates without a reload.
+  const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
+  useEffect(() => {
+    setCuratorSettings(loadCuratorSettings());
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<CuratorSettings>).detail;
+      if (detail) setCuratorSettings(detail);
+    };
+    window.addEventListener("mdfy-curator-settings-changed", onChange as EventListener);
+    return () => window.removeEventListener("mdfy-curator-settings-changed", onChange as EventListener);
+  }, []);
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number; section?: "my" | "bundles" } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -10688,7 +10703,10 @@ ${clone.innerHTML}
                   from any other doc) and likely duplicate pairs.
                   Only renders when there's at least one finding —
                   empty hubs don't need to see an empty section. ── */}
-            {user?.id && lintReport && (lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length + lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length) > 0 && (
+            {user?.id && lintReport && (
+              (curatorSettings.orphan ? lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length : 0)
+              + (curatorSettings.duplicate ? lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length : 0)
+            ) > 0 && (
               <div className="shrink-0">
                 <div
                   data-section-id="lint"
@@ -10707,7 +10725,10 @@ ${clone.innerHTML}
                     style={{ transform: showLint ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
                   <span className={`flex-1 text-caption font-medium transition-colors ${showLint ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Needs review</span>
-                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length + lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length}</span>
+                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{
+                    (curatorSettings.orphan ? lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length : 0)
+                    + (curatorSettings.duplicate ? lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length : 0)
+                  }</span>
                 </div>
                 {showLint && (() => {
                   // Mutating actions kept inside this IIFE so the outer
@@ -10715,12 +10736,18 @@ ${clone.innerHTML}
                   // `resolvingId` is the doc id currently being resolved
                   // — used to disable the row's Resolve button while
                   // the request is in flight.
-                  // Filter the raw lintReport through the in-session
-                  // resolved set so items the user just resolved stay
-                  // hidden even if backend re-scan returns them (concept
-                  // extraction is async and can lag).
-                  const visibleOrphans = lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id));
-                  const visibleDuplicates = lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`));
+                  // Filter the raw lintReport through (a) the user's
+                  // curator-options toggles — categories the user
+                  // turned off don't surface at all — and (b) the
+                  // in-session resolved set so items the user just
+                  // resolved stay hidden even if backend re-scan
+                  // returns them (concept extraction is async, lags).
+                  const visibleOrphans = curatorSettings.orphan
+                    ? lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id))
+                    : [];
+                  const visibleDuplicates = curatorSettings.duplicate
+                    ? lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`))
+                    : [];
                   const totalVisible = visibleOrphans.length + visibleDuplicates.length;
 
                   const reScan = () => {
