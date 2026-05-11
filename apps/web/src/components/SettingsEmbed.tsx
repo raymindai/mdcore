@@ -46,8 +46,29 @@ function resolveAvatar(
   return profile?.avatar_url || user?.user_metadata?.avatar_url || dicebearUrl(user?.email || "user", size);
 }
 
+type SettingsSection = "profile" | "appearance" | "auto-management" | "hub" | "danger";
+
+const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
+  { id: "profile",         label: "Profile" },
+  { id: "appearance",      label: "Appearance" },
+  { id: "auto-management", label: "Auto-management" },
+  { id: "hub",             label: "Hub" },
+  { id: "danger",          label: "Danger" },
+];
+
 export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   const { user, profile, loading: authLoading, accessToken, isAuthenticated, signOut } = useAuth();
+  // One section visible at a time. Founder feedback: stacking
+  // everything on one column made sections blur together; tabs
+  // give each its own surface. Persisted to localStorage so a
+  // refresh keeps the user where they were.
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => {
+    if (typeof window === "undefined") return "profile";
+    return (localStorage.getItem("mdfy-settings-section") as SettingsSection) || "profile";
+  });
+  useEffect(() => {
+    try { localStorage.setItem("mdfy-settings-section", activeSection); } catch {}
+  }, [activeSection]);
 
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,11 +86,32 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
   const [keyColor, setKeyColor] = useState<AccentColor>("orange");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const s = (localStorage.getItem("mdfy-scheme") as ColorScheme) || "default";
-    const a = (localStorage.getItem("mdfy-accent") as AccentColor) || "orange";
+    // Server (profile) wins when present — keeps the picks
+    // consistent across devices. Falls back to localStorage so
+    // the surface still works offline / signed-out.
+    const p = profile as { color_scheme?: string | null; accent_color?: string | null } | null;
+    const serverScheme = (p?.color_scheme as ColorScheme | null) || null;
+    const serverAccent = (p?.accent_color as AccentColor | null) || null;
+    const s = serverScheme || (localStorage.getItem("mdfy-scheme") as ColorScheme) || "default";
+    const a = serverAccent || (localStorage.getItem("mdfy-accent") as AccentColor) || "orange";
     setSkinScheme(s);
     setKeyColor(a);
-  }, []);
+    // Re-apply to DOM in case the server value differed from the
+    // localStorage cache the editor's useTheme hydrated from.
+    applyScheme(s);
+    applyAccent(a);
+  }, [profile]);
+  // Persist pref changes to the profile row. Debounce-free —
+  // selectScheme/selectAccent already fire on click only.
+  const syncPrefToProfile = useCallback(async (col: "color_scheme" | "accent_color", value: string) => {
+    if (!user) return;
+    try {
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      await supabase.from("profiles").update({ [col]: value }).eq("id", user.id);
+    } catch { /* ignore — localStorage still has the value */ }
+  }, [user]);
   const applyScheme = (s: ColorScheme) => {
     if (typeof document === "undefined") return;
     if (s === "default") document.documentElement.removeAttribute("data-scheme");
@@ -84,19 +126,45 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
     setSkinScheme(s);
     applyScheme(s);
     try { localStorage.setItem("mdfy-scheme", s); } catch {}
+    syncPrefToProfile("color_scheme", s);
   };
   const selectAccent = (a: AccentColor) => {
     setKeyColor(a);
     applyAccent(a);
     try { localStorage.setItem("mdfy-accent", a); } catch {}
+    syncPrefToProfile("accent_color", a);
   };
   const [curatorSettings, setCuratorSettings] = useState<CuratorSettings>(() => defaultCuratorSettings());
-  useEffect(() => { setCuratorSettings(loadCuratorSettings()); }, []);
+  useEffect(() => {
+    // Hydrate: localStorage first (offline-first), then merge any
+    // server snapshot from the profile row on top. Last-write-wins
+    // is fine here — the server snapshot is updated by the same
+    // user from any device, and the value space is small.
+    const local = loadCuratorSettings();
+    const p = profile as { curator_settings?: Partial<CuratorSettings> | null } | null;
+    if (p?.curator_settings && typeof p.curator_settings === "object") {
+      setCuratorSettings({ ...local, ...p.curator_settings });
+    } else {
+      setCuratorSettings(local);
+    }
+  }, [profile]);
   const toggleCurator = <K extends keyof CuratorSettings>(id: K, next: CuratorSettings[K]) => {
     setCuratorSettings((prev) => {
       const updated = { ...prev, [id]: next } as CuratorSettings;
       saveCuratorSettings(updated);
       try { window.dispatchEvent(new CustomEvent("mdfy-curator-settings-changed", { detail: updated })); } catch { /* ignore */ }
+      // Fire-and-forget profile sync. Best-effort — localStorage
+      // still has the canonical value if the server write fails.
+      if (user) {
+        (async () => {
+          try {
+            const { getSupabaseBrowserClient } = await import("@/lib/supabase-browser");
+            const supabase = getSupabaseBrowserClient();
+            if (!supabase) return;
+            await supabase.from("profiles").update({ curator_settings: updated }).eq("id", user.id);
+          } catch { /* ignore */ }
+        })();
+      }
       return updated;
     });
   };
@@ -272,6 +340,33 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
           </div>
         </header>
 
+        {/* Section tabs — horizontal nav. Active tab carries the
+            accent underline; clicking switches the section below.
+            Persists to localStorage so a refresh lands the user
+            back where they were. */}
+        <nav className="flex items-center gap-0.5 mb-8 overflow-x-auto" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+          {SETTINGS_SECTIONS.map((s) => {
+            const active = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className="px-3 py-2 text-caption font-medium shrink-0 transition-colors"
+                style={{
+                  color: active ? "var(--accent)" : "var(--text-muted)",
+                  borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                  marginBottom: -1,
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* ── Profile section ── */}
+        {activeSection === "profile" && (<>
+
         {/* Display Name */}
         <div className="mb-6">
           <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
@@ -300,6 +395,11 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             </button>
           </div>
         </div>
+
+        </>)}
+
+        {/* ── Hub section ── */}
+        {activeSection === "hub" && (<>
 
         {/* Hub URL — opt-in public knowledge hub */}
         <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
@@ -381,6 +481,16 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
 
+        </>)}
+
+        {/* Email lives in Profile but rendered above with the
+            Hub section's close in case the user wants to confirm
+            account identity from the appearance / auto-management
+            section too. We move it into Profile to keep one
+            source of truth — fold the email read-only block back
+            under Profile. */}
+        {activeSection === "profile" && (<>
+
         {/* Email (read-only) */}
         <div className="mb-6">
           <label className="block text-xs font-medium mb-1.5 uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
@@ -398,6 +508,11 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             {user?.email}
           </div>
         </div>
+
+        </>)}
+
+        {/* ── Appearance section ── */}
+        {activeSection === "appearance" && (<>
 
         {/* Theme */}
         <div className="mb-8">
@@ -538,6 +653,11 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             })}
           </div>
         </div>
+
+        </>)}
+
+        {/* ── Auto-management section ── */}
+        {activeSection === "auto-management" && (<>
 
         {/* Auto-management — Curator toggle list */}
         <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
@@ -694,9 +814,15 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             })}
           </div>
           <p className="text-xs mt-3" style={{ color: "var(--text-faint)" }}>
-            Stored locally for now. Per-account sync arrives in a later release.
+            Synced to your account — settings follow you across devices. Local cache stays in case you go offline.
           </p>
         </div>
+
+        </>)}
+
+        {/* Plan lives at the bottom of Profile (since it's identity-
+            adjacent). Re-open the profile fragment for it. */}
+        {activeSection === "profile" && (<>
 
         {/* Plan Info */}
         <div className="mb-8 pb-6" style={{ borderBottom: "1px solid var(--border-dim)" }}>
@@ -715,6 +841,11 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             </span>
           </div>
         </div>
+
+        </>)}
+
+        {/* ── Danger section ── */}
+        {activeSection === "danger" && (<>
 
         {/* Danger Zone */}
         <div>
@@ -759,6 +890,8 @@ export default function SettingsEmbed({ onClose }: { onClose?: () => void }) {
             </div>
           )}
         </div>
+
+        </>)}
       </div>
     </div>
   );
