@@ -8674,19 +8674,19 @@ ${clone.innerHTML}
             <>
               {/* Bundle view modes — each glyph picked so no two pills in
                   the toolbar share a shape:
-                    Bundle  → BookOpen (open-book V).  The bundle's own
-                      identity surface — deploy URL, stats, member docs.
-                      Naming it after the primitive itself (instead of
-                      the more generic "Overview") makes the tab read as
-                      "this IS the bundle" rather than a meta-view.
+                    Bundle  → Layers (stacked sheets).  The bundle's
+                      own identity surface — deploy URL, stats, member
+                      docs. Uses the project-wide Bundle primitive glyph
+                      so the tab label and icon agree ("Bundle" pill
+                      shows THE Bundle icon).
                     Canvas  → Network (nodes + edges).
                     List    → List (hamburger lines).
-                  Layers stays reserved for the Bundle primitive itself
-                  in the sidebar/status icons; this pill uses BookOpen
-                  so the toolbar doesn't repeat that glyph. The mode id
-                  remains "overview" internally — pure label rename. */}
+                  Repeating Layers here doesn't fight the sidebar
+                  convention — the toolbar slot and the sidebar status
+                  icons live on different surfaces and a user only ever
+                  sees one of each at a time. */}
               {([
-                { mode: "overview" as const, label: "Bundle", shortcut: "1", icon: <BookOpen width={13} height={13} /> },
+                { mode: "overview" as const, label: "Bundle", shortcut: "1", icon: <Layers width={13} height={13} /> },
                 { mode: "canvas" as const, label: "Canvas", shortcut: "2", icon: <Network width={13} height={13} /> },
                 { mode: "list" as const, label: "List", shortcut: "3", icon: <List width={13} height={13} /> },
               ]).map(({ mode, label, shortcut, icon }) => {
