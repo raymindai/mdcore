@@ -12547,6 +12547,33 @@ ${clone.innerHTML}
                       setTabs(prev => [...prev, newTab]);
                       switchTab(newId);
                     }}
+                    onExpandConcept={(concept, sourceDocId, neighbors) => {
+                      // Mirrors the role Publish plays on Promote rows.
+                      // Spawns a fresh local draft seeded with the
+                      // underexplored concept as the title + a single H1
+                      // so the editor has something to render. Autosave
+                      // picks the tab up from there once the user
+                      // types — we don't pre-POST it. Neighbours feed a
+                      // small html-comment hint at the top so the user
+                      // sees what concept neighbourhood mdfy suggested
+                      // they cross-link into; comments don't render in
+                      // preview so they only matter while drafting.
+                      setShowHub(false);
+                      const newId = `local-expand-${Date.now()}`;
+                      const neighbourHint = neighbors.length > 0
+                        ? `<!-- mdfy: this concept connects to ${neighbors.slice(0, 5).join(", ")} — referenced in /${sourceDocId} -->\n\n`
+                        : "";
+                      const seedMd = `${neighbourHint}# ${concept}\n\n`;
+                      const newTab: Tab = {
+                        id: newId,
+                        kind: "doc",
+                        title: concept,
+                        markdown: seedMd,
+                        isDraft: true,
+                      };
+                      setTabs(prev => [...prev, newTab]);
+                      switchTab(newId);
+                    }}
                   />
                 </div>
               </div>

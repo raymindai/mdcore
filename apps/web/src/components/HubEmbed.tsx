@@ -89,6 +89,11 @@ interface HubEmbedProps {
   /** Open the Bundle Creator pre-filled with the supplied doc ids.
    *  Used by the "Bundle these N docs about X" suggestion card. */
   onCreateBundleFromDocs?: (docIds: string[], suggestedTitle?: string) => void;
+  /** Primary action on Expand suggestion rows — create a fresh draft
+   *  note seeded with the underexplored concept so the user can write
+   *  into it immediately. Mirrors the role Publish plays on Promote
+   *  rows: one click, the suggested action happens. */
+  onExpandConcept?: (concept: string, sourceDocId: string, neighbors: string[]) => void;
 }
 
 // Module-level cache. The hub tab unmounts whenever the user switches
@@ -121,7 +126,7 @@ const TIERS = {
   private: { label: "Private", desc: "Only you can read — saved to cloud but not shared", icon: Cloud, color: "var(--text-muted)", bg: "var(--toggle-bg)" },
 } as const;
 
-export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundleFromDocs }: HubEmbedProps) {
+export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundleFromDocs, onExpandConcept }: HubEmbedProps) {
   // Seed from cache so re-mounting (back-button from a doc/bundle tab)
   // shows the previous snapshot instantly instead of the loader.
   const cachedEntry = hubDataCache.get(slug);
@@ -523,6 +528,33 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
           const thinCards = (suggestions.thin || [])
             .filter((s) => !dismissedSuggestions.has(`thin:${s.concept.toLowerCase()}`));
           if (promoteCards.length === 0 && bundleCards.length === 0 && thinCards.length === 0) return null;
+          // Per-doc access lookup — used to inline a small share-status
+          // icon next to every doc-title reference inside a suggestion
+          // body, so the user can tell at a glance whether a referenced
+          // doc is public / shared / private without crossing back to
+          // the library list. Built from ownerView when present; an
+          // unknown doc just doesn't render an icon.
+          type AccessKind = "public" | "shared" | "private";
+          const docAccess = new Map<string, AccessKind>();
+          if (data?.ownerView) {
+            for (const d of data.ownerView.documents.public) docAccess.set(d.id, "public");
+            for (const d of data.ownerView.documents.shared) docAccess.set(d.id, "shared");
+            for (const d of data.ownerView.documents.private) docAccess.set(d.id, "private");
+          }
+          const InlineDocStatus = ({ docId }: { docId: string | undefined }) => {
+            if (!docId) return null;
+            const kind = docAccess.get(docId);
+            if (!kind) return null;
+            const Icon = kind === "public" ? Globe : kind === "shared" ? Users : Cloud;
+            const color = kind === "public" ? "#22c55e" : kind === "shared" ? "#60a5fa" : "var(--text-faint)";
+            return (
+              <Icon
+                width={11}
+                height={11}
+                style={{ color, display: "inline", verticalAlign: "-0.15em", marginRight: 3 }}
+              />
+            );
+          };
           return (
             <section className="mb-8">
               <div className="flex items-center gap-2 mb-3">
@@ -538,23 +570,24 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                 </span>
               </div>
               {/* Suggestion rows — colour discipline:
-                    - Card body stays flat surface + dim border so it
-                      doesn't fight the doc list below.
-                    - The type marker (icon container + uppercase
-                      label) keeps its semantic colour so the user can
-                      tell PROMOTE from BUNDLE from EXPAND at a glance
-                      — green / sky / violet, dimmed onto translucent
-                      backgrounds so the colour reads as a tag, not a
-                      headline.
-                    - Concept names in the body keep the accent orange
-                      so the "this is what links the suggestion to
-                      your hub" signal stays visible.
-                    - Action buttons all use the same bordered-neutral
-                      style — no filled colour fills. The lead action
-                      keeps text-primary so it still reads as primary
-                      inside the row, but it never carries a colour
-                      fill ("Publish"-style buttons are explicitly
-                      out per founder rule). */}
+                    - Card body stays flat surface + dim border.
+                    - Type marker = coloured icon container only (no
+                      uppercase Promote / Bundle / Expand label any
+                      more — the glyph + the body's lead phrase already
+                      say what kind of row this is, and the duplicate
+                      label was adding visual weight without info).
+                    - Concept names keep the accent-orange mono treatment
+                      so the "this is what links the suggestion to your
+                      hub" signal stays visible.
+                    - Doc title references render the doc's share-status
+                      glyph (Globe / Users / Cloud) inline so the user
+                      can tell at a glance whether a referenced doc is
+                      public, shared, or private.
+                    - Action buttons all share one bordered-neutral
+                      style. Primary action sits leftmost; the label
+                      text differentiates intent ("Publish" / "Create
+                      bundle" / "Expand" / "Open"). No filled colour
+                      buttons, no text-primary vs text-muted split. */}
               <div className="space-y-2">
                 {promoteCards.map((s) => {
                   const key = `promote:${s.docId}`;
@@ -573,10 +606,8 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         <ArrowUpRight width={14} height={14} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#22c55e", fontSize: 9, letterSpacing: "0.08em" }}>
-                            Promote
-                          </span>
+                        <div className="flex items-center gap-2 mb-1 min-w-0">
+                          <InlineDocStatus docId={s.docId} />
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>{s.title}</span>
                         </div>
                         <p className="text-caption leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -595,7 +626,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                           disabled={busy}
                           className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{
-                            color: "var(--text-primary)",
+                            color: "var(--text-muted)",
                             border: "1px solid var(--border-dim)",
                             opacity: busy ? 0.4 : 1,
                             cursor: busy ? "not-allowed" : "pointer",
@@ -605,7 +636,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                         </button>
                         <button
                           onClick={() => onOpenDoc?.(s.docId)}
-                          className="text-caption px-2 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
                         >
                           Open
@@ -639,9 +670,6 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#38bdf8", fontSize: 9, letterSpacing: "0.08em" }}>
-                            Bundle
-                          </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
                             {s.docIds.length} docs about “{s.concept}”
                           </span>
@@ -650,7 +678,9 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                           Including:{" "}
                           {s.docTitles.slice(0, 3).map((t, i) => (
                             <span key={i}>
-                              {i > 0 ? ", " : ""}<em style={{ color: "var(--text-primary)" }}>{t}</em>
+                              {i > 0 ? ", " : ""}
+                              <InlineDocStatus docId={s.docIds[i]} />
+                              <em style={{ color: "var(--text-primary)" }}>{t}</em>
                             </span>
                           ))}
                           {s.docIds.length > s.docTitles.length ? `, +${s.docIds.length - s.docTitles.length} more` : ""}.
@@ -662,7 +692,7 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                           disabled={!onCreateBundleFromDocs}
                           className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
                           style={{
-                            color: "var(--text-primary)",
+                            color: "var(--text-muted)",
                             border: "1px solid var(--border-dim)",
                             opacity: !onCreateBundleFromDocs ? 0.4 : 1,
                             cursor: !onCreateBundleFromDocs ? "not-allowed" : "pointer",
@@ -699,9 +729,6 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-caption font-bold uppercase tracking-wider" style={{ color: "#a78bfa", fontSize: 9, letterSpacing: "0.08em" }}>
-                            Expand
-                          </span>
                           <span className="truncate text-body font-medium" style={{ color: "var(--text-primary)" }}>
                             “{s.concept}” appears in only 1 doc
                           </span>
@@ -713,10 +740,26 @@ export default function HubEmbed({ slug, onOpenDoc, onOpenBundle, onCreateBundle
                               {i > 0 ? ", " : ""}{n}
                             </span>
                           ))}
-                          {" "}— concepts you&apos;ve explored more elsewhere. Open <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
+                          {" "}— concepts you&apos;ve explored more elsewhere. Open{" "}
+                          <InlineDocStatus docId={s.docId} />
+                          <em style={{ color: "var(--text-primary)" }}>{s.docTitle}</em> and expand.
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => onExpandConcept?.(s.concept, s.docId, s.neighbors)}
+                          disabled={!onExpandConcept}
+                          className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                          style={{
+                            color: "var(--text-muted)",
+                            border: "1px solid var(--border-dim)",
+                            opacity: !onExpandConcept ? 0.4 : 1,
+                            cursor: !onExpandConcept ? "not-allowed" : "pointer",
+                          }}
+                          title="Start a new note on this concept"
+                        >
+                          Expand
+                        </button>
                         <button
                           onClick={() => onOpenDoc?.(s.docId)}
                           className="text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
