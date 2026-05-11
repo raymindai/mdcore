@@ -43,7 +43,7 @@ import {
   Columns2, Bell, Share2, Menu, PanelLeft, Download, Plus, ArrowUpDown,
   FolderPlus, Folder, FolderOpen, File as FileIcon, MoreHorizontal,
   User, Users, Search, X, Trash2, RefreshCw, Lock, ShieldAlert, FileX,
-  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Cloud, MessageSquarePlus,
+  LogOut, HelpCircle, Clock, Upload, FileText, Sparkles, Zap, Loader2, RotateCcw, AlignLeft, BookOpen, CircleCheck, Layers, Check, Globe, Network, Bookmark, LayoutDashboard, Sun, Cloud, MessageSquarePlus,
   ChevronsDownUp, ChevronsUpDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
@@ -8515,17 +8515,24 @@ ${clone.innerHTML}
           >
             <MdfyLogo size={18} />
           </h1>
-          {/* Document / Bundle ID badge + view count — refined chip group.
+          {/* Document / Bundle / Hub URL chip — refined chip group.
               For doc tabs: shows /{cloudId} → mdfy.app/{cloudId}.
-              For bundle tabs: shows /b/{bundleId} → mdfy.app/b/{bundleId}. */}
+              For bundle tabs: shows /b/{bundleId} → mdfy.app/b/{bundleId}.
+              When the Hub overlay is up, the chip switches to
+              /hub/{slug} so the user can copy the public hub URL
+              from the same slot they use for doc/bundle URLs —
+              consistency the founder asked for. The overlay-on
+              path wins over whatever activeTab is in the
+              background, since the user is "looking at" Hub. */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
-            const isBundle = ct?.kind === "bundle" && !!ct?.bundleId;
-            const cid = isBundle ? ct!.bundleId! : (ct?.cloudId || docId);
+            const isBundle = !showHub && ct?.kind === "bundle" && !!ct?.bundleId;
+            const isHub = showHub && !!hubSlug;
+            const cid = isHub ? hubSlug : isBundle ? ct!.bundleId! : (ct?.cloudId || docId);
             if (!cid) return null;
-            const path = isBundle ? `b/${cid}` : cid;
+            const path = isHub ? `hub/${cid}` : isBundle ? `b/${cid}` : cid;
             const fullUrl = `https://mdfy.app/${path}`;
-            const labelPrefix = isBundle ? "/b/" : "/";
+            const labelPrefix = isHub ? "/hub/" : isBundle ? "/b/" : "/";
             const labelId = cid;
             return (<>
               <button
@@ -8549,7 +8556,7 @@ ${clone.innerHTML}
                 <span style={{ letterSpacing: "0.02em" }}>{labelId}</span>
                 <Copy width={9} height={9} style={{ opacity: 0.55 }} />
               </button>
-              {!isBundle && viewCount > 0 && (
+              {!isBundle && !isHub && viewCount > 0 && (
                 <span
                   className="text-caption shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                   style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
@@ -8641,24 +8648,41 @@ ${clone.innerHTML}
               </div>
             );
           })()}
-          {/* Hub + Home — start-page group. Both buttons are
-              "destinations you start from" (Home = your private
-              workspace landing; Hub = the public face), so they share
-              one rounded-lg pill with a 1px divider between them. The
-              view-mode pills (Live/Split/Source or Bundle/Canvas/List)
-              live in a SEPARATE group below — they describe how the
-              current tab is rendered, not where the user is going. */}
+          {/* Start + Hub — start-page group. Both buttons are
+              "destinations you start from" (Start = your private
+              workspace landing; Hub = the public face). Order is
+              [Start | Hub] so the private surface leads — most users
+              live on Start, Hub is the occasional public-side trip.
+              Start uses Sun (fresh-start glyph) so the icon doesn't
+              repeat the house-as-home convention; Hub keeps the
+              LayoutDashboard grid. Rendered inside one rounded-lg
+              pill with a 1px divider between them; the view-mode
+              pills live in their own group below. */}
           <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-dim)" }}>
+          {/* Start (private workspace landing) */}
+          <button
+            onClick={() => { setShowOnboarding(true); setShowHub(false); setShowSettings(false); if (viewMode === "editor") setViewMode("preview"); }}
+            className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
+            style={{
+              background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
+              color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
+            }}
+            title="Start (Alt+H)"
+          >
+            <Sun width={13} height={13} />
+            <span>Start</span>
+          </button>
           {hubSlug && (() => {
-            // Hub is an overlay (like Home / showOnboarding), not a
+            // Hub is an overlay (like Start / showOnboarding), not a
             // tab. The button toggles showHub and leaves activeTabId
             // untouched, so the bundle/doc the user was on stays
             // highlighted in the sidebar and clicking the row brings
-            // it back instantly. Mutually exclusive with the Home
-            // overlay — opening one closes the other.
+            // it back instantly. Mutually exclusive with the Start
+            // and Settings overlays — opening one closes the others.
             const isHubActive = showHub && !showOnboarding;
             return (
               <>
+                <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
                 <Tooltip text={isHubActive ? "Close My Hub" : "Open My Hub — public knowledge base"} position="bottom">
                   <button
                     onClick={() => {
@@ -8681,23 +8705,9 @@ ${clone.innerHTML}
                     <span>Hub</span>
                   </button>
                 </Tooltip>
-                <div style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
               </>
             );
           })()}
-          {/* Home */}
-          <button
-            onClick={() => { setShowOnboarding(true); setShowHub(false); setShowSettings(false); if (viewMode === "editor") setViewMode("preview"); }}
-            className="flex items-center gap-1 px-2 h-6 text-caption font-medium transition-colors"
-            style={{
-              background: showOnboarding && !viewMode ? "var(--accent-dim)" : showOnboarding ? "var(--accent-dim)" : "var(--toggle-bg)",
-              color: showOnboarding ? "var(--accent)" : "var(--text-muted)",
-            }}
-            title="Home (Alt+H)"
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.5L8 2l6 4.5"/><path d="M3.5 8v5.5a1 1 0 001 1h7a1 1 0 001-1V8"/></svg>
-            <span className="hidden sm:inline">Home</span>
-          </button>
           </div>
           {/* View modes — own group, separate from the start-page pills.
               Describes how the current tab is rendered. Bundle tabs get
