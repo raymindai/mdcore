@@ -33,7 +33,7 @@ const slides: Slide[] = [
     // sits clean on two lines instead of orphaning "ERA" on its own
     // when the badge wraps on narrow viewports.
     badge: "Personal knowledge hub\nfor the AI era",
-    title: "Your AI memory,\nowned as a URL.",
+    title: "Your AI memory,\ndeployable to any AI.",
     desc: "ChatGPT, Claude, and Cursor forget you between sessions. mdfy turns what you write into a URL any AI can read — you decide the shape, mdfy keeps the index.",
     icon: null,
   },

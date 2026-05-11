@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mdfy.app — Karpathy's wiki, deployable to any AI.",
+  title: "mdfy.app — Your AI memory, deployable to any AI.",
   description:
-    "You set the direction. mdfy structures the URL. Any AI reads it. Capture from ChatGPT, Claude, Notion, GitHub, Obsidian — your knowledge becomes a citable URL that Claude, ChatGPT, Cursor, and Codex all fetch the same way.",
+    "One URL, every AI. Capture from ChatGPT, Claude, Notion, GitHub, Obsidian — your knowledge becomes a citable URL that Claude, ChatGPT, Cursor, and Codex all fetch the same way. You set the direction; mdfy structures the URL.",
   keywords: [
     "personal knowledge hub",
     "AI memory",
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
   authors: [{ name: "mdfy", url: "https://mdfy.app" }],
   metadataBase: new URL("https://mdfy.app"),
   openGraph: {
-    title: "mdfy.app — Your AI memory, owned as a URL.",
+    title: "mdfy.app — Your AI memory, deployable to any AI.",
     description:
-      "You set the direction. mdfy structures the URL. Any AI reads it. The personal knowledge hub for the AI era.",
+      "One URL, every AI. Capture, bundle, deploy. The personal knowledge hub for the AI era.",
     url: "https://mdfy.app",
     siteName: "mdfy.app",
     type: "website",
@@ -46,9 +46,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "mdfy.app — Your AI memory, owned as a URL.",
+    title: "mdfy.app — Your AI memory, deployable to any AI.",
     description:
-      "You set the direction. mdfy structures the URL. Any AI reads it.",
+      "One URL, every AI. Your memory, deployable to Claude, ChatGPT, Cursor, Codex — same way.",
     images: ["/api/og"],
   },
   robots: {

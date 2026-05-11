@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ManifestoContent from "@/components/ManifestoContent";
 
 export const metadata: Metadata = {
-  title: "Manifesto — Your AI memory, owned as a URL",
+  title: "Manifesto — Your AI memory, deployable to any AI",
   description:
     "You set the direction. mdfy structures the URL. Any AI reads it. The 7 beliefs behind mdfy — markdown as the AI-era memory format, hub as the deployable shape, URL as the primitive.",
   alternates: {

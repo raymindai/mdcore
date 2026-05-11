@@ -10,8 +10,8 @@ const texts = {
   en: {
     hero: {
       h1_1: "Your AI memory,",
-      h1_2: "owned as a URL.",
-      sub: "You set the direction. mdfy structures the URL. Any AI reads it. Capture from ChatGPT, Claude, GitHub, Obsidian, or Notion — every doc becomes part of a hub that Claude, Cursor, ChatGPT, and Codex all fetch the same way.",
+      h1_2: "deployable to any AI.",
+      sub: "One URL, every AI. Capture from ChatGPT, Claude, GitHub, Obsidian, or Notion — every doc becomes part of a hub that Claude, Cursor, ChatGPT, and Codex all fetch the same way. You set the direction; mdfy structures the URL.",
       cta_primary: "Start your hub →",
       cta_secondary: "Install Chrome extension",
     },
@@ -322,8 +322,8 @@ const texts = {
   ko: {
     hero: {
       h1_1: "당신의 AI 메모리,",
-      h1_2: "URL로 소유.",
-      sub: "당신이 방향을 잡고, mdfy가 URL로 구조화하고, 어떤 AI든 읽어갑니다. ChatGPT·Claude·GitHub·Obsidian·Notion에서 캡처한 모든 문서가 하나의 허브가 되고, Claude·Cursor·ChatGPT·Codex가 같은 방식으로 가져갑니다.",
+      h1_2: "어떤 AI에도 deploy.",
+      sub: "URL 하나, 모든 AI. ChatGPT·Claude·GitHub·Obsidian·Notion에서 캡처한 모든 문서가 하나의 허브가 되고, Claude·Cursor·ChatGPT·Codex가 같은 방식으로 가져갑니다. 방향은 당신이, 구조는 mdfy가.",
       cta_primary: "허브 시작하기 →",
       cta_secondary: "Chrome 확장 설치",
     },

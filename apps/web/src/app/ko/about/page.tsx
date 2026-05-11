@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import AboutContent from "@/components/AboutContent";
 
 export const metadata: Metadata = {
-  title: "소개 — 당신의 AI 메모리, URL로 소유",
+  title: "소개 — 당신의 AI 메모리, 어떤 AI에도 deploy",
   description:
-    "당신이 방향을 잡고, mdfy가 URL로 구조화하고, 어떤 AI든 읽어갑니다. ChatGPT·Claude·GitHub·Obsidian·Notion에서 캡처한 모든 문서가 하나의 허브가 되고, Claude·Cursor·ChatGPT·Codex가 같은 방식으로 가져갑니다.",
+    "URL 하나, 모든 AI. ChatGPT·Claude·GitHub·Obsidian·Notion에서 캡처한 모든 문서가 하나의 허브가 되고, Claude·Cursor·ChatGPT·Codex가 같은 방식으로 가져갑니다. 방향은 당신이, 구조는 mdfy가.",
   alternates: {
     canonical: "https://mdfy.app/ko/about",
     languages: { en: "https://mdfy.app/about" },
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "소개 — mdfy.app",
     description:
-      "당신의 AI 메모리, URL로 소유. 당신이 방향, mdfy가 구조, 어떤 AI든 읽어가는 URL.",
+      "당신의 AI 메모리, 어떤 AI에도 deploy. URL 하나, 모든 AI.",
     url: "https://mdfy.app/ko/about",
     images: [{ url: "/api/og?title=About", width: 1200, height: 630 }],
   },
