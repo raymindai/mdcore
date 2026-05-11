@@ -2762,6 +2762,10 @@ export default function MdEditor() {
   });
   const [lintReport, setLintReport] = useState<{ orphans: { id: string; title: string | null }[]; duplicates: { a: { id: string; title: string | null }; b: { id: string; title: string | null }; distance: number }[]; totalDocs: number } | null>(null);
   const [lintLoading, setLintLoading] = useState(false);
+  // Track resolved findings within this session so they stay hidden
+  // even if a re-scan returns them (backend concept-extraction is
+  // async and can lag). Cleared on hard refresh.
+  const [lintResolved, setLintResolved] = useState<{ orphans: Set<string>; duplicates: Set<string> }>({ orphans: new Set(), duplicates: new Set() });
   const [sidebarContextMenu, setSidebarContextMenu] = useState<{ x: number; y: number; section?: "my" | "bundles" } | null>(null);
   const [dragTabId, setDragTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -10607,7 +10611,7 @@ ${clone.innerHTML}
                   from any other doc) and likely duplicate pairs.
                   Only renders when there's at least one finding —
                   empty hubs don't need to see an empty section. ── */}
-            {user?.id && lintReport && (lintReport.orphans.length + lintReport.duplicates.length) > 0 && (
+            {user?.id && lintReport && (lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length + lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length) > 0 && (
               <div className="shrink-0">
                 <div
                   data-section-id="lint"
@@ -10626,7 +10630,7 @@ ${clone.innerHTML}
                     style={{ transform: showLint ? "rotate(0deg)" : "rotate(-90deg)" }}
                   />
                   <span className={`flex-1 text-caption font-medium transition-colors ${showLint ? "text-[var(--accent)]" : "text-[var(--text-muted)] group-hover/sec:text-[var(--accent)]"}`}>Needs review</span>
-                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{lintReport.orphans.length + lintReport.duplicates.length}</span>
+                  <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id)).length + lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`)).length}</span>
                 </div>
                 {showLint && (() => {
                   // Mutating actions kept inside this IIFE so the outer
@@ -10634,6 +10638,14 @@ ${clone.innerHTML}
                   // `resolvingId` is the doc id currently being resolved
                   // — used to disable the row's Resolve button while
                   // the request is in flight.
+                  // Filter the raw lintReport through the in-session
+                  // resolved set so items the user just resolved stay
+                  // hidden even if backend re-scan returns them (concept
+                  // extraction is async and can lag).
+                  const visibleOrphans = lintReport.orphans.filter((o) => !lintResolved.orphans.has(o.id));
+                  const visibleDuplicates = lintReport.duplicates.filter((p) => !lintResolved.duplicates.has(`${p.a.id}|${p.b.id}`));
+                  const totalVisible = visibleOrphans.length + visibleDuplicates.length;
+
                   const reScan = () => {
                     setLintLoading(true);
                     return fetch("/api/user/hub/lint", { headers: authHeaders })
@@ -10642,11 +10654,17 @@ ${clone.innerHTML}
                       .catch(() => {})
                       .finally(() => setLintLoading(false));
                   };
-                  const resolveOrphan = async (docId: string) => {
-                    // Orphan auto-fix: re-run concept extraction. If the
-                    // ontology gains a link, the doc drops off the list
-                    // on the next re-scan. If it stays orphan after this
-                    // the user needs to actually edit / categorise.
+                  // "Re-scan from scratch" — clears the resolved set so
+                  // findings the backend still considers open come back.
+                  // Available via long-press / shift-click on Re-scan
+                  // (kept implicit so the default UX is forgiving).
+                  void (() => setLintResolved({ orphans: new Set(), duplicates: new Set() }));
+                  const resolveOrphan = async (docId: string, docTitle: string | null) => {
+                    // Orphan auto-fix: re-run concept extraction. The
+                    // concept extractor pulls concepts from the doc;
+                    // if any of those concepts ALSO appear in another
+                    // doc, the cross-link breaks the orphan state
+                    // (see hub-lint.ts conceptLinked).
                     if (!user?.id) return;
                     try {
                       const res = await fetch(`/api/docs/${docId}`, {
@@ -10659,11 +10677,10 @@ ${clone.innerHTML}
                         showToast(j.error || "Couldn't refresh concepts", "error");
                         return;
                       }
-                      showToast("Refreshing concepts… re-scan in a few seconds", "success");
-                      // Optimistically drop the row immediately so the
-                      // user gets the "resolved" feeling. Background
-                      // extraction can take a few seconds; the next
-                      // re-scan will reflect the real state.
+                      showToast(`Re-extracting concepts for "${docTitle || "Untitled"}". If it shares concepts with another doc, it'll drop off the list.`, "success");
+                      // Mark as resolved this session — kept hidden
+                      // even if backend hasn't caught up by next scan.
+                      setLintResolved((prev) => ({ ...prev, orphans: new Set([...prev.orphans, docId]) }));
                       setLintReport((prev) => prev ? { ...prev, orphans: prev.orphans.filter((x) => x.id !== docId) } : prev);
                       setTimeout(reScan, 4000);
                     } catch {
@@ -10671,12 +10688,8 @@ ${clone.innerHTML}
                     }
                   };
                   const resolveDuplicate = async (aId: string, aTitle: string | null, bId: string, bTitle: string | null) => {
-                    // Dup auto-fix: soft-delete the OLDER doc (the .a
-                    // side of the pair — id-sorted, which is roughly
-                    // time-ordered for nanoid). Newer copy stays as
-                    // canonical. Restore from Trash if wrong.
                     const targetTitle = aTitle || aId;
-                    if (!confirm(`Move "${targetTitle}" to Trash and keep "${bTitle || bId}" as the canonical copy?`)) return;
+                    if (!confirm(`Move "${targetTitle}" to Trash and keep "${bTitle || bId}" as the canonical copy?\n\nYou can restore from Trash if wrong.`)) return;
                     const targetTab = tabs.find((t) => t.cloudId === aId);
                     try {
                       const res = await fetch(`/api/docs/${aId}`, {
@@ -10689,10 +10702,9 @@ ${clone.innerHTML}
                         showToast(j.error || "Couldn't move to Trash", "error");
                         return;
                       }
-                      showToast(`Moved "${targetTitle}" to Trash`, "success");
-                      // Reflect locally: mark the tab as deleted if open,
-                      // drop the pair from the lint list, and re-scan
-                      // soon so the server numbers catch up.
+                      showToast(`Moved "${targetTitle}" to Trash. "${bTitle || bId}" is now the canonical copy.`, "success");
+                      const pairKey = `${aId}|${bId}`;
+                      setLintResolved((prev) => ({ ...prev, duplicates: new Set([...prev.duplicates, pairKey]) }));
                       setTabs((prev) => prev.map((t) => t.cloudId === aId ? { ...t, deleted: true, deletedAt: Date.now() } : t));
                       setLintReport((prev) => prev ? { ...prev, duplicates: prev.duplicates.filter((x) => x.a.id !== aId || x.b.id !== bId) } : prev);
                       setTimeout(reScan, 1500);
@@ -10703,25 +10715,27 @@ ${clone.innerHTML}
 
                   const resolveAll = async () => {
                     if (!user?.id || !lintReport) return;
-                    const total = lintReport.orphans.length + lintReport.duplicates.length;
+                    const total = totalVisible;
                     if (total === 0) return;
-                    if (!confirm(`Resolve all ${total} finding${total === 1 ? "" : "s"}? This will re-run concept extraction on every orphan and move the older copy of each duplicate pair to Trash. You can restore from Trash if needed.`)) return;
+                    if (!confirm(`Resolve all ${total} finding${total === 1 ? "" : "s"}?\n\n• Orphans (${visibleOrphans.length}) — concept extraction will re-run. If the doc shares concepts with another doc, it drops off the list.\n• Duplicates (${visibleDuplicates.length}) — the older copy of each pair moves to Trash; you can restore.`)) return;
                     setLintLoading(true);
                     let ok = 0;
                     let failed = 0;
                     // Orphans first — cheap, non-destructive.
-                    for (const o of lintReport.orphans) {
+                    const resolvedOrphanIds = new Set<string>();
+                    const resolvedDupKeys = new Set<string>();
+                    for (const o of visibleOrphans) {
                       try {
                         const res = await fetch(`/api/docs/${o.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json", ...authHeaders },
                           body: JSON.stringify({ action: "refresh-concepts", userId: user.id }),
                         });
-                        if (res.ok) ok++; else failed++;
+                        if (res.ok) { ok++; resolvedOrphanIds.add(o.id); } else failed++;
                       } catch { failed++; }
                     }
                     // Duplicates — soft-delete the older copy of each pair.
-                    for (const p of lintReport.duplicates) {
+                    for (const p of visibleDuplicates) {
                       const targetTab = tabs.find((t) => t.cloudId === p.a.id);
                       try {
                         const res = await fetch(`/api/docs/${p.a.id}`, {
@@ -10731,10 +10745,18 @@ ${clone.innerHTML}
                         });
                         if (res.ok) {
                           ok++;
+                          resolvedDupKeys.add(`${p.a.id}|${p.b.id}`);
                           setTabs((prev) => prev.map((t) => t.cloudId === p.a.id ? { ...t, deleted: true, deletedAt: Date.now() } : t));
                         } else failed++;
                       } catch { failed++; }
                     }
+                    // Stash everything that actually succeeded so the
+                    // rows don't flash back when the delayed re-scan
+                    // races with the backend concept extraction.
+                    setLintResolved((prev) => ({
+                      orphans: new Set([...prev.orphans, ...resolvedOrphanIds]),
+                      duplicates: new Set([...prev.duplicates, ...resolvedDupKeys]),
+                    }));
                     showToast(failed > 0 ? `Resolved ${ok}, ${failed} failed` : `Resolved all ${ok}`, failed > 0 ? "error" : "success");
                     // Give the ontology extractor a few seconds to land
                     // its writes before we re-scan; orphan→linked is
@@ -10745,7 +10767,7 @@ ${clone.innerHTML}
 
                   return (
                     <div className="space-y-1 pb-2 pl-2 pr-2 pt-1.5">
-                      {lintReport.orphans.slice(0, 8).map((o) => (
+                      {visibleOrphans.slice(0, 8).map((o) => (
                         <div
                           key={`orphan-${o.id}`}
                           className="group/lint relative flex items-center gap-1.5 px-2 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
@@ -10774,7 +10796,7 @@ ${clone.innerHTML}
                               Title's flex-1 shrinks to make room. No
                               absolute positioning, no overlap. */}
                           <button
-                            onClick={(e) => { e.stopPropagation(); resolveOrphan(o.id); }}
+                            onClick={(e) => { e.stopPropagation(); resolveOrphan(o.id, o.title); }}
                             className="shrink-0 hidden group-hover/lint:inline-flex items-center px-2 py-0.5 rounded"
                             style={{ background: "var(--toggle-bg)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 600, border: "1px solid var(--border-dim)" }}
                             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
@@ -10785,7 +10807,7 @@ ${clone.innerHTML}
                           </button>
                         </div>
                       ))}
-                      {lintReport.duplicates.slice(0, 8).map((p) => (
+                      {visibleDuplicates.slice(0, 8).map((p) => (
                         <div
                           key={`dup-${p.a.id}-${p.b.id}`}
                           className="group/lint relative flex items-center gap-1.5 px-2 rounded-md text-xs hover:bg-[var(--toggle-bg)] transition-colors"
@@ -10825,9 +10847,9 @@ ${clone.innerHTML}
                           </button>
                         </div>
                       ))}
-                      {(lintReport.orphans.length > 8 || lintReport.duplicates.length > 8) && (
+                      {(visibleOrphans.length > 8 || visibleDuplicates.length > 8) && (
                         <div className="text-caption px-2.5 py-1" style={{ color: "var(--text-faint)" }}>
-                          …showing {Math.min(lintReport.orphans.length, 8) + Math.min(lintReport.duplicates.length, 8)} of {lintReport.orphans.length + lintReport.duplicates.length}.
+                          …showing {Math.min(visibleOrphans.length, 8) + Math.min(visibleDuplicates.length, 8)} of {totalVisible}.
                         </div>
                       )}
                       {/* Action row — both buttons share the neutral
@@ -10856,7 +10878,7 @@ ${clone.innerHTML}
                         </button>
                         <button
                           onClick={resolveAll}
-                          disabled={lintLoading || (lintReport.orphans.length + lintReport.duplicates.length) === 0}
+                          disabled={lintLoading || totalVisible === 0}
                           className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium transition-colors disabled:opacity-50"
                           style={{
                             background: "var(--toggle-bg)",

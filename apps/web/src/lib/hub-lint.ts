@@ -116,8 +116,29 @@ export async function computeLintReport(
     }
   }
 
+  // Concept-linked: docs that share at least one concept_index row
+  // with another doc. v6 thesis is that the concept index IS the
+  // implicit cross-link — a doc with concepts present in other docs
+  // is reachable via concept neighborhood walks, so it isn't orphan.
+  // Without this gate, refresh-concepts (the Resolve action) couldn't
+  // remove a doc from the orphan list, because the previous orphan
+  // definition ignored concept_index entirely.
+  const { data: cx } = await supabase
+    .from("concept_index")
+    .select("doc_ids")
+    .eq("user_id", userId);
+  const conceptCount = new Map<string, number>();
+  for (const row of (cx as { doc_ids: string[] | null }[] | null) ?? []) {
+    const ids = row.doc_ids || [];
+    if (ids.length < 2) continue; // single-doc concept doesn't count as a cross-link
+    for (const id of ids) {
+      conceptCount.set(id, (conceptCount.get(id) || 0) + 1);
+    }
+  }
+  const conceptLinked = new Set<string>([...conceptCount.keys()]);
+
   const orphans: OrphanDoc[] = liveDocs
-    .filter((d) => !inBundle.has(d.id) && !referenced.has(d.id))
+    .filter((d) => !inBundle.has(d.id) && !referenced.has(d.id) && !conceptLinked.has(d.id))
     .map((d) => ({ id: d.id, title: d.title, updatedAt: d.updated_at }));
 
   // Semantic duplicates. Iterate per doc and look for close neighbors.
