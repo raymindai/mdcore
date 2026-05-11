@@ -30,6 +30,7 @@ import {
 import {
   ACCENT_COLORS,
   COLOR_SCHEMES,
+  SCHEME_ACCENT_MAP,
   type AccentColor,
   type ColorScheme,
 } from "@/lib/theme-options";
@@ -765,6 +766,19 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
             {ACCENT_COLORS.map((c, idx) => {
               const isSelected = keyColor === c.name;
               const isLast = idx === ACCENT_COLORS.length - 1;
+              // "Orange" is the implicit scheme-default — selecting
+              // it removes the data-accent override so each Skin
+              // Theme's natural accent wins (Nord = teal, Dracula =
+              // purple, etc.). The row's swatches + hex caption now
+              // mirror whatever the current scheme's natural accent
+              // actually IS, so the UI stops claiming "orange" when
+              // the rendered colour is teal.
+              const isDefaultRow = c.name === "orange";
+              const naturalName = isDefaultRow ? SCHEME_ACCENT_MAP[skinScheme] : c.name;
+              const display = ACCENT_COLORS.find((x) => x.name === naturalName) || c;
+              const showLabel = isDefaultRow
+                ? (skinScheme === "default" ? "Default (Orange)" : `Default (${display.label})`)
+                : c.label;
               return (
                 <button
                   key={c.name}
@@ -777,20 +791,20 @@ export default function SettingsEmbed({ onClose, initialSection }: { onClose?: (
                     background: isSelected ? "var(--accent-dim)" : "transparent",
                   }}
                 >
-                  <span className="flex items-center gap-1 shrink-0" title={`${c.label} — dark / light variants`}>
+                  <span className="flex items-center gap-1 shrink-0" title={`${showLabel} dark / light`}>
                     <span
                       className="rounded-md"
-                      style={{ width: 22, height: 22, background: c.dark, border: "1px solid var(--border-dim)" }}
+                      style={{ width: 22, height: 22, background: display.dark, border: "1px solid var(--border-dim)" }}
                     />
                     <span
                       className="rounded-md"
-                      style={{ width: 22, height: 22, background: c.light, border: "1px solid var(--border-dim)" }}
+                      style={{ width: 22, height: 22, background: display.light, border: "1px solid var(--border-dim)" }}
                     />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{c.label}</div>
+                    <div className="text-sm font-medium" style={{ color: isSelected ? "var(--accent)" : "var(--text-primary)" }}>{showLabel}</div>
                     <div className="text-xs font-mono" style={{ color: "var(--text-faint)" }}>
-                      Dark {c.dark} / Light {c.light}
+                      Dark {display.dark} / Light {display.light}
                     </div>
                   </div>
                   {isSelected && (

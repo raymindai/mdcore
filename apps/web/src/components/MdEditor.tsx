@@ -3963,6 +3963,22 @@ export default function MdEditor() {
   // should layer in-place. /settings still works for deep links but
   // the profile-menu entry now toggles this overlay instead.
   const [showSettings, setShowSettings] = useState(false);
+  // Browser URL mirrors the overlay surface so a paste/share of
+  // the URL bar resolves to where the user actually IS — not the
+  // tab sitting underneath. Hub → /hub/<slug>, Settings → /settings,
+  // Start → /. When overlays close, we restore the activeTab's
+  // canonical URL via the next switchTab / loadTab call (already
+  // does replaceState for doc + bundle tabs).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (showSettings) {
+      window.history.replaceState(null, "", "/settings");
+    } else if (showHub && hubSlug) {
+      window.history.replaceState(null, "", `/hub/${hubSlug}`);
+    } else if (showOnboarding) {
+      window.history.replaceState(null, "", "/");
+    }
+  }, [showSettings, showHub, showOnboarding, hubSlug]);
   // Optional deep-link target when opening Settings. Hub's
   // "Auto-management" link sets this to "auto-management" so the
   // overlay opens on that tab instead of the user's last-active
@@ -8665,20 +8681,56 @@ ${clone.innerHTML}
               background, since the user is "looking at" Hub. */}
           {(() => {
             const ct = tabs.find(t => t.id === activeTabId);
-            const isBundle = !showHub && ct?.kind === "bundle" && !!ct?.bundleId;
-            const isHub = showHub && !!hubSlug;
-            const cid = isHub ? hubSlug : isBundle ? ct!.bundleId! : (ct?.cloudId || docId);
-            if (!cid) return null;
-            const path = isHub ? `hub/${cid}` : isBundle ? `b/${cid}` : cid;
-            const fullUrl = `https://mdfy.app/${path}`;
-            const labelPrefix = isHub ? "/hub/" : isBundle ? "/b/" : "/";
-            const labelId = cid;
+            // Overlay surfaces (Start / Settings) win over whatever
+            // tab sits underneath; this surface label is "where the
+            // user is looking right now," not "what tab is active."
+            const isStart = showOnboarding;
+            const isSettings = showSettings;
+            const isHub = !isStart && !isSettings && showHub && !!hubSlug;
+            const isBundle = !isStart && !isSettings && !showHub && ct?.kind === "bundle" && !!ct?.bundleId;
+            // Pick the surface-specific label + URL. Start +
+            // Settings don't have a "copy a deep link" semantic, so
+            // the chip becomes a non-copy badge in those modes (the
+            // host page's URL still resolves to root or /settings
+            // — but the chip's job here is to confirm what surface
+            // the user is on, not give them a paste target).
+            let labelPrefix = "/";
+            let labelId = "";
+            let fullUrl = "";
+            let copyable = true;
+            if (isStart) {
+              labelPrefix = "";
+              labelId = "Start";
+              fullUrl = "https://mdfy.app/";
+              copyable = false;
+            } else if (isSettings) {
+              labelPrefix = "/";
+              labelId = "settings";
+              fullUrl = "https://mdfy.app/settings";
+              copyable = false;
+            } else if (isHub) {
+              labelPrefix = "/hub/";
+              labelId = hubSlug!;
+              fullUrl = `https://mdfy.app/hub/${hubSlug}`;
+            } else if (isBundle) {
+              labelPrefix = "/b/";
+              labelId = ct!.bundleId!;
+              fullUrl = `https://mdfy.app/b/${ct!.bundleId}`;
+            } else {
+              const cid = ct?.cloudId || docId;
+              if (!cid) return null;
+              labelPrefix = "/";
+              labelId = cid;
+              fullUrl = `https://mdfy.app/${cid}`;
+            }
+            if (!labelId) return null;
             return (<>
               <button
                 className="text-caption font-mono shrink-0 transition-all hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
-                style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
-                title={`Copy ${fullUrl}`}
+                style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)", cursor: copyable ? "pointer" : "default" }}
+                title={copyable ? `Copy ${fullUrl}` : labelId}
                 onClick={async (e) => {
+                  if (!copyable) return;
                   try {
                     await navigator.clipboard.writeText(fullUrl);
                     const btn = e.currentTarget;
@@ -8691,11 +8743,11 @@ ${clone.innerHTML}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-dim)"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
               >
-                <span style={{ color: "var(--text-faint)", fontSize: 9 }}>{labelPrefix}</span>
+                {labelPrefix && <span style={{ color: "var(--text-faint)", fontSize: 9 }}>{labelPrefix}</span>}
                 <span style={{ letterSpacing: "0.02em" }}>{labelId}</span>
-                <Copy width={9} height={9} style={{ opacity: 0.55 }} />
+                {copyable && <Copy width={9} height={9} style={{ opacity: 0.55 }} />}
               </button>
-              {!isBundle && !isHub && viewCount > 0 && (
+              {!isBundle && !isHub && !isStart && !isSettings && viewCount > 0 && (
                 <span
                   className="text-caption shrink-0 hidden lg:inline-flex items-center gap-1 px-1.5 h-5 rounded"
                   style={{ color: "var(--text-muted)", background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}
