@@ -8863,7 +8863,7 @@ ${clone.innerHTML}
             title="Start (Alt+H)"
           >
             <Smile width={13} height={13} />
-            <span>Start</span>
+            <span className="hidden sm:inline">Start</span>
           </button>
           {hubSlug && (() => {
             // Hub is an overlay (like Start / showOnboarding), not a
@@ -8895,7 +8895,7 @@ ${clone.innerHTML}
                     aria-pressed={isHubActive}
                   >
                     <LayoutDashboard width={13} height={13} />
-                    <span>Hub</span>
+                    <span className="hidden sm:inline">Hub</span>
                   </button>
                 </Tooltip>
               </>
