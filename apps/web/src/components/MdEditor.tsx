@@ -1448,101 +1448,14 @@ The home screen shows compounding stats:
 The bundle is no longer a folder. It's a thinking partner that reads what you've gathered and tells you what it sees.
 `;
 
-// Concrete example of what a bundle URL returns when pasted into
-// Claude / ChatGPT / Cursor. Companion to SAMPLE_BUNDLES (which is the
-// conceptual explainer) — this one shows the *output shape* so users
-// can see what the AI on the other end actually receives. Mirrors the
-// /raw/bundle/[id] route's response: frontmatter + canvas analysis +
-// numbered link list. Kept under 200 lines to render comfortably.
-const SAMPLE_BUNDLE_EXAMPLE = `# Sample Bundle: AI Memory Research
-
-> This is what a bundle URL returns when you paste \`mdfy.app/b/<id>\` into Claude, ChatGPT, or Cursor. The page below is a realistic excerpt of the digest response, so you can see the *shape* of what the receiving AI actually gets — frontmatter, the canvas analysis, then the doc link list.
-
-\`\`\`yaml
----
-mdfy_bundle: 1
-id: bndl_d4f3a2
-title: "AI Memory Research"
-url: https://mdfy.app/b/bndl_d4f3a2
-document_count: 6
-updated: 2026-03-14T09:21:00Z
-analysis_generated_at: 2026-03-14T08:55:00Z
-source: "mdfy.app"
----
-\`\`\`
-
-# AI Memory Research
-> Six docs collected over four weeks, comparing how Claude, ChatGPT, and Cursor implement long-running memory and what breaks at scale.
-
-**Intent:** Decide which memory architecture mdfy should ship in v6 — vector recall, episodic snapshots, or hybrid.
-
-## Summary
-
-The collection covers three concrete memory architectures: vector recall (ChatGPT memory beta), episodic snapshots (Claude Projects), and per-session memory hubs (Cursor + custom rules). Across the six docs, the strongest evidence points toward a hybrid model where episodic snapshots index into vector recall, not the other way around.
-
-## Themes
-
-- **Recall vs retrieval are different problems** — three docs explicitly distinguish "what the AI remembers" from "what the AI can search."
-- **Forgetting is a feature, not a bug** — Claude Projects and ChatGPT memory both ship a manual "forget" affordance; Cursor doesn't, and two docs flag this as a reliability risk.
-- **Per-user namespaces beat global pools** — every doc that survived a >30-day evaluation period used a per-user namespace.
-
-## Cross-document insights
-
-- The Claude Projects post-mortem and the ChatGPT memory leak thread independently arrived at the same conclusion: stale long-term memory degrades faster than the model itself.
-- "Memory hub" as a pattern (one URL, many docs) appears in three docs without coordination — convergent design.
-
-## Key takeaways
-
-- Ship a hub-shaped memory layer (mdfy already does this).
-- Make every memory item addressable by URL so the user can edit and the AI can re-read.
-- Don't try to "remember everything" — store the artifacts the user explicitly publishes.
-
-## Open questions / gaps
-
-- None of the six docs cover *adversarial* memory (prompt injection writing into long-term memory).
-- Cost models for vector-recall-at-scale are missing.
-- No doc compares latency between episodic and vector recall on the same task.
-
-## Notable connections
-
-- **Claude Projects: 6-month review** ↔ **ChatGPT memory leak thread** — both diagnose stale memory as the dominant failure mode
-- **Cursor + custom rules** ↔ **Hub-shaped memory** — the per-project rules file is a primitive form of episodic memory
-- **Personal knowledge URLs (Karpathy)** ↔ **Hub-shaped memory** — independent arguments converging on the same architecture
-
-## Concepts (this bundle)
-
-- **vector recall** (from **ChatGPT memory leak thread**)
-- **episodic snapshot** (from **Claude Projects: 6-month review**)
-- **per-user namespace** (from **Cursor + custom rules**)
-- **memory hub URL** (from **Personal knowledge URLs (Karpathy)**)
-- **forget affordance** (from **Designing for forgetting**)
-
-## Concept relations
-
-- **episodic snapshot** ↔ **vector recall** — episodic indexes drive vector retrieval in the hybrid proposal
-- **memory hub URL** ↔ **per-user namespace** — the hub URL *is* the namespace
-- **forget affordance** ↔ **adversarial memory** — open question: how does forget survive prompt injection
-
----
-
-1. [Claude Projects: 6-month review](https://mdfy.app/abc123) — post-mortem on stale memory after extended use
-2. [ChatGPT memory leak thread](https://mdfy.app/def456) — community report on cross-conversation memory bleed
-3. [Cursor + custom rules](https://mdfy.app/ghi789) — minimal per-project memory via \`.cursorrules\`
-4. [Personal knowledge URLs (Karpathy)](https://mdfy.app/jkl012) — argument for URL-addressable knowledge
-5. [Designing for forgetting](https://mdfy.app/mno345) — UX patterns for explicit memory erasure
-6. [Hybrid memory: episodic + vector](https://mdfy.app/pqr678) — proposed architecture mdfy v6 considered
-
-_Digest view — follow any link above to fetch that doc's full markdown. Add \`?full=1\` to the bundle URL to receive every doc body inline, or \`?graph=0\` to drop this analysis section._
-
----
-
-## Try it yourself
-
-1. Select 3–6 related docs in the sidebar
-2. Right-click → **Bundle**
-3. On the canvas, set an **Intent** and click **Run discovery**
-4. Copy the bundle URL and paste it into any AI — the AI receives everything above
-`;
+// Server-seeded "Sample Bundle: Tour of mdfy". The bundle row and its
+// 3 member docs are inserted by supabase/migrations/033_example_bundle.sql
+// with fixed ids (mdfy-ex-bundle / mdfy-ex-fmt / mdfy-ex-diag / mdfy-ex-feat),
+// so this id can be hardcoded on the client. Listed in EXAMPLE_TABS as a
+// kind="bundle" entry so first-time visitors can click it in
+// Guides & Examples and immediately see an interactive bundle —
+// canvas analysis, member-doc list, the full bundle viewer flow.
+const EXAMPLE_BUNDLE_ID = "mdfy-ex-bundle";
 
 const SAMPLE_AI_CAPTURE = `# Capture AI conversations
 
@@ -1585,7 +1498,11 @@ const EXAMPLE_TABS: Tab[] = [
   { id: "tab-welcome", title: extractTitleFromMd(SAMPLE_WELCOME), markdown: SAMPLE_WELCOME, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-ai-capture", title: extractTitleFromMd(SAMPLE_AI_CAPTURE), markdown: SAMPLE_AI_CAPTURE, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-bundles", title: extractTitleFromMd(SAMPLE_BUNDLES), markdown: SAMPLE_BUNDLES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
-  { id: "tab-bundle-example", title: extractTitleFromMd(SAMPLE_BUNDLE_EXAMPLE), markdown: SAMPLE_BUNDLE_EXAMPLE, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
+  // Real interactive bundle, server-seeded (033_example_bundle.sql).
+  // Markdown is "" because BundleEmbed fetches member docs by bundleId,
+  // not from this tab's local body. readonly:true so the tab persists
+  // across sessions like other Guides & Examples entries.
+  { id: "tab-ex-bundle", kind: "bundle", bundleId: EXAMPLE_BUNDLE_ID, title: "Sample Bundle: Tour of mdfy", markdown: "", readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-import", title: extractTitleFromMd(SAMPLE_IMPORT_EXPORT), markdown: SAMPLE_IMPORT_EXPORT, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-features", title: extractTitleFromMd(SAMPLE_FEATURES), markdown: SAMPLE_FEATURES, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
   { id: "tab-syntax", title: extractTitleFromMd(SAMPLE_FORMATTING), markdown: SAMPLE_FORMATTING, readonly: true, permission: "readonly", ownerEmail: EXAMPLE_OWNER },
@@ -12486,7 +12403,7 @@ ${clone.innerHTML}
                         style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border-dim)", transition: "all 0.12s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--text-primary)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-dim)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
-                        <DocStatusIcon tab={ex} isActive={false} />
+                        {ex.kind === "bundle" ? renderBundleStatusIcon(ex.bundleId, 14) : <DocStatusIcon tab={ex} isActive={false} />}
                         <span className="flex-1 min-w-0 truncate">{ex.title}</span>
                       </button>
                     ))}
