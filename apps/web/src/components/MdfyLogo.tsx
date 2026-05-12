@@ -11,14 +11,29 @@
 export default function MdfyLogo({
   size = 22,
   variant = "mdfy.app",
+  compact = false,
 }: {
   size?: number;
   variant?: "mdfy.app" | "mdcore.ai";
+  /** When true, render only the orange "md" mark — useful in tight spots
+   *  (app toolbar) where the full wordmark crowds the row. */
+  compact?: boolean;
 }) {
   const weight = 800;
   const letterSpacing = "-0.02em";
   const suffix = variant === "mdcore.ai" ? ".ai" : ".app";
   const middle = variant === "mdcore.ai" ? "core" : "fy";
+
+  if (compact) {
+    return (
+      <span
+        style={{ fontSize: size, fontWeight: weight, letterSpacing, whiteSpace: "nowrap", color: "var(--accent)" }}
+        aria-label={variant}
+      >
+        md
+      </span>
+    );
+  }
 
   return (
     <span

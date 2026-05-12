@@ -8704,23 +8704,15 @@ ${clone.innerHTML}
         className="relative z-[100]"
         style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}
       >
-        {/* Row 1: Logo + View mode + Actions.
-            Desktop: single row. Center cluster is absolutely positioned
-            so the left (logo + URL chip) and right (Actions) clusters
-            stay flush to the edges with the center pills floating
-            mid-toolbar.
-            Mobile: the center cluster drops out of absolute flow and
-            takes its own line below — flex-wrap allows the wrap; the
-            cluster itself carries `order-3 w-full` so it lands at the
-            bottom and spans full width. */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 gap-y-1 sm:gap-y-0 relative" style={{ justifyContent: "space-between" }}>
+        {/* Row 1: Logo + View mode + Actions — no flex-wrap, direct mobile switch */}
+        <div className="flex items-center px-3 sm:px-5 py-1.5 sm:py-2 gap-x-2 relative" style={{ justifyContent: "space-between" }}>
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0" style={{ flex: "0 1 auto", maxWidth: "50%", position: "relative", zIndex: 2 }}>
           <h1
             className="font-bold tracking-tight cursor-pointer shrink-0 flex items-baseline"
             onClick={() => window.open("/about", "_blank")}
             title="mdfy.app — About"
           >
-            <MdfyLogo size={18} />
+            <MdfyLogo size={18} compact />
           </h1>
           {/* Document / Bundle / Hub URL chip — refined chip group.
               For doc tabs: shows /{cloudId} → mdfy.app/{cloudId}.
@@ -8842,9 +8834,10 @@ ${clone.innerHTML}
               context menu or details panel later without re-plumbing. */}
         </div>
 
-        {/* Center cluster: [Back/Forward] gap [Home + view modes] — both groups absolute-centered as one unit on desktop. On mobile it drops to its own line (order-3 + w-full) and inherits normal flow so the toolbar isn't crammed into a single tight row. */}
+        {/* Center cluster: [Back/Forward] gap [Home + view modes] — both groups absolute-centered as one unit */}
         <div
-          className="flex items-center gap-1.5 shrink-0 pointer-events-auto order-3 w-full justify-center pt-1 sm:order-none sm:w-auto sm:pt-0 sm:absolute sm:left-1/2 sm:-translate-x-1/2 sm:justify-start"
+          className="flex items-center gap-1.5 shrink-0 pointer-events-auto"
+          style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}
         >
           {/* Back / Forward — own group, separate from Home */}
           {(() => {
