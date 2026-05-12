@@ -3187,17 +3187,20 @@ export default function MdEditor() {
   // (INITIAL_TABS[0] = tab-welcome). That meant every fresh load with
   // an empty / stale activeTabId would render the welcome blurb in the
   // editor before the user clicked anything — repeatedly, even on
-  // return visits. Now: explicit lookup skips example tabs UNLESS the
-  // user has no own docs (in which case we still prefer Home over a
-  // sample), and the implicit fallback also skips examples.
+  // return visits.
+  //
+  // The activeTabId useState init above already strips stale
+  // EXAMPLE_TAB_IDS / hub-* from localStorage on reload, so by the
+  // time we land here, an activeTabId pointing at an example means
+  // the user is *intentionally* viewing it (they just clicked it in
+  // the Guides sidebar / Start grid). Honour that click — previously
+  // we filtered it out and silently fell back to an owned doc, which
+  // is why clicking "Sample Bundle: Tour of mdfy" in the sidebar
+  // showed someone else's doc (or blank) instead of the bundle.
   const activeTab = (() => {
     const isOwn = (t: typeof tabs[number]) => !t.deleted && t.ownerEmail !== EXAMPLE_OWNER;
     const explicit = activeTabId ? tabs.find((t) => t.id === activeTabId) : undefined;
-    // Honour an explicit click only when it points at an OWNED doc.
-    // Example tabs reached via Guides set activeTabId in this session;
-    // a page reload that lands us on an example is almost always
-    // stale state we should clear.
-    if (explicit && isOwn(explicit)) return explicit;
+    if (explicit) return explicit;
     return tabs.find(isOwn);
   })();
 
@@ -11361,7 +11364,10 @@ ${clone.innerHTML}
                         onClick={(e) => handleDocClick(tab.id, e)}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setDocContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                       >
-                        <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                        {tab.kind === "bundle"
+                          ? renderBundleStatusIcon(tab.bundleId, 13)
+                          : <Eye width={13} height={13} className="shrink-0" style={{ color: tab.id === activeTabId ? "var(--accent)" : "var(--text-faint)" }} />
+                        }
                         <span className="truncate flex-1">{tab.title || "Untitled"}</span>
                       </div>
                     ))}
