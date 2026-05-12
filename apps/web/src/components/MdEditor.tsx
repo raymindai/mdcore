@@ -5501,10 +5501,21 @@ export default function MdEditor() {
           ? prev.filter(t => !t.cloudId && t.kind !== "bundle")
           : prev);
         setBundles(prev => prev.length === 0 ? prev : []);
+        // Folders: keep only the "Examples" group. Write the cleaned
+        // list to localStorage synchronously here — the persistence
+        // effect debounces by 500ms, and if the user closes the tab
+        // or refreshes within that window, the stale user folders
+        // would survive into the next anon session ("folders from
+        // when I was logged in are still there after sign-out").
         setFolders(prev => {
           const filtered = prev.filter(f => f.id === EXAMPLES_FOLDER_ID);
+          try { localStorage.setItem("mdfy-folders", JSON.stringify(filtered)); } catch { /* quota */ }
           return filtered.length === prev.length ? prev : filtered;
         });
+        // Same race applies to the bundles cache; clear it directly
+        // so a refresh-during-sign-out doesn't repaint the previous
+        // owner's bundles in the sidebar.
+        try { localStorage.removeItem("mdfy-bundles"); } catch { /* quota */ }
         // Keep recentTabIds + bundles localStorage cache so re-login restores
         // Recent immediately. The bundle/cloud tabs themselves are wiped above
         // for privacy, but Recent IDs alone don't reveal sensitive data and
