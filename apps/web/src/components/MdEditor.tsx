@@ -8715,7 +8715,7 @@ ${clone.innerHTML}
             onClick={() => window.open("/about", "_blank")}
             title="mdfy.app — About"
           >
-            <MdfyLogo size={18} compact />
+            <MdfyLogo size={isMobile ? 14 : 18} />
           </h1>
           {/* Document / Bundle / Hub URL chip — refined chip group.
               For doc tabs: shows /{cloudId} → mdfy.app/{cloudId}.
