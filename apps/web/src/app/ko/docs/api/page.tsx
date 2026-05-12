@@ -196,6 +196,8 @@ const sidebarItems = [
   { id: "head-docs-id", label: "HEAD /api/docs/{id}" },
   { id: "get-user-documents", label: "GET /api/user/documents" },
   { id: "post-upload", label: "POST /api/upload" },
+  { id: "raw-and-llms", label: "Raw + /llms.txt" },
+  { id: "bundle-url-anatomy", label: "Bundle URL 구조" },
   { id: "authentication", label: "인증" },
   { id: "rate-limits", label: "요청 제한" },
   { id: "errors", label: "에러" },
@@ -583,6 +585,238 @@ url = res.json()["url"]`}</CodeBlock>
   "url": "https://storage.mdfy.app/uploads/screenshot.png"
 }`}</CodeBlock>
           </EndpointBlock>
+
+          {/* ─── Raw + /llms.txt ─── */}
+          <SectionHeading id="raw-and-llms">Raw + /llms.txt</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            모든 공개 mdfy URL 은 AI 에이전트용 클린 마크다운 변형을 함께 제공합니다.
+            <InlineCode>{"?compact"}</InlineCode> 또는 <InlineCode>{"?digest"}</InlineCode> 을 붙이면 토큰을 줄일 수 있습니다 — 답변은 동일하고, 비용만 줄어듭니다.
+          </p>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: 14,
+              padding: "20px 24px",
+              marginBottom: 24,
+            }}
+          >
+            <ParamRow name="/raw/{id}" type="GET">
+              단일 문서의 순수 마크다운.
+            </ParamRow>
+            <ParamRow name="/raw/b/{bundleId}" type="GET">
+              번들 다이제스트: 프론트매터 + 캔버스 분석(테마, 인사이트, 컨셉 서브그래프) + 멤버 문서의 번호 매겨진 링크 리스트.
+              <InlineCode>{"?full=1"}</InlineCode> 로 모든 문서 본문을 인라인, <InlineCode>{"?graph=0"}</InlineCode> 으로 분석을 제외할 수 있습니다.
+              아래 <a href="#bundle-url-anatomy" style={{ color: "var(--accent)" }}>Bundle URL 구조</a> 참고.
+            </ParamRow>
+            <ParamRow name="/raw/hub/{slug}" type="GET">
+              허브 전체 마크다운. <InlineCode>{"?digest=1"}</InlineCode> 은 컨셉 클러스터링된 요약을 반환합니다.
+            </ParamRow>
+            <ParamRow name="/raw/hub/{slug}/c/{concept}" type="GET">
+              허브 내 모든 문서를 가로지르는 컨셉별 패시지 페이지.
+            </ParamRow>
+            <ParamRow name="/hub/{slug}/llms.txt" type="GET">
+              에이전트가 먼저 가져가서 무엇이 있는지 파악할 수 있는 매니페스트.
+            </ParamRow>
+            <ParamRow name="/hub/{slug}/llms-full.txt" type="GET">
+              허브 전체를 압축한 번들 (기본 80k 토큰, <InlineCode>{"?cap="}</InlineCode> 로 조정).
+            </ParamRow>
+          </div>
+
+          {/* ─── Bundle URL 구조 ─── */}
+          <SectionHeading id="bundle-url-anatomy">Bundle URL 구조</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            번들 URL (<InlineCode>mdfy.app/b/&#123;id&#125;</InlineCode>) 을 Claude, ChatGPT, Cursor 에 붙여넣으면 문서 목록 이상이 반환됩니다.
+            기본 응답은 캔버스의 크로스 도큐먼트 분석 — 테마, 인사이트, 갭, 핵심 takeaway, 주목할 연결, 컨셉 서브그래프 — 까지 포함하는 다이제스트입니다.
+            그래서 다음 AI 는 이전 AI 의 분석을 다시 만드는 대신 그대로 이어받을 수 있습니다.
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            벡터 임베딩은 서버에만 남습니다 (숫자 배열이라 LLM 이 쓸 수 없음). 와이어로 나가는 것은 분석이 이미 만들어둔 텍스트 결과물뿐입니다.
+          </p>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            응답 형태
+          </h3>
+          <CodeBlock lang="markdown">{`---
+mdfy_bundle: 1
+id: <bundleId>
+title: "..."
+url: https://mdfy.app/b/<id>
+document_count: N
+updated: <ISO>
+analysis_generated_at: <ISO>   # 캔버스가 실행된 적이 있을 때만
+analysis_stale: true           # 분석 이후 멤버 문서가 수정된 경우에만
+source: "mdfy.app"
+---
+
+# <Bundle title>
+> <description>
+**Intent:** <intent>
+
+> ⚠ _Analysis may be stale — 캔버스를 다시 실행해 새로고침하세요._   (stale 일 때만)
+
+## Summary
+<캔버스 요약>
+
+## Themes
+- ...
+
+## Cross-document insights
+- ...
+
+## Key takeaways
+- ...
+
+## Open questions / gaps
+- ...
+
+## Notable connections
+- **doc A 제목** ↔ **doc B 제목** — <relationship>
+
+## Concepts (this bundle)
+- **concept label** (from **doc title**)
+
+## Concept relations
+- **conceptA** ↔ **conceptB** — <edge label>
+
+1. [Doc 1 title](https://mdfy.app/<docId>) — annotation
+2. [Doc 2 title](https://mdfy.app/<docId>) — annotation`}</CodeBlock>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            쿼리 파라미터
+          </h3>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: 14,
+              padding: "16px 24px",
+              marginBottom: 24,
+            }}
+          >
+            <ParamRow name="full" type="boolean">
+              <InlineCode>{"?full=1"}</InlineCode> 는 멤버 문서 본문 전체를 doc 리스트 섹션 뒤에 인라인으로 붙입니다.
+              생략하면(기본) 링크 리스트만 반환되고, AI 가 필요한 시점에 링크를 따라갑니다.
+            </ParamRow>
+            <ParamRow name="graph" type="boolean">
+              <InlineCode>{"?graph=0"}</InlineCode> (또는 <InlineCode>false</InlineCode> / <InlineCode>off</InlineCode>) 는 캔버스 분석 섹션을 제거하고 기존의 doc 리스트만 있는 다이제스트를 반환합니다.
+              분석이 무겁거나 호출자가 인벤토리만 필요할 때 사용합니다.
+            </ParamRow>
+            <ParamRow name="compact" type="boolean">
+              <InlineCode>{"?compact"}</InlineCode> 는 페이로드 전체에서 중복 공백을 제거하고 긴 인용 블록을 잘라냅니다.
+              <InlineCode>full</InlineCode>, <InlineCode>graph</InlineCode> 와 조합 가능합니다.
+            </ParamRow>
+          </div>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            두 개의 온톨로지 레이어
+          </h3>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 12,
+              maxWidth: 640,
+            }}
+          >
+            mdfy 는 두 개의 서로 다른 온톨로지 레이어를 제공하며, 각각 별도의 URL 에 실립니다:
+          </p>
+          <ul
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.8,
+              marginBottom: 16,
+              paddingLeft: 20,
+              maxWidth: 640,
+            }}
+          >
+            <li>
+              <strong style={{ color: "var(--text-primary)" }}>concept_index</strong> — 허브 전체. 컨셉 라벨 + 그 컨셉이 등장하는 문서들.
+              이미 <InlineCode>/raw/hub/&#123;slug&#125;</InlineCode> 에 포함됩니다.
+            </li>
+            <li>
+              <strong style={{ color: "var(--text-primary)" }}>ai_graph</strong> — 번들 스코프. 캔버스가 생성한 테마, 인사이트, 갭, 연결, 컨셉 서브그래프.
+              이번 릴리스부터 <InlineCode>/raw/b/&#123;id&#125;</InlineCode> 에 포함됩니다.
+            </li>
+          </ul>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            Stale 판정
+          </h3>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 24,
+              maxWidth: 640,
+            }}
+          >
+            캔버스 분석은 스냅샷입니다. 멤버 문서 중 어느 것의 <InlineCode>updated_at</InlineCode> 이 <InlineCode>graph_generated_at</InlineCode> 보다 나중이면,
+            응답은 프론트매터에 <InlineCode>analysis_stale: true</InlineCode> 를 박고 본문 맨 위에 경고 블록쿼트를 한 줄 붙여 다음 AI 가 분석을 어느 정도 가중치로 받아들일지 판단할 수 있게 합니다.
+          </p>
 
           {/* ─── 인증 ─── */}
           <SectionHeading id="authentication">인증</SectionHeading>

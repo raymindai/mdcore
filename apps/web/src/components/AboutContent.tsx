@@ -109,7 +109,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
               letterSpacing: "-0.01em",
             }}
           >
-            {t.hero.cta_primary} &rarr;
+            {t.hero.cta_primary}
           </Link>
           <a
             href="https://chromewebstore.google.com/detail/mdfycc-%E2%80%94-publish-ai-outpu/nkmkgmebaeaiapjgmmalbeilggfhnold"
