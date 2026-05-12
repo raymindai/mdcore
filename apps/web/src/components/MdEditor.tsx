@@ -9529,23 +9529,25 @@ ${clone.innerHTML}
           pointermove for their own panning. */}
       <div
         data-resize-wrapper
-        className="flex flex-1 min-h-0 overflow-hidden"
+        className="flex flex-1 min-h-0 overflow-hidden relative"
         onClick={() => { if (docContextMenu) setDocContextMenu(null); if (folderContextMenu) setFolderContextMenu(null); if (sidebarContextMenu) setSidebarContextMenu(null); if (bundleContextMenu) setBundleContextMenu(null); }}
       >
 
       {/* Sidebar */}
       {showSidebar ? (
         <>
-        {/* Mobile sidebar backdrop — blur + dim for depth effect */}
+        {/* Mobile sidebar backdrop — confined to the content area below
+            the header (absolute inside data-resize-wrapper, not fixed
+            to viewport) so the header stays interactive and uncovered. */}
         {isMobile && showSidebar && (
           <div
-            className="fixed inset-0 z-[200]"
+            className="absolute inset-0 z-[200]"
             style={{ background: sidebarClosing ? "transparent" : "rgba(0,0,0,0.4)", transition: "background 0.25s ease" }}
             onClick={() => closeSidebar()}
           />
         )}
         <div
-          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : "relative"}`}
+          className={`flex flex-col shrink-0 ${isMobile ? "absolute left-0 top-0 bottom-0 z-[201] shadow-2xl" : "relative"}`}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
