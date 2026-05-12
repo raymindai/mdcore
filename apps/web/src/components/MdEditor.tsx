@@ -9545,7 +9545,7 @@ ${clone.innerHTML}
           />
         )}
         <div
-          className={`flex flex-col shrink-0 relative ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : ""}`}
+          className={`flex flex-col shrink-0 ${isMobile ? "fixed left-0 top-0 bottom-0 z-[201] shadow-2xl" : "relative"}`}
           data-pane="sidebar"
           style={{
             width: isMobile ? 260 : sidebarWidth,
