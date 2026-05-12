@@ -287,7 +287,12 @@ export default function WelcomeOverlay() {
           ))}
         </div>
 
-        {/* Actions */}
+        {/* Actions — primary CTA always reads as the loud, default
+            action. Previously the non-last slides rendered Next on
+            var(--surface) (same as the card body), so it blended in
+            and the eye drifted to "Skip tour" by default. Now every
+            slide paints Next/Get started in accent with a soft glow,
+            and Back demotes to a quiet ghost button. */}
         <div style={{ padding: "16px 40px 32px" }}>
           <div style={{ display: "flex", gap: 10 }}>
             {!isFirst && (
@@ -296,11 +301,11 @@ export default function WelcomeOverlay() {
                 style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "var(--text-muted)",
-                  background: "none",
-                  border: "1px solid var(--border)",
+                  color: "var(--text-faint)",
+                  background: "transparent",
+                  border: "none",
                   borderRadius: 10,
-                  padding: "12px 20px",
+                  padding: "12px 14px",
                   cursor: "pointer",
                   flexShrink: 0,
                 }}
@@ -312,15 +317,20 @@ export default function WelcomeOverlay() {
               onClick={next}
               style={{
                 flex: 1,
-                background: isLast ? "var(--accent)" : "var(--surface)",
-                color: isLast ? "#000" : "var(--text-primary)",
-                border: isLast ? "none" : "1px solid var(--border)",
-                padding: "12px 28px",
+                background: "var(--accent)",
+                color: "#000",
+                border: "none",
+                padding: "13px 28px",
                 borderRadius: 10,
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: "pointer",
+                letterSpacing: "-0.01em",
+                boxShadow: "0 6px 20px -6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) inset",
+                transition: "transform 0.12s ease, box-shadow 0.18s ease",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 10px 24px -6px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent) inset"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 20px -6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) inset"; }}
             >
               {isLast ? "Get started" : "Next"}
             </button>
