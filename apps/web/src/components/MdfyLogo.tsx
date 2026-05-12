@@ -24,19 +24,27 @@ export default function MdfyLogo({
   const suffix = variant === "mdcore.ai" ? ".ai" : ".app";
   const middle = variant === "mdcore.ai" ? "core" : "fy";
 
+  // Compact = "show only the md mark on mobile, full wordmark at
+  // sm+". The two breakpoints render different colour pairings:
+  // mobile splits the mark into m=accent + d=text-primary (the
+  // founder's spec), desktop keeps the canonical md=accent /
+  // fy=text-primary / .app=text-faint stripe. Easiest correct way
+  // is to render both and let Tailwind hide whichever doesn't fit
+  // the breakpoint.
   if (compact) {
-    // Split colour mark: m = accent (orange in default scheme), d =
-    // text-primary (white in dark / black in light). Matches the
-    // full wordmark's `md` colour pairing instead of painting both
-    // letters in accent.
+    const baseStyle = { fontSize: size, fontWeight: weight, letterSpacing, whiteSpace: "nowrap" as const };
     return (
-      <span
-        style={{ fontSize: size, fontWeight: weight, letterSpacing, whiteSpace: "nowrap" }}
-        aria-label={variant}
-      >
-        <span style={{ color: "var(--accent)" }}>m</span>
-        <span style={{ color: "var(--text-primary)" }}>d</span>
-      </span>
+      <>
+        <span className="sm:hidden" style={baseStyle} aria-label={variant}>
+          <span style={{ color: "var(--accent)" }}>m</span>
+          <span style={{ color: "var(--text-primary)" }}>d</span>
+        </span>
+        <span className="hidden sm:inline" style={baseStyle} aria-label={variant}>
+          <span style={{ color: "var(--accent)" }}>md</span>
+          <span style={{ color: "var(--text-primary)" }}>{middle}</span>
+          <span style={{ color: "var(--text-faint)" }}>{suffix}</span>
+        </span>
+      </>
     );
   }
 
