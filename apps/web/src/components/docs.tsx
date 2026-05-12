@@ -144,12 +144,11 @@ export function SubLabel({ children }: { children: string }) {
 /* ─── DocsNav ─── */
 export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "plugins" | "docs" | "hubs"; lang?: "en" | "ko" } = {}) {
   const prefix = lang === "ko" ? "/ko" : "";
-  // Hubs link is EN-only for now (the /hubs page itself doesn't have
-  // a Korean route yet, and translating the user-supplied hub names
-  // doesn't help anyway).
+  // Hubs intentionally not surfaced in the top nav — the /hubs page
+  // still exists and is reachable from the Start grid / Discover, but
+  // it doesn't earn a slot next to About/Plugins/Docs.
   const navItems = [
     { label: "About", href: `${prefix}/about`, key: "about" },
-    { label: "Hubs", href: `/hubs`, key: "hubs" },
     { label: "Plugins", href: `${prefix}/plugins`, key: "plugins" },
     { label: "Docs", href: `${prefix}/docs`, key: "docs" },
   ];
