@@ -202,6 +202,7 @@ const sidebarItems = [
   { id: "post-import-notion", label: "POST /api/import/notion" },
   { id: "post-hub-recall", label: "POST /api/hub/{slug}/recall" },
   { id: "raw-and-llms", label: "Raw + /llms.txt" },
+  { id: "bundle-url-anatomy", label: "Bundle URL anatomy" },
   { id: "authentication", label: "Authentication" },
   { id: "rate-limits", label: "Rate Limits" },
   { id: "errors", label: "Errors" },
@@ -795,7 +796,9 @@ url = res.json()["url"]`}</CodeBlock>
               Plain markdown for a single document.
             </ParamRow>
             <ParamRow name="/raw/b/{bundleId}" type="GET">
-              Concatenated markdown for a bundle.
+              Bundle digest: frontmatter + the canvas analysis (themes, insights, concept sub-graph) + a numbered link list of member docs.
+              Add <InlineCode>{"?full=1"}</InlineCode> to inline every doc body, <InlineCode>{"?graph=0"}</InlineCode> to drop the analysis.
+              See <a href="#bundle-url-anatomy" style={{ color: "var(--accent)" }}>Bundle URL anatomy</a> below.
             </ParamRow>
             <ParamRow name="/raw/hub/{slug}" type="GET">
               Whole-hub markdown. <InlineCode>{"?digest=1"}</InlineCode> returns a concept-clustered summary.
@@ -810,6 +813,195 @@ url = res.json()["url"]`}</CodeBlock>
               Dense whole-hub bundle (default 80k tokens, override with <InlineCode>{"?cap="}</InlineCode>).
             </ParamRow>
           </div>
+
+          {/* ─── Bundle URL anatomy ─── */}
+          <SectionHeading id="bundle-url-anatomy">Bundle URL anatomy</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            Pasting a bundle URL (<InlineCode>mdfy.app/b/&#123;id&#125;</InlineCode>) into Claude, ChatGPT, or Cursor returns more than a doc list.
+            The default response is a digest that also carries the canvas&apos;s cross-document analysis — themes,
+            insights, gaps, takeaways, notable connections, and a concept sub-graph — so the consuming AI inherits the prior AI&apos;s work
+            instead of redoing it.
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 640,
+            }}
+          >
+            Vector embeddings stay server-side (they&apos;re numeric and unusable to an LLM). What ships over the wire is the textual
+            output the analysis already produced.
+          </p>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            Response shape
+          </h3>
+          <CodeBlock lang="markdown">{`---
+mdfy_bundle: 1
+id: <bundleId>
+title: "..."
+url: https://mdfy.app/b/<id>
+document_count: N
+updated: <ISO>
+analysis_generated_at: <ISO>   # present when the canvas has run
+analysis_stale: true           # only when a member doc was edited after that run
+source: "mdfy.app"
+---
+
+# <Bundle title>
+> <description>
+**Intent:** <intent>
+
+> ⚠ _Analysis may be stale — re-run the canvas to refresh._   (stale only)
+
+## Summary
+<canvas summary>
+
+## Themes
+- ...
+
+## Cross-document insights
+- ...
+
+## Key takeaways
+- ...
+
+## Open questions / gaps
+- ...
+
+## Notable connections
+- **doc A title** ↔ **doc B title** — <relationship>
+
+## Concepts (this bundle)
+- **concept label** (from **doc title**)
+
+## Concept relations
+- **conceptA** ↔ **conceptB** — <edge label>
+
+1. [Doc 1 title](https://mdfy.app/<docId>) — annotation
+2. [Doc 2 title](https://mdfy.app/<docId>) — annotation`}</CodeBlock>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            Query parameters
+          </h3>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: 14,
+              padding: "16px 24px",
+              marginBottom: 24,
+            }}
+          >
+            <ParamRow name="full" type="boolean">
+              <InlineCode>{"?full=1"}</InlineCode> inlines every member doc&apos;s full markdown body after the doc-list section.
+              Default (omitted) returns the link list only — the AI follows links on demand.
+            </ParamRow>
+            <ParamRow name="graph" type="boolean">
+              <InlineCode>{"?graph=0"}</InlineCode> (also <InlineCode>false</InlineCode> / <InlineCode>off</InlineCode>) drops the canvas-analysis sections and returns the legacy doc-list-only digest. Useful when the analysis is heavy or the caller only needs the inventory.
+            </ParamRow>
+            <ParamRow name="compact" type="boolean">
+              <InlineCode>{"?compact"}</InlineCode> strips redundant whitespace and trims long quoted blocks across the whole payload.
+              Combines with <InlineCode>full</InlineCode> and <InlineCode>graph</InlineCode>.
+            </ParamRow>
+          </div>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            Two ontology layers
+          </h3>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 12,
+              maxWidth: 640,
+            }}
+          >
+            mdfy ships two distinct ontology layers, and each lives on its own URL:
+          </p>
+          <ul
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.8,
+              marginBottom: 16,
+              paddingLeft: 20,
+              maxWidth: 640,
+            }}
+          >
+            <li>
+              <strong style={{ color: "var(--text-primary)" }}>concept_index</strong> — hub-wide. Concept labels + the docs each appears in.
+              Already embedded in <InlineCode>/raw/hub/&#123;slug&#125;</InlineCode>.
+            </li>
+            <li>
+              <strong style={{ color: "var(--text-primary)" }}>ai_graph</strong> — bundle-scoped. Themes, insights, gaps, connections, and a
+              concept sub-graph produced by the canvas. Embedded in <InlineCode>/raw/b/&#123;id&#125;</InlineCode> as of this release.
+            </li>
+          </ul>
+
+          <h3
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              marginTop: 24,
+              marginBottom: 10,
+              letterSpacing: -0.1,
+            }}
+          >
+            Staleness model
+          </h3>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 24,
+              maxWidth: 640,
+            }}
+          >
+            The canvas analysis is a snapshot. If any member doc&apos;s <InlineCode>updated_at</InlineCode> is later than
+            <InlineCode>graph_generated_at</InlineCode>, the response sets <InlineCode>analysis_stale: true</InlineCode> in frontmatter and prepends a
+            warning blockquote so the consuming AI can weight the analysis appropriately.
+          </p>
 
           {/* ─── Authentication ─── */}
           <SectionHeading id="authentication">Authentication</SectionHeading>
