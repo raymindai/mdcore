@@ -5931,10 +5931,17 @@ export default function MdEditor() {
             const doc = await res.json();
             if (doc.markdown) {
               setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, markdown: doc.markdown, title: doc.title || t.title } : t));
-              // If this is the active tab, update the editor too
+              // If this is the active tab, update the editor too.
+              // Tiptap is the Live-preview renderer — without
+              // setMarkdown here, doRender's HTML fills the preview
+              // pane only while Tiptap's internal doc stays empty,
+              // so Live shows blank until the user clicks the tab
+              // in the sidebar (which triggers loadTab → tiptap
+              // setMarkdown). Match loadTab's hydration shape.
               if (tab.id === activeTabIdRef.current) {
                 setMarkdownRaw(doc.markdown);
                 doRender(doc.markdown);
+                tiptapRef.current?.setMarkdown(doc.markdown);
               }
             }
           } else if (res.status === 404 || res.status === 410) {
