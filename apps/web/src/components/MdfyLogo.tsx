@@ -25,12 +25,17 @@ export default function MdfyLogo({
   const middle = variant === "mdcore.ai" ? "core" : "fy";
 
   if (compact) {
+    // Split colour mark: m = accent (orange in default scheme), d =
+    // text-primary (white in dark / black in light). Matches the
+    // full wordmark's `md` colour pairing instead of painting both
+    // letters in accent.
     return (
       <span
-        style={{ fontSize: size, fontWeight: weight, letterSpacing, whiteSpace: "nowrap", color: "var(--accent)" }}
+        style={{ fontSize: size, fontWeight: weight, letterSpacing, whiteSpace: "nowrap" }}
         aria-label={variant}
       >
-        md
+        <span style={{ color: "var(--accent)" }}>m</span>
+        <span style={{ color: "var(--text-primary)" }}>d</span>
       </span>
     );
   }

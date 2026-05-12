@@ -8837,10 +8837,15 @@ ${clone.innerHTML}
               context menu or details panel later without re-plumbing. */}
         </div>
 
-        {/* Center cluster: [Back/Forward] gap [Home + view modes] — both groups absolute-centered as one unit */}
+        {/* Center cluster: [Back/Forward] gap [Home + view modes].
+            Desktop (sm:+): absolute-centered as one unit so it floats
+            mid-toolbar between left logo and right actions.
+            Mobile: stays in normal flow next to the logo (left side),
+            so the dead space to the right of the "md" mark fills with
+            the pill rail instead of being wasted to the absolute
+            translate. */}
         <div
-          className="flex items-center gap-1.5 shrink-0 pointer-events-auto"
-          style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}
+          className="flex items-center gap-1.5 shrink-0 pointer-events-auto sm:absolute sm:left-1/2 sm:-translate-x-1/2"
         >
           {/* Back / Forward — own group, separate from Home */}
           {(() => {
