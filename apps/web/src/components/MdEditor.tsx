@@ -2858,6 +2858,32 @@ export default function MdEditor() {
   const autoSave = useAutoSave({ debounceMs: 2500 });
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);
+  const authMenuTriggerRef = useRef<HTMLDivElement>(null);
+  const authMenuPanelRef = useRef<HTMLDivElement>(null);
+  // Outside-click + Escape dismissal for the profile menu. Replaces
+  // the prior backdrop approach which couldn't escape the sidebar's
+  // transform stacking context — the portalled backdrop ended up
+  // ABOVE the menu (sidebar at root-z 201 vs backdrop at z-9998),
+  // so the menu's own z-9999 was useless against it and the inner
+  // buttons stopped responding to clicks. A document-level listener
+  // sidesteps the stacking question entirely.
+  useEffect(() => {
+    if (!showAuthMenu) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (authMenuTriggerRef.current?.contains(t)) return;
+      if (authMenuPanelRef.current?.contains(t)) return;
+      setShowAuthMenu(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAuthMenu(false); };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showAuthMenu]);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
   const [authEmailInput, setAuthEmailInput] = useState("");
@@ -11625,7 +11651,7 @@ ${clone.innerHTML}
                 <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
               </div>
             ) : isAuthenticated ? (
-              <div className="relative flex items-center gap-1">
+              <div ref={authMenuTriggerRef} className="relative flex items-center gap-1">
                 <button
                   onClick={() => setShowAuthMenu(!showAuthMenu)}
                   className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors hover:bg-[var(--accent-dim)]"
@@ -11655,18 +11681,12 @@ ${clone.innerHTML}
                 </Tooltip>
                 {showAuthMenu && (
                   <>
-                    {/* Backdrop must escape the sidebar's transform
-                        (mobile slide-in uses translateX, which makes
-                        the sidebar a containing block for fixed
-                        descendants — confining the backdrop to the
-                        sidebar rect and leaving the canvas un-
-                        dismissable). Portal it to document.body so
-                        `fixed inset-0` truly covers the viewport. */}
-                    {typeof document !== "undefined" && createPortal(
-                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />,
-                      document.body,
-                    )}
-                    <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999] overflow-hidden"
+                    {/* No backdrop element — outside-click +
+                        Escape dismissal lives in a useEffect above.
+                        A portalled backdrop sat above the sidebar's
+                        stacking context and blocked clicks on the
+                        menu's own buttons. */}
+                    <div ref={authMenuPanelRef} className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999] overflow-hidden"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {/* Profile header — avatar + identity, no plan badge here.
                           Plan stays on its own row below so the eye reads
