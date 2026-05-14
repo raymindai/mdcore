@@ -3993,7 +3993,7 @@ export default function MdEditor() {
   const [showSharedOwner, setShowSharedOwner] = useState(false);
   const [sidebarMode, setSidebarModeRaw] = useState<"simple" | "detailed">(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("mdfy-sidebar-mode") as "simple" | "detailed") || "detailed";
+      return (localStorage.getItem("mdfy-sidebar-mode") as "simple" | "detailed") || "simple";
     }
     return "detailed";
   });
