@@ -2867,8 +2867,15 @@ export default function MdEditor() {
   // so the menu's own z-9999 was useless against it and the inner
   // buttons stopped responding to clicks. A document-level listener
   // sidesteps the stacking question entirely.
+  //
+  // Only active when authenticated: the same `showAuthMenu` state
+  // also drives the logged-out Sign-In modal, which has its own
+  // backdrop click handler. Listening unconditionally was closing
+  // the modal on every internal button click (Google OAuth row,
+  // email field, etc.) because those clicks weren't inside the
+  // profile menu refs.
   useEffect(() => {
-    if (!showAuthMenu) return;
+    if (!showAuthMenu || !isAuthenticated) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node | null;
       if (!t) return;
@@ -2883,7 +2890,7 @@ export default function MdEditor() {
       document.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [showAuthMenu]);
+  }, [showAuthMenu, isAuthenticated]);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
   const [authEmailInput, setAuthEmailInput] = useState("");
