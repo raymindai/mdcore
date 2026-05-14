@@ -2,6 +2,8 @@
 
 **Status**: draft for founder review. Voice is the founder's, not Claude's. Keep first-person, keep technical, drop adjectives the founder wouldn't say out loud.
 
+**Last revised**: 2026-05-15 (post-rebrand-prep ship).
+
 ---
 
 ## Title options (pick one before posting)
@@ -27,18 +29,21 @@ The thesis is simple: LLMs read and write markdown natively. URLs cross every bo
 - **Bundle by topic** — group N docs, add an Intent, let AI synthesize discoveries (tensions, gaps, threads) across them
 - **Hub** — your docs auto-cluster into a concept index. `mdfy.app/hub/<you>` becomes one URL Claude, ChatGPT, Cursor, and Codex can all fetch
 - **Self-publishing wiki** — every public hub auto-exposes `index.md`, `SCHEMA.md`, `log.md`, `llms.txt` so AI agents know what's available
-- **Recall API** — `POST /api/hub/<slug>/recall` with optional Haiku-based reranker
-- **Token economy** — `?compact` and `?digest` query params cut fetch cost 30-50%
+- **Recall API** — `POST /api/hub/<slug>/recall` with optional Haiku-based reranker (hybrid BM25 + pgvector)
+- **Token economy** — `?compact` and `?digest` query params cut fetch cost 30-50%; bundle URLs also accept `?full=1` to inline every member doc and `?graph=0` to drop the analysis section
+- **AI dev tool wiring** — one line in `AGENTS.md` / `CLAUDE.md` / `.cursor/rules` auto-loads your hub or bundle on every session; per-tool snippets at [`/docs/integrate`](https://mdfy.app/docs/integrate)
+- **Open spec** — URL contract, retrieval API, llms.txt, bundle digest format all documented at [`/spec`](https://mdfy.app/spec); engine MIT-licensed
 
 **What I think is interesting**:
 
 1. **Cross-AI is structural moat.** Notion's AI works in Notion. ChatGPT's memory works in ChatGPT. mdfy works everywhere because it's just a URL — AI companies can't replicate that without abandoning their walled gardens.
 2. **Authored memory ≠ extracted memory.** Mem0 and Letta extract facts from conversations. They're good at what they do. mdfy answers a different question: *what do **you** want to remember?* You write it. You edit it. You decide.
-3. **The Karpathy wiki shape, deployed as URL.** Andrej said "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase." That's a local-file shape. We rebuilt it as a URL shape — same insight, different deploy target.
+3. **Graph-RAG-as-URL, not Graph-RAG-as-service.** Microsoft's GraphRAG and LlamaIndex KG build the graph and traverse it internally when an upstream system asks. mdfy ships the graph in the URL response — every bundle URL carries themes, insights, concept relations as markdown. The receiving AI inherits the prior AI's work for free.
+4. **The Karpathy wiki shape, deployed as URL.** Andrej said "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase." That's a local-file shape. We rebuilt it as a URL shape — and added composable scopes (doc / bundle / hub) so per-project context maps cleanly to AGENTS.md / CLAUDE.md.
 
 Stack: Next.js 15, Supabase Postgres with pgvector + HNSW, OpenAI text-embedding-3-small, Anthropic Haiku for concept extraction + reranking, Rust + WASM markdown engine. mdcore (engine) and the bundle spec are open source.
 
-Try it: paste a ChatGPT share link, import a GitHub repo, drop a PDF. The URL is yours forever, no signup needed.
+Try it: paste a ChatGPT share link, import a GitHub repo, drop a PDF. The URL is yours forever, no signup needed. Or open the example hub directly: [`mdfy.app/hub/demo`](https://mdfy.app/hub/demo) — six docs, two bundles with pre-computed analysis, a concept index you can browse. Paste the URL into Claude or Cursor to see the cross-AI part end-to-end.
 
 Happy to dig into anything technical, the cross-AI thesis, why I left X to do this, or where I think this goes if it works.
 
@@ -59,7 +64,7 @@ Happy to dig into anything technical, the cross-AI thesis, why I left X to do th
 > They can't. Their incentive is to keep you in their walled garden. The cross-AI position is mine to win precisely because every AI company is structurally one of the AIs, not the layer above them.
 
 **"Pricing?"**
-> Free during beta. Pro tier after launch (~$8/mo for the things you'd expect — custom domain, branding, larger storage). No tier locks the core: capture / hub / cross-AI deployability are free forever.
+> Free during beta. Pro tier after launch (price TBD — announced when beta ends). No tier locks the core: capture / hub / cross-AI deployability are free forever. The Pro split today is around no-badge, custom domain, analytics, auto-analyze (stale-fetch triggers background graph regen).
 
 **"Why are you doing this?"**
 > Trillions of tokens of high-quality AI-assisted thinking are being created every day and lost to chat histories nobody returns to. The most expensive forgetting machine in history. I want to build the layer that catches the part you actually meant to keep.
