@@ -25,7 +25,7 @@ import { createClient } from "@supabase/supabase-js";
  * extend DEMO_EMAILS to a real user. Real accounts go through OAuth
  * or magic-link email like everyone else.
  */
-const DEMO_EMAILS = new Set(["yc@mdfy.app"]);
+const DEMO_EMAILS = new Set(["yc@mdfy.app", "demo@mdfy.app"]);
 
 export async function POST(req: NextRequest) {
   let body: { email?: string };

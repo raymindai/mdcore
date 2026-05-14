@@ -158,7 +158,8 @@ export function useAuth() {
       // emails skip the magic-link round-trip and sign in immediately
       // via /api/auth/demo-signin. Returns { instant: true } so the UI
       // can navigate straight in without showing "check your email."
-      if (normalized === "yc@mdfy.app") {
+      // Keep in sync with DEMO_EMAILS in /api/auth/demo-signin/route.ts.
+      if (normalized === "yc@mdfy.app" || normalized === "demo@mdfy.app") {
         try {
           const res = await fetch("/api/auth/demo-signin", {
             method: "POST",
