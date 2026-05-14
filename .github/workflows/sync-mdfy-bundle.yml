@@ -1,0 +1,127 @@
+name: Sync repo docs → mdfy bundle
+
+# Dogfood: every time we push to main, ship the changed
+# CLAUDE.md / AGENTS.md / docs/*.md content into a single
+# pinned mdfy bundle. Then `mdfy.app/b/<bundle-id>` is always the
+# *current* state of this repo's working knowledge, paste-ready for
+# anyone using Claude Code / Cursor / Codex.
+#
+# The "we use our own product" loop is the marketing artifact —
+# the action itself is also a worked example readers can copy into
+# their own repos.
+#
+# SETUP (one time):
+#   1. Founder creates a doc in mdfy.app, captures its edit token
+#      (Cmd+K → Account → Edit tokens, or use the URL editor's
+#      Share modal).
+#   2. The doc id + edit token go into repo Secrets:
+#        MDFY_DOC_ID       — e.g. abc123xyz
+#        MDFY_EDIT_TOKEN   — the token paired with that doc
+#      (Find them in the editor's URL share panel.)
+#   3. Optional MDFY_API_BASE override (defaults to https://mdfy.app).
+#
+# WHAT THE ACTION DOES:
+#   - Concatenates CLAUDE.md, AGENTS.md (if present), and every
+#     docs/*.md file with a separator and per-file headers.
+#   - PATCHes that combined markdown to /api/docs/{MDFY_DOC_ID}
+#     using the edit token (no full user OAuth required).
+#   - Skips the run when the relevant files didn't change in this
+#     push, to avoid hammering the API on unrelated commits.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'docs/**.md'
+      - '.github/workflows/sync-mdfy-bundle.yml'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    name: Push repo docs into mdfy
+    runs-on: ubuntu-latest
+    # Skip cleanly when the secrets aren't configured — keeps the
+    # workflow file safe to merge before the founder has set up
+    # the doc + token.
+    if: github.repository == 'raymindai/mdcore'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify secrets present
+        id: check
+        run: |
+          if [ -z "${{ secrets.MDFY_DOC_ID }}" ] || [ -z "${{ secrets.MDFY_EDIT_TOKEN }}" ]; then
+            echo "::warning::MDFY_DOC_ID or MDFY_EDIT_TOKEN not set — skipping sync."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the combined markdown payload
+        if: steps.check.outputs.skip != 'true'
+        id: build
+        run: |
+          set -euo pipefail
+          OUT="$(mktemp)"
+          {
+            echo "# Repo working knowledge (auto-synced from ${GITHUB_REPOSITORY}@${GITHUB_SHA:0:7})"
+            echo
+            echo "> Updated automatically by .github/workflows/sync-mdfy-bundle.yml on every push to main."
+            echo "> Source: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+            echo
+            for f in CLAUDE.md AGENTS.md; do
+              if [ -f "$f" ]; then
+                echo
+                echo "---"
+                echo
+                echo "## $f"
+                echo
+                cat "$f"
+              fi
+            done
+            # docs/*.md — sorted for deterministic output. Limit
+            # depth so we don't suck in giant subdirs by accident.
+            if [ -d docs ]; then
+              find docs -maxdepth 2 -name '*.md' -type f | LC_ALL=C sort | while read -r f; do
+                echo
+                echo "---"
+                echo
+                echo "## $f"
+                echo
+                cat "$f"
+              done
+            fi
+          } > "$OUT"
+          echo "payload_path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "payload_bytes=$(wc -c < "$OUT")" >> "$GITHUB_OUTPUT"
+
+      - name: PATCH /api/docs/{id} with the combined markdown
+        if: steps.check.outputs.skip != 'true'
+        env:
+          MDFY_API_BASE: ${{ vars.MDFY_API_BASE || 'https://mdfy.app' }}
+          MDFY_DOC_ID: ${{ secrets.MDFY_DOC_ID }}
+          MDFY_EDIT_TOKEN: ${{ secrets.MDFY_EDIT_TOKEN }}
+          PAYLOAD_PATH: ${{ steps.build.outputs.payload_path }}
+        run: |
+          set -euo pipefail
+          # Build the JSON body via jq so we don't have to escape
+          # newlines / quotes / backticks by hand.
+          BODY="$(jq -Rn \
+            --rawfile md "$PAYLOAD_PATH" \
+            --arg token "$MDFY_EDIT_TOKEN" \
+            --arg summary "ci: sync from ${GITHUB_SHA:0:7}" \
+            '{markdown: $md, editToken: $token, changeSummary: $summary}')"
+          STATUS=$(curl -sS -o /tmp/mdfy-resp.json -w '%{http_code}' \
+            -X PATCH "${MDFY_API_BASE}/api/docs/${MDFY_DOC_ID}" \
+            -H 'Content-Type: application/json' \
+            --data "$BODY")
+          echo "HTTP $STATUS"
+          cat /tmp/mdfy-resp.json
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::PATCH failed with HTTP $STATUS"
+            exit 1
+          fi
+          echo
+          echo "✓ Synced ${{ steps.build.outputs.payload_bytes }} bytes to ${MDFY_API_BASE}/${MDFY_DOC_ID}"
