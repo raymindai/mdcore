@@ -1,266 +1,263 @@
 # memori.wiki — Gap Analysis vs Current Codebase
 
-> Companion to `MEMORI-WIKI-SPEC.md`. Audited against the
-> `apps/web/` codebase on 2026-05-14.
+> Companion to `MEMORI-WIKI-SPEC.md`. Audited against `apps/web/` on
+> 2026-05-14 and re-framed after a strategic decision to position
+> mdfy as an **AI-era wiki**, not a literal Wikipedia-shape wiki.
 >
-> Frames the spec features (F1–F18) by **what's actually shipped**,
-> **what's load-bearing for the rebrand promise**, and **what
-> sounds important in the spec but isn't critical** to ship before
-> renaming to memori.wiki.
+> Original draft of this file treated every Tier 1 feature in the
+> spec as a blocker. That assumed mdfy needed `[[wikilinks]]` + a
+> manual link graph because the brand says "wiki." This rewrite
+> rejects that assumption: the *AI-era* version of a wiki replaces
+> hand-authored linking with semantic concept extraction, which mdfy
+> already ships at production grade.
 
 ---
 
 ## 0. TL;DR
 
-The **memory layer** of memori.wiki is already shipped at production
-depth: pgvector + HNSW + hybrid BM25/vector retrieval + Anthropic
-Haiku reranker + llms.txt + compact form + concept index. mdfy
-already returns what a memory product should return.
+mdfy is already an **AI-era wiki** at production depth. What the
+2003-era wiki does with `[[wikilinks]]`, mdfy does with
+`concept_index` + `concept_relations` + hybrid semantic retrieval +
+Anthropic Haiku reranker. The graph isn't missing — it's built by
+the AI from the prose, not by the human typing brackets.
 
-The **wiki layer** is approximately zero. The word "wiki" implies
-inter-page navigation primitives that don't exist in the codebase:
-`[[wikilinks]]`, backlinks, and a hub-wide search surface the user
-can actually use. Without those, calling the product `memori.wiki`
-is a brand lie.
+The only features still missing to honour the `memori.wiki` brand
+promise are two surfaces (search UI, spec page) plus one re-packaging
+(concept-backlinks rendered per doc). Everything else in the spec is
+either shipped or correctly deferred.
 
-**Critical-path before rebrand** (4 features, ranked):
-1. **F1** `[[wikilink]]` syntax + auto-resolve
-2. **F2** Backlinks panel
-3. **F3** Hub search UI (backend done; UI missing)
-4. **F8** Public `/spec` page
+**Critical-path before rebrand**:
+1. **F3** Hub search UI (4–6h — backend already shipped)
+2. **F8** Public `/spec` page (½–1 day)
+3. **F2′** Concept-backlinks panel (½ day — derived from existing concept_index)
+4. Onboarding/marketing copy explaining "AI does the linking"
 
-Everything else is wait-for-data, nice-to-have, or sub-tier of these
-four. The matrix in §3 is the receipts.
+Total: ~2 days of build. Then the rebrand is honest.
+
+**Explicitly NOT shipping**: `[[wikilink]]` syntax (F1). See §4 for
+the rationale.
 
 ---
 
-## 1. What's actually shipped (audited)
+## 1. The reframe: two interpretations of "wiki"
 
-### 1.1 Production-grade, exceeds spec
+| Aspect | Wikipedia-shape (2003) | AI-era (2026) |
+|---|---|---|
+| Graph construction | Author types `[[link]]` | LLM extracts concepts |
+| Graph discovery | "What links here" page | Concept page + recall API |
+| Search | Full-text | Hybrid semantic + BM25 + rerank |
+| Curation | Categories typed by hand | Bundles + auto-lint |
+| Index update | Manual category/redirect work | Nightly lint + concept rebuild |
+
+mdfy commits to the AI-era column. Importing 2003-era mechanics on
+top would dilute the differentiator: a 2026 product with `[[link]]`
+syntax becomes "Obsidian with cloud sync." The differentiator is
+that **the AI does the linking; you write**.
+
+---
+
+## 2. What's actually shipped (audited)
+
+### 2.1 Memory & graph layer — production-grade
 
 | Spec | Code reality |
 |---|---|
-| **F4 Concept Index** | `concept_index` + `concept_relations` tables (migrations `027`, `028`). Per-concept page at `app/hub/[slug]/c/[concept]/page.tsx` with neighbor concepts. Builder code in `lib/hub-lint.ts` + auto-management surface in `HubEmbed`. Way past spec. |
-| **F5 Semantic Retrieval API** | `POST /api/hub/[slug]/recall` accepts `{ question, k, level: doc/chunk/bundle, hybrid, rerank }`. Doc-level + chunk-level + bundle-level retrieval. Hybrid = BM25 reciprocal-rank-fusion + pgvector cosine. Rerank = Anthropic Haiku cross-encoder. Telemetry logged. Spec asked for `?q=&limit=5`; we ship more. |
-| **F6 llms.txt** | `app/hub/[slug]/llms.txt/route.ts` follows the llmstxt.org standard, includes `?compact=1` + `?digest=1` hints. |
+| **F4 Concept Index** | `concept_index` + `concept_relations` tables (migrations `027`, `028`). Per-concept hub page at `app/hub/[slug]/c/[concept]/page.tsx` with neighbor concepts. Builder code in `lib/hub-lint.ts`, surfaced via Hub auto-management. |
+| **F5 Semantic Retrieval** | `POST /api/hub/[slug]/recall` accepts `{ question, k, level: doc/chunk/bundle, hybrid, rerank }`. Doc + chunk + bundle level retrieval. Hybrid = BM25 reciprocal-rank-fusion + pgvector cosine. Rerank = Anthropic Haiku cross-encoder. Telemetry logged. **Past spec.** |
+| **F6 llms.txt** | `app/hub/[slug]/llms.txt/route.ts` follows llmstxt.org standard, includes `?compact=1` / `?digest=1` hints. |
 | **F7 Compact form** | `?compact` query param wired across raw routes via `lib/markdown-compact.ts`. 30–50% token cuts working. |
-| **F11 Version history UI** | `versions` state + `versions.map` UI rendered in MdEditor (line 13931). Restore via `updateDocument`. The Author column (human vs llm-lint) isn't on the UI yet, but the underlying versions table can store it. |
-| **F17 Public hub directory** | `/hubs` page exists, listed in `sitemap.ts`, has metadata, indexable. |
+| **F9 AI Wiki Lint** | `lib/hub-lint.ts` (297 lines): orphans, semantic duplicates, title-mismatch. 4-level aggressiveness in Hub auto-management. Contradictions + stale flagging deferred (not blocking). |
+| **F11 Version history UI** | `versions.map` rendered in MdEditor (line 13931). Restore via `updateDocument`. Author-distinction column (human vs llm-lint) deferred — not blocking. |
+| **F17 Public hub directory** | `/hubs` page, listed in `sitemap.ts`, has metadata. Depth (featured / trending) is post-launch. |
 
-### 1.2 Partial / needs explicit work
+### 2.2 Partial — needs the UI shell
 
-| Spec | Reality | Gap |
+| Spec | Backend | Frontend |
 |---|---|---|
-| **F3 Hub-wide full-text search** | Backend is done: `documents.search_vector` tsvector (migration `026_hybrid_retrieval`), `/api/search` route, semantic variant. | No `app/hub/[slug]/search/page.tsx`. No search bar in hub viewer. The capability exists but the user can't reach it from the rendered hub. |
-| **F9 AI Wiki Lint** | `lib/hub-lint.ts` (297 lines) detects orphans, semantic duplicates, title-mismatch. Hub auto-management panel with 4-level aggressiveness. | Contradictions detection and stale-claim flagging both deferred (per `hub-lint.ts:14` comment: "Other Karpathy lint signals…"). Morning-digest email path not wired. |
-| **F14 Native LLM 인식** | `/docs/integrate` ships per-tool snippets (Claude Code / Cursor / Codex / Gemini / Windsurf / Aider). | No formal partner certification, no "Recognized by" page, no public partner directory. |
-
-### 1.3 Spec mismatches in the live data model
-
-| Spec | Reality | Decision needed |
-|---|---|---|
-| `visibility: 'public' \| 'unlisted' \| 'private'` (3 states) | We track `is_draft` (private vs published) + `allowed_emails` (restricted). 2-axis model, no "unlisted" concept. | Add `unlisted` (indexable=false, accessible=true) or commit to keeping the current axes and update spec. |
-| `Hub.isVerified` (blue check) | Column doesn't exist. | Defer; not pre-rebrand. |
-| `Doc.outboundLinks: string[]` | Doc table has no link tracking. | Required for F1/F2. New `links` table or `outbound_links` jsonb column. |
-| `DocVersion.authoredBy: 'llm-lint'` | `document_versions` table exists but author distinction (human vs llm) isn't surfaced. | Cheap fix when F9 morning-digest lands. |
+| **F3 Hub-wide search** | ✅ `documents.search_vector` tsvector + `/api/search` + semantic variant | ❌ no `app/hub/[slug]/search` page, no search bar in hub viewer |
+| **F14 Native LLM 인식** | ✅ `/docs/integrate` ships 6 tool-specific snippets | ⚠️ no formal partner cert / "Recognized by" page (post-launch) |
 
 ---
 
-## 2. What's MISSING and load-bearing for the rebrand
+## 3. Real blockers before rebrand (3 features, ~2 days)
 
-These are the features whose absence makes "memori.wiki" a misnomer.
+### 3.1 F3 — Hub search UI
 
-### 2.1 F1 — `[[wikilink]]` syntax + auto-resolve
+**Why**: Even an AI-era wiki needs a typed-search-box affordance.
+The backend already does the work; only the surface is missing.
 
-**Why critical**: The single distinguishing primitive of a wiki vs a
-folder of docs. Without inter-doc linking through the title (not the
-ID), there is no wiki graph.
+**Build**: `app/hub/[slug]/search/page.tsx` with input + results
+list (title + 200-char highlighted snippet + link). Search box icon
+on the hub home that opens the search surface.
 
-**What ships**:
-- Markdown post-processor recognises `[[Doc Title]]` pattern, resolves
-  to same-hub doc by title (exact → fuzzy → "create draft?" prompt)
-- `documents.outbound_links` jsonb (or new `links` table) persisted
-  on doc save
-- Live editor + rendered viewer show wikilinks as accent-coloured
-  underlines that route to `mdfy.app/<docId>` (or `memori.wiki/{user}/<slug>` post-rebrand)
+**Estimate**: 4–6 hours.
 
-**Build estimate**: 1–2 days. Engine layer (`packages/mdcore`)
-post-process pass is the right place; client-side resolver hits
-`/api/user/documents` (already exists) for the title→id map.
+### 3.2 F8 — Public `/spec` page
 
-### 2.2 F2 — Backlinks panel
+**Why**: Brand pillar #4 is "Open spec, not platform lock-in." Day
+one of `memori.wiki` requires the spec to actually exist.
 
-**Why critical**: F1 without F2 is a write-only graph. Backlinks is
-the *read* side of the wiki contract.
+**Build**: `app/spec/page.tsx` (top-level — the URL itself is the
+pillar) documenting:
+- URL patterns (Doc / Bundle / Hub / Concept / llms.txt / `?compact`
+  / `?q=` / `graph.json` for future)
+- llms.txt format
+- Retrieval API request/response shape with copy-ready examples
+- Bundle digest output shape (mirroring `/raw/bundle/[id]`)
+- MIT license claim for the engine
 
-**What ships**:
-- `links` table (`from_doc_id`, `to_doc_id`, `context_snippet`)
-  populated on every doc save
-- Doc viewer renders a "Referenced by N docs" section at the bottom,
-  clickable
-- Inverse index: same `links` table queried by `to_doc_id` gives
-  inbound
+Links from footer of every viewer page + About + DocsNav.
 
-**Build estimate**: 1 day after F1.
+**Estimate**: ½–1 day (mostly writing).
 
-### 2.3 F3 — Hub search UI (backend already done)
+### 3.3 F2′ — Concept-backlinks panel (re-packaging, not new build)
 
-**Why critical**: Wiki users expect a search box. Currently the
-backend (`documents.search_vector`, `/api/search`) returns results
-but no surface lets a hub visitor use it.
+**Why**: This is the AI-era replacement for traditional backlinks.
+Spec's F2 says "Referenced by N docs." mdfy's `concept_index`
+already knows, for every concept in a doc, which other docs share
+that concept. Surface it.
 
-**What ships**:
-- `app/hub/[slug]/search/page.tsx` with input + results list
-- Search box visible from hub home (single text input, top-right)
-- Result row: title + 200-char highlighted snippet + link
+**Build**: Doc viewer renders a "Related in your hub" section at the
+bottom: list the top 5 docs that share the most concepts with the
+current doc. Each row: title + ≤3 shared concept tags + link.
 
-**Build estimate**: 4–6 hours. Pure UI surface.
+No new table, no new compute path — purely a SELECT on existing
+`concept_index` reverse-keyed by doc id.
 
-### 2.4 F8 — Public `/spec` page
-
-**Why critical**: The fourth brand pillar is "Open spec, not platform
-lock-in." A renamed product called `memori.wiki/spec` needs to
-actually exist on day one or the pillar reads as marketing.
-
-**What ships**:
-- `app/spec/page.tsx` (or under `/docs/spec` if we choose that
-  hierarchy) documenting:
-  - URL patterns (Hub / Doc / Bundle / Concept / llms.txt /
-    `?compact` / `?q=` / `graph.json`)
-  - Bundle JSON output shape
-  - llms.txt format
-  - Retrieval API request/response shape with examples
-  - MIT licence claim for the engine
-- Linked from About + footer of every viewer page
-
-**Build estimate**: 0.5–1 day. Mostly writing; structure follows
-`/docs/integrate` patterns.
+**Estimate**: ½ day.
 
 ---
 
-## 3. Critical vs nice-to-have — full matrix
+## 4. What we're explicitly NOT shipping (and the rationale)
 
-| # | Feature | Status | Pre-rebrand? | Why this verdict |
-|---|---|---|---|---|
-| F1 | `[[wikilink]]` | ❌ 0% | **YES, blocker** | Without wikilinks, "wiki" is a lie |
-| F2 | Backlinks panel | ❌ 0% | **YES, blocker** | F1 needs its inverse |
-| F3 | Hub search UI | ⚠️ backend done | **YES, blocker** | Wiki users expect a search box |
-| F4 | Concept Index | ✅ shipped | already done | ✅ |
-| F5 | Semantic Retrieval API | ✅ shipped | already done | ✅ |
-| F6 | llms.txt | ✅ shipped | already done | ✅ |
-| F7 | Compact form | ✅ shipped | already done | ✅ |
-| F8 | Public `/spec` page | ❌ 0% | **YES, blocker** | Brand pillar "open spec" requires it |
-| F9 | AI Wiki Lint | ✅ ~70% | post-launch deepen | Detection ships, morning-digest deferred |
-| F10 | Auto-build (passive intel) | ❌ 0% | post-launch | Nice-to-have, not promise-defining |
-| F11 | Version history UI | ✅ shipped | already done | ✅ |
-| F12 | Doc graph view (hub-level) | ❌ 0% | **post-launch, not pre** | Bundle canvas ships; hub graph is visual nicety |
-| F13 | Bundle templates | ❌ 0% | post-launch | Onboarding helper, not core |
-| F14 | Native LLM 인식 | ⚠️ partial | post-launch | `/docs/integrate` is enough for launch; partner cert is 6-month work |
-| F15 | Verified profiles | ❌ 0% | post-launch | Trust signal, valuable after 1k+ hubs exist |
-| F16 | Inter-hub references | ❌ 0% | post-launch | Network effect, requires scale first |
-| F17 | Public hub directory | ✅ shipped | already done | ✅ (depth — featured/trending — is later) |
-| F18 | Bundle marketplace (fork) | ❌ 0% | 2027+ | Way too early |
+### 4.1 F1 — `[[wikilink]]` syntax
 
-**The four real blockers**: F1, F2, F3, F8.
-**Already done**: F4, F5, F6, F7, F11, F17 (six features).
-**Defer to post-launch without guilt**: everything else.
+**Decision**: Skip permanently.
 
----
+**Rationale**: `[[wikilink]]` is the defining gesture of the 2003-era
+wiki — a manual mechanism humans use to compensate for AI's absence.
+In 2026, the AI does that work and does it better:
 
-## 4. What sounds urgent in the spec but actually isn't
+- A `[[React Hooks]]` link assumes the writer knows the canonical
+  page title. The AI doesn't need that crutch — it extracts "React
+  Hooks" as a concept from any doc that meaningfully discusses it
+  and auto-links them through `concept_relations`.
+- A user who writes 50 docs over a year would only manually link a
+  fraction of related pairs. The LLM lint catches the rest nightly.
+- Adding `[[link]]` syntax forces the user back into 2003-era
+  mental model — at which point we're competing with Obsidian, not
+  defining a category.
 
-These are features the spec lists in Tier 1 or Tier 2 that, on
-re-read against the brand promise, are not load-bearing for the
-rebrand window.
+**Marketing copy implication**: explicit "Why no `[[wikilinks]]`?"
+explainer on /spec and /docs/integrate. Frame as "the AI does the
+linking; you write." This is positioning, not absence.
 
-### 4.1 F9 contradictions + stale detection
-The spec lists them under "AI Wiki Lint" Tier 2. They're cool, but
-the *visible* part of lint that delivers the brand promise is
-**orphan + duplicate + title-mismatch**, which already ships.
-Contradictions and stale claims are high-effort LLM jobs whose
-output is hard to evaluate. Ship the morning-digest *plumbing* first
-with the three signals we already have; add detectors as data
-proves their value.
+### 4.2 F12 — Hub-level graph view
 
-### 4.2 F10 Auto-build (passive capture intelligence)
-The spec frames Chrome ext as not just capture but classification +
-auto-bundle prompting. Cool. But pre-launch, the Chrome ext doing
-*capture* alone already delivers the memory-door promise. Auto-build
-is a "deepens the loop" feature, not a "must work day one" feature.
+**Decision**: Defer indefinitely.
 
-### 4.3 F12 Hub graph view
-A pretty surface for the link graph. Useful for showing off orphans
-visually. But the *backlinks panel* (F2) already exposes the same
-graph information per-doc, and the *concept index* (F4) already
-gives the cross-doc navigation. A whole-hub graph view is a nice
-power-user tool that doesn't change whether the brand promise lands.
+**Rationale**: The same information lives in two surfaces already:
+the concept page (`/hub/[slug]/c/[concept]`) shows neighbors as
+text, the bundle canvas (when relevant) shows it visually. A
+whole-hub graph view is a power-user nicety, not a brand promise.
 
-### 4.4 F14 partner certification page
-"Recognized by [Cursor, Anthropic, OpenAI]" reads great but requires
-those partners to opt in. Launch with `/docs/integrate` showing
-per-tool *self-serve* config; pursue formal partner pages once we
-have data on whether tools' users are actually pasting our URLs.
+### 4.3 Spec's manual link graph features
 
-### 4.5 Spec's success metrics (§5)
-The spec lists adoption metrics (1000 hubs, 15 docs avg) and quality
-metrics (recall@5 ≥80%, lint precision ≥90%). These are 6-month
-post-launch targets. Don't gate the rebrand on hitting them; gate
-the rebrand on whether the *primitives* deliver them once we have
-users.
+Backlinks-as-manual-link-reverse (F2 in spec) → replaced by
+concept-backlinks (F2′ above).
+
+`Doc.outboundLinks: string[]` field → not needed.
+
+`Link` graph-edge table → not needed.
+
+### 4.4 F10, F13, F14 (formal), F15, F16, F18
+
+Defer all to post-launch. None are brand-promise critical for the
+rebrand window. The spec has them in Tier 2/3 already; the rebrand
+doesn't need them.
 
 ---
 
-## 5. Recommended sequence
+## 5. Data-model decisions still needed
 
-**Week 1 (build week)**
-- Day 1–2: F1 `[[wikilink]]` engine + resolver + persistence
-- Day 3: F2 Backlinks (table + UI)
-- Day 4: F3 Hub search UI surface
-- Day 5: F8 `/spec` page draft + footer link
+### 5.1 `unlisted` visibility (spec calls for 3-state)
 
-**Week 2 (rebrand week)** — out of scope here, separate migration
-plan doc per spec §6.
+Current model: `is_draft` (private vs published) + `allowed_emails`
+(restricted). 2-axis.
 
-**Months 1–3 post-launch**
-- F9 morning digest + author distinction
-- F10 auto-build capture pipeline
-- F11 author column (human/llm-lint) in version UI
-- F12 hub graph view (visual nicety)
+Spec: `visibility: 'public' | 'unlisted' | 'private'`.
 
-**Months 4–6**
-- F14 partner certification (if data justifies)
+**Recommendation**: skip `unlisted`. The 2-axis model already
+expresses "public but not in /hubs gallery" via `hub_public=false`
+at the hub level; per-doc `unlisted` is one more knob most users
+won't touch. Add later if data shows demand.
+
+### 5.2 `DocVersion.authoredBy` distinction (human vs llm-lint)
+
+Already exists as a column opportunity. Not blocking rebrand. Add
+when F9 morning-digest lands (post-launch).
+
+---
+
+## 6. Sequenced plan
+
+**Week 1 (build week)** — ~2 days
+- Day 1: F3 Hub search UI + F2′ Concept-backlinks panel
+- Day 2: F8 `/spec` page + footer + DocsNav link
+- Buffer: marketing copy refresh (About, /docs/integrate, /hubs) to
+  use "AI-era wiki" vocabulary explicitly
+
+**Rebrand week** — out of scope here (see SPEC §6 migration plan)
+
+**Post-launch (months 1–3)**
+- F9 morning digest + author-distinction column
+- F10 auto-build capture intelligence
+- F12 hub graph view (if data justifies)
+
+**Post-launch (months 4–6)**
+- F14 partner certification (only if partners opt in)
 - F15 verified profiles
-- F5 + F9 deepening
+- F5 deepening (Upstage Solar production-grade)
 
 **Year 2+**
-- F16 inter-hub
-- F18 marketplace
+- F16 inter-hub, F18 marketplace, F13 templates
 
 ---
 
-## 6. Concrete next decisions for founder
+## 7. Founder decisions still open
 
-These are blocking judgement calls before the build can start.
+Down from 5 in the original GAP draft to 2, because committing to
+the AI-era interpretation kills three of them.
 
-1. **`/spec` vs `/docs/spec` location** — top-level or under docs?
-   Top-level is more brand, docs-level is more discoverable. I'd
-   recommend `/spec` (top-level) so the URL itself becomes the
-   pillar.
-2. **`unlisted` visibility — add or skip?** Spec calls for 3 states;
-   we have 2. Adding "unlisted" (accessible but not in `/hubs` or
-   sitemap) is one column + one filter. Skip if not requested.
-3. **Wikilink resolver fallback** — when `[[Foo Bar]]` resolves to
-   nothing, do we: (a) show a red broken link, (b) inline-prompt
-   "create draft 'Foo Bar'?", (c) silently leave as text? Spec says
-   (b); cheapest day-one ship is (a) with (b) deferred.
-4. **Backlinks scope** — same-hub only, or include public docs from
-   other hubs? Spec implies same-hub Tier 1, inter-hub Tier 3.
-   Commit to same-hub for rebrand.
-5. **Rebrand timing** — F1–F3+F8 in place first (single rebrand
-   PR), or rolling rebrand (rename Now, ship wiki features in
-   public)? Spec §8.1 says "ship 4 features, then rebrand." Hold
-   the line.
+1. **`/spec` location** — top-level `/spec` (the URL is the pillar)
+   or `/docs/spec` (more discoverable). Recommendation: top-level.
+
+2. **Rebrand timing** — ship F3+F8+F2′ first then rename, or roll
+   the rename and ship features in public? Spec §8.1 says "ship,
+   then rename." Hold that line.
 
 ---
 
-*— end of gap analysis —*
+## 8. Risk: brand vocabulary expectation
+
+Users googling "personal wiki" / "AI wiki" will arrive with the
+Wikipedia mental model and may experience initial cognitive
+dissonance ("where are the backlinks?"). Mitigation:
+
+- Spec page (F8) opens with an explicit reframe block: "memori.wiki
+  is an AI-era wiki. The AI does the linking; you write."
+- Doc viewer's "Related in your hub" section (F2′) uses plain-
+  language vocabulary, not "concept-backlinks." Users feel the
+  utility before needing the terminology.
+- Concept page header reframes itself: "Pages in your hub about
+  X" (not "Concept: X").
+- Onboarding (WelcomeOverlay) gains a slide showing concept-
+  driven navigation.
+
+The carrying-load of the reframe is the spec page itself + the
+language we use on /hubs and About. Get those right and the
+expectation problem evaporates inside the first session.
+
+---
+
+*— end of gap analysis (rev 2: AI-era reframe) —*
