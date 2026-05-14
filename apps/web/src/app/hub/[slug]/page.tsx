@@ -232,6 +232,35 @@ export default async function HubPage({ params, searchParams }: Props) {
                 {hub.profile.hub_description}
               </p>
             )}
+            {/* Search affordance — hybrid semantic + BM25 + Haiku rerank,
+                public to any visitor. Wired to /hub/<slug>/search which
+                in turn calls /api/hub/<slug>/recall. */}
+            <form
+              action={`/hub/${slug}/search`}
+              method="get"
+              className="mt-5 flex items-center gap-2 px-3 py-2 rounded-lg max-w-xl"
+              style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-faint)", flexShrink: 0 }}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                type="search"
+                name="q"
+                placeholder={`Search ${author}'s hub...`}
+                maxLength={500}
+                className="flex-1 bg-transparent text-sm"
+                style={{ color: "var(--text-primary)", border: "none", outline: "none" }}
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 rounded-md text-xs font-semibold transition-opacity"
+                style={{ background: "var(--accent)", color: "#000" }}
+              >
+                Search
+              </button>
+            </form>
           </div>
         </section>
 
