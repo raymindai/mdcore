@@ -16054,6 +16054,17 @@ ${clone.innerHTML}
         const commands: PaletteItem[] = [
           { id: "cmd-new-doc",      label: "New document",        hint: "Blank canvas", icon: <FileText width={13} height={13} />,        action: () => addTab() },
           { id: "cmd-new-bundle",   label: "New bundle",          hint: "Pick docs",    icon: <Layers width={13} height={13} />,          action: () => { setBundleCreatorDocs([]); setShowBundleCreator(true); } },
+          // Owner-side semantic search of their own public hub.
+          // Cmd+K's doc list is keyword-ILIKE; for concept-aware
+          // search the owner can hop to /hub/<slug>/search which
+          // uses the same hybrid retrieval that public visitors get.
+          ...(hubSlug ? [{
+            id: "cmd-hub-search",
+            label: "Search your hub (semantic)",
+            hint: `/hub/${hubSlug}/search`,
+            icon: <Globe width={13} height={13} />,
+            action: () => { window.open(`/hub/${hubSlug}/search`, "_blank"); closePalette(); },
+          }] : []),
           { id: "cmd-toggle-theme", label: "Toggle dark / light", hint: "Mode",         icon: <LayoutDashboard width={13} height={13} />, action: () => toggleTheme() },
           { id: "cmd-toggle-sidebar", label: "Toggle sidebar",    hint: "Library rail", icon: <List width={13} height={13} />,            action: () => setShowSidebar(prev => !prev) },
           { id: "cmd-toggle-toolbar", label: "Toggle formatting toolbar", hint: "Above editor", icon: <AlignLeft width={13} height={13} />, action: () => setShowToolbar(prev => !prev) },
