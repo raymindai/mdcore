@@ -1,9 +1,12 @@
 // GET /api/docs/[id]/related
 //
-// Returns up to N other docs from the caller's hub that share the
-// most concepts with this doc, with the list of shared concept
-// labels. Powers the "Related in your hub" widget rendered below
-// the doc body.
+// Returns up to N other docs from the same hub that share the most
+// concepts with this doc, with the list of shared concept labels.
+// Powers the "Related in your hub" widget rendered below the doc
+// body — the AI-era replacement for hand-typed backlinks. The
+// concept graph is built by the AI from the user's prose, and
+// every doc that shares concepts is a "backlink" without anyone
+// typing [[wikilink]].
 //
 // Why concept overlap (not vector similarity): the hub's concept
 // graph is the user's authored signal — what THEY think this doc
@@ -12,9 +15,17 @@
 // near content even when it's a different topic; not what the
 // widget needs.
 //
-// Privacy: caller must be the doc owner. Cross-user "related"
-// would leak others' titles via concept overlap, so it's a hard
-// gate.
+// Privacy: two paths.
+//   1. Owner (signed-in caller id matches doc.user_id): sees
+//      everything — drafts, restricted, password-protected docs
+//      all surface in the related list. Used by the editor.
+//   2. Public visitor (anon or different signed-in user): only
+//      allowed when BOTH the doc itself is fully public (published,
+//      no password, no allowed_emails) AND its hub_public=true.
+//      Results are then filtered to only public docs in the same
+//      hub. Used by the public viewer's "Related" panel.
+// Anything else returns 403 — cross-user "related" would leak
+// strangers' titles via concept overlap.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -62,23 +73,61 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   if (!supabase) return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
 
   const verified = await verifyAuthToken(req.headers.get("authorization"));
-  const userId = verified?.userId || req.headers.get("x-user-id") || (await getServerUserId());
+  const callerId = verified?.userId || req.headers.get("x-user-id") || (await getServerUserId());
   const limit = Math.max(1, Math.min(MAX_LIMIT, parseInt(req.nextUrl.searchParams.get("limit") || "", 10) || DEFAULT_LIMIT));
-  if (!userId) {
-    logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 401, errorCode: "unauthorized" });
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
 
-  // Confirm the caller owns this doc — a stranger could otherwise
-  // probe overlap to learn doc titles.
+  // Look up the doc once. Need user_id (for concept_index lookup),
+  // visibility (for public-mode gating), and the owning hub's
+  // hub_public flag (also for public mode).
   const { data: doc } = await supabase
     .from("documents")
-    .select("id, user_id")
+    .select("id, user_id, is_draft, password_hash, allowed_emails")
     .eq("id", id)
     .single();
-  if (!doc || doc.user_id !== userId) {
-    logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 403, errorCode: "forbidden" });
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!doc) {
+    logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 404, errorCode: "not_found" });
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
+  // Owner if signed-in id matches the doc's owner. Anonymous + non-
+  // matching callers fall to the public path.
+  const isOwner = !!callerId && doc.user_id === callerId;
+
+  // Public path admission gate. The doc itself must be fully public
+  // (published, no password, no email restriction) AND its hub must
+  // be public — otherwise we'd leak doc existence + titles to
+  // strangers. Owners always pass.
+  let docIsPublic = false;
+  let hubIsPublic = false;
+  if (!isOwner) {
+    docIsPublic = doc.is_draft === false
+      && !doc.password_hash
+      && (!doc.allowed_emails || (Array.isArray(doc.allowed_emails) && doc.allowed_emails.length === 0));
+    if (docIsPublic && doc.user_id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("hub_public")
+        .eq("id", doc.user_id)
+        .single();
+      hubIsPublic = !!profile?.hub_public;
+    }
+    if (!docIsPublic || !hubIsPublic) {
+      // Return empty 200 instead of 403 so the public viewer's
+      // RelatedInHubPanel can fail silently without the browser
+      // console auto-logging a "Failed to load resource (403)"
+      // every doc load. Same observable behaviour for the caller
+      // (no related shown), zero info leak (empty result).
+      logRelated({ docId: id, callerIsOwner: false, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs: 0, joinMs: 0, totalMs: Date.now() - t0, status: 200, errorCode: "private_hub" });
+      return NextResponse.json({ id, related: [] });
+    }
+  }
+
+  // The id under which concept_index lookups happen is always the
+  // doc owner's, not the caller's. The auth gate above ensures only
+  // owners + public-hub visitors get this far.
+  const userId = doc.user_id;
+  if (!userId) {
+    return NextResponse.json({ error: "no_owner" }, { status: 404 });
   }
 
   // 1. Fetch every concept that includes THIS doc in its doc_ids.
@@ -94,7 +143,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   const rows = (concepts || []) as ConceptRow[];
   if (rows.length === 0) {
-    logRelated({ docId: id, callerIsOwner: true, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
+    logRelated({ docId: id, callerIsOwner: isOwner, conceptCount: 0, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
     return NextResponse.json({ id, related: [] });
   }
 
@@ -115,7 +164,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   }
 
   if (overlap.size === 0) {
-    logRelated({ docId: id, callerIsOwner: true, conceptCount: rows.length, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
+    logRelated({ docId: id, callerIsOwner: isOwner, conceptCount: rows.length, candidateCount: 0, resultCount: 0, limit, conceptFetchMs, joinMs: 0, totalMs: Date.now() - t0, status: 200 });
     return NextResponse.json({ id, related: [] });
   }
 
@@ -128,12 +177,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   const candidateIds = ranked.map((r) => r.docId);
   const tJoin = Date.now();
-  const { data: docRows } = await supabase
+  let docQuery = supabase
     .from("documents")
-    .select("id, title, updated_at, deleted_at, is_draft, allowed_emails")
+    .select("id, title, updated_at, deleted_at, is_draft, allowed_emails, password_hash")
     .in("id", candidateIds)
     .eq("user_id", userId)
     .is("deleted_at", null);
+  // Public visitors only see public docs — filter at the query
+  // level so we never serialise hidden titles. Owners see everything
+  // (drafts, restricted, password-protected).
+  if (!isOwner) {
+    docQuery = docQuery.eq("is_draft", false).is("password_hash", null);
+  }
+  const { data: docRows } = await docQuery;
   const joinMs = Date.now() - tJoin;
 
   // Owner email so we can exclude self from sharedWithCount —
@@ -159,6 +215,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const doc = docById.get(r.docId);
     if (!doc) continue;
     const others = (doc.allowed_emails || []).filter((e) => e.toLowerCase() !== ownerEmailLower);
+    // Public visitors must not see email-restricted docs even if
+    // the concept overlap surfaced them. Owner already passes.
+    if (!isOwner && others.length > 0) continue;
     related.push({
       id: doc.id,
       title: doc.title || "Untitled",
@@ -174,7 +233,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
   logRelated({
     docId: id,
-    callerIsOwner: true,
+    callerIsOwner: isOwner,
     conceptCount: rows.length,
     candidateCount: overlap.size,
     resultCount: related.length,

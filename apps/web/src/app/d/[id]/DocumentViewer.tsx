@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
+import RelatedInHubPanel from "@/components/RelatedInHubPanel";
 import ViewerHeader from "@/components/ViewerHeader";
 import { renderMarkdown } from "@/lib/engine";
 import { postProcessHtml } from "@/lib/postprocess";
@@ -488,6 +489,18 @@ export default function DocumentViewer({
           </div>
         )}
       </div>
+
+      {/* Related-in-hub panel (F2′ in MEMORI-WIKI-GAP rev 2).
+          AI-era replacement for hand-typed backlinks — surfaces other
+          docs in the same public hub that share concepts with this
+          one. The component self-gates: it shows nothing when the
+          endpoint returns 403 (doc not in a public hub) or no
+          results. Owners on /d/<id> won't typically see this (they
+          get redirected to the editor on auth check), so the public
+          mode is the right default here. */}
+      {unlocked && !isExpired && !accessRevoked && (
+        <RelatedInHubPanel docId={id} mode="public" />
+      )}
 
       {/* Viewer-wide promote strip — only when the visitor isn't the
           owner. Owners about to be redirected via the auth-check effect
