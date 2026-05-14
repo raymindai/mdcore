@@ -362,7 +362,40 @@ export function DocsFooter({
 }
 
 /* ─── SiteFooter ─── */
-export function SiteFooter() {
+export function SiteFooter({ lang = "en" }: { lang?: "en" | "ko" } = {}) {
+  // Footer was English-only despite being mounted on /ko/* pages too
+  // (Korean readers saw "Product / Developers / Company / Your
+  // Markdown, Beautifully Published" untouched). Accept a lang prop
+  // and switch the surrounding labels. Internal-link labels stay in
+  // their canonical product names (REST API / CLI / etc.) because
+  // those are the same in both languages and match the page titles
+  // they route to.
+  const prefix = lang === "ko" ? "/ko" : "";
+  const t = lang === "ko"
+    ? {
+        tagline: "당신의 마크다운을, 아름답게 발행합니다.",
+        product: "제품",
+        developers: "개발자",
+        company: "회사",
+        editor: "에디터",
+        about: "소개",
+        plugins: "플러그인",
+        integrate: "AI 도구와 연결",
+        spec: "공개 스펙",
+        privacy: "개인정보 처리방침",
+      }
+    : {
+        tagline: "Your Markdown, Beautifully Published.",
+        product: "Product",
+        developers: "Developers",
+        company: "Company",
+        editor: "Editor",
+        about: "About",
+        plugins: "Plugins",
+        integrate: "Integrate",
+        spec: "Open Spec",
+        privacy: "Privacy Policy",
+      };
   return (
     <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 24px 32px" }}>
@@ -387,7 +420,7 @@ export function SiteFooter() {
                 maxWidth: 260,
               }}
             >
-              Your Markdown, Beautifully Published.
+              {t.tagline}
             </p>
           </div>
           <div>
@@ -403,12 +436,12 @@ export function SiteFooter() {
                 textTransform: "uppercase",
               }}
             >
-              Product
+              {t.product}
             </p>
             {[
-              { label: "Editor", href: "/" },
-              { label: "About", href: "/about" },
-              { label: "Plugins", href: "/plugins" },
+              { label: t.editor, href: "/" },
+              { label: t.about, href: `${prefix}/about` },
+              { label: t.plugins, href: `${prefix}/plugins` },
             ].map((l) => (
               <Link
                 key={l.label}
@@ -438,15 +471,15 @@ export function SiteFooter() {
                 textTransform: "uppercase",
               }}
             >
-              Developers
+              {t.developers}
             </p>
             {[
-              { label: "REST API", href: "/docs/api" },
-              { label: "CLI", href: "/docs/cli" },
-              { label: "SDK", href: "/docs/sdk" },
-              { label: "MCP Server", href: "/docs/mcp" },
-              { label: "Integrate", href: "/docs/integrate" },
-              { label: "Open Spec", href: "/spec" },
+              { label: "REST API", href: `${prefix}/docs/api` },
+              { label: "CLI", href: `${prefix}/docs/cli` },
+              { label: "SDK", href: `${prefix}/docs/sdk` },
+              { label: "MCP Server", href: `${prefix}/docs/mcp` },
+              { label: t.integrate, href: `${prefix}/docs/integrate` },
+              { label: t.spec, href: `${prefix}/spec` },
             ].map((l) => (
               <Link
                 key={l.label}
@@ -476,12 +509,12 @@ export function SiteFooter() {
                 textTransform: "uppercase",
               }}
             >
-              Company
+              {t.company}
             </p>
             {[
               { label: "GitHub", href: "https://github.com/raymindai/mdcore" },
               { label: "hi@mdfy.app", href: "mailto:hi@mdfy.app" },
-              { label: "Privacy Policy", href: "/privacy" },
+              { label: t.privacy, href: "/privacy" },
             ].map((l) => (
               <a
                 key={l.label}

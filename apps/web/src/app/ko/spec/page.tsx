@@ -256,7 +256,7 @@ GET /raw/hub/{slug}/c/{concept}        # 같은 내용, raw 마크다운`}</Bloc
         </p>
       </main>
 
-      <SiteFooter />
+      <SiteFooter lang="ko" />
     </div>
   );
 }

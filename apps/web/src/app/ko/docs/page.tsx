@@ -28,7 +28,7 @@ const quickStartCards = [
     tag: "curl",
     title: "REST API",
     desc: "HTTP 요청으로 문서를 생성, 조회, 수정, 삭제합니다.",
-    href: "/docs/api",
+    href: "/ko/docs/api",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
@@ -39,7 +39,7 @@ const quickStartCards = [
     tag: "terminal",
     title: "CLI",
     desc: "커맨드 라인에서 퍼블리시. stdin 파이프, tmux 캡처 지원.",
-    href: "/docs/cli",
+    href: "/ko/docs/cli",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="4 17 10 11 4 5" />
@@ -51,7 +51,7 @@ const quickStartCards = [
     tag: "JS",
     title: "JavaScript SDK",
     desc: "TypeScript 우선 클라이언트. MdfyClient 클래스와 독립 함수 제공.",
-    href: "/docs/sdk",
+    href: "/ko/docs/sdk",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -63,7 +63,7 @@ const quickStartCards = [
     tag: "MCP",
     title: "MCP Server",
     desc: "Claude Web용 HTTP 엔드포인트 및 Claude Desktop, Cursor, Windsurf용 npm 패키지.",
-    href: "/docs/mcp",
+    href: "/ko/docs/mcp",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
@@ -95,17 +95,17 @@ const exploreCards = [
   {
     title: "통합 도구",
     desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, QuickLook, tmux 등 8개 채널.",
-    href: "/plugins",
+    href: "/ko/plugins",
   },
   {
     title: "인증",
     desc: "Edit 토큰, 사용자 식별 헤더, OAuth Bearer 토큰.",
-    href: "/docs/api#authentication",
+    href: "/ko/docs/api#authentication",
   },
   {
     title: "npm 패키지",
     desc: "@mdcore/api, engine, styles, ai. 독립적으로 사용 가능한 패키지.",
-    href: "/docs/sdk#packages",
+    href: "/ko/docs/sdk#packages",
   },
 ];
 
@@ -159,7 +159,7 @@ export default function DocsPageKo() {
             fontFamily: mono,
           }}
         >
-          Developer Docs
+          개발자 문서
         </p>
 
         <h1
@@ -474,7 +474,7 @@ export default function DocsPageKo() {
       </section>
 
       {/* ───────── FOOTER ───────── */}
-      <SiteFooter />
+      <SiteFooter lang="ko" />
     </div>
   );
 }

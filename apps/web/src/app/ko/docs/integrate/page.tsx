@@ -512,7 +512,7 @@ https://mdfy.app/b/<bundle-id>
         </main>
       </div>
 
-      <SiteFooter />
+      <SiteFooter lang="ko" />
     </div>
   );
 }
