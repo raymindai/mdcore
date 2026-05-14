@@ -406,6 +406,8 @@ export function SiteFooter() {
               { label: "CLI", href: "/docs/cli" },
               { label: "SDK", href: "/docs/sdk" },
               { label: "MCP Server", href: "/docs/mcp" },
+              { label: "Integrate", href: "/docs/integrate" },
+              { label: "Open Spec", href: "/spec" },
             ].map((l) => (
               <Link
                 key={l.label}
