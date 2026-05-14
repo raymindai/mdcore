@@ -3170,6 +3170,19 @@ export default function MdEditor() {
   });
   const [activeTabId, setActiveTabId] = useState(() => {
     if (typeof window === "undefined") return "";
+    // Root URL contract: visiting mdfy.app/ (no doc path, no
+    // ?from=/?doc=/?bundle=, no hash share) means "I'm starting
+    // fresh — show me Home." Restoring a stale activeTab from
+    // localStorage here was confusing: the user types mdfy.app,
+    // expects a landing page, instead lands inside the editor on
+    // whatever doc they last looked at (often with an empty body
+    // because the doc's cloud markdown wasn't fetched yet).
+    // Defer Home → Start overlay handles the empty state.
+    const path = window.location.pathname;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    const isBareRoot = path === "/" && !search && !hash;
+    if (isBareRoot) return "";
     const saved = localStorage.getItem("mdfy-active-tab");
     if (!saved) return "";
     // Stale localStorage from older sessions can pin us on either
@@ -3963,6 +3976,14 @@ export default function MdEditor() {
     if (typeof window === "undefined") return false;
     // First visit — always show
     if (!localStorage.getItem("mdfy-onboarded")) return true;
+    // Bare root URL (mdfy.app/ with no query / hash / doc path)
+    // means the user wants the Home landing, not a restored doc.
+    // Pair with the activeTabId useState which already clears in
+    // this case — together they make the root URL contract honest.
+    const path = window.location.pathname;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    if (path === "/" && !search && !hash) return true;
     // Return visit — show if user has no own documents (only examples)
     try {
       const saved = localStorage.getItem("mdfy-tabs");

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DocsNav, SiteFooter } from "@/components/docs";
+import { CodeBlock, DocsNav, SiteFooter } from "@/components/docs";
 
 const mono = { fontFamily: "var(--font-geist-mono), monospace" } as const;
 
@@ -26,30 +26,15 @@ function Code({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Thin wrapper over the shared CodeBlock so /spec gets the same
+// copy-button + theming as the rest of /docs. The wrapper just
+// reserves vertical margin around the block to match the prose
+// rhythm of this page.
 function Block({ children, lang }: { children: string; lang?: string }) {
   return (
-    <pre
-      style={{
-        ...mono,
-        fontSize: 12.5,
-        background: "var(--surface)",
-        border: "1px solid var(--border-dim)",
-        borderRadius: 10,
-        padding: 16,
-        overflowX: "auto",
-        margin: "12px 0 24px",
-        color: "var(--text-primary)",
-        lineHeight: 1.6,
-      }}
-    >
-      {lang && (
-        <span style={{ fontSize: 10, color: "var(--text-faint)", marginBottom: 8, display: "inline-block", letterSpacing: 1, textTransform: "uppercase" }}>
-          {lang}
-        </span>
-      )}
-      {lang && <br />}
-      <code>{children}</code>
-    </pre>
+    <div style={{ margin: "12px 0 24px" }}>
+      <CodeBlock lang={lang}>{children}</CodeBlock>
+    </div>
   );
 }
 

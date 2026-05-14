@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import MdfyLogo from "@/components/MdfyLogo";
 
@@ -15,25 +16,63 @@ export function CodeBlock({
   children: string;
   lang?: string;
 }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch { /* clipboard blocked — silent */ }
+  };
   return (
-    <div style={{ position: "relative" }}>
+    <div className="group" style={{ position: "relative" }}>
       {lang && (
         <span
           style={{
             position: "absolute",
+            // Push lang label left so it doesn't fight the copy
+            // button's hit area. The button anchors top-right.
             top: 10,
-            right: 12,
+            right: 56,
             fontSize: 10,
             fontWeight: 600,
             color: "var(--text-faint)",
             fontFamily: mono,
             textTransform: "uppercase",
             letterSpacing: 1,
+            pointerEvents: "none",
           }}
         >
           {lang}
         </span>
       )}
+      <button
+        type="button"
+        onClick={onCopy}
+        aria-label={copied ? "Copied" : "Copy code"}
+        title={copied ? "Copied" : "Copy"}
+        style={{
+          position: "absolute",
+          top: 6,
+          right: 6,
+          padding: "4px 8px",
+          fontSize: 11,
+          fontWeight: 600,
+          fontFamily: mono,
+          color: copied ? "#22c55e" : "var(--text-faint)",
+          background: "var(--background)",
+          border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+          borderRadius: 6,
+          cursor: "pointer",
+          opacity: 0.7,
+          transition: "opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
       <pre
         style={{
           background: "var(--surface)",

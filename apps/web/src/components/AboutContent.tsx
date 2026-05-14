@@ -281,13 +281,21 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
             fontFamily: "var(--font-geist-mono), monospace",
           }}
         >
-          Integrate
+          {locale === "ko" ? "통합" : "Integrate"}
         </h2>
         <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 12px", maxWidth: 720 }}>
-          Your AI tools forget you between sessions. <span style={{ color: "var(--accent)" }}>One line</span> fixes it.
+          {locale === "ko" ? (
+            <>AI 도구는 세션 사이를 기억하지 못합니다. <span style={{ color: "var(--accent)" }}>한 줄</span>이면 해결됩니다.</>
+          ) : (
+            <>Your AI tools forget you between sessions. <span style={{ color: "var(--accent)" }}>One line</span> fixes it.</>
+          )}
         </p>
         <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 24, maxWidth: 640 }}>
-          Claude Code, Cursor, Codex, and every other agent already boot with whatever sits in <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code>. Add a line that points at your mdfy bundle and the next session opens with your prior decisions, notes, and graph analysis already loaded. No API key, no vendor lock-in.
+          {locale === "ko" ? (
+            <>Claude Code, Cursor, Codex, 그리고 모든 에이전트가 이미 <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code> 의 내용으로 부팅합니다. mdfy 번들을 가리키는 한 줄을 추가하면, 다음 세션은 이전 결정, 노트, 그래프 분석이 *이미 로드된 상태로* 시작됩니다. API 키 없음, vendor lock-in 없음.</>
+          ) : (
+            <>Claude Code, Cursor, Codex, and every other agent already boot with whatever sits in <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code>. Add a line that points at your mdfy bundle and the next session opens with your prior decisions, notes, and graph analysis already loaded. No API key, no vendor lock-in.</>
+          )}
         </p>
         <div
           style={{
@@ -320,7 +328,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
           ))}
         </div>
         <Link
-          href="/docs/integrate"
+          href={locale === "ko" ? "/ko/docs/integrate" : "/docs/integrate"}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -335,7 +343,7 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
             letterSpacing: "-0.01em",
           }}
         >
-          See the snippets →
+          {locale === "ko" ? "스니펫 보기 →" : "See the snippets →"}
         </Link>
       </section>
 
