@@ -6,6 +6,7 @@ import {
   ReactFlow,
   Background,
   MiniMap,
+  Panel,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -122,6 +123,14 @@ interface BundleCanvasProps {
   /** Called once the canvas has finished focusing a chunk so the parent can
    *  clear `focusChunkId` (single-fire request). */
   onFocusChunkSettled?: () => void;
+  /** Conversational-query filter: doc ids the chat's "Show on canvas"
+   *  action selected. Matching doc cards + their direct neighbours
+   *  (concepts, themes, edge labels) stay at full opacity; everything
+   *  else fades to ~0.2. Null = no filter. */
+  highlightedDocIds?: string[] | null;
+  /** Clear the filter from inside the canvas (exit button on the
+   *  filter banner). */
+  onClearHighlight?: () => void;
   className?: string;
 }
 
@@ -895,7 +904,7 @@ function BundleStatusGroup({
 
 // ─── Main ───
 
-function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isAnalysisStale, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onPaneClose, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, className = "" }: BundleCanvasProps) {
+function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, embeddingUpdatedAt, isEmbedding, isAnalysisStale, isOwner, onEmbed, selectedDocId, hoveredNodeId, onDocumentClick, onCopyContext, onRegenerate, onRemoveDoc, onOpenDoc, onRequestAddDocs, onAddDocs, expandedDocId, decomposition, isDecomposing, decomposeError, onDecomposeDoc, onRedecomposeDoc, onCollapseDoc, onSectionClick, onSectionContextMenu, onChunkClick, onChunkContextMenu, selectedChunkIds, onClearChunkSelection, onPaneClose, onChunkDragReorder, chunkTypeFilter, onChangeChunkTypeFilter, onAddChunk, onSynthesize, focusChunkId, onFocusChunkSettled, highlightedDocIds, onClearHighlight, className = "" }: BundleCanvasProps) {
   const { zoomIn, zoomOut, fitView: rfFitView } = useReactFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -1213,8 +1222,40 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
     return { className, extraStyle };
   }, [chunkSelectedSet, chunkTypeFilter, pulsedNodeId]);
 
+  // Conversational-query filter: build a set of doc nodes the chat
+  // told us to highlight, plus their one-hop neighbours (concepts /
+  // themes / edge labels they're connected to). The same fade applies
+  // to anything outside this set so the visual focus is obvious.
+  // Doc nodes can be `doc:<id>` (collapsed) or `doc-root:<id>`
+  // (expanded with decomposition); seed both shapes.
+  const highlightSet = useMemo(() => {
+    if (!highlightedDocIds || highlightedDocIds.length === 0) return null;
+    const seeds = new Set<string>();
+    for (const id of highlightedDocIds) {
+      seeds.add(`doc:${id}`);
+      seeds.add(`doc-root:${id}`);
+    }
+    const result = new Set<string>(seeds);
+    for (const e of edges) {
+      const src = String(e.source);
+      const tgt = String(e.target);
+      if (seeds.has(src)) result.add(tgt);
+      if (seeds.has(tgt)) result.add(src);
+    }
+    return result;
+  }, [highlightedDocIds, edges]);
+
   const styledNodes = useMemo(() => {
-    if (!connectedSet) {
+    // Combine highlight filter with the existing connected-set logic.
+    // When both are active, a node has to satisfy both to stay bright;
+    // when only one is, that one governs.
+    const passesFilter = (id: string): boolean => {
+      if (highlightSet && !highlightSet.has(id)) return false;
+      if (connectedSet && !connectedSet.has(id)) return false;
+      return true;
+    };
+    const hasAnyFilter = !!(connectedSet || highlightSet);
+    if (!hasAnyFilter) {
       return nodes.map(n => {
         const color = getNodeGlowColor(n);
         const baseClass = hoveredNodeId === n.id ? "bundle-node-ext-hover" : "";
@@ -1232,9 +1273,9 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
     return nodes.map(n => {
       const color = getNodeGlowColor(n);
       const isFocused = n.id === focusedNode;
-      const isConnected = connectedSet.has(n.id);
+      const isActive = passesFilter(n.id);
       const isExtHover = hoveredNodeId === n.id;
-      const baseClass = `${isConnected ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""} ${isExtHover ? "bundle-node-ext-hover" : ""}`;
+      const baseClass = `${isActive ? "bundle-node-active" : "bundle-node-dim"} ${isFocused ? "bundle-node-focused" : ""} ${isExtHover ? "bundle-node-ext-hover" : ""}`;
       const extra = decoreateChunkExtra(n, baseClass);
       return {
         ...n,
@@ -1242,19 +1283,21 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
         style: { "--node-color": color, ...extra.extraStyle } as any,
       };
     });
-  }, [nodes, connectedSet, focusedNode, getNodeGlowColor, decoreateChunkExtra, hoveredNodeId]);
+  }, [nodes, connectedSet, highlightSet, focusedNode, getNodeGlowColor, decoreateChunkExtra, hoveredNodeId]);
 
   const styledEdges = useMemo(() => {
-    if (!connectedSet) return edges;
+    if (!connectedSet && !highlightSet) return edges;
     return edges.map(e => {
-      const isActive = connectedSet.has(e.source) && connectedSet.has(e.target);
+      const passConnected = !connectedSet || (connectedSet.has(e.source) && connectedSet.has(e.target));
+      const passHighlight = !highlightSet || (highlightSet.has(e.source) && highlightSet.has(e.target));
+      const isActive = passConnected && passHighlight;
       return {
         ...e,
         data: { ...((e.data as any) || {}), flowing: isActive },
         style: { ...e.style, opacity: isActive ? (e.style as any)?.opacity || 0.2 : 0.04 },
       };
     });
-  }, [edges, connectedSet]);
+  }, [edges, connectedSet, highlightSet]);
 
   // Drop zone for sidebar drag-and-drop: dragging a doc tab from MDs section
   // onto the canvas adds it to this bundle.
@@ -1398,6 +1441,30 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
         style={{ background: "var(--background)" }}
       >
         <Background variant={"dots" as any} color={theme === "dark" ? "#2a2a2f" : "#c4c4c8"} gap={18} size={1.5} />
+        {highlightedDocIds && highlightedDocIds.length > 0 && onClearHighlight && (
+          <Panel position="top-center">
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-caption"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--accent)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <span style={{ color: "var(--accent)" }}>◉</span>
+              <span>Filtered to <strong style={{ color: "var(--text-primary)" }}>{highlightedDocIds.length} doc{highlightedDocIds.length === 1 ? "" : "s"}</strong> from the chat</span>
+              <button
+                onClick={onClearHighlight}
+                className="px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{ color: "var(--text-muted)", fontWeight: 600, border: "1px solid var(--border-dim)" }}
+                title="Show every node again"
+              >
+                Exit
+              </button>
+            </div>
+          </Panel>
+        )}
         <MiniMap position="bottom-right" pannable zoomable
           nodeColor={(n) => {
             // Mirror the canvas + legend mapping exactly so the minimap is a

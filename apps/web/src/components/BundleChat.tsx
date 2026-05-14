@@ -1,8 +1,24 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CheckSquare, Scale, HelpCircle, Layers, ScrollText } from "lucide-react";
+import { CheckSquare, Scale, HelpCircle, Layers, ScrollText, Filter } from "lucide-react";
 import ChatMarkdown from "@/components/ChatMarkdown";
+
+/** Pull every [doc:N] citation in an assistant message and resolve to
+ *  the actual document ids via the message's docMap. Used by the
+ *  "Show on canvas" action: an answer that cites [doc:2][doc:4]
+ *  becomes a 2-doc filter on the canvas. */
+function citedDocIdsFor(msg: { content: string; docMap?: Record<number, { id: string; title: string }> }): string[] {
+  if (!msg.docMap) return [];
+  const matches = msg.content.matchAll(/\[doc:(\d+)\]/g);
+  const ids = new Set<string>();
+  for (const m of matches) {
+    const num = parseInt(m[1], 10);
+    const doc = msg.docMap[num];
+    if (doc?.id) ids.add(doc.id);
+  }
+  return [...ids];
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -20,6 +36,10 @@ interface BundleChatProps {
   accent?: string;
   accentDim?: string;
   onCitationClick?: (docId: string) => void;
+  /** Conversational-query → canvas filter bridge. Called when the
+   *  user clicks "Show on canvas" on a chat message; the parent
+   *  applies the doc-id set as a highlight on BundleCanvas. */
+  onApplyFilter?: (docIds: string[]) => void;
   onClose?: () => void;
 }
 
@@ -32,7 +52,7 @@ const QUICK_ACTIONS = [
   { label: "What's missing", icon: <HelpCircle width={11} height={11} />, question: "What important topics, perspectives, or information are missing from this bundle?" },
 ];
 
-export default function BundleChat({ bundleId, bundleTitle, documentCount, accent, accentDim, onCitationClick }: BundleChatProps) {
+export default function BundleChat({ bundleId, bundleTitle, documentCount, accent, accentDim, onCitationClick, onApplyFilter }: BundleChatProps) {
   const themeAccent = accent || "var(--accent)";
   const themeAccentDim = accentDim || "var(--accent-dim)";
   const [messages, setMessages] = useState<Message[]>([]);
@@ -206,6 +226,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, accen
                 key={i}
                 message={msg}
                 onCitationClick={onCitationClick}
+                onApplyFilter={onApplyFilter}
                 isStreaming={isStreaming && i === messages.length - 1}
                 accent={themeAccent}
                 accentDim={themeAccentDim}
@@ -263,7 +284,7 @@ export default function BundleChat({ bundleId, bundleTitle, documentCount, accen
 
 // ─── Message Bubble with citation rendering ───
 
-function MessageBubble({ message, onCitationClick, isStreaming }: { message: Message; onCitationClick?: (docId: string) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
+function MessageBubble({ message, onCitationClick, onApplyFilter, isStreaming }: { message: Message; onCitationClick?: (docId: string) => void; onApplyFilter?: (docIds: string[]) => void; isStreaming?: boolean; accent: string; accentDim: string }) {
   // Chat bubbles use the global mdfy orange uniformly — per-mode colour
   // already lives in the panel header so you know which assistant is
   // active; the bubble itself doesn't need to repeat that signal.
@@ -334,6 +355,26 @@ function MessageBubble({ message, onCitationClick, isStreaming }: { message: Mes
         />
         {isStreaming && <span className="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style={{ background: chatAccent, verticalAlign: "middle" }} />}
       </div>
+      {/* "Show on canvas" — surfaces once streaming finishes and the
+          message has at least one [doc:N] citation. Clicks pass the
+          deduplicated doc id set to the parent, which hands it to
+          BundleCanvas as the highlight filter. */}
+      {!isStreaming && onApplyFilter && (() => {
+        const docIds = citedDocIdsFor(message);
+        if (docIds.length === 0) return null;
+        return (
+          <button
+            type="button"
+            onClick={() => onApplyFilter(docIds)}
+            className="self-start inline-flex items-center gap-1 px-2 py-1 rounded-md text-caption transition-colors hover:bg-[var(--toggle-bg)]"
+            style={{ color: "var(--text-muted)", border: "1px solid var(--border-dim)", fontWeight: 500 }}
+            title={`Highlight ${docIds.length} doc${docIds.length === 1 ? "" : "s"} on the bundle canvas`}
+          >
+            <Filter width={11} height={11} style={{ color: chatAccent }} />
+            <span>Show on canvas ({docIds.length})</span>
+          </button>
+        );
+      })()}
     </div>
   );
 }

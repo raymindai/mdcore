@@ -87,9 +87,16 @@ interface BundleEmbedProps {
   // which fails for signed-in users (Supabase stores tokens in cookies, not
   // localStorage, so reading "mdfy-user-id" gives null → 403 Unauthorized).
   authHeaders?: Record<string, string>;
+  // Conversational-query → canvas filter. When the user clicks
+  // "Show on canvas" in BundleChat, the parent (MdEditor) stores
+  // the cited doc id set per bundle and threads it down here so
+  // BundleCanvas can fade non-matching nodes. Null = no filter.
+  highlightedDocIds?: string[] | null;
+  // Clear the filter (canvas's "Exit" banner click).
+  onClearHighlight?: () => void;
 }
 
-export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, onOpenDoc, aiPanelOpen, onSelectNodeInfo, onDocCreated, authHeaders: parentAuthHeaders }: BundleEmbedProps) {
+export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, onOpenDoc, aiPanelOpen, onSelectNodeInfo, onDocCreated, authHeaders: parentAuthHeaders, highlightedDocIds, onClearHighlight }: BundleEmbedProps) {
   const [documents, setDocuments] = useState<BundleDocument[]>([]);
   const [aiGraph, setAiGraph] = useState<any>(null);
   const [editToken, setEditToken] = useState<string | null>(null);
@@ -1158,6 +1165,8 @@ export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, o
           onChangeChunkTypeFilter={(t) => setChunkTypeFilter(t)}
           focusChunkId={focusChunkId}
           onFocusChunkSettled={() => setFocusChunkId(null)}
+          highlightedDocIds={highlightedDocIds}
+          onClearHighlight={onClearHighlight}
           onSynthesize={runSynthesis}
         />
       }

@@ -2871,6 +2871,12 @@ export default function MdEditor() {
   const [showMyBundles, setShowMyBundles] = useState(true);
   const [bundleView, setBundleView] = useState<"overview" | "canvas" | "list">("overview");
   const [showBundleChat, setShowBundleChat] = useState(false);
+  // Conversational-query → canvas filter: BundleChat's "Show on
+  // canvas" action stores the cited doc ids here keyed by bundle id,
+  // BundleEmbed consumes them as a highlight filter on BundleCanvas.
+  // Per-bundle so switching tabs doesn't leak a previous bundle's
+  // filter into the new one.
+  const [bundleHighlights, setBundleHighlights] = useState<Record<string, string[]>>({});
   const [activeBundleDocIds, setActiveBundleDocIds] = useState<Set<string>>(new Set());
   const [showSharedDocs, setShowSharedDocs] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -13072,6 +13078,13 @@ ${clone.innerHTML}
                     aiPanelOpen={showAIPanel}
                     onSelectNodeInfo={() => setShowAIPanel(false)}
                     authHeaders={authHeaders}
+                    highlightedDocIds={bundleHighlights[activeTab.bundleId] || null}
+                    onClearHighlight={() => setBundleHighlights(prev => {
+                      if (!activeTab.bundleId || !prev[activeTab.bundleId]) return prev;
+                      const next = { ...prev };
+                      delete next[activeTab.bundleId];
+                      return next;
+                    })}
                     onDocCreated={({ docId, title, markdown }) => {
                       // Newly created doc from synthesis or extraction.
                       // Append it to the user's tab list with unread:true so
@@ -13533,6 +13546,15 @@ ${clone.innerHTML}
                       accent={mode.accent}
                       accentDim={mode.accentDim}
                       onClose={() => setShowAIPanel(false)}
+                      onApplyFilter={(docIds) => {
+                        const bid = activeTab.bundleId;
+                        if (!bid) return;
+                        setBundleHighlights(prev => ({ ...prev, [bid]: docIds }));
+                        // Make sure the canvas view is the one actually
+                        // showing — pasting a filter onto the List or
+                        // Overview surface wouldn't reveal the highlight.
+                        if (bundleView !== "canvas") setBundleView("canvas");
+                      }}
                       onCitationClick={(docId) => {
                         const existing = tabs.find(t => t.cloudId === docId);
                         if (existing) { switchTab(existing.id); return; }
