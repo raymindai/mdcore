@@ -21,7 +21,7 @@ export type PermissionReason =
   | "service_unavailable";
 
 const TITLE_BY_REASON: Record<PermissionReason, string> = {
-  draft: "Draft",
+  draft: "Private",
   deleted: "Removed",
   not_found: "Not found",
   expired: "Expired",
@@ -66,6 +66,11 @@ function instructionsFor(reason: PermissionReason, canonicalUrl: string): string
         "they still have a copy or want to republish.",
       ].join("\n");
     case "draft":
+      return [
+        `This resource at ${canonicalUrl} is still private. The author`,
+        "has not published it yet. Ask them to publish, or sign in as the",
+        "owner with `Authorization: Bearer <user_token>`.",
+      ].join("\n");
     case "deleted":
     case "not_found":
       return [

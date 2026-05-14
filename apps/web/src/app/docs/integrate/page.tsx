@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const sidebarItems = [
   { id: "overview", label: "Overview" },
   { id: "pick-url", label: "Pick the right URL" },
-  { id: "permissions", label: "Permissions & sharing" },
+  { id: "permissions", label: "Privacy & sharing" },
   { id: "claude-code", label: "Claude Code" },
   { id: "cursor", label: "Cursor" },
   { id: "codex", label: "Codex CLI" },
@@ -193,8 +193,8 @@ export default function IntegrateDocsPage() {
             Append <InlineCode>{"?compact"}</InlineCode> to trim whitespace, <InlineCode>{"?full=1"}</InlineCode> (bundle only) to inline every member doc, <InlineCode>{"?graph=0"}</InlineCode> (bundle only) to drop the analysis section.
           </p>
 
-          {/* ─── Permissions & sharing ─── */}
-          <SectionHeading id="permissions">Permissions &amp; sharing</SectionHeading>
+          {/* ─── Privacy & sharing ─── */}
+          <SectionHeading id="permissions">Privacy &amp; sharing</SectionHeading>
           <p
             style={{
               fontSize: 14,
@@ -204,7 +204,7 @@ export default function IntegrateDocsPage() {
               maxWidth: 680,
             }}
           >
-            The raw-markdown endpoint mirrors the viewer&apos;s gating exactly. If a person can&apos;t see the rendered page, an AI agent can&apos;t fetch the markdown either &mdash; the four guard layers below apply equally to docs, bundles, and hubs.
+            The raw-markdown endpoint mirrors the viewer&apos;s gating exactly. If a person can&apos;t see the rendered page, an AI agent can&apos;t fetch the markdown either &mdash; the three states below apply equally to docs, bundles, and hubs.
           </p>
 
           <div
@@ -219,25 +219,19 @@ export default function IntegrateDocsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, alignItems: "baseline", padding: "10px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ fontSize: 13, fontFamily: mono, color: "var(--text-primary)", fontWeight: 600 }}>Public</code>
               <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                Non-draft, no password, no allowed_emails. Any AI fetches anonymously &mdash; no headers required. This is the right setting for an open-source project&apos;s bundle that you want every contributor&apos;s AI tools to read.
+                Published, no allowed_emails. Any AI fetches anonymously &mdash; no headers required. This is the right setting for an open-source project&apos;s bundle that you want every contributor&apos;s AI tools to read.
               </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, alignItems: "baseline", padding: "10px 0", borderBottom: "1px solid var(--border-dim)" }}>
               <code style={{ fontSize: 13, fontFamily: mono, color: "var(--text-primary)", fontWeight: 600 }}>Restricted</code>
               <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                <InlineCode>{"allowed_emails"}</InlineCode> set on the bundle/doc. The fetcher must identify itself: either an owner JWT in <InlineCode>{"Authorization: Bearer <token>"}</InlineCode>, or an <InlineCode>{"X-User-Email"}</InlineCode> header that matches one of the allowed addresses. Otherwise 403 / 404.
-              </span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, alignItems: "baseline", padding: "10px 0", borderBottom: "1px solid var(--border-dim)" }}>
-              <code style={{ fontSize: 13, fontFamily: mono, color: "var(--text-primary)", fontWeight: 600 }}>Password</code>
-              <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                <InlineCode>{"password_hash"}</InlineCode> set on the bundle/doc. Pass the cleartext via <InlineCode>{"X-Document-Password"}</InlineCode> header. AI dev tools rarely support sending custom headers from an <InlineCode>{"AGENTS.md"}</InlineCode> reference, so use this for occasional shares (the rendered page&apos;s prompt is fine) rather than for AI-tool config.
+                Published, with <InlineCode>{"allowed_emails"}</InlineCode> set. The fetcher must identify itself: either an owner JWT in <InlineCode>{"Authorization: Bearer <token>"}</InlineCode>, or an <InlineCode>{"X-User-Email"}</InlineCode> header that matches one of the allowed addresses. Otherwise 403 / 404.
               </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, alignItems: "baseline", padding: "10px 0" }}>
-              <code style={{ fontSize: 13, fontFamily: mono, color: "var(--text-primary)", fontWeight: 600 }}>Draft</code>
+              <code style={{ fontSize: 13, fontFamily: mono, color: "var(--text-primary)", fontWeight: 600 }}>Private</code>
               <span style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                <InlineCode>{"is_draft = true"}</InlineCode>. Only the owner (via JWT) can fetch. Drafts return 404 to everyone else &mdash; including AI tools that don&apos;t know your auth. Publish the bundle first before referencing it in tool config.
+                Not yet published. Only the owner (via JWT) can fetch. Private items return 404 to everyone else &mdash; including AI tools that don&apos;t know your auth. Publish the bundle first before referencing it in tool config.
               </span>
             </div>
           </div>
@@ -271,10 +265,7 @@ export default function IntegrateDocsPage() {
               <strong style={{ color: "var(--text-primary)" }}>Internal / team project</strong>: bundle with <InlineCode>{"allowed_emails"}</InlineCode> of teammates. Each teammate&apos;s AI tool needs to send <InlineCode>{"X-User-Email"}</InlineCode> &mdash; most CLIs let you template request headers via env or rc files. The bundle&apos;s rendered viewer also gates on the same list, so non-teammates see 404 in both surfaces.
             </li>
             <li>
-              <strong style={{ color: "var(--text-primary)" }}>Solo / private notes</strong>: hub URL referenced from <InlineCode>{"~/.claude/CLAUDE.md"}</InlineCode>. Hub-wide draft state is per-doc, not per-hub &mdash; public docs surface, draft docs stay hidden.
-            </li>
-            <li>
-              <strong style={{ color: "var(--text-primary)" }}>One-off review</strong>: keep the bundle in draft, share the rendered URL with a password prompt for the human. Don&apos;t reference it in AI tool config (the password header round-trip isn&apos;t worth the friction).
+              <strong style={{ color: "var(--text-primary)" }}>Solo / private notes</strong>: hub URL referenced from <InlineCode>{"~/.claude/CLAUDE.md"}</InlineCode>. Hub-wide visibility is per-item, not per-hub &mdash; public docs surface, private docs stay hidden until you publish them.
             </li>
           </ul>
 

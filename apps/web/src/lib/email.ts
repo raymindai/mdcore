@@ -67,7 +67,7 @@ export async function sendWelcomeEmail(to: string): Promise<void> {
 
   const features = [
     { title: "Publish instantly", desc: "Paste or write Markdown and get a shareable URL in seconds. No account needed to start." },
-    { title: "Share anywhere", desc: "Short URLs, QR codes, embed codes, password protection. Your document, your rules." },
+    { title: "Share anywhere", desc: "Short URLs, QR codes, embed codes. Stay private until you publish, or share with specific people by email." },
     { title: "AI-powered tools", desc: "Auto-detect AI conversations, render diagrams, export to PDF. Markdown is the engine -- you do not need to learn it." },
   ];
 

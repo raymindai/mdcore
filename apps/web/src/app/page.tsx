@@ -84,7 +84,7 @@ export default function Home() {
             <li>Permanent shareable URLs with OG previews and QR codes</li>
             <li>Cross-platform: VS Code extension, Chrome extension, CLI, MCP server, Mac desktop app</li>
             <li>Dark and light themes with beautiful typography</li>
-            <li>Password protection and expiring links</li>
+            <li>Private until you publish; share with specific people by email</li>
             <li>Export to PDF, copy as rich text for Google Docs and email</li>
           </ul>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- noscript context, Link component won't work */}

@@ -8663,13 +8663,16 @@ ${clone.innerHTML}
     const isPublic = isPublished && !isRestricted;
     const iconColor = isRestricted ? "#60a5fa" : isPublic ? "#4ade80" : "var(--text-faint)";
     const overlay = Math.max(7, Math.round(size * 0.55));
+    // Password mode has been removed app-wide — hasPassword can only
+    // be true for legacy data; treat it as a noop so the tooltip
+    // reflects the active three-state model (Public / Restricted /
+    // Private) only.
+    void hasPassword;
     const tipText = isRestricted
-      ? `Shared with ${sharedWithCount} ${sharedWithCount === 1 ? "person" : "people"}${hasPassword ? " — password-protected" : ""}`
-      : hasPassword
-        ? "Public link — password-protected"
-        : isPublic
-          ? "Public — anyone with the link can view"
-          : "Private bundle — only you can see this";
+      ? `Shared with ${sharedWithCount} ${sharedWithCount === 1 ? "person" : "people"}`
+      : isPublic
+        ? "Public — anyone with the link can view"
+        : "Private bundle — only you can see this";
     return (
       <Tooltip text={tipText}>
         <span className="relative shrink-0 flex items-center justify-center" style={{ width: size + 4, height: size + 2 }}>
