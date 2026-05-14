@@ -12909,14 +12909,11 @@ ${clone.innerHTML}
               >
                 <div className="flex items-center gap-1.5">
                   {activeTab?.readonly ? (
-                    <>
-                      <span style={{ color: "var(--accent)", fontWeight: 600 }}>Read-only example</span>
-                      <span style={{ color: "var(--text-muted)" }}>— duplicate it to make your own copy.</span>
-                    </>
+                    <span style={{ color: "var(--accent)", fontWeight: 600 }}>Read-only example</span>
                   ) : (
                     <>
                       <span style={{ color: "var(--accent)", fontWeight: 600 }}>View only</span>
-                      <span style={{ color: "var(--text-muted)" }}>— this document was shared with you. Duplicate to edit your own copy.</span>
+                      <span style={{ color: "var(--text-muted)" }}>— this document was shared with you.</span>
                     </>
                   )}
                 </div>
