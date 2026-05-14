@@ -26,7 +26,11 @@ export async function setupEditableTab(page: Page) {
     localStorage.setItem("mdfy-tabs", JSON.stringify([tab]));
     localStorage.setItem("mdfy-active-tab", "tab-e2e-scratch");
   });
-  await page.goto("/");
+  // Append a harmless query so the bare-root → Home logic (added
+  // 2026-05-15: path === "/" && !search && !hash forces showOnboarding)
+  // doesn't override the seeded activeTab. With any search param
+  // present, the editor restores from localStorage as it did before.
+  await page.goto("/?e2e=1");
   // Wait for the Tiptap LIVE editor to mount AND become editable
   await page.waitForSelector(".ProseMirror[contenteditable='true']", { timeout: 20000 });
   // Give Tiptap a moment to fully wire up
