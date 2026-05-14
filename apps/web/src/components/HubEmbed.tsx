@@ -238,6 +238,7 @@ export default function HubEmbed({
   // to render. With a snapshot we revalidate in the background.
   const [loading, setLoading] = useState(!cachedEntry);
   const [copied, setCopied] = useState(false);
+  const [copiedAgents, setCopiedAgents] = useState(false);
   // Separate state for the "?full=1" copy button so the two pills
   // don't share a single "Copied" green flash.
   const [copiedFull, setCopiedFull] = useState(false);
@@ -554,33 +555,73 @@ export default function HubEmbed({
               <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
-          {/* Integrate-with-dev-tools nudge. The Deploy panel above
-              covers "paste this URL into an AI chat surface"; this
-              line surfaces the deeper path — wire the hub URL into
-              the context file (CLAUDE.md / AGENTS.md / .cursor/rules)
-              your AI dev tool already reads, so it auto-loads on
-              every session instead of needing a paste. Routes to
-              /docs/integrate which carries the per-tool snippets. */}
-          <Link
-            href="/docs/integrate"
-            target="_blank"
-            className="flex items-center justify-between gap-2 text-caption px-2.5 py-2 rounded mb-3 transition-colors hover:bg-[var(--toggle-bg)]"
-            style={{
-              background: "var(--background)",
-              border: "1px solid var(--border-dim)",
-              color: "var(--text-secondary)",
-            }}
+          {/* Auto-load in AI dev tools. Was a single link row;
+              expanded to a real copy-able snippet so the user can
+              skip the round-trip to /docs/integrate when they
+              already know the destination. AGENTS.md is the
+              cross-tool path (Codex / Claude Code / Aider all read
+              it) — keeps the snippet count to one. Per-tool variants
+              still link out for users on Cursor / Gemini / Windsurf
+              who need their tool's specific file name. */}
+          <div
+            className="mb-3 rounded-lg overflow-hidden"
+            style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
           >
-            <span className="flex items-center gap-2 min-w-0">
-              <span style={{ color: "var(--accent)", fontSize: 13 }}>↳</span>
-              <span className="truncate">
-                Drop this URL into <strong style={{ color: "var(--text-primary)" }}>AGENTS.md</strong> / <strong style={{ color: "var(--text-primary)" }}>CLAUDE.md</strong> / <strong style={{ color: "var(--text-primary)" }}>.cursor/rules</strong> so every AI session reads it
+            <div className="flex items-baseline justify-between px-3 py-2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
+              <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
+                AGENTS.md / CLAUDE.md
               </span>
-            </span>
-            <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>
-              How →
-            </span>
-          </Link>
+              <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+                Auto-loads on every AI session
+              </span>
+            </div>
+            <pre
+              className="px-3 py-2 text-caption font-mono whitespace-pre-wrap"
+              style={{ color: "var(--text-primary)", margin: 0, fontSize: 11, lineHeight: 1.6 }}
+            >{`# Project context
+
+mdfy hub: ${data.hub.url}
+
+Fetch this URL on every session. The response carries clean
+markdown of the user's knowledge graph (concept index, bundle
+analyses, doc list) — paste-and-go context.`}</pre>
+            <div className="flex items-center justify-between gap-2 px-3 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
+              <button
+                onClick={async () => {
+                  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+                  try {
+                    await navigator.clipboard.writeText(`# Project context
+
+mdfy hub: ${data.hub.url}
+
+Fetch this URL on every session. The response carries clean
+markdown of the user's knowledge graph (concept index, bundle
+analyses, doc list) — paste-and-go context.`);
+                    setCopiedAgents(true);
+                    setTimeout(() => setCopiedAgents(false), 1500);
+                  } catch { /* clipboard blocked */ }
+                }}
+                className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                style={{
+                  background: "var(--surface)",
+                  color: copiedAgents ? "#22c55e" : "var(--text-primary)",
+                  border: `1px solid ${copiedAgents ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+                }}
+                title="Copy snippet"
+              >
+                {copiedAgents ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+                <span>{copiedAgents ? "Copied" : "Copy snippet"}</span>
+              </button>
+              <Link
+                href="/docs/integrate"
+                target="_blank"
+                className="text-caption font-mono"
+                style={{ color: "var(--accent)" }}
+              >
+                Per-tool variants →
+              </Link>
+            </div>
+          </div>
           {/* Secondary actions sit on the surface-tinted card, so a
               bordered-only treatment fades into the card background.
               Adding var(--background) fill puts them one step darker
