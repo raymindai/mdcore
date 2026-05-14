@@ -139,12 +139,9 @@ export default function WelcomeOverlay() {
         style={{
           // Soft elevated card. A subtle gradient (surface → background)
           // lifts the card off the dim backdrop so the eye lands here
-          // immediately; the accent-tinted top border catches the
-          // attention rail and matches the brand color spent on the
-          // CTA below.
+          // immediately.
           background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)",
           border: "1px solid var(--border)",
-          borderTop: "2px solid var(--accent)",
           borderRadius: 20,
           width: "100%",
           maxWidth: 480,
@@ -294,12 +291,8 @@ export default function WelcomeOverlay() {
           ))}
         </div>
 
-        {/* Actions — primary CTA always reads as the loud, default
-            action. Previously the non-last slides rendered Next on
-            var(--surface) (same as the card body), so it blended in
-            and the eye drifted to "Skip tour" by default. Now every
-            slide paints Next/Get started in accent with a soft glow,
-            and Back demotes to a quiet ghost button. */}
+        {/* Actions — primary CTA is the accent-fill button. Flat, no
+            glow / no lift — the fill alone carries the contrast. */}
         <div style={{ padding: "16px 40px 32px" }}>
           <div style={{ display: "flex", gap: 10 }}>
             {!isFirst && (
@@ -333,11 +326,7 @@ export default function WelcomeOverlay() {
                 fontWeight: 700,
                 cursor: "pointer",
                 letterSpacing: "-0.01em",
-                boxShadow: "0 6px 20px -6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) inset",
-                transition: "transform 0.12s ease, box-shadow 0.18s ease",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 10px 24px -6px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent) inset"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 20px -6px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent) inset"; }}
             >
               {isLast ? "Get started" : "Next"}
             </button>

@@ -11871,9 +11871,22 @@ ${clone.innerHTML}
                             setIsSharedDoc(false);
                             setServerDocs([]);
                             setRecentDocs([]);
+                            // Sidebar Bundle section was sticking around
+                            // after sign-out because the fetch effect
+                            // refetched against the still-present anon id.
+                            // Clear bundles state + cache + the anon id so
+                            // the next render is a clean anonymous session.
+                            setBundles([]);
+                            clearAnonymousId();
                             doRender(INITIAL_TABS[0].markdown);
                             window.history.replaceState(null, "", "/");
-                            try { localStorage.removeItem("mdfy-tabs"); localStorage.removeItem("mdfy-folders"); localStorage.removeItem("mdfy-active-tab"); } catch {}
+                            try {
+                              localStorage.removeItem("mdfy-tabs");
+                              localStorage.removeItem("mdfy-folders");
+                              localStorage.removeItem("mdfy-active-tab");
+                              localStorage.removeItem("mdfy-bundles");
+                              localStorage.removeItem("mdfy-was-logged-in");
+                            } catch {}
                           }}
                           className="w-full text-left px-3 py-1.5 text-caption transition-colors hover:bg-[var(--menu-hover)] flex items-center gap-2"
                           style={{ color: "var(--text-faint)" }}
