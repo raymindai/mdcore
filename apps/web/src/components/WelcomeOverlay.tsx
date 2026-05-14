@@ -137,14 +137,21 @@ export default function WelcomeOverlay() {
     >
       <div
         style={{
-          background: "var(--surface)",
+          // Soft elevated card. A subtle gradient (surface → background)
+          // lifts the card off the dim backdrop so the eye lands here
+          // immediately; the accent-tinted top border catches the
+          // attention rail and matches the brand color spent on the
+          // CTA below.
+          background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)",
           border: "1px solid var(--border)",
+          borderTop: "2px solid var(--accent)",
           borderRadius: 20,
           width: "100%",
           maxWidth: 480,
           margin: "0 24px",
           overflow: "hidden",
           animation: "welcome-in 0.4s ease-out",
+          boxShadow: "0 24px 64px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02) inset",
         }}
       >
         {/* Content */}
