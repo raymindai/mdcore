@@ -71,7 +71,7 @@ export default function CliDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          currentPath="/docs/cli"
+          currentPath="/ko/docs/cli"
         />
 
         {/* MAIN */}
@@ -313,7 +313,7 @@ alias mtx="tmux capture-pane -p | mdfy publish"`}</CodeBlock>
         </main>
       </div>
 
-      <DocsFooter breadcrumb="CLI" />
+      <DocsFooter breadcrumb="CLI" lang="ko" />
     </div>
   );
 }

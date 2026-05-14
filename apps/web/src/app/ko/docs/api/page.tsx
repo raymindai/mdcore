@@ -218,7 +218,7 @@ export default function ApiDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          currentPath="/docs/api"
+          currentPath="/ko/docs/api"
         />
 
         {/* MAIN CONTENT */}
@@ -948,7 +948,7 @@ source: "mdfy.app"
         </main>
       </div>
 
-      <DocsFooter breadcrumb="REST API" />
+      <DocsFooter breadcrumb="REST API" lang="ko" />
     </div>
   );
 }

@@ -70,7 +70,7 @@ export default function SdkDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          currentPath="/docs/sdk"
+          currentPath="/ko/docs/sdk"
         />
 
         {/* MAIN */}
@@ -319,7 +319,7 @@ if (isAiConversation(text)) {
         </main>
       </div>
 
-      <DocsFooter breadcrumb="JavaScript SDK" />
+      <DocsFooter breadcrumb="JavaScript SDK" lang="ko" />
     </div>
   );
 }

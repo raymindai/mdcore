@@ -295,9 +295,16 @@ export function DocsNav({ active = "docs", lang = "en" }: { active?: "about" | "
 /* ─── DocsFooter ─── */
 export function DocsFooter({
   breadcrumb,
+  lang = "en",
 }: {
   breadcrumb?: string;
+  lang?: "en" | "ko";
 }) {
+  // Used on every /docs/* sub-page. Was English-only ("Documentation"
+  // breadcrumb + EN href). Accept lang so /ko/docs/* sub-pages route
+  // back to /ko/docs and read the breadcrumb in Korean.
+  const docsHref = lang === "ko" ? "/ko/docs" : "/docs";
+  const docsLabel = lang === "ko" ? "문서" : "Documentation";
   return (
     <footer style={{ borderTop: "1px solid var(--border-dim)" }}>
       <div
@@ -323,26 +330,26 @@ export function DocsFooter({
           {breadcrumb ? (
             <>
               <Link
-                href="/docs"
+                href={docsHref}
                 style={{
                   color: "var(--text-muted)",
                   textDecoration: "none",
                 }}
               >
-                Documentation
+                {docsLabel}
               </Link>
               {" / "}
               {breadcrumb}
             </>
           ) : (
             <Link
-              href="/docs"
+              href={docsHref}
               style={{
                 color: "var(--text-muted)",
                 textDecoration: "none",
               }}
             >
-              Documentation
+              {docsLabel}
             </Link>
           )}
         </p>

@@ -172,7 +172,7 @@ export default function McpDocsPageKo() {
       <div className="docs-layout">
         <DocsSidebar
           items={sidebarItems}
-          currentPath="/docs/mcp"
+          currentPath="/ko/docs/mcp"
         />
 
         {/* MAIN */}
@@ -447,7 +447,7 @@ You: "네"
         </main>
       </div>
 
-      <DocsFooter breadcrumb="MCP Server" />
+      <DocsFooter breadcrumb="MCP Server" lang="ko" />
     </div>
   );
 }
