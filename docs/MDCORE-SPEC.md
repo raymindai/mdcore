@@ -107,7 +107,7 @@ Three states, applied uniformly to docs, bundles, hubs:
 | Sharing: Public / Restricted (`allowed_emails`) / Private | ✅ |
 | Hub auto-management (orphan / duplicate detection, lint) | ✅ |
 | Sample Bundle: Tour of mdfy (`mdfy.app/b/mdfy-ex-bundle`) | ✅ |
-| Viral badge ("Published with mdfy.app") | 🔜 |
+| Viral badge ("Published with mdfy.app") via `ViewerPromoStrip` | ✅ |
 | Pro tier (price TBD, post-beta) | Planned |
 
 ### 5.2 VS Code Extension
@@ -241,9 +241,8 @@ The compositional URL primitives plug straight into the context files every AI d
 3. Pre-launch QA pass (Chrome extension capture across AIs, GitHub import live test)
 
 ### Launch (free, no Stripe)
-4. Viral badge ("Published with mdfy.app")
-5. Mdfy.app + Chrome ext + VS Code ext + MCP server in one launch
-6. HN Show HN, Reddit, Twitter
+4. Mdfy.app + Chrome ext + VS Code ext + MCP server in one launch
+5. HN Show HN, Reddit, Twitter
 
 ### Stabilisation (post-launch)
 7. Stripe + Pro tier (auto-analyze, badge removal, custom domain)
