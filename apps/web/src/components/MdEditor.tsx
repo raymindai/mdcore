@@ -11628,7 +11628,17 @@ ${clone.innerHTML}
                 </Tooltip>
                 {showAuthMenu && (
                   <>
-                    <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />
+                    {/* Backdrop must escape the sidebar's transform
+                        (mobile slide-in uses translateX, which makes
+                        the sidebar a containing block for fixed
+                        descendants — confining the backdrop to the
+                        sidebar rect and leaving the canvas un-
+                        dismissable). Portal it to document.body so
+                        `fixed inset-0` truly covers the viewport. */}
+                    {typeof document !== "undefined" && createPortal(
+                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowAuthMenu(false)} />,
+                      document.body,
+                    )}
                     <div className="absolute bottom-full left-0 mb-1 w-full rounded-lg shadow-xl z-[9999] overflow-hidden"
                       style={{ background: "var(--menu-bg)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                       {/* Profile header — avatar + identity, no plan badge here.

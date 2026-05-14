@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -63,6 +63,36 @@ export default function Tooltip({
     if (edgeAlign === "right") return { top: coords.top, left: rect.right };
     return coords;
   })();
+
+  // Safety net: tooltips that show via mouseEnter rely on a matching
+  // mouseLeave to disappear, but several real cases skip mouseLeave —
+  // touch taps emulate enter without an exit, fast pointer flicks off
+  // the trigger edge, and tooltips on elements that get unmounted /
+  // re-rendered while shown. Without these, the tooltip can stick
+  // until the user manually moves over it. Dismiss whenever the user
+  // interacts somewhere else, scrolls, switches tabs, or hits Escape.
+  useEffect(() => {
+    if (!show) return;
+    const close = () => setShow(false);
+    const onPointerDown = (e: Event) => {
+      const t = e.target as Node | null;
+      if (t && triggerRef.current?.contains(t)) return;
+      close();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("mousedown", onPointerDown, true);
+    document.addEventListener("touchstart", onPointerDown, true);
+    document.addEventListener("scroll", close, true);
+    window.addEventListener("blur", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown, true);
+      document.removeEventListener("touchstart", onPointerDown, true);
+      document.removeEventListener("scroll", close, true);
+      window.removeEventListener("blur", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [show]);
 
   return (
     <div
