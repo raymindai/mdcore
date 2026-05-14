@@ -761,7 +761,7 @@ markdown = client.convert(url)` },
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 16px", maxWidth: 280 }}>
                 The Markdown infrastructure for the AI era. One engine that renders, converts, and normalizes every flavor.
               </p>
-              <p style={{ fontSize: 12, color: "var(--text-faint)", ...mono, margin: 0 }}>Rust + WASM &middot; Open Source</p>
+              <p style={{ fontSize: 12, color: "var(--text-faint)", ...mono, margin: 0 }}>Rust + WASM / Open Source</p>
             </div>
 
             {/* Product */}

@@ -14281,14 +14281,16 @@ ${clone.innerHTML}
             <span>{charCount.toLocaleString()} chars</span>
             <span>{lineCount.toLocaleString()} lines</span>
           </div>
-          {/* Flavor badges moved to SOURCE MD header */}
-          <div className="relative group hidden sm:block">
-            <span className="px-1.5 py-0.5 rounded font-mono" style={{ background: "var(--accent-dim)", color: "var(--accent)" }}>RUST+WASM</span>
-            <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              Rendered by mdcore engine (comrak, Rust compiled to WebAssembly)
-            </div>
-          </div>
+          {/* Engine-self-advertising "RUST+WASM" chip removed from the
+              editor footer. The v6 message is outcome-shaped ("personal
+              knowledge hub for AI") and most SMB users don't care which
+              parser powers the renderer; the chip read as engineering
+              vanity inside a workspace surface. The same claim still
+              lives on /mdcore-ai and /docs/sdk for the developer
+              audience where it earns the slot.
+              Keep the render-time ms readout — that's real information
+              users can act on (slow render → maybe a long mermaid or
+              math block to investigate). */}
           <div className="relative group hidden sm:block">
             <span className="flex items-center gap-0.5" style={{ color: "var(--accent)" }}>
               <Zap width={10} height={10} fill="currentColor" stroke="none" />
@@ -14296,7 +14298,7 @@ ${clone.innerHTML}
             </span>
             <div className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-caption whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[9998]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-              WASM engine render time
+              Render time
             </div>
           </div>
         </div>
