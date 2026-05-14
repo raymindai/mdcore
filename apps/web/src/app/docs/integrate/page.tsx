@@ -17,15 +17,16 @@ export const metadata: Metadata = {
 /* ─── Sidebar Items ─── */
 const sidebarItems = [
   { id: "overview", label: "Overview" },
+  { id: "quickstart", label: "30-second setup" },
   { id: "pick-url", label: "Pick the right URL" },
   { id: "permissions", label: "Privacy & sharing" },
+  { id: "agents-md", label: "AGENTS.md (cross-tool)" },
   { id: "claude-code", label: "Claude Code" },
   { id: "cursor", label: "Cursor" },
   { id: "codex", label: "Codex CLI" },
   { id: "gemini", label: "Gemini CLI" },
   { id: "windsurf", label: "Windsurf" },
   { id: "aider", label: "Aider" },
-  { id: "agents-md", label: "AGENTS.md (cross-tool)" },
   { id: "staleness", label: "Staleness + auto-analyze" },
 ];
 
@@ -114,7 +115,7 @@ export default function IntegrateDocsPage() {
                 margin: "0 0 16px",
               }}
             >
-              One line, every AI tool reads your hub
+              Your AI tools forget you between sessions. Fix it with one line.
             </h1>
             <p
               style={{
@@ -125,8 +126,7 @@ export default function IntegrateDocsPage() {
                 maxWidth: 680,
               }}
             >
-              Every public mdfy URL has a clean-markdown variant. Paste one URL into the context file your AI dev tool already
-              reads (<InlineCode>{"CLAUDE.md"}</InlineCode>, <InlineCode>{"AGENTS.md"}</InlineCode>, <InlineCode>{".cursor/rules"}</InlineCode>, etc.) and the tool fetches your doc, bundle, or hub on every session.
+              Claude Code, Cursor, Codex, and every other agent boot with whatever you wrote in <InlineCode>{"CLAUDE.md"}</InlineCode> / <InlineCode>{"AGENTS.md"}</InlineCode> / <InlineCode>{".cursor/rules"}</InlineCode>. Add a single line that points at your mdfy bundle or hub, and the next session opens with your prior decisions, notes, and analysis already loaded.
             </p>
             <p
               style={{
@@ -137,9 +137,62 @@ export default function IntegrateDocsPage() {
                 maxWidth: 680,
               }}
             >
-              The graph analysis (themes, insights, concept relations) ships in the same response, so the receiving AI inherits the prior AI&apos;s work instead of redoing it.
+              The URL response carries the bundle&apos;s pre-computed graph (themes, insights, concept relations) in the same payload &mdash; the receiving AI inherits the prior AI&apos;s work for free. No vendor lock-in, no API keys, no per-tool plug-in.
             </p>
           </div>
+
+          {/* ─── 30-second setup ─── */}
+          <SectionHeading id="quickstart">30-second setup</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 680,
+            }}
+          >
+            The same three steps apply to every tool below. The only thing that changes per tool is which file you drop the line into.
+          </p>
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-dim)",
+              borderRadius: 14,
+              padding: "20px 24px",
+              marginBottom: 16,
+            }}
+          >
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: "var(--text-muted)", lineHeight: 1.8 }}>
+              <li>
+                <strong style={{ color: "var(--text-primary)" }}>Pick the bundle URL</strong> for the project (or the hub URL for personal context). Copy from the bundle&apos;s Deploy panel.
+              </li>
+              <li>
+                <strong style={{ color: "var(--text-primary)" }}>Open your AI tool&apos;s context file</strong> (<InlineCode>{"AGENTS.md"}</InlineCode> works for most; tool-specific names below).
+              </li>
+              <li>
+                <strong style={{ color: "var(--text-primary)" }}>Paste one line</strong>, commit, done.
+              </li>
+            </ol>
+          </div>
+          <CodeBlock lang="markdown">{`# Project context
+
+Working bundle: https://mdfy.app/b/<bundle-id>
+
+Re-read on every session for spec, decisions, prior reasoning.
+The bundle carries its own graph (themes, insights, concept relations).`}</CodeBlock>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text-faint)",
+              lineHeight: 1.7,
+              marginTop: 12,
+              marginBottom: 32,
+              maxWidth: 680,
+            }}
+          >
+            That&apos;s the entire integration. Everything below is the per-tool variation of the same three steps.
+          </p>
 
           {/* ─── Pick the right URL ─── */}
           <SectionHeading id="pick-url">Pick the right URL</SectionHeading>
@@ -281,13 +334,55 @@ export default function IntegrateDocsPage() {
             <strong style={{ color: "var(--text-muted)" }}>Invariant</strong>: every gating decision happens server-side in the raw-fetch route. There&apos;s no way for the URL to leak content the rendered viewer wouldn&apos;t already show. Switching gating (e.g. removing an email from <InlineCode>{"allowed_emails"}</InlineCode>) takes effect on the next fetch &mdash; AI tools that already cached the markdown locally won&apos;t see the revocation until they re-fetch.
           </p>
 
-          {/* ─── Headliners ─── */}
+          {/* ─── AGENTS.md cross-tool (start here) ─── */}
+          <SectionHeading id="agents-md">AGENTS.md — start here</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 12,
+              maxWidth: 680,
+            }}
+          >
+            If you only want to maintain one file, this is the one. <InlineCode>{"AGENTS.md"}</InlineCode> is the open
+            cross-tool convention for &ldquo;agent instructions at the repo root&rdquo; — Codex CLI, Claude Code, and Aider all read it. Drop your bundle URL here and most of your agents pick it up immediately, no per-tool config.
+          </p>
+          <ToolBlock
+            id="agents-md-tool"
+            name="AGENTS.md"
+            filePath="AGENTS.md (project root)"
+            tagline="One file, covered by Codex CLI, Claude Code, Aider, and any future agent that respects the convention. Use the tool-specific files below only for nuances that don't belong at the cross-tool layer."
+            snippet={`# Project agents
+
+## Working context
+
+Bundle: https://mdfy.app/b/<bundle-id>
+
+Fetch this URL when you need this project's spec, decisions, or
+cross-doc reasoning. The bundle's pre-computed graph (themes,
+insights, concept relations) is in the same response — no separate
+index call needed.`}
+          />
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text-faint)",
+              lineHeight: 1.7,
+              marginBottom: 32,
+              maxWidth: 680,
+            }}
+          >
+            Pattern: keep tool-specific overrides in their respective files (<InlineCode>{".cursor/rules/"}</InlineCode>, <InlineCode>{"GEMINI.md"}</InlineCode>, <InlineCode>{".windsurfrules"}</InlineCode>) but put the mdfy URL in <InlineCode>{"AGENTS.md"}</InlineCode>. The URL is the portable bit; per-tool nuance stays per-tool.
+          </p>
+
+          {/* ─── Per-tool blocks (alternatives + tool-specific notes) ─── */}
           <SectionHeading id="claude-code">Claude Code</SectionHeading>
           <ToolBlock
             id="claude-code-tool"
             name="Claude Code"
-            filePath="CLAUDE.md (project root)"
-            tagline="Claude Code auto-loads CLAUDE.md from the project root and every parent directory. Drop a mdfy bundle URL anywhere in the file and Claude fetches the digest on session start."
+            filePath="CLAUDE.md (project root) — and AGENTS.md"
+            tagline="Claude Code auto-loads CLAUDE.md from the project root and every parent directory, plus AGENTS.md when present. Either file works; CLAUDE.md is the right home for Claude-specific overrides."
             snippet={`## Project context (from mdfy)
 
 Bundle: https://mdfy.app/b/<bundle-id>
@@ -330,17 +425,14 @@ The response is clean markdown with the bundle's graph analysis
             id="codex-tool"
             name="Codex CLI"
             filePath="AGENTS.md (project root)"
-            tagline="OpenAI's Codex CLI reads AGENTS.md as the canonical agent-instructions file. AGENTS.md is also the cross-tool convention many other agents respect — pasting your bundle URL here often gives you free coverage for Claude Code, Aider, and others without separate config."
+            tagline="OpenAI's Codex CLI is the agent AGENTS.md was originally defined for. If you've already followed the AGENTS.md section above, Codex is already covered — this block is here for completeness."
             snippet={`# Project Agents Manifest
 
-## Context
+## Working context
 
-This project's working context is mdfy bundle:
-https://mdfy.app/b/<bundle-id>
+Bundle: https://mdfy.app/b/<bundle-id>
 
-Fetch that URL when you need spec / decisions / cross-doc reasoning.
-The bundle's pre-computed graph (themes, insights, concept relations)
-is in the same response — no separate index call needed.`}
+Fetch on demand for spec, decisions, prior reasoning.`}
           />
 
           {/* ─── Secondary ─── */}
@@ -382,31 +474,6 @@ https://mdfy.app/b/<bundle-id>
 
 Fetch that URL when you need spec, decisions, or cross-doc reasoning.`}
           />
-
-          {/* ─── AGENTS.md cross-tool ─── */}
-          <SectionHeading id="agents-md">AGENTS.md — the cross-tool path</SectionHeading>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--text-muted)",
-              lineHeight: 1.7,
-              marginBottom: 16,
-              maxWidth: 680,
-            }}
-          >
-            <InlineCode>{"AGENTS.md"}</InlineCode> is the de facto cross-tool convention for &ldquo;agent instructions in the repo root.&rdquo; Codex, Claude Code, Aider, and several other CLIs read it. If you only want to maintain one file, this is the one.
-          </p>
-          <p
-            style={{
-              fontSize: 14,
-              color: "var(--text-muted)",
-              lineHeight: 1.7,
-              marginBottom: 16,
-              maxWidth: 680,
-            }}
-          >
-            <strong style={{ color: "var(--text-primary)" }}>Pattern</strong>: keep tool-specific overrides in their respective files (<InlineCode>{".cursor/rules/"}</InlineCode>, <InlineCode>{"GEMINI.md"}</InlineCode>) but put the mdfy URL in <InlineCode>{"AGENTS.md"}</InlineCode>. The URL is the portable bit; per-tool nuance stays per-tool.
-          </p>
 
           {/* ─── Staleness ─── */}
           <SectionHeading id="staleness">Staleness + auto-analyze</SectionHeading>

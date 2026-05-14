@@ -284,10 +284,10 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
           Integrate
         </h2>
         <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 12px", maxWidth: 720 }}>
-          One line in <code style={{ fontFamily: "var(--font-geist-mono), monospace", color: "var(--accent)" }}>AGENTS.md</code> and every AI tool reads your hub.
+          Your AI tools forget you between sessions. <span style={{ color: "var(--accent)" }}>One line</span> fixes it.
         </p>
         <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 24, maxWidth: 640 }}>
-          Paste a mdfy URL into the context file your AI dev tool already loads (<code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>GEMINI.md</code>) and Claude Code, Cursor, Codex, Gemini CLI, Windsurf, and Aider all fetch your hub or bundle on every session. Project-scoped context for free.
+          Claude Code, Cursor, Codex, and every other agent already boot with whatever sits in <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code> / <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code>. Add a line that points at your mdfy bundle and the next session opens with your prior decisions, notes, and graph analysis already loaded. No API key, no vendor lock-in.
         </p>
         <div
           style={{
