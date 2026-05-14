@@ -6,7 +6,6 @@ import {
   ReactFlow,
   Background,
   MiniMap,
-  Panel,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -168,12 +167,6 @@ async function buildLayout(
   detail: DetailLevel = 5,
   expandedDocId?: string | null,
   decomposition?: { chunks: SemanticChunkLike[]; edges: SemanticEdgeLike[] } | null,
-  /** Auto-pivot: when set, override ELK output with a BFS-radial
-   *  layout centred on this node. Used by double-click-to-pivot
-   *  so a topic node becomes the focal point and related nodes
-   *  radiate out, while unreachable nodes get pushed far out with
-   *  reduced opacity. */
-  pivotNodeId?: string | null,
 ): Promise<{ nodes: Node[]; edges: Edge[] }> {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -421,71 +414,6 @@ async function buildLayout(
   } catch (err) {
     console.error("ELK layout failed:", err);
     nodes.forEach((n, i) => { n.position = { x: (i % 4) * 320, y: Math.floor(i / 4) * 200 }; });
-  }
-
-  // ── Pivot post-pass: BFS-radial layout centred on pivotNodeId ──
-  // ELK gives us a clean baseline; when the user double-clicks a node
-  // we override that with a focus layout — pivot at (0,0), neighbours
-  // on a ring at depth 1, neighbours-of-neighbours at depth 2, etc.
-  // Unreachable nodes get pushed far out and faded so the focus is
-  // visually obvious without removing context entirely.
-  if (pivotNodeId && nodeSet.has(pivotNodeId)) {
-    const RING = 280;
-    const adj = new Map<string, Set<string>>();
-    for (const id of nodeSet) adj.set(id, new Set());
-    for (const e of elkEdges) {
-      const src = e.sources?.[0];
-      const tgt = e.targets?.[0];
-      if (!src || !tgt) continue;
-      adj.get(src)?.add(tgt);
-      adj.get(tgt)?.add(src);
-    }
-    const depthMap = new Map<string, number>();
-    depthMap.set(pivotNodeId, 0);
-    const queue: string[] = [pivotNodeId];
-    while (queue.length > 0) {
-      const cur = queue.shift()!;
-      const curDepth = depthMap.get(cur)!;
-      for (const next of adj.get(cur) || []) {
-        if (!depthMap.has(next)) {
-          depthMap.set(next, curDepth + 1);
-          queue.push(next);
-        }
-      }
-    }
-    const byDepth = new Map<number, string[]>();
-    for (const [id, d] of depthMap) {
-      if (!byDepth.has(d)) byDepth.set(d, []);
-      byDepth.get(d)!.push(id);
-    }
-    const nodeById = new Map(nodes.map(n => [n.id, n]));
-    for (const [d, ids] of byDepth) {
-      if (d === 0) {
-        const n = nodeById.get(pivotNodeId);
-        if (n) n.position = { x: 0, y: 0 };
-        continue;
-      }
-      const r = d * RING;
-      // Stable angle: sort the ring deterministically so a re-pivot to
-      // the same node lands neighbours in the same slot, not jittered.
-      const sorted = [...ids].sort();
-      sorted.forEach((id, i) => {
-        const angle = (i / sorted.length) * Math.PI * 2;
-        const n = nodeById.get(id);
-        if (n) n.position = { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
-      });
-    }
-    // Unreached nodes → outermost ring + fade. Kept on canvas (not
-    // hidden) so the user can still see them and pivot off to another
-    // cluster without exiting focus mode.
-    const maxDepth = Math.max(0, ...Array.from(depthMap.values()));
-    const farR = (maxDepth + 2) * RING;
-    const unreached = nodes.filter(n => !depthMap.has(n.id));
-    unreached.forEach((n, i) => {
-      const angle = (i / Math.max(1, unreached.length)) * Math.PI * 2;
-      n.position = { x: Math.cos(angle) * farR, y: Math.sin(angle) * farR };
-      n.style = { ...(n.style as object || {}), opacity: 0.25 };
-    });
   }
 
   return { nodes, edges };
@@ -1029,22 +957,9 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
   const [nodes, setNodes, onNodesChange] = useNodesState([] as any[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
 
-  // Auto-pivot: double-click a node to centre the canvas around it.
-  // Background click or Escape clears. Independent of selectedDocId
-  // (which still drives the detail panel) so single-click is "look at
-  // this," double-click is "reorganise around this."
-  const [pivotNodeId, setPivotNodeId] = useState<string | null>(null);
-  const clearPivot = useCallback(() => setPivotNodeId(null), []);
-  useEffect(() => {
-    if (!pivotNodeId) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") clearPivot(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pivotNodeId, clearPivot]);
-
   useEffect(() => {
     let cancelled = false;
-    buildLayout(documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition, pivotNodeId).then(({ nodes: n, edges: e }) => {
+    buildLayout(documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition).then(({ nodes: n, edges: e }) => {
       if (cancelled) return;
       setNodes(n);
       setEdges(e);
@@ -1060,7 +975,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
       }
     });
     return () => { cancelled = true; };
-  }, [documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition, pivotNodeId, setNodes, setEdges, rfFitView]);
+  }, [documents, aiGraph, selectedDocId, detail, expandedDocId, decomposition, setNodes, setEdges, rfFitView]);
 
   const [focusedNode, setFocusedNode] = useState<string | null>(null);
 
@@ -1245,17 +1160,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
     // Background click also clears the side info panel — clicking empty
     // space anywhere on the canvas is the universal "deselect" gesture.
     onPaneClose?.();
-    // Same gesture exits pivot mode.
-    setPivotNodeId(null);
   }, [onClearChunkSelection, onPaneClose]);
-
-  // Double-click on a node = pivot. Clicking the already-pivoted node
-  // again toggles back to ELK layout. Skip chunk nodes — they have
-  // their own drag-reorder semantics and rarely make useful pivots.
-  const onNodeDoubleClick = useCallback((_e: React.MouseEvent, node: Node) => {
-    if (node.id.startsWith("chunk:")) return;
-    setPivotNodeId(prev => (prev === node.id ? null : node.id));
-  }, []);
 
   const totalWords = documents.reduce((s, d) => s + d.markdown.split(/\s+/).filter(Boolean).length, 0);
 
@@ -1479,7 +1384,7 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
       `}</style>
       <ReactFlow
         nodes={styledNodes} edges={styledEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClickWithMods} onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu} onPaneClick={onPaneClick}
+        onNodeClick={onNodeClickWithMods} onNodeContextMenu={onNodeContextMenu} onPaneClick={onPaneClick}
         onNodeDragStop={(e, node) => onNodeDragStop(e as unknown as React.MouseEvent, node, styledNodes as Node[])}
         nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1.2, duration: 0 }}
@@ -1493,35 +1398,6 @@ function BundleCanvasInner({ documents, aiGraph, isAnalyzing, graphGeneratedAt, 
         style={{ background: "var(--background)" }}
       >
         <Background variant={"dots" as any} color={theme === "dark" ? "#2a2a2f" : "#c4c4c8"} gap={18} size={1.5} />
-        {pivotNodeId && (() => {
-          const pivotNode = nodes.find(n => n.id === pivotNodeId);
-          const label = (pivotNode?.data as { label?: string; title?: string } | undefined);
-          const displayLabel = label?.label || label?.title || (pivotNodeId.startsWith("doc:") ? "this document" : pivotNodeId.startsWith("theme:") ? "this theme" : "this node");
-          return (
-            <Panel position="top-center">
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-caption"
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--accent)",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                <span style={{ color: "var(--accent)" }}>◉</span>
-                <span>Focused on <strong style={{ color: "var(--text-primary)" }}>{displayLabel}</strong></span>
-                <button
-                  onClick={clearPivot}
-                  className="px-2 py-0.5 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                  style={{ color: "var(--text-muted)", fontWeight: 600, border: "1px solid var(--border-dim)" }}
-                  title="Exit focus (Esc, or click the background)"
-                >
-                  Exit
-                </button>
-              </div>
-            </Panel>
-          );
-        })()}
         <MiniMap position="bottom-right" pannable zoomable
           nodeColor={(n) => {
             // Mirror the canvas + legend mapping exactly so the minimap is a
