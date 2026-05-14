@@ -9,7 +9,11 @@ export async function setupEditableTab(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem("mdfy-onboarded", "1");
     localStorage.setItem("mdfy-welcome-seen", "1");
-    localStorage.setItem("mdfy-tabs-version", "8");
+    // Match the live TABS_VERSION constant in MdEditor.tsx so the
+    // editor doesn't run the version-mismatch path on every test
+    // boot (which merges every EXAMPLE_TABS row into mdfy-tabs and
+    // wastes setup time / state churn).
+    localStorage.setItem("mdfy-tabs-version", "10");
     // Inject a single editable scratch tab
     const tab = {
       id: "tab-e2e-scratch",

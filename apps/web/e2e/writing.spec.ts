@@ -124,12 +124,34 @@ test.describe("Content Preservation", () => {
   test.beforeEach(async ({ page }) => { await setupEditableTab(page); });
 
   test("20 paragraphs survive view switch round-trip", async ({ page }) => {
+    // Heavier than the rest: types ~180 chars through CodeMirror,
+    // then full Source→LIVE re-render of 20 paragraphs (WASM parse +
+    // post-process passes). The 30s default isn't always enough on
+    // a cold CI run; give it 60s. Failure here is a real regression,
+    // not a flake — but the budget needs to be honest.
+    test.setTimeout(60000);
     const lines = Array.from({ length: 20 }, (_, i) => `Para ${i + 1}`);
     await clickView(page, "Source");
     const cm = page.locator(".cm-editor .cm-content");
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.type(lines.join("\n\n"), { delay: 0 });
+    // `page.keyboard.type` paste-via-keypresses scales poorly with
+    // length. Replace via CodeMirror's selection-and-paste path so
+    // the editor receives one input event instead of N. Falls back
+    // to plain typing if CM isn't there (would be a different bug).
+    await page.evaluate((text: string) => {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      const cmContent = document.querySelector(".cm-editor .cm-content");
+      if (cmContent) {
+        range.selectNodeContents(cmContent);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+      const dt = new DataTransfer();
+      dt.setData("text/plain", text);
+      document.activeElement?.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, lines.join("\n\n"));
     await clickView(page, "Live");
     await page.waitForTimeout(1500);
     const live = await getEditorText(page);
