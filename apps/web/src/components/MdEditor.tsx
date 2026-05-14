@@ -12185,18 +12185,31 @@ ${clone.innerHTML}
             </div>
           </div>
         ) : (<>
-        {/* Render pane (left/top) */}
-        {viewMode !== "editor" && (
+        {/* Render pane (left/top).
+            Split-mode width: normally splitPercentRef%, but when the
+            editor area is showing a non-doc surface (bundle / hub /
+            onboarding / settings) the source pane next to it has no
+            markdown — we expand the render pane to full width and
+            hide the source pane + resize handle below so the user
+            doesn't see stale CM6 markdown from the previous doc next
+            to the bundle UI. The expression matches the toolbar
+            SOURCE-row hide condition (~line 12577) so the three
+            stay consistent. */}
+        {viewMode !== "editor" && (() => {
+          const hideSourceInSplit =
+            (activeTab?.kind === "bundle") || showHub || showOnboarding || showSettings;
+          const sourceVisible = viewMode === "split" && !hideSourceInSplit;
+          return (
           <div
             data-pane="render"
             className="flex flex-col min-h-0"
             style={{
               background: "var(--background)",
-              width: viewMode === "split" && !isMobile ? `${splitPercentRef.current}%` : "100%",
-              height: viewMode === "split" && isMobile ? `${splitPercentRef.current}%` : undefined,
+              width: sourceVisible && !isMobile ? `${splitPercentRef.current}%` : "100%",
+              height: sourceVisible && isMobile ? `${splitPercentRef.current}%` : undefined,
               flexShrink: 0,
-              minWidth: viewMode === "split" && !isMobile ? 280 : undefined,
-              overflow: viewMode === "split" && isMobile ? "hidden" : undefined,
+              minWidth: sourceVisible && !isMobile ? 280 : undefined,
+              overflow: sourceVisible && isMobile ? "hidden" : undefined,
             }}
           >
           {showOnboarding ? (
@@ -14046,10 +14059,15 @@ ${clone.innerHTML}
             </div>
           </>)}
           </div>
-        )}
+          );
+        })()}
 
-        {/* Resize handle */}
-        {viewMode === "split" && (
+        {/* Resize handle — hidden when split-view has no source pane
+            visible (bundle / hub / onboarding / settings host the
+            full pane). */}
+        {viewMode === "split" && !(
+          (activeTab?.kind === "bundle") || showHub || showOnboarding || showSettings
+        ) && (
           <div
             data-print-hide
             className={`shrink-0 ${isMobile ? "cursor-row-resize h-[5px] w-full" : "cursor-col-resize w-[5px]"}`}
@@ -14064,11 +14082,21 @@ ${clone.innerHTML}
           </div>
         )}
 
-        {/* Markdown pane (right/bottom) — always in DOM, hidden via CSS to keep CM6 alive */}
+        {/* Markdown pane (right/bottom) — always in DOM, hidden via
+            CSS to keep CM6 alive. Hidden when viewMode is "preview"
+            OR when the editor area is hosting a non-doc surface (a
+            bundle / hub / onboarding / settings overlay has no
+            markdown source to show). */}
         <div
           data-pane="editor"
           className="flex-1 flex flex-col min-h-0"
-          style={{ display: viewMode === "preview" ? "none" : undefined, minWidth: viewMode === "split" && !isMobile ? 280 : undefined, overflow: viewMode === "split" && isMobile ? "hidden" : undefined }}
+          style={{ display:
+            (viewMode === "preview")
+              || (activeTab?.kind === "bundle") || showHub || showOnboarding || showSettings
+              ? "none" : undefined,
+            minWidth: viewMode === "split" && !isMobile ? 280 : undefined,
+            overflow: viewMode === "split" && isMobile ? "hidden" : undefined,
+          }}
         >
             <div
               className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 text-caption font-mono uppercase tracking-normal select-none"
