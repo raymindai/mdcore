@@ -254,6 +254,91 @@ export default function AboutContent({ locale }: { locale: "en" | "ko" }) {
         </div>
       </section>
 
+      {/* ───────── 2.5. INTEGRATE WITH AI DEV TOOLS ─────────
+            The ecosystem section above shows where mdfy *captures*
+            from. This section closes the loop: where the URL goes
+            back into. Single block linking to /docs/integrate which
+            carries the per-tool snippets (AGENTS.md / CLAUDE.md /
+            .cursor/rules etc.). Lives between ecosystem and
+            features so the marketing arc reads: capture → deploy →
+            features. */}
+      <section
+        style={{
+          maxWidth: 1080,
+          margin: "0 auto",
+          padding: "0 24px 80px",
+        }}
+        id="integrate"
+      >
+        <h2
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "var(--accent)",
+            marginBottom: 12,
+            fontFamily: "var(--font-geist-mono), monospace",
+          }}
+        >
+          Integrate
+        </h2>
+        <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.02em", color: "var(--text-primary)", margin: "0 0 12px", maxWidth: 720 }}>
+          One line in <code style={{ fontFamily: "var(--font-geist-mono), monospace", color: "var(--accent)" }}>AGENTS.md</code> and every AI tool reads your hub.
+        </p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 24, maxWidth: 640 }}>
+          Paste a mdfy URL into the context file your AI dev tool already loads (<code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>CLAUDE.md</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>.cursor/rules</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>AGENTS.md</code>, <code style={{ fontFamily: "var(--font-geist-mono), monospace" }}>GEMINI.md</code>) and Claude Code, Cursor, Codex, Gemini CLI, Windsurf, and Aider all fetch your hub or bundle on every session. Project-scoped context for free.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
+            gap: 10,
+            marginBottom: 28,
+          }}
+        >
+          {[
+            { tool: "Claude Code", file: "CLAUDE.md" },
+            { tool: "Cursor", file: ".cursor/rules/*.mdc" },
+            { tool: "Codex CLI", file: "AGENTS.md" },
+            { tool: "Gemini CLI", file: "GEMINI.md" },
+            { tool: "Windsurf", file: ".windsurfrules" },
+            { tool: "Aider", file: "CONVENTIONS.md" },
+          ].map((row) => (
+            <div
+              key={row.tool}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border-dim)",
+                borderRadius: 10,
+                padding: "10px 14px",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{row.tool}</div>
+              <code style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-geist-mono), monospace" }}>{row.file}</code>
+            </div>
+          ))}
+        </div>
+        <Link
+          href="/docs/integrate"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            background: "var(--accent)",
+            color: "#000",
+            padding: "12px 24px",
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 700,
+            textDecoration: "none",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          See the snippets →
+        </Link>
+      </section>
+
       {/* ───────── 3. FEATURES ───────── */}
       <section
         style={{

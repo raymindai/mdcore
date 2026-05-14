@@ -554,6 +554,33 @@ export default function HubEmbed({
               <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
+          {/* Integrate-with-dev-tools nudge. The Deploy panel above
+              covers "paste this URL into an AI chat surface"; this
+              line surfaces the deeper path — wire the hub URL into
+              the context file (CLAUDE.md / AGENTS.md / .cursor/rules)
+              your AI dev tool already reads, so it auto-loads on
+              every session instead of needing a paste. Routes to
+              /docs/integrate which carries the per-tool snippets. */}
+          <Link
+            href="/docs/integrate"
+            target="_blank"
+            className="flex items-center justify-between gap-2 text-caption px-2.5 py-2 rounded mb-3 transition-colors hover:bg-[var(--toggle-bg)]"
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border-dim)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <span style={{ color: "var(--accent)", fontSize: 13 }}>↳</span>
+              <span className="truncate">
+                Drop this URL into <strong style={{ color: "var(--text-primary)" }}>AGENTS.md</strong> / <strong style={{ color: "var(--text-primary)" }}>CLAUDE.md</strong> / <strong style={{ color: "var(--text-primary)" }}>.cursor/rules</strong> so every AI session reads it
+              </span>
+            </span>
+            <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>
+              How →
+            </span>
+          </Link>
           {/* Secondary actions sit on the surface-tinted card, so a
               bordered-only treatment fades into the card background.
               Adding var(--background) fill puts them one step darker

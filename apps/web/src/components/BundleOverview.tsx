@@ -275,6 +275,31 @@ export default function BundleOverview({
               <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
+          {/* Integrate-with-dev-tools nudge. Bundle URL is the
+              recommended scope for AGENTS.md / CLAUDE.md /
+              .cursor/rules (project-scoped context). Route to
+              /docs/integrate which carries the per-tool snippets. */}
+          <a
+            href="/docs/integrate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-2 text-caption px-2.5 py-2 rounded mb-3 transition-colors hover:bg-[var(--toggle-bg)]"
+            style={{
+              background: "var(--background)",
+              border: "1px solid var(--border-dim)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <span style={{ color: "var(--accent)", fontSize: 13 }}>↳</span>
+              <span className="truncate">
+                Drop this URL into <strong style={{ color: "var(--text-primary)" }}>AGENTS.md</strong> / <strong style={{ color: "var(--text-primary)" }}>CLAUDE.md</strong> / <strong style={{ color: "var(--text-primary)" }}>.cursor/rules</strong> for project-scoped context
+              </span>
+            </span>
+            <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>
+              How →
+            </span>
+          </a>
           <div className="flex items-center gap-1.5 flex-wrap">
             <a
               href={bundleUrl}
