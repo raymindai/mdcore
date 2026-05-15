@@ -2584,6 +2584,10 @@ function BundleShareModal({
   const [revertDocIds, setRevertDocIds] = useState<Set<string>>(new Set());
   const [reverting, setReverting] = useState(false);
   const [bundleEditToken, setBundleEditToken] = useState<string | undefined>(undefined);
+  // Readiness for cross-AI fetch: graph_data + embedding pipeline.
+  // Surfaces in the Share modal so the user sees "Ready / Pending"
+  // before they hand the URL to Claude / Cursor / ChatGPT.
+  const [bundleAiReady, setBundleAiReady] = useState<{ hasGraph: boolean; hasEmbedding: boolean; isAnalysisStale: boolean; memberCount: number } | null>(null);
 
   // Load bundle + docs to derive current shared state. The bundle row
   // now owns its own allowed_emails list (cascaded on every email
@@ -2619,6 +2623,12 @@ function BundleShareModal({
         if (typeof data.editToken === "string") {
           setBundleEditToken(data.editToken);
         }
+        setBundleAiReady({
+          hasGraph: !!data.hasGraph,
+          hasEmbedding: !!data.hasEmbedding,
+          isAnalysisStale: !!data.isAnalysisStale,
+          memberCount: docList.length,
+        });
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -2867,6 +2877,40 @@ function BundleShareModal({
       changeEditModeOverride={changeEditModeAdapter}
       shareUrlOverride={shareUrl}
       editToken={bundleEditToken}
+      aiReadiness={bundleAiReady}
+      onReanalyze={async () => {
+        // Fire-and-forget — server runs the analyze + embed in parallel.
+        // We re-fetch the bundle after a short delay so the UI can flip
+        // from "Pending" to "Ready" once the work completes.
+        await Promise.all([
+          fetch(`/api/bundles/${bundleId}/graph`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+            body: JSON.stringify({}),
+          }).catch(() => {}),
+          fetch(`/api/embed/bundle/${bundleId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...authHeaders },
+          }).catch(() => {}),
+        ]);
+        // Refresh readiness flags after the work plausibly completed
+        // (graph is the long pole at ~60s — UI just sets state from
+        // a delayed re-fetch).
+        setTimeout(() => {
+          fetch(`/api/bundles/${bundleId}`, { headers: authHeaders })
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => {
+              if (!d) return;
+              setBundleAiReady({
+                hasGraph: !!d.hasGraph,
+                hasEmbedding: !!d.hasEmbedding,
+                isAnalysisStale: !!d.isAnalysisStale,
+                memberCount: (d.documents || []).length,
+              });
+            })
+            .catch(() => {});
+        }, 65_000);
+      }}
       banner={banner}
     />
   );

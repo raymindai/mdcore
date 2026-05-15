@@ -179,12 +179,45 @@ export async function POST(req: NextRequest) {
   // they just don't get auto-synthesis.
   if (userId) {
     const ownerId = userId;
+    const memberCount = documentIds.length;
     after(async () => {
       try {
         await runAutoSynthesis(supabase, id, ownerId);
       } catch (err) {
         console.warn("Auto-synthesis failed:", err);
       }
+    });
+
+    // Auto graph analyse + embedding so the bundle is fetch-ready by
+    // any external AI without the user having to click anything. Two
+    // separate calls because the work is independent:
+    //   - graph: ~60-70s LLM round-trip, needs ≥2 member docs
+    //   - embed: <2s, only needs title + description + member titles
+    // Both fire in parallel via Promise.all inside one after() block
+    // so a single 504 on graph doesn't block the embed.
+    after(async () => {
+      const origin = req.nextUrl.origin;
+      const tasks: Promise<unknown>[] = [];
+      tasks.push(
+        fetch(`${origin}/api/embed/bundle/${id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-user-id": ownerId },
+        }).catch((err) => {
+          console.warn("Auto-embed failed for bundle", id, err);
+        }),
+      );
+      if (memberCount >= 2) {
+        tasks.push(
+          fetch(`${origin}/api/bundles/${id}/graph`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": ownerId },
+            body: JSON.stringify({}),
+          }).catch((err) => {
+            console.warn("Auto-graph failed for bundle", id, err);
+          }),
+        );
+      }
+      await Promise.all(tasks);
     });
   }
 

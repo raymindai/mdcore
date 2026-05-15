@@ -46,6 +46,23 @@ interface ShareModalProps {
    *  REST API). Treat it like a password — anyone with it can write
    *  to this document/bundle. */
   editToken?: string;
+  /** Bundle-only AI-readiness flags. When present, the modal renders
+   *  a readiness banner that tells the user whether the bundle URL
+   *  is currently fetch-ready by external AIs (Claude / Cursor /
+   *  ChatGPT). Both flags need to be true for "Ready"; either false
+   *  shows a "Pending..." or "Action needed" state. Docs don't pass
+   *  this prop — the readiness concept only applies to bundles. */
+  aiReadiness?: {
+    hasGraph: boolean;
+    hasEmbedding: boolean;
+    isAnalysisStale: boolean;
+    memberCount: number;
+  } | null;
+  /** Triggered when the user clicks the readiness banner's CTA to
+   *  kick off a manual graph + embed pass. The caller wires this to
+   *  parallel POSTs against /api/bundles/<id>/graph and
+   *  /api/embed/bundle/<id>. */
+  onReanalyze?: () => void;
   /** When true, the modal body renders a thin skeleton instead of
    *  the live access controls. Callers flip this to true while they
    *  rehydrate the doc's authoritative permission state from the
@@ -78,6 +95,8 @@ function ShareModal({
   headerTitle,
   loading = false,
   editToken,
+  aiReadiness,
+  onReanalyze,
 }: ShareModalProps) {
   const setAllowedEmailsFn = setAllowedEmailsOverride || defaultSetAllowedEmails;
   const changeEditModeFn = changeEditModeOverride || defaultChangeEditMode;
@@ -293,6 +312,71 @@ function ShareModal({
       }
     >
       <div>
+        {/* AI-readiness banner — bundle-only. Tells the user before
+            they hand the URL off to another AI whether the bundle's
+            synthesised analysis + embedding are populated. Without
+            those, external AIs fetching this URL get a "thinner"
+            response (no themes/insights/connections inlined) and
+            recall-by-bundle queries can't match it. */}
+        {!loading && aiReadiness && (() => {
+          const ready = aiReadiness.hasGraph && aiReadiness.hasEmbedding && !aiReadiness.isAnalysisStale;
+          const canAnalyze = aiReadiness.memberCount >= 2;
+          const bg = ready ? "rgba(74, 222, 128, 0.07)" : "rgba(251, 146, 60, 0.07)";
+          const border = ready ? "rgba(74, 222, 128, 0.30)" : "rgba(251, 146, 60, 0.30)";
+          const dot = ready ? "#4ade80" : "#fb923c";
+          const labelColor = ready ? "#4ade80" : "#fb923c";
+          let label: string;
+          let body: string;
+          if (ready) {
+            label = "Ready for AI";
+            body = "Other AI tools fetching this URL get the synthesised analysis (themes, insights, connections) inlined alongside the member docs.";
+          } else if (!canAnalyze) {
+            label = "Add docs to enable AI fetch";
+            body = "AI synthesis needs at least 2 docs in the bundle. Once you add another, the analysis runs automatically.";
+          } else if (!aiReadiness.hasGraph) {
+            label = "Analysis pending";
+            body = "External AIs fetching this URL will see member docs but no synthesised analysis yet. The graph + embedding usually run in the background after bundle changes.";
+          } else if (aiReadiness.isAnalysisStale) {
+            label = "Analysis is stale";
+            body = "A member doc was edited after the last analysis. External AIs fetching this URL see the old synthesis. Re-run to refresh.";
+          } else {
+            label = "Embedding pending";
+            body = "The hub recall API can't surface this bundle by semantic match yet. Embedding usually completes within a few seconds of bundle changes.";
+          }
+          return (
+            <div
+              style={{
+                background: bg,
+                border: `1px solid ${border}`,
+                borderRadius: 10,
+                padding: "12px 14px",
+                marginBottom: 16,
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: dot, marginTop: 6, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="text-caption font-mono uppercase tracking-wider mb-1" style={{ color: labelColor, fontSize: 10, letterSpacing: "0.08em" }}>
+                  {label}
+                </div>
+                <p className="text-caption" style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 0 }}>
+                  {body}
+                </p>
+                {!ready && canAnalyze && onReanalyze && (
+                  <button
+                    onClick={onReanalyze}
+                    className="text-caption mt-2 font-semibold"
+                    style={{ color: "#fb923c", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Re-analyze now
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
         {/* Loading skeleton — replaces the access controls while the
             parent rehydrates the doc's authoritative state. Previously
             the modal would render with stale "Anyone with the link"

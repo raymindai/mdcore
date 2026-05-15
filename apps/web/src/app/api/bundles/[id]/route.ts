@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { verifyAuthToken } from "@/lib/verify-auth";
 import { rateLimit } from "@/lib/rate-limit";
@@ -139,8 +139,14 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     documents = docIds.map(docId => docsMap.get(docId)).filter(Boolean) as typeof documents;
   }
 
-  // Strip sensitive fields
-  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, edit_token: _et, ...safeBundle } = bundle;
+  // Strip sensitive fields + drop the raw 1536-dim embedding vector
+  // (we expose it only as a boolean readiness flag).
+  const { password_hash: _ph, user_id: _uid, anonymous_id: _aid, edit_token: _et, embedding: _emb, ...safeBundle } = bundle;
+  // True when the bundle has had its title / description / member-set
+  // run through the embedding pipeline at least once. Drives the
+  // "Ready for AI" indicator in the canvas + Share modal.
+  const hasEmbedding = !!bundle.embedding;
+  const hasGraph = !!bundle.graph_data;
 
   // Analysis staleness: the graph was generated at graph_generated_at
   // from the docs at that time. If ANY current member doc has been
@@ -170,6 +176,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     documents,
     isAnalysisStale,
     latestMemberUpdatedAt,
+    hasEmbedding,
+    hasGraph,
     ...(isOwner ? { editToken: bundle.edit_token } : {}),
   });
 }
@@ -445,6 +453,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           .is("deleted_at", null);
       }
     }
+    // Re-run analysis + embedding in the background. Membership
+    // changed, so both are now provably stale. Same pattern as
+    // bundle creation (POST /api/bundles).
+    if (body.userId) scheduleBundleRefresh(req, id, body.userId);
     return NextResponse.json({ ok: true });
   }
 
@@ -491,6 +503,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       .in("document_id", body.documentIds);
     if (error) return NextResponse.json({ error: "Failed to remove documents" }, { status: 500 });
     await supabase.from("bundles").update({ updated_at: new Date().toISOString() }).eq("id", id);
+    if (body.userId) scheduleBundleRefresh(req, id, body.userId);
     return NextResponse.json({ ok: true });
   }
 
@@ -579,4 +592,50 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
 
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * Fire-and-forget background refresh of a bundle's graph + embedding
+ * after a membership change. Both endpoints are idempotent (graph
+ * uses graph_generated_at, embed uses embedding_source_hash) so a
+ * burst of edits will collapse to a single recomputation.
+ *
+ * Lives outside the request handler so a slow LLM call doesn't keep
+ * the user waiting for their add/remove ACK. Auto-graph only fires
+ * when the bundle has ≥2 docs; auto-embed always fires (it only
+ * needs title + description + member titles).
+ */
+function scheduleBundleRefresh(req: NextRequest, bundleId: string, ownerId: string) {
+  after(async () => {
+    const origin = req.nextUrl.origin;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    // Count current members to decide whether graph analyse is meaningful.
+    let memberCount = 0;
+    try {
+      const { count } = await supabase
+        .from("bundle_documents")
+        .select("document_id", { count: "exact", head: true })
+        .eq("bundle_id", bundleId);
+      memberCount = count || 0;
+    } catch { /* best-effort */ }
+
+    const tasks: Promise<unknown>[] = [];
+    tasks.push(
+      fetch(`${origin}/api/embed/bundle/${bundleId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-user-id": ownerId },
+      }).catch((err) => { console.warn("Auto-embed failed for bundle", bundleId, err); }),
+    );
+    if (memberCount >= 2) {
+      tasks.push(
+        fetch(`${origin}/api/bundles/${bundleId}/graph`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-user-id": ownerId },
+          body: JSON.stringify({}),
+        }).catch((err) => { console.warn("Auto-graph failed for bundle", bundleId, err); }),
+      );
+    }
+    await Promise.all(tasks);
+  });
 }
