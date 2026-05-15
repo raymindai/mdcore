@@ -2131,6 +2131,10 @@ function BundleCreatorModal({
   const [aiDescription, setAiDescription] = useState("");
   const [aiAnnotations, setAiAnnotations] = useState<Record<string, string>>({});
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  // Suggestions are user-revealed, not shown by default — the list
+  // was crowding the Documents panel below and pushing the document
+  // picker into a 2-3-row sliver.
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Fetch suggestion prompts on mount — fire once, keep result for the
   // life of the modal. Empty list (cold hub / AI unavailable) hides
@@ -2305,15 +2309,31 @@ function BundleCreatorModal({
           {aiDescription && !aiError && (
             <p className="text-caption mt-2.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>{aiDescription}</p>
           )}
-          {/* Suggestion list — vertical list with consistent row layout
-              instead of wrapped pills, which read as a cluttered row of
-              chips at typical prompt lengths. Each row is a one-click
-              "use this prompt" trigger with a hover state. */}
+          {/* Suggestion list — collapsed by default. Renders the
+              "Try" header as a small toggle; the list only expands
+              when the user opts in. Default-hidden because the
+              suggestions row was eating the Documents picker space
+              below. */}
           {aiSuggestions.length > 0 && !aiGenerating && !aiDescription && (
             <div className="mt-3">
-              <div className="text-caption uppercase tracking-wider mb-1.5" style={{ color: "var(--text-faint)", fontSize: 10, letterSpacing: "0.06em" }}>
-                Try
-              </div>
+              <button
+                onClick={() => setShowSuggestions(s => !s)}
+                className="flex items-center gap-1 text-caption uppercase tracking-wider mb-1.5 transition-colors hover:text-[var(--text-secondary)]"
+                style={{ color: "var(--text-faint)", fontSize: 10, letterSpacing: "0.06em", cursor: "pointer", background: "transparent", border: "none", padding: 0 }}
+                aria-expanded={showSuggestions}
+              >
+                <ChevronDown
+                  width={9}
+                  height={9}
+                  style={{ transform: showSuggestions ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}
+                />
+                Try {aiSuggestions.length > 0 && (
+                  <span style={{ color: "var(--text-faint)", textTransform: "none", letterSpacing: 0 }}>
+                    ({aiSuggestions.length} suggestion{aiSuggestions.length === 1 ? "" : "s"})
+                  </span>
+                )}
+              </button>
+              {showSuggestions && (
               <div className="flex flex-col gap-1">
                 {aiSuggestions.map((p, i) => (
                   <button
@@ -2369,6 +2389,7 @@ function BundleCreatorModal({
                   </button>
                 ))}
               </div>
+              )}
             </div>
           )}
         </div>
