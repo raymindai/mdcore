@@ -5740,8 +5740,20 @@ export default function MdEditor() {
       // Check ?from= or ?doc= parameter
       const params = new URLSearchParams(window.location.search);
       const docParam = params.get("from") || params.get("doc");
+      // Also accept the bare short-URL form `mdfy.app/<id>` — the
+      // /[id]/page.tsx route re-exports this editor, so when a user
+      // refreshes (or clicks the URL chip) on a doc URL, the editor
+      // must extract the id from the pathname and treat it as `from`.
+      // Without this, the page mounts blank because no loader fires,
+      // even though the stats bar shows the markdown length (the
+      // markdown bleeds in from sidebar click but Tiptap never paints).
+      const pathnameMatch = !docParam
+        ? window.location.pathname.match(/^\/([A-Za-z0-9_-]{6,16})$/)
+        : null;
+      const pathDocId = pathnameMatch ? pathnameMatch[1] : null;
+      const candidate = docParam || pathDocId;
       // Validate doc ID: only allow alphanumeric, hyphen, underscore (nanoid charset)
-      const fromId = docParam && /^[\w-]+$/.test(docParam) ? docParam : null;
+      const fromId = candidate && /^[\w-]+$/.test(candidate) ? candidate : null;
 
       // Check ?bundle= parameter — fired by /b/<id> viewer when the
       // signed-in visitor is the bundle owner. Opens the bundle as an
