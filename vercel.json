@@ -6,9 +6,9 @@
       "schedule": "0 3 * * *"
     },
     {
-      "_comment": "Backfill embeddings + graph_data + concept index for any doc/bundle whose creation path bypassed the inline auto-queue (REST scripts, MCP, future integrations). Idempotent.",
+      "_comment": "Safety net for Supabase Database Webhooks at /api/hooks/*. Webhook delivery is the primary lifecycle trigger; this daily sweep catches anything they missed (delivery failures, manual SQL fixes, retry exhaustion).",
       "path": "/api/cron/lifecycle-sweep",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 4 * * *"
     }
   ],
   "buildCommand": "cd apps/web && npm run build",

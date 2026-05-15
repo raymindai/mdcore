@@ -2828,17 +2828,13 @@ function BundleShareModal({
     );
   }
 
-  // The cascade explanation is the load-bearing sentence here. The
-  // per-doc list earlier in the banner was repetitive (those docs are
-  // visible as members of the bundle elsewhere) and pushed the access
-  // controls down. Keep the heading + one-line cascade contract; drop
-  // the list.
+  // One-line cascade hint — short enough to read at a glance.
   const banner = (
-    <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
-      <div className="flex items-start gap-2">
-        <ShieldAlert width={14} height={14} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
-        <p className="text-caption flex-1 min-w-0" style={{ color: "var(--text-muted)", lineHeight: 1.45 }}>
-          Anything you change here also applies to every document inside. Each doc is also reachable directly at <code style={{ background: "var(--toggle-bg)", padding: "1px 5px", borderRadius: 3, fontSize: "0.85em" }}>/d/&lt;id&gt;</code>.
+    <div className="rounded-lg px-3 py-2" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
+      <div className="flex items-center gap-2">
+        <ShieldAlert width={13} height={13} style={{ color: "#fbbf24", flexShrink: 0 }} />
+        <p className="text-caption" style={{ color: "var(--text-muted)" }}>
+          Applies to every member doc — each one also at <code style={{ background: "var(--toggle-bg)", padding: "1px 5px", borderRadius: 3, fontSize: "0.85em" }}>/d/&lt;id&gt;</code>
         </p>
       </div>
     </div>
@@ -2869,25 +2865,31 @@ function BundleShareModal({
       shareUrlOverride={shareUrl}
       editToken={bundleEditToken}
       aiReadiness={bundleAiReady}
-      onReanalyze={async () => {
-        // Fire-and-forget — server runs the analyze + embed in parallel.
-        // We re-fetch the bundle after a short delay so the UI can flip
-        // from "Pending" to "Ready" once the work completes.
-        await Promise.all([
-          fetch(`/api/bundles/${bundleId}/graph`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...authHeaders },
-            body: JSON.stringify({}),
-          }).catch(() => {}),
-          fetch(`/api/embed/bundle/${bundleId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", ...authHeaders },
-          }).catch(() => {}),
-        ]);
-        // Refresh readiness flags after the work plausibly completed
-        // (graph is the long pole at ~60s — UI just sets state from
-        // a delayed re-fetch).
-        setTimeout(() => {
+      onReanalyze={() => {
+        // Fire-and-forget — no await. The ShareModal handles its own
+        // pending-state UX (button → "Running… ~60s"). We never block
+        // the click handler on the LLM call.
+        //
+        // After firing, poll readiness every 10s until both flags
+        // flip green. This is more responsive than the prior fixed
+        // 65s sleep, especially when embedding completes in <2s and
+        // the user just wants confirmation the embed half landed.
+        void fetch(`/api/bundles/${bundleId}/graph`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify({}),
+        }).catch(() => {});
+        void fetch(`/api/embed/bundle/${bundleId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+        }).catch(() => {});
+
+        // Poll every 10s for up to 2 minutes. Stop early once both
+        // flags are green so we don't keep hitting the API.
+        let attempts = 0;
+        const maxAttempts = 12;
+        const poll = () => {
+          attempts++;
           fetch(`/api/bundles/${bundleId}`, { headers: authHeaders })
             .then((r) => r.ok ? r.json() : null)
             .then((d) => {
@@ -2898,9 +2900,16 @@ function BundleShareModal({
                 isAnalysisStale: !!d.isAnalysisStale,
                 memberCount: (d.documents || []).length,
               });
+              const ready = d.hasGraph && d.hasEmbedding && !d.isAnalysisStale;
+              if (!ready && attempts < maxAttempts) {
+                setTimeout(poll, 10_000);
+              }
             })
-            .catch(() => {});
-        }, 65_000);
+            .catch(() => {
+              if (attempts < maxAttempts) setTimeout(poll, 10_000);
+            });
+        };
+        setTimeout(poll, 5_000);
       }}
       banner={banner}
     />

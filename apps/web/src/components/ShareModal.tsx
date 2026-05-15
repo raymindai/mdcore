@@ -127,6 +127,18 @@ function ShareModal({
   // and the section was eating modal vertical space + drawing attention
   // away from the primary access controls. Click the header to expand.
   const [showDeveloperAccess, setShowDeveloperAccess] = useState(false);
+  // Re-analyze pending state — bridges the gap between the user
+  // clicking the CTA and the parent re-fetching readiness 65s later.
+  // Without it, the button reads as a dead click for the full minute.
+  const [reanalyzePending, setReanalyzePending] = useState(false);
+  // Reset pending the moment the parent re-fetches and the readiness
+  // flips to fully ready. Otherwise the button stays "Running…" for
+  // the full 90s timeout even when the work completed in 20s.
+  useEffect(() => {
+    if (!aiReadiness) return;
+    const ready = aiReadiness.hasGraph && aiReadiness.hasEmbedding && !aiReadiness.isAnalysisStale;
+    if (ready && reanalyzePending) setReanalyzePending(false);
+  }, [aiReadiness, reanalyzePending]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -323,30 +335,51 @@ function ShareModal({
             response (no themes/insights/connections inlined) and
             recall-by-bundle queries can't match it. */}
         {!loading && aiReadiness && (() => {
-          const ready = aiReadiness.hasGraph && aiReadiness.hasEmbedding && !aiReadiness.isAnalysisStale;
+          // Treat the two readiness signals independently so the user
+          // sees what's done and what's not — instead of one binary
+          // "Ready / Not ready," surface graph + embedding as two
+          // sub-checkmarks. Each carries its own consequence.
+          const graphReady = aiReadiness.hasGraph && !aiReadiness.isAnalysisStale;
+          const embedReady = aiReadiness.hasEmbedding;
+          const fullyReady = graphReady && embedReady;
           const canAnalyze = aiReadiness.memberCount >= 2;
-          const bg = ready ? "rgba(74, 222, 128, 0.07)" : "rgba(251, 146, 60, 0.07)";
-          const border = ready ? "rgba(74, 222, 128, 0.30)" : "rgba(251, 146, 60, 0.30)";
-          const dot = ready ? "#4ade80" : "#fb923c";
-          const labelColor = ready ? "#4ade80" : "#fb923c";
+          // When fully ready, accent green. Otherwise orange. When
+          // analysis is actively running (user clicked Re-analyze
+          // moments ago), use a "pending" indicator until the parent
+          // re-fetches and flips the flags.
+          const bg = fullyReady ? "rgba(74, 222, 128, 0.07)" : "rgba(251, 146, 60, 0.07)";
+          const border = fullyReady ? "rgba(74, 222, 128, 0.30)" : "rgba(251, 146, 60, 0.30)";
+          const dot = fullyReady ? "#4ade80" : "#fb923c";
+          const labelColor = fullyReady ? "#4ade80" : "#fb923c";
           let label: string;
-          let body: string;
-          if (ready) {
+          if (reanalyzePending) {
+            label = "Analyzing…";
+          } else if (fullyReady) {
             label = "Ready for AI";
-            body = "Other AI tools fetching this URL get the synthesised analysis (themes, insights, connections) inlined alongside the member docs.";
           } else if (!canAnalyze) {
-            label = "Add docs to enable AI fetch";
-            body = "AI synthesis needs at least 2 docs in the bundle. Once you add another, the analysis runs automatically.";
-          } else if (!aiReadiness.hasGraph) {
-            label = "Analysis pending";
-            body = "External AIs fetching this URL will see member docs but no synthesised analysis yet. The graph + embedding usually run in the background after bundle changes.";
-          } else if (aiReadiness.isAnalysisStale) {
-            label = "Analysis is stale";
-            body = "A member doc was edited after the last analysis. External AIs fetching this URL see the old synthesis. Re-run to refresh.";
+            label = "Add a 2nd doc to enable analysis";
+          } else if (graphReady) {
+            label = "Partially ready";   // graph done, embed missing
+          } else if (embedReady) {
+            label = "Partially ready";   // embed done, graph missing/stale
           } else {
-            label = "Embedding pending";
-            body = "The hub recall API can't surface this bundle by semantic match yet. Embedding usually completes within a few seconds of bundle changes.";
+            label = "Pending";
           }
+          // Each row: short label (when done) + short reason (when
+          // not). Keeps the banner scannable instead of paragraph-y.
+          const checks: Array<{ done: boolean; label: string; pending: string; staleMsg?: string }> = [
+            {
+              done: graphReady,
+              label: "External AI fetch",
+              pending: "External AIs see members, no synthesis yet.",
+              staleMsg: aiReadiness.isAnalysisStale ? "Stale — a member doc changed since analysis." : undefined,
+            },
+            {
+              done: embedReady,
+              label: "Hub recall",
+              pending: "Not yet surfaced by hub semantic search.",
+            },
+          ];
           return (
             <div
               style={{
@@ -362,19 +395,56 @@ function ShareModal({
             >
               <span style={{ width: 8, height: 8, borderRadius: 4, background: dot, marginTop: 6, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="text-caption font-mono uppercase tracking-wider mb-1" style={{ color: labelColor, fontSize: 10, letterSpacing: "0.08em" }}>
+                <div className="text-caption font-mono uppercase tracking-wider mb-2" style={{ color: labelColor, fontSize: 10, letterSpacing: "0.08em" }}>
                   {label}
                 </div>
-                <p className="text-caption" style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 0 }}>
-                  {body}
-                </p>
-                {!ready && canAnalyze && onReanalyze && (
+                {/* Two-line checklist */}
+                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                  {checks.map((c, i) => (
+                    <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4 }}>
+                      <span style={{
+                        flexShrink: 0,
+                        width: 14,
+                        textAlign: "center",
+                        color: c.done && !c.staleMsg ? "#4ade80" : "#a1a1aa",
+                        fontFamily: "var(--font-geist-mono), monospace",
+                        fontSize: 11,
+                        lineHeight: "18px",
+                      }}>
+                        {c.done && !c.staleMsg ? "✓" : "○"}
+                      </span>
+                      <span className="text-caption" style={{
+                        color: c.done && !c.staleMsg ? "var(--text-secondary)" : "var(--text-muted)",
+                        lineHeight: 1.45,
+                      }}>
+                        {c.done && !c.staleMsg ? c.label : (c.staleMsg || c.pending)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {!fullyReady && canAnalyze && onReanalyze && (
                   <button
-                    onClick={onReanalyze}
+                    onClick={() => {
+                      if (reanalyzePending) return;
+                      setReanalyzePending(true);
+                      try { onReanalyze(); } catch { /* fire-and-forget */ }
+                      // Reset the pending state after a generous window
+                      // even if the parent forgets to update readiness —
+                      // the user can always click again to retry.
+                      setTimeout(() => setReanalyzePending(false), 90_000);
+                    }}
+                    disabled={reanalyzePending}
                     className="text-caption mt-2 font-semibold"
-                    style={{ color: "#fb923c", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+                    style={{
+                      color: reanalyzePending ? "var(--text-faint)" : "#fb923c",
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: reanalyzePending ? "wait" : "pointer",
+                      textDecoration: reanalyzePending ? "none" : "underline",
+                    }}
                   >
-                    Re-analyze now
+                    {reanalyzePending ? "Running… ~60s" : "Re-analyze now"}
                   </button>
                 )}
               </div>
