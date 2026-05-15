@@ -123,10 +123,12 @@ function ShareModal({
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
-  // Developer access is folded by default — most users never need it,
-  // and the section was eating modal vertical space + drawing attention
-  // away from the primary access controls. Click the header to expand.
-  const [showDeveloperAccess, setShowDeveloperAccess] = useState(false);
+  // Tabbed surface: People / AI / API. People is the most-common
+  // entry point so it starts active. Status dot + one-line summary
+  // on each tab means the AI / API state is never *hidden* — a
+  // glance at the tab strip tells the user where the work is.
+  type TabKey = "people" | "ai" | "api";
+  const [activeTab, setActiveTab] = useState<TabKey>("people");
   // Re-analyze pending state — bridges the gap between the user
   // clicking the CTA and the parent re-fetching readiness 65s later.
   // Without it, the button reads as a dead click for the full minute.
@@ -328,13 +330,146 @@ function ShareModal({
       }
     >
       <div>
-        {/* AI-readiness banner — bundle-only. Tells the user before
-            they hand the URL off to another AI whether the bundle's
-            synthesised analysis + embedding are populated. Without
-            those, external AIs fetching this URL get a "thinner"
-            response (no themes/insights/connections inlined) and
-            recall-by-bundle queries can't match it. */}
-        {!loading && aiReadiness && (() => {
+        {/* Loading skeleton sits ABOVE everything so the tab bar
+            doesn't flash with stale values before the parent
+            rehydrates. */}
+        {loading && (
+          <div className="py-2" aria-busy="true">
+            <div className="text-caption mb-3" style={{ color: "var(--text-faint)" }}>Loading share settings…</div>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="mb-2 rounded-lg"
+                style={{
+                  height: i === 0 ? 40 : 32,
+                  background: "linear-gradient(90deg, var(--surface) 0%, var(--toggle-bg) 50%, var(--surface) 100%)",
+                  backgroundSize: "200% 100%",
+                  animation: "mdfy-skeleton 1.4s ease-in-out infinite",
+                  opacity: 0.7,
+                }}
+              />
+            ))}
+            <style>{`@keyframes mdfy-skeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+          </div>
+        )}
+
+        {/* Cascade banner — bundle-only, modal-wide context. Sits
+            above the tab bar because it applies to every tab. */}
+        {!loading && banner && (
+          <div className="mb-3">{banner}</div>
+        )}
+
+        {/* Tab bar — three tabs, each with a status dot + one-line
+            summary. The tabs are the disclosure surface; clicking a
+            tab swaps the content below. The status row means the
+            "AI" + "API" state is always glanceable even when the
+            user is on the People tab. */}
+        {!loading && (() => {
+          // --- People status ---
+          const peopleDot =
+            generalAccess === "private" ? "#a1a1aa" :
+            generalAccess === "restricted-people" ? (emails.length > 0 ? "#4ade80" : "#fb923c") :
+            "#4ade80";
+          const peopleSub =
+            generalAccess === "private" ? "Only you" :
+            generalAccess === "restricted-people"
+              ? `Specific people (${emails.length})`
+              : "Anyone with link";
+
+          // --- AI status (bundles only have aiReadiness; docs skip) ---
+          let aiDot: string;
+          let aiSub: string;
+          let aiVisible: boolean;
+          if (aiReadiness) {
+            const graphReady = aiReadiness.hasGraph && !aiReadiness.isAnalysisStale;
+            const embedReady = aiReadiness.hasEmbedding;
+            const canAnalyze = aiReadiness.memberCount >= 2;
+            if (graphReady && embedReady) { aiDot = "#4ade80"; aiSub = "Ready"; }
+            else if (!canAnalyze)         { aiDot = "#71717a"; aiSub = "Needs ≥2 docs"; }
+            else if (graphReady || embedReady) { aiDot = "#fb923c"; aiSub = "Partial"; }
+            else                          { aiDot = "#fb923c"; aiSub = "Pending"; }
+            aiVisible = true;
+          } else {
+            // Single docs don't have a readiness object today. Keep
+            // the tab present but indicate "indexed by default" — the
+            // doc-created webhook embeds every doc the moment it's
+            // saved, so by the time the user sees this modal, the
+            // doc is already searchable.
+            aiDot = "#4ade80";
+            aiSub = "Indexed";
+            aiVisible = true;
+          }
+
+          // --- API status ---
+          const apiDot = editToken ? "#a1a1aa" : "#52525b";
+          const apiSub = editToken ? "Token available" : "Owner-only";
+          const apiVisible = !!editToken;
+
+          const allTabs: Array<{ key: TabKey; label: string; dot: string; sub: string; visible: boolean }> = [
+            { key: "people", label: "People", dot: peopleDot, sub: peopleSub, visible: true },
+            { key: "ai",     label: "AI",     dot: aiDot,     sub: aiSub,     visible: aiVisible },
+            { key: "api",    label: "API",    dot: apiDot,    sub: apiSub,    visible: apiVisible },
+          ];
+          const tabs = allTabs.filter(t => t.visible);
+
+          return (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
+                gap: 0,
+                marginBottom: 16,
+                borderBottom: "1px solid var(--border-dim)",
+              }}
+            >
+              {tabs.map((t) => {
+                const active = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setActiveTab(t.key)}
+                    className="text-left transition-colors"
+                    style={{
+                      padding: "10px 12px 12px",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
+                      marginBottom: -1,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span style={{ width: 7, height: 7, borderRadius: 4, background: t.dot, flexShrink: 0 }} />
+                      <span
+                        className="text-caption font-semibold"
+                        style={{
+                          color: active ? "var(--text-primary)" : "var(--text-muted)",
+                          fontSize: 12,
+                        }}
+                      >
+                        {t.label}
+                      </span>
+                    </div>
+                    <span
+                      className="text-caption"
+                      style={{
+                        color: active ? "var(--text-muted)" : "var(--text-faint)",
+                        fontSize: 11,
+                      }}
+                    >
+                      {t.sub}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* AI tab — readiness checklist + Re-analyze. Bundle-only
+            content; doc share gets a minimal "Indexed for recall"
+            note since single-doc analysis is just the embed. */}
+        {!loading && activeTab === "ai" && aiReadiness && (() => {
           // Treat the two readiness signals independently so the user
           // sees what's done and what's not — instead of one binary
           // "Ready / Not ready," surface graph + embedding as two
@@ -451,34 +586,35 @@ function ShareModal({
             </div>
           );
         })()}
-        {/* Loading skeleton — replaces the access controls while the
-            parent rehydrates the doc's authoritative state. Previously
-            the modal would render with stale "Anyone with the link"
-            defaults for ~2s, then flicker to the real state when the
-            fetch returned. Now nothing user-actionable shows until
-            we know the truth. */}
-        {loading && (
-          <div className="py-2" aria-busy="true">
-            <div className="text-caption mb-3" style={{ color: "var(--text-faint)" }}>Loading share settings…</div>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="mb-2 rounded-lg"
-                style={{
-                  height: i === 0 ? 40 : 32,
-                  background: "linear-gradient(90deg, var(--surface) 0%, var(--toggle-bg) 50%, var(--surface) 100%)",
-                  backgroundSize: "200% 100%",
-                  animation: "mdfy-skeleton 1.4s ease-in-out infinite",
-                  opacity: 0.7,
-                }}
-              />
-            ))}
-            <style>{`@keyframes mdfy-skeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+
+        {/* AI tab — single-doc fallback (no readiness object passed) */}
+        {!loading && activeTab === "ai" && !aiReadiness && (
+          <div
+            style={{
+              background: "rgba(74, 222, 128, 0.07)",
+              border: "1px solid rgba(74, 222, 128, 0.30)",
+              borderRadius: 10,
+              padding: "12px 14px",
+              marginBottom: 16,
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: "#4ade80", marginTop: 6, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="text-caption font-mono uppercase tracking-wider mb-1" style={{ color: "#4ade80", fontSize: 10, letterSpacing: "0.08em" }}>
+                Indexed for AI recall
+              </div>
+              <p className="text-caption" style={{ color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 0 }}>
+                Single docs are embedded on save — any AI that fetches this URL gets the markdown directly, and hub recall can surface it by semantic match. Bundle analysis (graph synthesis) only applies to bundles.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Add people */}
-        {!loading && <div className="pb-4">
+        {/* People tab */}
+        {!loading && activeTab === "people" && <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Share with people
           </label>
@@ -519,7 +655,7 @@ function ShareModal({
         </div>}
 
         {/* People with access */}
-        {!loading && (emails.length > 0 || true) && (
+        {!loading && activeTab === "people" && (
           <div className="pb-4">
             <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
               People with access
@@ -617,17 +753,14 @@ function ShareModal({
           </div>
         )}
 
-        {/* Optional banner slot — bundle share uses this for cascade warning */}
-        {!loading && banner && (
-          <div className="pb-4">{banner}</div>
-        )}
-
         {/* Read access — three real states. The vocabulary matches
             DocStatusIcon and the Hub's owner view exactly: Private /
             Shared / Public. There's no "Draft" anywhere — a saved doc
             just sits in the cloud as Private until the owner promotes
-            it. */}
-        {!loading && <div className="pb-4">
+            it.
+            (Cascade banner that used to sit here has moved above the
+            tab bar since it applies modal-wide.) */}
+        {!loading && activeTab === "people" && <div className="pb-4">
           <label className="text-caption font-medium mb-2 block" style={{ color: "var(--text-muted)" }}>
             Who can read
           </label>
@@ -688,75 +821,42 @@ function ShareModal({
           </div>
         </div>}
 
-        {/* Developer access — folded by default. The header itself is
-            the toggle; the body (Copy edit token + Setup guide link)
-            only renders when the user opts in. Most users never need
-            this section. */}
-        {!loading && editToken && (
-          <div
-            style={{
-              marginTop: 20,
-              paddingTop: 16,
-              borderTop: "1px dashed var(--border-dim)",
-            }}
-          >
-            <button
-              onClick={() => setShowDeveloperAccess(v => !v)}
-              className="flex items-center gap-1.5 text-caption font-mono uppercase tracking-wide"
-              style={{
-                color: "var(--text-faint)",
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-              }}
-              aria-expanded={showDeveloperAccess}
-            >
-              <ChevronDown
-                width={10}
-                height={10}
-                style={{
-                  transform: showDeveloperAccess ? "rotate(0deg)" : "rotate(-90deg)",
-                  transition: "transform 0.15s",
+        {/* API tab — programmatic access via the owner edit token.
+            The tab itself is the disclosure (no inner fold), so
+            content is rendered flat. */}
+        {!loading && activeTab === "api" && editToken && (
+          <div>
+            <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+              For GitHub Actions, MCP server, or any programmatic API call. Anyone with this token can write to this URL — treat it like a password. Rotate from the editor if it leaks.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+                  navigator.clipboard.writeText(editToken).then(
+                    () => {
+                      setTokenCopied(true);
+                      setTimeout(() => setTokenCopied(false), 1400);
+                    },
+                    () => { /* clipboard blocked — silent */ },
+                  );
                 }}
-              />
-              Developer access
-            </button>
-            {showDeveloperAccess && (
-              <>
-                <p className="text-caption mt-2 mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
-                  For GitHub Actions, MCP server, or any programmatic API call. Anyone with this token can write to this URL — treat it like a password. Rotate from the editor if it leaks.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      if (typeof navigator === "undefined" || !navigator.clipboard) return;
-                      navigator.clipboard.writeText(editToken).then(
-                        () => {
-                          setTokenCopied(true);
-                          setTimeout(() => setTokenCopied(false), 1400);
-                        },
-                        () => { /* clipboard blocked — silent */ },
-                      );
-                    }}
-                    style={tokenCopied ? { color: "var(--color-success)" } : undefined}
-                  >
-                    {tokenCopied ? "Token copied" : "Copy edit token"}
-                  </Button>
-                  <a
-                    href="/docs/integrate#github-action"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-caption"
-                    style={{ color: "var(--accent)", textDecoration: "underline" }}
-                  >
-                    Setup guide
-                  </a>
-                </div>
-              </>
-            )}
+                style={tokenCopied ? { color: "var(--color-success)" } : undefined}
+              >
+                {tokenCopied ? "Token copied" : "Copy edit token"}
+              </Button>
+              <a
+                href="/docs/integrate#github-action"
+                target="_blank"
+                rel="noreferrer"
+                className="text-caption"
+                style={{ color: "var(--accent)", textDecoration: "underline" }}
+              >
+                Setup guide
+              </a>
+            </div>
           </div>
         )}
 
