@@ -253,11 +253,17 @@ async function cmdOpen(args) {
 
 async function cmdLogin() {
   console.log("Opening mdfy.app in your browser...");
-  console.log("After signing in, copy your API token from the settings page.");
+  console.log("After signing in, click 'Copy token' and paste it below.");
   console.log("");
 
   if (process.platform === "darwin") {
-    require("child_process").exec(`open "${BASE_URL}/auth/desktop"`);
+    require("child_process").exec(`open "${BASE_URL}/auth/cli"`);
+  } else if (process.platform === "linux") {
+    require("child_process").exec(`xdg-open "${BASE_URL}/auth/cli"`).on("error", () => {
+      console.log(`Open this URL in your browser:\n  ${BASE_URL}/auth/cli`);
+    });
+  } else {
+    console.log(`Open this URL in your browser:\n  ${BASE_URL}/auth/cli`);
   }
 
   // Simple token input
