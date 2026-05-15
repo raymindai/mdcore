@@ -123,6 +123,10 @@ function ShareModal({
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
+  // Developer access is folded by default — most users never need it,
+  // and the section was eating modal vertical space + drawing attention
+  // away from the primary access controls. Click the header to expand.
+  const [showDeveloperAccess, setShowDeveloperAccess] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -614,12 +618,10 @@ function ShareModal({
           </div>
         </div>}
 
-        {/* Developer access — owner-scoped edit token, gated on
-            the prop being present (parent only passes it when the
-            current user owns the document/bundle). Copy direct to
-            clipboard; don't render the token inline. Anyone with
-            this string can write to the row, so we treat it like
-            a password — visible only via clipboard, single action. */}
+        {/* Developer access — folded by default. The header itself is
+            the toggle; the body (Copy edit token + Setup guide link)
+            only renders when the user opts in. Most users never need
+            this section. */}
         {!loading && editToken && (
           <div
             style={{
@@ -628,43 +630,63 @@ function ShareModal({
               borderTop: "1px dashed var(--border-dim)",
             }}
           >
-            <div
-              className="text-caption font-mono uppercase tracking-wide mb-1.5"
-              style={{ color: "var(--text-faint)" }}
+            <button
+              onClick={() => setShowDeveloperAccess(v => !v)}
+              className="flex items-center gap-1.5 text-caption font-mono uppercase tracking-wide"
+              style={{
+                color: "var(--text-faint)",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+              aria-expanded={showDeveloperAccess}
             >
-              Developer access
-            </div>
-            <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
-              For GitHub Actions, MCP server, or any programmatic API call. Anyone with this token can write to this URL — treat it like a password. Rotate from the editor if it leaks.
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  if (typeof navigator === "undefined" || !navigator.clipboard) return;
-                  navigator.clipboard.writeText(editToken).then(
-                    () => {
-                      setTokenCopied(true);
-                      setTimeout(() => setTokenCopied(false), 1400);
-                    },
-                    () => { /* clipboard blocked — silent */ },
-                  );
+              <ChevronDown
+                width={10}
+                height={10}
+                style={{
+                  transform: showDeveloperAccess ? "rotate(0deg)" : "rotate(-90deg)",
+                  transition: "transform 0.15s",
                 }}
-                style={tokenCopied ? { color: "var(--color-success)" } : undefined}
-              >
-                {tokenCopied ? "Token copied" : "Copy edit token"}
-              </Button>
-              <a
-                href="/docs/integrate#github-action"
-                target="_blank"
-                rel="noreferrer"
-                className="text-caption"
-                style={{ color: "var(--accent)", textDecoration: "underline" }}
-              >
-                Setup guide
-              </a>
-            </div>
+              />
+              Developer access
+            </button>
+            {showDeveloperAccess && (
+              <>
+                <p className="text-caption mt-2 mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  For GitHub Actions, MCP server, or any programmatic API call. Anyone with this token can write to this URL — treat it like a password. Rotate from the editor if it leaks.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (typeof navigator === "undefined" || !navigator.clipboard) return;
+                      navigator.clipboard.writeText(editToken).then(
+                        () => {
+                          setTokenCopied(true);
+                          setTimeout(() => setTokenCopied(false), 1400);
+                        },
+                        () => { /* clipboard blocked — silent */ },
+                      );
+                    }}
+                    style={tokenCopied ? { color: "var(--color-success)" } : undefined}
+                  >
+                    {tokenCopied ? "Token copied" : "Copy edit token"}
+                  </Button>
+                  <a
+                    href="/docs/integrate#github-action"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-caption"
+                    style={{ color: "var(--accent)", textDecoration: "underline" }}
+                  >
+                    Setup guide
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         )}
 

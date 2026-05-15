@@ -2828,27 +2828,18 @@ function BundleShareModal({
     );
   }
 
+  // The cascade explanation is the load-bearing sentence here. The
+  // per-doc list earlier in the banner was repetitive (those docs are
+  // visible as members of the bundle elsewhere) and pushed the access
+  // controls down. Keep the heading + one-line cascade contract; drop
+  // the list.
   const banner = (
     <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--toggle-bg)", border: "1px solid var(--border-dim)" }}>
       <div className="flex items-start gap-2">
         <ShieldAlert width={14} height={14} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-caption font-medium" style={{ color: "var(--text-primary)" }}>
-            {loading
-              ? "Loading bundle documents..."
-              : `${docs.length} document${docs.length === 1 ? "" : "s"} share this bundle's access`}
-          </p>
-          <p className="text-caption mt-1" style={{ color: "var(--text-muted)" }}>
-            Anything you change here also applies to every document inside. Each doc is also reachable directly at /d/&lt;id&gt;.
-          </p>
-          {!loading && docs.length > 0 && (
-            <ul className="mt-1.5 space-y-0.5 max-h-24 overflow-auto">
-              {docs.map(d => (
-                <li key={d.id} className="text-caption truncate" style={{ color: "var(--text-secondary)" }}>• {d.title || "Untitled"}</li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <p className="text-caption flex-1 min-w-0" style={{ color: "var(--text-muted)", lineHeight: 1.45 }}>
+          Anything you change here also applies to every document inside. Each doc is also reachable directly at <code style={{ background: "var(--toggle-bg)", padding: "1px 5px", borderRadius: 3, fontSize: "0.85em" }}>/d/&lt;id&gt;</code>.
+        </p>
       </div>
     </div>
   );

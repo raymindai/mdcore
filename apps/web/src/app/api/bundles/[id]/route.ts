@@ -114,11 +114,11 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     (bundleDocs || []).map(d => [d.document_id, (d as { annotation?: string | null }).annotation ?? null])
   );
 
-  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string; is_draft: boolean; edit_mode: string; allowed_emails_count: number; annotation: string | null }> = [];
+  let documents: Array<{ id: string; title: string | null; markdown: string; created_at: string; updated_at: string; embedding_updated_at: string | null; is_draft: boolean; edit_mode: string; allowed_emails_count: number; annotation: string | null }> = [];
   if (docIds.length > 0) {
     const { data: docs } = await supabase
       .from("documents")
-      .select("id, title, markdown, created_at, updated_at, is_draft, edit_mode, allowed_emails")
+      .select("id, title, markdown, created_at, updated_at, embedding_updated_at, is_draft, edit_mode, allowed_emails")
       .in("id", docIds)
       .is("deleted_at", null);
 
@@ -130,6 +130,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
         markdown: d.markdown,
         created_at: d.created_at,
         updated_at: d.updated_at,
+        embedding_updated_at: d.embedding_updated_at || null,
         is_draft: d.is_draft !== false,
         edit_mode: d.edit_mode || "owner",
         allowed_emails_count: Array.isArray(d.allowed_emails) ? d.allowed_emails.length : 0,
@@ -149,16 +150,28 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const hasGraph = !!bundle.graph_data;
 
   // Analysis staleness: the graph was generated at graph_generated_at
-  // from the docs at that time. If ANY current member doc has been
-  // updated more recently, the graph reflects a stale snapshot. The
-  // Analyzed status pill in the canvas reads this to show a "Stale"
-  // badge without requiring the client to fetch each member's
-  // updated_at itself.
+  // from the docs at that time. If a member doc's *content* has changed
+  // since then, the graph reflects a stale snapshot.
+  //
+  // We previously compared graph_generated_at against documents.updated_at,
+  // but updated_at gets bumped on every permission cascade
+  // (set-allowed-emails / change-edit-mode / publish) — opening the
+  // Share modal and toggling "Anyone with the link" was enough to flip
+  // the stale flag even though no content changed.
+  //
+  // Prefer embedding_updated_at — that timestamp is only refreshed by
+  // the embedding pipeline when the markdown's content hash actually
+  // changes (see /api/embed/[id]). When embedding hasn't run yet
+  // (NULL), fall back to created_at, not updated_at: a doc that's
+  // been created but never re-embedded has, by definition, only had
+  // its original content. Permission cascades bump updated_at but
+  // not created_at, so the fallback is safe against the same bug.
   let isAnalysisStale = false;
   let latestMemberUpdatedAt: string | null = null;
   if (bundle.graph_generated_at && documents.length > 0) {
     const latestMs = documents.reduce((max, d) => {
-      const t = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+      const stamp = d.embedding_updated_at || d.created_at;
+      const t = stamp ? new Date(stamp).getTime() : 0;
       return t > max ? t : max;
     }, 0);
     if (latestMs > 0) {
