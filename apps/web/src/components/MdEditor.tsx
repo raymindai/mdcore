@@ -10314,7 +10314,14 @@ ${clone.innerHTML}
                   </div>
                 )}
                 {showMyBundles && (bundles.length > 0 || folders.filter(f => f.section === "bundles").length > 0) && (
-                  <div className="space-y-0.5 pb-1 pl-2 pr-2">
+                  // Drop the wrapper's right padding so the trailing
+                  // bundle count aligns with the section header's "13"
+                  // count above. The row already supplies paddingRight
+                  // (6) + gap + hidden kebab (12 total); add the
+                  // wrapper's 8px on top and the count drifted ~20px
+                  // left of the header. Header uses `px-3` (12px)
+                  // matched by row math alone — no wrapper pr needed.
+                  <div className="space-y-0.5 pb-1 pl-2">
                     {/* Bundles share the same SidebarFolderTree component as docs, with
                         bundle-specific handlers. Folders with section="bundles" group bundles. */}
                     <SidebarFolderTree

@@ -384,10 +384,13 @@ const TabRow = memo(function TabRow(p: TabRowProps) {
         {p.sidebarMode === "detailed" && p.renderTabMeta?.(p.tab)}
       </div>
       {p.renderTabBadge && (
-        // marginRight aligns the trailing count's right edge with the
-        // section header counts above (section headers sit inside `px-3`,
-        // these rows use paddingRight=6, so add 6px more to land at -12px).
-        <span className="shrink-0 text-right tabular-nums group-hover/tab:hidden" style={{ minWidth: 20, marginRight: 6 }}>{p.renderTabBadge(p.tab)}</span>
+        // Align the trailing count with the section-header count above.
+        // Header sits inside `px-3` (right padding = 12). The row's
+        // right side is: paddingRight (6) + gap (6) before the
+        // hidden kebab + kebab width (0 when not hovering) = 12px.
+        // So no extra marginRight is needed — the badge naturally
+        // sits 12px from the row's right edge, matching the header.
+        <span className="shrink-0 text-right tabular-nums group-hover/tab:hidden" style={{ minWidth: 20 }}>{p.renderTabBadge(p.tab)}</span>
       )}
       <Tooltip text="More options (rename, share, delete…)">
         <button
