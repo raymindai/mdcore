@@ -40,6 +40,12 @@ interface ShareModalProps {
   banner?: ReactNode;
   // Title for the dialog header. Defaults to `Share "<title>"`.
   headerTitle?: string;
+  /** Owner-scoped edit token. When present, renders a small
+   *  "Developer access" footer with a copy-to-clipboard affordance.
+   *  Used for programmatic access (GitHub Actions, MCP, the public
+   *  REST API). Treat it like a password — anyone with it can write
+   *  to this document/bundle. */
+  editToken?: string;
   /** When true, the modal body renders a thin skeleton instead of
    *  the live access controls. Callers flip this to true while they
    *  rehydrate the doc's authoritative permission state from the
@@ -71,6 +77,7 @@ function ShareModal({
   banner,
   headerTitle,
   loading = false,
+  editToken,
 }: ShareModalProps) {
   const setAllowedEmailsFn = setAllowedEmailsOverride || defaultSetAllowedEmails;
   const changeEditModeFn = changeEditModeOverride || defaultChangeEditMode;
@@ -96,6 +103,7 @@ function ShareModal({
   const [generalAccess, setGeneralAccess] = useState<Access>(computeInitial());
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -521,6 +529,60 @@ function ShareModal({
             })}
           </div>
         </div>}
+
+        {/* Developer access — owner-scoped edit token, gated on
+            the prop being present (parent only passes it when the
+            current user owns the document/bundle). Copy direct to
+            clipboard; don't render the token inline. Anyone with
+            this string can write to the row, so we treat it like
+            a password — visible only via clipboard, single action. */}
+        {!loading && editToken && (
+          <div
+            style={{
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: "1px dashed var(--border-dim)",
+            }}
+          >
+            <div
+              className="text-caption font-mono uppercase tracking-wide mb-1.5"
+              style={{ color: "var(--text-faint)" }}
+            >
+              Developer access
+            </div>
+            <p className="text-caption mb-3" style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>
+              For GitHub Actions, MCP server, or any programmatic API call. Anyone with this token can write to this URL — treat it like a password. Rotate from the editor if it leaks.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+                  navigator.clipboard.writeText(editToken).then(
+                    () => {
+                      setTokenCopied(true);
+                      setTimeout(() => setTokenCopied(false), 1400);
+                    },
+                    () => { /* clipboard blocked — silent */ },
+                  );
+                }}
+                style={tokenCopied ? { color: "var(--color-success)" } : undefined}
+              >
+                {tokenCopied ? "Token copied" : "Copy edit token"}
+              </Button>
+              <a
+                href="/docs/integrate#github-action"
+                target="_blank"
+                rel="noreferrer"
+                className="text-caption"
+                style={{ color: "var(--accent)", textDecoration: "underline" }}
+              >
+                Setup guide
+              </a>
+            </div>
+          </div>
+        )}
 
       </div>
     </ModalShell>

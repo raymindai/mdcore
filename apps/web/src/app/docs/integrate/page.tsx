@@ -505,7 +505,7 @@ Fetch that URL when you need spec, decisions, or cross-doc reasoning.`}
               Create the target doc on mdfy.app. The URL chip in the editor shows the id (the <InlineCode>{"<id>"}</InlineCode> in <InlineCode>{"mdfy.app/d/<id>"}</InlineCode>) — that&apos;s your <InlineCode>{"MDFY_DOC_ID"}</InlineCode>.
             </li>
             <li style={{ marginBottom: 8 }}>
-              Open the account menu in the editor while that doc is the active tab and click <strong style={{ color: "var(--text-primary)" }}>Copy edit token</strong>. That&apos;s your <InlineCode>{"MDFY_EDIT_TOKEN"}</InlineCode>. Treat it like a password — anyone with it can write to the doc.
+              On the same doc, open the <strong style={{ color: "var(--text-primary)" }}>Share</strong> modal (top-right of the editor). Scroll to the <em>Developer access</em> footer and click <strong style={{ color: "var(--text-primary)" }}>Copy edit token</strong>. That&apos;s your <InlineCode>{"MDFY_EDIT_TOKEN"}</InlineCode>. Treat it like a password — anyone with it can write to the doc.
             </li>
             <li style={{ marginBottom: 8 }}>
               On GitHub: <em>Settings → Secrets and variables → Actions → New repository secret</em>. Add both <InlineCode>{"MDFY_DOC_ID"}</InlineCode> and <InlineCode>{"MDFY_EDIT_TOKEN"}</InlineCode>.

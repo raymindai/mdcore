@@ -2562,6 +2562,7 @@ function BundleShareModal({
   const [showRevertPicker, setShowRevertPicker] = useState(false);
   const [revertDocIds, setRevertDocIds] = useState<Set<string>>(new Set());
   const [reverting, setReverting] = useState(false);
+  const [bundleEditToken, setBundleEditToken] = useState<string | undefined>(undefined);
 
   // Load bundle + docs to derive current shared state. The bundle row
   // now owns its own allowed_emails list (cascaded on every email
@@ -2591,6 +2592,11 @@ function BundleShareModal({
 
         if (Array.isArray(data.allowed_emails)) {
           setAllowedEmails(data.allowed_emails);
+        }
+        // Owner-only: capture the edit token so the Developer-access
+        // footer can surface it for programmatic API access.
+        if (typeof data.editToken === "string") {
+          setBundleEditToken(data.editToken);
         }
       })
       .catch(() => {})
@@ -2839,6 +2845,7 @@ function BundleShareModal({
       setAllowedEmailsOverride={setAllowedEmailsAdapter}
       changeEditModeOverride={changeEditModeAdapter}
       shareUrlOverride={shareUrl}
+      editToken={bundleEditToken}
       banner={banner}
     />
   );
@@ -9472,30 +9479,6 @@ ${clone.innerHTML}
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         <div className="px-3 py-1.5">
                           <div className="text-caption font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
-                          {/* Copy edit token — needed for programmatic
-                              access (GitHub Actions, MCP server, the
-                              public API). The token is owner-scoped
-                              and acts like a password, so we copy
-                              directly to clipboard rather than
-                              rendering it inline where it could be
-                              shoulder-surfed or screenshotted. */}
-                          <button
-                            onClick={() => {
-                              const token = activeTab?.editToken;
-                              if (!token) {
-                                showToast("No edit token on this document yet — save it once to mint one.", "error");
-                                return;
-                              }
-                              navigator.clipboard.writeText(token).then(
-                                () => showToast("Edit token copied. Treat it like a password.", "info"),
-                                () => showToast("Couldn't copy. Check clipboard permissions.", "error"),
-                              );
-                            }}
-                            className="w-full text-left text-xs py-1.5 transition-colors"
-                            style={{ color: "var(--text-tertiary)" }}
-                          >
-                            Copy edit token
-                          </button>
                           {/* Rotate edit token */}
                           {confirmRotateToken ? (
                             <div className="py-1.5">
@@ -15187,6 +15170,7 @@ ${clone.innerHTML}
           initialAllowedEmails={allowedEmails}
           initialAllowedEditors={allowedEditors}
           loading={shareModalLoading}
+          editToken={tabs.find(t => t.id === activeTabIdRef.current)?.editToken}
           onClose={() => {
             setShowShareModal(false);
             const curTabId = activeTabIdRef.current;
