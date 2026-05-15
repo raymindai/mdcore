@@ -6,7 +6,6 @@
       "schedule": "0 3 * * *"
     },
     {
-      "_comment": "Safety net for Supabase Database Webhooks at /api/hooks/*. Webhook delivery is the primary lifecycle trigger; this daily sweep catches anything they missed (delivery failures, manual SQL fixes, retry exhaustion).",
       "path": "/api/cron/lifecycle-sweep",
       "schedule": "0 4 * * *"
     }
