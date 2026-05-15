@@ -598,7 +598,10 @@ function FolderNode(props: FolderNodeProps) {
         {/* Right cluster — wrap count + action buttons with same gap-1.5 used
             inside TabRow so trailing counts line up at exactly the same x. */}
         <div className="shrink-0 flex items-center gap-1.5">
-          <span className="text-caption text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.6, minWidth: 20, marginRight: 6 }}>
+          {/* Same marginRight=0 as the TabRow badge so the folder
+              count lands at the exact same x as tab counts inside
+              this folder (and as the section header count above). */}
+          <span className="text-caption text-right tabular-nums group-hover/folder:hidden" style={{ color: "var(--text-faint)", opacity: 0.6, minWidth: 20 }}>
             {totalCount}
           </span>
           <div className="flex items-center gap-0.5 overflow-hidden transition-all duration-150 w-0 group-hover/folder:w-auto">

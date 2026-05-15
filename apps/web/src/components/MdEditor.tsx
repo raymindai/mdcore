@@ -10211,7 +10211,7 @@ ${clone.innerHTML}
                   return (
                     <div
                       data-section-id="bundles"
-                      className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                      className="flex items-center gap-1.5 pl-3 pr-5 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
                       style={{ background: "color-mix(in srgb, var(--background) 25%, var(--surface) 75%)", borderTop: "1px solid var(--border)", borderBottom: showMyBundles ? "1px solid var(--border)" : "none", position: "sticky", top: 0, zIndex: 10 }}
                       onClick={() => setShowMyBundles(!showMyBundles)}
                     >
@@ -10314,14 +10314,17 @@ ${clone.innerHTML}
                   </div>
                 )}
                 {showMyBundles && (bundles.length > 0 || folders.filter(f => f.section === "bundles").length > 0) && (
-                  // Drop the wrapper's right padding so the trailing
-                  // bundle count aligns with the section header's "13"
-                  // count above. The row already supplies paddingRight
-                  // (6) + gap + hidden kebab (12 total); add the
-                  // wrapper's 8px on top and the count drifted ~20px
-                  // left of the header. Header uses `px-3` (12px)
-                  // matched by row math alone — no wrapper pr needed.
-                  <div className="space-y-0.5 pb-1 pl-2">
+                  // Wrapper has `pr-2` on both sides so the per-row
+                  // hover background gets a visible left + right
+                  // gutter against the sidebar edge. The section
+                  // header above uses `pl-3 pr-5` (asymmetric on
+                  // purpose) so its trailing count lands at the same
+                  // x as row/folder counts inside the wrapper. Math
+                  // breakdown:
+                  //   wrapper.pr(8) + row.pr(6) + gap-1.5(6) = 20px
+                  //     from sidebar outer right → badge right edge
+                  //   header.pr-5(20) → same x ✓
+                  <div className="space-y-0.5 pb-1 pl-2 pr-2">
                     {/* Bundles share the same SidebarFolderTree component as docs, with
                         bundle-specific handlers. Folders with section="bundles" group bundles. */}
                     <SidebarFolderTree
@@ -10538,7 +10541,7 @@ ${clone.innerHTML}
                     return (
                       <div
                         data-section-id="mds"
-                        className="flex items-center gap-1.5 px-3 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
+                        className="flex items-center gap-1.5 pl-3 pr-5 h-7 cursor-pointer select-none group/sec hover:bg-[var(--toggle-bg)]"
                         style={{ background: "color-mix(in srgb, var(--background) 25%, var(--surface) 75%)", borderTop: "1px solid var(--border)", borderBottom: showMyDocs ? "1px solid var(--border)" : "none", position: "sticky", top: 0, zIndex: 10 }}
                         onClick={() => { setShowMyDocs(!showMyDocs); }}
                       >
@@ -10670,10 +10673,10 @@ ${clone.innerHTML}
                         for cancelling HTML5 drag, but the real cause was state
                         mutations during drag (now gated). Horizontal scroll on the
                         sidebar is unwanted: long titles already truncate.
-                        No right padding: rows supply their own paddingRight
-                        and the badge math (see SidebarFolder.tsx) lands at
-                        12px from the right edge to match section header counts. */}
-                    <div data-sidebar-scroll className="overflow-x-hidden space-y-0.5 pb-1 pl-2">
+                        Wrapper pr-2 gives row hover BG a right gutter; the
+                        MDs section header (the sibling above this wrapper)
+                        compensates with pr-5 so trailing counts align. */}
+                    <div data-sidebar-scroll className="overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
                       {/* Root tabs + folders rendered through SidebarFolderTree below — same component as MD Bundles + Shared sections for unified UX. */}
 
                       {/* Folders — recursive nested tree (Obsidian/Notion-style) */}
