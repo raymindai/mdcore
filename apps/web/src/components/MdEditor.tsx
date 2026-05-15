@@ -7936,6 +7936,12 @@ export default function MdEditor() {
               sharedWithCount: shareOthersCount,
               allowedEmails: Array.isArray(doc.allowedEmails) ? doc.allowedEmails : t.allowedEmails,
               allowedEditors: Array.isArray(doc.allowedEditors) ? doc.allowedEditors : t.allowedEditors,
+              // Server returns editToken to owners only. Cache it on
+              // the tab so the Share modal's Developer-access footer
+              // can surface it without us re-fetching, and so the
+              // local edit-token-locator (used by autosave + version
+              // restore) has it available.
+              editToken: typeof doc.editToken === "string" && doc.editToken ? doc.editToken : t.editToken,
             } : t));
           }
         } catch { /* ignore */ }
