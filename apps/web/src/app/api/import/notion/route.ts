@@ -27,6 +27,7 @@ import { appendHubLog } from "@/lib/hub-log";
 import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 import { enforceTitleInvariant } from "@/lib/extract-title";
 import { parseNotionPageId, importNotionPage, NotionImportError } from "@/lib/notion-import";
+import { uploadImageBuffer, rewriteMarkdownImages, findRemoteImages, mimeFromMagic } from "@/lib/import-images";
 
 interface ImportRow { id: string; title: string; notionPageId: string; pageUrl: string; deduplicated?: boolean }
 interface ImportResult { imported: number; deduplicated: number; failed: number; docs: ImportRow[] }
@@ -73,7 +74,32 @@ export async function POST(req: NextRequest) {
   }
 
   const result: ImportResult = { imported: 0, deduplicated: 0, failed: 0, docs: [] };
-  const enforced = enforceTitleInvariant(page.markdown, page.title);
+
+  // Notion image blocks come back as S3 signed URLs that expire in
+  // ~1 hour, so the imported doc would 404 its images by the time
+  // anyone re-reads it. Rehost every remote image we extracted into
+  // our document-images bucket before we persist the markdown.
+  const remoteUrls = findRemoteImages(page.markdown);
+  const rehostMap = new Map<string, string>();
+  for (const url of remoteUrls) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const declared = res.headers.get("content-type") || null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const mime = declared && declared.startsWith("image/") ? declared : mimeFromMagic(buf);
+      if (!mime) continue;
+      const filename = url.split("?")[0].split("/").pop() || "image";
+      const out = await uploadImageBuffer(buf, filename, mime, {
+        supabase, ownerId: userId, trackQuota: false,
+      });
+      if (out) rehostMap.set(url, out.url);
+    } catch (err) {
+      console.warn(`notion-import: rehost failed for ${url}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const rehosted = rewriteMarkdownImages(page.markdown, rehostMap);
+  const enforced = enforceTitleInvariant(rehosted.markdown, page.title);
 
   try {
     const dupHit = await findRecentDuplicateDoc(supabase, { userId }, enforced.markdown, enforced.title);

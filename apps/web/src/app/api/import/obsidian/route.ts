@@ -30,6 +30,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { appendHubLog } from "@/lib/hub-log";
 import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 import { enforceTitleInvariant } from "@/lib/extract-title";
+import { uploadImageBuffer, rewriteMarkdownImages, mimeFromExt } from "@/lib/import-images";
 
 export const runtime = "nodejs";
 
@@ -106,25 +107,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't read the ZIP — is it valid?" }, { status: 400 });
   }
 
-  // Collect `.md` entries (skip macOS resource forks and hidden files)
+  // Collect `.md` entries (skip macOS resource forks and hidden files).
+  // While we're walking the zip, also build an image map: every
+  // raster / SVG attachment keyed by its vault-relative path so
+  // rewriteMarkdownImages can rehost references inside the .md
+  // bodies. Anything that isn't a markdown file and isn't an image
+  // (PDFs, audio, etc.) is silently skipped — first cut.
   type ZipEntry = { path: string; obj: JSZip.JSZipObject };
   const candidates: ZipEntry[] = [];
+  const imageEntries: ZipEntry[] = [];
   zip.forEach((relativePath, obj) => {
     if (obj.dir) return;
-    if (!/\.md$/i.test(relativePath)) return;
     if (relativePath.startsWith("__MACOSX/")) return;
-    // Skip anything under a dot-prefixed directory (.obsidian/, .git/,
-    // .trash/ …) as well as dotfiles. Obsidian stores all its config
-    // and workspace state in .obsidian/ which contains a `workspace`
-    // file that some users rename to .md — we don't want that in
-    // their hub.
     const segments = relativePath.split(/[\\/]/);
     if (segments.some((s) => s.startsWith("."))) return;
-    candidates.push({ path: relativePath, obj });
+    if (/\.md$/i.test(relativePath)) {
+      candidates.push({ path: relativePath, obj });
+      return;
+    }
+    if (/\.(png|jpe?g|gif|webp|svg)$/i.test(relativePath)) {
+      imageEntries.push({ path: relativePath, obj });
+    }
   });
 
   if (candidates.length === 0) {
     return NextResponse.json({ error: "No .md files found in the vault" }, { status: 400 });
+  }
+
+  // Upload all images up front (deduped by content hash in the helper)
+  // so each .md scan can rewrite refs in one pass. Bypass quota tracking
+  // when the importing user is on the free tier with > 10 images — we
+  // could otherwise lock them out mid-import with a partial state. The
+  // bucket dedup handles repeated uploads cheaply.
+  const imageMap = new Map<string, string>();
+  for (const entry of imageEntries) {
+    try {
+      const buf = Buffer.from(await entry.obj.async("arraybuffer"));
+      const ext = entry.path.split(".").pop() || "";
+      const res = await uploadImageBuffer(buf, entry.path, mimeFromExt(ext), {
+        supabase,
+        ownerId: userId,
+        trackQuota: false,
+      });
+      if (res) imageMap.set(entry.path, res.url);
+    } catch (err) {
+      console.warn(`obsidian-import: image ${entry.path} failed:`, err instanceof Error ? err.message : err);
+    }
   }
 
   // Cap at MAX_FILES — surface the truncation so callers can re-run
@@ -154,7 +182,12 @@ export async function POST(req: NextRequest) {
       }
 
       const titleGuess = titleFromPath(entry.path);
-      const enforced = enforceTitleInvariant(content, titleGuess);
+      // Rewrite vault-relative image refs to the rehosted URLs we just
+      // uploaded. Handles both `![](path)` and Obsidian's `![[path]]`
+      // embed syntax. Runs before title enforcement so the H1 splice
+      // doesn't trip over an image at the very top of the doc.
+      const { markdown: withRehosted } = rewriteMarkdownImages(content, imageMap);
+      const enforced = enforceTitleInvariant(withRehosted, titleGuess);
 
       const dupHit = await findRecentDuplicateDoc(supabase, { userId }, enforced.markdown, enforced.title);
       if (dupHit) {

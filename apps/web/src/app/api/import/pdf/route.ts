@@ -6,6 +6,8 @@ import { ensureAnonymousCookie, readAnonymousCookie } from "@/lib/anonymous-cook
 import { cleanMarkdownStructure } from "@/lib/llm-clean";
 import { appendHubLog } from "@/lib/hub-log";
 import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
+import { uploadImageBuffer } from "@/lib/import-images";
+import { extractPdfImages, parsePdfText } from "@/lib/pdf-images";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,12 +48,13 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdf = require("pdf-parse");
-    const data = await pdf(buffer);
+    // Text extraction now goes through pdfjs-dist (via parsePdfText)
+    // so PDFs produced by reportlab / pdf-lib / Marp parse correctly.
+    // pdf-parse was unmaintained and choked on modern PDF structures.
+    const data = await parsePdfText(buffer);
     const rawText: string = data.text || "";
-    const pages: number = data.numpages || 0;
-    const pdfTitle: string | null = data.info?.Title || null;
+    const pages: number = data.pages || 0;
+    const pdfTitle: string | null = data.title;
     const filename = file.name || "document.pdf";
 
     if (req.nextUrl.searchParams.get("save") !== "1") {
@@ -114,6 +117,34 @@ export async function POST(req: NextRequest) {
     const editToken = nanoid(32);
     const candidateTitle = (pdfTitle && pdfTitle.trim()) || filename.replace(/\.pdf$/i, "");
     const sourceTag = `pdf:${filename}`;
+
+    // Extract embedded images via pdfjs-dist. Only for authenticated
+    // users — anonymous PDF imports keep the text-only path (no owner
+    // to attribute storage to). Failures here are non-fatal; the
+    // markdown still saves with just the text.
+    let imagesExtracted = 0;
+    if (userId) {
+      try {
+        const imgs = await extractPdfImages(buffer);
+        if (imgs.length > 0) {
+          const galleryLines: string[] = [];
+          for (const img of imgs) {
+            const out = await uploadImageBuffer(img.buffer, `page-${img.pageIndex}-img-${img.imageIndex}.png`, img.contentType, {
+              supabase, ownerId: userId, trackQuota: false,
+            });
+            if (out) {
+              imagesExtracted++;
+              galleryLines.push(`![Page ${img.pageIndex} image ${img.imageIndex}](${out.url})`);
+            }
+          }
+          if (galleryLines.length > 0) {
+            markdown = `${markdown.trimEnd()}\n\n## Embedded images\n\n${galleryLines.join("\n\n")}\n`;
+          }
+        }
+      } catch (err) {
+        console.warn("PDF image extraction failed:", err instanceof Error ? err.message : err);
+      }
+    }
 
     // PDF import is the ONLY place we deliberately mutate the body
     // before persisting: when the cleaner didn't yield an H1, we
@@ -236,6 +267,7 @@ export async function POST(req: NextRequest) {
       title,
       pages,
       cleanedByAi,
+      imagesExtracted,
       source: sourceTag,
     });
     ensureAnonymousCookie(req, res, {
