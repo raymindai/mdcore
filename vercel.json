@@ -4,6 +4,11 @@
     {
       "path": "/api/cleanup",
       "schedule": "0 3 * * *"
+    },
+    {
+      "_comment": "Backfill embeddings + graph_data + concept index for any doc/bundle whose creation path bypassed the inline auto-queue (REST scripts, MCP, future integrations). Idempotent.",
+      "path": "/api/cron/lifecycle-sweep",
+      "schedule": "*/5 * * * *"
     }
   ],
   "buildCommand": "cd apps/web && npm run build",
