@@ -21,11 +21,21 @@ import { appendHubLog } from "@/lib/hub-log";
 import { findRecentDuplicateDoc, isStrictDupLockError } from "@/lib/doc-dedup";
 import { enforceTitleInvariant } from "@/lib/extract-title";
 import { importFromUrl, UrlImportError } from "@/lib/url-import";
+import { uploadImageBuffer, rewriteMarkdownImages, findRemoteImages, mimeFromMagic } from "@/lib/import-images";
 
 export const runtime = "nodejs";
 
 interface ImportRow { id: string; title: string; url: string; host: string; deduplicated?: boolean }
-interface ImportResult { imported: number; deduplicated: number; failed: number; docs: ImportRow[] }
+interface ImportResult {
+  imported: number;
+  deduplicated: number;
+  failed: number;
+  docs: ImportRow[];
+  /** Diagnostic counters for the image-rehost pass — surfaces in
+   *  the UI so the user knows whether their images survived. */
+  imagesFound?: number;
+  imagesRehosted?: number;
+}
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -60,8 +70,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL import failed" }, { status: 502 });
   }
 
-  const enforced = enforceTitleInvariant(fetched.markdown, fetched.title);
-  const result: ImportResult = { imported: 0, deduplicated: 0, failed: 0, docs: [] };
+  // Rehost every absolute image URL the Turndown pass left behind.
+  // Same pattern as the Notion import: fetch the original, upload to
+  // our document-images bucket, swap the reference. Without this the
+  // imported doc rots when the source page rearranges its asset
+  // paths (which it always eventually does).
+  const remoteImageUrls = findRemoteImages(fetched.markdown);
+  const rehostMap = new Map<string, string>();
+  for (const u of remoteImageUrls) {
+    try {
+      const r = await fetch(u, {
+        headers: { "User-Agent": "mdfy.app/1.0 (Image rehost)" },
+        // Don't follow redirect to a non-image — most CDNs will serve
+        // the image directly under the same URL anyway.
+        redirect: "follow",
+      });
+      if (!r.ok) continue;
+      const buf = Buffer.from(await r.arrayBuffer());
+      const declared = r.headers.get("content-type") || "";
+      const mime = declared.startsWith("image/") ? declared : mimeFromMagic(buf);
+      if (!mime) continue;
+      const filename = u.split("?")[0].split("/").pop() || "image";
+      const out = await uploadImageBuffer(buf, filename, mime, {
+        supabase, ownerId: userId, trackQuota: false,
+      });
+      if (out) rehostMap.set(u, out.url);
+    } catch (err) {
+      console.warn(`url-import: rehost failed for ${u}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const rehostedMarkdown = rewriteMarkdownImages(fetched.markdown, rehostMap).markdown;
+
+  const enforced = enforceTitleInvariant(rehostedMarkdown, fetched.title);
+  const result: ImportResult = {
+    imported: 0,
+    deduplicated: 0,
+    failed: 0,
+    docs: [],
+    imagesFound: remoteImageUrls.length,
+    imagesRehosted: rehostMap.size,
+  };
   const sourceTag = `url:${fetched.host}`;
 
   try {

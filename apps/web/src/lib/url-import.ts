@@ -163,9 +163,23 @@ export async function importFromUrl(rawUrl: string): Promise<UrlImportResult> {
     throw new UrlImportError(`Conversion failed: ${(err as Error).message}`, 500);
   }
 
-  // Tidy: collapse triple-blank-lines and add a small provenance footer
-  // so the saved doc remembers where it came from.
+  // Tidy: collapse triple-blank-lines.
   markdown = markdown.replace(/\n{3,}/g, "\n\n").trim();
+
+  // Resolve any relative image refs against the source URL so the
+  // markdown we hand back has only absolute URLs. Relative refs
+  // would otherwise be unfetchable (we no longer have the page
+  // base) and would render as broken in mdfy.
+  markdown = markdown.replace(/!\[([^\]]*)\]\(([^)\s]+)(\s+"[^"]*")?\)/g, (full, alt, target, titleAttr) => {
+    if (/^(https?:|data:)/i.test(target)) return full;
+    try {
+      const abs = new URL(target, url).toString();
+      return `![${alt}](${abs}${titleAttr || ""})`;
+    } catch {
+      return full;
+    }
+  });
+
   const finalBody = [
     `# ${title}`,
     "",
