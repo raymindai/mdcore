@@ -353,12 +353,6 @@ function ShareModal({
           </div>
         )}
 
-        {/* Cascade banner — bundle-only, modal-wide context. Sits
-            above the tab bar because it applies to every tab. */}
-        {!loading && banner && (
-          <div className="mb-3">{banner}</div>
-        )}
-
         {/* Tab bar — three tabs, each with a status dot + one-line
             summary. The tabs are the disclosure surface; clicking a
             tab swaps the content below. The status row means the
@@ -415,10 +409,9 @@ function ShareModal({
           return (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
-                gap: 0,
-                marginBottom: 16,
+                display: "flex",
+                gap: 4,
+                marginBottom: 14,
                 borderBottom: "1px solid var(--border-dim)",
               }}
             >
@@ -430,35 +423,41 @@ function ShareModal({
                     onClick={() => setActiveTab(t.key)}
                     className="text-left transition-colors"
                     style={{
-                      padding: "10px 12px 12px",
+                      // Compact tab — no longer 1/3 of full width each
+                      // (was reading as too sparse). Auto width with
+                      // small horizontal padding lets the label + sub
+                      // sit naturally tight together.
+                      padding: "7px 12px 9px",
                       background: "transparent",
                       border: "none",
                       borderBottom: `2px solid ${active ? "var(--accent)" : "transparent"}`,
                       marginBottom: -1,
                       cursor: "pointer",
+                      minWidth: 0,
                     }}
                   >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span style={{ width: 7, height: 7, borderRadius: 4, background: t.dot, flexShrink: 0 }} />
+                    <div className="flex items-baseline gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span style={{ width: 6, height: 6, borderRadius: 3, background: t.dot, flexShrink: 0 }} />
+                        <span
+                          className="font-semibold"
+                          style={{
+                            color: active ? "var(--text-primary)" : "var(--text-muted)",
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {t.label}
+                        </span>
+                      </div>
                       <span
-                        className="text-caption font-semibold"
                         style={{
-                          color: active ? "var(--text-primary)" : "var(--text-muted)",
-                          fontSize: 12,
+                          color: active ? "var(--text-muted)" : "var(--text-faint)",
+                          fontSize: 11,
                         }}
                       >
-                        {t.label}
+                        {t.sub}
                       </span>
                     </div>
-                    <span
-                      className="text-caption"
-                      style={{
-                        color: active ? "var(--text-muted)" : "var(--text-faint)",
-                        fontSize: 11,
-                      }}
-                    >
-                      {t.sub}
-                    </span>
                   </button>
                 );
               })}
@@ -858,6 +857,14 @@ function ShareModal({
               </a>
             </div>
           </div>
+        )}
+
+        {/* Cascade banner — bundle-only, modal-wide context. Sits at
+            the bottom of the body because the per-tab controls are
+            what the user came to use; the cascade rule is a quieter
+            "by the way" note rather than the main event. */}
+        {!loading && banner && (
+          <div className="mt-4">{banner}</div>
         )}
 
       </div>

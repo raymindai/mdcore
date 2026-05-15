@@ -10669,8 +10669,11 @@ ${clone.innerHTML}
                     {/* overflow-y-auto only — earlier we had blamed overflow-x-hidden
                         for cancelling HTML5 drag, but the real cause was state
                         mutations during drag (now gated). Horizontal scroll on the
-                        sidebar is unwanted: long titles already truncate. */}
-                    <div data-sidebar-scroll className="overflow-x-hidden space-y-0.5 pb-1 pl-2 pr-2">
+                        sidebar is unwanted: long titles already truncate.
+                        No right padding: rows supply their own paddingRight
+                        and the badge math (see SidebarFolder.tsx) lands at
+                        12px from the right edge to match section header counts. */}
+                    <div data-sidebar-scroll className="overflow-x-hidden space-y-0.5 pb-1 pl-2">
                       {/* Root tabs + folders rendered through SidebarFolderTree below — same component as MD Bundles + Shared sections for unified UX. */}
 
                       {/* Folders — recursive nested tree (Obsidian/Notion-style) */}
@@ -11575,8 +11578,14 @@ ${clone.innerHTML}
                     <span className="text-caption tabular-nums" style={{ color: "var(--text-faint)", opacity: 0.6 }}>{trashTabs.length}</span>
                   </div>
                   {showTrash && (
-                    <div className="space-y-0.5 pt-1 pb-1 pl-2 pr-2">
+                    <div className="space-y-0.5 pt-1 pb-1 pl-2">
                       {trashTabs.map(tab => (
+                        // Action buttons collapse to `hidden` (not just
+                        // opacity-0) so they take no horizontal space when
+                        // the row isn't hovered. Previously the buttons
+                        // stayed in flex layout while invisible, shrinking
+                        // the filename column by their width even at rest.
+                        // Matches the MDs section's hover-reveal pattern.
                         <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs group hover:bg-[var(--toggle-bg)] transition-colors" style={{ color: "var(--text-faint)" }}>
                           <FileIcon width={14} height={14} className="shrink-0 opacity-40" />
                           <span className="truncate flex-1 line-through opacity-60">{tab.title || "Untitled"}</span>
@@ -11587,7 +11596,7 @@ ${clone.innerHTML}
                             }
                             setTabs(prev => prev.map(t => t.id === tab.id ? { ...t, deleted: false, deletedAt: undefined } : t));
                           }}
-                            className="text-caption opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--accent)" }}
+                            className="text-caption hidden group-hover:inline-flex px-1 rounded" style={{ color: "var(--accent)" }}
                             title="Restore this document">
                             Restore
                           </button>
@@ -11606,7 +11615,7 @@ ${clone.innerHTML}
                               showToast("Couldn't delete — server refused", "error");
                             }
                           }}
-                            className="text-caption opacity-0 group-hover:opacity-100 transition-opacity px-1 rounded" style={{ color: "var(--text-faint)" }}
+                            className="text-caption hidden group-hover:inline-flex px-1 rounded" style={{ color: "var(--text-faint)" }}
                             title={(!tab.permission || tab.permission === "mine") ? "Delete permanently" : "Remove from list"}>
                             {(!tab.permission || tab.permission === "mine") ? "Delete" : "Remove"}
                           </button>
