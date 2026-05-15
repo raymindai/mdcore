@@ -66,7 +66,7 @@ export default function AdminPage() {
   const [secondsAgo, setSecondsAgo] = useState(0);
   // AI model settings
   const [aiModelPrimary, setAiModelPrimary] = useState("gemini-3-flash-preview");
-  const [aiModelLite, setAiModelLite] = useState("gemini-3.1-flash-lite-preview");
+  const [aiModelLite, setAiModelLite] = useState("gemini-3.1-flash-lite");
   const [savingModels, setSavingModels] = useState(false);
   const [modelSaveMsg, setModelSaveMsg] = useState("");
 
@@ -110,7 +110,7 @@ export default function AdminPage() {
       setEmailTemplates(data.emailTemplates || []);
       if (data.aiModels) {
         setAiModelPrimary(data.aiModels.primary || "gemini-3-flash-preview");
-        setAiModelLite(data.aiModels.lite || "gemini-3.1-flash-lite-preview");
+        setAiModelLite(data.aiModels.lite || "gemini-3.1-flash-lite");
       }
     } catch {
       setAuthed(false);
@@ -381,7 +381,7 @@ export default function AdminPage() {
                     style={selectStyle}
                   >
                     <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
-                    <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
                     <option value="gemini-2.0-flash">gemini-2.0-flash</option>
                   </select>
                 </div>
@@ -398,7 +398,7 @@ export default function AdminPage() {
                     style={selectStyle}
                   >
                     <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
-                    <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
                     <option value="gemini-2.0-flash">gemini-2.0-flash</option>
                   </select>
                 </div>

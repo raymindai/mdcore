@@ -8,7 +8,7 @@ type AIAction = "polish" | "summary" | "tldr" | "translate" | "chat" | "beautify
 
 // ─── AI Model Config (cached from site_config table) ───
 const DEFAULT_PRIMARY_MODEL = "gemini-3-flash-preview";
-const DEFAULT_LITE_MODEL = "gemini-3.1-flash-lite-preview";
+const DEFAULT_LITE_MODEL = "gemini-3.1-flash-lite";
 
 let cachedModels: { primary: string; lite: string } | null = null;
 let cachedModelsAt = 0;

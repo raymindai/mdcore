@@ -55,7 +55,7 @@ Structured Markdown:`;
   // Call Gemini with retry on transient errors (5xx, network).
   const callGemini = async (attempt: number): Promise<Response> => {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

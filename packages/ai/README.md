@@ -26,7 +26,7 @@ const markdown = await mdfyText(rawText, {
 
 | Provider | Default Model | API Endpoint | How to Get a Key |
 |----------|--------------|-------------|------------------|
-| `gemini` | `gemini-3.1-flash-lite-preview` | Google Generative AI | [ai.google.dev](https://ai.google.dev/) |
+| `gemini` | `gemini-3.1-flash-lite` | Google Generative AI | [ai.google.dev](https://ai.google.dev/) |
 | `openai` | `gpt-5.4-mini` | OpenAI Chat Completions | [platform.openai.com](https://platform.openai.com/) |
 | `anthropic` | `claude-haiku-4-5` | Anthropic Messages | [console.anthropic.com](https://console.anthropic.com/) |
 
@@ -55,7 +55,7 @@ interface AIConfig {
 import { DEFAULT_MODELS, DEFAULT_TEMPERATURE, DEFAULT_MAX_TOKENS } from "@mdcore/ai";
 
 // DEFAULT_MODELS = {
-//   gemini: "gemini-3.1-flash-lite-preview",
+//   gemini: "gemini-3.1-flash-lite",
 //   openai: "gpt-5.4-mini",
 //   anthropic: "claude-haiku-4-5",
 // }
@@ -360,7 +360,7 @@ All AI functions make a single API call per invocation. Approximate cost per `md
 
 | Provider | Model | Approximate Cost |
 |----------|-------|-----------------|
-| Gemini | gemini-3.1-flash-lite-preview | ~$0.0005 |
+| Gemini | gemini-3.1-flash-lite | ~$0.0005 |
 | OpenAI | gpt-5.4-mini | ~$0.002 |
 | Anthropic | claude-haiku-4-5 | ~$0.001 |
 

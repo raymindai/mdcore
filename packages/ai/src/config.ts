@@ -6,7 +6,7 @@ import type { AIProvider } from "./types.js";
 
 /** Default models per provider */
 export const DEFAULT_MODELS: Record<AIProvider, string> = {
-  gemini: "gemini-3.1-flash-lite-preview",
+  gemini: "gemini-3.1-flash-lite",
   openai: "gpt-5.4-mini",
   anthropic: "claude-haiku-4-5",
 };
