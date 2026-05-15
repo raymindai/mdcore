@@ -9472,6 +9472,30 @@ ${clone.innerHTML}
                         <hr style={{ borderColor: "var(--border)" }} className="my-1" />
                         <div className="px-3 py-1.5">
                           <div className="text-caption font-mono uppercase tracking-wide mb-1.5" style={{ color: "var(--text-muted)" }}>Document Settings</div>
+                          {/* Copy edit token — needed for programmatic
+                              access (GitHub Actions, MCP server, the
+                              public API). The token is owner-scoped
+                              and acts like a password, so we copy
+                              directly to clipboard rather than
+                              rendering it inline where it could be
+                              shoulder-surfed or screenshotted. */}
+                          <button
+                            onClick={() => {
+                              const token = activeTab?.editToken;
+                              if (!token) {
+                                showToast("No edit token on this document yet — save it once to mint one.", "error");
+                                return;
+                              }
+                              navigator.clipboard.writeText(token).then(
+                                () => showToast("Edit token copied. Treat it like a password.", "info"),
+                                () => showToast("Couldn't copy. Check clipboard permissions.", "error"),
+                              );
+                            }}
+                            className="w-full text-left text-xs py-1.5 transition-colors"
+                            style={{ color: "var(--text-tertiary)" }}
+                          >
+                            Copy edit token
+                          </button>
                           {/* Rotate edit token */}
                           {confirmRotateToken ? (
                             <div className="py-1.5">

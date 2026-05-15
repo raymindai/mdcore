@@ -27,6 +27,7 @@ const sidebarItems = [
   { id: "gemini", label: "Gemini CLI" },
   { id: "windsurf", label: "Windsurf" },
   { id: "aider", label: "Aider" },
+  { id: "github-action", label: "GitHub Action sync" },
   { id: "staleness", label: "Staleness + auto-analyze" },
 ];
 
@@ -474,6 +475,125 @@ https://mdfy.app/b/<bundle-id>
 
 Fetch that URL when you need spec, decisions, or cross-doc reasoning.`}
           />
+
+          {/* ─── GitHub Action sync ─── */}
+          <SectionHeading id="github-action">GitHub Action sync — keep one mdfy doc in step with your repo</SectionHeading>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 680,
+            }}
+          >
+            Treat one mdfy doc as your repo&apos;s &ldquo;working knowledge URL&rdquo;. Every push to <InlineCode>main</InlineCode> that touches <InlineCode>{"CLAUDE.md"}</InlineCode>, <InlineCode>{"AGENTS.md"}</InlineCode>, or <InlineCode>{"docs/**.md"}</InlineCode> PATCHes the combined markdown to your mdfy doc. Paste the doc URL into Claude, Cursor, or Codex and they always see the latest state of your repo&apos;s docs.
+          </p>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--text-muted)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+              maxWidth: 680,
+            }}
+          >
+            One-time setup (under 5 minutes):
+          </p>
+          <ol style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 16, maxWidth: 680, paddingLeft: 22 }}>
+            <li style={{ marginBottom: 8 }}>
+              Create the target doc on mdfy.app. The URL chip in the editor shows the id (the <InlineCode>{"<id>"}</InlineCode> in <InlineCode>{"mdfy.app/d/<id>"}</InlineCode>) — that&apos;s your <InlineCode>{"MDFY_DOC_ID"}</InlineCode>.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              Open the account menu in the editor while that doc is the active tab and click <strong style={{ color: "var(--text-primary)" }}>Copy edit token</strong>. That&apos;s your <InlineCode>{"MDFY_EDIT_TOKEN"}</InlineCode>. Treat it like a password — anyone with it can write to the doc.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              On GitHub: <em>Settings → Secrets and variables → Actions → New repository secret</em>. Add both <InlineCode>{"MDFY_DOC_ID"}</InlineCode> and <InlineCode>{"MDFY_EDIT_TOKEN"}</InlineCode>.
+            </li>
+            <li style={{ marginBottom: 8 }}>
+              Drop the workflow file below at <InlineCode>{".github/workflows/sync-mdfy.yml"}</InlineCode> and push. Run it once via <em>Actions → Sync repo docs → mdfy → Run workflow</em> to verify.
+            </li>
+          </ol>
+          <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 4, marginBottom: 6, fontFamily: mono }}>
+            .github/workflows/sync-mdfy.yml
+          </p>
+          <CodeBlock lang="yaml">{`name: Sync repo docs → mdfy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'docs/**.md'
+      - '.github/workflows/sync-mdfy.yml'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the combined markdown
+        id: build
+        run: |
+          set -euo pipefail
+          OUT="$(mktemp)"
+          {
+            echo "# Repo working knowledge (synced from \${GITHUB_REPOSITORY}@\${GITHUB_SHA:0:7})"
+            echo
+            echo "> Auto-updated by .github/workflows/sync-mdfy.yml on push to main."
+            echo "> Source: https://github.com/\${GITHUB_REPOSITORY}/commit/\${GITHUB_SHA}"
+            echo
+            for f in CLAUDE.md AGENTS.md; do
+              if [ -f "$f" ]; then
+                echo; echo "---"; echo
+                echo "## $f"; echo
+                cat "$f"
+              fi
+            done
+            if [ -d docs ]; then
+              find docs -maxdepth 2 -name '*.md' -type f | LC_ALL=C sort | while read -r f; do
+                echo; echo "---"; echo
+                echo "## $f"; echo
+                cat "$f"
+              done
+            fi
+          } > "$OUT"
+          echo "payload_path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: PATCH /api/docs/{id}
+        env:
+          MDFY_DOC_ID: \${{ secrets.MDFY_DOC_ID }}
+          MDFY_EDIT_TOKEN: \${{ secrets.MDFY_EDIT_TOKEN }}
+          PAYLOAD_PATH: \${{ steps.build.outputs.payload_path }}
+        run: |
+          set -euo pipefail
+          BODY="$(jq -Rn \\
+            --rawfile md "$PAYLOAD_PATH" \\
+            --arg token "$MDFY_EDIT_TOKEN" \\
+            --arg summary "ci: sync from \${GITHUB_SHA:0:7}" \\
+            '{markdown: $md, editToken: $token, changeSummary: $summary}')"
+          STATUS=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \\
+            -X PATCH "https://mdfy.app/api/docs/\${MDFY_DOC_ID}" \\
+            -H 'Content-Type: application/json' \\
+            --data "$BODY")
+          echo "HTTP $STATUS"
+          cat /tmp/resp.json
+          [ "$STATUS" = "200" ]`}</CodeBlock>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text-faint)",
+              lineHeight: 1.7,
+              marginTop: 8,
+              marginBottom: 24,
+              maxWidth: 680,
+            }}
+          >
+            <strong style={{ color: "var(--text-muted)" }}>What you get.</strong> One URL like <InlineCode>{"mdfy.app/d/<your-id>"}</InlineCode> that&apos;s always your repo&apos;s current docs. Paste it into Claude Code, Cursor, or any AI tool — they fetch the latest state on every session. Bonus: it makes a clean &ldquo;we use our own product&rdquo; artifact you can link from a README.
+          </p>
 
           {/* ─── Staleness ─── */}
           <SectionHeading id="staleness">Staleness + auto-analyze</SectionHeading>
