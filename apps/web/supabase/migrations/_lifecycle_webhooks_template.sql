@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION public.fire_lifecycle_webhook()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, extensions
+SET search_path = public, net, extensions
 AS $$
 DECLARE
   webhook_path TEXT;
@@ -53,18 +53,24 @@ BEGIN
     'old_record', CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) ELSE NULL END
   );
 
-  -- pg_net.http_post returns a request id; we don't wait for the
-  -- response — fire-and-forget so writes don't block on remote
-  -- latency / failures. Supabase queues + retries internally.
-  PERFORM extensions.http_post(
-    url := webhook_url,
-    body := payload,
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || webhook_secret
-    ),
-    timeout_milliseconds := 5000
-  );
+  -- pg_net.http_post returns a bigint request id; we ignore it.
+  -- Wrap in EXCEPTION so a pg_net hiccup never rolls back the
+  -- triggering INSERT — webhook delivery is a "nice to have," the
+  -- row write is the load-bearing action. The daily cron sweep
+  -- catches anything missed.
+  BEGIN
+    PERFORM net.http_post(
+      url := webhook_url,
+      body := payload,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || webhook_secret
+      ),
+      timeout_milliseconds := 5000
+    );
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[fire_lifecycle_webhook] % failed: %', webhook_path, SQLERRM;
+  END;
 
   RETURN COALESCE(NEW, OLD);
 END;
