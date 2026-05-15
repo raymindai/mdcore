@@ -14598,6 +14598,18 @@ ${clone.innerHTML}
                 const tab = tabs.find(t => t.id === docContextMenu.tabId);
                 if (tab) { switchTab(tab.id); setTimeout(() => handleShare(), 100); }
               }},
+              // Create a new bundle pre-seeded with this single doc.
+              // Gated on having a cloudId (the bundle picker keys off
+              // server-side doc ids, not local tab ids).
+              ...((() => {
+                const tab = tabs.find(t => t.id === docContextMenu.tabId);
+                if (!tab?.cloudId) return [];
+                return [{ label: "Create bundle…", action: () => {
+                  setBundleCreatorDocs([{ id: tab.cloudId!, title: tab.title || "Untitled" }]);
+                  setShowMyBundles(true);
+                  setShowBundleCreator(true);
+                }}];
+              })()),
               { label: "Download .md", action: () => {
                 const tab = tabs.find(t => t.id === docContextMenu.tabId);
                 if (tab) {
@@ -14983,6 +14995,28 @@ ${clone.innerHTML}
                 setFolders(prev => prev.map(f => f.id === folderContextMenu.folderId ? { ...f, collapsed: !f.collapsed } : f));
                 fetch("/api/user/folders", { method: "PATCH", headers: { "Content-Type": "application/json", ...authHeaders }, body: JSON.stringify({ id: folderContextMenu.folderId, collapsed: !folders.find(f => f.id === folderContextMenu.folderId)?.collapsed }) }).catch(() => {});
               }},
+              // Pre-fill the bundle creator with every cloud-backed
+              // doc currently in this folder. Skips bundle tabs,
+              // example docs (no cloudId), deleted docs, and anything
+              // shared-with-me (only owner-side picks can seed a new
+              // bundle owned by the current user). Hidden when nothing
+              // qualifies so the menu doesn't show a dead option.
+              ...((() => {
+                const folderDocs = tabs.filter(t =>
+                  t.folderId === folderContextMenu.folderId
+                  && t.kind !== "bundle"
+                  && !t.deleted
+                  && !!t.cloudId
+                  && (!t.permission || t.permission === "mine")
+                  && t.ownerEmail !== EXAMPLE_OWNER
+                );
+                if (folderDocs.length === 0) return [];
+                return [{ label: `Create bundle from folder (${folderDocs.length})`, action: () => {
+                  setBundleCreatorDocs(folderDocs.map(t => ({ id: t.cloudId!, title: t.title || "Untitled" })));
+                  setShowMyBundles(true);
+                  setShowBundleCreator(true);
+                }}];
+              })()),
               ...(folderContextMenu.folderId !== EXAMPLES_FOLDER_ID ? [{ label: "Delete folder", action: () => {
                 setFolderContextMenu(prev => prev ? { ...prev, confirmDelete: true } : null);
               }, danger: true, noClose: true }] : []),
