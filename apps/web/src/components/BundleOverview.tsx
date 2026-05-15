@@ -198,7 +198,7 @@ export default function BundleOverview({
           className="mb-7 rounded-xl"
           style={{ background: "var(--surface)", border: "1px solid var(--border-dim)", padding: "16px 18px" }}
         >
-          <div className="flex items-start gap-3 mb-3">
+          <div className="flex items-start gap-3 mb-4">
             <span
               className="flex items-center justify-center shrink-0 mt-0.5"
               style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent-dim)", color: "var(--accent)" }}
@@ -210,71 +210,157 @@ export default function BundleOverview({
                 Deploy this bundle to any AI
               </p>
               <p className="text-caption mt-0.5" style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Paste the URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. Default = compact bundle digest with the canvas analysis (themes, insights, concepts) plus inline links to each doc. Add <code className="font-mono">?full=1</code> to inline every doc&apos;s body, <code className="font-mono">?graph=0</code> to drop the analysis.
+                Paste either URL into <strong>Claude</strong>, <strong>ChatGPT</strong>, or <strong>Cursor</strong>. AI fetches the markdown payload directly — pick <em>digest</em> for cheap context, <em>full</em> when you need every doc body inline.
               </p>
             </div>
           </div>
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
-              Digest <span style={{ color: "var(--text-faint)" }}>(default)</span>
-            </span>
-            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              title, annotation, links
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              if (typeof navigator === "undefined") return;
-              navigator.clipboard.writeText(bundleUrl).then(() => {
-                setCopied(true);
-                setShowCopyHint(true);
-                setTimeout(() => setCopied(false), 1200);
-              });
-            }}
-            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
-            style={{
-              background: "var(--background)",
-              color: copied ? "#22c55e" : "var(--text-primary)",
-              border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
-            }}
-            title={`Copy ${bundleUrl}`}
-          >
-            <span className="flex-1 text-left truncate">{bundleUrl}</span>
-            <span className="flex items-center gap-1 shrink-0" style={{ color: copied ? "#22c55e" : "var(--text-faint)" }}>
-              {copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
-              <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
-            </span>
-          </button>
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: 0.5 }}>
-              Full markdown <span style={{ color: "var(--text-faint)" }}>(?full=1)</span>
-            </span>
-            <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-              every doc body inline, heavier
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              if (typeof navigator === "undefined") return;
-              navigator.clipboard.writeText(`${bundleUrl}?full=1`).then(() => {
-                setCopiedFull(true);
-                setTimeout(() => setCopiedFull(false), 1200);
-              });
-            }}
-            className="w-full flex items-center gap-2 text-caption px-2.5 py-1.5 rounded font-mono transition-colors hover:bg-[var(--toggle-bg)] mb-3"
-            style={{
-              background: "var(--background)",
-              color: copiedFull ? "#22c55e" : "var(--text-muted)",
-              border: `1px solid ${copiedFull ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
-            }}
-            title={`Copy ${bundleUrl}?full=1`}
-          >
-            <span className="flex-1 text-left truncate">{bundleUrl}?full=1</span>
-            <span className="flex items-center gap-1 shrink-0" style={{ color: copiedFull ? "#22c55e" : "var(--text-faint)" }}>
-              {copiedFull ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
-              <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
-            </span>
-          </button>
+
+          {/* Two URL variants, side-by-side semantics. Each card shows
+              what's in the payload, the token cost (incl. % of full
+              so the digest's leverage is concrete), and one-click
+              actions: Copy + "See what AI gets" (the raw .md). */}
+          {(() => {
+            const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+            // Digest cost = bundle frontmatter (~50 tokens) + per-doc
+            // title + link + optional annotation (~35 tokens each).
+            // Full = the actual token estimate computed from member
+            // bodies (already in scope as `tokens`).
+            const digestTokens = 50 + documents.length * 35;
+            const fullTokens = Math.max(tokens, digestTokens); // sanity floor
+            const digestPct = Math.max(1, Math.round((digestTokens / fullTokens) * 100));
+            const variants = [
+              {
+                key: "digest" as const,
+                label: "Digest",
+                pill: "DEFAULT",
+                pillBg: "var(--accent-dim)",
+                pillFg: "var(--accent)",
+                contains: "Title, annotation, links + canvas analysis (themes / insights / concepts)",
+                tokenLabel: `≈ ${fmt(digestTokens)} tokens · ${digestPct}% of full`,
+                url: bundleUrl,
+                rawHref: `/b/${bundleId}.md`,
+                copied: copied,
+                setCopied: () => {
+                  if (typeof navigator === "undefined") return;
+                  navigator.clipboard.writeText(bundleUrl).then(() => {
+                    setCopied(true);
+                    setShowCopyHint(true);
+                    setTimeout(() => setCopied(false), 1200);
+                  });
+                },
+              },
+              {
+                key: "full" as const,
+                label: "Full",
+                pill: "?full=1",
+                pillBg: "var(--toggle-bg)",
+                pillFg: "var(--text-muted)",
+                contains: "Everything in Digest + every member doc's full markdown body inline",
+                tokenLabel: `≈ ${fmt(fullTokens)} tokens · 100%`,
+                url: `${bundleUrl}?full=1`,
+                rawHref: `/b/${bundleId}.md?full=1`,
+                copied: copiedFull,
+                setCopied: () => {
+                  if (typeof navigator === "undefined") return;
+                  navigator.clipboard.writeText(`${bundleUrl}?full=1`).then(() => {
+                    setCopiedFull(true);
+                    setTimeout(() => setCopiedFull(false), 1200);
+                  });
+                },
+              },
+            ];
+            return (
+              <div className="space-y-2 mb-3">
+                {variants.map((v) => (
+                  <div
+                    key={v.key}
+                    className="rounded-lg p-3"
+                    style={{
+                      background: "var(--background)",
+                      border: `1px solid ${v.copied ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+                      transition: "border-color 0.15s",
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="text-caption font-mono font-bold"
+                          style={{
+                            background: v.pillBg,
+                            color: v.pillFg,
+                            padding: "2px 7px",
+                            borderRadius: 4,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {v.label}
+                        </span>
+                        <span
+                          className="text-caption font-mono shrink-0"
+                          style={{ color: "var(--text-faint)", fontSize: 10 }}
+                        >
+                          {v.pill}
+                        </span>
+                      </div>
+                      <span
+                        className="text-caption font-mono shrink-0"
+                        style={{ color: "var(--text-faint)", fontSize: 10 }}
+                      >
+                        {v.tokenLabel}
+                      </span>
+                    </div>
+                    <p className="text-caption mb-2" style={{ color: "var(--text-muted)", lineHeight: 1.4 }}>
+                      {v.contains}
+                    </p>
+                    <div className="flex items-stretch gap-1.5">
+                      <code
+                        className="flex-1 text-caption font-mono px-2.5 py-1.5 rounded truncate min-w-0"
+                        style={{
+                          background: "var(--surface)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--border-dim)",
+                          fontSize: 11,
+                        }}
+                        title={v.url}
+                      >
+                        {v.url}
+                      </code>
+                      <button
+                        onClick={v.setCopied}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption transition-colors shrink-0"
+                        style={{
+                          background: v.copied ? "rgba(34,197,94,0.12)" : "var(--toggle-bg)",
+                          color: v.copied ? "#22c55e" : "var(--text-primary)",
+                          border: "1px solid var(--border-dim)",
+                        }}
+                      >
+                        {v.copied ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+                        <span className="hidden sm:inline">{v.copied ? "Copied" : "Copy"}</span>
+                      </button>
+                      <a
+                        href={v.rawHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)] shrink-0"
+                        style={{
+                          background: "var(--toggle-bg)",
+                          color: "var(--text-muted)",
+                          border: "1px solid var(--border-dim)",
+                        }}
+                        title={`Open the raw .md payload — exactly what an AI fetching this URL receives`}
+                      >
+                        <ExternalLink width={11} height={11} />
+                        <span className="hidden sm:inline">See agent payload</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Integrate-with-dev-tools nudge. Bundle URL is the
               recommended scope for AGENTS.md / CLAUDE.md /
               .cursor/rules (project-scoped context). Route to
@@ -300,42 +386,21 @@ export default function BundleOverview({
               How →
             </span>
           </a>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <a
-              href={bundleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-            >
-              <Eye width={11} height={11} />
-              View as visitor
-            </a>
-            <a
-              href={`/b/${bundleId}.md`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1 rounded text-caption transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ background: "var(--background)", color: "var(--text-muted)", border: "1px solid var(--border-dim)" }}
-            >
-              <ExternalLink width={11} height={11} />
-              Raw .md
-            </a>
-          </div>
-          {/* Token economy line — matches Hub's layout. Digest cost
-              = bundle frontmatter (~50 tokens) + per-doc title +
-              link + optional annotation (~35 tokens each). Full =
-              annotation + body inline (uses the cheap word-count
-              estimator the bundle already computes). */}
-          {(() => {
-            const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-            const digestTokens = 50 + documents.length * 35;
-            return (
-              <p className="text-caption font-mono mt-2.5" style={{ color: "var(--text-faint)", fontSize: 10 }}>
-                Digest ≈ {fmt(digestTokens)} tokens   Full ≈ {fmt(tokens)} tokens
-              </p>
-            );
-          })()}
+
+          {/* Single browser-preview link — explicitly framed as
+              "what humans see" since the per-variant cards now
+              cover "what AI sees" (See agent payload).  */}
+          <a
+            href={bundleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-caption transition-colors hover:underline"
+            style={{ color: "var(--text-muted)" }}
+            title="Open the rendered HTML view — what a human visitor sees in a browser"
+          >
+            <Eye width={11} height={11} />
+            Open in browser (the human-rendered view)
+          </a>
         </section>
 
         {/* ─── Stat strip ─── */}
