@@ -7,6 +7,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function DesktopAuthPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error" | "choose-provider">("loading");
+  const [accessToken, setAccessToken] = useState<string>("");
+  const [copied, setCopied] = useState(false);
   const supabase = getSupabaseBrowserClient();
 
   const signInWith = async (provider: "github" | "google") => {
@@ -25,24 +27,34 @@ export default function DesktopAuthPage() {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession() as { data: { session: { access_token: string } | null } };
+      const { data: { session } } = await supabase.auth.getSession() as { data: { session: { access_token: string; refresh_token?: string } | null } };
 
       if (!session?.access_token) {
         setStatus("choose-provider");
         return;
       }
 
-      const token = session.access_token;
-      const refreshToken = (session as { refresh_token?: string }).refresh_token;
-      let desktopUri = `mdfy://auth?token=${encodeURIComponent(token)}`;
-      if (refreshToken) {
-        desktopUri += `&refresh_token=${encodeURIComponent(refreshToken)}`;
-      }
-
-      window.location.href = desktopUri;
+      // We surface the raw access_token on this page so CLI users +
+      // MCP users can paste it into `mdfy login`. The legacy Electron
+      // desktop app's `mdfy://` URL scheme handler used to grab the
+      // token automatically via a forced redirect — but a) most users
+      // don't run that app, b) the redirect would launch the
+      // (deprecated, mdfy.cc-baked) desktop app on macOS for users
+      // who do have it installed. So now we stop auto-firing the
+      // deep link and let the user copy + paste explicitly.
+      setAccessToken(session.access_token);
       setStatus("success");
     })();
   }, [supabase]);
+
+  const copyToken = async () => {
+    if (!accessToken) return;
+    try {
+      await navigator.clipboard.writeText(accessToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard blocked */ }
+  };
 
   return (
     <div
@@ -70,14 +82,57 @@ export default function DesktopAuthPage() {
 
       {status === "success" && (
         <>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="10" />
             <path d="M8 12l3 3 5-5" />
           </svg>
-          <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>Connected to mdfy for Mac</p>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 400 }}>
-            Your mdfy.app account is now linked. You can close this tab and return to the app.
+          <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>You&apos;re signed in</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 440, lineHeight: 1.55 }}>
+            Copy the token below and paste it into your terminal where <code style={{ background: "var(--surface)", padding: "1px 6px", borderRadius: 3 }}>mdfy login</code> is waiting.
           </p>
+          <div style={{ width: "min(560px, 90vw)", display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+            <div style={{ position: "relative" }}>
+              <code
+                style={{
+                  display: "block",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "12px 14px",
+                  fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: "var(--text-primary)",
+                  wordBreak: "break-all",
+                  maxHeight: 120,
+                  overflow: "auto",
+                }}
+              >
+                {accessToken || "…"}
+              </code>
+            </div>
+            <button
+              onClick={copyToken}
+              disabled={!accessToken}
+              style={{
+                alignSelf: "stretch",
+                padding: "10px 16px",
+                borderRadius: 8,
+                background: copied ? "var(--accent-dim)" : "var(--accent)",
+                color: copied ? "var(--accent)" : "#000",
+                border: "none",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: accessToken ? "pointer" : "not-allowed",
+                transition: "background 0.15s",
+              }}
+            >
+              {copied ? "✓ Copied — paste in your terminal" : "Copy token"}
+            </button>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", textAlign: "center", lineHeight: 1.5, margin: 0 }}>
+              This is your Supabase session token. It&apos;s saved to <code>~/.mdfy/config.json</code> and used by the <code>mdfy</code> CLI + MCP server to act on your behalf. Treat it like a password.
+            </p>
+          </div>
         </>
       )}
 
