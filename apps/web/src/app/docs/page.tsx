@@ -48,18 +48,6 @@ const quickStartCards = [
     ),
   },
   {
-    tag: "JS",
-    title: "JavaScript SDK",
-    desc: "TypeScript-first client. MdfyClient class and standalone functions.",
-    href: "/docs/sdk",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
-  {
     tag: "MCP",
     title: "MCP Server",
     desc: "Hosted HTTP endpoint for Claude Web + npm package for Claude Desktop, Cursor, Windsurf.",
@@ -121,11 +109,6 @@ const exploreCards = [
     title: "Authentication",
     desc: "Edit tokens, user identity headers, OAuth bearer tokens.",
     href: "/docs/api#authentication",
-  },
-  {
-    title: "npm Packages",
-    desc: "@mdcore/api, engine, styles, ai. Independent packages.",
-    href: "/docs/sdk#packages",
   },
 ];
 

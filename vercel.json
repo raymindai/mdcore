@@ -20,7 +20,7 @@
       "headers": [
         {
           "key": "X-Powered-By",
-          "value": "mdcore-engine/0.1.0"
+          "value": "mdfy.app"
         },
         {
           "key": "X-Content-Type-Options",
@@ -55,19 +55,27 @@
       "has": [{ "type": "host", "value": "www.mdfy.cc" }],
       "destination": "https://mdfy.app/:path*",
       "permanent": true
-    }
-  ],
-  "rewrites": [
+    },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "mdcore.ai" }],
-      "destination": "/mdcore-ai/:path*"
+      "destination": "https://mdfy.app/:path*",
+      "permanent": true
     },
     {
-      "source": "/",
-      "has": [{ "type": "host", "value": "mdcore.ai" }],
-      "destination": "/mdcore-ai"
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mdcore.org" }],
+      "destination": "https://mdfy.app/:path*",
+      "permanent": true
     },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "mdcore.md" }],
+      "destination": "https://mdfy.app/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
     {
       "source": "/:id([A-Za-z0-9_-]{6,12}).md",
       "destination": "/raw/:id"

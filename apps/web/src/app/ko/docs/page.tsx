@@ -48,18 +48,6 @@ const quickStartCards = [
     ),
   },
   {
-    tag: "JS",
-    title: "JavaScript SDK",
-    desc: "TypeScript 우선 클라이언트. MdfyClient 클래스와 독립 함수 제공.",
-    href: "/ko/docs/sdk",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
-  {
     tag: "MCP",
     title: "MCP Server",
     desc: "Claude Web용 HTTP 엔드포인트 및 Claude Desktop, Cursor, Windsurf용 npm 패키지.",
@@ -101,11 +89,6 @@ const exploreCards = [
     title: "인증",
     desc: "Edit 토큰, 사용자 식별 헤더, OAuth Bearer 토큰.",
     href: "/ko/docs/api#authentication",
-  },
-  {
-    title: "npm 패키지",
-    desc: "@mdcore/api, engine, styles, ai. 독립적으로 사용 가능한 패키지.",
-    href: "/ko/docs/sdk#packages",
   },
 ];
 
