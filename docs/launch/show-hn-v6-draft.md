@@ -41,7 +41,7 @@ The thesis is simple: LLMs read and write markdown natively. URLs cross every bo
 3. **Graph-RAG-as-URL, not Graph-RAG-as-service.** Microsoft's GraphRAG and LlamaIndex KG build the graph and traverse it internally when an upstream system asks. mdfy ships the graph in the URL response — every bundle URL carries themes, insights, concept relations as markdown. The receiving AI inherits the prior AI's work for free.
 4. **The Karpathy wiki shape, deployed as URL.** Andrej said "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase." That's a local-file shape. We rebuilt it as a URL shape — and added composable scopes (doc / bundle / hub) so per-project context maps cleanly to AGENTS.md / CLAUDE.md.
 
-Stack: Next.js 15, Supabase Postgres with pgvector + HNSW, OpenAI text-embedding-3-small, Anthropic Haiku for concept extraction + reranking, Rust + WASM markdown engine. mdcore (engine) and the bundle spec are open source.
+Stack: Next.js 15, Supabase Postgres with pgvector + HNSW, OpenAI text-embedding-3-small, Anthropic Haiku for concept extraction + reranking, markdown-it as the shared render pipeline across editor + every viewer (TipTap on top for WYSIWYG). The whole repo and the bundle spec are open source.
 
 Try it: paste a ChatGPT share link, import a GitHub repo, drop a PDF. The URL is yours forever, no signup needed. Or open the example hub directly: [`mdfy.app/hub/demo`](https://mdfy.app/hub/demo) — six docs, two bundles with pre-computed analysis, a concept index you can browse. Paste the URL into Claude or Cursor to see the cross-AI part end-to-end.
 

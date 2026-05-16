@@ -122,11 +122,11 @@ const texts = {
     ],
 
     how_it_works_heading: "Under the hood",
-    how_it_works_sub: "A Rust engine compiled to WASM renders your Markdown in ~2ms. No server round-trip for previews.",
+    how_it_works_sub: "markdown-it renders your Markdown in the browser. The editor and every viewer use the same pipeline, so what you see while writing is what readers see.",
 
     timeline: [
       { marker: "Input", text: "Paste, drop a file, or capture from any AI chat" },
-      { marker: "Parse", text: "Rust engine (comrak) compiles to WASM, parses Markdown in ~2ms" },
+      { marker: "Parse", text: "markdown-it parses Markdown in the browser, no server round-trip" },
       { marker: "Render", text: "Code highlighting, KaTeX math, Mermaid diagrams applied" },
       { marker: "Edit", text: "WYSIWYG: click and type in the live rendered preview" },
       { marker: "Publish", text: "One click generates a permanent URL — share anywhere" },
@@ -434,11 +434,11 @@ const texts = {
     ],
 
     how_it_works_heading: "Under the hood",
-    how_it_works_sub: "Rust 엔진이 WASM으로 컴파일되어 ~2ms 안에 렌더링합니다. 미리보기를 위한 서버 왕복이 없습니다.",
+    how_it_works_sub: "markdown-it가 브라우저에서 직접 렌더링합니다. 에디터와 모든 뷰어가 같은 파이프라인을 사용해 작성 시 보이는 화면과 독자가 보는 화면이 일치합니다.",
 
     timeline: [
       { marker: "Input", text: "붙여넣기, 파일 드롭, 또는 AI 채팅에서 캡처" },
-      { marker: "Parse", text: "Rust 엔진(comrak)이 WASM으로 컴파일, ~2ms 안에 파싱" },
+      { marker: "Parse", text: "markdown-it가 브라우저에서 마크다운을 파싱, 서버 왕복 없음" },
       { marker: "Render", text: "코드 하이라이팅, KaTeX 수식, Mermaid 다이어그램 적용" },
       { marker: "Edit", text: "WYSIWYG: 렌더링된 프리뷰에서 클릭하고 바로 편집" },
       { marker: "Publish", text: "한 번의 클릭으로 영구 URL 생성 — 어디서든 공유" },

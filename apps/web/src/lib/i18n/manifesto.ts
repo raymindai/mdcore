@@ -88,7 +88,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
             "Shipped so far:",
           ],
           list: [
-            "A Rust markdown engine (mdcore, open source)",
+            "A unified markdown render pipeline (markdown-it) shared across every surface",
             "A web editor with WYSIWYG",
             "A Chrome extension for any AI chat",
             "VS Code extension, Mac desktop app, CLI, MCP server",
@@ -157,7 +157,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
         },
         {
           title: "Open by default.",
-          body: "mdcore is open source. The Bundle Spec is published openly. Open formats are how durable infrastructure gets built.",
+          body: "The whole repo is open source. The Bundle Spec is published openly. Open formats are how durable infrastructure gets built.",
         },
       ],
       beliefsHeading: "The seven beliefs",
@@ -230,7 +230,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
         line1Html:
           'mdfy is built by Hyunsang at <a href="https://raymind.ai" class="manifesto-link">Raymind.AI</a>.',
         line2Html:
-          'The mdcore engine is <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" class="manifesto-link">open source on GitHub</a>.',
+          'The codebase is <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" class="manifesto-link">open source on GitHub</a>.',
         line3: "The Bundle spec will be published before Phase 2 ships.",
         line4Html:
           'Reach me at <a href="mailto:hi@raymind.ai" class="manifesto-link">hi@raymind.ai</a>.',
@@ -275,7 +275,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
             "<strong>\uD37C\uBE14\uB9AC\uC2DC</strong> \u2014 \uC601\uAD6C URL, \uACF5\uAC1C/\uBE44\uACF5\uAC1C \uC124\uC815, \uBE44\uBC00\uBC88\uD638 \uBCF4\uD638, QR \uCF54\uB4DC, iframe \uC784\uBCA0\uB4DC.",
           ],
           afterList: [
-            "Rust WASM \uC5D4\uC9C4\uC774 \uB9C8\uD06C\uB2E4\uC6B4\uC744 2ms \uC548\uC5D0 \uD30C\uC2F1\uD569\uB2C8\uB2E4. KaTeX \uC218\uC2DD, Mermaid \uB2E4\uC774\uC5B4\uADF8\uB7A8, 190+ \uC5B8\uC5B4 \uAD6C\uBB38 \uAC15\uC870\uAC00 \uD3EC\uD568\uB429\uB2C8\uB2E4. \uB85C\uADF8\uC778 \uC5C6\uC774 3\uCD08 \uC548\uC5D0 \uAC00\uCE58\uB97C \uC804\uB2EC\uD569\uB2C8\uB2E4.",
+            "markdown-it\uAC00 \uBE0C\uB77C\uC6B0\uC800\uC5D0\uC11C \uC9C1\uC811 \uD30C\uC2F1\uD569\uB2C8\uB2E4. KaTeX \uC218\uC2DD, Mermaid \uB2E4\uC774\uC5B4\uADF8\uB7A8, 190+ \uC5B8\uC5B4 \uAD6C\uBB38 \uAC15\uC870\uAC00 \uD3EC\uD568\uB429\uB2C8\uB2E4. \uB85C\uADF8\uC778 \uC5C6\uC774 3\uCD08 \uC548\uC5D0 \uAC00\uCE58\uB97C \uC804\uB2EC\uD569\uB2C8\uB2E4.",
           ],
         },
         {
@@ -292,7 +292,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
           list: [
             "<strong>Bundle as context</strong> \u2014 \uC5EC\uB7EC \uBB38\uC11C\uB97C \uD558\uB098\uC758 \uBC88\uB4E4\uB85C \uBB36\uC5B4 AI\uC5D0\uAC8C \uC804\uB2EC. \u201C\uC774 \uD504\uB85C\uC81D\uD2B8\uC758 \uBAA8\uB4E0 \uBB38\uC11C\uB97C \uC77D\uC5B4\u201D\uAC00 \uAC00\uB2A5\uD574\uC9D1\uB2C8\uB2E4.",
             "<strong>MCP Server & REST API</strong> \u2014 \uC5B4\uB5A4 AI \uC5D0\uC774\uC804\uD2B8\uB4E0 mdfy \uBB38\uC11C\uB97C \uC77D\uACE0, \uC4F0\uACE0, \uC5C5\uB370\uC774\uD2B8\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
-            "<strong>@mdcore/engine npm \uACF5\uAC1C</strong> \u2014 \uB80C\uB354\uB9C1 \uC5D4\uC9C4\uC744 \uC624\uD508\uC18C\uC2A4\uB85C. \uB204\uAD6C\uB098 \uC790\uAE30 \uC571\uC5D0 mdfy \uD488\uC9C8\uC758 \uB9C8\uD06C\uB2E4\uC6B4 \uB80C\uB354\uB9C1\uC744 \uB123\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+            "<strong>Hub \uAE30\uBC18 knowledge memory</strong> \u2014 \uCEE8\uC149 \uC778\uB371\uC2A4, Related-in-your-hub, Needs-review lint\uC73C\uB85C \uAC1C\uC778 \uC704\uD0A4\uAC00 \uC790\uB77C\uB0A9\uB2C8\uB2E4.",
           ],
         },
       ],
@@ -347,7 +347,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
           badge: "live",
           badgeLabel: "LIVE",
           items:
-            "Rust WASM \uC5D4\uC9C4, WYSIWYG, \uC601\uAD6C URL, Chrome/VS Code/Mac \uC571, AI \uCEA1\uCC98",
+            "\uB2E8\uC77C markdown-it \uD30C\uC774\uD504\uB77C\uC778, WYSIWYG, \uC601\uAD6C URL, Chrome/VS Code/Mac \uC571, AI \uCEA1\uCC98",
         },
         {
           phase: "Phase 2 (Q2 2026)",
@@ -361,7 +361,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
           badge: "vision",
           badgeLabel: "VISION",
           items:
-            "@mdcore/engine npm \uACF5\uAC1C, mditor Writer, \uD130\uBBF8\uB110 \uB80C\uB354\uB7EC, API \uD50C\uB7AB\uD3FC",
+            "Hub recall + reranker \uC77C\uBC18\uD654, mditor Writer, \uB354 \uB9CE\uC740 import surfaces, AI \uD611\uC5C5 \uB3C4\uAD6C",
         },
       ],
 
@@ -381,7 +381,7 @@ export function getManifestoTexts(locale: "en" | "ko"): ManifestoTexts {
         line1Html:
           'mdfy is built by Hyunsang at <a href="https://raymind.ai" class="manifesto-link">Raymind.AI</a>.',
         line2Html:
-          'The mdcore engine is <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" class="manifesto-link">open source on GitHub</a>.',
+          'The codebase is <a href="https://github.com/raymindai/mdcore" target="_blank" rel="noopener noreferrer" class="manifesto-link">open source on GitHub</a>.',
         line3: "The Bundle spec will be published before Phase 2 ships.",
         line4Html:
           'Reach me at <a href="mailto:hi@raymind.ai" class="manifesto-link">hi@raymind.ai</a>.',

@@ -329,23 +329,30 @@ Pipe examples:
 - cat file.md | mdfy publish
 - tmux capture-pane -p | mdfy publish
 
-## JavaScript SDK
+## HTTP API
 
-Install: npm install @mdcore/api
+There is no SDK package — mdfy.app exposes plain HTTP. Use any client.
+See "REST API" above for the full endpoint surface, request shapes, and
+authentication. \`fetch()\` from anywhere works.
 
 \`\`\`typescript
-import { MdfyClient, publish, pull, update, deleteDocument } from "@mdcore/api";
+// Publish
+const res = await fetch("https://mdfy.app/api/docs", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ markdown: "# Hello", title: "Doc" }),
+});
+const { id, editToken, url } = await res.json();
 
-// Quick publish
-const { id, editToken, url } = await publish("# Hello");
+// Update (edit-token auth)
+await fetch(\`https://mdfy.app/api/docs/\${id}\`, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json", "x-edit-token": editToken },
+  body: JSON.stringify({ markdown: "# Updated" }),
+});
 
-// Client with config
-const client = new MdfyClient({ userId: "uuid", email: "user@example.com" });
-const result = await client.publish("# Hello", { title: "Doc", isDraft: false });
-const doc = await client.pull(id);
-await client.update(id, "# Updated", { editToken });
-await client.delete(id, editToken);
-const docs = await client.list();
+// Read
+const doc = await fetch(\`https://mdfy.app/api/docs/\${id}\`).then((r) => r.json());
 \`\`\`
 
 ## MCP Server
@@ -420,11 +427,8 @@ For the full 25, use the hosted HTTP endpoint.
 
 ## npm Packages
 
-- @mdcore/api: HTTP client, publish/read/update/delete, zero deps
-- @mdcore/engine: WASM Markdown renderer (Rust/comrak), GFM, KaTeX, Mermaid
-- @mdcore/styles: CSS-only, dark/light themes, print styles
-- @mdcore/ai: AI providers (Gemini, OpenAI, Anthropic), text-to-markdown
-- mdfy-mcp: MCP server for AI tools
+- mdfy-mcp: MCP server for AI tools (hosted + stdio)
+- mdfy-cli: command-line publisher
 `;
 
 export function GET() {

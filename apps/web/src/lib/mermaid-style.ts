@@ -261,8 +261,8 @@ export function getMermaidConfig(isDark: boolean) {
  * Browser-only. Requires mermaid.js to be loaded (window.mermaid or passed as argument).
  *
  * Usage:
- *   import { renderMermaidElements } from '@mdcore/engine';
- *   await renderMermaidElements(document.getElementById('preview'), { isDark: true });
+ *   import { renderMermaidElements } from "@/lib/mermaid-style";
+ *   await renderMermaidElements(document.getElementById("preview"), { isDark: true });
  */
 export async function renderMermaidElements(
   container: HTMLElement,

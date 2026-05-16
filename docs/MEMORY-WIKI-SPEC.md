@@ -256,7 +256,7 @@ interface Link {
 
 **[F8] Public spec page**
 - `memory.wiki/spec` — Bundle URL format, llms.txt 표준, retrieval API
-- Reference implementations: TypeScript / Python / Rust
+- Reference implementations: TypeScript / Python
 - MIT 라이선스 명시
 - Partner certification 가이드
 
@@ -335,7 +335,7 @@ interface Link {
 | Database | Supabase (Postgres) |
 | Search | Postgres full-text initial → Meilisearch or Typesense at scale |
 | Vector store | pgvector (in Supabase) — Upstage Solar embeddings |
-| Markdown engine | mdcore Rust → WASM (already shipped) |
+| Markdown engine | markdown-it (shared across editor + every viewer) |
 | AI | Upstage Solar (primary), Anthropic Claude (lint), Gemini (fallback) |
 | Infra | Vercel (deploy), Cloudflare (DNS, CDN, redirects) |
 

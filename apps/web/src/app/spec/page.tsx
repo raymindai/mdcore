@@ -327,8 +327,9 @@ GET /raw/hub/{slug}/c/{concept}        # same, raw markdown variant`}</Block>
             </li>
           </ol>
           <p>
-            The reference engine (<Code>@mdcore/engine</Code>) is MIT-licensed Rust compiled to WebAssembly.
-            Source: <Link href="https://github.com/raymindai/mdcore" style={{ color: "var(--accent)" }}>github.com/raymindai/mdcore</Link>.
+            The reference renderer is <Code>markdown-it</Code> with footnotes + GFM, configured identically to TipTap so
+            authoring and viewing surfaces produce the same DOM. Source:{" "}
+            <Link href="https://github.com/raymindai/mdcore" style={{ color: "var(--accent)" }}>github.com/raymindai/mdcore</Link>.
           </p>
         </Section>
 

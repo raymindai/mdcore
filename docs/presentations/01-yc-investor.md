@@ -215,7 +215,7 @@ The receiving AI inherits the prior AI's analysis for free — no second fetch, 
 <h3>Engineering</h3>
 
 - 8 weeks to v6
-- Rust + WASM engine
+- markdown-it shared render pipeline (editor + every viewer)
 - pgvector + HNSW
 - Hybrid retrieval + Haiku reranker
 - 40+ migrations shipped
