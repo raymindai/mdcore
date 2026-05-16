@@ -238,7 +238,7 @@ export default function BundleOverview({
                 contains: "Title, annotation, links + canvas analysis (themes / insights / concepts)",
                 tokenLabel: `≈ ${fmt(digestTokens)} tokens · ${digestPct}% of full`,
                 url: bundleUrl,
-                rawHref: `/raw/bundle/${bundleId}`,
+                rawHref: `/b/${bundleId}.md`,
                 copied: copied,
                 setCopied: () => {
                   if (typeof navigator === "undefined") return;
@@ -258,7 +258,7 @@ export default function BundleOverview({
                 contains: "Everything in Digest + every member doc's full markdown body inline",
                 tokenLabel: `≈ ${fmt(fullTokens)} tokens · 100%`,
                 url: `${bundleUrl}?full=1`,
-                rawHref: `/raw/bundle/${bundleId}?full=1`,
+                rawHref: `/b/${bundleId}.md?full=1`,
                 copied: copiedFull,
                 setCopied: () => {
                   if (typeof navigator === "undefined") return;
