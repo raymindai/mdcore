@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import RelatedInHubPanel from "@/components/RelatedInHubPanel";
 import ViewerHeader from "@/components/ViewerHeader";
-import { renderMarkdown } from "@/lib/engine";
-import { postProcessHtml } from "@/lib/postprocess";
+import type { TiptapLiveEditorHandle } from "@/components/TiptapLiveEditor";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+
+// Render the body through the same TipTap pipeline the editor uses so
+// the public viewer and the in-editor Live tab paint identically. The
+// founder asked for "모든 문서 뷰어는 통일되어야함" — using the same
+// component on both sides is the single-source-of-truth answer instead
+// of two parallel renderers that need to be kept matched by hand.
+const TiptapLiveEditor = dynamic(() => import("@/components/TiptapLiveEditor"), {
+  ssr: false,
+  loading: () => null,
+});
 
 type Theme = "dark" | "light";
 
@@ -32,10 +42,13 @@ export default function DocumentViewer({
   showBadge?: boolean;
   editMode?: string;
 }) {
-  const [html, setHtml] = useState("");
   const [markdown, setMarkdown] = useState(initialMarkdown);
   const [title, setTitle] = useState(initialTitle);
-  const [isLoading, setIsLoading] = useState(!isExpired);
+  // TipTap mounts and paints synchronously once it has its markdown
+  // prop, so we no longer need a separate "isLoading" gate around a
+  // WASM render. Keep it as a small initial-paint shim only for
+  // restricted/expired branches that still flash a spinner.
+  const [isLoading, setIsLoading] = useState(false);
   const [theme, setThemeState] = useState<Theme>("dark");
   const [copiedMd, setCopiedMd] = useState(false);
   // The viewer used to gate rendering behind a password OR a
@@ -51,6 +64,7 @@ export default function DocumentViewer({
   const [accessRevoked, setAccessRevoked] = useState(false);
   const [updateToast, setUpdateToast] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  const tiptapRef = useRef<TiptapLiveEditorHandle>(null);
   const markdownRef = useRef(initialMarkdown);
   markdownRef.current = markdown;
 
@@ -124,99 +138,24 @@ export default function DocumentViewer({
 
   // handleUnlock removed — password access mode no longer exists.
 
-  // Render markdown via WASM
+  // Render path is the same TipTap pipeline the editor uses — see the
+  // <TiptapLiveEditor> mount in the JSX below. The WASM/comrak render
+  // + ad-hoc Mermaid + KaTeX post-processing that used to live here is
+  // gone; TipTap's CodeBlock NodeView renders Mermaid blocks and its
+  // own Math node handles KaTeX, so the viewer now matches the
+  // editor's Live tab DOM-for-DOM.
+  //
+  // The imperative TipTap handle lets realtime / authchecked updates
+  // push fresh markdown into ProseMirror without remounting the
+  // component (which would lose scroll position and the click-to-copy
+  // affordances on code blocks).
+
+  // Push markdown into TipTap whenever it changes (realtime + the
+  // restricted-doc auth-check path both call setMarkdown).
   useEffect(() => {
-    if (!markdown || !unlocked) return;
-    (async () => {
-      try {
-        const result = await renderMarkdown(markdown);
-        const processed = postProcessHtml(result.html);
-        setHtml(processed);
-        setIsLoading(false);
-      } catch (e) {
-        console.error("Render error:", e);
-        setIsLoading(false);
-      }
-    })();
+    if (!unlocked) return;
+    tiptapRef.current?.setMarkdown(markdown || "");
   }, [markdown, unlocked]);
-
-  // Mermaid rendering
-  useEffect(() => {
-    if (!previewRef.current || isLoading) return;
-    const mermaidPres = previewRef.current.querySelectorAll('pre[lang="mermaid"]');
-    if (mermaidPres.length === 0) return;
-    const isDark = theme === "dark";
-
-    (async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let mermaid = (window as any).mermaid;
-      if (!mermaid) {
-        // Wait for CDN to load (up to 5s)
-        await new Promise<void>((resolve) => {
-          let tries = 0;
-          const check = setInterval(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((window as any).mermaid || tries++ > 50) { clearInterval(check); resolve(); }
-          }, 100);
-        });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mermaid = (window as any).mermaid;
-        if (!mermaid) return;
-      }
-      mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "loose",
-        theme: isDark ? "dark" : "default",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        fontSize: 14,
-        themeVariables: isDark ? {
-          background: "transparent",
-          primaryColor: "#222230",
-          primaryTextColor: "#ededf0",
-          primaryBorderColor: "#3a3a48",
-          lineColor: "#50505e",
-          secondaryColor: "#1a1a24",
-          tertiaryColor: "#1a1a24",
-        } : {
-          background: "transparent",
-          primaryColor: "#ffffff",
-          primaryTextColor: "#1a1a2e",
-          primaryBorderColor: "#e0e0e8",
-          lineColor: "#b0b0c0",
-          secondaryColor: "#f7f7fa",
-          tertiaryColor: "#f7f7fa",
-        },
-      });
-
-      for (let idx = 0; idx < mermaidPres.length; idx++) {
-        const pre = mermaidPres[idx];
-        const codeEl = pre.querySelector("code");
-        const code = (codeEl?.textContent || pre.textContent || "").trim();
-        if (!code) continue;
-
-        try {
-          const mermaidId = `mermaid-view-${Date.now()}-${idx}`;
-          const { svg: rawSvg } = await mermaid.render(mermaidId, code);
-          const { styleMermaidSvg } = await import("@/lib/mermaid-style");
-          const svg = styleMermaidSvg(rawSvg, isDark);
-
-          const wrapper = document.createElement("div");
-          wrapper.className = "mermaid-container";
-          const sourcepos = pre.getAttribute("data-sourcepos");
-          if (sourcepos) wrapper.setAttribute("data-sourcepos", sourcepos);
-
-          const rendered = document.createElement("div");
-          rendered.className = "mermaid-rendered";
-          rendered.innerHTML = svg;
-          wrapper.appendChild(rendered);
-
-          pre.replaceWith(wrapper);
-        } catch {
-          // Leave as-is
-        }
-      }
-    })();
-  }, [html, isLoading, theme]);
 
   // Supabase Realtime: subscribe to document changes
   useEffect(() => {
@@ -484,17 +423,22 @@ export default function DocumentViewer({
               Loading...
             </span>
           </div>
-        ) : html ? (
-          // Padding matches TiptapLiveEditor (p-3 sm:p-6) so a doc
-          // looks the same whether the visitor reads it here or the
-          // author edits it in the Live tab. The viewer used to use
-          // p-4 sm:p-8 which made the body column read with noticeably
-          // more inner whitespace than the editor — the founder
-          // flagged "rendering 차이가 너무 큼" with editor-vs-viewer
-          // side-by-side, padding was the loudest piece.
-          <article
-            className="mdcore-rendered p-3 sm:p-6 mx-auto max-w-3xl"
-            dangerouslySetInnerHTML={{ __html: html }}
+        ) : markdown ? (
+          // Single source of truth for rendered markdown across mdfy:
+          // the editor's Live tab and this public viewer both mount
+          // TiptapLiveEditor — same node handlers, same Mermaid +
+          // KaTeX NodeViews, same paragraph/list/table HTML. canEdit
+          // is false so SelectionToolbar / TableMenu don't render and
+          // the doc reads as a static page even though it's a real
+          // ProseMirror surface underneath.
+          <TiptapLiveEditor
+            ref={tiptapRef}
+            markdown={markdown}
+            onChange={() => { /* read-only */ }}
+            canEdit={false}
+            narrowView={true}
+            onPasteImage={async () => null}
+            onDoubleClickCode={() => { /* read-only */ }}
           />
         ) : (
           <div
