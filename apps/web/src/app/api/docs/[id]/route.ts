@@ -254,6 +254,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     sortOrder?: number;
     expectedUpdatedAt?: string;
     intent?: string | null;
+    expiresInHours?: number | null;
   };
   try {
     body = await req.json();
@@ -670,6 +671,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) return NextResponse.json({ error: "Failed to move" }, { status: 500 });
     return NextResponse.json({ ok: true });
+  }
+
+  // ─── Action: set-expiry ───
+  // Sets or clears expires_at. Owner-only. Used by the MCP set_expiry tool.
+  // expiresInHours: positive number (hours from now) or null (clear expiry).
+  if (body.action === "set-expiry") {
+    const requesterId = verified?.userId || req.headers.get("x-user-id");
+    if (!requesterId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: doc } = await supabase.from("documents").select("user_id").eq("id", id).single();
+    if (!doc || doc.user_id !== requesterId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const hrs = body.expiresInHours;
+    const expiresAt = hrs == null
+      ? null
+      : (typeof hrs === "number" && hrs > 0)
+        ? new Date(Date.now() + hrs * 3600 * 1000).toISOString()
+        : undefined;
+    if (expiresAt === undefined) {
+      return NextResponse.json({ error: "expiresInHours must be a positive number or null" }, { status: 400 });
+    }
+    const { error } = await supabase.from("documents").update({ expires_at: expiresAt }).eq("id", id);
+    if (error) return NextResponse.json({ error: "Failed to set expiry" }, { status: 500 });
+    return NextResponse.json({ ok: true, expires_at: expiresAt });
   }
 
   // ─── Action: set-sort-order ───

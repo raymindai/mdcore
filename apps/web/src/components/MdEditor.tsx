@@ -12656,12 +12656,19 @@ ${clone.innerHTML}
                     {/* Each card opens its own /case-<slug> page with
                         the Pain → Action → Result narrative. */}
                     {([
+                      // Wedge cases first — Cross-tool handoff and Agent
+                      // memory are the two narratives that exercise mdfy's
+                      // structural moat (one URL, every AI) most clearly.
+                      // Putting them in the top row primes the reader for
+                      // the v6 thesis before the broader knowledge-worker
+                      // cases below.
+                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on shared context", url: "/case-cross-tool-handoff", color: "#f472b6" },
+                      { label: "Agent memory", desc: "Long-running agents remember runs", url: "/case-agent-memory", color: "#a78bfa" },
+                      { label: "Docs as a KB", desc: "Your team's docs, AI-readable", url: "/case-docs-as-kb", color: "#c4b5fd" },
+                      { label: "Project decisions", desc: "Why you chose X, in one place", url: "/case-project-decisions", color: "#60a5fa" },
                       { label: "Research notes", desc: "Papers + PDFs into one cited URL", url: "/case-research-notes", color: "#fb923c" },
                       { label: "Meeting + interview log", desc: "Transcripts your AI can quote back", url: "/case-meetings-and-interviews", color: "#fbbf24" },
                       { label: "Book + course notes", desc: "Chapter takeaways that compound", url: "/case-book-course-notes", color: "#4ade80" },
-                      { label: "Project decisions", desc: "Why you chose X, in one place", url: "/case-project-decisions", color: "#60a5fa" },
-                      { label: "Docs as a KB", desc: "Your team's docs, AI-readable", url: "/case-docs-as-kb", color: "#c4b5fd" },
-                      { label: "Cross-tool handoff", desc: "Cursor ↔ Claude on shared context", url: "/case-cross-tool-handoff", color: "#f472b6" },
                     ]).map((item) => (
                       <a key={item.label} href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg text-left cursor-pointer"
