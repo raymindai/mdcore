@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Network } from "lucide-react";
+import { ArrowUpRight, Globe } from "lucide-react";
 
 interface RelatedRow {
   id: string;
@@ -25,11 +25,10 @@ interface Props {
 
 /**
  * The AI-era replacement for traditional [[wikilink]] backlinks.
- * Reads the per-doc concept overlap from /api/docs/[id]/related and
- * renders a "Related in your hub" panel under the doc body. The
- * concepts that wire docs together come from the LLM analysis of
- * the prose — nobody had to type `[[Other Doc]]` for these
- * connections to surface.
+ * Visual parity with RelatedDocsWidget (the in-editor variant) —
+ * same compact card row, same mono chips, same hover affordance —
+ * so the public viewer feels like one continuous surface with the
+ * authoring side instead of a different product.
  *
  * Hidden when:
  *   - The endpoint returns 403 (this doc isn't in a public hub)
@@ -65,52 +64,74 @@ export default function RelatedInHubPanel({ docId, mode = "public" }: Props) {
   if (!related || related.length === 0) return null;
 
   return (
-    <section
-      className="max-w-3xl mx-auto px-4 sm:px-6 py-8"
-      style={{ borderTop: "1px solid var(--border-dim)" }}
+    <div
+      className="mx-auto"
+      style={{ maxWidth: 760, padding: "var(--space-4) var(--space-3) var(--space-6)" }}
     >
-      <div className="flex items-center gap-2 mb-3" style={{ color: "var(--text-faint)" }}>
-        <Network size={12} />
-        <span className="text-xs uppercase tracking-wider">Related in this hub</span>
+      <div className="flex items-baseline justify-between mb-2">
+        <span
+          className="font-mono uppercase"
+          style={{ fontSize: 9, letterSpacing: 0.5, color: "var(--text-faint)" }}
+        >
+          {mode === "public" ? "Related in this hub" : "Related in your hub"}
+        </span>
+        <span className="text-caption" style={{ color: "var(--text-faint)" }}>
+          {related.length} related
+        </span>
       </div>
-      <p className="text-xs mb-4" style={{ color: "var(--text-faint)" }}>
-        {mode === "public"
-          ? "Other docs that share concepts with this one. The connections come from concept overlap — no manual links."
-          : "Other docs in your hub that share the most concepts with this one."}
-      </p>
-      <ul className="space-y-2">
+      <ul className="space-y-1">
         {related.map((r) => (
           <li key={r.id}>
             <Link
               href={`/${r.id}`}
-              className="block p-3 rounded-lg transition-colors hover:bg-[var(--toggle-bg)]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border-dim)" }}
+              className="w-full text-left flex items-start gap-3 transition-colors group"
+              style={{
+                padding: "var(--space-2) var(--space-3)",
+                borderRadius: 6,
+                background: "var(--surface)",
+                border: "1px solid var(--border-dim)",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--toggle-bg)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface)"; }}
             >
-              <div className="flex items-baseline justify-between gap-3 mb-1">
-                <h3 className="text-sm font-semibold leading-snug truncate" style={{ color: "var(--text-primary)" }}>
-                  {r.title || "Untitled"}
-                </h3>
-                <span className="text-xs font-mono shrink-0" style={{ color: "var(--text-faint)" }}>
-                  {r.overlap} shared
-                </span>
+              <div className="shrink-0 mt-0.5">
+                <Globe width={12} height={12} style={{ color: "var(--text-faint)" }} />
               </div>
-              {r.sharedConcepts.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {r.sharedConcepts.slice(0, 4).map((c) => (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                    {r.title || "Untitled"}
+                  </span>
+                  <span className="text-caption shrink-0" style={{ color: "var(--text-faint)" }}>
+                    · {r.overlap} shared
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {r.sharedConcepts.map((c) => (
                     <span
                       key={c}
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: "var(--accent-dim)", color: "var(--accent)" }}
+                      className="text-caption font-mono px-1.5 py-0.5 rounded"
+                      style={{
+                        background: "var(--accent-dim)",
+                        color: "var(--accent)",
+                        fontSize: 10,
+                      }}
                     >
                       {c}
                     </span>
                   ))}
                 </div>
-              )}
+              </div>
+              <ArrowUpRight
+                width={12}
+                height={12}
+                className="shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ color: "var(--text-faint)" }}
+              />
             </Link>
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
