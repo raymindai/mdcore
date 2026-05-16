@@ -31,11 +31,9 @@ export default function EmbedPage() {
           return;
         }
         const doc = await res.json();
-        const { renderMarkdown } = await import("@/lib/engine");
-        const { postProcessHtml } = await import("@/lib/postprocess");
-        const result = await renderMarkdown(doc.markdown);
-        const processed = postProcessHtml(result.html);
-        setHtml(processed);
+        const { render } = await import("@/lib/render");
+        const result = render(doc.markdown);
+        setHtml(result.html);
         setIsLoading(false);
       } catch {
         setHtml("<p>Failed to load</p>");

@@ -9,8 +9,7 @@ import MdfyLogo from "@/components/MdfyLogo";
 import ViewerFooter from "@/components/ViewerFooter";
 import ViewerPromoStrip from "@/components/ViewerPromoStrip";
 import ViewerHeader from "@/components/ViewerHeader";
-import { renderMarkdown } from "@/lib/engine";
-import { postProcessHtml } from "@/lib/postprocess";
+import { render } from "@/lib/render";
 
 const BundleCanvas = dynamic(() => import("@/components/BundleCanvas"), { ssr: false });
 
@@ -193,9 +192,8 @@ export default function BundleViewer({
           const first = docs[0];
           setSelectedDocId(first.id);
           try {
-            const result = await renderMarkdown(first.markdown);
-            const processed = postProcessHtml(result.html);
-            setSelectedHtml(processed);
+            const result = render(first.markdown);
+            setSelectedHtml(result.html);
           } catch { /* render error */ }
         }
         setIsLoading(false);
@@ -305,9 +303,8 @@ export default function BundleViewer({
   const renderDocument = useCallback(async (doc: BundleDocument) => {
     setSelectedDocId(doc.id);
     try {
-      const result = await renderMarkdown(doc.markdown);
-      const processed = postProcessHtml(result.html);
-      setSelectedHtml(processed);
+      const result = render(doc.markdown);
+      setSelectedHtml(result.html);
     } catch {
       setSelectedHtml(`<p style="color: var(--text-muted)">Failed to render document</p>`);
     }

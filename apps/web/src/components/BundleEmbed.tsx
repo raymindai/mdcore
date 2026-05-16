@@ -8,8 +8,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { renderMarkdown } from "@/lib/engine";
-import { postProcessHtml } from "@/lib/postprocess";
+import { render } from "@/lib/render";
 import { parseSections, assembleSections, type Section } from "@/lib/parse-sections";
 import { aggregateDiscoveries, type ChunkRef, type TensionItem, type ThreadItem } from "@/lib/discoveries";
 import { stripMarkdownPreview } from "@/lib/strip-markdown-preview";
@@ -923,8 +922,8 @@ export default function BundleEmbed({ bundleId, view = "canvas", onChangeView, o
       const wc = doc.markdown.split(/\s+/).filter(Boolean).length;
       let html = "";
       try {
-        const result = await renderMarkdown(doc.markdown);
-        html = postProcessHtml(result.html);
+        const result = render(doc.markdown);
+        html = result.html;
       } catch { /* render error */ }
       // Find connected concepts
       const connectedConcepts = aiGraph?.edges
@@ -3382,23 +3381,19 @@ function BundleListView({
     }
   };
 
-  // Render all documents
+  // Render all documents — render() is synchronous now (markdown-it, no
+  // WASM await needed), so we can build the map in a single pass without
+  // the cancelled-flag dance protecting against mid-iteration state writes.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const newMap = new Map<string, string>();
-      for (const doc of documents) {
-        try {
-          const result = await renderMarkdown(doc.markdown);
-          const processed = postProcessHtml(result.html);
-          newMap.set(doc.id, processed);
-        } catch {
-          newMap.set(doc.id, `<p style="color: var(--text-muted)">Failed to render</p>`);
-        }
+    const newMap = new Map<string, string>();
+    for (const doc of documents) {
+      try {
+        newMap.set(doc.id, render(doc.markdown).html);
+      } catch {
+        newMap.set(doc.id, `<p style="color: var(--text-muted)">Failed to render</p>`);
       }
-      if (!cancelled) setRenderedDocs(newMap);
-    })();
-    return () => { cancelled = true; };
+    }
+    setRenderedDocs(newMap);
   }, [documents]);
 
   // Track which doc is active in viewport + reading progress

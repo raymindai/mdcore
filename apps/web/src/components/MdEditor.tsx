@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { flushSync, createPortal } from "react-dom";
-import { renderMarkdown } from "@/lib/engine";
-import { postProcessHtml } from "@/lib/postprocess";
+import { render } from "@/lib/render";
 import katex from "katex";
 import { htmlToMarkdown, isHtmlContent } from "@/lib/html-to-md";
 import {
@@ -4456,13 +4455,11 @@ export default function MdEditor() {
     setIsLoading(true);
     try {
       const start = performance.now();
-      const result = await renderMarkdown(md);
+      const result = render(md);
       if (thisRender !== renderIdRef.current) return; // stale render, discard
       const elapsed = performance.now() - start;
 
-      const processed = postProcessHtml(result.html);
-
-      setHtml(processed);
+      setHtml(result.html);
       // Reset mermaid cache so diagrams re-render after full HTML replacement
       prevMermaidCodesRef.current = [];
       setFlavor(result.flavor.primary);
@@ -7828,9 +7825,8 @@ export default function MdEditor() {
     try {
       const data = await fetchVersion(docId, versionId, authHeaders);
       if (data.version?.markdown) {
-        const result = await renderMarkdown(data.version.markdown);
-        const processed = postProcessHtml(result.html);
-        setHtml(processed);
+        const result = render(data.version.markdown);
+        setHtml(result.html);
       }
     } catch {
       showToast("Failed to load version preview", "error");
