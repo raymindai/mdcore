@@ -5892,6 +5892,14 @@ export default function MdEditor() {
             const prevActiveId = activeTabIdRef.current; // Save before overwriting
             activeTabIdRef.current = "";
             await doRender(doc.markdown);
+            // Push the loaded markdown into the Live (Tiptap) editor.
+            // setMarkdownRaw + doRender feed the preview/Source side but
+            // Tiptap holds its own ProseMirror doc and only updates via
+            // the imperative setMarkdown handle. Skipping this call left
+            // the Live tab blank on URL-paste opens (the user had to
+            // toggle to Source and back to trigger the view-mode sync
+            // effect, which finally pushed the body in).
+            tiptapRef.current?.setMarkdown(doc.markdown);
 
             // Update tabs state (functional updater for latest state)
             const newTabId = `tab-${Date.now()}`;
