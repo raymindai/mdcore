@@ -3,22 +3,7 @@ import * as path from "path";
 import * as https from "https";
 import * as http from "http";
 import { AuthManager } from "./auth";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const wasmEngine = require("../wasm/mdcore_engine") as {
-  render: (markdown: string) => {
-    html: string;
-    title: string | undefined;
-    toc_json: string;
-    flavor: {
-      primary: string;
-      math: boolean;
-      mermaid: boolean;
-      wikilinks: boolean;
-      jsx: boolean;
-    };
-  };
-};
+import { render as renderMarkdown } from "./render";
 
 export class PreviewPanel {
   private static panels: Map<string, PreviewPanel> = new Map();
@@ -1358,8 +1343,10 @@ interface RenderResult {
 
 function renderMarkdownWithFlavor(markdown: string): RenderResult {
   try {
-    const result = wasmEngine.render(markdown);
-    // WASM flavor object has getters on prototype — must serialize to plain object
+    // Same render pipeline as mdfy.app's web viewers (Phase 2 of the
+    // WASM-to-markdown-it migration) — keeps preview output in sync
+    // with what the user will see at mdfy.app/<id> after they publish.
+    const result = renderMarkdown(markdown);
     const f = result.flavor;
     return {
       html: result.html,
