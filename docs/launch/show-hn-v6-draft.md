@@ -2,50 +2,48 @@
 
 **Status**: draft for founder review. Voice is the founder's, not Claude's. Keep first-person, keep technical, drop adjectives the founder wouldn't say out loud.
 
-**Last revised**: 2026-05-15 (post-rebrand-prep ship).
+**Last revised**: 2026-05-16 (post-rebrand-prep ship + wedge-narrative refactor).
 
 ---
 
 ## Title options (pick one before posting)
 
-1. **Show HN: mdfy – Your AI memory, deployable to any AI**
-2. **Show HN: mdfy – Markdown URLs as a memory layer for Claude, ChatGPT, Cursor**
-3. **Show HN: mdfy – I built the personal wiki Karpathy described, then deployed it as a URL**
+1. **Show HN: mdfy – One URL that Cursor, Claude Code, and ChatGPT can all read as memory**
+2. **Show HN: mdfy – Your AI memory, deployable to any AI**
+3. **Show HN: mdfy – Markdown URLs as a memory layer for Claude, ChatGPT, Cursor**
+4. **Show HN: mdfy – I built the personal wiki Karpathy described, then deployed it as a URL**
 
-(My preference: #1 — leads with our own line and the differentiator.)
+(My preference: #1 — leads with the *recognizable specific situation* before the abstract thesis. HN audience self-identifies in line 1.)
 
 ---
 
-## Body (target: ~400 words, no marketing language)
+## Body (target: ~400 words; opens with a wedge story, not a feature list)
 
-I've been building mdfy for ~8 weeks (1 month nights/weekends, then full-time). Today I'm shipping v6, which turns it from a markdown publisher into a memory layer.
+I use Claude Code and Cursor on the same project. They both need context — auth pattern, DB schema, the actual reason we picked Postgres over Dynamo six months ago. Today that context lives in `CLAUDE.md`, `.cursor/rules`, sometimes a stale Notion page. They drift. Last Tuesday I explained the rate-limit pattern to four different AI sessions across two tools in one afternoon.
 
-The thesis is simple: LLMs read and write markdown natively. URLs cross every boundary. If you put a markdown doc at a URL, every AI you use can fetch it as context the same way. So your personal memory should be a markdown URL — not a Notion block, not an extracted-fact graph, not a vendor SDK.
+mdfy is what I built to stop doing that.
 
-**What it does today** (everything's free, no signup to try):
+Each saved doc is a markdown URL. Group them into a Bundle URL. Group bundles into your Hub URL. Drop the same URL into Cursor's `.cursor/rules`, Claude Code's `CLAUDE.md`, ChatGPT's "knowledge" — every AI now reads the same project memory. When a new decision lands, you save it once. Next session in any tool, the AI sees it.
 
-- **Capture from any AI** — Chrome extension for ChatGPT / Claude / Gemini, MCP server for Claude Code / Cursor, paste-anywhere editor at mdfy.app
-- **Capture from anywhere else** — GitHub repos, Notion pages, Obsidian vaults (.zip), any URL, files (PDF/DOCX/code)
-- **Bundle by topic** — group N docs, add an Intent, let AI synthesize discoveries (tensions, gaps, threads) across them
-- **Hub** — your docs auto-cluster into a concept index. `mdfy.app/hub/<you>` becomes one URL Claude, ChatGPT, Cursor, and Codex can all fetch
-- **Self-publishing wiki** — every public hub auto-exposes `index.md`, `SCHEMA.md`, `log.md`, `llms.txt` so AI agents know what's available
-- **Recall API** — `POST /api/hub/<slug>/recall` with optional Haiku-based reranker (hybrid BM25 + pgvector)
-- **Token economy** — `?compact` and `?digest` query params cut fetch cost 30-50%; bundle URLs also accept `?full=1` to inline every member doc and `?graph=0` to drop the analysis section
-- **AI dev tool wiring** — one line in `AGENTS.md` / `CLAUDE.md` / `.cursor/rules` auto-loads your hub or bundle on every session; per-tool snippets at [`/docs/integrate`](https://mdfy.app/docs/integrate)
-- **Open spec** — URL contract, retrieval API, llms.txt, bundle digest format all documented at [`/spec`](https://mdfy.app/spec); engine MIT-licensed
+**The 30-second demo**: paste `https://mdfy.app/b/p_mdtSk0` into Claude Code or Cursor's rules. It's a sample project's living context — 7 docs (README, auth pattern, DB schema, API conventions, UI patterns, decision log, open questions). The bundle URL fetches as markdown, with `?full=1` inlining every member doc (≈3.3k tokens) for the AI to ingest. Same URL works in any AI tool.
 
-**What I think is interesting**:
+**What v6 ships beyond the wedge** (everything's free, no signup to try):
 
-1. **Cross-AI is structural moat.** Notion's AI works in Notion. ChatGPT's memory works in ChatGPT. mdfy works everywhere because it's just a URL — AI companies can't replicate that without abandoning their walled gardens.
-2. **Authored memory ≠ extracted memory.** Mem0 and Letta extract facts from conversations. They're good at what they do. mdfy answers a different question: *what do **you** want to remember?* You write it. You edit it. You decide.
-3. **Graph-RAG-as-URL, not Graph-RAG-as-service.** Microsoft's GraphRAG and LlamaIndex KG build the graph and traverse it internally when an upstream system asks. mdfy ships the graph in the URL response — every bundle URL carries themes, insights, concept relations as markdown. The receiving AI inherits the prior AI's work for free.
-4. **The Karpathy wiki shape, deployed as URL.** Andrej said "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase." That's a local-file shape. We rebuilt it as a URL shape — and added composable scopes (doc / bundle / hub) so per-project context maps cleanly to AGENTS.md / CLAUDE.md.
+- **Capture** — Chrome extension for ChatGPT / Claude / Gemini; MCP server (26 tools) for Claude Code, Cursor, Claude Desktop; ingest from GitHub repos, Notion pages, Obsidian vaults, any URL, files (PDF/DOCX/code).
+- **Hub auto-organises** — saved docs cluster into a concept index. Cross-doc themes surface as you add. Recall API at `POST /api/hub/<slug>/recall` (hybrid BM25 + pgvector + optional Haiku reranker). Per-hub auto-published `index.md`, `SCHEMA.md`, `log.md`, `llms.txt`.
+- **Bundle as thinking surface** — group N docs, add an Intent, AI synthesises tensions/gaps/threads across them. The bundle URL ships the analysis inline — receiving AIs inherit the prior synthesis for free, no re-computation.
 
-Stack: Next.js 15, Supabase Postgres with pgvector + HNSW, OpenAI text-embedding-3-small, Anthropic Haiku for concept extraction + reranking, markdown-it as the shared render pipeline across editor + every viewer (TipTap on top for WYSIWYG). The whole repo and the bundle spec are open source.
+**Why I think it works**:
 
-Try it: paste a ChatGPT share link, import a GitHub repo, drop a PDF. The URL is yours forever, no signup needed. Or open the example hub directly: [`mdfy.app/hub/demo`](https://mdfy.app/hub/demo) — six docs, two bundles with pre-computed analysis, a concept index you can browse. Paste the URL into Claude or Cursor to see the cross-AI part end-to-end.
+1. **Cross-AI is the structural moat.** Notion's AI works in Notion. ChatGPT's memory works in ChatGPT. mdfy is just a URL — AI companies can't replicate that without abandoning walled gardens.
+2. **Authored ≠ extracted memory.** Mem0 and Letta extract facts from conversations. mdfy answers a different question: *what do you want to remember?* You write it. You edit it. You decide.
+3. **The Karpathy wiki, deployed as a URL.** "Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase" — that's a local-file shape. mdfy rebuilt it as URL + composable scopes (doc / bundle / hub) so per-project context maps cleanly to `AGENTS.md` / `CLAUDE.md` / `.cursor/rules`.
 
-Happy to dig into anything technical, the cross-AI thesis, why I left X to do this, or where I think this goes if it works.
+Stack: Next.js 15, Supabase Postgres + pgvector + HNSW, OpenAI text-embedding-3-small, Anthropic Haiku for concept extraction + reranking, markdown-it as the shared render pipeline across editor + every viewer (TipTap on top for WYSIWYG). Open source. Bundle spec at [/spec](https://mdfy.app/spec).
+
+Try it: paste `mdfy.app/b/p_mdtSk0` into any AI tool. Or open the example hub: [`mdfy.app/hub/demo`](https://mdfy.app/hub/demo). Or paste a ChatGPT share link at mdfy.app — your URL is yours forever, no signup.
+
+Happy to dig into the cross-AI thesis, the wedge use case, why authored beats extracted, the bundle digest format, or where this goes if it works.
 
 ---
 
@@ -55,13 +53,16 @@ Happy to dig into anything technical, the cross-AI thesis, why I left X to do th
 > Notion's AI works in Notion. mdfy works wherever you paste the URL — Cursor, Claude, ChatGPT, Codex. The lock-in difference is the whole point.
 
 **"What about Mem0 / Letta / extracted memory?"**
-> Different question. Mem0 asks "what should the AI remember about you?" mdfy asks "what do you want to remember?" Both are legitimate. The first is inference; the second is authorship.
+> Different question. Mem0 asks "what should the AI remember about you?" mdfy asks "what do *you* want to remember?" Both are legitimate. The first is inference; the second is authorship.
 
 **"How is this different from publishing markdown to GitHub Pages?"**
-> Three things: (a) capture surfaces (Chrome ext / MCP / 5 ingest sources), (b) the hub layer (auto-concept-index, recall API, lint surface), (c) cross-AI deployability (every URL is a citable context address with `/raw` + `?compact` and `/llms.txt`).
+> Three things: (a) capture surfaces (Chrome ext / MCP / 5 ingest sources), (b) the hub layer (auto-concept-index, recall API, lint surface), (c) cross-AI deployability (every URL is a citable context address with `/raw` + `?compact` + `/llms.txt`).
 
 **"Won't AI companies just build this themselves?"**
 > They can't. Their incentive is to keep you in their walled garden. The cross-AI position is mine to win precisely because every AI company is structurally one of the AIs, not the layer above them.
+
+**"Why a separate URL instead of just MCP?"**
+> MCP needs setup per tool, per machine. A URL is universal — paste it anywhere markdown is read (which is everywhere an LLM exists). MCP and URL coexist: mdfy ships both. MCP for write paths and rich tools; URL for read-anywhere distribution.
 
 **"Pricing?"**
 > Free during beta. Pro tier after launch (price TBD — announced when beta ends). No tier locks the core: capture / hub / cross-AI deployability are free forever. The Pro split today is around no-badge, custom domain, analytics, auto-analyze (stale-fetch triggers background graph regen).
@@ -78,12 +79,20 @@ Happy to dig into anything technical, the cross-AI thesis, why I left X to do th
 - Don't recruit upvotes. Don't post the link in Slack. Organic ranking only.
 - After post: tweet a single thread (5-6 tweets), email Substack list, Slack the news in 2-3 friendly group chats (not "vote me up" — just "shipped this, would love feedback").
 
+## Demo URLs to have ready
+
+- Wedge demo: `mdfy.app/b/p_mdtSk0` (Cross-tool dev workflow bundle, 7 docs, ~3.3k tokens at `?full=1`)
+- Full hub demo: `mdfy.app/hub/demo` (mdfy Demo's hub — 50 docs, 7 bundles, 40 concepts)
+- Spec: `mdfy.app/spec`
+- Integrate doc with per-tool snippets: `mdfy.app/docs/integrate`
+
 ---
 
 ## What I do NOT want in the post
 
 - "Revolutionary" / "disrupt" / "AI-powered" / "next-gen" — auto-downvotes on HN
 - Buzzword pile-up
-- Pitching investors language ("scalable", "platform play")
+- Pitching-investors language ("scalable", "platform play")
 - More than one Karpathy mention (we already use it carefully in body)
 - Reddit-style "let me know what you think!" tail
+- Feature lists longer than 3 bullets in the body — those go in /docs, not the pitch
