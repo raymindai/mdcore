@@ -238,7 +238,7 @@ export default function BundleOverview({
                 contains: "Title, annotation, links + canvas analysis (themes / insights / concepts)",
                 tokenLabel: `≈ ${fmt(digestTokens)} tokens · ${digestPct}% of full`,
                 url: bundleUrl,
-                rawHref: `/b/${bundleId}.md`,
+                rawHref: `/raw/bundle/${bundleId}`,
                 copied: copied,
                 setCopied: () => {
                   if (typeof navigator === "undefined") return;
@@ -258,7 +258,7 @@ export default function BundleOverview({
                 contains: "Everything in Digest + every member doc's full markdown body inline",
                 tokenLabel: `≈ ${fmt(fullTokens)} tokens · 100%`,
                 url: `${bundleUrl}?full=1`,
-                rawHref: `/b/${bundleId}.md?full=1`,
+                rawHref: `/raw/bundle/${bundleId}?full=1`,
                 copied: copiedFull,
                 setCopied: () => {
                   if (typeof navigator === "undefined") return;
@@ -361,30 +361,52 @@ export default function BundleOverview({
             );
           })()}
 
-          {/* Integrate-with-dev-tools nudge. Bundle URL is the
-              recommended scope for AGENTS.md / CLAUDE.md /
-              .cursor/rules (project-scoped context). Route to
-              /docs/integrate which carries the per-tool snippets. */}
+          {/* Project-scoped wiring nudge — same rounded card shape as
+              the two URL variants above so it reads as a third option
+              ("automate it") rather than a hanging banner. */}
           <a
             href="/docs/integrate"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between gap-2 text-caption px-2.5 py-2 rounded mb-3 transition-colors hover:bg-[var(--toggle-bg)]"
+            className="block rounded-lg p-3 mb-3 transition-colors hover:bg-[var(--toggle-bg)]"
             style={{
               background: "var(--background)",
               border: "1px solid var(--border-dim)",
-              color: "var(--text-secondary)",
             }}
           >
-            <span className="flex items-center gap-2 min-w-0">
-              <span style={{ color: "var(--accent)", fontSize: 13 }}>↳</span>
-              <span className="truncate">
-                Drop this URL into <strong style={{ color: "var(--text-primary)" }}>AGENTS.md</strong> / <strong style={{ color: "var(--text-primary)" }}>CLAUDE.md</strong> / <strong style={{ color: "var(--text-primary)" }}>.cursor/rules</strong> for project-scoped context
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="text-caption font-mono font-bold"
+                  style={{
+                    background: "var(--toggle-bg)",
+                    color: "var(--text-muted)",
+                    padding: "2px 7px",
+                    borderRadius: 4,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
+                    flexShrink: 0,
+                  }}
+                >
+                  Wire it
+                </span>
+                <span
+                  className="text-caption font-mono shrink-0"
+                  style={{ color: "var(--text-faint)", fontSize: 10 }}
+                >
+                  AGENTS.md / CLAUDE.md / .cursor/rules
+                </span>
+              </div>
+              <span
+                className="text-caption font-mono shrink-0"
+                style={{ color: "var(--accent)", fontSize: 11 }}
+              >
+                How →
               </span>
-            </span>
-            <span className="text-caption font-mono shrink-0" style={{ color: "var(--accent)" }}>
-              How →
-            </span>
+            </div>
+            <p className="text-caption" style={{ color: "var(--text-muted)", lineHeight: 1.4 }}>
+              Paste once into your project&apos;s agent file — every Claude Code / Cursor / Codex session auto-loads this bundle as project-scoped context.
+            </p>
           </a>
 
           {/* Single browser-preview link — explicitly framed as
