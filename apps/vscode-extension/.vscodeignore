@@ -4,7 +4,13 @@ src/**
 node_modules/**
 .gitignore
 tsconfig.json
+# Exclude all .ts but keep .d.ts EXCEPT the obsolete wasm/ bindings.
+# wasm/ is kept on disk as a safety net during the Phase 2 rollout
+# (engine swap Rust→WASM → markdown-it) but must NOT ship in the
+# vsix — v1.4.0+ uses ./out/render.js instead of ../wasm/mdcore_engine.
+wasm/**
 **/*.ts
 !**/*.d.ts
 out/**/*.map
 package-lock.json
+mdfy-vscode-*.vsix
