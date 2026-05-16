@@ -4793,7 +4793,24 @@ export default function MdEditor() {
         queueMicrotask(() => {
           loadTab(target);
           if (!fromPopstate) {
-            const url = target.kind === "bundle" && target.bundleId ? `/b/${target.bundleId}` : (target.cloudId ? `/${target.cloudId}` : "/");
+            // Local-only example tabs (Guides & Examples) have no cloudId
+            // and no bundleId, so they used to fall through to "/", which
+            // left the address bar blank and broke shareability + refresh
+            // continuity. Use the tab.id (already a stable kebab slug like
+            // "tab-welcome") as a /?guide=<slug> query param so the URL
+            // reads as a real location and the mount handler can re-open
+            // the same guide on refresh.
+            const isExample = EXAMPLE_TAB_IDS.has(target.id);
+            const guideSlug = isExample && !target.cloudId && !target.bundleId
+              ? target.id.replace(/^tab-/, "")
+              : null;
+            const url = target.kind === "bundle" && target.bundleId
+              ? `/b/${target.bundleId}`
+              : target.cloudId
+                ? `/${target.cloudId}`
+                : guideSlug
+                  ? `/?guide=${guideSlug}`
+                  : "/";
             window.history.pushState({ mdfyTabId: target.id, mdfyDocId: target.cloudId || null, mdfyBundleId: target.bundleId || null }, "", url);
           }
         });
@@ -5740,6 +5757,29 @@ export default function MdEditor() {
       // Check ?from= or ?doc= parameter
       const params = new URLSearchParams(window.location.search);
       const docParam = params.get("from") || params.get("doc");
+
+      // ?guide=<slug> — refresh / shared link to a Guides & Examples
+      // tab (local seed content). The slug is the tab.id with the
+      // "tab-" prefix stripped. Resolve back to the tab id and activate.
+      const guideParam = params.get("guide");
+      if (guideParam && /^[a-z0-9-]+$/.test(guideParam)) {
+        const targetId = `tab-${guideParam}`;
+        if (EXAMPLE_TAB_IDS.has(targetId)) {
+          // setTabs already includes EXAMPLE_TABS via INITIAL_TABS, but
+          // hidden-examples filtering may have removed this one. Force
+          // it back into the list and activate.
+          setTabs((prev) => {
+            const exists = prev.find((t) => t.id === targetId);
+            if (exists) return prev;
+            const seed = EXAMPLE_TABS.find((t) => t.id === targetId);
+            return seed ? [...prev, seed] : prev;
+          });
+          activeTabIdRef.current = targetId;
+          setActiveTabId(targetId);
+          setShowOnboarding(false);
+          return;
+        }
+      }
       // Also accept the bare short-URL form `mdfy.app/<id>` — the
       // /[id]/page.tsx route re-exports this editor, so when a user
       // refreshes (or clicks the URL chip) on a doc URL, the editor
