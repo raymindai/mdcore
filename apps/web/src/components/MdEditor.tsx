@@ -16288,6 +16288,7 @@ ${clone.innerHTML}
         const surfaces: PaletteItem[] = [
           { id: "surface-start", label: "Start", hint: "Personal workspace", icon: <Smile width={13} height={13} />, action: () => { setShowOnboarding(true); setShowHub(false); setShowSettings(false); } },
           ...(hubSlug ? [{ id: "surface-hub", label: "Hub", hint: `/hub/${hubSlug}`, icon: <LayoutDashboard width={13} height={13} />, action: () => { setShowOnboarding(false); setShowSettings(false); setShowHub(true); } }] : []),
+          ...(hubSlug ? [{ id: "surface-galaxy", label: "Galaxy", hint: "Your hub as a constellation", icon: <Network width={13} height={13} />, action: () => { window.open("/galaxy", "_blank"); closePalette(); } }] : []),
           { id: "surface-settings", label: "Settings", hint: "Profile, appearance, auto-management", icon: <Settings width={13} height={13} />, action: () => { setShowOnboarding(false); setShowHub(false); setShowSettings(true); } },
         ];
 
