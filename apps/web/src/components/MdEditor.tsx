@@ -12,6 +12,8 @@ import {
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
 import HubPulse from "@/components/HubPulse";
+import HubConstellation from "@/components/HubConstellation";
+import HubFrontier from "@/components/HubFrontier";
 import BundleEmbed from "@/components/BundleEmbed";
 import HubEmbed from "@/components/HubEmbed";
 import SettingsEmbed from "@/components/SettingsEmbed";
@@ -9954,7 +9956,7 @@ ${clone.innerHTML}
                   skipped > 0 ? `${skipped} skipped` : null,
                   failed > 0 ? `${failed} failed` : null,
                 ].filter(Boolean);
-                showToast(parts.length > 0 ? parts.join(" · ") : "Nothing to import", "success");
+                showToast(parts.length > 0 ? parts.join(", ") : "Nothing to import", "success");
                 fetch("/api/user/documents?includeDeleted=1", { headers: authHeaders })
                   .then((r) => (r.ok ? r.json() : null))
                   .then((data) => { if (data?.documents) setServerDocs(data.documents); })
@@ -12375,15 +12377,20 @@ ${clone.innerHTML}
                   content frame. */}
               <div className="w-full max-w-3xl mx-auto px-6 py-10">
 
-                {/* Hub Pulse — Layer 1 of the "growing knowledge hub"
-                    surface. 365-day contribution heatmap + streak +
-                    totals. Renders only for signed-in users with
-                    >= 3 captured docs (component self-gates via the
-                    API response); below that threshold the existing
-                    onboarding-friendly Start content shows alone. */}
+                {/* Growing-knowledge-hub surface — three layers stacked
+                    vertically when the user is signed in. Each layer
+                    self-gates: Pulse hides under 3 docs, Constellation
+                    hides under 6 nodes, Frontier hides if no signal in
+                    any of its three columns. So new accounts see the
+                    existing onboarding-friendly Start content alone;
+                    accounts with momentum see the growing-hub stack.
+                    Design rationale + anti-patterns live in claude
+                    memory note `start_growing_hub_concept_2026_05`. */}
                 {isAuthenticated && (
-                  <div className="mb-6">
+                  <div className="space-y-4 mb-6">
                     <HubPulse authHeaders={authHeaders} />
+                    <HubConstellation authHeaders={authHeaders} />
+                    <HubFrontier authHeaders={authHeaders} />
                   </div>
                 )}
 

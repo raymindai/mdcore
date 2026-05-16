@@ -103,7 +103,7 @@ export default function RelatedInHubPanel({ docId, mode = "public" }: Props) {
                     {r.title || "Untitled"}
                   </span>
                   <span className="text-caption shrink-0" style={{ color: "var(--text-faint)" }}>
-                    · {r.overlap} shared
+                    ({r.overlap} shared)
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1">

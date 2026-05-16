@@ -165,7 +165,7 @@ export default function HubPulse({ authHeaders, minDocsToShow = 3 }: Props) {
             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
               {recentCount}
             </span>
-            {" "}captures · 7d
+            {" "}captures (7d)
           </span>
           <span className="text-caption" style={{ color: "var(--text-faint)" }}>
             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>
@@ -247,7 +247,7 @@ export default function HubPulse({ authHeaders, minDocsToShow = 3 }: Props) {
                 return (
                   <div
                     key={`${wIdx}-${dIdx}`}
-                    title={`${day.date} · ${day.count} ${day.count === 1 ? "capture" : "captures"}`}
+                    title={`${day.date} (${day.count} ${day.count === 1 ? "capture" : "captures"})`}
                     className={intensityClass(day.count)}
                     style={{
                       height: 10,

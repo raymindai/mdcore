@@ -133,7 +133,7 @@ export default function RelatedDocsWidget({ cloudId, isOwner, onOpenDoc }: Props
                       {d.title}
                     </span>
                     <span className="text-caption shrink-0" style={{ color: "var(--text-faint)" }}>
-                      · {d.overlap} shared
+                      ({d.overlap} shared)
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
