@@ -307,8 +307,17 @@ export default function DocumentViewer({
   }, []);
 
   return (
+    // min-h-screen (not h-screen): the viewer used to be a fixed-height
+    // app shell with the body internally scrolling, which worked when the
+    // only sibling below body was the footer. After F2′ added the related-
+    // in-hub panel and the promo strip, header + related + promo + footer
+    // started exceeding the viewport on standard laptop heights, which
+    // squashed the body's flex-1 child to height 0 (overflow-auto then
+    // clipped the entire article). Switch the outer container to grow
+    // beyond the viewport so the page scrolls naturally and the article
+    // takes its real content height instead of being clipped to 0.
     <div
-      className="flex flex-col h-screen"
+      className="flex flex-col min-h-screen"
       style={{ background: "var(--background)", color: "var(--foreground)" }}
     >
       <ViewerHeader
