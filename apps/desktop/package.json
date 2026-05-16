@@ -1,6 +1,6 @@
 {
   "name": "mdfy-desktop",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "mdfy for Mac — Markdown publishing with sidebar, sync, and local rendering",
   "main": "main.js",
   "scripts": {
@@ -59,6 +59,8 @@
       "icon": "assets/icon.icns",
       "darkModeSupport": true,
       "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": "Hyunsang Cho (W7NL89YGSD)",
       "x64ArchFiles": "Contents/Resources/MdfyQuickLook.app/**/*",
       "target": [
         {
@@ -70,7 +72,9 @@
       ],
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
-      "notarize": false
+      "notarize": {
+        "teamId": "W7NL89YGSD"
+      }
     },
     "mas": {
       "entitlements": "build/entitlements.mas.plist",
