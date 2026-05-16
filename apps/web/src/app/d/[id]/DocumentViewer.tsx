@@ -485,8 +485,15 @@ export default function DocumentViewer({
             </span>
           </div>
         ) : html ? (
+          // Padding matches TiptapLiveEditor (p-3 sm:p-6) so a doc
+          // looks the same whether the visitor reads it here or the
+          // author edits it in the Live tab. The viewer used to use
+          // p-4 sm:p-8 which made the body column read with noticeably
+          // more inner whitespace than the editor — the founder
+          // flagged "rendering 차이가 너무 큼" with editor-vs-viewer
+          // side-by-side, padding was the loudest piece.
           <article
-            className="mdcore-rendered p-4 sm:p-8 mx-auto max-w-3xl"
+            className="mdcore-rendered p-3 sm:p-6 mx-auto max-w-3xl"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
