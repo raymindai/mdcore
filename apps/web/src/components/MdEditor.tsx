@@ -11,9 +11,11 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
-import HubPulse from "@/components/HubPulse";
-import HubConstellation from "@/components/HubConstellation";
-import HubFrontier from "@/components/HubFrontier";
+// Hidden 2026-05-17 — Pulse/Constellation/Frontier Start surface paused.
+// Uncomment these three imports + the matching JSX block to re-enable.
+// import HubPulse from "@/components/HubPulse";
+// import HubConstellation from "@/components/HubConstellation";
+// import HubFrontier from "@/components/HubFrontier";
 import BundleEmbed from "@/components/BundleEmbed";
 import HubEmbed from "@/components/HubEmbed";
 import SettingsEmbed from "@/components/SettingsEmbed";
@@ -12377,15 +12379,13 @@ ${clone.innerHTML}
                   content frame. */}
               <div className="w-full max-w-3xl mx-auto px-6 py-10">
 
-                {/* Growing-knowledge-hub surface — three layers stacked
-                    vertically when the user is signed in. Each layer
-                    self-gates: Pulse hides under 3 docs, Constellation
-                    hides under 6 nodes, Frontier hides if no signal in
-                    any of its three columns. So new accounts see the
-                    existing onboarding-friendly Start content alone;
-                    accounts with momentum see the growing-hub stack.
-                    Design rationale + anti-patterns live in claude
-                    memory note `start_growing_hub_concept_2026_05`. */}
+                {/* Growing-knowledge-hub surface (Pulse / Constellation /
+                    Frontier) HIDDEN by founder request 2026-05-17 — the
+                    panels weren't feeling load-bearing in practice.
+                    Components + APIs are still on disk so re-enabling is
+                    a one-block uncomment when there's a clearer reason
+                    to show them. Design notes + the per-layer rationale
+                    live in claude memory `start_growing_hub_concept_2026_05`.
                 {isAuthenticated && (
                   <div className="space-y-4 mb-6">
                     <HubPulse authHeaders={authHeaders} />
@@ -12393,6 +12393,7 @@ ${clone.innerHTML}
                     <HubFrontier authHeaders={authHeaders} />
                   </div>
                 )}
+                */}
 
                 {/* Greeting header — time-of-day aware title plus a
                     soft caption. No leading badge icon (founder ask):
