@@ -102,7 +102,7 @@ const exploreCards = [
   },
   {
     title: "Integrations",
-    desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, QuickLook, tmux — 8 channels.",
+    desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, and macOS QuickLook (bundled with Desktop).",
     href: "/plugins",
   },
   {

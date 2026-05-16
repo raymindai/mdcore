@@ -422,7 +422,7 @@ Stats/Folders:
 - mdfy_folder_create(name, parentId?): Create folder (auth)
 - mdfy_move_to_folder(documentId, folderId): Move doc to folder
 
-The local stdio package (mdfy-mcp v1.3.0) currently exposes the 6 core tools.
+The local stdio package (mdfy-mcp v1.3.x) currently exposes the 6 core tools.
 For the full 25, use the hosted HTTP endpoint.
 
 ## npm Packages

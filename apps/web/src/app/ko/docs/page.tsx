@@ -82,7 +82,7 @@ const exploreCards = [
   },
   {
     title: "통합 도구",
-    desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, QuickLook, tmux 등 8개 채널.",
+    desc: "VS Code, Mac Desktop, Chrome Extension, CLI, MCP Server, macOS QuickLook (Desktop에 번들).",
     href: "/ko/plugins",
   },
   {
