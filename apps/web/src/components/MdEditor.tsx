@@ -11,6 +11,7 @@ import {
   formatConversation,
 } from "@/lib/ai-conversation";
 import MdCanvas from "@/components/MdCanvas";
+import HubPulse from "@/components/HubPulse";
 import BundleEmbed from "@/components/BundleEmbed";
 import HubEmbed from "@/components/HubEmbed";
 import SettingsEmbed from "@/components/SettingsEmbed";
@@ -12373,6 +12374,18 @@ ${clone.innerHTML}
                   surfaces — Start, Hub, Bundle — share a consistent
                   content frame. */}
               <div className="w-full max-w-3xl mx-auto px-6 py-10">
+
+                {/* Hub Pulse — Layer 1 of the "growing knowledge hub"
+                    surface. 365-day contribution heatmap + streak +
+                    totals. Renders only for signed-in users with
+                    >= 3 captured docs (component self-gates via the
+                    API response); below that threshold the existing
+                    onboarding-friendly Start content shows alone. */}
+                {isAuthenticated && (
+                  <div className="mb-6">
+                    <HubPulse authHeaders={authHeaders} />
+                  </div>
+                )}
 
                 {/* Greeting header — time-of-day aware title plus a
                     soft caption. No leading badge icon (founder ask):
