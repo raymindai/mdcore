@@ -1,7 +1,7 @@
 {
   "name": "mdfy-desktop",
-  "version": "2.0.0",
-  "description": "mdfy for Mac — Markdown publishing with sidebar, sync, and local WASM rendering",
+  "version": "2.1.0",
+  "description": "mdfy for Mac — Markdown publishing with sidebar, sync, and local rendering",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -13,6 +13,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.1",
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.46",
+    "markdown-it": "^14.1.1",
+    "markdown-it-footnote": "^4.0.0",
     "yjs": "^13.6.30"
   },
   "devDependencies": {
@@ -29,11 +33,12 @@
       "main.js",
       "preload.js",
       "mime-types.js",
+      "render.js",
       "renderer/**/*",
-      "wasm/**/*",
       "assets/**/*",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "!wasm/**/*"
     ],
     "extraResources": [
       {

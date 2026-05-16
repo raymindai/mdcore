@@ -46,20 +46,22 @@ const FILE_FILTERS = [
   { name: "All Files", extensions: ["*"] },
 ];
 
-// ─── WASM Engine ───
+// ─── Markdown Renderer ───
+//
+// Phase 3 of the WASM-to-markdown-it migration (Phase 1 = web,
+// Phase 2 = vsce, this = desktop). Same renderer as the web app and
+// the VS Code extension — preview output stays in sync with what
+// the user will see at mdfy.app/<id> after publish.
 
-const wasmEngine = require("./wasm/mdcore_engine");
+const renderer = require("./render");
 
 function renderMarkdown(markdown) {
   try {
-    const result = wasmEngine.render(markdown || "");
-    const html = result.html;
-    const flavor = result.flavor;
-    const flavorPrimary = flavor ? flavor.primary : "gfm";
-    try { result.free(); } catch {}
-    return { html, flavor: { primary: flavorPrimary } };
+    const result = renderer.render(markdown || "");
+    const flavorPrimary = result.flavor ? result.flavor.primary : "gfm";
+    return { html: result.html, flavor: { primary: flavorPrimary } };
   } catch (err) {
-    console.error("[wasm] Render error:", err);
+    console.error("[render] error:", err);
     return {
       html: `<p style="color:red">Render error: ${err.message}</p>`,
       flavor: { primary: "gfm" },
