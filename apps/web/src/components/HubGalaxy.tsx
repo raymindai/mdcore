@@ -589,18 +589,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  // Auto-clear selection / hover when the target leaves the visible set.
-  // Without this, scrubbing back leaves a stale selectedId pointing at
-  // a future star — focusing mode stays on, edges draw to nodes that
-  // aren't rendered, and the canvas reads as broken.
+  // Auto-clear stale focus state when scrubbing leaves the target
+  // node behind. Without this, focusing mode stays on, the focusSet
+  // contains ids of nodes that aren't being rendered, lit edges draw
+  // toward invisible endpoints, and the canvas reads as broken.
   useEffect(() => {
-    if (selectedId && !visible.nodes.some((n) => n.id === selectedId)) {
-      setSelectedId(null);
+    const renderedSet = new Set(visible.nodes.map((n) => n.id));
+    if (selectedId && !renderedSet.has(selectedId)) setSelectedId(null);
+    if (hoveredId && !renderedSet.has(hoveredId)) setHoveredId(null);
+    if (hoveredBundleId) {
+      // Clear bundle hover if NO members of the bundle are currently
+      // visible — otherwise the bundleFocusIds is keeping focusing=true
+      // with ids that don't exist on the canvas.
+      const stillHasMember = visible.nodes.some(
+        (n) => n.api.kind === "doc" && n.api.bundleId === hoveredBundleId,
+      );
+      if (!stillHasMember) setHoveredBundleId(null);
     }
-    if (hoveredId && !visible.nodes.some((n) => n.id === hoveredId)) {
-      setHoveredId(null);
-    }
-  }, [visible.nodes, selectedId, hoveredId]);
+  }, [visible.nodes, selectedId, hoveredId, hoveredBundleId]);
 
   // Ignite tracker — same as before, only during active play
   useEffect(() => {
@@ -1235,8 +1241,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
               ))}
             </defs>
 
-            {/* WORLD */}
-            <g transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
+            {/* WORLD. Keyed on sliderDate so the layer unmounts and
+                remounts on scrub — defensive against React reconciler
+                holding on to stale <path> elements when the visible
+                set goes through transitions (seen as "lines that
+                don't update"). */}
+            <g key={`world-${sliderDate}`} transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
               {/* Nebulae */}
               <g style={{ mixBlendMode: "screen" }}>
                 {nebulae.map((b, idx) => {
@@ -1669,14 +1679,22 @@ export default function HubGalaxy({ authHeaders }: Props) {
       >
         <span
           className="text-caption font-mono"
-          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78 }}
+          style={{
+            color: sliderDate === data.hubStart ? "var(--accent)" : "var(--text-faint)",
+            fontWeight: sliderDate === data.hubStart ? 600 : 400,
+            letterSpacing: 0.3,
+            flexShrink: 0,
+            minWidth: 78,
+            transition: "color 0.15s ease",
+          }}
         >
           {data.hubStart}
         </span>
 
-        {/* Slider area — the slider sits at the top of this container;
-            the cursor-date label sits at the bottom, positioned at the
-            same percentage as the thumb so it always tracks. */}
+        {/* Slider area — thumb on top, cursor-date label below the
+            thumb. Position clamped to [8%..92%] so the label never
+            overlaps the hubStart / hubEnd text. Label hidden when
+            sitting on hubStart or hubEnd (the bound label tells you). */}
         <div style={{ flex: 1, position: "relative", height: 32, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <input
             type="range"
@@ -1694,28 +1712,38 @@ export default function HubGalaxy({ authHeaders }: Props) {
             className="galaxy-range"
             style={{ width: "100%", position: "absolute", top: 4, left: 0 }}
           />
-          <span
-            className="text-caption font-mono"
-            style={{
-              position: "absolute",
-              left: `${sliderPct * 100}%`,
-              transform: "translateX(-50%)",
-              bottom: 0,
-              color: "var(--accent)",
-              letterSpacing: 0.3,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              pointerEvents: "none",
-              transition: "left 0.05s linear",
-            }}
-          >
-            {sliderDate || data.hubEnd}
-          </span>
+          {sliderDate && sliderDate !== data.hubStart && sliderDate !== data.hubEnd && (
+            <span
+              className="text-caption font-mono"
+              style={{
+                position: "absolute",
+                left: `${Math.max(8, Math.min(92, sliderPct * 100))}%`,
+                transform: "translateX(-50%)",
+                bottom: 0,
+                color: "var(--accent)",
+                letterSpacing: 0.3,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+                transition: "left 0.05s linear",
+              }}
+            >
+              {sliderDate}
+            </span>
+          )}
         </div>
 
         <span
           className="text-caption font-mono"
-          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78, textAlign: "right" }}
+          style={{
+            color: (!sliderDate || sliderDate === data.hubEnd) ? "var(--accent)" : "var(--text-faint)",
+            fontWeight: (!sliderDate || sliderDate === data.hubEnd) ? 600 : 400,
+            letterSpacing: 0.3,
+            flexShrink: 0,
+            minWidth: 78,
+            textAlign: "right",
+            transition: "color 0.15s ease",
+          }}
         >
           {data.hubEnd}
         </span>
