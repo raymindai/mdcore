@@ -70,9 +70,8 @@ const NEBULA_PALETTE = [
 
 const KIND_ORDER: Array<ApiNode["kind"]> = ["concept", "entity", "tag", "doc"];
 
-// Catalogues for fake astronomical designations — purely cosmetic.
-// Deterministic per node id so the same star always carries the
-// same name across reloads / sessions.
+// Fake astronomical designation, deterministic per node id.
+// Only used in the detail panel now (hover tooltip dropped per feedback).
 const CATALOGS = ["HD", "HIP", "NGC", "Kepler", "Gaia"];
 function starDesignation(id: string): string {
   let h = 5381;
@@ -123,6 +122,14 @@ interface ShootingStar {
 }
 
 const elk = new ELK();
+
+// Deterministic small hash for scattering isolated nodes.
+function hashStr(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return h;
+}
+
 async function layoutGraph(nodes: ApiNode[], edges: ApiEdge[]): Promise<Map<string, { x: number; y: number }>> {
   const result = await elk.layout({
     id: "root",
@@ -131,6 +138,11 @@ async function layoutGraph(nodes: ApiNode[], edges: ApiEdge[]): Promise<Map<stri
       "elk.force.iterations": "200",
       "elk.spacing.nodeNode": "44",
       "elk.padding": "[top=40, left=40, bottom=40, right=40]",
+      // ELK's default is to lay each connected component out separately
+      // and then arrange them in rows — which is exactly the "stars in
+      // a straight line" the founder spotted. Turn that off, and we
+      // also scatter true isolates ourselves below.
+      "elk.separateConnectedComponents": "false",
     },
     children: nodes.map((n) => ({ id: n.id, width: 24, height: 24 })),
     edges: edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
@@ -138,6 +150,42 @@ async function layoutGraph(nodes: ApiNode[], edges: ApiEdge[]): Promise<Map<stri
   const map = new Map<string, { x: number; y: number }>();
   for (const c of result.children || []) {
     map.set(c.id, { x: c.x ?? 0, y: c.y ?? 0 });
+  }
+
+  // Scatter isolated nodes (degree 0) inside the bbox of the connected
+  // graph. Without this, ELK still parks them at the canvas margins
+  // even with separateConnectedComponents disabled.
+  const deg = new Map<string, number>();
+  for (const e of edges) {
+    deg.set(e.source, (deg.get(e.source) || 0) + 1);
+    deg.set(e.target, (deg.get(e.target) || 0) + 1);
+  }
+  const connectedPositions: Array<{ x: number; y: number }> = [];
+  for (const id of deg.keys()) {
+    const p = map.get(id);
+    if (p) connectedPositions.push(p);
+  }
+  if (connectedPositions.length > 0) {
+    const xs = connectedPositions.map((p) => p.x);
+    const ys = connectedPositions.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const bbW = Math.max(240, maxX - minX);
+    const bbH = Math.max(240, maxY - minY);
+    for (const n of nodes) {
+      if ((deg.get(n.id) || 0) === 0) {
+        const h1 = hashStr(n.id);
+        const h2 = hashStr(n.id + "·y");
+        const rx = (Math.abs(h1) % 10000) / 10000;
+        const ry = (Math.abs(h2) % 10000) / 10000;
+        map.set(n.id, {
+          x: minX + rx * bbW,
+          y: minY + ry * bbH,
+        });
+      }
+    }
   }
   return map;
 }
@@ -161,29 +209,23 @@ function GalaxyKeyframes() {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.08); }
       }
-      /* Hover ripple — gentle expanding ring around the cursor target. */
       @keyframes galaxyHoverRipple {
         0%   { transform: scale(0.6); opacity: 0.5; }
         100% { transform: scale(2.2); opacity: 0; }
       }
-      /* Star ignite — a brief flash for a star appearing during Growth replay. */
       @keyframes galaxyIgnite {
         0%   { transform: scale(0.3); opacity: 0; }
         18%  { transform: scale(5); opacity: 0.95; }
         100% { transform: scale(18); opacity: 0; }
       }
-      /* Search magnetic pulse — matched stars ring out, three times. */
       @keyframes galaxyMagneticPulse {
         0%   { transform: scale(0.8); opacity: 0.8; }
         100% { transform: scale(3.6); opacity: 0; }
       }
-      /* Shooting-star — animates stroke-dashoffset so a short trail
-         segment travels along the line. --shoot-len is the path length
-         in CSS pixels, set inline per instance. */
       @keyframes galaxyShoot {
         0%   { stroke-dashoffset: 0; opacity: 0; }
-        7%   { opacity: 1; }
-        92%  { opacity: 0.85; }
+        8%   { opacity: 0.9; }
+        92%  { opacity: 0.7; }
         100% { stroke-dashoffset: calc(var(--shoot-len) * -1); opacity: 0; }
       }
       .galaxy-star,
@@ -191,7 +233,6 @@ function GalaxyKeyframes() {
       .galaxy-ignite-burst,
       .galaxy-hover-ring { transform-box: fill-box; transform-origin: center; }
 
-      /* Range — mdfy accent on a thin track. */
       .galaxy-range {
         -webkit-appearance: none;
         appearance: none;
@@ -288,12 +329,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
   const [playing, setPlaying] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hoveredBundleId, setHoveredBundleId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pulseId, setPulseId] = useState(0);
-  // Newly-ignited stars during Growth replay — id -> expiresAt(ms).
   const [igniteEntries, setIgniteEntries] = useState<Map<string, number>>(new Map());
-  // Active shooting stars — auto-cleaned via setTimeout after their
-  // CSS animation finishes.
   const [shooters, setShooters] = useState<ShootingStar[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<Set<ApiNode["kind"]>>(
     () => new Set(KIND_ORDER),
@@ -370,8 +409,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
         : colourForKind(n.kind);
       const occ = n.occurrence || 1;
       const size = n.kind === "doc"
-        ? 1.6
-        : Math.max(1.2, Math.min(9, Math.sqrt(occ) * 1.8));
+        ? 1.8
+        : Math.max(1.3, Math.min(9, Math.sqrt(occ) * 1.8));
       return {
         id: n.id,
         x: p.x,
@@ -411,6 +450,29 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return m;
   }, [data]);
 
+  // Bundle-hover focus set — when hovering a Nebula row in the sidebar,
+  // the bundle's docs + every concept/entity/tag mentioned in any of
+  // those docs counts as "in focus." Everything else dims.
+  const bundleFocusIds = useMemo<Set<string>>(() => {
+    if (!hoveredBundleId || !data) return new Set();
+    const docNodeIds = new Set<string>();
+    const rawDocIds = new Set<string>();
+    for (const n of data.nodes) {
+      if (n.kind === "doc" && n.bundleId === hoveredBundleId) {
+        docNodeIds.add(n.id);
+        rawDocIds.add(n.id.startsWith("doc:") ? n.id.slice(4) : n.id);
+      }
+    }
+    const out = new Set<string>(docNodeIds);
+    for (const n of data.nodes) {
+      if (n.kind === "doc") continue;
+      if (n.docIds && n.docIds.some((did) => rawDocIds.has(did))) {
+        out.add(n.id);
+      }
+    }
+    return out;
+  }, [hoveredBundleId, data]);
+
   const visible = useMemo(() => {
     if (!data) return { nodes: [] as Positioned[], edges: [] as ApiEdge[], neighbours: new Set<string>(), hoverNeighbours: new Set<string>() };
     const cutoff = (sliderDate || data.hubEnd) + "T23:59:59Z";
@@ -448,17 +510,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return { nodes, edges, neighbours, hoverNeighbours };
   }, [data, all, sliderDate, visibleKinds, searchTerm, selectedId, hoveredId]);
 
+  // Nebulae also gate on cutoff — during Growth replay they appear
+  // progressively as the bundles' docs come into existence. Centroid
+  // recomputes against currently-visible members so the cloud moves as
+  // the bundle fills out.
   const nebulae = useMemo<NebulaBlob[]>(() => {
     if (!data || all.length === 0) return [];
+    const cutoff = (sliderDate || data.hubEnd) + "T23:59:59Z";
     const byBundle = new Map<string, Positioned[]>();
     for (const n of all) {
       if (n.api.kind !== "doc" || !n.api.bundleId) continue;
+      if (n.api.createdAt > cutoff) continue;
       const arr = byBundle.get(n.api.bundleId) || [];
       arr.push(n);
       byBundle.set(n.api.bundleId, arr);
     }
     const out: NebulaBlob[] = [];
     data.clusters.forEach((c, idx) => {
+      if (c.createdAt > cutoff) return;
       const members = byBundle.get(c.id);
       if (!members || members.length === 0) return;
       const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
@@ -473,9 +542,9 @@ export default function HubGalaxy({ authHeaders }: Props) {
       });
     });
     return out;
-  }, [data, all]);
+  }, [data, all, sliderDate]);
 
-  // Replay tween — also flag newly-appeared stars for the ignite flash.
+  // Replay tween
   useEffect(() => {
     if (!playing || !data) return;
     const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
@@ -508,8 +577,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  // Ignite tracker — when visible.nodes grows during play, flash the
-  // new arrivals. Doesn't fire on manual scrubbing or kind-filter toggles.
+  // Ignite tracker — same as before, only during active play
   useEffect(() => {
     const currentIds = new Set(visible.nodes.map((n) => n.id));
     if (playing) {
@@ -538,44 +606,54 @@ export default function HubGalaxy({ authHeaders }: Props) {
     prevVisibleIdsRef.current = currentIds;
   }, [visible.nodes, playing]);
 
-  // Search magnetic pulse — bump pulse counter on each non-empty
-  // search change. Matched stars get a transient ring overlay keyed
-  // off pulseId so React re-mounts and the CSS animation restarts.
   useEffect(() => {
     if (searchTerm.trim().length > 0) setPulseId((p) => p + 1);
   }, [searchTerm]);
 
-  // Shooting-star spawner — kicks off a new streak every 6-16s.
-  // Lives in canvas-pixel space (not graph space) so it cuts across
-  // the visible frame regardless of zoom.
+  // Shooting stars — only from top / right / left edges, always
+  // travelling downward. Bottom-up streaks looked unnatural per
+  // founder feedback. Smaller and more delicate stroke too.
   useEffect(() => {
     if (size.w === 0) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const spawn = () => {
       if (cancelled) return;
-      const fromEdge = Math.floor(Math.random() * 4); // 0=top 1=right 2=bottom 3=left
+      const fromEdge = Math.floor(Math.random() * 3); // 0=top 1=right 2=left
       let fromX = 0, fromY = 0, toX = 0, toY = 0;
-      if (fromEdge === 0) { fromX = Math.random() * size.w; fromY = -30; toX = fromX + (Math.random() - 0.5) * size.w * 0.6; toY = size.h * 0.7 + Math.random() * size.h * 0.3; }
-      else if (fromEdge === 1) { fromX = size.w + 30; fromY = Math.random() * size.h * 0.5; toX = size.w * 0.2 + Math.random() * size.w * 0.5; toY = fromY + size.h * 0.5; }
-      else if (fromEdge === 2) { fromX = Math.random() * size.w; fromY = size.h + 30; toX = fromX + (Math.random() - 0.5) * size.w * 0.5; toY = size.h * 0.3 - Math.random() * size.h * 0.3; }
-      else { fromX = -30; fromY = Math.random() * size.h * 0.5; toX = size.w * 0.4 + Math.random() * size.w * 0.4; toY = fromY + size.h * 0.5; }
+      if (fromEdge === 0) {
+        // Top → angled down. Trail mostly stays inside the canvas.
+        fromX = Math.random() * size.w;
+        fromY = -20;
+        const driftX = (Math.random() - 0.5) * size.w * 0.5;
+        toX = Math.max(-20, Math.min(size.w + 20, fromX + driftX));
+        toY = size.h * 0.55 + Math.random() * size.h * 0.35;
+      } else if (fromEdge === 1) {
+        // Right → angled down-left.
+        fromX = size.w + 20;
+        fromY = -20 + Math.random() * size.h * 0.35;
+        toX = size.w * 0.15 + Math.random() * size.w * 0.45;
+        toY = fromY + size.h * 0.45 + Math.random() * size.h * 0.2;
+      } else {
+        // Left → angled down-right.
+        fromX = -20;
+        fromY = -20 + Math.random() * size.h * 0.35;
+        toX = size.w * 0.4 + Math.random() * size.w * 0.45;
+        toY = fromY + size.h * 0.45 + Math.random() * size.h * 0.2;
+      }
       const dx = toX - fromX, dy = toY - fromY;
       const totalLen = Math.sqrt(dx * dx + dy * dy);
       const id = `shoot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setShooters((s) => [...s, { id, fromX, fromY, toX, toY, totalLen }]);
-      // Auto-clean after the streak's CSS animation completes.
       setTimeout(() => {
         setShooters((s) => s.filter((x) => x.id !== id));
-      }, 1400);
-      timer = setTimeout(spawn, 6000 + Math.random() * 10000);
+      }, 1500);
+      timer = setTimeout(spawn, 8000 + Math.random() * 9000);
     };
-    // First streak after a short delay so the canvas isn't busy on load.
-    timer = setTimeout(spawn, 3500);
+    timer = setTimeout(spawn, 4000);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [size.w, size.h]);
 
-  // Pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     dragRef.current = {
@@ -597,10 +675,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     dragRef.current = null;
   }, []);
 
-  // Native wheel listener with passive: false (so preventDefault works
-  // and the page doesn't scroll behind the canvas). Re-attach when
-  // the SVG mounts (deps include `loaded` because the SVG is in the
-  // main render branch only).
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -621,8 +695,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return () => el.removeEventListener("wheel", onWheel);
   }, [loaded, error, data]);
 
-  // Smooth camera animation between two view states (used by Fit and
-  // double-click zoom-to-focus).
   const animateViewTo = useCallback((targetX: number, targetY: number, targetK: number, durationMs = 450) => {
     if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
     const fromX = viewRef.current.x;
@@ -631,7 +703,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     const startT = performance.now();
     const tick = () => {
       const t = Math.min(1, (performance.now() - startT) / durationMs);
-      // ease-in-out cubic
       const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       setView({
         x: fromX + (targetX - fromX) * e,
@@ -662,8 +733,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     animateViewTo(x, y, clampedK);
   }, [visible.nodes, size, animateViewTo]);
 
-  // Double-click on a star → smooth fly-to. Picks a comfortable zoom
-  // (1.6) unless the user is already deeper, in which case we keep them.
   const handleStarDoubleClick = useCallback((n: Positioned) => {
     const targetK = Math.max(viewRef.current.k, 1.6);
     const targetX = size.w / 2 - n.x * targetK;
@@ -682,7 +751,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
       .slice(0, 12);
   }, [selected, data, apiMap]);
 
-  // Slider helpers
   const sliderPct = useMemo(() => {
     if (!data) return 0;
     const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
@@ -691,16 +759,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     const total = Math.max(1, endMs - startMs);
     return Math.max(0, Math.min(1, (curMs - startMs) / total));
   }, [data, sliderDate]);
-
-  const todayPct = useMemo(() => {
-    if (!data) return null;
-    const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
-    const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
-    const todayMs = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z").getTime();
-    if (todayMs < startMs || todayMs > endMs) return null;
-    const total = Math.max(1, endMs - startMs);
-    return (todayMs - startMs) / total;
-  }, [data]);
 
   const cosmosWrap: React.CSSProperties = {
     height: "100vh",
@@ -756,10 +814,29 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
   const searchActive = searchTerm.trim().length > 0;
   const term = searchTerm.trim().toLowerCase();
-  // Matched-star ids for the magnetic-pulse overlay
   const matchedNodes = searchActive
     ? visible.nodes.filter((n) => n.api.label.toLowerCase().includes(term))
     : [];
+
+  // Single focus set — anything in here is "lit"; everything else is
+  // dim. Edges with both endpoints in this set are rendered, others
+  // are skipped entirely (no more ghost lines).
+  const focusing = selectedId !== null || hoveredId !== null || searchActive || hoveredBundleId !== null;
+  const focusSet = new Set<string>();
+  if (selectedId) {
+    focusSet.add(selectedId);
+    for (const id of visible.neighbours) focusSet.add(id);
+  }
+  if (hoveredId && hoveredId !== selectedId) {
+    focusSet.add(hoveredId);
+    for (const id of visible.hoverNeighbours) focusSet.add(id);
+  }
+  if (searchActive) {
+    for (const n of matchedNodes) focusSet.add(n.id);
+  }
+  if (hoveredBundleId) {
+    for (const id of bundleFocusIds) focusSet.add(id);
+  }
 
   return (
     <div
@@ -777,7 +854,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     >
       <GalaxyKeyframes />
 
-      {/* Header */}
       <header
         style={{
           height: 40,
@@ -896,24 +972,48 @@ export default function HubGalaxy({ authHeaders }: Props) {
               <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
                 Nebulae
               </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 1 }}
+                onMouseLeave={() => setHoveredBundleId(null)}
+              >
                 {data.clusters.slice(0, 8).map((c, idx) => {
                   const colour = NEBULA_PALETTE[idx % NEBULA_PALETTE.length];
+                  const isHover = hoveredBundleId === c.id;
                   return (
-                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
+                    <div
+                      key={c.id}
+                      onMouseEnter={() => setHoveredBundleId(c.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "3px 6px",
+                        margin: "0 -6px",
+                        cursor: "default",
+                        background: isHover ? "var(--toggle-bg)" : "transparent",
+                        borderRadius: 4,
+                        transition: "background var(--duration-fast) var(--ease-default)",
+                      }}
+                    >
                       <span
                         style={{
                           width: 16,
                           height: 4,
                           borderRadius: 2,
                           background: `linear-gradient(to right, ${colour}, ${colour}33)`,
-                          boxShadow: `0 0 6px ${colour}55`,
+                          boxShadow: isHover ? `0 0 8px ${colour}aa` : `0 0 6px ${colour}55`,
                           flexShrink: 0,
+                          transition: "box-shadow var(--duration-fast) var(--ease-default)",
                         }}
                       />
                       <span
                         className="text-caption"
-                        style={{ color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        style={{
+                          color: isHover ? "var(--text-primary)" : "var(--text-secondary)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
                         title={c.label}
                       >
                         {c.label}
@@ -958,7 +1058,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
           ref={containerRef}
           style={{ flex: 1, minWidth: 0, position: "relative", cursor: dragRef.current ? "grabbing" : "grab" }}
         >
-          {/* Floating Fit — top-right of canvas. */}
           <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5, display: "flex", gap: 6 }}>
             <GalaxyButton floating onClick={handleRecentre} title="Fit to view">
               <Maximize2 width={12} height={12} />
@@ -975,7 +1074,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onClick={(e) => {
-              // Don't deselect when finishing a drag-pan
               if (dragRef.current?.moved) return;
               if (e.target === svgRef.current) setSelectedId(null);
             }}
@@ -1035,37 +1133,51 @@ export default function HubGalaxy({ authHeaders }: Props) {
               ))}
             </defs>
 
-            {/* WORLD — pan + zoom transform */}
+            {/* WORLD */}
             <g transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
               {/* Nebulae */}
               <g style={{ mixBlendMode: "screen" }}>
-                {nebulae.map((b, idx) => (
-                  <circle
-                    key={b.id}
-                    cx={b.x}
-                    cy={b.y}
-                    r={b.radius}
-                    fill={`url(#neb-${b.id})`}
-                    filter="url(#nebula-blur)"
-                    style={{
-                      animation: `galaxyNebulaDrift ${28 + (idx % 5) * 6}s ease-in-out infinite`,
-                      animationDelay: `-${idx * 3.7}s`,
-                      transformOrigin: `${b.x}px ${b.y}px`,
-                    }}
-                  />
-                ))}
+                {nebulae.map((b, idx) => {
+                  const dimmed = hoveredBundleId !== null && hoveredBundleId !== b.id;
+                  return (
+                    <circle
+                      key={b.id}
+                      cx={b.x}
+                      cy={b.y}
+                      r={b.radius}
+                      fill={`url(#neb-${b.id})`}
+                      filter="url(#nebula-blur)"
+                      opacity={dimmed ? 0.15 : 1}
+                      style={{
+                        animation: `galaxyNebulaDrift ${28 + (idx % 5) * 6}s ease-in-out infinite`,
+                        animationDelay: `-${idx * 3.7}s`,
+                        transformOrigin: `${b.x}px ${b.y}px`,
+                        transition: "opacity 0.3s ease",
+                      }}
+                    />
+                  );
+                })}
               </g>
 
-              {/* Edges */}
+              {/* Edges — only render those whose both endpoints are
+                  rendered AND, when focusing, both are in the focus
+                  set. This is what kills the ghost lines. */}
               <g>
                 {visible.edges.map((e) => {
                   const a = positions?.get(e.source);
                   const b = positions?.get(e.target);
                   if (!a || !b) return null;
+                  const sourceInFocus = focusSet.has(e.source);
+                  const targetInFocus = focusSet.has(e.target);
+                  // When focusing, drop entirely unless both endpoints
+                  // are part of the focus.
+                  if (focusing && !(sourceInFocus && targetInFocus)) return null;
                   const isSelectedEnd = selectedId !== null && (e.source === selectedId || e.target === selectedId);
                   const isHoveredEnd = hoveredId !== null && hoveredId !== selectedId && (e.source === hoveredId || e.target === hoveredId);
-                  const isLit = isSelectedEnd || isHoveredEnd;
-                  const anyDimmer = selectedId !== null || hoveredId !== null || searchActive;
+                  // Lit = touching the primary focus star OR both ends
+                  // are in focus (so neighbour-to-neighbour edges glow
+                  // too, completing the constellation).
+                  const isLit = isSelectedEnd || isHoveredEnd || (focusing && sourceInFocus && targetInFocus);
                   let h = 0;
                   for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
                   const dx = b.x - a.x;
@@ -1084,12 +1196,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       stroke={isLit ? SKY.starConcept : "#fafafa"}
                       strokeOpacity={
                         isLit
-                          ? 0.65
-                          : anyDimmer
-                            ? 0.015
-                            : e.kind === "concept_concept" ? 0.09 : 0.05
+                          ? 0.6
+                          : e.kind === "concept_concept" ? 0.09 : 0.05
                       }
-                      strokeWidth={(isLit ? 0.9 : 0.35) / Math.max(0.5, view.k * 0.7)}
+                      strokeWidth={(isLit ? 0.85 : 0.35) / Math.max(0.5, view.k * 0.7)}
                       strokeLinecap="round"
                       filter={isLit ? "url(#thread-glow)" : undefined}
                     />
@@ -1097,7 +1207,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 })}
               </g>
 
-              {/* Ignite flashes — large bright burst over newly-appeared stars during Growth replay. */}
+              {/* Ignite flashes */}
               <g style={{ pointerEvents: "none" }}>
                 {Array.from(igniteEntries.entries()).map(([id, expiresAt]) => {
                   const star = visible.nodes.find((n) => n.id === id);
@@ -1116,7 +1226,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 })}
               </g>
 
-              {/* Magnetic pulses — ring overlay for search matches */}
+              {/* Magnetic pulses */}
               <g style={{ pointerEvents: "none" }}>
                 {searchActive && pulseId > 0 && matchedNodes.map((n) => (
                   <circle
@@ -1137,21 +1247,16 @@ export default function HubGalaxy({ authHeaders }: Props) {
               {/* Stars */}
               <g>
                 {visible.nodes.map((n, idx) => {
-                  const matched = !searchActive || n.api.label.toLowerCase().includes(term);
                   const isSelected = n.id === selectedId;
-                  const isNeighbour = visible.neighbours.has(n.id);
                   const isHovered = n.id === hoveredId;
-                  const isHoverNeighbour = visible.hoverNeighbours.has(n.id);
-                  const focusing = selectedId !== null || hoveredId !== null || searchActive;
-                  const inFocus = isSelected || isNeighbour || isHovered || isHoverNeighbour || (searchActive && matched);
-                  const dimmed = focusing && !inFocus;
+                  const dimmed = focusing && !focusSet.has(n.id);
                   const haloR = n.size * (isSelected ? 7 : isHovered ? 6 : 4.5);
                   const coreR = n.size * (isSelected ? 1.5 : isHovered ? 1.25 : 1);
                   const haloFill =
                     n.api.kind === "doc" && n.api.bundleId
                       ? `url(#halo-doc-${n.api.bundleId})`
                       : `url(#halo-${n.api.kind})`;
-                  const showLabel = isSelected || isNeighbour || isHovered || isHoverNeighbour || (searchActive && matched) || view.k >= 1.4;
+                  const showLabel = isSelected || isHovered || (focusing && focusSet.has(n.id)) || view.k >= 1.4;
                   const floatIdx = idx % 4;
                   const period = 7 + (idx % 7);
                   return (
@@ -1175,7 +1280,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                         transition: "opacity 0.3s ease",
                       }}
                     >
-                      {/* Hover ripple — only on the hovered star */}
                       {isHovered && (
                         <circle
                           r={haloR}
@@ -1233,34 +1337,13 @@ export default function HubGalaxy({ authHeaders }: Props) {
                           {n.api.label}
                         </text>
                       )}
-                      {/* Designation — only on hover, sits just below the label */}
-                      {isHovered && (
-                        <text
-                          y={haloR + 22}
-                          textAnchor="middle"
-                          style={{
-                            fontSize: 8 / Math.max(0.6, view.k * 0.7),
-                            fill: "#a8a29e",
-                            fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
-                            letterSpacing: 0.5,
-                            pointerEvents: "none",
-                            paintOrder: "stroke",
-                            stroke: "rgba(9, 9, 11, 0.85)",
-                            strokeWidth: 2.5 / Math.max(0.6, view.k * 0.7),
-                            strokeLinejoin: "round",
-                          }}
-                        >
-                          {starDesignation(n.id)}
-                        </text>
-                      )}
                     </g>
                   );
                 })}
               </g>
             </g>
 
-            {/* Shooting stars — viewport-space (NOT inside world g), so
-                they cross the visible frame regardless of pan/zoom. */}
+            {/* Shooting stars — viewport-space, smaller + more delicate. */}
             <g style={{ pointerEvents: "none" }}>
               {shooters.map((s) => (
                 <line
@@ -1270,14 +1353,14 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   x2={s.toX}
                   y2={s.toY}
                   stroke="#fafafa"
-                  strokeWidth={1.4}
+                  strokeWidth={0.8}
+                  strokeOpacity={0.75}
                   strokeLinecap="round"
-                  filter="url(#thread-glow)"
                   style={{
-                    strokeDasharray: `70 ${s.totalLen}`,
+                    strokeDasharray: `42 ${s.totalLen}`,
                     strokeDashoffset: 0,
-                    animation: "galaxyShoot 1.2s cubic-bezier(0.4, 0, 0.6, 1) forwards",
-                    ['--shoot-len' as keyof React.CSSProperties as string]: `${s.totalLen + 70}px`,
+                    animation: "galaxyShoot 1.35s cubic-bezier(0.4, 0, 0.65, 1) forwards",
+                    ['--shoot-len' as keyof React.CSSProperties as string]: `${s.totalLen + 42}px`,
                   } as React.CSSProperties}
                 />
               ))}
@@ -1338,7 +1421,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
               {selected.label}
             </h3>
 
-            {/* Astronomical designation — fake but stable per node id. */}
             <p className="text-caption font-mono" style={{ color: "var(--text-faint)", margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>
               {starDesignation(selected.id)}
             </p>
@@ -1437,10 +1519,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
         )}
       </div>
 
-      {/* Scrubber — [start] [scrubber w/ TODAY mark and floating cursor date] [end] [▶ Growth] */}
+      {/* Scrubber — [start] [slider w/ cursor pill] [end] [▶ Growth] */}
       <footer
         style={{
-          height: 48,
+          height: 56,
           display: "flex",
           alignItems: "center",
           padding: "0 14px",
@@ -1459,21 +1541,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
           {data.hubStart}
         </span>
 
-        <div style={{ flex: 1, position: "relative", height: 32, display: "flex", alignItems: "center" }}>
-          {/* Cursor date — floats above the thumb, accent-coloured. */}
+        <div style={{ flex: 1, position: "relative", height: 40, display: "flex", alignItems: "center" }}>
+          {/* Cursor date — centred on the thumb, raised above the track
+              so it doesn't collide with the grab handle. */}
           <div
             style={{
               position: "absolute",
-              left: `calc(${sliderPct * 100}% - 28px)`,
-              top: -2,
-              padding: "1px 6px",
+              left: `${sliderPct * 100}%`,
+              transform: "translateX(-50%)",
+              top: 0,
+              padding: "2px 8px",
               fontSize: 10,
               color: "var(--accent)",
-              background: "rgba(9, 9, 11, 0.85)",
+              background: "rgba(9, 9, 11, 0.9)",
               border: "1px solid var(--accent-dim)",
               borderRadius: 4,
               fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
               letterSpacing: 0.3,
+              fontWeight: 600,
               pointerEvents: "none",
               whiteSpace: "nowrap",
               transition: "left 0.05s linear",
@@ -1481,39 +1566,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
           >
             {sliderDate || data.hubEnd}
           </div>
-
-          {todayPct !== null && (
-            <>
-              <div
-                title={`Today · ${new Date().toISOString().slice(0, 10)}`}
-                style={{
-                  position: "absolute",
-                  left: `calc(${todayPct * 100}% - 0.5px)`,
-                  top: 18,
-                  height: 12,
-                  width: 1,
-                  background: "var(--text-muted)",
-                  opacity: 0.5,
-                  pointerEvents: "none",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  left: `calc(${todayPct * 100}% - 16px)`,
-                  bottom: -4,
-                  fontSize: 8,
-                  letterSpacing: 0.4,
-                  color: "var(--text-faint)",
-                  fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
-                  textTransform: "uppercase",
-                  pointerEvents: "none",
-                }}
-              >
-                today
-              </div>
-            </>
-          )}
 
           <input
             type="range"
@@ -1529,7 +1581,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
               setSliderDate(new Date(target).toISOString().slice(0, 10));
             }}
             className="galaxy-range"
-            style={{ width: "100%", position: "absolute", top: 10, left: 0 }}
+            style={{ width: "100%", position: "absolute", bottom: 4, left: 0 }}
           />
         </div>
 
