@@ -64,27 +64,35 @@ interface Props {
   authHeaders: Record<string, string>;
 }
 
-// Hard-coded cosmos palette — /galaxy ignores light/dark theme.
-// A galaxy is a place, not a UI surface.
+// Hard-coded cosmos palette — keeps /galaxy on-brand with mdfy.app
+// (warm zinc + orange). No cyan / purple / pink anywhere; cool hues
+// belong in other products. A galaxy is a place, not a UI surface.
 const COSMOS = {
-  bg: "#03040a",
+  bg: "#0a0908",
   bgGradient:
-    "radial-gradient(ellipse at 28% 18%, #0a1130 0%, #050818 38%, #02030a 72%)",
-  text: "#e8ecf5",
-  textMuted: "#8b94b5",
-  textFaint: "#5a6385",
-  border: "rgba(132, 144, 188, 0.14)",
-  // Star colours by kind = stellar temperature.
-  starDoc: "#cfd6ff",     // blue-white main sequence
-  starConcept: "#ffd97a", // G-type golden
-  starEntity: "#ff9b6b",  // K-type warm orange
-  starTag: "#7be9ff",     // young cyan
+    "radial-gradient(ellipse at 30% 18%, #1a1410 0%, #0e0a07 40%, #060403 78%)",
+  text: "#f5f4ef",
+  textMuted: "#a8a29e",
+  textFaint: "#57534e",
+  border: "rgba(245, 244, 239, 0.07)",
+  // Star colours by kind — kept inside a warm zinc+orange spectrum.
+  // Variation comes from saturation, not hue.
+  starDoc: "#f5f4ef",     // warm white — main sequence
+  starConcept: "#fb923c", // mdfy accent orange — primary stars
+  starEntity: "#ea580c",  // deeper orange — proper nouns
+  starTag: "#c8a787",     // muted warm peach — meta labels
 };
 
-// Per-bundle nebula palette — 6 hues, cycled.
+// Per-bundle nebula palette — orange/warm variants only. Each cluster
+// gets a different temperature inside the same warm family so bundles
+// read distinct without breaking the brand.
 const NEBULA_PALETTE = [
-  "#ff9b6b", "#7be9ff", "#ffd97a",
-  "#c8b6ff", "#ff8fb1", "#9ef0c8",
+  "#fb923c", // mdfy orange
+  "#ffb677", // light peach
+  "#d4a373", // sandy
+  "#b08968", // warm taupe
+  "#ffd5a5", // cream
+  "#ea580c", // deep orange
 ];
 
 const KIND_ORDER: Array<ApiNode["kind"]> = ["concept", "entity", "tag", "doc"];
@@ -139,17 +147,44 @@ async function layoutGraph(nodes: ApiNode[], edges: ApiEdge[]): Promise<Map<stri
   return map;
 }
 
-// CSS keyframes — twinkle + nebula drift, injected once.
+// CSS keyframes — twinkle + four float patterns (assigned by idx % 4)
+// so stars drift on staggered orbits. Edges stay anchored to the
+// node's mathematical position, so the floats read as "stars breathe"
+// rather than "the whole graph wobbles." Injected once.
 function GalaxyKeyframes() {
   return (
     <style>{`
       @keyframes galaxyTwinkle {
-        0%, 100% { opacity: 0.55; }
+        0%, 100% { opacity: 0.7; }
         50% { opacity: 1; }
       }
-      @keyframes galaxyDrift {
-        0% { transform: translate(0, 0); }
-        100% { transform: translate(14px, -10px); }
+      @keyframes galaxyFloat0 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(1.6px, -1.2px); }
+      }
+      @keyframes galaxyFloat1 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-1.4px, 1.4px); }
+      }
+      @keyframes galaxyFloat2 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(0.8px, 1.6px); }
+      }
+      @keyframes galaxyFloat3 {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(-1.2px, -0.8px); }
+      }
+      @keyframes galaxyNebulaDrift {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(6px, -8px); }
+      }
+      @keyframes galaxyPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+      }
+      .galaxy-star {
+        transform-box: fill-box;
+        transform-origin: center;
       }
       .galaxy-input::placeholder { color: ${COSMOS.textFaint}; }
       .galaxy-range {
@@ -263,10 +298,14 @@ export default function HubGalaxy({ authHeaders }: Props) {
       const colour = n.kind === "doc"
         ? colourForBundle(n.bundleId, data.clusters)
         : colourForKind(n.kind);
-      // Core radius — small, glow does the visual work
+      // Core radius — wider dynamic range so the big concepts read as
+      // giants, not as "slightly larger dots." sqrt curve so growth
+      // tapers off (a 50-occurrence concept isn't 5× the size of a
+      // 10-occurrence one — that would crowd the canvas).
+      const occ = n.occurrence || 1;
       const size = n.kind === "doc"
-        ? 2.2
-        : Math.max(1.8, Math.min(4.5, 1.8 + (n.occurrence || 1) * 0.18));
+        ? 1.6
+        : Math.max(1.2, Math.min(9, Math.sqrt(occ) * 1.8));
       return {
         id: n.id,
         x: p.x,
@@ -351,8 +390,9 @@ export default function HubGalaxy({ authHeaders }: Props) {
       const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
       const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
       // Radius grows gently with member count; clamped so big bundles
-      // don't drown the canvas.
-      const radius = Math.min(420, 140 + members.length * 22);
+      // don't drown the canvas. Pulled tighter than before — nebulae
+      // should suggest grouping, not dominate the scene.
+      const radius = Math.min(260, 90 + members.length * 14);
       out.push({
         id: c.id,
         x: cx,
@@ -843,11 +883,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 </radialGradient>
               ))}
 
-              {/* Nebula cloud gradients — large, soft, low opacity */}
+              {/* Nebula cloud gradients — softer than before so they
+                  hint at clustering instead of competing with stars. */}
               {nebulae.map((b) => (
                 <radialGradient key={`neb-${b.id}`} id={`neb-${b.id}`}>
-                  <stop offset="0%" stopColor={b.colour} stopOpacity="0.55" />
-                  <stop offset="40%" stopColor={b.colour} stopOpacity="0.18" />
+                  <stop offset="0%" stopColor={b.colour} stopOpacity="0.22" />
+                  <stop offset="45%" stopColor={b.colour} stopOpacity="0.07" />
                   <stop offset="100%" stopColor={b.colour} stopOpacity="0" />
                 </radialGradient>
               ))}
@@ -856,10 +897,13 @@ export default function HubGalaxy({ authHeaders }: Props) {
             {/* World group — all coordinates are in flow-space, transformed
                 by the view (pan + zoom). */}
             <g transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
-              {/* Layer 1: nebulae (screen-blended so they brighten the bg
-                  without darkening anything). Pre-blurred via SVG filter. */}
+              {/* Layer 1: nebulae (screen-blended so they brighten the
+                  bg without darkening anything). Pre-blurred via SVG
+                  filter. Each cloud drifts on its own slow period —
+                  that's the "stuff is happening" cue even when nothing
+                  is selected. */}
               <g style={{ mixBlendMode: "screen" }}>
-                {nebulae.map((b) => (
+                {nebulae.map((b, idx) => (
                   <circle
                     key={b.id}
                     cx={b.x}
@@ -867,85 +911,138 @@ export default function HubGalaxy({ authHeaders }: Props) {
                     r={b.radius}
                     fill={`url(#neb-${b.id})`}
                     filter="url(#nebula-blur)"
+                    style={{
+                      animation: `galaxyNebulaDrift ${28 + (idx % 5) * 6}s ease-in-out infinite`,
+                      animationDelay: `-${idx * 3.7}s`,
+                      transformOrigin: `${b.x}px ${b.y}px`,
+                    }}
                   />
                 ))}
               </g>
 
-              {/* Layer 2: edges (cosmic threads). Render below nodes so
-                  the stars sit on top of their connections. */}
+              {/* Layer 2: edges as gentle bezier curves. Render below
+                  nodes so stars sit on top of their connections.
+                  Default opacity is intentionally near-invisible — the
+                  full graph reads as a soft web; selection lights up
+                  just the relevant path. */}
               <g>
                 {visible.edges.map((e) => {
                   const a = positions?.get(e.source);
                   const b = positions?.get(e.target);
                   if (!a || !b) return null;
-                  const isNeighbour =
-                    selectedId !== null && (e.source === selectedId || e.target === selectedId);
-                  const dimmed = searchActive && !isNeighbour;
+                  const isSelectedEnd = selectedId !== null && (e.source === selectedId || e.target === selectedId);
+                  const anyDimmer = selectedId !== null || searchActive;
+                  // Deterministic curve direction per edge so the
+                  // network isn't visually thrashed across re-renders.
+                  let h = 0;
+                  for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
+                  const dx = b.x - a.x;
+                  const dy = b.y - a.y;
+                  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                  const sign = (h & 1) ? 1 : -1;
+                  const bend = Math.min(60, len * 0.18) * sign;
+                  // Perpendicular vector for control-point offset.
+                  const cx = (a.x + b.x) / 2 + (-dy / len) * bend;
+                  const cy = (a.y + b.y) / 2 + (dx / len) * bend;
+                  const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
                   return (
-                    <line
+                    <path
                       key={e.id}
-                      x1={a.x}
-                      y1={a.y}
-                      x2={b.x}
-                      y2={b.y}
-                      stroke={isNeighbour ? "#b4dcff" : e.kind === "concept_concept" ? "#aec3ff" : "#aec3ff"}
-                      strokeOpacity={isNeighbour ? 0.85 : dimmed ? 0.05 : e.kind === "concept_concept" ? 0.32 : 0.18}
-                      strokeWidth={(isNeighbour ? 1.4 : e.kind === "concept_concept" ? 0.7 : 0.5) / Math.max(0.5, view.k * 0.6)}
-                      filter={isNeighbour ? "url(#thread-glow)" : undefined}
+                      d={d}
+                      fill="none"
+                      stroke={isSelectedEnd ? COSMOS.starConcept : COSMOS.text}
+                      strokeOpacity={
+                        isSelectedEnd
+                          ? 0.65
+                          : anyDimmer
+                            ? 0.015
+                            : e.kind === "concept_concept" ? 0.09 : 0.05
+                      }
+                      strokeWidth={(isSelectedEnd ? 0.9 : 0.35) / Math.max(0.5, view.k * 0.7)}
+                      strokeLinecap="round"
+                      filter={isSelectedEnd ? "url(#thread-glow)" : undefined}
                     />
                   );
                 })}
               </g>
 
-              {/* Layer 3: stars */}
+              {/* Layer 3: stars. Each star gets one of four float
+                  keyframes so the field "breathes" on different
+                  phases — that's the position-based animation. The
+                  edges deliberately don't follow (stars float ±1.5px,
+                  far below their gap to neighbours), which keeps the
+                  layout stable while the cosmos feels alive. */}
               <g>
-                {visible.nodes.map((n) => {
+                {visible.nodes.map((n, idx) => {
                   const matched = !searchActive || n.api.label.toLowerCase().includes(term);
                   const isSelected = n.id === selectedId;
                   const isNeighbour = visible.neighbours.has(n.id);
-                  const dimmed = (searchActive && !matched && !isSelected && !isNeighbour);
+                  // Dim hard: anything not part of the current focus
+                  // (selection, neighbours, search match) drops far down.
+                  const focusing = selectedId !== null || searchActive;
+                  const inFocus = isSelected || isNeighbour || (searchActive && matched);
+                  const dimmed = focusing && !inFocus;
                   // Halo radius — relative to core size, big enough for
                   // the gradient to fade nicely without rectangular edges
                   // (which is exactly why we left HTML behind).
-                  const haloR = n.size * (isSelected ? 6 : 4);
-                  const coreR = n.size * (isSelected ? 1.4 : 1);
+                  const haloR = n.size * (isSelected ? 7 : 4.5);
+                  const coreR = n.size * (isSelected ? 1.5 : 1);
                   const haloFill =
                     n.api.kind === "doc" && n.api.bundleId
                       ? `url(#halo-doc-${n.api.bundleId})`
                       : `url(#halo-${n.api.kind})`;
-                  // Label visibility: at zoom >= 1.3, or always for matched / selected / neighbour.
-                  const showLabel = isSelected || isNeighbour || matched && (view.k >= 1.3 || (searchActive && matched));
+                  // Label visibility: at zoom >= 1.4, or always for selected / neighbour / search-match.
+                  const showLabel =
+                    isSelected || isNeighbour || (searchActive && matched) || view.k >= 1.4;
+                  // Stagger float animations — period 7-13s so the
+                  // whole field doesn't pulse in lockstep.
+                  const floatIdx = idx % 4;
+                  const period = 7 + (idx % 7);
                   return (
                     <g
                       key={n.id}
                       transform={`translate(${n.x}, ${n.y})`}
-                      style={{
-                        cursor: "pointer",
-                        opacity: dimmed ? 0.1 : 1,
-                        transition: "opacity 0.25s ease",
-                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedId(n.id === selectedId ? null : n.id);
                       }}
+                      style={{
+                        cursor: "pointer",
+                        opacity: dimmed ? 0.05 : 1,
+                        transition: "opacity 0.3s ease",
+                      }}
                     >
-                      {/* Halo — pure gradient circle, no border because
-                          the gradient fades to opacity 0. */}
-                      <circle
-                        r={haloR}
-                        fill={haloFill}
+                      <g
+                        className="galaxy-star"
                         style={{
-                          animation: `galaxyTwinkle ${4 + (n.twinkleDelay % 3)}s ease-in-out infinite`,
-                          animationDelay: `-${n.twinkleDelay}s`,
+                          animation: `galaxyFloat${floatIdx} ${period}s ease-in-out infinite`,
+                          animationDelay: `-${n.twinkleDelay * 1.2}s`,
                         }}
-                      />
-                      {/* Core — bright white pinpoint, blurred by SVG
-                          filter for the actual "star" feel. */}
-                      <circle
-                        r={coreR}
-                        fill="#ffffff"
-                        filter={isSelected ? "url(#glow-core-strong)" : "url(#glow-core)"}
-                      />
+                      >
+                        {/* Halo — pure gradient circle, no border because
+                            the gradient fades to opacity 0. */}
+                        <circle
+                          r={haloR}
+                          fill={haloFill}
+                          style={{
+                            animation: `galaxyTwinkle ${5 + (n.twinkleDelay % 4)}s ease-in-out infinite`,
+                            animationDelay: `-${n.twinkleDelay}s`,
+                          }}
+                        />
+                        {/* Core — bright pinpoint, blurred by SVG
+                            filter for the actual "star" feel. Selected
+                            stars also pulse to draw the eye. */}
+                        <circle
+                          r={coreR}
+                          fill={COSMOS.text}
+                          filter={isSelected ? "url(#glow-core-strong)" : "url(#glow-core)"}
+                          style={isSelected ? {
+                            animation: `galaxyPulse 2.4s ease-in-out infinite`,
+                            transformBox: "fill-box",
+                            transformOrigin: "center",
+                          } : undefined}
+                        />
+                      </g>
                       {showLabel && (
                         <text
                           y={haloR + 10}
@@ -957,9 +1054,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
                             letterSpacing: 0.3,
                             pointerEvents: "none",
                             paintOrder: "stroke",
-                            stroke: "rgba(3, 4, 10, 0.85)",
+                            stroke: "rgba(10, 9, 8, 0.85)",
                             strokeWidth: 3 / Math.max(0.6, view.k * 0.7),
                             strokeLinejoin: "round",
+                            opacity: dimmed ? 0 : 0.85,
                           }}
                         >
                           {n.api.label}
