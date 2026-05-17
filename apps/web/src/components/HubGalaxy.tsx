@@ -213,10 +213,11 @@ function GalaxyKeyframes() {
         0%   { transform: scale(0.6); opacity: 0.5; }
         100% { transform: scale(2.2); opacity: 0; }
       }
-      @keyframes galaxyIgnite {
-        0%   { transform: scale(0.3); opacity: 0; }
-        18%  { transform: scale(5); opacity: 0.95; }
-        100% { transform: scale(18); opacity: 0; }
+      /* Star fade-in — gentler than the old burst. Tiny growing
+         glow that settles into the star's normal halo. */
+      @keyframes galaxyFadeIn {
+        0%   { opacity: 0; transform: scale(0.6); }
+        100% { opacity: 1; transform: scale(1); }
       }
       @keyframes galaxyMagneticPulse {
         0%   { transform: scale(0.8); opacity: 0.8; }
@@ -230,7 +231,7 @@ function GalaxyKeyframes() {
       }
       .galaxy-star,
       .galaxy-pulse-ring,
-      .galaxy-ignite-burst,
+      .galaxy-fade-in,
       .galaxy-hover-ring { transform-box: fill-box; transform-origin: center; }
 
       .galaxy-range {
@@ -544,7 +545,17 @@ export default function HubGalaxy({ authHeaders }: Props) {
       if (!members || members.length === 0) return;
       const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
       const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
-      const radius = Math.min(260, 90 + members.length * 14);
+      // Radius derived from the actual spread of the members — max
+      // distance from the centroid plus padding. Single-doc bundles
+      // get a small halo; spread-out bundles get a cloud that
+      // actually contains them. (Old fixed formula made nebulae
+      // float between docs instead of around them.)
+      let maxDist = 0;
+      for (const m of members) {
+        const d = Math.hypot(m.x - cx, m.y - cy);
+        if (d > maxDist) maxDist = d;
+      }
+      const radius = Math.max(60, Math.min(340, maxDist * 1.35 + 60));
       out.push({
         id: c.id,
         x: cx,
@@ -724,6 +735,21 @@ export default function HubGalaxy({ authHeaders }: Props) {
   }, []);
   const handleMouseUp = useCallback(() => {
     dragRef.current = null;
+  }, []);
+
+  // Escape clears all focus state (and search) — gives users a one-key
+  // bail-out when the canvas gets too lit-up.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        setHoveredId(null);
+        setHoveredBundleId(null);
+        setSearchTerm("");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   // RAF-throttled hover — onMouseEnter / Leave can fire many times
@@ -1180,7 +1206,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onMouseLeave={() => {
+              // Pointer left the canvas — drop drag and any hover
+              // state so the cosmos returns to its at-rest look.
+              handleMouseUp();
+              queueHover(null);
+            }}
             onClick={(e) => {
               if (dragRef.current?.moved) return;
               if (e.target === svgRef.current) setSelectedId(null);
@@ -1328,25 +1359,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 })}
               </g>
 
-              {/* Ignite flashes */}
-              <g style={{ pointerEvents: "none" }}>
-                {Array.from(igniteEntries.entries()).map(([id, expiresAt]) => {
-                  const star = visible.nodes.find((n) => n.id === id);
-                  if (!star) return null;
-                  return (
-                    <g key={`ignite-${id}-${expiresAt}`} transform={`translate(${star.x}, ${star.y})`}>
-                      <circle
-                        r={3}
-                        fill="#ffffff"
-                        filter="url(#glow-core-strong)"
-                        className="galaxy-ignite-burst"
-                        style={{ animation: "galaxyIgnite 900ms ease-out forwards" }}
-                      />
-                    </g>
-                  );
-                })}
-              </g>
-
               {/* Magnetic pulses */}
               <g style={{ pointerEvents: "none" }}>
                 {searchActive && pulseId > 0 && matchedNodes.map((n) => (
@@ -1383,6 +1395,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
                   const isSelected = n.id === selectedId;
                   const isHovered = n.id === hoveredId;
+                  const isIgniting = igniteEntries.has(n.id);
                   const dimmed = focusing && !focusSet.has(n.id);
                   const haloR = n.size * (isSelected ? 7 : isHovered ? 6 : 4.5);
                   const coreR = n.size * (isSelected ? 1.5 : isHovered ? 1.25 : 1);
@@ -1415,10 +1428,14 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       }}
                       onMouseEnter={() => queueHover(n.id)}
                       onMouseLeave={() => queueHover(null)}
+                      className={isIgniting ? "galaxy-fade-in" : undefined}
                       style={{
                         cursor: "pointer",
                         opacity: dimmed ? 0.05 : 1,
                         transition: "opacity 0.3s ease",
+                        ...(isIgniting ? {
+                          animation: "galaxyFadeIn 700ms ease-out",
+                        } : null),
                       }}
                     >
                       {isHovered && (
